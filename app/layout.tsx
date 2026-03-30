@@ -6,12 +6,13 @@ import Header from "@/components/common/header";
 import Footer from "@/components/common/footer";
 import { Toaster } from "sonner";
 import { syncUserToDatabase } from "@/lib/sync-user";
+import { esES } from "@clerk/localizations";//Modificar el idioma a español
 
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "DocuAI - AI-Powered Document Analysis",
-  description: "Analyze and collaborate on documents with Google Gemini AI",
+  title: "Avicont-Ai Sistema Contable Avicola",
+  description: "Asociación Mixta de Productores Agro-Avícola Conda Arriba",
 };
 
 export default async function RootLayout({
@@ -21,8 +22,8 @@ export default async function RootLayout({
 }>) {
   await syncUserToDatabase();
   return (
-    <ClerkProvider>
-      <html lang="en" suppressHydrationWarning>
+    <ClerkProvider localization={esES}>
+      <html lang="es" suppressHydrationWarning>
         <body className={inter.className}>
           <div className="min-h-screen flex flex-col">
             <Header />
