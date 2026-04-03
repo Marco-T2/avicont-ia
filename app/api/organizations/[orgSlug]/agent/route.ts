@@ -3,13 +3,14 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
-import { prisma } from "@/lib/prisma";
+import { OrganizationsService } from "@/features/organizations";
 import { AgentService } from "@/features/ai-agent";
 import { ExpensesService } from "@/features/expenses";
 import { MortalityService } from "@/features/mortality";
 import type { ConfirmActionRequest } from "@/features/ai-agent";
 import type { ExpenseCategory } from "@/generated/prisma/client";
 
+const orgService = new OrganizationsService();
 const agentService = new AgentService();
 const expensesService = new ExpensesService();
 const mortalityService = new MortalityService();
@@ -26,23 +27,10 @@ export async function POST(
     const url = new URL(request.url);
     const action = url.searchParams.get("action");
 
-    // Get user and their role in the organization
-    const member = await prisma.organizationMember.findFirst({
-      where: {
-        organizationId,
-        user: { clerkUserId },
-      },
-      include: {
-        user: { select: { id: true } },
-      },
-    });
-
-    if (!member) {
-      return Response.json(
-        { error: "Miembro no encontrado" },
-        { status: 403 },
-      );
-    }
+    const member = await orgService.getMemberWithUserByClerkUserId(
+      organizationId,
+      clerkUserId,
+    );
 
     // ── Confirm action ──
     if (action === "confirm") {

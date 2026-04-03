@@ -2,7 +2,7 @@ import {
   SchemaType,
   type FunctionDeclaration,
 } from "@google/generative-ai";
-import type { AgentRole } from "./agent.types";
+import type { Role } from "@/features/shared/permissions";
 
 // ── Socio tools (farming operations) ──
 
@@ -183,13 +183,14 @@ const adminTools: FunctionDeclaration[] = [
 /**
  * Get the tool definitions available for a given role.
  */
-export function getToolsForRole(role: AgentRole): FunctionDeclaration[] {
+export function getToolsForRole(role: Role): FunctionDeclaration[] {
   switch (role) {
-    case "socio":
+    case "member":
       return socioTools;
     case "contador":
       return contadorTools;
     case "admin":
+    case "owner":
       return adminTools;
     default:
       return [];

@@ -93,10 +93,6 @@ export interface ToolDefinition {
   parameters: Record<string, unknown>;
 }
 
-// ── Roles ──
-
-export type AgentRole = "socio" | "contador" | "admin";
-
 // ── Confirm request ──
 
 export interface ConfirmActionRequest {

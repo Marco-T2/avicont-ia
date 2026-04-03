@@ -1,11 +1,20 @@
 import { queryWithTools } from "./gemini.client";
 import { getToolsForRole, isWriteAction } from "./agent.tools";
 import { buildAgentContext } from "./agent.context";
+import type { Role } from "@/features/shared/permissions";
 import type {
   AgentResponse,
-  AgentRole,
   AgentSuggestion,
 } from "./agent.types";
+
+type AgentLabel = "socio" | "contador" | "admin";
+
+const AGENT_ROLE_LABELS: Record<Role, AgentLabel> = {
+  owner: "admin",
+  admin: "admin",
+  contador: "contador",
+  member: "socio",
+};
 
 // ── Read-only tool executors ──
 
@@ -32,8 +41,8 @@ export class AgentService {
     role: string,
     prompt: string,
   ): Promise<AgentResponse> {
-    const agentRole = this.normalizeRole(role);
-    const tools = getToolsForRole(agentRole);
+    const normalizedRole = this.normalizeRole(role);
+    const tools = getToolsForRole(normalizedRole);
 
     if (tools.length === 0) {
       return {
@@ -43,8 +52,8 @@ export class AgentService {
       };
     }
 
-    const context = await buildAgentContext(orgId, userId, agentRole);
-    const systemPrompt = this.buildSystemPrompt(agentRole, context);
+    const context = await buildAgentContext(orgId, userId, normalizedRole);
+    const systemPrompt = this.buildSystemPrompt(normalizedRole, context);
 
     try {
       const result = await queryWithTools(systemPrompt, prompt, tools);
@@ -90,16 +99,16 @@ export class AgentService {
 
   // ── Private helpers ──
 
-  private normalizeRole(role: string): AgentRole {
+  private normalizeRole(role: string): Role {
     const lower = role.toLowerCase();
-    if (lower === "socio" || lower === "member") return "socio";
+    if (lower === "owner") return "owner";
+    if (lower === "admin") return "admin";
     if (lower === "contador" || lower === "accountant") return "contador";
-    if (lower === "admin" || lower === "owner") return "admin";
-    return "socio";
+    return "member";
   }
 
-  private buildSystemPrompt(role: AgentRole, context: string): string {
-    const roleDescriptions: Record<AgentRole, string> = {
+  private buildSystemPrompt(role: Role, context: string): string {
+    const roleDescriptions: Record<AgentLabel, string> = {
       socio:
         "Eres un asistente para un socio avicultor. Ayudas a registrar gastos, mortalidad y consultar información sobre sus lotes y granjas.",
       contador:
@@ -107,10 +116,11 @@ export class AgentService {
       admin:
         "Eres un asistente administrativo con acceso completo. Puedes ayudar tanto con operaciones avícolas como contables.",
     };
+    const label = AGENT_ROLE_LABELS[role];
 
     return [
       "Eres un asistente de IA para Avicont, un sistema de contabilidad avícola.",
-      roleDescriptions[role],
+      roleDescriptions[label],
       "",
       "REGLAS IMPORTANTES:",
       "- Responde siempre en ESPAÑOL.",

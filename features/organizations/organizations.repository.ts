@@ -50,6 +50,26 @@ export class OrganizationsRepository extends BaseRepository {
     return org as OrganizationWithMembers;
   }
 
+  async getOrgWithDocStats(organizationId: string) {
+    const scope = this.requireOrg(organizationId);
+    const [org, analyzedCount] = await Promise.all([
+      this.db.organization.findUniqueOrThrow({
+        where: { id: scope.organizationId },
+        include: {
+          _count: { select: { documents: true, members: true } },
+          documents: { take: 5, orderBy: { createdAt: "desc" } },
+        },
+      }),
+      this.db.document.count({
+        where: {
+          organizationId: scope.organizationId,
+          aiSummary: { not: null },
+        },
+      }),
+    ]);
+    return { org, analyzedCount };
+  }
+
   async findMember(
     organizationId: string,
     userId: string,
@@ -76,6 +96,32 @@ export class OrganizationsRepository extends BaseRepository {
     });
   }
 
+  async findMemberByClerkUserIdWithUser(
+    organizationId: string,
+    clerkUserId: string,
+  ) {
+    const scope = this.requireOrg(organizationId);
+    return this.db.organizationMember.findFirst({
+      where: { ...scope, user: { clerkUserId } },
+      include: { user: { select: { id: true } } },
+    });
+  }
+
+  async findMemberByClerkUserIdAndRoles(
+    organizationId: string,
+    clerkUserId: string,
+    roles: string[],
+  ): Promise<OrganizationMember | null> {
+    const scope = this.requireOrg(organizationId);
+    return this.db.organizationMember.findFirst({
+      where: {
+        ...scope,
+        user: { clerkUserId },
+        role: { in: roles },
+      },
+    });
+  }
+
   async addMember(data: AddMemberInput): Promise<OrganizationMember> {
     const scope = this.requireOrg(data.organizationId);
     return this.db.organizationMember.create({
@@ -84,6 +130,48 @@ export class OrganizationsRepository extends BaseRepository {
         userId: data.userId,
         role: data.role ?? "member",
       },
+    });
+  }
+
+  // -----------------------------------------------------------------------
+  // Member management
+  // -----------------------------------------------------------------------
+
+  async findMemberById(organizationId: string, memberId: string) {
+    const scope = this.requireOrg(organizationId);
+    return this.db.organizationMember.findFirst({
+      where: { id: memberId, ...scope },
+      include: { user: true },
+    });
+  }
+
+  async findMemberByEmail(organizationId: string, email: string) {
+    const scope = this.requireOrg(organizationId);
+    return this.db.organizationMember.findFirst({
+      where: { ...scope, user: { email } },
+      include: { user: true },
+    });
+  }
+
+  async updateMemberRole(
+    organizationId: string,
+    memberId: string,
+    role: string,
+  ): Promise<OrganizationMember> {
+    const scope = this.requireOrg(organizationId);
+    return this.db.organizationMember.update({
+      where: { id: memberId, ...scope },
+      data: { role },
+    });
+  }
+
+  async removeMember(
+    organizationId: string,
+    memberId: string,
+  ): Promise<OrganizationMember> {
+    const scope = this.requireOrg(organizationId);
+    return this.db.organizationMember.delete({
+      where: { id: memberId, ...scope },
     });
   }
 }

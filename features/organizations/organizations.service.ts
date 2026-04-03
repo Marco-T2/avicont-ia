@@ -1,10 +1,10 @@
 import { prisma } from "@/lib/prisma";
 import {
   NotFoundError,
-  ConflictError,
   ForbiddenError,
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
+import type { Organization, OrganizationMember } from "@/generated/prisma/client";
 import type {
   CreateOrganizationInput,
   SyncOrganizationResult,
@@ -101,5 +101,62 @@ export class OrganizationsService {
     if (!member) throw new ForbiddenError();
 
     return org.id;
+  }
+
+  // -----------------------------------------------------------------------
+  // Layout & dashboard data
+  // -----------------------------------------------------------------------
+
+  async getOrgLayoutData(
+    slug: string,
+    clerkUserId: string,
+  ): Promise<{ organization: Organization; membership: OrganizationMember }> {
+    const organization = await this.repo.findBySlug(slug);
+    if (!organization) throw new NotFoundError("Organización");
+
+    const membership = await this.repo.findMemberByClerkUserId(
+      organization.id,
+      clerkUserId,
+    );
+    if (!membership) throw new ForbiddenError();
+
+    return { organization, membership };
+  }
+
+  async getDashboardData(orgId: string, clerkUserId: string) {
+    const [{ org, analyzedCount }, membership] = await Promise.all([
+      this.repo.getOrgWithDocStats(orgId),
+      this.repo.findMemberByClerkUserId(orgId, clerkUserId),
+    ]);
+
+    if (!membership) throw new ForbiddenError();
+
+    return {
+      organization: org,
+      recentDocs: org.documents,
+      analyzedCount,
+      membership,
+    };
+  }
+
+  async getMemberByClerkUserId(
+    orgId: string,
+    clerkUserId: string,
+  ): Promise<OrganizationMember> {
+    const member = await this.repo.findMemberByClerkUserId(orgId, clerkUserId);
+    if (!member) throw new ForbiddenError();
+    return member;
+  }
+
+  async getMemberWithUserByClerkUserId(
+    orgId: string,
+    clerkUserId: string,
+  ) {
+    const member = await this.repo.findMemberByClerkUserIdWithUser(
+      orgId,
+      clerkUserId,
+    );
+    if (!member) throw new ForbiddenError();
+    return member;
   }
 }
