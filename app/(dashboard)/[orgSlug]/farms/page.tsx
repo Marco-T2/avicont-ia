@@ -1,17 +1,11 @@
 import { redirect } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { MapPin, Home, ArrowRight } from "lucide-react";
-import Link from "next/link";
 import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { canAccess } from "@/features/shared/permissions";
+import { OrganizationsService } from "@/features/organizations";
 import { FarmsService } from "@/features/farms";
-import { prisma } from "@/lib/prisma";
 import FarmsPageClient from "./farms-client";
+
+const orgService = new OrganizationsService();
 
 interface FarmsPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -35,20 +29,18 @@ export default async function FarmsPage({ params }: FarmsPageProps) {
     redirect("/select-org");
   }
 
-  // Get memberId for the current user in this org
-  const member = await prisma.organizationMember.findFirst({
-    where: {
-      organizationId: orgId,
-      user: { clerkUserId: userId },
-    },
-  });
-
-  if (!member) {
+  let member;
+  try {
+    member = await orgService.getMemberByClerkUserId(orgId, userId);
+  } catch {
     redirect("/select-org");
   }
 
-  const service = new FarmsService();
-  const farms = await service.list(orgId);
+  const farmsService = new FarmsService();
+  const canManageFarms = canAccess(member.role, "members");
+  const farms = canManageFarms
+    ? await farmsService.list(orgId)
+    : await farmsService.listByMember(orgId, member.id);
 
   return (
     <div className="space-y-8">

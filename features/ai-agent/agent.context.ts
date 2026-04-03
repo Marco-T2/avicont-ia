@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import type { AgentRole } from "./agent.types";
+import type { Role } from "@/features/shared/permissions";
 
 /**
  * Build context string for the Gemini system prompt based on user role and org data.
@@ -8,15 +8,15 @@ import type { AgentRole } from "./agent.types";
 export async function buildAgentContext(
   orgId: string,
   userId: string,
-  role: AgentRole,
+  role: Role,
 ): Promise<string> {
   const parts: string[] = [];
 
-  if (role === "socio" || role === "admin") {
+  if (role === "member" || role === "admin" || role === "owner") {
     parts.push(await buildSocioContext(orgId, userId));
   }
 
-  if (role === "contador" || role === "admin") {
+  if (role === "contador" || role === "admin" || role === "owner") {
     parts.push(await buildContadorContext(orgId));
   }
 

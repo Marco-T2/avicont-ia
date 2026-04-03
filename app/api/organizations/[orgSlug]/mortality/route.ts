@@ -3,9 +3,10 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
+import { UsersRepository } from "@/features/shared/users.repository";
 import { MortalityService, logMortalitySchema } from "@/features/mortality";
-import { prisma } from "@/lib/prisma";
 
+const usersRepo = new UsersRepository();
 const service = new MortalityService();
 
 export async function GET(
@@ -47,10 +48,7 @@ export async function POST(
     const body = await request.json();
     const input = logMortalitySchema.parse(body);
 
-    const user = await prisma.user.findUniqueOrThrow({
-      where: { clerkUserId },
-      select: { id: true },
-    });
+    const user = await usersRepo.findByClerkUserId(clerkUserId);
 
     const log = await service.log(orgId, {
       ...input,

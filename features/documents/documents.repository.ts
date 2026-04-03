@@ -62,6 +62,27 @@ export class DocumentsRepository extends BaseRepository {
     }) as Promise<DocumentWithRelations>;
   }
 
+  async findForAnalysis(documentId: string, clerkUserId: string) {
+    return this.db.document.findFirst({
+      where: {
+        id: documentId,
+        organization: {
+          members: { some: { user: { clerkUserId } } },
+        },
+      },
+    });
+  }
+
+  async updateAnalysis(
+    documentId: string,
+    data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
+  ) {
+    return this.db.document.update({
+      where: { id: documentId },
+      data,
+    });
+  }
+
   async delete(id: string, organizationId: string): Promise<void> {
     this.requireOrg(organizationId);
 

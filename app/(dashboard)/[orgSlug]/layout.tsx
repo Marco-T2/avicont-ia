@@ -1,16 +1,18 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { prisma } from "@/lib/prisma";
+import { DashboardShell } from "@/components/sidebar/dashboard-shell";
+import { OrganizationsService } from "@/features/organizations";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
+const orgService = new OrganizationsService();
+
 interface OrgLayoutProps {
   children: React.ReactNode;
-  params: Promise<{ orgSlug: string }>; // Add Promise wrapper
+  params: Promise<{ orgSlug: string }>;
 }
 
 export default async function OrgLayout({ children, params }: OrgLayoutProps) {
-  // Await the params
   const { orgSlug } = await params;
   const { userId } = await auth();
 
@@ -18,58 +20,45 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
     redirect("/sign-in");
   }
 
-  // Check if orgSlug is defined
   if (!orgSlug) {
     console.error("orgSlug is undefined");
     redirect("/dashboard");
   }
 
-  // Get organization
-  const organization = await prisma.organization.findUnique({
-    where: { slug: orgSlug },
-  });
-
-  if (!organization) {
-    redirect("/select-org");
-  }
-
-  // Check if user is member
-  const membership = await prisma.organizationMember.findFirst({
-    where: {
-      organizationId: organization.id,
-      user: { clerkUserId: userId },
-    },
-  });
-
-  if (!membership) {
+  let organization, membership;
+  try {
+    ({ organization, membership } = await orgService.getOrgLayoutData(orgSlug, userId));
+  } catch {
     redirect("/select-org");
   }
 
   return (
-    <div className="bg-gray-50">
-      {/* Organization Banner */}
-      <Card className="w-full shadow-sm border">
-        <CardContent>
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <h1 className="text-2xl font-semibold tracking-tight">
-                {organization.name}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Espacio de trabajo
-              </p>
+    <DashboardShell>
+      <div className="bg-gray-50 min-h-full">
+        {/* Organization Banner */}
+        <Card className="w-full shadow-sm border rounded-none">
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="space-y-1">
+                <h1 className="text-2xl font-semibold tracking-tight">
+                  {organization.name}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Espacio de trabajo
+                </p>
+              </div>
+              <Badge variant="outline" className="px-4 py-1.5 font-medium">
+                {membership.role}
+              </Badge>
             </div>
-            <Badge variant="outline" className="px-4 py-1.5 font-medium">
-              {membership.role}
-            </Badge>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      {/* Main Content */}
-      <div className="py-8">
-        <div className="container mx-auto px-4">{children}</div>
+        {/* Main Content */}
+        <div className="py-8">
+          <div className="container mx-auto px-4">{children}</div>
+        </div>
       </div>
-    </div>
+    </DashboardShell>
   );
 }

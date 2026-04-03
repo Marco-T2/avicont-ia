@@ -10,16 +10,17 @@ import { Button } from "@/components/ui/button";
 import { FileText, Users, Brain, ArrowRight, Upload } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { OrganizationsService } from "@/features/organizations";
+
+const orgService = new OrganizationsService();
 
 interface OrgDashboardPageProps {
-  params: Promise<{ orgSlug: string }>; // Add Promise wrapper
+  params: Promise<{ orgSlug: string }>;
 }
 
 export default async function OrgDashboardPage({
   params,
 }: OrgDashboardPageProps) {
-  // Await the params
   const { orgSlug } = await params;
   const { userId } = await auth();
 
@@ -27,45 +28,16 @@ export default async function OrgDashboardPage({
     redirect("/sign-in");
   }
 
-  // Get organization with stats
-  const organization = await prisma.organization.findUnique({
-    where: { slug: orgSlug },
-    include: {
-      _count: {
-        select: {
-          documents: true,
-          members: true,
-        },
-      },
-      documents: {
-        take: 5,
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
-
-  if (!organization) {
+  let orgId: string;
+  try {
+    const layout = await orgService.getOrgLayoutData(orgSlug, userId);
+    orgId = layout.organization.id;
+  } catch {
     redirect("/select-org");
   }
 
-  // Check membership
-  const membership = await prisma.organizationMember.findFirst({
-    where: {
-      organizationId: organization.id,
-      user: { clerkUserId: userId },
-    },
-  });
-
-  if (!membership) {
-    redirect("/select-org");
-  }
-
-  const analyzedDocs = await prisma.document.count({
-    where: {
-      organizationId: organization.id,
-      aiSummary: { not: null },
-    },
-  });
+  const { organization, recentDocs, analyzedCount: analyzedDocs } =
+    await orgService.getDashboardData(orgId!, userId);
 
   return (
     <div className="space-y-8">
@@ -134,7 +106,7 @@ export default async function OrgDashboardPage({
           <CardDescription>Últimas cargas en tu organización</CardDescription>
         </CardHeader>
         <CardContent>
-          {organization.documents.length === 0 ? (
+          {recentDocs.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-600 mb-4">No hay documentos cargados aún</p>
@@ -147,7 +119,7 @@ export default async function OrgDashboardPage({
             </div>
           ) : (
             <div className="space-y-4">
-              {organization.documents.map((doc) => (
+              {recentDocs.map((doc) => (
                 <div
                   key={doc.id}
                   className="flex items-center justify-between p-4 border rounded-lg"

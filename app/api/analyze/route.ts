@@ -1,6 +1,8 @@
 import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { prisma } from "@/lib/prisma";
+import { DocumentsRepository } from "@/features/documents";
+
+const docsRepo = new DocumentsRepository();
 
 export async function POST(request: Request) {
   try {
@@ -14,20 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // Find document verifying org membership
-    const document = await prisma.document.findFirst({
-      where: {
-        id: documentId,
-        organization: {
-          clerkOrgId: organizationId,
-          members: {
-            some: {
-              user: { clerkUserId: userId },
-            },
-          },
-        },
-      },
-    });
+    const document = await docsRepo.findForAnalysis(documentId, userId);
 
     if (!document) {
       return Response.json(
@@ -46,13 +35,10 @@ export async function POST(request: Request) {
 
     const summary = await analyzeWithGemini(content, analysisType);
 
-    const updatedDocument = await prisma.document.update({
-      where: { id: documentId },
-      data: {
-        aiSummary: summary,
-        aiKeywords: ["analyzed"],
-        sentiment: "analyzed",
-      },
+    const updatedDocument = await docsRepo.updateAnalysis(documentId, {
+      aiSummary: summary,
+      aiKeywords: ["analyzed"],
+      sentiment: "analyzed",
     });
 
     return Response.json({

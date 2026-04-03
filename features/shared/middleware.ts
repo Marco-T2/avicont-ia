@@ -6,7 +6,9 @@ import {
   ForbiddenError,
   NotFoundError,
 } from "./errors";
-import { prisma } from "@/lib/prisma";
+import { OrganizationsRepository } from "@/features/organizations/organizations.repository";
+
+const orgRepo = new OrganizationsRepository();
 
 export async function requireAuth() {
   const session = await auth();
@@ -18,17 +20,10 @@ export async function requireOrgAccess(
   clerkUserId: string,
   orgSlug: string,
 ): Promise<string> {
-  const org = await prisma.organization.findUnique({
-    where: { slug: orgSlug },
-  });
+  const org = await orgRepo.findBySlug(orgSlug);
   if (!org) throw new NotFoundError("Organización");
 
-  const member = await prisma.organizationMember.findFirst({
-    where: {
-      organizationId: org.id,
-      user: { clerkUserId },
-    },
-  });
+  const member = await orgRepo.findMemberByClerkUserId(org.id, clerkUserId);
   if (!member) throw new ForbiddenError();
 
   return org.id;
@@ -39,13 +34,11 @@ export async function requireRole(
   orgId: string,
   roles: string[],
 ) {
-  const member = await prisma.organizationMember.findFirst({
-    where: {
-      organizationId: orgId,
-      user: { clerkUserId },
-      role: { in: roles },
-    },
-  });
+  const member = await orgRepo.findMemberByClerkUserIdAndRoles(
+    orgId,
+    clerkUserId,
+    roles,
+  );
   if (!member) throw new ForbiddenError();
   return member;
 }

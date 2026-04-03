@@ -3,13 +3,14 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
+import { UsersRepository } from "@/features/shared/users.repository";
 import { ExpensesService } from "@/features/expenses/expenses.service";
 import {
   createExpenseSchema,
   expenseFiltersSchema,
 } from "@/features/expenses/expenses.validation";
-import { prisma } from "@/lib/prisma";
 
+const usersRepo = new UsersRepository();
 const service = new ExpensesService();
 
 export async function GET(
@@ -51,10 +52,7 @@ export async function POST(
     const body = await request.json();
     const input = createExpenseSchema.parse(body);
 
-    const user = await prisma.user.findUniqueOrThrow({
-      where: { clerkUserId },
-      select: { id: true },
-    });
+    const user = await usersRepo.findByClerkUserId(clerkUserId);
 
     const expense = await service.create(orgId, {
       ...input,
