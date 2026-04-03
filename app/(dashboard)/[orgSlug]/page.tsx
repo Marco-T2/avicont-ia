@@ -70,16 +70,16 @@ export default async function OrgDashboardPage({
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">{organization.name} Dashboard</h1>
-        <p className="text-gray-600">Welcome to your organization workspace</p>
+        <h1 className="text-3xl font-bold">Panel de {organization.name}</h1>
+        <p className="text-gray-600">Bienvenido a tu espacio de trabajo</p>
       </div>
 
       {/* Stats */}
       <div className="grid md:grid-cols-3 gap-6">
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Total Documents</CardTitle>
-            <CardDescription>In this organization</CardDescription>
+            <CardTitle className="text-lg">Total de Documentos</CardTitle>
+            <CardDescription>En esta organización</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
@@ -87,7 +87,7 @@ export default async function OrgDashboardPage({
             </div>
             <Link href={`/${orgSlug}/documents`}>
               <Button variant="ghost" size="sm" className="mt-2">
-                View Documents
+                Ver Documentos
                 <ArrowRight className="ml-2 h-3 w-3" />
               </Button>
             </Link>
@@ -96,15 +96,15 @@ export default async function OrgDashboardPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Team Members</CardTitle>
-            <CardDescription>Organization members</CardDescription>
+            <CardTitle className="text-lg">Miembros del Equipo</CardTitle>
+            <CardDescription>Miembros de la organización</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">
               {organization._count.members}
             </div>
             <Button variant="ghost" size="sm" className="mt-2">
-              View Team
+              Ver Equipo
               <ArrowRight className="ml-2 h-3 w-3" />
             </Button>
           </CardContent>
@@ -112,8 +112,8 @@ export default async function OrgDashboardPage({
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Analyzed</CardTitle>
-            <CardDescription>Documents with AI insights</CardDescription>
+            <CardTitle className="text-lg">Analizados</CardTitle>
+            <CardDescription>Documentos con análisis de IA</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{analyzedDocs}</div>
@@ -121,7 +121,7 @@ export default async function OrgDashboardPage({
               {(
                 (analyzedDocs / organization._count.documents) * 100 || 0
               ).toFixed(0)}
-              % analyzed
+              % analizados
             </p>
           </CardContent>
         </Card>
@@ -130,18 +130,18 @@ export default async function OrgDashboardPage({
       {/* Recent Documents */}
       <Card>
         <CardHeader>
-          <CardTitle>Recent Documents</CardTitle>
-          <CardDescription>Latest uploads in your organization</CardDescription>
+          <CardTitle>Documentos Recientes</CardTitle>
+          <CardDescription>Últimas cargas en tu organización</CardDescription>
         </CardHeader>
         <CardContent>
           {organization.documents.length === 0 ? (
             <div className="text-center py-8">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">No documents uploaded yet</p>
+              <p className="text-gray-600 mb-4">No hay documentos cargados aún</p>
               <Link href={`/${orgSlug}/documents`}>
                 <Button>
                   <Upload className="h-4 w-4 mr-2" />
-                  Upload First Document
+                  Subir Primer Documento
                 </Button>
               </Link>
             </div>
@@ -157,7 +157,7 @@ export default async function OrgDashboardPage({
                     <div>
                       <p className="font-medium">{doc.name}</p>
                       <p className="text-sm text-gray-500">
-                        Uploaded {new Date(doc.createdAt).toLocaleDateString()}
+                        Subido el {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -165,7 +165,7 @@ export default async function OrgDashboardPage({
                     <Brain className="h-5 w-5 text-green-500" />
                   ) : (
                     <Button variant="outline" size="sm">
-                      Analyze
+                      Analizar
                     </Button>
                   )}
                 </div>

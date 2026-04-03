@@ -16,24 +16,24 @@ export default function Home() {
       <section className="py-20 text-center">
         <div className="container max-w-4xl mx-auto px-4">
           <h1 className="text-4xl md:text-5xl font-bold mb-6">
-            AI-Powered Document Analysis for{" "}
-            <span className="bg-linear-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Teams
+            Agro-Avícola Conda Arriba {" "} <br />
+            <span className="bg-linear-to-r from-blue-600 to-red-600 bg-clip-text text-transparent">
+              Avicon-Ia
             </span>
           </h1>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Upload, analyze, and collaborate on documents with your
-            organization. Get instant AI insights and summaries.
+            Subí, analizá y colaborá en documentos con tu organización.
+            Obtené resúmenes e insights de IA al instante.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link href="/sign-up">
               <Button size="lg" className="px-8">
-                Start Free Trial
+                Registrarse
               </Button>
             </Link>
             <Link href="/sign-in">
               <Button size="lg" variant="outline" className="px-8">
-                Sign In
+                Iniciar Sesión
               </Button>
             </Link>
           </div>
@@ -44,7 +44,7 @@ export default function Home() {
       <section className="py-16 bg-gray-50">
         <div className="container max-w-6xl mx-auto px-4">
           <h2 className="text-3xl font-bold text-center mb-12">
-            Everything You Need
+            Todo lo que Necesitás
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {features.map((feature, index) => (
@@ -67,7 +67,7 @@ export default function Home() {
       {/* How It Works */}
       <section className="py-16">
         <div className="container max-w-4xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">How It Works</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Cómo Funciona</h2>
           <div className="space-y-4 max-w-md mx-auto">
             {steps.map((step, index) => (
               <div
@@ -88,19 +88,19 @@ export default function Home() {
       <section className="py-20 bg-linear-to-r from-blue-50 to-indigo-50">
         <div className="container max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-3xl font-bold mb-4">
-            Ready to analyze your documents?
+            ¿Listo para analizar tus documentos?
           </h2>
           <p className="text-gray-600 mb-8 max-w-2xl mx-auto">
-            Join thousands of teams using DocuAI to work smarter with their
-            documents.
+            Unite a miles de equipos que usan Avicont-IA para trabajar de forma
+            más inteligente con sus documentos.
           </p>
           <Link href="/sign-up">
             <Button size="lg" className="px-8">
-              Get Started Free
+              Comenzá Gratis
             </Button>
           </Link>
           <p className="text-sm text-gray-500 mt-4">
-            No credit card required • 14-day free trial
+            Sin tarjeta de crédito • 14 días de prueba gratis
           </p>
         </div>
       </section>

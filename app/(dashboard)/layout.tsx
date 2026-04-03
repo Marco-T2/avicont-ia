@@ -1,5 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
+import { syncUserToDatabase } from "@/features/auth";
 
 export default async function DashboardLayout({
   children,
@@ -12,12 +13,14 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
+  await syncUserToDatabase();
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Main Content - Global header now handles navigation */}
-      <main className="py-8">
+      <div className="py-8">
         <div className="container mx-auto px-4">{children}</div>
-      </main>
+      </div>
     </div>
   );
 }

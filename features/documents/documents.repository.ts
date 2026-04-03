@@ -1,0 +1,72 @@
+import { BaseRepository } from "@/features/shared/base.repository";
+import type { CreateDocumentInput, DocumentWithRelations } from "./documents.types";
+
+const documentInclude = {
+  user: { select: { name: true, email: true } },
+  organization: { select: { name: true, clerkOrgId: true } },
+} as const;
+
+export class DocumentsRepository extends BaseRepository {
+  async findAll(organizationId: string): Promise<DocumentWithRelations[]> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.document.findMany({
+      where: scope,
+      include: documentInclude,
+      orderBy: { createdAt: "desc" },
+    }) as Promise<DocumentWithRelations[]>;
+  }
+
+  async findById(
+    id: string,
+    organizationId: string,
+  ): Promise<DocumentWithRelations | null> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.document.findFirst({
+      where: { id, ...scope },
+      include: documentInclude,
+    }) as Promise<DocumentWithRelations | null>;
+  }
+
+  async findByIdWithMembers(id: string, clerkUserId: string) {
+    return this.db.document.findUnique({
+      where: { id },
+      include: {
+        organization: {
+          include: {
+            members: {
+              where: { user: { clerkUserId } },
+            },
+          },
+        },
+      },
+    });
+  }
+
+  async create(input: CreateDocumentInput): Promise<DocumentWithRelations> {
+    const scope = this.requireOrg(input.organizationId);
+
+    return this.db.document.create({
+      data: {
+        name: input.name,
+        content: input.content ?? null,
+        fileUrl: input.fileUrl ?? null,
+        fileSize: input.fileSize ?? 0,
+        fileType: input.fileType ?? "unknown",
+        organizationId: scope.organizationId,
+        userId: input.userId,
+        aiKeywords: [],
+      },
+      include: documentInclude,
+    }) as Promise<DocumentWithRelations>;
+  }
+
+  async delete(id: string, organizationId: string): Promise<void> {
+    this.requireOrg(organizationId);
+
+    await this.db.document.delete({
+      where: { id },
+    });
+  }
+}
