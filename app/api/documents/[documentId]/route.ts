@@ -1,75 +1,23 @@
-import { NextResponse } from "next/server";
-import { deleteFromBlob } from "@/lib/blob";
-import { auth } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { requireAuth, handleError } from "@/features/shared/middleware";
+import { DocumentsService } from "@/features/documents/documents.service";
 
-interface RouteParams {
-  params: Promise<{ documentId: string }>;
-}
+const service = new DocumentsService();
 
-export async function DELETE(request: Request, { params }: RouteParams) {
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ documentId: string }> },
+) {
   try {
     const { documentId } = await params;
-    const { userId } = await auth();
+    const { userId } = await requireAuth();
 
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    await service.delete(documentId, userId);
 
-    // Get document with organization info
-    const document = await prisma.document.findUnique({
-      where: { id: documentId },
-      include: {
-        organization: {
-          include: {
-            members: {
-              where: {
-                user: { clerkUserId: userId },
-              },
-            },
-          },
-        },
-      },
-    });
-
-    if (!document) {
-      return NextResponse.json(
-        { error: "Document not found" },
-        { status: 404 },
-      );
-    }
-
-    if (document.organization.members.length === 0) {
-      return NextResponse.json(
-        { error: "You do not have permission to delete this document" },
-        { status: 403 },
-      );
-    }
-
-    // Delete file from Vercel Blob if exists
-    if (document.fileUrl) {
-      try {
-        await deleteFromBlob(document.fileUrl);
-      } catch (error) {
-        console.error("Failed to delete from blob:", error);
-        // Continue with database deletion even if blob deletion fails
-      }
-    }
-
-    // Delete document from database
-    await prisma.document.delete({
-      where: { id: documentId },
-    });
-
-    return NextResponse.json({
+    return Response.json({
       success: true,
-      message: "Document deleted successfully",
+      message: "Documento eliminado exitosamente",
     });
-  } catch (error: any) {
-    console.error("Delete document error:", error);
-    return NextResponse.json(
-      { error: error.message || "Failed to delete document" },
-      { status: 500 },
-    );
+  } catch (error) {
+    return handleError(error);
   }
 }

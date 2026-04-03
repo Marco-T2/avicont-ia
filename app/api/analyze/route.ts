@@ -1,26 +1,20 @@
-import { NextResponse } from "next/server";
-import { analyzeWithGemini } from "@/lib/gemini";
-import { auth } from "@clerk/nextjs/server";
+import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
+import { requireAuth, handleError } from "@/features/shared/middleware";
 import { prisma } from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    // 1. Check auth
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "Please sign in" }, { status: 401 });
-    }
+    const { userId } = await requireAuth();
 
-    // 2. Get request data
     const { documentId, organizationId, analysisType } = await request.json();
     if (!documentId || !organizationId) {
-      return NextResponse.json(
-        { error: "Missing document or organization ID" },
+      return Response.json(
+        { error: "Falta el ID del documento o de la organización" },
         { status: 400 },
       );
     }
 
-    // 3. Find document
+    // Find document verifying org membership
     const document = await prisma.document.findFirst({
       where: {
         id: documentId,
@@ -36,25 +30,22 @@ export async function POST(request: Request) {
     });
 
     if (!document) {
-      return NextResponse.json(
-        { error: "Document not found or no access" },
+      return Response.json(
+        { error: "Documento no encontrado o sin acceso" },
         { status: 404 },
       );
     }
 
-    // 4. Get content (use name if no content)
     const content = document.content || document.name;
     if (!content || content.trim().length < 5) {
-      return NextResponse.json(
-        { error: "Document has no content to analyze" },
+      return Response.json(
+        { error: "El documento no tiene contenido para analizar" },
         { status: 400 },
       );
     }
 
-    // 5. Run ONE analysis (summary only for simplicity)
     const summary = await analyzeWithGemini(content, analysisType);
 
-    // 6. Save result
     const updatedDocument = await prisma.document.update({
       where: { id: documentId },
       data: {
@@ -64,8 +55,7 @@ export async function POST(request: Request) {
       },
     });
 
-    // 7. Return success
-    return NextResponse.json({
+    return Response.json({
       success: true,
       summary,
       document: {
@@ -74,11 +64,7 @@ export async function POST(request: Request) {
         aiSummary: updatedDocument.aiSummary,
       },
     });
-  } catch (error: any) {
-    console.error("Analysis error:", error);
-    return NextResponse.json(
-      { error: "Analysis failed: " + error.message },
-      { status: 500 },
-    );
+  } catch (error) {
+    return handleError(error);
   }
 }

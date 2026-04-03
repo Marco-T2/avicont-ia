@@ -44,7 +44,7 @@ export default function DocumentsPage() {
       }
     } catch (error) {
       console.error("Failed to fetch documents:", error);
-      toast.error("Failed to load documents");
+      toast.error("Error al cargar documentos");
     } finally {
       setIsLoading(false);
     }
@@ -91,7 +91,7 @@ export default function DocumentsPage() {
         )?.label;
 
         toast.success(
-          `${analysisTypeLabel || "Document"} analysis completed successfully!`,
+          `¡Análisis de ${analysisTypeLabel || "Documento"} completado exitosamente!`,
         );
         fetchDocuments(); // Refresh to show analysis
 
@@ -99,11 +99,11 @@ export default function DocumentsPage() {
         setExpandedSummaries((prev) => new Set(prev).add(documentId));
       } else {
         const error = await response.json();
-        toast.error(error.error || "Analysis failed");
+        toast.error(error.error || "Error en el análisis");
       }
     } catch (error) {
       console.error("Analysis error:", error);
-      toast.error("Analysis failed");
+      toast.error("Error en el análisis");
     } finally {
       setIsAnalyzing(null);
     }
@@ -111,7 +111,7 @@ export default function DocumentsPage() {
 
   // Handle delete
   const handleDelete = async (documentId: string) => {
-    if (!confirm("Are you sure you want to delete this document?")) return;
+    if (!confirm("¿Estás seguro de que querés eliminar este documento?")) return;
 
     try {
       const response = await fetch(`/api/documents/${documentId}`, {
@@ -119,10 +119,10 @@ export default function DocumentsPage() {
       });
 
       if (response.ok) {
-        toast.success("Document deleted successfully");
+        toast.success("Documento eliminado exitosamente");
         fetchDocuments(); // Refresh list
       } else {
-        toast.error("Failed to delete document");
+        toast.error("Error al eliminar el documento");
       }
     } catch (error) {
       console.error("Delete error:", error);
@@ -135,9 +135,9 @@ export default function DocumentsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Documents</h1>
+          <h1 className="text-3xl font-bold">Documentos</h1>
           <p className="text-gray-600">
-            Upload and analyze documents in {organization?.name}
+            Subí y analizá documentos en {organization?.name}
           </p>
         </div>
 
@@ -152,7 +152,7 @@ export default function DocumentsPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-3xl font-bold">{documents.length}</div>
-                <p className="text-sm text-gray-500">Total Documents</p>
+                <p className="text-sm text-gray-500">Total de Documentos</p>
               </div>
             </CardContent>
           </Card>
@@ -162,7 +162,7 @@ export default function DocumentsPage() {
                 <div className="text-3xl font-bold text-green-600">
                   {documents.filter((d) => d.aiSummary).length}
                 </div>
-                <p className="text-sm text-gray-500">Analyzed</p>
+                <p className="text-sm text-gray-500">Analizados</p>
               </div>
             </CardContent>
           </Card>
@@ -177,7 +177,7 @@ export default function DocumentsPage() {
                     ),
                   )}
                 </div>
-                <p className="text-sm text-gray-500">Total Size</p>
+                <p className="text-sm text-gray-500">Tamaño Total</p>
               </div>
             </CardContent>
           </Card>
@@ -188,28 +188,28 @@ export default function DocumentsPage() {
       <Card>
         <CardHeader>
           <CardTitle>
-            Documents ({documents.length})
+            Documentos ({documents.length})
             {isLoading && (
               <Loader2 className="h-4 w-4 inline ml-2 animate-spin" />
             )}
           </CardTitle>
           <CardDescription>
-            {documents.filter((d) => d.aiSummary).length} analyzed •{" "}
-            {documents.filter((d) => !d.aiSummary).length} pending
+            {documents.filter((d) => d.aiSummary).length} analizados •{" "}
+            {documents.filter((d) => !d.aiSummary).length} pendientes
           </CardDescription>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="text-center py-12">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-gray-600">Loading documents...</p>
+              <p className="text-gray-600">Cargando documentos...</p>
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-12">
               <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">No documents uploaded yet</p>
+              <p className="text-gray-600">No hay documentos cargados aún</p>
               <p className="text-sm text-gray-500 mt-2">
-                Upload your first document to get started
+                Subí tu primer documento para comenzar
               </p>
             </div>
           ) : (

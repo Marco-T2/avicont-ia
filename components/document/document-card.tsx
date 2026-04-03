@@ -103,7 +103,7 @@ export default function DocumentCard({
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Brain className="h-5 w-5 text-green-600" />
-                    <span className="font-medium">AI Analysis</span>
+                    <span className="font-medium">Análisis de IA</span>
                     <Badge variant="outline" className="ml-2">
                       Gemini AI
                     </Badge>
@@ -114,7 +114,7 @@ export default function DocumentCard({
                       size="sm"
                       onClick={() => onToggleSummary(doc.id)}
                     >
-                      {isExpanded ? "Show less" : "Read more"}
+                      {isExpanded ? "Ver menos" : "Leer más"}
                     </Button>
                   )}
                 </div>
@@ -139,7 +139,7 @@ export default function DocumentCard({
                   <div className="mt-4 pt-3 border-t">
                     <div className="flex items-center gap-2 mb-2">
                       <Tag className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium">Key Topics</span>
+                      <span className="text-sm font-medium">Temas Clave</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {doc.aiKeywords.slice(0, 8).map((keyword, idx) => (
@@ -153,7 +153,7 @@ export default function DocumentCard({
                       ))}
                       {doc.aiKeywords.length > 8 && (
                         <Badge variant="outline" className="px-3 py-1">
-                          +{doc.aiKeywords.length - 8} more
+                          +{doc.aiKeywords.length - 8} más
                         </Badge>
                       )}
                     </div>
@@ -172,18 +172,18 @@ export default function DocumentCard({
               variant="outline"
               size="sm"
               onClick={() => window.open(doc.fileUrl, "_blank")}
-              title="Download"
+              title="Descargar"
               className="justify-start"
             >
               <Download className="h-4 w-4 mr-2" />
-              Download
+              Descargar
             </Button>
           )}
 
           {/* Analysis Section */}
           <div className="space-y-2">
             <div className="text-xs text-gray-500">
-              {doc.aiSummary ? "Re-analyze with:" : "Analyze with:"}
+              {doc.aiSummary ? "Re-analizar con:" : "Analizar con:"}
             </div>
 
             <Select
@@ -226,12 +226,12 @@ export default function DocumentCard({
               {isAnalyzing ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {doc.aiSummary ? "Re-analyzing..." : "Analyzing..."}
+                  {doc.aiSummary ? "Re-analizando..." : "Analizando..."}
                 </>
               ) : (
                 <>
                   <Brain className="h-4 w-4 mr-2" />
-                  {doc.aiSummary ? "Re-analyze" : "Analyze"}
+                  {doc.aiSummary ? "Re-analizar" : "Analizar"}
                 </>
               )}
             </Button>
@@ -245,7 +245,7 @@ export default function DocumentCard({
             onClick={() => onDelete(doc.id)}
           >
             <Trash2 className="h-4 w-4 mr-2" />
-            Delete
+            Eliminar
           </Button>
         </div>
       </div>

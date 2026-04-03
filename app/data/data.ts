@@ -15,37 +15,38 @@ import {
 export const features = [
   {
     icon: Brain,
-    title: "AI-Powered Analysis",
-    description: "Get instant summaries and insights with Google Gemini AI",
+    title: "Análisis con IA",
+    description: "Obtené resúmenes e insights al instante con Google Gemini AI",
   },
   {
     icon: Users,
-    title: "Multi-Tenant",
-    description: "Separate organizations with isolated document storage",
+    title: "Multi-Organización",
+    description: "Organizaciones separadas con almacenamiento de documentos aislado",
   },
   {
     icon: Upload,
-    title: "Easy Upload",
-    description: "Drag & drop or select files in multiple formats",
+    title: "Carga Fácil",
+    description: "Arrastrá y soltá o seleccioná archivos en múltiples formatos",
   },
   {
     icon: Shield,
-    title: "Secure",
-    description: "Your documents are encrypted and stored securely",
+    title: "Seguro",
+    description: "Tus documentos están encriptados y almacenados de forma segura",
   },
 ];
 
 export const steps = [
-  "Sign up for free account",
-  "Create an organization",
-  "Upload documents",
-  "Get AI analysis instantly",
+  "Registrate con una cuenta gratuita",
+  "Creá una organización",
+  "Subí documentos",
+  "Obtené análisis de IA al instante",
 ];
 
 export const allowedTypes = [
   "text/plain",
   "application/pdf",
   "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   "text/markdown",
 ];
 
@@ -57,32 +58,32 @@ export const analysisTypes: {
 }[] = [
   {
     value: "summary",
-    label: "Summary",
-    description: "Generate comprehensive document summary",
+    label: "Resumen",
+    description: "Generá un resumen completo del documento",
     icon: Sparkles,
   },
   {
     value: "qa",
-    label: "Q&A",
-    description: "Generate questions and answers from document",
+    label: "Preguntas y Respuestas",
+    description: "Generá preguntas y respuestas a partir del documento",
     icon: MessageCircle,
   },
   {
     value: "sentiment",
-    label: "Sentiment",
-    description: "Analyze tone and emotional sentiment",
+    label: "Sentimiento",
+    description: "Analizá el tono y el sentimiento emocional",
     icon: MessageSquare,
   },
   {
     value: "entities",
-    label: "Entities",
-    description: "Extract names, places, organizations",
+    label: "Entidades",
+    description: "Extraé nombres, lugares y organizaciones",
     icon: Hash,
   },
   {
     value: "extract",
-    label: "Extract",
-    description: "Extract structured information",
+    label: "Extracción",
+    description: "Extraé información estructurada",
     icon: List,
   },
 ];

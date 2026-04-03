@@ -44,13 +44,13 @@ export default function DocumentUploadDialog({
 
     // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
-      toast.error("File size must be less than 10MB");
+      toast.error("El archivo debe pesar menos de 10MB");
       return;
     }
 
     if (!allowedTypes.includes(file.type)) {
       toast.error(
-        "File type not supported. Please upload .txt, .pdf, .doc, .docx, or .md files",
+        "Tipo de archivo no soportado. Por favor subí archivos .txt, .pdf, .doc, .docx o .md",
       );
       return;
     }
@@ -62,12 +62,12 @@ export default function DocumentUploadDialog({
   // Handle upload
   const handleUpload = async () => {
     if (!organization || !user || !selectedFile) {
-      toast.error("Please select a file");
+      toast.error("Por favor seleccioná un archivo");
       return;
     }
 
     if (!documentName.trim()) {
-      toast.error("Please enter a document name");
+      toast.error("Por favor ingresá un nombre para el documento");
       return;
     }
 
@@ -87,7 +87,7 @@ export default function DocumentUploadDialog({
       });
 
       if (response.ok) {
-        toast.success("Document uploaded successfully!");
+        toast.success("¡Documento subido exitosamente!");
 
         // Reset form
         setDocumentName("");
@@ -98,11 +98,11 @@ export default function DocumentUploadDialog({
         onUploadSuccess?.();
       } else {
         const error = await response.json();
-        toast.error(error.error || "Upload failed");
+        toast.error(error.error || "Error al subir el documento");
       }
     } catch (error) {
       console.error("Upload error:", error);
-      toast.error("Upload failed");
+      toast.error("Error al subir el documento");
     } finally {
       setIsUploading(false);
     }
@@ -127,25 +127,25 @@ export default function DocumentUploadDialog({
         {trigger || (
           <Button>
             <Upload className="h-4 w-4 mr-2" />
-            Upload Document
+            Subir Documento
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-125">
+      <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
-          <DialogTitle>Upload Document</DialogTitle>
+          <DialogTitle>Subir Documento</DialogTitle>
           <DialogDescription>
-            Upload a file or enter text content for analysis
+            Subí un archivo o ingresá texto para analizar
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Document Name *
+              Nombre del Documento *
             </label>
             <Input
-              placeholder="Enter document name"
+              placeholder="Ingresá el nombre del documento"
               value={documentName}
               onChange={(e) => setDocumentName(e.target.value)}
               disabled={isUploading}
@@ -154,7 +154,7 @@ export default function DocumentUploadDialog({
 
           <div>
             <label className="block text-sm font-medium mb-2">
-              Upload File
+              Subir Archivo
             </label>
             <div className="border-2 border-dashed rounded-lg p-6 text-center">
               <input
@@ -170,10 +170,10 @@ export default function DocumentUploadDialog({
                 <div className="flex flex-col items-center gap-2">
                   <Upload className="h-8 w-8 text-gray-400" />
                   <span className="font-medium">
-                    {selectedFile ? selectedFile.name : "Click to select file"}
+                    {selectedFile ? selectedFile.name : "Hacé clic para seleccionar un archivo"}
                   </span>
                   <span className="text-sm text-gray-500">
-                    Supports: .txt, .pdf, .doc, .docx, .md (Max 10MB)
+                    Soporta: .txt, .pdf, .doc, .docx, .md (Máx 10MB)
                   </span>
                   {selectedFile && (
                     <Button
@@ -189,7 +189,7 @@ export default function DocumentUploadDialog({
                       }}
                     >
                       <X className="h-3 w-3 mr-1" />
-                      Remove
+                      Eliminar
                     </Button>
                   )}
                 </div>
@@ -204,7 +204,7 @@ export default function DocumentUploadDialog({
             onClick={() => setIsOpen(false)}
             disabled={isUploading}
           >
-            Cancel
+            Cancelar
           </Button>
           <Button
             onClick={handleUpload}
@@ -213,12 +213,12 @@ export default function DocumentUploadDialog({
             {isUploading ? (
               <>
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Uploading...
+                Subiendo...
               </>
             ) : (
               <>
                 <Upload className="h-4 w-4 mr-2" />
-                Upload Document
+                Subir Documento
               </>
             )}
           </Button>

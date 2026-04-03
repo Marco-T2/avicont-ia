@@ -46,7 +46,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50">
       {/* Organization Banner */}
       <Card className="w-full shadow-sm border">
         <CardContent>
@@ -56,7 +56,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
                 {organization.name}
               </h1>
               <p className="text-sm text-muted-foreground">
-                Organization workspace
+                Espacio de trabajo
               </p>
             </div>
             <Badge variant="outline" className="px-4 py-1.5 font-medium">
@@ -67,9 +67,9 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
       </Card>
 
       {/* Main Content */}
-      <main className="py-8">
+      <div className="py-8">
         <div className="container mx-auto px-4">{children}</div>
-      </main>
+      </div>
     </div>
   );
 }

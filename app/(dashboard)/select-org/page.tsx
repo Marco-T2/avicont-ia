@@ -41,7 +41,7 @@ export default function SelectOrgPage() {
       if (userMemberships?.revalidate) {
         await userMemberships.revalidate();
       }
-      toast.success("Organization list refreshed");
+      toast.success("Lista de organizaciones actualizada");
     } catch (error) {
       console.error("Failed to refresh organizations:", error);
     } finally {
@@ -51,7 +51,7 @@ export default function SelectOrgPage() {
 
   const handleCreateOrg = async () => {
     if (!orgName.trim()) {
-      toast.error("Please enter an organization name");
+      toast.error("Por favor ingresá un nombre de organización");
       return;
     }
 
@@ -59,17 +59,17 @@ export default function SelectOrgPage() {
     try {
       // 1. Create organization in Clerk
       if (!createOrganization) {
-        throw new Error("Organization creation is not available at this time.");
+        throw new Error("La creación de organizaciones no está disponible en este momento.");
       }
       const newOrg = await createOrganization({
         name: orgName.trim(),
       });
 
       if (!newOrg) {
-        throw new Error("Failed to create organization");
+        throw new Error("Error al crear la organización");
       }
 
-      toast.success(`Organization "${orgName}" created successfully`);
+      toast.success(`Organización "${orgName}" creada exitosamente`);
       setOrgName("");
 
       // 2. Save to your database (optional)
@@ -112,7 +112,7 @@ export default function SelectOrgPage() {
       router.refresh(); // Refresh server components
     } catch (error: any) {
       console.error("Failed to create organization:", error);
-      toast.error(error.message || "Failed to create organization");
+      toast.error(error.message || "Error al crear la organización");
     } finally {
       setIsCreating(false);
     }
@@ -128,7 +128,7 @@ export default function SelectOrgPage() {
       router.push(`/${organization.slug}`);
     } catch (error) {
       console.error("Failed to switch organization:", error);
-      toast.error("Failed to switch organization");
+      toast.error("Error al cambiar de organización");
     }
   };
 
@@ -142,8 +142,8 @@ export default function SelectOrgPage() {
   return (
     <div className="container max-w-4xl mx-auto p-6">
       <div className="mb-8 text-center">
-        <h1 className="text-3xl font-bold">Welcome, {user?.firstName}!</h1>
-        <p className="text-gray-600">Select or create an organization</p>
+        <h1 className="text-3xl font-bold">¡Bienvenido, {user?.firstName}!</h1>
+        <p className="text-gray-600">Seleccioná o creá una organización</p>
       </div>
 
       {/* Create Organization */}
@@ -153,10 +153,10 @@ export default function SelectOrgPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Plus className="h-5 w-5" />
-                Create New Organization
+                Crear Nueva Organización
               </CardTitle>
               <CardDescription>
-                Start a new workspace for your team
+                Comenzá un nuevo espacio de trabajo para tu equipo
               </CardDescription>
             </div>
           </div>
@@ -165,7 +165,7 @@ export default function SelectOrgPage() {
           <div className="space-y-4">
             <div className="flex gap-2">
               <Input
-                placeholder="Enter organization name"
+                placeholder="Nombre de la organización"
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
                 disabled={isCreating}
@@ -175,15 +175,15 @@ export default function SelectOrgPage() {
               <Button
                 onClick={handleCreateOrg}
                 disabled={isCreating || !orgName.trim()}
-                className="min-w-25]"
+                className="min-w-[100px]"
               >
                 {isCreating ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Creating...
+                    Creando...
                   </>
                 ) : (
-                  "Create"
+                  "Crear"
                 )}
               </Button>
             </div>
@@ -196,21 +196,21 @@ export default function SelectOrgPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Building className="h-5 w-5" />
-            Your Organizations ({userMemberships?.count || 0})
+            Tus Organizaciones ({userMemberships?.count || 0})
           </CardTitle>
           <CardDescription>
             {userMemberships?.count === 0
-              ? "Create your first organization above"
-              : "Click on an organization to enter"}
+              ? "Creá tu primera organización arriba"
+              : "Hacé clic en una organización para ingresar"}
           </CardDescription>
         </CardHeader>
         <CardContent>
           {userMemberships?.count === 0 ? (
             <div className="text-center py-12">
               <Building className="h-16 w-16 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 mb-2">No organizations yet</p>
+              <p className="text-gray-600 mb-2">Sin organizaciones aún</p>
               <p className="text-sm text-gray-500">
-                Create your first organization to get started
+                Creá tu primera organización para comenzar
               </p>
             </div>
           ) : (

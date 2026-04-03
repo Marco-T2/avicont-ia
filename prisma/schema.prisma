@@ -16,9 +16,15 @@ model Organization {
   name        String
   slug        String   @unique
   createdAt   DateTime @default(now())
-  members     OrganizationMember[]
-  documents   Document[]
-  
+  members        OrganizationMember[]
+  documents      Document[]
+  farms          Farm[]
+  chickenLots    ChickenLot[]
+  expenses       Expense[]
+  mortalityLogs  MortalityLog[]
+  accounts       Account[]
+  journalEntries JournalEntry[]
+
   @@map("organizations")
 }
 
@@ -29,7 +35,8 @@ model OrganizationMember {
   role           String   @default("member") 
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
-  
+  farms          Farm[]
+
   @@unique([organizationId, userId])
   @@map("organization_members")
 }
@@ -40,9 +47,12 @@ model User {
   email       String
   name        String?
   createdAt   DateTime @default(now())
-  memberships OrganizationMember[]
-  documents   Document[]
-  
+  memberships    OrganizationMember[]
+  documents      Document[]
+  expenses       Expense[]       @relation("ExpenseCreator")
+  mortalityLogs  MortalityLog[]  @relation("MortalityCreator")
+  journalEntries JournalEntry[]  @relation("JournalCreator")
+
   @@map("users")
 }
 
@@ -64,4 +74,153 @@ model Document {
   createdAt      DateTime @default(now())
   
   @@map("documents")
+}
+
+enum LotStatus {
+  ACTIVE
+  CLOSED
+  SOLD
+}
+
+enum ExpenseCategory {
+  ALIMENTO
+  CHALA
+  AGUA
+  GARRAFAS
+  MANTENIMIENTO
+  GALPONERO
+  MEDICAMENTOS
+  VETERINARIO
+  OTROS
+}
+
+model Farm {
+  id             String   @id @default(cuid())
+  name           String
+  location       String?
+  organizationId String
+  memberId       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  member         OrganizationMember @relation(fields: [memberId], references: [id])
+  lots           ChickenLot[]
+
+  @@map("farms")
+}
+
+model ChickenLot {
+  id             String    @id @default(cuid())
+  name           String
+  barnNumber     Int
+  initialCount   Int
+  startDate      DateTime
+  endDate        DateTime?
+  status         LotStatus @default(ACTIVE)
+  farmId         String
+  organizationId String
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  farm           Farm         @relation(fields: [farmId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  expenses       Expense[]
+  mortalityLogs  MortalityLog[]
+
+  @@map("chicken_lots")
+}
+
+model Expense {
+  id             String          @id @default(cuid())
+  amount         Decimal         @db.Decimal(12, 2)
+  category       ExpenseCategory
+  description    String?
+  date           DateTime
+  lotId          String
+  organizationId String
+  createdById    String
+  createdAt      DateTime        @default(now())
+  lot            ChickenLot   @relation(fields: [lotId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdBy      User         @relation("ExpenseCreator", fields: [createdById], references: [id])
+
+  @@map("expenses")
+}
+
+model MortalityLog {
+  id             String   @id @default(cuid())
+  count          Int
+  cause          String?
+  date           DateTime
+  lotId          String
+  organizationId String
+  createdById    String
+  createdAt      DateTime @default(now())
+  lot            ChickenLot   @relation(fields: [lotId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdBy      User         @relation("MortalityCreator", fields: [createdById], references: [id])
+
+  @@map("mortality_logs")
+}
+
+enum AccountType {
+  ACTIVO
+  PASIVO
+  PATRIMONIO
+  INGRESO
+  GASTO
+}
+
+enum VoucherType {
+  INGRESO
+  EGRESO
+  TRASPASO
+  DIARIO
+}
+
+model Account {
+  id             String      @id @default(cuid())
+  code           String
+  name           String
+  type           AccountType
+  parentId       String?
+  level          Int
+  isActive       Boolean     @default(true)
+  organizationId String
+  parent         Account?     @relation("AccountTree", fields: [parentId], references: [id])
+  children       Account[]    @relation("AccountTree")
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  journalLines   JournalLine[]
+
+  @@unique([organizationId, code])
+  @@map("accounts")
+}
+
+model JournalEntry {
+  id             String      @id @default(cuid())
+  number         Int
+  date           DateTime
+  description    String
+  voucherType    VoucherType
+  organizationId String
+  createdById    String
+  createdAt      DateTime    @default(now())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  createdBy      User         @relation("JournalCreator", fields: [createdById], references: [id])
+  lines          JournalLine[]
+
+  @@unique([organizationId, number])
+  @@map("journal_entries")
+}
+
+model JournalLine {
+  id             String       @id @default(cuid())
+  journalEntryId String
+  accountId      String
+  debit          Decimal      @default(0) @db.Decimal(12, 2)
+  credit         Decimal      @default(0) @db.Decimal(12, 2)
+  description    String?
+  journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account        Account      @relation(fields: [accountId], references: [id])
+
+  @@map("journal_lines")
 }

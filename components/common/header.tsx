@@ -1,5 +1,5 @@
 "use client"
-import { Brain, Building, FileText, Home, LogIn, UserPlus, Users } from "lucide-react";
+import { Brain, Building, Calculator, FileText, Home, LogIn, Tractor, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -12,15 +12,17 @@ export default function Header() {
 
     const getNavItems = () => {
         const baseItems = [
-            { href: "/", label: "Home", icon: <Home className="w-4 h-4" /> },
-            { href: "/select-org", label: "Switch Organization", icon: <Users className="w-4 h-4" /> },
+            { href: "/", label: "Inicio", icon: <Home className="w-4 h-4" /> },
+            { href: "/select-org", label: "Cambiar Organización", icon: <Users className="w-4 h-4" /> },
         ];
 
         if (organization) {
             return [
                 ...baseItems,
-                { href: `/${organization.slug}`, label: "Organization dashboard", icon: <Building className="w-4 h-4" /> },
-                { href: `/${organization.slug}/documents`, label: "Organization documents", icon: <FileText className="w-4 h-4" /> },
+                { href: `/${organization.slug}`, label: "Panel de la organización", icon: <Building className="w-4 h-4" /> },
+                { href: `/${organization.slug}/documents`, label: "Documentos", icon: <FileText className="w-4 h-4" /> },
+                { href: `/${organization.slug}/farms`, label: "Granjas", icon: <Tractor className="w-4 h-4" /> },
+                { href: `/${organization.slug}/accounting`, label: "Contabilidad", icon: <Calculator className="w-4 h-4" /> },
             ]
         }
 
@@ -34,7 +36,7 @@ export default function Header() {
             <div className="container mx-auto px-4 h-16 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2 font-bold text-xl">
                     <Brain className="w-6 h-6 text-blue-600" />
-                    Documentos IA
+                    Avicont-AI
                 </Link>
 
                 <nav className="hidden md:flex items-center gap-1"> {/* ✅ Agregar hidden */}
@@ -53,24 +55,24 @@ export default function Header() {
 
                 <div className="flex items-center gap-4">
                     {isSignedIn ? ( // ✅ Reemplazar Show con isSignedIn
-                        <div className="md:flex items-center gap-2"> {/* ✅ Sacar espacio "md: " */}
+                        <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-600">
-                                {organization ? `In ${organization.name}` : user?.firstName || user?.username}
+                                {organization ? `En ${organization.name}` : user?.firstName || user?.username}
                             </span>
                             <UserButton />
                         </div>
                     ) : (
-                        <div className="md:flex items-center gap-2">
+                        <div className="flex items-center gap-2">
                             <Link href="/sign-in">
                                 <Button variant="ghost" size="sm">
                                     <LogIn className="h-4 w-4 mr-1" />
-                                    Sign In
+                                    Iniciar Sesión
                                 </Button>
                             </Link>
                             <Link href="/sign-up">
                                 <Button size="sm">
                                     <UserPlus className="h-4 w-4 mr-1" />
-                                    Sign Up
+                                    Registrarse
                                 </Button>
                             </Link>
                         </div>
