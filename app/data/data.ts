@@ -1,46 +1,12 @@
 
 import { AnalysisType } from "@/types";
 import {
-  Brain,
   Hash,
   List,
   MessageCircle,
   MessageSquare,
-  Shield,
   Sparkles,
-  Upload,
-  Users,
 } from "lucide-react";
-
-export const features = [
-  {
-    icon: Brain,
-    title: "Análisis con IA",
-    description: "Obtené resúmenes e insights al instante con Google Gemini AI",
-  },
-  {
-    icon: Users,
-    title: "Multi-Organización",
-    description: "Organizaciones separadas con almacenamiento de documentos aislado",
-  },
-  {
-    icon: Upload,
-    title: "Carga Fácil",
-    description: "Arrastrá y soltá o seleccioná archivos en múltiples formatos",
-  },
-  {
-    icon: Shield,
-    title: "Seguro",
-    description: "Tus documentos están encriptados y almacenados de forma segura",
-  },
-];
-
-export const steps = [
-  "Registrate con una cuenta gratuita",
-  "Creá una organización",
-  "Subí documentos",
-  "Obtené análisis de IA al instante",
-];
 
 export const allowedTypes = [
   "text/plain",

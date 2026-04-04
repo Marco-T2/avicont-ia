@@ -16,11 +16,6 @@ export default async function DashboardLayout({
   await syncUserToDatabase();
 
   return (
-    <div className="bg-gray-50">
-      {/* Main Content - Global header now handles navigation */}
-      <div className="py-8">
-        <div className="container mx-auto px-4">{children}</div>
-      </div>
-    </div>
+    <div className="min-h-full">{children}</div>
   );
 }

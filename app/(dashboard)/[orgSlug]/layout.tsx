@@ -36,23 +36,21 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
     <DashboardShell>
       <div className="bg-gray-50 min-h-full">
         {/* Organization Banner */}
-        <Card className="w-full shadow-sm border rounded-none">
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="space-y-1">
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  {organization.name}
-                </h1>
-                <p className="text-sm text-muted-foreground">
-                  Espacio de trabajo
-                </p>
-              </div>
-              <Badge variant="outline" className="px-4 py-1.5 font-medium">
-                {membership.role}
-              </Badge>
+        <div className="w-full border-b bg-white px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-sm font-medium leading-none">
+                {organization.name}
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Espacio de trabajo
+              </p>
             </div>
-          </CardContent>
-        </Card>
+            <Badge variant="outline" className="px-2 py-0.5 text-xs">
+              {membership.role}
+            </Badge>
+          </div>
+        </div>
 
         {/* Main Content */}
         <div className="py-8">
