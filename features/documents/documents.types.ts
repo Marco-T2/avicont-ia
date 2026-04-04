@@ -1,4 +1,5 @@
 import type { Document as PrismaDocument } from "@/generated/prisma/client";
+import type { DocumentScope } from "@/features/shared/permissions";
 
 // ── Domain types ──
 
@@ -13,6 +14,7 @@ export interface CreateDocumentInput {
   fileUrl?: string | null;
   fileSize?: number;
   fileType?: string;
+  scope?: DocumentScope;
   organizationId: string;
   userId: string;
 }
@@ -23,6 +25,7 @@ export interface DocumentListResult {
     organization: string;
     clerkOrgId: string;
     documentCount: number;
+    userRole: string;
   };
 }
 

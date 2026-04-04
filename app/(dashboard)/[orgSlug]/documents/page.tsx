@@ -29,6 +29,7 @@ export default function DocumentsPage() {
   );
   const [selectedAnalysisType, setSelectedAnalysisType] =
     useState<AnalysisType>("summary");
+  const [userRole, setUserRole] = useState<string | undefined>();
 
   // Fetch documents
   const fetchDocuments = async () => {
@@ -41,6 +42,9 @@ export default function DocumentsPage() {
       if (response.ok) {
         const data = await response.json();
         setDocuments(data.documents);
+        if (data.metadata?.userRole) {
+          setUserRole(data.metadata.userRole);
+        }
       }
     } catch (error) {
       console.error("Failed to fetch documents:", error);
@@ -142,7 +146,7 @@ export default function DocumentsPage() {
         </div>
 
         {/* Upload Dialog */}
-        <DocumentUploadDialog onUploadSuccess={fetchDocuments} />
+        <DocumentUploadDialog onUploadSuccess={fetchDocuments} userRole={userRole} />
       </div>
 
       {/* Stats Bar */}

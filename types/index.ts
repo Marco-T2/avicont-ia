@@ -14,6 +14,7 @@ export interface Document {
   aiSummary?: string;
   aiKeywords: string[];
   sentiment?: string;
+  scope?: "ORGANIZATION" | "ACCOUNTING" | "FARM";
   createdAt: string;
   user: {
     name?: string;

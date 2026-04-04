@@ -25,6 +25,19 @@ import {
 } from "@/components/ui/select";
 import { Document, AnalysisType } from "@/types";
 import { analysisTypes } from "@/app/data/data";
+import type { DocumentScope } from "@/features/shared/permissions";
+
+const SCOPE_LABELS: Record<DocumentScope, string> = {
+  ORGANIZATION: "Organización",
+  ACCOUNTING: "Contabilidad",
+  FARM: "Granja",
+};
+
+const SCOPE_COLORS: Record<DocumentScope, string> = {
+  ORGANIZATION: "bg-blue-100 text-blue-700 border-blue-200",
+  ACCOUNTING: "bg-amber-100 text-amber-700 border-amber-200",
+  FARM: "bg-green-100 text-green-700 border-green-200",
+};
 
 interface DocumentCardProps {
   document: Document;
@@ -88,13 +101,23 @@ export default function DocumentCard({
                   )}
                 </div>
               </div>
-              {doc.sentiment && (
-                <Badge>
-                  <div className="flex items-center gap-1">
-                    <span className="capitalize">{doc.sentiment}</span>
-                  </div>
-                </Badge>
-              )}
+              <div className="flex items-center gap-2">
+                {doc.scope && (
+                  <Badge
+                    variant="outline"
+                    className={SCOPE_COLORS[doc.scope as DocumentScope] || ""}
+                  >
+                    {SCOPE_LABELS[doc.scope as DocumentScope] || doc.scope}
+                  </Badge>
+                )}
+                {doc.sentiment && (
+                  <Badge>
+                    <div className="flex items-center gap-1">
+                      <span className="capitalize">{doc.sentiment}</span>
+                    </div>
+                  </Badge>
+                )}
+              </div>
             </div>
 
             {/* AI Analysis Section */}

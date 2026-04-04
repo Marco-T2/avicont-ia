@@ -14,18 +14,34 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Upload, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { allowedTypes } from "@/app/data/data";
+import { getUploadScopes, type DocumentScope } from "@/features/shared/permissions";
+
+const SCOPE_LABELS: Record<DocumentScope, string> = {
+  ORGANIZATION: "Organización",
+  ACCOUNTING: "Contabilidad",
+  FARM: "Granja",
+};
 
 interface DocumentUploadDialogProps {
   onUploadSuccess?: () => void;
   trigger?: React.ReactNode;
+  userRole?: string;
 }
 
 export default function DocumentUploadDialog({
   onUploadSuccess,
   trigger,
+  userRole,
 }: DocumentUploadDialogProps) {
   const { organization } = useOrganization();
   const { user } = useUser();
@@ -34,8 +50,13 @@ export default function DocumentUploadDialog({
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [documentName, setDocumentName] = useState("");
-  //   const [documentContent, setDocumentContent] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Get allowed scopes for the user's role
+  const allowedScopes = userRole ? getUploadScopes(userRole) : null;
+  const [selectedScope, setSelectedScope] = useState<DocumentScope>(
+    allowedScopes?.[0] ?? "ORGANIZATION",
+  );
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -75,6 +96,7 @@ export default function DocumentUploadDialog({
     const formData = new FormData();
     formData.append("name", documentName);
     formData.append("organizationId", organization.id);
+    formData.append("scope", selectedScope);
 
     if (selectedFile) {
       formData.append("file", selectedFile);
@@ -115,6 +137,7 @@ export default function DocumentUploadDialog({
       // Reset form state
       setDocumentName("");
       setSelectedFile(null);
+      setSelectedScope(allowedScopes?.[0] ?? "ORGANIZATION");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -151,6 +174,36 @@ export default function DocumentUploadDialog({
               disabled={isUploading}
             />
           </div>
+
+          {/* Scope Selector */}
+          {allowedScopes && allowedScopes.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                Alcance del Documento *
+              </label>
+              <Select
+                value={selectedScope}
+                onValueChange={(value: string) =>
+                  setSelectedScope(value as DocumentScope)
+                }
+                disabled={isUploading}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Seleccioná el alcance" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allowedScopes.map((scope) => (
+                    <SelectItem key={scope} value={scope}>
+                      {SCOPE_LABELS[scope]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                Define quién puede ver este documento en consultas al agente
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-2">

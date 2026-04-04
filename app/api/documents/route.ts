@@ -16,6 +16,7 @@ export async function POST(request: Request) {
     const content = formData.get("content") as string;
     const clerkOrgId = formData.get("organizationId") as string;
     const file = formData.get("file") as File;
+    const scope = (formData.get("scope") as string) || undefined;
 
     // Validate required fields
     createDocumentSchema.parse({ name, organizationId: clerkOrgId });
@@ -26,6 +27,7 @@ export async function POST(request: Request) {
       name,
       content || null,
       file && file.size > 0 ? file : null,
+      scope as "ORGANIZATION" | "ACCOUNTING" | "FARM" | undefined,
     );
 
     return Response.json({

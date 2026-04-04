@@ -59,25 +59,56 @@ model User {
 }
 
 model Document {
-  id             String   @id @default(cuid())
+  id             String        @id @default(cuid())
   name           String
   content        String?
   fileUrl        String?
-  fileSize       Int?     
-  fileType       String?  
+  fileSize       Int?
+  fileType       String?
   aiSummary      String?
   aiKeywords     String[]
   sentiment      String?
+  scope          DocumentScope @default(ORGANIZATION)
   organizationId String
   userId         String
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
-  
+  chunks         DocumentChunk[]
+
   createdAt      DateTime @default(now())
 
   @@index([organizationId])
   @@index([userId])
+  @@index([organizationId, scope])
   @@map("documents")
+}
+
+model DocumentChunk {
+  id             String        @id @default(cuid())
+  documentId     String
+  organizationId String
+  scope          DocumentScope
+  content        String
+  chunkIndex     Int
+  embedding      Unsupported("vector(768)")
+  document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, scope])
+  @@map("document_chunks")
+}
+
+model ChatMessage {
+  id             String   @id @default(cuid())
+  sessionId      String
+  organizationId String
+  userId         String
+  role           String
+  content        String
+  createdAt      DateTime @default(now())
+
+  @@index([sessionId, createdAt])
+  @@index([organizationId, userId])
+  @@map("chat_messages")
 }
 
 enum LotStatus {
@@ -174,6 +205,12 @@ model MortalityLog {
   @@index([lotId])
   @@index([createdById])
   @@map("mortality_logs")
+}
+
+enum DocumentScope {
+  ORGANIZATION
+  ACCOUNTING
+  FARM
 }
 
 enum AccountType {
