@@ -45,7 +45,7 @@ export class OrganizationsRepository extends BaseRepository {
     const scope = this.requireOrg(organizationId);
     const org = await this.db.organization.findUniqueOrThrow({
       where: { id: scope.organizationId },
-      include: { members: { include: { user: true } } },
+      include: { members: { where: { deactivatedAt: null }, include: { user: true } } },
     });
     return org as OrganizationWithMembers;
   }
@@ -56,7 +56,7 @@ export class OrganizationsRepository extends BaseRepository {
       this.db.organization.findUniqueOrThrow({
         where: { id: scope.organizationId },
         include: {
-          _count: { select: { documents: true, members: true } },
+          _count: { select: { documents: true, members: { where: { deactivatedAt: null } } } },
           documents: { take: 5, orderBy: { createdAt: "desc" } },
         },
       }),
@@ -79,6 +79,7 @@ export class OrganizationsRepository extends BaseRepository {
       where: {
         ...scope,
         userId,
+        deactivatedAt: null,
       },
     });
   }
@@ -92,6 +93,7 @@ export class OrganizationsRepository extends BaseRepository {
       where: {
         ...scope,
         user: { clerkUserId },
+        deactivatedAt: null,
       },
     });
   }
@@ -102,7 +104,7 @@ export class OrganizationsRepository extends BaseRepository {
   ) {
     const scope = this.requireOrg(organizationId);
     return this.db.organizationMember.findFirst({
-      where: { ...scope, user: { clerkUserId } },
+      where: { ...scope, user: { clerkUserId }, deactivatedAt: null },
       include: { user: { select: { id: true } } },
     });
   }
@@ -118,6 +120,7 @@ export class OrganizationsRepository extends BaseRepository {
         ...scope,
         user: { clerkUserId },
         role: { in: roles },
+        deactivatedAt: null,
       },
     });
   }
@@ -140,15 +143,23 @@ export class OrganizationsRepository extends BaseRepository {
   async findMemberById(organizationId: string, memberId: string) {
     const scope = this.requireOrg(organizationId);
     return this.db.organizationMember.findFirst({
-      where: { id: memberId, ...scope },
+      where: { id: memberId, ...scope, deactivatedAt: null },
       include: { user: true },
     });
   }
 
-  async findMemberByEmail(organizationId: string, email: string) {
+  async findMemberByEmail(
+    organizationId: string,
+    email: string,
+    includeDeactivated = false,
+  ) {
     const scope = this.requireOrg(organizationId);
     return this.db.organizationMember.findFirst({
-      where: { ...scope, user: { email } },
+      where: {
+        ...scope,
+        user: { email },
+        ...(includeDeactivated ? {} : { deactivatedAt: null }),
+      },
       include: { user: true },
     });
   }
@@ -165,13 +176,24 @@ export class OrganizationsRepository extends BaseRepository {
     });
   }
 
-  async removeMember(
+  async deactivateMember(
     organizationId: string,
     memberId: string,
   ): Promise<OrganizationMember> {
     const scope = this.requireOrg(organizationId);
-    return this.db.organizationMember.delete({
+    return this.db.organizationMember.update({
       where: { id: memberId, ...scope },
+      data: { deactivatedAt: new Date() },
+    });
+  }
+
+  async reactivateMember(
+    memberId: string,
+    role: string,
+  ): Promise<OrganizationMember> {
+    return this.db.organizationMember.update({
+      where: { id: memberId },
+      data: { deactivatedAt: null, role },
     });
   }
 }
