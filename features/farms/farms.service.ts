@@ -1,5 +1,6 @@
 import { NotFoundError, ConflictError } from "@/features/shared/errors";
 import { FarmsRepository } from "./farms.repository";
+import { OrganizationsRepository } from "@/features/organizations/organizations.repository";
 import type { CreateFarmInput, UpdateFarmInput, FarmWithLots } from "./farms.types";
 
 export class FarmsService {
@@ -34,6 +35,15 @@ export class FarmsService {
   async create(organizationId: string, input: CreateFarmInput): Promise<FarmWithLots> {
     const existing = await this.repo.findByName(organizationId, input.name);
     if (existing) throw new ConflictError("Granja con ese nombre");
+
+    // Validate member is active (not deactivated)
+    const orgRepo = new OrganizationsRepository();
+    const member = await orgRepo.findMemberById(organizationId, input.memberId);
+    if (!member) {
+      throw new NotFoundError(
+        "Miembro asignado no encontrado o está desactivado",
+      );
+    }
 
     return this.repo.create(organizationId, input);
   }

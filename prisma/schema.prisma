@@ -29,15 +29,17 @@ model Organization {
 }
 
 model OrganizationMember {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   userId         String
-  role           String   @default("member") 
+  role           String    @default("member")
+  deactivatedAt  DateTime?
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
   farms          Farm[]
 
   @@unique([organizationId, userId])
+  @@index([organizationId, deactivatedAt])
   @@map("organization_members")
 }
 
@@ -72,7 +74,9 @@ model Document {
   user           User         @relation(fields: [userId], references: [id])
   
   createdAt      DateTime @default(now())
-  
+
+  @@index([organizationId])
+  @@index([userId])
   @@map("documents")
 }
 
@@ -106,6 +110,8 @@ model Farm {
   member         OrganizationMember @relation(fields: [memberId], references: [id])
   lots           ChickenLot[]
 
+  @@index([organizationId])
+  @@index([memberId])
   @@map("farms")
 }
 
@@ -126,6 +132,8 @@ model ChickenLot {
   expenses       Expense[]
   mortalityLogs  MortalityLog[]
 
+  @@index([organizationId])
+  @@index([farmId])
   @@map("chicken_lots")
 }
 
@@ -143,6 +151,9 @@ model Expense {
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdBy      User         @relation("ExpenseCreator", fields: [createdById], references: [id])
 
+  @@index([organizationId])
+  @@index([lotId])
+  @@index([createdById])
   @@map("expenses")
 }
 
@@ -159,6 +170,9 @@ model MortalityLog {
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdBy      User         @relation("MortalityCreator", fields: [createdById], references: [id])
 
+  @@index([organizationId])
+  @@index([lotId])
+  @@index([createdById])
   @@map("mortality_logs")
 }
 
@@ -192,6 +206,7 @@ model Account {
   journalLines   JournalLine[]
 
   @@unique([organizationId, code])
+  @@index([parentId])
   @@map("accounts")
 }
 
@@ -209,6 +224,7 @@ model JournalEntry {
   lines          JournalLine[]
 
   @@unique([organizationId, number])
+  @@index([createdById])
   @@map("journal_entries")
 }
 
@@ -222,5 +238,7 @@ model JournalLine {
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        Account      @relation(fields: [accountId], references: [id])
 
+  @@index([journalEntryId])
+  @@index([accountId])
   @@map("journal_lines")
 }
