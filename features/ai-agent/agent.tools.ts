@@ -159,6 +159,25 @@ const listAccountsTool: FunctionDeclaration = {
   },
 };
 
+// ── Shared tools (RAG search) ──
+
+const searchDocumentsTool: FunctionDeclaration = {
+  name: "searchDocuments",
+  description:
+    "Buscar información en los documentos de la organización usando búsqueda semántica. Usar cuando el usuario pregunte sobre políticas, contratos, normas o cualquier documento subido.",
+  parameters: {
+    type: SchemaType.OBJECT,
+    properties: {
+      query: {
+        type: SchemaType.STRING,
+        description:
+          "Consulta de búsqueda en lenguaje natural para encontrar documentos relevantes",
+      },
+    },
+    required: ["query"],
+  },
+};
+
 // ── Tool sets by role ──
 
 const socioTools: FunctionDeclaration[] = [
@@ -167,17 +186,19 @@ const socioTools: FunctionDeclaration[] = [
   getLotSummaryTool,
   listFarmsTool,
   listLotsTool,
+  searchDocumentsTool,
 ];
 
 const contadorTools: FunctionDeclaration[] = [
   getTrialBalanceTool,
   getAccountLedgerTool,
   listAccountsTool,
+  searchDocumentsTool,
 ];
 
 const adminTools: FunctionDeclaration[] = [
   ...socioTools,
-  ...contadorTools,
+  ...contadorTools.filter((t) => !socioTools.some((s) => s.name === t.name)),
 ];
 
 /**

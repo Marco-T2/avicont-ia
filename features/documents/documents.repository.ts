@@ -54,6 +54,7 @@ export class DocumentsRepository extends BaseRepository {
         fileUrl: input.fileUrl ?? null,
         fileSize: input.fileSize ?? 0,
         fileType: input.fileType ?? "unknown",
+        scope: input.scope ?? "ORGANIZATION",
         organizationId: scope.organizationId,
         userId: input.userId,
         aiKeywords: [],
@@ -88,6 +89,23 @@ export class DocumentsRepository extends BaseRepository {
 
     await this.db.document.delete({
       where: { id, ...scope },
+    });
+  }
+
+  async findOrgByClerkId(clerkOrgId: string) {
+    return this.db.organization.findUnique({
+      where: { clerkOrgId },
+    });
+  }
+
+  async findUserWithMembership(clerkUserId: string, organizationId: string) {
+    return this.db.user.findUnique({
+      where: { clerkUserId },
+      include: {
+        memberships: {
+          where: { organizationId },
+        },
+      },
     });
   }
 }
