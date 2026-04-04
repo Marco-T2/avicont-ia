@@ -1,5 +1,10 @@
-import { prisma } from "@/lib/prisma";
 import type { Role } from "@/features/shared/permissions";
+import { getRagScopes } from "@/features/shared/permissions";
+import { RagService } from "@/features/rag";
+import { AgentContextRepository } from "./agent-context.repository";
+
+const ragService = new RagService();
+const contextRepo = new AgentContextRepository();
 
 /**
  * Build context string for the Gemini system prompt based on user role and org data.
@@ -23,40 +28,48 @@ export async function buildAgentContext(
   return parts.join("\n\n");
 }
 
+// ── RAG context: semantic search over documents ──
+
+export async function buildRagContext(
+  orgId: string,
+  query: string,
+  role: Role,
+): Promise<string> {
+  const scopes = getRagScopes(role);
+  if (!scopes) return "";
+
+  try {
+    const results = await ragService.search(query, orgId, scopes, 5);
+
+    if (results.length === 0) return "";
+
+    const lines: string[] = [
+      "## Contexto de Documentos (RAG)",
+      "",
+      "Los siguientes fragmentos de documentos son relevantes para la consulta:",
+      "",
+    ];
+
+    for (const result of results) {
+      lines.push(`> ${result.content}`);
+      lines.push("");
+    }
+
+    return lines.join("\n");
+  } catch (err) {
+    console.error("RAG context error:", err);
+    return "";
+  }
+}
+
 // ── Socio context: farms, lots, recent expenses ──
 
 async function buildSocioContext(
   orgId: string,
   _userId: string,
 ): Promise<string> {
-  const farms = await prisma.farm.findMany({
-    where: { organizationId: orgId },
-    include: {
-      lots: {
-        where: { status: "ACTIVE" },
-        select: {
-          id: true,
-          name: true,
-          barnNumber: true,
-          initialCount: true,
-          startDate: true,
-          status: true,
-        },
-      },
-    },
-  });
-
-  const recentExpenses = await prisma.expense.findMany({
-    where: { organizationId: orgId },
-    orderBy: { date: "desc" },
-    take: 5,
-    select: {
-      amount: true,
-      category: true,
-      date: true,
-      lot: { select: { name: true } },
-    },
-  });
+  const farms = await contextRepo.findFarmsWithActiveLots(orgId);
+  const recentExpenses = await contextRepo.findRecentExpenses(orgId, 5);
 
   const activeLotCount = farms.reduce((sum, f) => sum + f.lots.length, 0);
 
@@ -96,21 +109,8 @@ async function buildSocioContext(
 // ── Contador context: accounts, journal entries ──
 
 async function buildContadorContext(orgId: string): Promise<string> {
-  const accounts = await prisma.account.findMany({
-    where: { organizationId: orgId, isActive: true },
-    select: {
-      id: true,
-      code: true,
-      name: true,
-      type: true,
-      level: true,
-    },
-    orderBy: { code: "asc" },
-  });
-
-  const journalCount = await prisma.journalEntry.count({
-    where: { organizationId: orgId },
-  });
+  const accounts = await contextRepo.findActiveAccounts(orgId);
+  const journalCount = await contextRepo.countJournalEntries(orgId);
 
   const lines: string[] = [
     "## Datos Contables",

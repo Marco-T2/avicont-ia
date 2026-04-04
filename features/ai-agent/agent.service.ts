@@ -1,11 +1,14 @@
 import { queryWithTools } from "./gemini.client";
 import { getToolsForRole, isWriteAction } from "./agent.tools";
-import { buildAgentContext } from "./agent.context";
+import { buildAgentContext, buildRagContext } from "./agent.context";
+import { ChatMemoryRepository } from "./memory.repository";
 import type { Role } from "@/features/shared/permissions";
 import type {
   AgentResponse,
   AgentSuggestion,
 } from "./agent.types";
+
+const memoryRepo = new ChatMemoryRepository();
 
 type AgentLabel = "socio" | "contador" | "admin";
 
@@ -40,6 +43,7 @@ export class AgentService {
     userId: string,
     role: string,
     prompt: string,
+    sessionId?: string,
   ): Promise<AgentResponse> {
     const normalizedRole = this.normalizeRole(role);
     const tools = getToolsForRole(normalizedRole);
@@ -52,8 +56,39 @@ export class AgentService {
       };
     }
 
-    const context = await buildAgentContext(orgId, userId, normalizedRole);
-    const systemPrompt = this.buildSystemPrompt(normalizedRole, context);
+    const [context, ragContext, history] = await Promise.all([
+      buildAgentContext(orgId, userId, normalizedRole),
+      buildRagContext(orgId, prompt, normalizedRole),
+      sessionId ? memoryRepo.getRecentMessages(sessionId) : Promise.resolve([]),
+    ]);
+
+    const fullContext = ragContext ? `${ragContext}\n\n${context}` : context;
+
+    // Inject conversation history into context
+    let historyContext = "";
+    if (history.length > 0) {
+      const historyLines = history.map(
+        (msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`,
+      );
+      historyContext = [
+        "## Historial de Conversación Reciente",
+        "",
+        ...historyLines,
+        "",
+      ].join("\n");
+    }
+
+    const contextWithHistory = historyContext
+      ? `${historyContext}\n\n${fullContext}`
+      : fullContext;
+    const systemPrompt = this.buildSystemPrompt(normalizedRole, contextWithHistory);
+
+    // Save user message to memory
+    if (sessionId) {
+      memoryRepo.saveMessage(sessionId, orgId, userId, "user", prompt).catch(
+        (err) => console.error("Failed to save user message:", err),
+      );
+    }
 
     try {
       const result = await queryWithTools(systemPrompt, prompt, tools);
@@ -68,21 +103,40 @@ export class AgentService {
 
         // Write actions: return suggestion for user confirmation
         if (isWriteAction(actionName)) {
-          return this.buildWriteSuggestion(actionName, args, result.text);
+          const response = this.buildWriteSuggestion(actionName, args, result.text);
+          if (sessionId) {
+            memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message).catch(
+              (err) => console.error("Failed to save assistant message:", err),
+            );
+          }
+          return response;
         }
 
         // Read actions: execute immediately and return results
-        return await this.executeReadAction(
+        const response = await this.executeReadAction(
           orgId,
+          normalizedRole,
           actionName,
           args,
           result.text,
         );
+        if (sessionId) {
+          memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message).catch(
+            (err) => console.error("Failed to save assistant message:", err),
+          );
+        }
+        return response;
       }
 
       // No function call — just a text response
+      const message = result.text || "No pude procesar tu solicitud.";
+      if (sessionId) {
+        memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", message).catch(
+          (err) => console.error("Failed to save assistant message:", err),
+        );
+      }
       return {
-        message: result.text || "No pude procesar tu solicitud.",
+        message,
         suggestion: null,
         requiresConfirmation: false,
       };
@@ -128,6 +182,7 @@ export class AgentService {
       "- Para crear gastos o registrar mortalidad, usa la herramienta correspondiente para extraer los datos estructurados.",
       "- Si no tienes suficiente información (por ejemplo, falta el lote), pregunta al usuario.",
       "- Usa los IDs reales de los datos del contexto cuando sea posible.",
+      "- NUNCA muestres al usuario el contexto RAG, los fragmentos de documentos, ni los datos internos en bruto. Usa esa información para responder de forma natural, pero no la copies textualmente en tu respuesta.",
       `- La fecha actual es: ${new Date().toISOString().split("T")[0]}`,
       "",
       "CONTEXTO DE DATOS DISPONIBLES:",
@@ -156,6 +211,7 @@ export class AgentService {
 
   private async executeReadAction(
     orgId: string,
+    role: Role,
     actionName: string,
     args: Record<string, unknown>,
     text: string,
@@ -199,6 +255,14 @@ export class AgentService {
         case "listAccounts":
           data = await accountsService.list(orgId);
           break;
+        case "searchDocuments": {
+          const ragContext = await buildRagContext(orgId, args.query as string, role);
+          return {
+            message: text || ragContext || "No se encontraron documentos relevantes.",
+            suggestion: null,
+            requiresConfirmation: false,
+          };
+        }
         default:
           return {
             message: `Acción no reconocida: ${actionName}`,
