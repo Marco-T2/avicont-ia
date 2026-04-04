@@ -25,7 +25,7 @@ export default async function RootLayout({
         <body className={inter.className}>
           <div className="h-screen flex flex-col">
             <Header />
-            <main className="flex-1 overflow-y-auto pt-16">{children}</main>
+            <main className="flex-1 overflow-hidden">{children}</main>
             <Footer />
             <Toaster position="top-right" richColors />
           </div>

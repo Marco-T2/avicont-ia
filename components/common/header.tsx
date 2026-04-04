@@ -1,35 +1,19 @@
 "use client"
-import { Brain, Building, Calculator, FileText, Home, LogIn, Tractor, UserPlus, Users } from "lucide-react";
+import { Brain, FileText, Home, LogIn, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { useOrganization, UserButton, useUser } from "@clerk/nextjs"; // ❌ Sacar Show
+import { useOrganization, UserButton, useUser } from "@clerk/nextjs";
 
 export default function Header() {
     const pathname = usePathname();
-    const { user, isSignedIn } = useUser(); // ✅ Agregar isSignedIn
+    const { user, isSignedIn } = useUser();
     const { organization } = useOrganization();
 
-    const getNavItems = () => {
-        const baseItems = [
-            { href: "/", label: "Inicio", icon: <Home className="w-4 h-4" /> },
-            { href: "/select-org", label: "Cambiar Organización", icon: <Users className="w-4 h-4" /> },
-        ];
-
-        if (organization) {
-            return [
-                ...baseItems,
-                { href: `/${organization.slug}`, label: "Panel de la organización", icon: <Building className="w-4 h-4" /> },
-                { href: `/${organization.slug}/documents`, label: "Documentos", icon: <FileText className="w-4 h-4" /> },
-                { href: `/${organization.slug}/farms`, label: "Granjas", icon: <Tractor className="w-4 h-4" /> },
-                { href: `/${organization.slug}/accounting`, label: "Contabilidad", icon: <Calculator className="w-4 h-4" /> },
-            ]
-        }
-
-        return [...baseItems];
-    };
-
-    const navItems = getNavItems();
+    const navItems = [
+        { href: "/", label: "Inicio", icon: <Home className="w-4 h-4" /> },
+        { href: "/select-org", label: "Cambiar Organización", icon: <Users className="w-4 h-4" /> },
+    ];
 
     return (
         <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
@@ -39,7 +23,7 @@ export default function Header() {
                     Avicont-AI
                 </Link>
 
-                <nav className="hidden md:flex items-center gap-1"> {/* ✅ Agregar hidden */}
+                <nav className="hidden md:flex items-center gap-1">
                     {navItems.map((item) => {
                         const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(item.href));
                         return (
@@ -54,7 +38,7 @@ export default function Header() {
                 </nav>
 
                 <div className="flex items-center gap-4">
-                    {isSignedIn ? ( // ✅ Reemplazar Show con isSignedIn
+                    {isSignedIn ? (
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-600">
                                 {organization ? `En ${organization.name}` : user?.firstName || user?.username}
