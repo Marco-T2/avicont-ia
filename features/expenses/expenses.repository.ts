@@ -89,10 +89,10 @@ export class ExpensesRepository extends BaseRepository {
     id: string,
     data: UpdateExpenseInput,
   ): Promise<ExpenseWithRelations> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     return this.db.expense.update({
-      where: { id },
+      where: { id, ...scope },
       data: {
         ...(data.amount !== undefined && { amount: new Prisma.Decimal(data.amount) }),
         ...(data.category !== undefined && { category: data.category }),
@@ -104,10 +104,10 @@ export class ExpensesRepository extends BaseRepository {
   }
 
   async delete(organizationId: string, id: string): Promise<void> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     await this.db.expense.delete({
-      where: { id },
+      where: { id, ...scope },
     });
   }
 
