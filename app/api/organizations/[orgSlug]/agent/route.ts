@@ -41,6 +41,7 @@ export async function POST(
     // ── Query agent ──
     const body = await request.json();
     const prompt = body.prompt;
+    const sessionId = body.session_id as string | undefined;
 
     if (!prompt || typeof prompt !== "string") {
       return Response.json(
@@ -54,6 +55,7 @@ export async function POST(
       member.user.id,
       member.role,
       prompt,
+      sessionId,
     );
 
     return Response.json(response);

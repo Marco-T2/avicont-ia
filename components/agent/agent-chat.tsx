@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Bot, Loader2, RotateCcw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -23,7 +23,15 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasSession, setHasSession] = useState(false);
   const lastPromptRef = useRef<string>("");
+  const sessionIdRef = useRef<string>("");
+
+  // Generate session ID on mount
+  useEffect(() => {
+    sessionIdRef.current = crypto.randomUUID();
+    setHasSession(true);
+  }, []);
 
   const sendMessage = useCallback(
     async (prompt: string) => {
@@ -41,7 +49,7 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
         const res = await fetch(`/api/organizations/${orgSlug}/agent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt }),
+          body: JSON.stringify({ prompt, session_id: sessionIdRef.current }),
         });
 
         if (!res.ok) {
@@ -92,6 +100,12 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
         <div className="flex items-center gap-2">
           <Bot className="h-5 w-5 text-blue-600" />
           <h3 className="font-semibold">Agente IA</h3>
+          {hasSession && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500" />
+              Sesión activa
+            </span>
+          )}
         </div>
         <Button variant="ghost" size="icon-sm" onClick={onClose}>
           <X className="h-4 w-4" />
@@ -99,7 +113,7 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4">
+      <ScrollArea className="min-h-0 flex-1 overflow-hidden p-4">
         {messages.length === 0 && (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-muted-foreground">
             <Bot className="h-10 w-10" />

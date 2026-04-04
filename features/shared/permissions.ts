@@ -2,6 +2,8 @@ export type Role = "owner" | "admin" | "contador" | "member";
 
 export type Resource = "members" | "accounting" | "farms" | "documents" | "agent";
 
+export type DocumentScope = "ORGANIZATION" | "ACCOUNTING" | "FARM";
+
 export const PERMISSIONS: Record<Resource, Role[]> = {
   members: ["owner", "admin"],
   accounting: ["owner", "admin", "contador"],
@@ -9,6 +11,35 @@ export const PERMISSIONS: Record<Resource, Role[]> = {
   documents: ["owner", "admin", "contador", "member"],
   agent: ["owner", "admin", "contador", "member"],
 };
+
+/** Scopes each role can search via RAG. null = no RAG access. */
+const RAG_SCOPES: Record<string, DocumentScope[]> = {
+  owner: ["ORGANIZATION", "ACCOUNTING", "FARM"],
+  admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
+  contador: ["ORGANIZATION", "ACCOUNTING"],
+  member: ["ORGANIZATION", "FARM"],
+};
+
+/** Scopes each role can upload documents to. null = no upload. */
+const UPLOAD_SCOPES: Record<string, DocumentScope[]> = {
+  owner: ["ORGANIZATION", "ACCOUNTING", "FARM"],
+  admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
+  contador: ["ACCOUNTING"],
+  member: ["FARM"],
+};
+
+export function getRagScopes(role: string): DocumentScope[] | null {
+  return RAG_SCOPES[role] ?? null;
+}
+
+export function getUploadScopes(role: string): DocumentScope[] | null {
+  return UPLOAD_SCOPES[role] ?? null;
+}
+
+export function canUploadToScope(role: string, scope: DocumentScope): boolean {
+  const allowed = UPLOAD_SCOPES[role];
+  return allowed ? allowed.includes(scope) : false;
+}
 
 export function canAccess(role: string, resource: Resource): boolean {
   const allowed = PERMISSIONS[resource];

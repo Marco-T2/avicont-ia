@@ -18,7 +18,8 @@ export type AgentAction =
   | "listLots"
   | "getTrialBalance"
   | "getAccountLedger"
-  | "listAccounts";
+  | "listAccounts"
+  | "searchDocuments";
 
 export interface CreateExpenseSuggestion {
   action: "createExpense";
@@ -91,6 +92,13 @@ export interface ToolDefinition {
   name: AgentAction;
   description: string;
   parameters: Record<string, unknown>;
+}
+
+// ── Agent query request ──
+
+export interface AgentQueryRequest {
+  prompt: string;
+  session_id?: string;
 }
 
 // ── Confirm request ──
