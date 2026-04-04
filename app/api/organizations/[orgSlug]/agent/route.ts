@@ -7,8 +7,9 @@ import { OrganizationsService } from "@/features/organizations";
 import { AgentService } from "@/features/ai-agent";
 import { ExpensesService } from "@/features/expenses";
 import { MortalityService } from "@/features/mortality";
+import { createExpenseSchema } from "@/features/expenses/expenses.validation";
+import { logMortalitySchema } from "@/features/mortality/mortality.validation";
 import type { ConfirmActionRequest } from "@/features/ai-agent";
-import type { ExpenseCategory } from "@/generated/prisma/client";
 
 const orgService = new OrganizationsService();
 const agentService = new AgentService();
@@ -81,12 +82,15 @@ async function handleConfirm(
   switch (suggestion.action) {
     case "createExpense": {
       const d = suggestion.data;
-      const expense = await expensesService.create(organizationId, {
+      const validated = createExpenseSchema.parse({
         amount: d.amount,
-        category: d.category as ExpenseCategory,
+        category: d.category,
         description: d.description,
-        date: new Date(d.date),
+        date: d.date,
         lotId: d.lotId,
+      });
+      const expense = await expensesService.create(organizationId, {
+        ...validated,
         createdById: userId,
       });
       return Response.json(
@@ -100,11 +104,14 @@ async function handleConfirm(
 
     case "logMortality": {
       const d = suggestion.data;
-      const log = await mortalityService.log(organizationId, {
+      const validated = logMortalitySchema.parse({
         count: d.count,
         cause: d.cause,
-        date: new Date(d.date),
+        date: d.date,
         lotId: d.lotId,
+      });
+      const log = await mortalityService.log(organizationId, {
+        ...validated,
         createdById: userId,
       });
       return Response.json(

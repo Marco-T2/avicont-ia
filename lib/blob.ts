@@ -11,7 +11,7 @@ export async function uploadToBlob(
     const pathname = `org-${organizationId}/user-${userId}/${filename}`;
 
     const blob = await put(pathname, file, {
-      access: "public",
+      access: "private",
       token: process.env.BLOB_READ_WRITE_TOKEN!,
     });
 

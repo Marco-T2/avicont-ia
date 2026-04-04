@@ -63,10 +63,10 @@ export class LotsRepository extends BaseRepository {
     id: string,
     endDate: Date,
   ): Promise<ChickenLot> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     return this.db.chickenLot.update({
-      where: { id },
+      where: { id, ...scope },
       data: {
         status: "CLOSED",
         endDate,

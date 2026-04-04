@@ -84,10 +84,10 @@ export class DocumentsRepository extends BaseRepository {
   }
 
   async delete(id: string, organizationId: string): Promise<void> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     await this.db.document.delete({
-      where: { id },
+      where: { id, ...scope },
     });
   }
 }

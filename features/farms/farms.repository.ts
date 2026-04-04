@@ -59,10 +59,10 @@ export class FarmsRepository extends BaseRepository {
   }
 
   async update(organizationId: string, id: string, data: UpdateFarmInput): Promise<FarmWithLots> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     return this.db.farm.update({
-      where: { id },
+      where: { id, ...scope },
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.location !== undefined && { location: data.location }),
@@ -72,10 +72,10 @@ export class FarmsRepository extends BaseRepository {
   }
 
   async delete(organizationId: string, id: string): Promise<void> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     await this.db.farm.delete({
-      where: { id },
+      where: { id, ...scope },
     });
   }
 }

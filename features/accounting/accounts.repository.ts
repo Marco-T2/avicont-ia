@@ -63,10 +63,10 @@ export class AccountsRepository extends BaseRepository {
   }
 
   async update(organizationId: string, id: string, data: UpdateAccountInput): Promise<Account> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     return this.db.account.update({
-      where: { id },
+      where: { id, ...scope },
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
@@ -75,10 +75,10 @@ export class AccountsRepository extends BaseRepository {
   }
 
   async deactivate(organizationId: string, id: string): Promise<Account> {
-    this.requireOrg(organizationId);
+    const scope = this.requireOrg(organizationId);
 
     return this.db.account.update({
-      where: { id },
+      where: { id, ...scope },
       data: { isActive: false },
     });
   }

@@ -1,12 +1,23 @@
 import { prisma } from "@/lib/prisma";
 import { uploadToBlob, deleteFromBlob } from "@/lib/blob";
-import { NotFoundError, ForbiddenError } from "@/features/shared/errors";
+import { NotFoundError, ForbiddenError, ValidationError } from "@/features/shared/errors";
 import { DocumentsRepository } from "./documents.repository";
 import type {
   DocumentListResult,
   DocumentUploadResult,
   DocumentWithRelations,
 } from "./documents.types";
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const ALLOWED_TYPES = [
+  "application/pdf",
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "text/plain",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+];
 
 export class DocumentsService {
   private readonly repo: DocumentsRepository;
@@ -60,6 +71,13 @@ export class DocumentsService {
     let extractedContent = content;
 
     if (file && file.size > 0) {
+      if (file.size > MAX_FILE_SIZE) {
+        throw new ValidationError("El archivo excede el límite de 50MB");
+      }
+      if (!ALLOWED_TYPES.includes(file.type)) {
+        throw new ValidationError("Tipo de archivo no permitido");
+      }
+
       const blob = await uploadToBlob(file, clerkOrgId, clerkUserId);
       fileUrl = blob.url;
       fileSize = file.size;
