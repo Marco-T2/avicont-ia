@@ -38,7 +38,7 @@ function nextRowId() {
 }
 
 function emptyLine(): JournalLineData {
-  return { id: nextRowId(), accountId: "", debit: "", credit: "", description: "" };
+  return { id: nextRowId(), accountId: "", debit: "", credit: "", description: "", contactId: "" };
 }
 
 interface JournalEntryFormProps {
@@ -58,6 +58,7 @@ interface JournalEntryFormProps {
       debit: number | string;
       credit: number | string;
       description?: string | null;
+      contactId?: string | null;
     }>;
   };
 }
@@ -87,6 +88,7 @@ export default function JournalEntryForm({
         debit: Number(l.debit) > 0 ? String(l.debit) : "",
         credit: Number(l.credit) > 0 ? String(l.credit) : "",
         description: l.description ?? "",
+        contactId: l.contactId ?? "",
       }));
     }
     return [emptyLine(), emptyLine()];
@@ -138,6 +140,7 @@ export default function JournalEntryForm({
           debit: parseFloat(l.debit) || 0,
           credit: parseFloat(l.credit) || 0,
           description: l.description || undefined,
+          contactId: l.contactId || undefined,
           order: idx,
         })),
       };
@@ -160,6 +163,10 @@ export default function JournalEntryForm({
 
       if (!res.ok) {
         const data = await res.json();
+        const code: string = data.code ?? "";
+        if (code === "CONTACT_REQUIRED_FOR_ACCOUNT") {
+          throw new Error("Una o más cuentas requieren que seleccione un contacto.");
+        }
         throw new Error(data.error ?? "Error al guardar el asiento");
       }
 
@@ -279,6 +286,9 @@ export default function JournalEntryForm({
                   <th className="text-left py-3 px-2 font-medium text-gray-600">
                     Descripción
                   </th>
+                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-44">
+                    Contacto
+                  </th>
                   <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
                     Debe
                   </th>
@@ -295,6 +305,7 @@ export default function JournalEntryForm({
                     line={line}
                     accounts={accounts}
                     canRemove={lines.length > 2}
+                    orgSlug={orgSlug}
                     onUpdate={updateLine}
                     onRemove={removeLine}
                   />
@@ -302,7 +313,7 @@ export default function JournalEntryForm({
               </tbody>
               <tfoot>
                 <tr className="border-t-2 border-gray-300 bg-gray-50">
-                  <td colSpan={2} className="py-3 px-2 text-right text-sm text-gray-600">
+                  <td colSpan={3} className="py-3 px-2 text-right text-sm text-gray-600">
                     Total Débitos
                   </td>
                   <td className="py-3 px-2 text-right font-mono font-bold text-gray-800">
@@ -311,7 +322,7 @@ export default function JournalEntryForm({
                   <td colSpan={2} />
                 </tr>
                 <tr className="bg-gray-50">
-                  <td colSpan={2} className="py-3 px-2 text-right text-sm text-gray-600">
+                  <td colSpan={3} className="py-3 px-2 text-right text-sm text-gray-600">
                     Total Créditos
                   </td>
                   <td />
@@ -321,7 +332,7 @@ export default function JournalEntryForm({
                   <td />
                 </tr>
                 <tr className="bg-gray-50 border-t">
-                  <td colSpan={2} className="py-3 px-2 text-right text-sm font-semibold">
+                  <td colSpan={3} className="py-3 px-2 text-right text-sm font-semibold">
                     Diferencia
                   </td>
                   <td

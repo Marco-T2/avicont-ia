@@ -11,9 +11,10 @@ import type { DateRangeFilter } from "./ledger.types";
 
 const journalIncludeLines = {
   lines: {
-    include: { account: true },
+    include: { account: true, contact: true },
     orderBy: { order: "asc" as const },
   },
+  contact: true,
 } as const;
 
 export class JournalRepository extends BaseRepository {

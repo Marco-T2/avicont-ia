@@ -51,6 +51,7 @@ interface JournalEntry {
   status: string;
   periodId: string;
   voucherTypeId: string;
+  contact?: { name: string } | null;
   lines: JournalLine[];
 }
 
@@ -203,6 +204,9 @@ export default function JournalEntryList({
                   <th className="text-left py-3 px-4 font-medium text-gray-600">
                     Descripción
                   </th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    Contacto
+                  </th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">
                     Estado
                   </th>
@@ -214,7 +218,7 @@ export default function JournalEntryList({
               <tbody>
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center">
+                    <td colSpan={8} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-600">No hay asientos registrados</p>
                       <p className="text-sm text-gray-400 mt-1">
@@ -255,6 +259,9 @@ export default function JournalEntryList({
                         <td className="py-3 px-4 text-gray-500">{periodName}</td>
                         <td className="py-3 px-4 max-w-xs truncate">
                           {entry.description}
+                        </td>
+                        <td className="py-3 px-4 text-gray-500">
+                          {entry.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <Badge className={statusBadge.className}>

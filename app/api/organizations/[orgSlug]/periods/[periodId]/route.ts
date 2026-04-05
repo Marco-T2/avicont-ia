@@ -35,7 +35,7 @@ export async function PATCH(
     const { userId } = await requireAuth();
     const { orgSlug, periodId } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["admin"]);
+    await requireRole(userId, orgId, ["owner", "admin"]);
 
     const body = await request.json();
     closeFiscalPeriodSchema.parse(body);

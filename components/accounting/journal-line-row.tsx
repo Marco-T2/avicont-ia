@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
 import type { Account } from "@/generated/prisma/client";
+import ContactSelector from "@/components/contacts/contact-selector";
 
 export interface JournalLineData {
   id: string;
@@ -18,12 +19,14 @@ export interface JournalLineData {
   debit: string;
   credit: string;
   description: string;
+  contactId?: string;
 }
 
 interface JournalLineRowProps {
   line: JournalLineData;
   accounts: Account[];
   canRemove: boolean;
+  orgSlug: string;
   onUpdate: (id: string, field: keyof JournalLineData, value: string) => void;
   onRemove: (id: string) => void;
 }
@@ -32,10 +35,13 @@ export default function JournalLineRow({
   line,
   accounts,
   canRemove,
+  orgSlug,
   onUpdate,
   onRemove,
 }: JournalLineRowProps) {
   const activeAccounts = accounts.filter((a) => a.isActive);
+  const selectedAccount = accounts.find((a) => a.id === line.accountId) ?? null;
+  const requiresContact = selectedAccount?.requiresContact ?? false;
 
   function handleDebitChange(value: string) {
     onUpdate(line.id, "debit", value);
@@ -102,6 +108,15 @@ export default function JournalLineRow({
           disabled={!!line.debit && parseFloat(line.debit) > 0}
           onChange={(e) => handleCreditChange(e.target.value)}
         />
+      </td>
+      <td className="py-2 px-2 min-w-[180px]">
+        {requiresContact ? (
+          <ContactSelector
+            orgSlug={orgSlug}
+            value={line.contactId ?? null}
+            onChange={(val) => onUpdate(line.id, "contactId", val ?? "")}
+          />
+        ) : null}
       </td>
       <td className="py-2 px-2">
         <Button

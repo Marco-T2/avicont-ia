@@ -3,6 +3,7 @@ import type {
   JournalLine,
   Account,
   JournalEntryStatus,
+  Contact,
 } from "@/generated/prisma/client";
 
 // ── Input types ──
@@ -50,8 +51,10 @@ export interface JournalFilters {
 
 export type JournalLineWithAccount = JournalLine & {
   account: Account;
+  contact?: Contact | null;
 };
 
 export type JournalEntryWithLines = JournalEntry & {
   lines: JournalLineWithAccount[];
+  contact?: Contact | null;
 };
