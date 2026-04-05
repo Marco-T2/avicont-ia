@@ -113,6 +113,23 @@ export class PayablesRepository extends BaseRepository {
     });
   }
 
+  async updatePaymentTx(
+    tx: Prisma.TransactionClient,
+    id: string,
+    paid: number,
+    balance: number,
+    status: string,
+  ): Promise<void> {
+    await tx.accountsPayable.update({
+      where: { id },
+      data: {
+        paid: new Prisma.Decimal(paid),
+        balance: new Prisma.Decimal(balance),
+        status,
+      },
+    });
+  }
+
   async aggregateOpen(
     organizationId: string,
     contactId?: string,
