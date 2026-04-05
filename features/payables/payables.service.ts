@@ -1,4 +1,3 @@
-import { Prisma } from "@/generated/prisma/client";
 import {
   NotFoundError,
   ValidationError,
@@ -104,13 +103,13 @@ export class PayablesService {
       );
     }
 
-    const amount = new Prisma.Decimal(payable.amount.toString());
-    let paid: Prisma.Decimal;
-    let balance: Prisma.Decimal;
+    const amount = payable.amount;
+    let paid: string;
+    let balance: string;
 
     if (input.status === "PAID") {
-      paid = amount;
-      balance = new Prisma.Decimal(0);
+      paid = amount.toString();
+      balance = "0";
     } else if (input.status === "PARTIAL") {
       if (input.paidAmount === undefined) {
         throw new ValidationError(
@@ -118,12 +117,12 @@ export class PayablesService {
           INVALID_STATUS_TRANSITION,
         );
       }
-      paid = new Prisma.Decimal(input.paidAmount.toString());
-      balance = amount.minus(paid);
+      paid = input.paidAmount.toString();
+      balance = amount.minus(paid).toString();
     } else {
       // CANCELLED — keep current paid, balance = 0
-      paid = new Prisma.Decimal(payable.paid.toString());
-      balance = new Prisma.Decimal(0);
+      paid = payable.paid.toString();
+      balance = "0";
     }
 
     return this.repo.updateStatus(organizationId, id, input.status, paid, balance);

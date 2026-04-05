@@ -1,5 +1,4 @@
 import type { Contact, ContactType } from "@/generated/prisma/client";
-import type { Prisma } from "@/generated/prisma/client";
 
 // ── Re-export Prisma types for convenience ──
 
@@ -15,7 +14,7 @@ export interface CreateContactInput {
   phone?: string;
   address?: string;
   paymentTermsDays?: number;
-  creditLimit?: Prisma.Decimal | null;
+  creditLimit?: number | null;
 }
 
 export interface UpdateContactInput {
@@ -26,7 +25,7 @@ export interface UpdateContactInput {
   phone?: string | null;
   address?: string | null;
   paymentTermsDays?: number;
-  creditLimit?: Prisma.Decimal | null;
+  creditLimit?: number | null;
 }
 
 // ── Filter types ──
@@ -41,9 +40,9 @@ export interface ContactFilters {
 
 export interface ContactBalanceSummary {
   contactId: string;
-  totalReceivable: Prisma.Decimal;
-  totalPayable: Prisma.Decimal;
-  netPosition: Prisma.Decimal;
+  totalReceivable: number;
+  totalPayable: number;
+  netPosition: number;
   openReceivableCount: number;
   openPayableCount: number;
 }

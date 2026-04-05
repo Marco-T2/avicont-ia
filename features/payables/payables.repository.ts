@@ -101,8 +101,8 @@ export class PayablesRepository extends BaseRepository {
     organizationId: string,
     id: string,
     status: PayableStatus,
-    paid: Prisma.Decimal,
-    balance: Prisma.Decimal,
+    paid: number | string,
+    balance: number | string,
   ): Promise<PayableWithContact> {
     const scope = this.requireOrg(organizationId);
 
