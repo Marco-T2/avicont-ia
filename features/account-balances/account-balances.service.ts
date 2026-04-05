@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { AccountBalancesRepository } from "./account-balances.repository";
 import type { AccountBalanceWithRelations } from "./account-balances.types";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
@@ -32,8 +32,8 @@ export class AccountBalancesService {
         line.accountId,
         entry.periodId,
         entry.organizationId,
-        new Prisma.Decimal(line.debit.toString()),
-        new Prisma.Decimal(line.credit.toString()),
+        line.debit.toString(),
+        line.credit.toString(),
         line.account.nature,
       );
     }
@@ -51,8 +51,8 @@ export class AccountBalancesService {
         line.accountId,
         entry.periodId,
         entry.organizationId,
-        new Prisma.Decimal(line.debit.toString()).negated(),
-        new Prisma.Decimal(line.credit.toString()).negated(),
+        line.debit.negated().toString(),
+        line.credit.negated().toString(),
         line.account.nature,
       );
     }

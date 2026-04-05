@@ -17,7 +17,7 @@ export async function GET(
     const { userId } = await requireAuth();
     const { orgSlug, accountId } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["admin", "contador"]);
+    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const account = await service.getById(orgId, accountId);
 
@@ -35,7 +35,7 @@ export async function PATCH(
     const { userId } = await requireAuth();
     const { orgSlug, accountId } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["admin", "contador"]);
+    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
     const input = updateAccountSchema.parse(body);
@@ -56,7 +56,7 @@ export async function DELETE(
     const { userId } = await requireAuth();
     const { orgSlug, accountId } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["admin", "contador"]);
+    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const account = await service.deactivate(orgId, accountId);
 

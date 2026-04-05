@@ -1,4 +1,3 @@
-import { Prisma } from "@/generated/prisma/client";
 import {
   requireAuth,
   requireOrgAccess,
@@ -43,13 +42,7 @@ export async function PATCH(
     const body = await request.json();
     const input = updateContactSchema.parse(body);
 
-    const contact = await service.update(orgId, contactId, {
-      ...input,
-      creditLimit:
-        input.creditLimit != null
-          ? new Prisma.Decimal(input.creditLimit)
-          : input.creditLimit,
-    });
+    const contact = await service.update(orgId, contactId, input);
 
     return Response.json(contact);
   } catch (error) {

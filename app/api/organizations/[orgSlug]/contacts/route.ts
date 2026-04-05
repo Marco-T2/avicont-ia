@@ -1,4 +1,3 @@
-import { Prisma } from "@/generated/prisma/client";
 import {
   requireAuth,
   requireOrgAccess,
@@ -55,13 +54,7 @@ export async function POST(
     const body = await request.json();
     const input = createContactSchema.parse(body);
 
-    const contact = await service.create(orgId, {
-      ...input,
-      creditLimit:
-        input.creditLimit != null
-          ? new Prisma.Decimal(input.creditLimit)
-          : input.creditLimit,
-    });
+    const contact = await service.create(orgId, input);
 
     return Response.json(contact, { status: 201 });
   } catch (error) {

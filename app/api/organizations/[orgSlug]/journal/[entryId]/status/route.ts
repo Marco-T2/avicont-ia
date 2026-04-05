@@ -19,7 +19,7 @@ export async function PATCH(
     const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, entryId } = await params;
     const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["admin", "contador"]);
+    await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
     const { status } = statusTransitionSchema.parse(body);

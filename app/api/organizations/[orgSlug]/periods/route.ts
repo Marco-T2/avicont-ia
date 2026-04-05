@@ -19,7 +19,7 @@ export async function GET(
     const { userId } = await requireAuth();
     const { orgSlug } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["admin", "contador"]);
+    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const periods = await service.list(orgId);
 

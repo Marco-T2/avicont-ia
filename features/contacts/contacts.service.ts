@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import {
   NotFoundError,
   ConflictError,
@@ -20,7 +20,7 @@ import type {
 // Full types come from the respective feature modules.
 
 interface OpenAggregateLike {
-  totalBalance: Prisma.Decimal;
+  totalBalance: Prisma.Decimal | number;
   count: number;
 }
 
@@ -129,21 +129,18 @@ export class ContactsService {
     organizationId: string,
     contactId: string,
   ): Promise<ContactBalanceSummary> {
-    const zero = new Prisma.Decimal(0);
-
     const [receivableAgg, payableAgg] = await Promise.all([
       this.receivablesService
         ? this.receivablesService.aggregateOpen(organizationId, contactId)
-        : Promise.resolve({ totalBalance: zero, count: 0 }),
+        : Promise.resolve({ totalBalance: 0, count: 0 }),
       this.payablesService
         ? this.payablesService.aggregateOpen(organizationId, contactId)
-        : Promise.resolve({ totalBalance: zero, count: 0 }),
+        : Promise.resolve({ totalBalance: 0, count: 0 }),
     ]);
 
-    const totalReceivable = receivableAgg.totalBalance;
-    const totalPayable = payableAgg.totalBalance;
-
-    const netPosition = totalReceivable.minus(totalPayable);
+    const totalReceivable = Number(receivableAgg.totalBalance);
+    const totalPayable = Number(payableAgg.totalBalance);
+    const netPosition = totalReceivable - totalPayable;
 
     return {
       contactId,

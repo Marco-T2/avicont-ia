@@ -36,8 +36,8 @@ export class AccountBalancesRepository extends BaseRepository {
     accountId: string,
     periodId: string,
     orgId: string,
-    debitDelta: Prisma.Decimal,
-    creditDelta: Prisma.Decimal,
+    debitDelta: number | string,
+    creditDelta: number | string,
     nature: AccountNature,
   ): Promise<void> {
     // Step 1: upsert to increment totals atomically
