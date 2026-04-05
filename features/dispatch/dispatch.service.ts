@@ -393,7 +393,7 @@ export class DispatchService {
         : `${displayCode} - ${dispatch.description}`;
       const entry = await this.autoEntryGenerator.generate(tx, {
         organizationId,
-        voucherTypeCode: "CI",
+        voucherTypeCode: "CD",
         contactId: dispatch.contactId,
         date: dispatch.date,
         periodId: dispatch.periodId,
