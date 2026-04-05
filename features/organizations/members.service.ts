@@ -1,4 +1,3 @@
-import { prisma } from "@/lib/prisma";
 import { clerkClient } from "@clerk/nextjs/server";
 import {
   NotFoundError,
@@ -7,6 +6,7 @@ import {
   ValidationError,
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
+import { UsersService } from "@/features/shared/users.service";
 
 function isClerkDuplicateError(error: unknown): boolean {
   if (error === null || typeof error !== 'object' || !('errors' in error)) return false;
@@ -15,9 +15,14 @@ function isClerkDuplicateError(error: unknown): boolean {
 }
 
 export class MembersService {
+  private readonly usersService: UsersService;
+
   constructor(
     private readonly repo: OrganizationsRepository = new OrganizationsRepository(),
-  ) {}
+    usersService?: UsersService,
+  ) {
+    this.usersService = usersService ?? new UsersService();
+  }
 
   async listMembers(organizationId: string) {
     const org = await this.repo.getMembers(organizationId);
@@ -31,11 +36,14 @@ export class MembersService {
   }
 
   async addMember(organizationId: string, email: string, role: string) {
-    // Find the user by email in local DB
-    let user = await prisma.user.findFirst({ where: { email } });
+    // Find or sync the user from Clerk
+    const existingUser = await this.usersService.findByEmail(email);
 
-    // If not in local DB, search in Clerk and sync
-    if (!user) {
+    let user;
+    if (existingUser) {
+      user = existingUser;
+    } else {
+      // Not in local DB — search in Clerk and sync
       const client = await clerkClient();
       const clerkUsers = await client.users.getUserList({
         emailAddress: [email],
@@ -50,13 +58,10 @@ export class MembersService {
       const clerkUser = clerkUsers.data[0];
       const name = `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
 
-      // Create user in local DB (sync from Clerk)
-      user = await prisma.user.create({
-        data: {
-          clerkUserId: clerkUser.id,
-          email,
-          name: name || "Usuario",
-        },
+      user = await this.usersService.create({
+        clerkUserId: clerkUser.id,
+        email,
+        name: name || "Usuario",
       });
     }
 
@@ -77,9 +82,8 @@ export class MembersService {
 
       // Deactivated member — reactivate
       // Re-add to Clerk organization FIRST
-      const org = await prisma.organization.findUniqueOrThrow({
-        where: { id: organizationId },
-      });
+      const org = await this.repo.findById(organizationId);
+      if (!org) throw new NotFoundError("Organización");
 
       try {
         const client = await clerkClient();
@@ -108,9 +112,8 @@ export class MembersService {
     }
 
     // No existing member — continue with normal add flow
-    const org = await prisma.organization.findUniqueOrThrow({
-      where: { id: organizationId },
-    });
+    const org = await this.repo.findById(organizationId);
+    if (!org) throw new NotFoundError("Organización");
 
     try {
       const client = await clerkClient();
@@ -190,9 +193,8 @@ export class MembersService {
     }
 
     // Remove from Clerk organization
-    const org = await prisma.organization.findUniqueOrThrow({
-      where: { id: organizationId },
-    });
+    const org = await this.repo.findById(organizationId);
+    if (!org) throw new NotFoundError("Organización");
 
     try {
       const client = await clerkClient();

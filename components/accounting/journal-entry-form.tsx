@@ -1,0 +1,376 @@
+"use client";
+
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus, Loader2, ArrowLeft } from "lucide-react";
+import { toast } from "sonner";
+import Link from "next/link";
+import JournalLineRow, { type JournalLineData } from "./journal-line-row";
+import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
+
+function formatCurrency(amount: number): string {
+  return `Bs. ${amount.toLocaleString("es-BO", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+let rowCounter = 0;
+function nextRowId() {
+  rowCounter += 1;
+  return `row-${rowCounter}`;
+}
+
+function emptyLine(): JournalLineData {
+  return { id: nextRowId(), accountId: "", debit: "", credit: "", description: "" };
+}
+
+interface JournalEntryFormProps {
+  orgSlug: string;
+  accounts: Account[];
+  periods: FiscalPeriod[];
+  voucherTypes: VoucherTypeCfg[];
+  /** When set, the form is in edit mode for this entry (DRAFT only). */
+  editEntry?: {
+    id: string;
+    date: string;
+    description: string;
+    periodId: string;
+    voucherTypeId: string;
+    lines: Array<{
+      accountId: string;
+      debit: number | string;
+      credit: number | string;
+      description?: string | null;
+    }>;
+  };
+}
+
+export default function JournalEntryForm({
+  orgSlug,
+  accounts,
+  periods,
+  voucherTypes,
+  editEntry,
+}: JournalEntryFormProps) {
+  const router = useRouter();
+  const isEditing = !!editEntry;
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [date, setDate] = useState(
+    editEntry?.date ?? new Date().toISOString().split("T")[0],
+  );
+  const [description, setDescription] = useState(editEntry?.description ?? "");
+  const [periodId, setPeriodId] = useState(editEntry?.periodId ?? "");
+  const [voucherTypeId, setVoucherTypeId] = useState(editEntry?.voucherTypeId ?? "");
+  const [lines, setLines] = useState<JournalLineData[]>(() => {
+    if (editEntry && editEntry.lines.length >= 2) {
+      return editEntry.lines.map((l) => ({
+        id: nextRowId(),
+        accountId: l.accountId,
+        debit: Number(l.debit) > 0 ? String(l.debit) : "",
+        credit: Number(l.credit) > 0 ? String(l.credit) : "",
+        description: l.description ?? "",
+      }));
+    }
+    return [emptyLine(), emptyLine()];
+  });
+
+  function addLine() {
+    setLines((prev) => [...prev, emptyLine()]);
+  }
+
+  function removeLine(id: string) {
+    if (lines.length <= 2) {
+      toast.error("Un asiento debe tener al menos 2 líneas");
+      return;
+    }
+    setLines((prev) => prev.filter((l) => l.id !== id));
+  }
+
+  function updateLine(id: string, field: keyof JournalLineData, value: string) {
+    setLines((prev) =>
+      prev.map((l) => (l.id === id ? { ...l, [field]: value } : l)),
+    );
+  }
+
+  const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
+  const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
+  const difference = totalDebit - totalCredit;
+  const isBalanced =
+    Math.round(totalDebit * 100) === Math.round(totalCredit * 100) && totalDebit > 0;
+
+  const allLinesValid = lines.every(
+    (l) => l.accountId && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0),
+  );
+
+  const canSubmit = date && description && periodId && voucherTypeId && isBalanced && allLinesValid;
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+
+    try {
+      const body = {
+        date,
+        description,
+        periodId,
+        voucherTypeId,
+        lines: lines.map((l, idx) => ({
+          accountId: l.accountId,
+          debit: parseFloat(l.debit) || 0,
+          credit: parseFloat(l.credit) || 0,
+          description: l.description || undefined,
+          order: idx,
+        })),
+      };
+
+      let res: Response;
+
+      if (isEditing) {
+        res = await fetch(`/api/organizations/${orgSlug}/journal/${editEntry.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } else {
+        res = await fetch(`/api/organizations/${orgSlug}/journal`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      }
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error ?? "Error al guardar el asiento");
+      }
+
+      const saved = await res.json();
+      toast.success(
+        isEditing ? "Asiento actualizado exitosamente" : "Asiento contable creado exitosamente",
+      );
+      router.push(`/${orgSlug}/accounting/journal/${saved.id}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Error al guardar el asiento",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const backHref = isEditing
+    ? `/${orgSlug}/accounting/journal/${editEntry.id}`
+    : `/${orgSlug}/accounting/journal`;
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Link href={backHref}>
+        <Button type="button" variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          {isEditing ? "Volver al Asiento" : "Volver al Libro Diario"}
+        </Button>
+      </Link>
+
+      {/* Header fields */}
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {isEditing ? "Editar Asiento Contable" : "Nuevo Asiento Contable"}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="entry-date">Fecha</Label>
+              <Input
+                id="entry-date"
+                type="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="period">Período</Label>
+              <Select value={periodId} onValueChange={setPeriodId}>
+                <SelectTrigger id="period">
+                  <SelectValue placeholder="Seleccione período" />
+                </SelectTrigger>
+                <SelectContent>
+                  {periods.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="voucher-type">Tipo de Comprobante</Label>
+              <Select value={voucherTypeId} onValueChange={setVoucherTypeId}>
+                <SelectTrigger id="voucher-type">
+                  <SelectValue placeholder="Seleccione tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {voucherTypes.map((vt) => (
+                    <SelectItem key={vt.id} value={vt.id}>
+                      {vt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2 lg:col-span-1">
+              <Label htmlFor="entry-description">Descripción</Label>
+              <Input
+                id="entry-description"
+                placeholder="Descripción del asiento"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Lines */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Líneas del Asiento</CardTitle>
+            <Button type="button" variant="outline" size="sm" onClick={addLine}>
+              <Plus className="h-4 w-4 mr-1" />
+              Agregar Línea
+            </Button>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b bg-gray-50">
+                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-64">
+                    Cuenta
+                  </th>
+                  <th className="text-left py-3 px-2 font-medium text-gray-600">
+                    Descripción
+                  </th>
+                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
+                    Debe
+                  </th>
+                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
+                    Haber
+                  </th>
+                  <th className="w-10" />
+                </tr>
+              </thead>
+              <tbody>
+                {lines.map((line) => (
+                  <JournalLineRow
+                    key={line.id}
+                    line={line}
+                    accounts={accounts}
+                    canRemove={lines.length > 2}
+                    onUpdate={updateLine}
+                    onRemove={removeLine}
+                  />
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t-2 border-gray-300 bg-gray-50">
+                  <td colSpan={2} className="py-3 px-2 text-right text-sm text-gray-600">
+                    Total Débitos
+                  </td>
+                  <td className="py-3 px-2 text-right font-mono font-bold text-gray-800">
+                    {formatCurrency(totalDebit)}
+                  </td>
+                  <td colSpan={2} />
+                </tr>
+                <tr className="bg-gray-50">
+                  <td colSpan={2} className="py-3 px-2 text-right text-sm text-gray-600">
+                    Total Créditos
+                  </td>
+                  <td />
+                  <td className="py-3 px-2 text-right font-mono font-bold text-gray-800">
+                    {formatCurrency(totalCredit)}
+                  </td>
+                  <td />
+                </tr>
+                <tr className="bg-gray-50 border-t">
+                  <td colSpan={2} className="py-3 px-2 text-right text-sm font-semibold">
+                    Diferencia
+                  </td>
+                  <td
+                    colSpan={2}
+                    className={`py-3 px-2 text-right font-mono font-bold ${
+                      isBalanced ? "text-green-700" : "text-red-600"
+                    }`}
+                  >
+                    {formatCurrency(Math.abs(difference))}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+
+          {!isBalanced && totalDebit > 0 && (
+            <p className="mt-3 text-sm text-red-600 font-medium">
+              Los débitos y créditos no balancean. Ajuste las líneas antes de guardar.
+            </p>
+          )}
+          {isBalanced && (
+            <p className="mt-3 text-sm text-green-600 font-medium">
+              El asiento está balanceado correctamente.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Actions */}
+      <div className="flex justify-end gap-3">
+        <Link href={backHref}>
+          <Button type="button" variant="outline">
+            Cancelar
+          </Button>
+        </Link>
+        <Button type="submit" disabled={!canSubmit || isSubmitting}>
+          {isSubmitting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Guardando...
+            </>
+          ) : isEditing ? (
+            "Actualizar Asiento"
+          ) : (
+            "Guardar Asiento"
+          )}
+        </Button>
+      </div>
+    </form>
+  );
+}

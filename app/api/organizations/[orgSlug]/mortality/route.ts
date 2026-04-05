@@ -3,10 +3,10 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
-import { UsersRepository } from "@/features/shared/users.repository";
+import { UsersService } from "@/features/shared/users.service";
 import { MortalityService, logMortalitySchema } from "@/features/mortality";
 
-const usersRepo = new UsersRepository();
+const usersService = new UsersService();
 const service = new MortalityService();
 
 export async function GET(
@@ -48,7 +48,7 @@ export async function POST(
     const body = await request.json();
     const input = logMortalitySchema.parse(body);
 
-    const user = await usersRepo.findByClerkUserId(clerkUserId);
+    const user = await usersService.resolveByClerkId(clerkUserId);
 
     const log = await service.log(orgId, {
       ...input,

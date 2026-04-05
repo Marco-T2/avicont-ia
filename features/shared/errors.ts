@@ -10,26 +10,26 @@ export class AppError extends Error {
 }
 
 export class NotFoundError extends AppError {
-  constructor(resource: string) {
-    super(`${resource} no encontrado`, 404, "NOT_FOUND");
+  constructor(resource: string, code = "NOT_FOUND") {
+    super(`${resource} no encontrado`, 404, code);
   }
 }
 
 export class ForbiddenError extends AppError {
-  constructor() {
-    super("No tenés acceso a este recurso", 403, "FORBIDDEN");
+  constructor(message = "No tenés acceso a este recurso", code = "FORBIDDEN") {
+    super(message, 403, code);
   }
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string) {
-    super(message, 400, "VALIDATION");
+  constructor(message: string, code = "VALIDATION") {
+    super(message, 422, code);
   }
 }
 
 export class ConflictError extends AppError {
-  constructor(resource: string) {
-    super(`${resource} ya existe`, 409, "CONFLICT");
+  constructor(resource: string, code = "CONFLICT") {
+    super(`${resource} ya existe`, 409, code);
   }
 }
 
@@ -38,3 +38,30 @@ export class UnauthorizedError extends AppError {
     super("No autorizado", 401, "UNAUTHORIZED");
   }
 }
+
+// --- Accounting Error Codes ---
+
+// Fiscal Periods
+export const FISCAL_PERIOD_YEAR_EXISTS = "FISCAL_PERIOD_YEAR_EXISTS";
+export const ACTIVE_PERIOD_ALREADY_EXISTS = "ACTIVE_PERIOD_ALREADY_EXISTS";
+export const INVALID_DATE_RANGE = "INVALID_DATE_RANGE";
+export const PERIOD_HAS_DRAFT_ENTRIES = "PERIOD_HAS_DRAFT_ENTRIES";
+export const PERIOD_ALREADY_CLOSED = "PERIOD_ALREADY_CLOSED";
+export const FISCAL_PERIOD_CLOSED = "FISCAL_PERIOD_CLOSED";
+
+// Voucher Types
+export const VOUCHER_TYPE_CODE_EXISTS = "VOUCHER_TYPE_CODE_EXISTS";
+export const VOUCHER_TYPE_NOT_IN_ORG = "VOUCHER_TYPE_NOT_IN_ORG";
+
+// Accounts
+export const INVALID_ACCOUNT_NATURE = "INVALID_ACCOUNT_NATURE";
+export const ACCOUNT_NOT_POSTABLE = "ACCOUNT_NOT_POSTABLE";
+
+// Journal Entries
+export const JOURNAL_NOT_BALANCED = "JOURNAL_NOT_BALANCED";
+export const MINIMUM_TWO_LINES_REQUIRED = "MINIMUM_TWO_LINES_REQUIRED";
+export const JOURNAL_LINE_ZERO_AMOUNT = "JOURNAL_LINE_ZERO_AMOUNT";
+export const JOURNAL_LINE_BOTH_SIDES = "JOURNAL_LINE_BOTH_SIDES";
+export const INVALID_STATUS_TRANSITION = "INVALID_STATUS_TRANSITION";
+export const ENTRY_VOIDED_IMMUTABLE = "ENTRY_VOIDED_IMMUTABLE";
+export const ENTRY_POSTED_LINES_IMMUTABLE = "ENTRY_POSTED_LINES_IMMUTABLE";

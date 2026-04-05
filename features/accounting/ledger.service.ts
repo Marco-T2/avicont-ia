@@ -1,13 +1,24 @@
 import { NotFoundError } from "@/features/shared/errors";
 import { AccountsRepository } from "./accounts.repository";
-import { prisma } from "@/lib/prisma";
+import { JournalRepository } from "./journal.repository";
+import { AccountBalancesService } from "@/features/account-balances/account-balances.service";
 import type { LedgerEntry, TrialBalanceRow, DateRangeFilter } from "./ledger.types";
+import type { AccountType } from "@/generated/prisma/client";
 
 export class LedgerService {
   private readonly accountsRepo: AccountsRepository;
+  private readonly journalRepo: JournalRepository;
+  private readonly accountBalancesService: AccountBalancesService;
 
-  constructor(accountsRepo?: AccountsRepository) {
+  constructor(
+    accountsRepo?: AccountsRepository,
+    journalRepo?: JournalRepository,
+    accountBalancesService?: AccountBalancesService,
+  ) {
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
+    this.journalRepo = journalRepo ?? new JournalRepository();
+    this.accountBalancesService =
+      accountBalancesService ?? new AccountBalancesService();
   }
 
   // ── Get account ledger with running balance ──
@@ -16,39 +27,16 @@ export class LedgerService {
     organizationId: string,
     accountId: string,
     dateRange?: DateRangeFilter,
+    periodId?: string,
   ): Promise<LedgerEntry[]> {
     const account = await this.accountsRepo.findById(organizationId, accountId);
     if (!account) throw new NotFoundError("Cuenta");
 
-    const dateFilter: Record<string, unknown> = {};
-    if (dateRange?.dateFrom || dateRange?.dateTo) {
-      dateFilter.date = {
-        ...(dateRange.dateFrom && { gte: dateRange.dateFrom }),
-        ...(dateRange.dateTo && { lte: dateRange.dateTo }),
-      };
-    }
-
-    const lines = await prisma.journalLine.findMany({
-      where: {
-        accountId,
-        journalEntry: {
-          organizationId,
-          ...dateFilter,
-        },
-      },
-      include: {
-        journalEntry: {
-          select: {
-            date: true,
-            number: true,
-            description: true,
-          },
-        },
-      },
-      orderBy: {
-        journalEntry: { date: "asc" },
-      },
-    });
+    const lines = await this.journalRepo.findLinesByAccount(
+      organizationId,
+      accountId,
+      { dateRange, periodId },
+    );
 
     let runningBalance = 0;
     return lines.map((line) => {
@@ -71,31 +59,39 @@ export class LedgerService {
 
   async getTrialBalance(
     organizationId: string,
-    date?: Date,
+    periodId: string,
   ): Promise<TrialBalanceRow[]> {
-    const accounts = await this.accountsRepo.findAll(organizationId);
+    // Primary: read from AccountBalance records for the period
+    const balances = await this.accountBalancesService.getBalances(
+      organizationId,
+      periodId,
+    );
 
-    const dateFilter: Record<string, unknown> = {};
-    if (date) {
-      dateFilter.date = { lte: date };
+    if (balances.length > 0) {
+      return balances.map((b) => {
+        const totalDebit = Number(b.debitTotal);
+        const totalCredit = Number(b.creditTotal);
+        return {
+          accountCode: b.account.code,
+          accountName: b.account.name,
+          accountType: b.account.type as AccountType,
+          totalDebit,
+          totalCredit,
+          balance: totalDebit - totalCredit,
+        };
+      });
     }
 
+    // Fallback: aggregate directly from POSTED journal lines
+    const accounts = await this.accountsRepo.findAll(organizationId);
     const rows: TrialBalanceRow[] = [];
 
     for (const account of accounts) {
-      const aggregation = await prisma.journalLine.aggregate({
-        where: {
-          accountId: account.id,
-          journalEntry: {
-            organizationId,
-            ...dateFilter,
-          },
-        },
-        _sum: {
-          debit: true,
-          credit: true,
-        },
-      });
+      const aggregation = await this.journalRepo.aggregateByAccount(
+        organizationId,
+        account.id,
+        periodId,
+      );
 
       const totalDebit = Number(aggregation._sum.debit ?? 0);
       const totalCredit = Number(aggregation._sum.credit ?? 0);

@@ -1,13 +1,15 @@
 import { NotFoundError, ConflictError } from "@/features/shared/errors";
 import { FarmsRepository } from "./farms.repository";
-import { OrganizationsRepository } from "@/features/organizations/organizations.repository";
+import { OrganizationsService } from "@/features/organizations/organizations.service";
 import type { CreateFarmInput, UpdateFarmInput, FarmWithLots } from "./farms.types";
 
 export class FarmsService {
   private readonly repo: FarmsRepository;
+  private readonly orgsService: OrganizationsService;
 
-  constructor(repo?: FarmsRepository) {
+  constructor(repo?: FarmsRepository, orgsService?: OrganizationsService) {
     this.repo = repo ?? new FarmsRepository();
+    this.orgsService = orgsService ?? new OrganizationsService();
   }
 
   // ── List all farms in an organization ──
@@ -37,8 +39,7 @@ export class FarmsService {
     if (existing) throw new ConflictError("Granja con ese nombre");
 
     // Validate member is active (not deactivated)
-    const orgRepo = new OrganizationsRepository();
-    const member = await orgRepo.findMemberById(organizationId, input.memberId);
+    const member = await this.orgsService.getMemberById(organizationId, input.memberId);
     if (!member) {
       throw new NotFoundError(
         "Miembro asignado no encontrado o está desactivado",

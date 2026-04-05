@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/prisma";
 import { NotFoundError, ValidationError } from "@/features/shared/errors";
 import { MortalityRepository } from "./mortality.repository";
+import { LotsRepository } from "@/features/lots/lots.repository";
 import type {
   LogMortalityInput,
   MortalityLogWithRelations,
@@ -8,9 +8,11 @@ import type {
 
 export class MortalityService {
   private readonly repo: MortalityRepository;
+  private readonly lotsRepo: LotsRepository;
 
-  constructor(repo?: MortalityRepository) {
+  constructor(repo?: MortalityRepository, lotsRepo?: LotsRepository) {
     this.repo = repo ?? new MortalityRepository();
+    this.lotsRepo = lotsRepo ?? new LotsRepository();
   }
 
   // ── List mortality logs for a lot ──
@@ -29,9 +31,7 @@ export class MortalityService {
     input: LogMortalityInput,
   ): Promise<MortalityLogWithRelations> {
     // Fetch the lot to get initialCount
-    const lot = await prisma.chickenLot.findFirst({
-      where: { id: input.lotId, organizationId },
-    });
+    const lot = await this.lotsRepo.findById(organizationId, input.lotId);
 
     if (!lot) {
       throw new NotFoundError("Lote");

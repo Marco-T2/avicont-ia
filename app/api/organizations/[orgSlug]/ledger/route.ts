@@ -6,6 +6,7 @@ import {
 } from "@/features/shared/middleware";
 import { LedgerService } from "@/features/accounting";
 import { dateRangeSchema } from "@/features/accounting/accounting.validation";
+import { ValidationError } from "@/features/shared/errors";
 
 const service = new LedgerService();
 
@@ -21,6 +22,7 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("accountId");
+    const periodId = searchParams.get("periodId") ?? undefined;
 
     if (accountId) {
       const dateRange = dateRangeSchema.parse({
@@ -28,14 +30,20 @@ export async function GET(
         dateTo: searchParams.get("dateTo") ?? undefined,
       });
 
-      const ledger = await service.getAccountLedger(orgId, accountId, dateRange);
+      const ledger = await service.getAccountLedger(
+        orgId,
+        accountId,
+        dateRange,
+        periodId,
+      );
       return Response.json(ledger);
     }
 
-    const dateParam = searchParams.get("date");
-    const date = dateParam ? new Date(dateParam) : undefined;
+    if (!periodId) {
+      throw new ValidationError("periodId es requerido para el balance de comprobación");
+    }
 
-    const trialBalance = await service.getTrialBalance(orgId, date);
+    const trialBalance = await service.getTrialBalance(orgId, periodId);
     return Response.json(trialBalance);
   } catch (error) {
     return handleError(error);

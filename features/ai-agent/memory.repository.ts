@@ -1,4 +1,4 @@
-import { prisma } from "@/lib/prisma";
+import { BaseRepository } from "@/features/shared/base.repository";
 
 interface ChatMessageRecord {
   role: string;
@@ -6,13 +6,13 @@ interface ChatMessageRecord {
   createdAt: Date;
 }
 
-export class ChatMemoryRepository {
+export class ChatMemoryRepository extends BaseRepository {
   /** Get recent messages for a session, ordered chronologically. */
   async getRecentMessages(
     sessionId: string,
     limit = 10,
   ): Promise<ChatMessageRecord[]> {
-    return prisma.chatMessage.findMany({
+    return this.db.chatMessage.findMany({
       where: { sessionId },
       orderBy: { createdAt: "desc" },
       take: limit,
@@ -28,14 +28,14 @@ export class ChatMemoryRepository {
     role: "user" | "assistant",
     content: string,
   ): Promise<void> {
-    await prisma.chatMessage.create({
+    await this.db.chatMessage.create({
       data: { sessionId, organizationId, userId, role, content },
     });
   }
 
   /** Clear all messages for a session. */
   async clearSession(sessionId: string): Promise<void> {
-    await prisma.chatMessage.deleteMany({
+    await this.db.chatMessage.deleteMany({
       where: { sessionId },
     });
   }
