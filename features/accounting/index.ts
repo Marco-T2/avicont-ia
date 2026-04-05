@@ -10,3 +10,4 @@ export { LedgerService } from "./ledger.service";
 export * from "./ledger.types";
 
 export * from "./accounting.validation";
+export { formatCorrelativeNumber } from "./correlative.utils";

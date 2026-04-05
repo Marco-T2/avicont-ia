@@ -276,33 +276,36 @@ model Account {
 }
 
 model JournalEntry {
-  id             String             @id @default(cuid())
-  number         Int
-  date           DateTime
-  description    String
-  status         JournalEntryStatus @default(DRAFT)
-  periodId       String
-  voucherTypeId  String
-  contactId      String?
-  sourceType     String?
-  sourceId       String?
-  organizationId String
-  createdById    String
-  updatedById    String?
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
-  organization   Organization       @relation(fields: [organizationId], references: [id])
-  period         FiscalPeriod       @relation(fields: [periodId], references: [id])
-  voucherType    VoucherTypeCfg     @relation(fields: [voucherTypeId], references: [id])
-  createdBy      User               @relation("JournalCreator", fields: [createdById], references: [id])
-  contact        Contact?           @relation(fields: [contactId], references: [id])
-  lines          JournalLine[]
-  receivables    AccountsReceivable[]
-  payables       AccountsPayable[]
+  id              String             @id @default(cuid())
+  number          Int
+  referenceNumber Int?               // optional physical document number
+  date            DateTime
+  description     String
+  status          JournalEntryStatus @default(DRAFT)
+  periodId        String
+  voucherTypeId   String
+  contactId       String?
+  sourceType      String?
+  sourceId        String?
+  organizationId  String
+  createdById     String
+  updatedById     String?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  organization    Organization       @relation(fields: [organizationId], references: [id])
+  period          FiscalPeriod       @relation(fields: [periodId], references: [id])
+  voucherType     VoucherTypeCfg     @relation(fields: [voucherTypeId], references: [id])
+  createdBy       User               @relation("JournalCreator", fields: [createdById], references: [id])
+  contact         Contact?           @relation(fields: [contactId], references: [id])
+  lines           JournalLine[]
+  receivables     AccountsReceivable[]
+  payables        AccountsPayable[]
 
   @@unique([organizationId, voucherTypeId, periodId, number])
+  @@unique([organizationId, voucherTypeId, referenceNumber])
   @@index([organizationId, periodId])
   @@index([organizationId, status])
+  @@index([organizationId, voucherTypeId, referenceNumber])
   @@index([createdById])
   @@map("journal_entries")
 }

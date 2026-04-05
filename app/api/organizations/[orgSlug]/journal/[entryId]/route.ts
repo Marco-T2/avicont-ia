@@ -7,6 +7,7 @@ import {
 import { UsersService } from "@/features/shared/users.service";
 import { JournalService } from "@/features/accounting";
 import { updateJournalEntrySchema } from "@/features/accounting/accounting.validation";
+import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 
 const usersService = new UsersService();
 const service = new JournalService();
@@ -23,7 +24,13 @@ export async function GET(
 
     const entry = await service.getById(orgId, entryId);
 
-    return Response.json(entry);
+    const displayNumber = formatCorrelativeNumber(
+      entry.voucherType.code,
+      entry.date,
+      entry.number,
+    );
+
+    return Response.json({ ...entry, displayNumber });
   } catch (error) {
     return handleError(error);
   }
@@ -49,7 +56,13 @@ export async function PATCH(
       updatedById: user.id,
     });
 
-    return Response.json(entry);
+    const displayNumber = formatCorrelativeNumber(
+      entry.voucherType.code,
+      entry.date,
+      entry.number,
+    );
+
+    return Response.json({ ...entry, displayNumber });
   } catch (error) {
     return handleError(error);
   }

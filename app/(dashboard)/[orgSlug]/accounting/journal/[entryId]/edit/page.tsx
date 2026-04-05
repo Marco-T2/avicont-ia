@@ -63,10 +63,12 @@ export default async function EditJournalEntryPage({
         voucherTypes={JSON.parse(JSON.stringify(voucherTypes))}
         editEntry={{
           id: serializedEntry.id,
+          number: serializedEntry.number,
           date: serializedEntry.date.split("T")[0],
           description: serializedEntry.description,
           periodId: serializedEntry.periodId,
           voucherTypeId: serializedEntry.voucherTypeId,
+          referenceNumber: serializedEntry.referenceNumber,
           lines: serializedEntry.lines,
         }}
       />

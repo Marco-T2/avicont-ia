@@ -12,6 +12,7 @@ import {
   FISCAL_PERIOD_CLOSED,
   VOUCHER_TYPE_NOT_IN_ORG,
   CONTACT_REQUIRED_FOR_ACCOUNT,
+  REFERENCE_NUMBER_DUPLICATE,
 } from "@/features/shared/errors";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
@@ -26,6 +27,9 @@ import type {
   JournalEntryWithLines,
   JournalFilters,
   JournalLineInput,
+  CorrelationAuditFilters,
+  CorrelationAuditResult,
+  CorrelationGap,
 } from "./journal.types";
 
 const VALID_TRANSITIONS: Record<JournalEntryStatus, JournalEntryStatus[]> = {
@@ -149,7 +153,21 @@ export class JournalService {
       entryData.periodId,
     );
 
-    return this.repo.create(organizationId, entryData, lines, number);
+    try {
+      return await this.repo.create(organizationId, entryData, lines, number);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error as { code: string }).code === "P2002"
+      ) {
+        throw new ValidationError(
+          `El número de referencia ${entryData.referenceNumber} ya existe para este tipo de comprobante`,
+          REFERENCE_NUMBER_DUPLICATE,
+        );
+      }
+      throw error;
+    }
   }
 
   // ── Update a DRAFT journal entry ──
@@ -220,7 +238,21 @@ export class JournalService {
       await this.validateContactsForLines(organizationId, lines, accountCache);
     }
 
-    return this.repo.update(organizationId, id, data, lines, updatedById);
+    try {
+      return await this.repo.update(organizationId, id, data, lines, updatedById);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        "code" in error &&
+        (error as { code: string }).code === "P2002"
+      ) {
+        throw new ValidationError(
+          `El número de referencia ${data.referenceNumber} ya existe para este tipo de comprobante`,
+          REFERENCE_NUMBER_DUPLICATE,
+        );
+      }
+      throw error;
+    }
   }
 
   // ── Validate requiresContact on journal lines ──
@@ -245,6 +277,62 @@ export class JournalService {
         await this.contactsService.getActiveById(organizationId, line.contactId);
       }
     }
+  }
+
+  // ── Get last reference number for a voucher type ──
+
+  async getLastReferenceNumber(
+    organizationId: string,
+    voucherTypeId: string,
+  ): Promise<number | null> {
+    await this.voucherTypesService.getById(organizationId, voucherTypeId);
+    return this.repo.getLastReferenceNumber(organizationId, voucherTypeId);
+  }
+
+  async getNextNumber(
+    organizationId: string,
+    voucherTypeId: string,
+    periodId: string,
+  ): Promise<number> {
+    await this.voucherTypesService.getById(organizationId, voucherTypeId);
+    return this.repo.getNextNumber(organizationId, voucherTypeId, periodId);
+  }
+
+  // ── Correlation audit ──
+
+  async getCorrelationAudit(
+    organizationId: string,
+    filters: CorrelationAuditFilters,
+  ): Promise<CorrelationAuditResult> {
+    await this.voucherTypesService.getById(organizationId, filters.voucherTypeId);
+
+    const { withReference, withoutReferenceCount } =
+      await this.repo.findForCorrelationAudit(
+        organizationId,
+        filters.voucherTypeId,
+        { dateFrom: filters.dateFrom, dateTo: filters.dateTo },
+      );
+
+    const gaps: CorrelationGap[] = [];
+    for (let i = 1; i < withReference.length; i++) {
+      const prev = withReference[i - 1].referenceNumber;
+      const curr = withReference[i].referenceNumber;
+      if (curr !== prev + 1) {
+        gaps.push({
+          from: prev + 1,
+          to: curr - 1,
+          count: curr - prev - 1,
+        });
+      }
+    }
+
+    return {
+      entries: withReference,
+      gaps,
+      totalEntries: withReference.length + withoutReferenceCount,
+      entriesWithoutReference: withoutReferenceCount,
+      hasGaps: gaps.length > 0,
+    };
   }
 
   // ── Transition status ──
