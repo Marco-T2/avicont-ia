@@ -2,16 +2,10 @@
 
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Trash2 } from "lucide-react";
 import type { Account } from "@/generated/prisma/client";
 import ContactSelector from "@/components/contacts/contact-selector";
+import AccountSelector from "@/components/accounting/account-selector";
 
 export interface JournalLineData {
   id: string;
@@ -39,7 +33,6 @@ export default function JournalLineRow({
   onUpdate,
   onRemove,
 }: JournalLineRowProps) {
-  const activeAccounts = accounts.filter((a) => a.isActive);
   const selectedAccount = accounts.find((a) => a.id === line.accountId) ?? null;
   const requiresContact = selectedAccount?.requiresContact ?? false;
 
@@ -62,21 +55,11 @@ export default function JournalLineRow({
   return (
     <tr className="border-b">
       <td className="py-2 px-2">
-        <Select
+        <AccountSelector
+          accounts={accounts}
           value={line.accountId}
-          onValueChange={(val) => onUpdate(line.id, "accountId", val)}
-        >
-          <SelectTrigger className="w-full">
-            <SelectValue placeholder="Seleccione cuenta" />
-          </SelectTrigger>
-          <SelectContent>
-            {activeAccounts.map((a) => (
-              <SelectItem key={a.id} value={a.id}>
-                {a.code} - {a.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          onChange={(val) => onUpdate(line.id, "accountId", val)}
+        />
       </td>
       <td className="py-2 px-2">
         <Input
@@ -84,6 +67,15 @@ export default function JournalLineRow({
           value={line.description}
           onChange={(e) => onUpdate(line.id, "description", e.target.value)}
         />
+      </td>
+      <td className="py-2 px-2 min-w-[180px]">
+        {requiresContact ? (
+          <ContactSelector
+            orgSlug={orgSlug}
+            value={line.contactId ?? null}
+            onChange={(val) => onUpdate(line.id, "contactId", val ?? "")}
+          />
+        ) : null}
       </td>
       <td className="py-2 px-2">
         <Input
@@ -108,15 +100,6 @@ export default function JournalLineRow({
           disabled={!!line.debit && parseFloat(line.debit) > 0}
           onChange={(e) => handleCreditChange(e.target.value)}
         />
-      </td>
-      <td className="py-2 px-2 min-w-[180px]">
-        {requiresContact ? (
-          <ContactSelector
-            orgSlug={orgSlug}
-            value={line.contactId ?? null}
-            onChange={(val) => onUpdate(line.id, "contactId", val ?? "")}
-          />
-        ) : null}
       </td>
       <td className="py-2 px-2">
         <Button

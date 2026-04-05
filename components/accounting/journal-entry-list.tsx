@@ -15,6 +15,7 @@ import {
 import { Plus, FileText, Search } from "lucide-react";
 import Link from "next/link";
 import type { FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
+import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
@@ -46,6 +47,7 @@ interface JournalLine {
 interface JournalEntry {
   id: string;
   number: number;
+  referenceNumber?: number | null;
   date: string;
   description: string;
   status: string;
@@ -80,6 +82,7 @@ export default function JournalEntryList({
   // Build lookup maps
   const periodMap = new Map(periods.map((p) => [p.id, p.name]));
   const voucherTypeMap = new Map(voucherTypes.map((vt) => [vt.id, vt.name]));
+  const voucherTypeCodeMap = new Map(voucherTypes.map((vt) => [vt.id, vt.code]));
 
   function applyFilter(key: string, value: string) {
     const params = new URLSearchParams();
@@ -193,7 +196,8 @@ export default function JournalEntryList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">#</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Comprobante</th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">
                     Tipo
@@ -218,7 +222,7 @@ export default function JournalEntryList({
               <tbody>
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-600">No hay asientos registrados</p>
                       <p className="text-sm text-gray-400 mt-1">
@@ -250,7 +254,16 @@ export default function JournalEntryList({
                         }
                       >
                         <td className="py-3 px-4 font-mono text-blue-600 font-medium">
-                          {entry.number}
+                          {(() => {
+                            const code = voucherTypeCodeMap.get(entry.voucherTypeId);
+                            const display = code
+                              ? formatCorrelativeNumber(code, entry.date, entry.number)
+                              : null;
+                            return display ?? entry.number;
+                          })()}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-gray-500">
+                          {entry.referenceNumber ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {formatDate(entry.date)}

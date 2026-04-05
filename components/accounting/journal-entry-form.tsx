@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -22,6 +22,7 @@ import { Plus, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import JournalLineRow, { type JournalLineData } from "./journal-line-row";
+import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
 
 function formatCurrency(amount: number): string {
@@ -49,10 +50,12 @@ interface JournalEntryFormProps {
   /** When set, the form is in edit mode for this entry (DRAFT only). */
   editEntry?: {
     id: string;
+    number: number;
     date: string;
     description: string;
     periodId: string;
     voucherTypeId: string;
+    referenceNumber?: number | null;
     lines: Array<{
       accountId: string;
       debit: number | string;
@@ -78,8 +81,16 @@ export default function JournalEntryForm({
     editEntry?.date ?? new Date().toISOString().split("T")[0],
   );
   const [description, setDescription] = useState(editEntry?.description ?? "");
-  const [periodId, setPeriodId] = useState(editEntry?.periodId ?? "");
+  const [periodId, setPeriodId] = useState(
+    editEntry?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
+  );
   const [voucherTypeId, setVoucherTypeId] = useState(editEntry?.voucherTypeId ?? "");
+  const [referenceNumber, setReferenceNumber] = useState<string>(
+    editEntry?.referenceNumber?.toString() ?? "",
+  );
+  const [lastReference, setLastReference] = useState<number | null>(null);
+  const [nextNumber, setNextNumber] = useState<number | null>(null);
+  const [loadingLastRef, setLoadingLastRef] = useState(false);
   const [lines, setLines] = useState<JournalLineData[]>(() => {
     if (editEntry && editEntry.lines.length >= 2) {
       return editEntry.lines.map((l) => ({
@@ -93,6 +104,33 @@ export default function JournalEntryForm({
     }
     return [emptyLine(), emptyLine()];
   });
+
+  useEffect(() => {
+    if (!voucherTypeId) {
+      setLastReference(null);
+      setNextNumber(null);
+      return;
+    }
+    setLoadingLastRef(true);
+    const params = new URLSearchParams({ voucherTypeId });
+    if (periodId) params.set("periodId", periodId);
+    fetch(
+      `/api/organizations/${orgSlug}/journal/last-reference?${params}`,
+    )
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data: { lastReferenceNumber: number | null; nextNumber: number | null }) => {
+        setLastReference(data.lastReferenceNumber);
+        setNextNumber(data.nextNumber);
+      })
+      .catch(() => {
+        setLastReference(null);
+        setNextNumber(null);
+      })
+      .finally(() => setLoadingLastRef(false));
+  }, [voucherTypeId, periodId, orgSlug]);
 
   function addLine() {
     setLines((prev) => [...prev, emptyLine()]);
@@ -135,6 +173,7 @@ export default function JournalEntryForm({
         description,
         periodId,
         voucherTypeId,
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
         lines: lines.map((l, idx) => ({
           accountId: l.accountId,
           debit: parseFloat(l.debit) || 0,
@@ -167,6 +206,9 @@ export default function JournalEntryForm({
         if (code === "CONTACT_REQUIRED_FOR_ACCOUNT") {
           throw new Error("Una o más cuentas requieren que seleccione un contacto.");
         }
+        if (code === "REFERENCE_NUMBER_DUPLICATE") {
+          throw new Error(data.error);
+        }
         throw new Error(data.error ?? "Error al guardar el asiento");
       }
 
@@ -184,6 +226,21 @@ export default function JournalEntryForm({
       setIsSubmitting(false);
     }
   }
+
+  const selectedVoucherType = voucherTypes.find((vt) => vt.id === voucherTypeId) ?? null;
+  const previewDisplayNumber = (() => {
+    if (isEditing && editEntry && selectedVoucherType) {
+      return formatCorrelativeNumber(
+        selectedVoucherType.code,
+        new Date(editEntry.date),
+        editEntry.number,
+      );
+    }
+    if (!isEditing && selectedVoucherType && nextNumber && date) {
+      return formatCorrelativeNumber(selectedVoucherType.code, new Date(date), nextNumber);
+    }
+    return null;
+  })();
 
   const backHref = isEditing
     ? `/${orgSlug}/accounting/journal/${editEntry.id}`
@@ -203,6 +260,11 @@ export default function JournalEntryForm({
         <CardHeader>
           <CardTitle>
             {isEditing ? "Editar Asiento Contable" : "Nuevo Asiento Contable"}
+            {previewDisplayNumber && (
+              <span className="ml-2 font-bold text-primary">
+                — {previewDisplayNumber}
+              </span>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -225,7 +287,9 @@ export default function JournalEntryForm({
                   <SelectValue placeholder="Seleccione período" />
                 </SelectTrigger>
                 <SelectContent>
-                  {periods.map((p) => (
+                  {periods
+                    .filter((p) => p.status === "OPEN" || p.id === editEntry?.periodId)
+                    .map((p) => (
                     <SelectItem key={p.id} value={p.id}>
                       {p.name}
                     </SelectItem>
@@ -248,6 +312,28 @@ export default function JournalEntryForm({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reference-number">Nro. de referencia (opcional)</Label>
+              <Input
+                id="reference-number"
+                type="number"
+                min={1}
+                step={1}
+                placeholder="Ej: 738"
+                value={referenceNumber}
+                onChange={(e) => setReferenceNumber(e.target.value)}
+              />
+              {voucherTypeId && (
+                <p className="text-xs text-muted-foreground">
+                  {loadingLastRef
+                    ? "Cargando..."
+                    : lastReference !== null
+                      ? `Último: ${lastReference}`
+                      : "Último: ninguno"}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2 lg:col-span-1">

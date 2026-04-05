@@ -10,6 +10,7 @@ import {
   createJournalEntrySchema,
   journalFiltersSchema,
 } from "@/features/accounting/accounting.validation";
+import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 
 const usersService = new UsersService();
 const service = new JournalService();
@@ -61,7 +62,13 @@ export async function POST(
       createdById: user.id,
     });
 
-    return Response.json(entry, { status: 201 });
+    const displayNumber = formatCorrelativeNumber(
+      entry.voucherType.code,
+      entry.date,
+      entry.number,
+    );
+
+    return Response.json({ ...entry, displayNumber }, { status: 201 });
   } catch (error) {
     return handleError(error);
   }

@@ -62,6 +62,11 @@ export const createJournalEntrySchema = z.object({
   contactId: z.string().cuid("ID de contacto inválido").optional(),
   sourceType: z.string().optional(),
   sourceId: z.string().optional(),
+  referenceNumber: z
+    .number()
+    .int("El número de referencia debe ser entero")
+    .min(1, "El número de referencia debe ser mayor a 0")
+    .optional(),
   lines: z
     .array(journalLineSchema)
     .min(2, "Se requieren al menos 2 líneas de asiento"),
@@ -71,6 +76,12 @@ export const updateJournalEntrySchema = z.object({
   date: z.coerce.date({ message: "Fecha inválida" }).optional(),
   description: z.string().min(1, "La descripción es requerida").optional(),
   contactId: z.string().cuid("ID de contacto inválido").nullable().optional(),
+  referenceNumber: z
+    .number()
+    .int("El número de referencia debe ser entero")
+    .min(1, "El número de referencia debe ser mayor a 0")
+    .nullable()
+    .optional(),
   lines: z
     .array(journalLineSchema)
     .min(2, "Se requieren al menos 2 líneas de asiento")
@@ -93,6 +104,20 @@ export const dateRangeSchema = z.object({
   dateFrom: z.coerce.date({ message: "Fecha desde inválida" }).optional(),
   dateTo: z.coerce.date({ message: "Fecha hasta inválida" }).optional(),
 });
+
+export const lastReferenceQuerySchema = z.object({
+  voucherTypeId: z.string().cuid("ID de tipo de comprobante inválido"),
+  periodId: z.string().cuid("ID de periodo inválido").optional(),
+});
+
+export const correlationAuditQuerySchema = z.object({
+  voucherTypeId: z.string().cuid("ID de tipo de comprobante inválido"),
+  dateFrom: z.coerce.date({ message: "Fecha desde inválida" }).optional(),
+  dateTo: z.coerce.date({ message: "Fecha hasta inválida" }).optional(),
+});
+
+export type LastReferenceQueryDto = z.infer<typeof lastReferenceQuerySchema>;
+export type CorrelationAuditQueryDto = z.infer<typeof correlationAuditQuerySchema>;
 
 export type CreateAccountDto = z.infer<typeof createAccountSchema>;
 export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;

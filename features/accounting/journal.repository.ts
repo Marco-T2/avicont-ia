@@ -6,6 +6,7 @@ import type {
   JournalEntryWithLines,
   JournalFilters,
   JournalLineInput,
+  ReferenceNumberEntry,
 } from "./journal.types";
 import type { DateRangeFilter } from "./ledger.types";
 
@@ -15,6 +16,7 @@ const journalIncludeLines = {
     orderBy: { order: "asc" as const },
   },
   contact: true,
+  voucherType: true,
 } as const;
 
 export class JournalRepository extends BaseRepository {
@@ -80,6 +82,74 @@ export class JournalRepository extends BaseRepository {
     return (last?.number ?? 0) + 1;
   }
 
+  async getLastReferenceNumber(
+    organizationId: string,
+    voucherTypeId: string,
+  ): Promise<number | null> {
+    const scope = this.requireOrg(organizationId);
+
+    const last = await this.db.journalEntry.findFirst({
+      where: {
+        ...scope,
+        voucherTypeId,
+        referenceNumber: { not: null },
+      },
+      orderBy: { referenceNumber: "desc" },
+      select: { referenceNumber: true },
+    });
+
+    return last?.referenceNumber ?? null;
+  }
+
+  async findForCorrelationAudit(
+    organizationId: string,
+    voucherTypeId: string,
+    filters?: { dateFrom?: Date; dateTo?: Date },
+  ): Promise<{
+    withReference: ReferenceNumberEntry[];
+    withoutReferenceCount: number;
+  }> {
+    const scope = this.requireOrg(organizationId);
+
+    const dateFilter: Record<string, unknown> = {};
+    if (filters?.dateFrom || filters?.dateTo) {
+      dateFilter.date = {
+        ...(filters?.dateFrom && { gte: filters.dateFrom }),
+        ...(filters?.dateTo && { lte: filters.dateTo }),
+      };
+    }
+
+    const where = { ...scope, voucherTypeId, ...dateFilter };
+
+    const [withReference, withoutReferenceCount] = await Promise.all([
+      this.db.journalEntry.findMany({
+        where: { ...where, referenceNumber: { not: null } },
+        select: {
+          id: true,
+          referenceNumber: true,
+          date: true,
+          number: true,
+          description: true,
+        },
+        orderBy: { referenceNumber: "asc" },
+      }),
+      this.db.journalEntry.count({
+        where: { ...where, referenceNumber: null },
+      }),
+    ]);
+
+    return {
+      withReference: withReference.map((e) => ({
+        id: e.id,
+        referenceNumber: e.referenceNumber!,
+        date: e.date,
+        number: e.number,
+        description: e.description,
+      })),
+      withoutReferenceCount,
+    };
+  }
+
   async create(
     organizationId: string,
     data: Omit<CreateJournalEntryInput, "lines">,
@@ -100,6 +170,7 @@ export class JournalRepository extends BaseRepository {
           contactId: data.contactId ?? null,
           sourceType: data.sourceType ?? null,
           sourceId: data.sourceId ?? null,
+          referenceNumber: data.referenceNumber ?? null,
           createdById: data.createdById,
           organizationId: scope.organizationId,
           lines: {
@@ -136,6 +207,7 @@ export class JournalRepository extends BaseRepository {
           ...(data.date !== undefined && { date: data.date }),
           ...(data.description !== undefined && { description: data.description }),
           ...(data.contactId !== undefined && { contactId: data.contactId }),
+          ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber }),
           updatedById,
         },
         include: journalIncludeLines,
