@@ -3,23 +3,28 @@ import { AccountType, JournalEntryStatus } from "@/generated/prisma/client";
 
 export const accountIdSchema = z.string().cuid("ID de cuenta inválido");
 
-export const createAccountSchema = z.object({
-  code: z.string().min(1, "El código es requerido"),
-  name: z
-    .string()
-    .min(1, "El nombre es requerido")
-    .max(200, "El nombre no puede superar los 200 caracteres"),
-  type: z.nativeEnum(AccountType, { message: "Tipo de cuenta inválido" }),
-  parentId: z.string().cuid("ID de cuenta padre inválido").optional(),
-  level: z
-    .number()
-    .int("El nivel debe ser un número entero")
-    .min(1, "El nivel mínimo es 1")
-    .max(5, "El nivel máximo es 5"),
-  isDetail: z.boolean({ message: "El campo detalle debe ser verdadero o falso" }).default(false),
-  requiresContact: z.boolean({ message: "El campo requiere contacto debe ser verdadero o falso" }).default(false),
-  description: z.string().max(500, "La descripción no puede superar los 500 caracteres").optional(),
-});
+export const createAccountSchema = z
+  .object({
+    code: z.string().min(1, "El código no puede estar vacío").optional(),
+    name: z
+      .string()
+      .min(1, "El nombre es requerido")
+      .max(200, "El nombre no puede superar los 200 caracteres"),
+    type: z.nativeEnum(AccountType, { message: "Tipo de cuenta inválido" }).optional(),
+    parentId: z.string().cuid("ID de cuenta padre inválido").optional(),
+    isDetail: z.boolean({ message: "El campo detalle debe ser verdadero o falso" }).optional(),
+    requiresContact: z.boolean({ message: "El campo requiere contacto debe ser verdadero o falso" }).default(false),
+    description: z.string().max(500, "La descripción no puede superar los 500 caracteres").optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (!data.parentId && !data.type) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["type"],
+        message: "El tipo de cuenta es requerido para cuentas raíz",
+      });
+    }
+  });
 
 export const updateAccountSchema = z.object({
   name: z

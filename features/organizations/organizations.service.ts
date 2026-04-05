@@ -170,4 +170,18 @@ export class OrganizationsService {
   ): Promise<OrganizationMember | null> {
     return this.repo.findMemberById(organizationId, memberId);
   }
+
+  async requireMemberWithRoles(
+    orgId: string,
+    clerkUserId: string,
+    roles: string[],
+  ): Promise<OrganizationMember> {
+    const member = await this.repo.findMemberByClerkUserIdAndRoles(
+      orgId,
+      clerkUserId,
+      roles,
+    );
+    if (!member) throw new ForbiddenError();
+    return member;
+  }
 }

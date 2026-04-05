@@ -1,6 +1,6 @@
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { Account, AccountType, AccountNature } from "@/generated/prisma/client";
-import type { CreateAccountInput, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
+import type { Prisma, Account, AccountType, AccountNature } from "@/generated/prisma/client";
+import type { ResolvedCreateAccountData, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
 
 export class AccountsRepository extends BaseRepository {
   async findAll(organizationId: string): Promise<Account[]> {
@@ -47,29 +47,53 @@ export class AccountsRepository extends BaseRepository {
     });
   }
 
-  async create(organizationId: string, data: CreateAccountInput, nature: AccountNature): Promise<Account> {
+  async findSiblings(
+    organizationId: string,
+    parentId: string | null,
+  ): Promise<Pick<Account, "code">[]> {
     const scope = this.requireOrg(organizationId);
 
-    return this.db.account.create({
+    return this.db.account.findMany({
+      where: { ...scope, parentId: parentId ?? null },
+      select: { code: true },
+      orderBy: { code: "asc" },
+    });
+  }
+
+  async create(
+    organizationId: string,
+    data: ResolvedCreateAccountData,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Account> {
+    const scope = this.requireOrg(organizationId);
+    const client = tx ?? this.db;
+
+    return client.account.create({
       data: {
         code: data.code,
         name: data.name,
         type: data.type,
-        nature,
-        parentId: data.parentId ?? null,
+        nature: data.nature,
+        parentId: data.parentId,
         level: data.level,
-        isDetail: data.isDetail ?? false,
-        requiresContact: data.requiresContact ?? false,
-        description: data.description ?? null,
+        isDetail: data.isDetail,
+        requiresContact: data.requiresContact,
+        description: data.description,
         organizationId: scope.organizationId,
       },
     });
   }
 
-  async update(organizationId: string, id: string, data: UpdateAccountInput): Promise<Account> {
+  async update(
+    organizationId: string,
+    id: string,
+    data: UpdateAccountInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Account> {
     const scope = this.requireOrg(organizationId);
+    const client = tx ?? this.db;
 
-    return this.db.account.update({
+    return client.account.update({
       where: { id, ...scope },
       data: {
         ...(data.name !== undefined && { name: data.name }),
@@ -104,6 +128,15 @@ export class AccountsRepository extends BaseRepository {
 
     return this.db.account.findMany({
       where: { parentId, isActive: true, ...scope },
+    });
+  }
+
+  async countJournalLines(organizationId: string, accountId: string): Promise<number> {
+    return this.db.journalLine.count({
+      where: {
+        accountId,
+        journalEntry: { organizationId },
+      },
     });
   }
 }
