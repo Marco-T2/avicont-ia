@@ -1,6 +1,11 @@
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { Contact } from "@/generated/prisma/client";
-import type { CreateContactInput, UpdateContactInput, ContactFilters } from "./contacts.types";
+import type {
+  CreateContactInput,
+  UpdateContactInput,
+  ContactFilters,
+  PendingDocument,
+} from "./contacts.types";
 
 export class ContactsRepository extends BaseRepository {
   async findAll(organizationId: string, filters?: ContactFilters): Promise<Contact[]> {
@@ -85,5 +90,98 @@ export class ContactsRepository extends BaseRepository {
       where: { id, ...scope },
       data: { isActive: false },
     });
+  }
+
+  // ── Credit balance & pending documents ──
+
+  async getCreditBalance(organizationId: string, contactId: string): Promise<number> {
+    const payments = await this.db.payment.findMany({
+      where: { organizationId, contactId, status: "POSTED" },
+      include: {
+        allocations: {
+          include: { receivable: true, payable: true },
+        },
+      },
+    });
+
+    let credit = 0;
+    for (const p of payments) {
+      const allocated = p.allocations.reduce((sum, a) => {
+        const targetVoided =
+          a.receivable?.status === "VOIDED" || a.payable?.status === "VOIDED";
+        return sum + (targetVoided ? 0 : Number(a.amount));
+      }, 0);
+      credit += Number(p.amount) - allocated;
+    }
+
+    return credit;
+  }
+
+  async getPendingReceivables(
+    organizationId: string,
+    contactId: string,
+  ): Promise<PendingDocument[]> {
+    const receivables = await this.db.accountsReceivable.findMany({
+      where: { organizationId, contactId, status: { in: ["PENDING", "PARTIAL"] } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        paid: true,
+        balance: true,
+        dueDate: true,
+        sourceType: true,
+        sourceId: true,
+        createdAt: true,
+      },
+    });
+
+    return receivables.map((r) => ({
+      id: r.id,
+      type: "receivable" as const,
+      description: r.description,
+      amount: Number(r.amount),
+      paid: Number(r.paid),
+      balance: Number(r.balance),
+      dueDate: r.dueDate,
+      sourceType: r.sourceType,
+      sourceId: r.sourceId,
+      createdAt: r.createdAt,
+    }));
+  }
+
+  async getPendingPayables(
+    organizationId: string,
+    contactId: string,
+  ): Promise<PendingDocument[]> {
+    const payables = await this.db.accountsPayable.findMany({
+      where: { organizationId, contactId, status: { in: ["PENDING", "PARTIAL"] } },
+      orderBy: { createdAt: "asc" },
+      select: {
+        id: true,
+        description: true,
+        amount: true,
+        paid: true,
+        balance: true,
+        dueDate: true,
+        sourceType: true,
+        sourceId: true,
+        createdAt: true,
+      },
+    });
+
+    return payables.map((p) => ({
+      id: p.id,
+      type: "payable" as const,
+      description: p.description,
+      amount: Number(p.amount),
+      paid: Number(p.paid),
+      balance: Number(p.balance),
+      dueDate: p.dueDate,
+      sourceType: p.sourceType,
+      sourceId: p.sourceId,
+      createdAt: p.createdAt,
+    }));
   }
 }

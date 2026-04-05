@@ -1,5 +1,11 @@
 import { redirect } from "next/navigation";
 import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { PaymentService } from "@/features/payment";
+import { ContactsService } from "@/features/contacts";
+import PaymentList from "@/components/payments/payment-list";
+
+const paymentService = new PaymentService();
+const contactsService = new ContactsService();
 
 interface PaymentsPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -16,11 +22,17 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
     redirect("/sign-in");
   }
 
+  let orgId: string;
   try {
-    await requireOrgAccess(userId, orgSlug);
+    orgId = await requireOrgAccess(userId, orgSlug);
   } catch {
     redirect("/select-org");
   }
+
+  const [payments, contacts] = await Promise.all([
+    paymentService.list(orgId),
+    contactsService.list(orgId),
+  ]);
 
   return (
     <div className="space-y-6">
@@ -31,13 +43,11 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
         </p>
       </div>
 
-      <div className="rounded-lg border p-8 text-center text-muted-foreground">
-        <p>Módulo de cobros y pagos en construcción.</p>
-        <p className="text-sm mt-2">
-          Las API routes están disponibles en{" "}
-          <code className="bg-muted px-1 rounded">/api/organizations/{orgSlug}/payments</code>
-        </p>
-      </div>
+      <PaymentList
+        orgSlug={orgSlug}
+        payments={JSON.parse(JSON.stringify(payments))}
+        contacts={JSON.parse(JSON.stringify(contacts))}
+      />
     </div>
   );
 }

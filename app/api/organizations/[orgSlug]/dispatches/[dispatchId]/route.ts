@@ -58,7 +58,7 @@ export async function DELETE(
     const orgId = await requireOrgAccess(userId, orgSlug);
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
-    await dispatchService.delete(orgId, dispatchId);
+    await dispatchService.hardDelete(orgId, dispatchId);
 
     return new Response(null, { status: 204 });
   } catch (error) {

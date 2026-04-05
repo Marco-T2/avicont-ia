@@ -29,8 +29,6 @@ export async function GET(
       method: searchParams.get("method") ?? undefined,
       status: searchParams.get("status") ?? undefined,
       contactId: searchParams.get("contactId") ?? undefined,
-      receivableId: searchParams.get("receivableId") ?? undefined,
-      payableId: searchParams.get("payableId") ?? undefined,
       dateFrom: searchParams.get("dateFrom") ?? undefined,
       dateTo: searchParams.get("dateTo") ?? undefined,
       periodId: searchParams.get("periodId") ?? undefined,
@@ -58,7 +56,10 @@ export async function POST(
     const input = createPaymentSchema.parse(body);
 
     const user = await usersService.resolveByClerkId(userId);
-    const payment = await paymentService.create(orgId, { ...input, createdById: user.id });
+    const payment = await paymentService.create(orgId, {
+      ...input,
+      createdById: user.id,
+    });
 
     return Response.json(payment, { status: 201 });
   } catch (error) {

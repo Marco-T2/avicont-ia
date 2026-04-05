@@ -25,6 +25,7 @@ const STATUS_TRANSITIONS: Record<ReceivableStatus, ReceivableStatus[]> = {
   OVERDUE: ["PARTIAL", "PAID", "VOIDED"],
   PAID: [],
   VOIDED: [],
+  CANCELLED: [], // kept for backward compatibility — app uses VOIDED
 };
 
 export class ReceivablesService {

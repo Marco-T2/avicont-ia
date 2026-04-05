@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ClipboardList, FileText, Package, Plus, Search } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { ClipboardList, FileText, Package, Plus, Search, MoreHorizontal, Eye, Pencil, CheckCircle, XCircle, Trash2, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/generated/prisma/client";
 
@@ -88,6 +97,7 @@ export default function DispatchList({
   filters,
 }: DispatchListProps) {
   const router = useRouter();
+  const [actioningId, setActioningId] = useState<string | null>(null);
 
   const periodMap = new Map(periods.map((p) => [p.id, p.name]));
 
@@ -110,6 +120,77 @@ export default function DispatchList({
 
   function clearFilters() {
     router.push(`/${orgSlug}/dispatches`);
+  }
+
+  async function handlePostFromList(dispatchId: string) {
+    if (!window.confirm("¿Contabilizar este despacho?")) return;
+    setActioningId(dispatchId);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${dispatchId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "POSTED" }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al contabilizar");
+      }
+      toast.success("Despacho contabilizado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al contabilizar");
+    } finally {
+      setActioningId(null);
+    }
+  }
+
+  async function handleVoidFromList(dispatchId: string) {
+    if (!window.confirm("¿Anular este despacho? Se revertirá el asiento contable y la cuenta por cobrar.")) return;
+    setActioningId(dispatchId);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${dispatchId}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "VOIDED" }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al anular");
+      }
+      toast.success("Despacho anulado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al anular");
+    } finally {
+      setActioningId(null);
+    }
+  }
+
+  async function handleDeleteFromList(dispatchId: string) {
+    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
+    setActioningId(dispatchId);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${dispatchId}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al eliminar");
+      }
+      toast.success("Borrador eliminado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar");
+    } finally {
+      setActioningId(null);
+    }
   }
 
   const hasFilters = !!(
@@ -269,12 +350,13 @@ export default function DispatchList({
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Cliente</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">Estado</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-600">Total</th>
+                  <th className="w-12 py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
                 {dispatches.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center">
+                    <td colSpan={9} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-600">No hay despachos registrados</p>
                       <p className="text-sm text-gray-400 mt-1">
@@ -292,6 +374,7 @@ export default function DispatchList({
                     };
                     const periodName = periodMap.get(dispatch.periodId) ?? "—";
                     const typeName = DISPATCH_TYPE_LABEL[dispatch.dispatchType] ?? dispatch.dispatchType;
+                    const isLoading = actioningId === dispatch.id;
 
                     return (
                       <tr
@@ -322,6 +405,71 @@ export default function DispatchList({
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(dispatch.totalAmount)}
+                        </td>
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          {isLoading ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+                          ) : (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon-sm" className="h-8 w-8">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {dispatch.status === "DRAFT" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
+                                    >
+                                      <Pencil className="h-4 w-4 mr-2" />
+                                      Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => handlePostFromList(dispatch.id)}
+                                    >
+                                      <CheckCircle className="h-4 w-4 mr-2" />
+                                      Contabilizar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleDeleteFromList(dispatch.id)}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Eliminar
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {dispatch.status === "POSTED" && (
+                                  <>
+                                    <DropdownMenuItem
+                                      onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Ver
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                      onClick={() => handleVoidFromList(dispatch.id)}
+                                      className="text-red-600 focus:text-red-600"
+                                    >
+                                      <XCircle className="h-4 w-4 mr-2" />
+                                      Anular
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                                {dispatch.status === "VOIDED" && (
+                                  <DropdownMenuItem
+                                    onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
+                                  >
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Ver
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </td>
                       </tr>
                     );

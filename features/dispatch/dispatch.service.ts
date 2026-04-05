@@ -4,12 +4,15 @@ import {
   DISPATCH_NO_DETAILS,
   DISPATCH_BC_FIELDS_ON_ND,
   DISPATCH_INVALID_CONTACT_TYPE,
+  DISPATCH_NOT_DRAFT,
+  INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
 import {
   validateTransition,
   validateDraftOnly,
   validatePeriodOpen,
 } from "@/features/shared/document-lifecycle.service";
+import type { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
 import type { ComputedDetail, BcSummary } from "./dispatch.repository";
 import { OrgSettingsService } from "@/features/org-settings";
@@ -465,41 +468,96 @@ export class DispatchService {
     );
 
     await this.repo.transaction(async (tx) => {
-      // 1. Update dispatch status to VOIDED
-      await this.repo.updateStatusTx(tx, organizationId, id, "VOIDED");
-
-      // 2. Void the linked JournalEntry
-      if (dispatch.journalEntryId) {
-        const journalEntry = await tx.journalEntry.findFirst({
-          where: { id: dispatch.journalEntryId, organizationId },
-          include: {
-            lines: {
-              include: { account: true, contact: true },
-              orderBy: { order: "asc" as const },
-            },
-            contact: true,
-            voucherType: true,
-          },
-        });
-
-        if (journalEntry) {
-          await tx.journalEntry.update({
-            where: { id: journalEntry.id },
-            data: { status: "VOIDED", updatedById: userId },
-          });
-
-          // 3. Reverse account balances
-          await this.balancesService.applyVoid(tx, journalEntry as never);
-        }
-      }
-
-      // 4. Void the linked AccountsReceivable
-      if (dispatch.receivableId) {
-        await this.receivablesRepo.voidTx(tx, dispatch.receivableId);
-      }
+      await this.voidCascadeTx(tx, organizationId, dispatch, userId);
     });
 
     const updated = await this.repo.findById(organizationId, id);
     return withDisplayCode(updated!);
+  }
+
+  // ── Hard delete a DRAFT dispatch ──
+
+  async hardDelete(organizationId: string, id: string): Promise<void> {
+    const dispatch = await this.getById(organizationId, id);
+
+    if (dispatch.status !== "DRAFT") {
+      throw new ValidationError(
+        "Solo se pueden eliminar despachos en estado BORRADOR",
+        DISPATCH_NOT_DRAFT,
+      );
+    }
+
+    await this.repo.hardDelete(organizationId, id);
+  }
+
+  // ── Recreate: void a POSTED dispatch and clone it to a new DRAFT ──
+
+  async recreate(
+    organizationId: string,
+    id: string,
+    userId: string,
+  ): Promise<{ voidedId: string; newDraftId: string }> {
+    const dispatch = await this.getById(organizationId, id);
+
+    if (dispatch.status !== "POSTED") {
+      throw new ValidationError(
+        "Solo se pueden recrear despachos en estado CONTABILIZADO",
+        INVALID_STATUS_TRANSITION,
+      );
+    }
+
+    const result = await this.repo.transaction(async (tx) => {
+      // 1. Void cascade: status, journal entry, CxC, balances
+      await this.voidCascadeTx(tx, organizationId, dispatch, userId);
+
+      // 2. Clone to new DRAFT
+      const newDraft = await this.repo.cloneToDraft(tx, organizationId, dispatch);
+
+      return { voidedId: dispatch.id, newDraftId: newDraft.id };
+    });
+
+    return result;
+  }
+
+  // ── Internal: void cascade within a transaction ──
+
+  private async voidCascadeTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    dispatch: DispatchWithDetails,
+    userId: string,
+  ): Promise<void> {
+    // 1. Update dispatch status to VOIDED
+    await this.repo.updateStatusTx(tx, organizationId, dispatch.id, "VOIDED");
+
+    // 2. Void the linked JournalEntry
+    if (dispatch.journalEntryId) {
+      const journalEntry = await tx.journalEntry.findFirst({
+        where: { id: dispatch.journalEntryId, organizationId },
+        include: {
+          lines: {
+            include: { account: true, contact: true },
+            orderBy: { order: "asc" as const },
+          },
+          contact: true,
+          voucherType: true,
+        },
+      });
+
+      if (journalEntry) {
+        await tx.journalEntry.update({
+          where: { id: journalEntry.id },
+          data: { status: "VOIDED", updatedById: userId },
+        });
+
+        // 3. Reverse account balances
+        await this.balancesService.applyVoid(tx, journalEntry as never);
+      }
+    }
+
+    // 4. Void the linked AccountsReceivable
+    if (dispatch.receivableId) {
+      await this.receivablesRepo.voidTx(tx, dispatch.receivableId);
+    }
   }
 }

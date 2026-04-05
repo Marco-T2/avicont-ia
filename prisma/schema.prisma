@@ -489,7 +489,7 @@ model AccountsReceivable {
   contact        Contact       @relation(fields: [contactId], references: [id])
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
   dispatch       Dispatch?
-  payment        Payment?
+  allocations    PaymentAllocation[]
 
   @@index([organizationId, contactId])
   @@index([organizationId, status])
@@ -516,7 +516,7 @@ model AccountsPayable {
   organization   Organization  @relation(fields: [organizationId], references: [id])
   contact        Contact       @relation(fields: [contactId], references: [id])
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
-  payment        Payment?
+  allocations    PaymentAllocation[]
 
   @@index([organizationId, contactId])
   @@index([organizationId, status])
@@ -634,8 +634,6 @@ model Payment {
   periodId        String
   contactId       String
   referenceNumber Int?
-  receivableId    String?       @unique
-  payableId       String?       @unique
   journalEntryId  String?       @unique
   notes           String?
   createdById     String
@@ -644,13 +642,28 @@ model Payment {
   organization    Organization         @relation(fields: [organizationId], references: [id])
   contact         Contact              @relation(fields: [contactId], references: [id])
   period          FiscalPeriod         @relation(fields: [periodId], references: [id])
-  receivable      AccountsReceivable?  @relation(fields: [receivableId], references: [id])
-  payable         AccountsPayable?     @relation(fields: [payableId], references: [id])
   journalEntry    JournalEntry?        @relation(fields: [journalEntryId], references: [id])
   createdBy       User                 @relation("PaymentCreator", fields: [createdById], references: [id])
+  allocations     PaymentAllocation[]
 
   @@index([organizationId, status])
   @@index([organizationId, contactId])
   @@index([organizationId, date])
   @@map("payments")
+}
+
+model PaymentAllocation {
+  id            String              @id @default(cuid())
+  paymentId     String
+  receivableId  String?
+  payableId     String?
+  amount        Decimal             @db.Decimal(12, 2)
+  payment       Payment             @relation(fields: [paymentId], references: [id], onDelete: Cascade)
+  receivable    AccountsReceivable? @relation(fields: [receivableId], references: [id])
+  payable       AccountsPayable?    @relation(fields: [payableId], references: [id])
+
+  @@index([paymentId])
+  @@index([receivableId])
+  @@index([payableId])
+  @@map("payment_allocations")
 }

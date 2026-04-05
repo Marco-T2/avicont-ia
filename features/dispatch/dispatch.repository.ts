@@ -305,6 +305,117 @@ export class DispatchRepository extends BaseRepository {
     const scope = this.requireOrg(organizationId);
     await this.db.dispatch.delete({ where: { id, ...scope } });
   }
+
+  /**
+   * Deletes a DRAFT dispatch within a transaction.
+   * Cascade handles detail deletion. Service must verify DRAFT status before calling.
+   */
+  async deleteDraft(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+  ): Promise<void> {
+    await tx.dispatch.delete({
+      where: { id, organizationId },
+    });
+  }
+
+  /**
+   * Non-transactional hard delete for DRAFT dispatches (used by API DELETE).
+   * Service must verify DRAFT status before calling.
+   */
+  async hardDelete(organizationId: string, id: string): Promise<void> {
+    const scope = this.requireOrg(organizationId);
+    await this.db.dispatch.delete({ where: { id, ...scope } });
+  }
+
+  /**
+   * Creates a new DRAFT dispatch cloned from a source dispatch's data.
+   * Copies all header fields and detail lines. Resets sequence/status/links.
+   */
+  async cloneToDraft(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    sourceDispatch: DispatchWithDetails,
+  ): Promise<DispatchWithDetails> {
+    const row = await tx.dispatch.create({
+      data: {
+        organizationId,
+        dispatchType: sourceDispatch.dispatchType,
+        status: "DRAFT",
+        sequenceNumber: 0,
+        referenceNumber: sourceDispatch.referenceNumber ?? null,
+        date: sourceDispatch.date,
+        contactId: sourceDispatch.contactId,
+        periodId: sourceDispatch.periodId,
+        description: sourceDispatch.description,
+        notes: sourceDispatch.notes ?? null,
+        farmOrigin: sourceDispatch.farmOrigin ?? null,
+        chickenCount: sourceDispatch.chickenCount ?? null,
+        shrinkagePct:
+          sourceDispatch.shrinkagePct !== null
+            ? new Prisma.Decimal(sourceDispatch.shrinkagePct)
+            : null,
+        avgKgPerChicken:
+          sourceDispatch.avgKgPerChicken !== null
+            ? new Prisma.Decimal(sourceDispatch.avgKgPerChicken)
+            : null,
+        totalGrossKg:
+          sourceDispatch.totalGrossKg !== null
+            ? new Prisma.Decimal(sourceDispatch.totalGrossKg)
+            : null,
+        totalNetKg:
+          sourceDispatch.totalNetKg !== null
+            ? new Prisma.Decimal(sourceDispatch.totalNetKg)
+            : null,
+        totalShrinkKg:
+          sourceDispatch.totalShrinkKg !== null
+            ? new Prisma.Decimal(sourceDispatch.totalShrinkKg)
+            : null,
+        totalShortageKg:
+          sourceDispatch.totalShortageKg !== null
+            ? new Prisma.Decimal(sourceDispatch.totalShortageKg)
+            : null,
+        totalRealNetKg:
+          sourceDispatch.totalRealNetKg !== null
+            ? new Prisma.Decimal(sourceDispatch.totalRealNetKg)
+            : null,
+        totalAmount: new Prisma.Decimal(0),
+        journalEntryId: null,
+        receivableId: null,
+        createdById: sourceDispatch.createdById,
+        details: {
+          create: sourceDispatch.details.map((d) => ({
+            productTypeId: d.productTypeId ?? null,
+            detailNote: d.detailNote ?? null,
+            description: d.description,
+            boxes: d.boxes,
+            grossWeight: new Prisma.Decimal(Number(d.grossWeight)),
+            tare: new Prisma.Decimal(Number(d.tare)),
+            netWeight: new Prisma.Decimal(Number(d.netWeight)),
+            unitPrice: new Prisma.Decimal(Number(d.unitPrice)),
+            shrinkage:
+              d.shrinkage !== null
+                ? new Prisma.Decimal(Number(d.shrinkage))
+                : null,
+            shortage:
+              d.shortage !== null
+                ? new Prisma.Decimal(Number(d.shortage))
+                : null,
+            realNetWeight:
+              d.realNetWeight !== null
+                ? new Prisma.Decimal(Number(d.realNetWeight))
+                : null,
+            lineAmount: new Prisma.Decimal(Number(d.lineAmount)),
+            order: d.order,
+          })),
+        },
+      },
+      include: dispatchInclude,
+    });
+
+    return toDispatchWithDetails(row);
+  }
 }
 
 // ── Convert Prisma Decimal fields to plain numbers in the return value ──

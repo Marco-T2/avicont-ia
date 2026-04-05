@@ -1,9 +1,11 @@
 import {
   NotFoundError,
   ValidationError,
-  PAYMENT_AMBIGUOUS_LINK,
-  PAYMENT_MISSING_LINK,
-  PAYMENT_EXCEEDS_BALANCE,
+  PAYMENT_MIXED_ALLOCATION,
+  PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+  PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
+  PAYMENT_ALLOCATION_TARGET_VOIDED,
+  PAYMENT_NO_ALLOCATIONS,
 } from "@/features/shared/errors";
 import {
   validateTransition,
@@ -15,8 +17,6 @@ import { OrgSettingsService } from "@/features/org-settings";
 import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
-import { ReceivablesRepository } from "@/features/receivables/receivables.repository";
-import { PayablesRepository } from "@/features/payables/payables.repository";
 import { AccountBalancesService } from "@/features/account-balances";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import type {
@@ -24,6 +24,8 @@ import type {
   CreatePaymentInput,
   UpdatePaymentInput,
   PaymentFilters,
+  AllocationInput,
+  PaymentDirection,
 } from "./payment.types";
 import type { EntryLineTemplate } from "@/features/shared/auto-entry-generator";
 
@@ -31,8 +33,6 @@ export class PaymentService {
   private readonly repo: PaymentRepository;
   private readonly orgSettingsService: OrgSettingsService;
   private readonly autoEntryGenerator: AutoEntryGenerator;
-  private readonly receivablesRepo: ReceivablesRepository;
-  private readonly payablesRepo: PayablesRepository;
   private readonly balancesService: AccountBalancesService;
   private readonly periodsService: FiscalPeriodsService;
 
@@ -40,15 +40,11 @@ export class PaymentService {
     repo?: PaymentRepository,
     orgSettingsService?: OrgSettingsService,
     autoEntryGenerator?: AutoEntryGenerator,
-    receivablesRepo?: ReceivablesRepository,
-    payablesRepo?: PayablesRepository,
     balancesService?: AccountBalancesService,
     periodsService?: FiscalPeriodsService,
   ) {
     this.repo = repo ?? new PaymentRepository();
     this.orgSettingsService = orgSettingsService ?? new OrgSettingsService();
-    this.receivablesRepo = receivablesRepo ?? new ReceivablesRepository();
-    this.payablesRepo = payablesRepo ?? new PayablesRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? new FiscalPeriodsService();
 
@@ -81,55 +77,11 @@ export class PaymentService {
     organizationId: string,
     input: CreatePaymentInput,
   ): Promise<PaymentWithRelations> {
-    // 1. Validate exactly one link
-    const hasReceivable = !!input.receivableId;
-    const hasPayable = !!input.payableId;
+    // 1. Validate allocations
+    validateAllocations(input.allocations, input.amount);
 
-    if (hasReceivable && hasPayable) {
-      throw new ValidationError(
-        "El pago no puede estar vinculado a una CxC y a una CxP simultáneamente",
-        PAYMENT_AMBIGUOUS_LINK,
-      );
-    }
-    if (!hasReceivable && !hasPayable) {
-      throw new ValidationError(
-        "El pago debe estar vinculado a una CxC o a una CxP",
-        PAYMENT_MISSING_LINK,
-      );
-    }
-
-    // 2. Fetch linked document, derive contactId and validate balance
-    let contactId: string;
-    let linkedBalance: number;
-
-    if (hasReceivable) {
-      const receivable = await this.receivablesRepo.findById(
-        organizationId,
-        input.receivableId!,
-      );
-      if (!receivable) throw new NotFoundError("Cuenta por cobrar");
-      contactId = receivable.contactId;
-      linkedBalance = Number(receivable.balance);
-    } else {
-      const payable = await this.payablesRepo.findById(
-        organizationId,
-        input.payableId!,
-      );
-      if (!payable) throw new NotFoundError("Cuenta por pagar");
-      contactId = payable.contactId;
-      linkedBalance = Number(payable.balance);
-    }
-
-    // 3. Validate amount does not exceed balance
-    if (input.amount > linkedBalance) {
-      throw new ValidationError(
-        `El monto del pago (${input.amount}) excede el saldo disponible (${linkedBalance})`,
-        PAYMENT_EXCEEDS_BALANCE,
-      );
-    }
-
-    // 4. Create payment with DRAFT status
-    return this.repo.create(organizationId, input, contactId);
+    // 2. Create payment with allocations
+    return this.repo.create(organizationId, input);
   }
 
   // ── Update a DRAFT payment ──
@@ -142,33 +94,10 @@ export class PaymentService {
     const payment = await this.getById(organizationId, id);
     validateDraftOnly(payment.status as "DRAFT" | "POSTED" | "VOIDED");
 
-    // If amount is changing, validate against linked document balance
-    if (input.amount !== undefined) {
-      let linkedBalance: number;
-      if (payment.receivableId) {
-        const receivable = await this.receivablesRepo.findById(
-          organizationId,
-          payment.receivableId,
-        );
-        if (!receivable) throw new NotFoundError("Cuenta por cobrar");
-        linkedBalance = Number(receivable.balance);
-      } else if (payment.payableId) {
-        const payable = await this.payablesRepo.findById(
-          organizationId,
-          payment.payableId,
-        );
-        if (!payable) throw new NotFoundError("Cuenta por pagar");
-        linkedBalance = Number(payable.balance);
-      } else {
-        linkedBalance = Infinity;
-      }
-
-      if (input.amount > linkedBalance) {
-        throw new ValidationError(
-          `El monto del pago (${input.amount}) excede el saldo disponible (${linkedBalance})`,
-          PAYMENT_EXCEEDS_BALANCE,
-        );
-      }
+    // Validate new allocations if provided
+    if (input.allocations) {
+      const amount = input.amount ?? payment.amount;
+      validateAllocations(input.allocations, amount);
     }
 
     return this.repo.update(organizationId, id, input);
@@ -201,65 +130,83 @@ export class PaymentService {
     const period = await this.periodsService.getById(organizationId, payment.periodId);
     await validatePeriodOpen(period);
 
+    // Validate at least 1 allocation
+    if (!payment.allocations || payment.allocations.length === 0) {
+      throw new ValidationError(
+        "El pago debe tener al menos una asignación para ser contabilizado",
+        PAYMENT_NO_ALLOCATIONS,
+      );
+    }
+
+    // Determine direction from allocations
+    const direction: PaymentDirection = payment.allocations[0].receivableId
+      ? "COBRO"
+      : "PAGO";
+
     // Get org settings for account codes
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
-    const isCollection = !!payment.receivableId;
-    const amount = Number(payment.amount);
-
-    // Fetch fresh linked document and validate balance again
-    let linkedDocBalance: number;
-    let linkedDocPaid: number;
-    let linkedDocAmount: number;
-    let linkedDocContactId: string;
-
-    if (isCollection) {
-      const receivable = await this.receivablesRepo.findById(
-        organizationId,
-        payment.receivableId!,
-      );
-      if (!receivable) throw new NotFoundError("Cuenta por cobrar");
-      linkedDocBalance = Number(receivable.balance);
-      linkedDocPaid = Number(receivable.paid);
-      linkedDocAmount = Number(receivable.amount);
-      linkedDocContactId = receivable.contactId;
-    } else {
-      const payable = await this.payablesRepo.findById(
-        organizationId,
-        payment.payableId!,
-      );
-      if (!payable) throw new NotFoundError("Cuenta por pagar");
-      linkedDocBalance = Number(payable.balance);
-      linkedDocPaid = Number(payable.paid);
-      linkedDocAmount = Number(payable.amount);
-      linkedDocContactId = payable.contactId;
-    }
-
-    if (amount > linkedDocBalance) {
-      throw new ValidationError(
-        `El monto del pago (${amount}) excede el saldo disponible (${linkedDocBalance})`,
-        PAYMENT_EXCEEDS_BALANCE,
-      );
-    }
+    const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
+    const amount = payment.amount;
 
     // Build entry lines based on direction and method
-    const voucherTypeCode = isCollection ? "CI" : "CE";
     const lines = buildEntryLines(
-      isCollection,
+      direction === "COBRO",
       payment.method,
       amount,
       settings.cajaGeneralAccountCode,
       settings.bancoAccountCode,
       settings.cxcAccountCode,
       settings.cxpAccountCode,
-      linkedDocContactId,
+      payment.contactId,
     );
 
     await this.repo.transaction(async (tx) => {
-      // 1. Update payment status to POSTED
+      // 1. Validate each allocation against fresh CxC/CxP balance
+      for (const alloc of payment.allocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable) throw new NotFoundError("Cuenta por cobrar");
+          if (receivable.status === "VOIDED") {
+            throw new ValidationError(
+              "No se puede aplicar pago a una cuenta por cobrar anulada",
+              PAYMENT_ALLOCATION_TARGET_VOIDED,
+            );
+          }
+          const balance = Number(receivable.balance);
+          if (alloc.amount > balance) {
+            throw new ValidationError(
+              `La asignación (${alloc.amount}) excede el saldo disponible (${balance}) de la CxC`,
+              PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+            );
+          }
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable) throw new NotFoundError("Cuenta por pagar");
+          if (payable.status === "VOIDED") {
+            throw new ValidationError(
+              "No se puede aplicar pago a una cuenta por pagar anulada",
+              PAYMENT_ALLOCATION_TARGET_VOIDED,
+            );
+          }
+          const balance = Number(payable.balance);
+          if (alloc.amount > balance) {
+            throw new ValidationError(
+              `La asignación (${alloc.amount}) excede el saldo disponible (${balance}) de la CxP`,
+              PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+            );
+          }
+        }
+      }
+
+      // 2. Update payment status to POSTED
       await this.repo.updateStatusTx(tx, organizationId, id, "POSTED");
 
-      // 2. Generate journal entry
+      // 3. Generate journal entry
       const entry = await this.autoEntryGenerator.generate(tx, {
         organizationId,
         voucherTypeCode,
@@ -274,33 +221,49 @@ export class PaymentService {
         lines,
       });
 
-      // 3. Apply account balance changes
+      // 4. Apply account balance changes
       await this.balancesService.applyPost(tx, entry);
 
-      // 4. Link journal entry to payment
+      // 5. Link journal entry to payment
       await this.repo.linkJournalEntry(tx, id, entry.id);
 
-      // 5. Update linked CxC or CxP
-      const newPaid = linkedDocPaid + amount;
-      const newBalance = linkedDocAmount - newPaid;
-      const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+      // 6. Update each CxC/CxP allocation target
+      for (const alloc of payment.allocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable) continue;
 
-      if (isCollection) {
-        await this.receivablesRepo.updatePaymentTx(
-          tx,
-          payment.receivableId!,
-          newPaid,
-          Math.max(0, newBalance),
-          newStatus,
-        );
-      } else {
-        await this.payablesRepo.updatePaymentTx(
-          tx,
-          payment.payableId!,
-          newPaid,
-          Math.max(0, newBalance),
-          newStatus,
-        );
+          const newPaid = Number(receivable.paid) + alloc.amount;
+          const newBalance = Number(receivable.amount) - newPaid;
+          const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+
+          await this.repo.updateCxCPaymentTx(
+            tx,
+            alloc.receivableId,
+            newPaid,
+            Math.max(0, newBalance),
+            newStatus,
+          );
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable) continue;
+
+          const newPaid = Number(payable.paid) + alloc.amount;
+          const newBalance = Number(payable.amount) - newPaid;
+          const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+
+          await this.repo.updateCxPPaymentTx(
+            tx,
+            alloc.payableId,
+            newPaid,
+            Math.max(0, newBalance),
+            newStatus,
+          );
+        }
       }
     });
 
@@ -323,8 +286,6 @@ export class PaymentService {
       payment.status as "DRAFT" | "POSTED" | "VOIDED",
       "VOIDED",
     );
-
-    const amount = Number(payment.amount);
 
     await this.repo.transaction(async (tx) => {
       // 1. Update payment status to VOIDED
@@ -353,36 +314,40 @@ export class PaymentService {
         }
       }
 
-      // 3. Revert linked CxC or CxP
-      if (payment.receivableId) {
-        const receivable = await tx.accountsReceivable.findUnique({
-          where: { id: payment.receivableId },
-        });
-        if (receivable) {
-          const revertedPaid = Math.max(0, Number(receivable.paid) - amount);
+      // 3. Revert each allocation's CxC/CxP
+      for (const alloc of payment.allocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable || receivable.status === "VOIDED") continue;
+
+          const revertedPaid = Math.max(0, Number(receivable.paid) - alloc.amount);
           const revertedBalance = Number(receivable.amount) - revertedPaid;
           const revertedStatus = revertedPaid === 0 ? "PENDING" : "PARTIAL";
-          await this.receivablesRepo.updatePaymentTx(
+
+          await this.repo.updateCxCPaymentTx(
             tx,
-            payment.receivableId,
+            alloc.receivableId,
             revertedPaid,
-            revertedBalance,
+            Math.max(0, revertedBalance),
             revertedStatus,
           );
-        }
-      } else if (payment.payableId) {
-        const payable = await tx.accountsPayable.findUnique({
-          where: { id: payment.payableId },
-        });
-        if (payable) {
-          const revertedPaid = Math.max(0, Number(payable.paid) - amount);
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable || payable.status === "VOIDED") continue;
+
+          const revertedPaid = Math.max(0, Number(payable.paid) - alloc.amount);
           const revertedBalance = Number(payable.amount) - revertedPaid;
           const revertedStatus = revertedPaid === 0 ? "PENDING" : "PARTIAL";
-          await this.payablesRepo.updatePaymentTx(
+
+          await this.repo.updateCxPPaymentTx(
             tx,
-            payment.payableId,
+            alloc.payableId,
             revertedPaid,
-            revertedBalance,
+            Math.max(0, revertedBalance),
             revertedStatus,
           );
         }
@@ -391,6 +356,38 @@ export class PaymentService {
 
     const updated = await this.repo.findById(organizationId, id);
     return updated!;
+  }
+}
+
+// ── Validate allocations consistency ──
+
+function validateAllocations(allocations: AllocationInput[], totalAmount: number): void {
+  if (!allocations || allocations.length === 0) {
+    throw new ValidationError(
+      "El pago debe tener al menos una asignación",
+      PAYMENT_NO_ALLOCATIONS,
+    );
+  }
+
+  // Validate all allocations same direction
+  const hasReceivable = allocations.some((a) => !!a.receivableId);
+  const hasPayable = allocations.some((a) => !!a.payableId);
+
+  if (hasReceivable && hasPayable) {
+    throw new ValidationError(
+      "Todas las asignaciones deben ser del mismo tipo (CxC o CxP), no se pueden mezclar",
+      PAYMENT_MIXED_ALLOCATION,
+    );
+  }
+
+  // Validate SUM(allocations) <= amount
+  const allocTotal = allocations.reduce((sum, a) => sum + a.amount, 0);
+  // Use cent-level comparison to avoid floating point issues
+  if (Math.round(allocTotal * 100) > Math.round(totalAmount * 100)) {
+    throw new ValidationError(
+      `La suma de asignaciones (${allocTotal}) excede el monto total del pago (${totalAmount})`,
+      PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
+    );
   }
 }
 
