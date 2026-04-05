@@ -7,6 +7,7 @@ import {
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
+  Settings,
   Tractor,
   Users,
 } from "lucide-react";
@@ -70,7 +71,19 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
         { label: "Plan de Cuentas", href: `/${orgSlug}/accounting/accounts` },
         { label: "Libro Diario", href: `/${orgSlug}/accounting/journal` },
         { label: "Libro Mayor", href: `/${orgSlug}/accounting/ledger` },
+        { label: "Contactos", href: `/${orgSlug}/accounting/contacts` },
+        { label: "Cuentas por Cobrar", href: `/${orgSlug}/accounting/cxc` },
+        { label: "Cuentas por Pagar", href: `/${orgSlug}/accounting/cxp` },
         { label: "Reportes", href: `/${orgSlug}/accounting/reports` },
+      ],
+    },
+    {
+      icon: <Settings className="h-5 w-5" />,
+      label: "Configuración Contable",
+      resource: "accounting-config",
+      children: [
+        { label: "Períodos Fiscales", href: `/${orgSlug}/accounting/periods` },
+        { label: "Tipos de Comprobante", href: `/${orgSlug}/accounting/voucher-types` },
       ],
     },
     {

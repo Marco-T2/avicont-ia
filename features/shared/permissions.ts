@@ -1,15 +1,17 @@
 export type Role = "owner" | "admin" | "contador" | "member";
 
-export type Resource = "members" | "accounting" | "farms" | "documents" | "agent";
+export type Resource = "members" | "accounting" | "accounting-config" | "farms" | "documents" | "agent" | "contacts";
 
 export type DocumentScope = "ORGANIZATION" | "ACCOUNTING" | "FARM";
 
 export const PERMISSIONS: Record<Resource, Role[]> = {
   members: ["owner", "admin"],
   accounting: ["owner", "admin", "contador"],
+  "accounting-config": ["owner", "admin"],
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador", "member"],
   agent: ["owner", "admin", "contador", "member"],
+  contacts: ["owner", "admin", "contador"],
 };
 
 /** Scopes each role can search via RAG. null = no RAG access. */

@@ -37,7 +37,7 @@ export async function POST(
     const { userId: clerkUserId } = await requireAuth();
     const { orgSlug } = await params;
     const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["admin"]);
+    await requireRole(clerkUserId, orgId, ["owner", "admin"]);
 
     const body = await request.json();
     const input = createFiscalPeriodSchema.parse(body);

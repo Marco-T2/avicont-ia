@@ -11,18 +11,21 @@ import {
   ENTRY_POSTED_LINES_IMMUTABLE,
   FISCAL_PERIOD_CLOSED,
   VOUCHER_TYPE_NOT_IN_ORG,
+  CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import { VoucherTypesService } from "@/features/voucher-types";
-import type { JournalEntryStatus } from "@/generated/prisma/client";
+import { ContactsService } from "@/features/contacts";
+import type { JournalEntryStatus, Account } from "@/generated/prisma/client";
 import type {
   CreateJournalEntryInput,
   UpdateJournalEntryInput,
   JournalEntryWithLines,
   JournalFilters,
+  JournalLineInput,
 } from "./journal.types";
 
 const VALID_TRANSITIONS: Record<JournalEntryStatus, JournalEntryStatus[]> = {
@@ -37,6 +40,7 @@ export class JournalService {
   private readonly balancesService: AccountBalancesService;
   private readonly periodsService: FiscalPeriodsService;
   private readonly voucherTypesService: VoucherTypesService;
+  private readonly contactsService: ContactsService;
 
   constructor(
     repo?: JournalRepository,
@@ -44,12 +48,14 @@ export class JournalService {
     balancesService?: AccountBalancesService,
     periodsService?: FiscalPeriodsService,
     voucherTypesService?: VoucherTypesService,
+    contactsService?: ContactsService,
   ) {
     this.repo = repo ?? new JournalRepository();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? new FiscalPeriodsService();
     this.voucherTypesService = voucherTypesService ?? new VoucherTypesService();
+    this.contactsService = contactsService ?? new ContactsService();
   }
 
   // ── List journal entries ──
@@ -114,6 +120,8 @@ export class JournalService {
     }
 
     // Validate all accounts exist, are active, and are detail accounts
+    // Cache accounts to avoid redundant queries in the contact check
+    const accountCache = new Map<string, Account>();
     for (const line of lines) {
       const account = await this.accountsRepo.findById(organizationId, line.accountId);
       if (!account) {
@@ -128,7 +136,11 @@ export class JournalService {
           ACCOUNT_NOT_POSTABLE,
         );
       }
+      accountCache.set(line.accountId, account);
     }
+
+    // Validate requiresContact: if an account requires a contact, the line must have one
+    await this.validateContactsForLines(organizationId, lines, accountCache);
 
     // Auto-assign next correlative number per [orgId, voucherTypeId, periodId]
     const number = await this.repo.getNextNumber(
@@ -188,6 +200,7 @@ export class JournalService {
         }
       }
 
+      const accountCache = new Map<string, Account>();
       for (const line of lines) {
         const account = await this.accountsRepo.findById(organizationId, line.accountId);
         if (!account) throw new NotFoundError(`Cuenta ${line.accountId}`);
@@ -200,10 +213,38 @@ export class JournalService {
             ACCOUNT_NOT_POSTABLE,
           );
         }
+        accountCache.set(line.accountId, account);
       }
+
+      // Validate requiresContact: if an account requires a contact, the line must have one
+      await this.validateContactsForLines(organizationId, lines, accountCache);
     }
 
     return this.repo.update(organizationId, id, data, lines, updatedById);
+  }
+
+  // ── Validate requiresContact on journal lines ──
+
+  private async validateContactsForLines(
+    organizationId: string,
+    lines: JournalLineInput[],
+    accountCache: Map<string, Account>,
+  ): Promise<void> {
+    for (const line of lines) {
+      const account = accountCache.get(line.accountId);
+      if (!account) continue;
+
+      if (account.requiresContact) {
+        if (!line.contactId) {
+          throw new ValidationError(
+            `La cuenta "${account.name}" requiere un contacto en la línea`,
+            CONTACT_REQUIRED_FOR_ACCOUNT,
+          );
+        }
+        // Verify the contact is active (throws ValidationError with CONTACT_NOT_FOUND if not)
+        await this.contactsService.getActiveById(organizationId, line.contactId);
+      }
+    }
   }
 
   // ── Transition status ──
