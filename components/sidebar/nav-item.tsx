@@ -14,7 +14,8 @@ import {
 
 export interface NavSubItem {
   label: string;
-  href: string;
+  href?: string;
+  isSeparator?: boolean;
 }
 
 export interface NavItemProps {
@@ -38,7 +39,9 @@ export function NavItem({ icon, label, href, onClick, children }: NavItemProps) 
   const childActive = hasChildren
     ? children.some(
         (child) =>
-          pathname === child.href || pathname.startsWith(child.href + "/")
+          !child.isSeparator &&
+          child.href !== undefined &&
+          (pathname === child.href || pathname.startsWith(child.href + "/"))
       )
     : false;
 
@@ -116,14 +119,27 @@ export function NavItem({ icon, label, href, onClick, children }: NavItemProps) 
       {wrappedContent}
       {hasChildren && isExpanded && !isCollapsed && (
         <div className="ml-4 mt-1 flex flex-col gap-0.5 border-l pl-3">
-          {children.map((child) => {
+          {children.map((child, index) => {
+            if (child.isSeparator) {
+              return (
+                <div
+                  key={`sep-${index}`}
+                  className="mt-2 mb-1 px-3 flex items-center gap-2"
+                >
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">
+                    {child.label}
+                  </span>
+                  <div className="flex-1 h-px bg-border/60" />
+                </div>
+              );
+            }
             const subActive =
               pathname === child.href ||
-              pathname.startsWith(child.href + "/");
+              pathname.startsWith((child.href ?? "") + "/");
             return (
               <Link
                 key={child.href}
-                href={child.href}
+                href={child.href!}
                 className={cn(
                   "rounded-md px-3 py-1.5 text-sm transition-colors",
                   "hover:bg-accent hover:text-accent-foreground",

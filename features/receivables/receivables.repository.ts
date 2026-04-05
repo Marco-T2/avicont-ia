@@ -113,6 +113,66 @@ export class ReceivablesRepository extends BaseRepository {
     });
   }
 
+  async createTx(
+    tx: Prisma.TransactionClient,
+    data: {
+      organizationId: string;
+      contactId: string;
+      description: string;
+      amount: number;
+      dueDate: Date;
+      sourceType?: string;
+      sourceId?: string;
+      journalEntryId?: string;
+    },
+  ): Promise<{ id: string }> {
+    return tx.accountsReceivable.create({
+      data: {
+        organizationId: data.organizationId,
+        contactId: data.contactId,
+        description: data.description,
+        amount: new Prisma.Decimal(data.amount),
+        paid: new Prisma.Decimal(0),
+        balance: new Prisma.Decimal(data.amount),
+        dueDate: data.dueDate,
+        status: "PENDING",
+        ...(data.sourceType ? { sourceType: data.sourceType } : {}),
+        ...(data.sourceId ? { sourceId: data.sourceId } : {}),
+        ...(data.journalEntryId ? { journalEntryId: data.journalEntryId } : {}),
+      },
+    });
+  }
+
+  async voidTx(
+    tx: Prisma.TransactionClient,
+    id: string,
+  ): Promise<void> {
+    await tx.accountsReceivable.update({
+      where: { id },
+      data: {
+        status: "VOIDED",
+        balance: new Prisma.Decimal(0),
+      },
+    });
+  }
+
+  async updatePaymentTx(
+    tx: Prisma.TransactionClient,
+    id: string,
+    paid: number,
+    balance: number,
+    status: string,
+  ): Promise<void> {
+    await tx.accountsReceivable.update({
+      where: { id },
+      data: {
+        paid: new Prisma.Decimal(paid),
+        balance: new Prisma.Decimal(balance),
+        status,
+      },
+    });
+  }
+
   async aggregateOpen(
     organizationId: string,
     contactId?: string,

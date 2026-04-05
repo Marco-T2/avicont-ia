@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError, ValidationError, VOUCHER_TYPE_NOT_IN_ORG } from "@/features/shared/errors";
 import { VoucherTypesRepository } from "./voucher-types.repository";
 import type { VoucherTypeCfg, VoucherTypeCode } from "@/generated/prisma/client";
 import type { UpdateVoucherTypeInput } from "./voucher-types.types";
@@ -53,6 +53,19 @@ export class VoucherTypesService {
   async getById(organizationId: string, id: string): Promise<VoucherTypeCfg> {
     const type = await this.repo.findById(organizationId, id);
     if (!type) throw new NotFoundError("Tipo de comprobante");
+    return type;
+  }
+
+  // ── Get a voucher type by code ──
+
+  async getByCode(organizationId: string, code: VoucherTypeCode): Promise<VoucherTypeCfg> {
+    const type = await this.repo.findByCode(organizationId, code);
+    if (!type) {
+      throw new ValidationError(
+        `Tipo de comprobante ${code} no configurado para esta organización`,
+        VOUCHER_TYPE_NOT_IN_ORG,
+      );
+    }
     return type;
   }
 

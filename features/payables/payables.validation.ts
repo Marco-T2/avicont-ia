@@ -30,7 +30,7 @@ export const updatePayableSchema = z.object({
 });
 
 export const payableStatusSchema = z.object({
-  status: z.enum(["PENDING", "PARTIAL", "PAID", "CANCELLED"]),
+  status: z.enum(["PENDING", "PARTIAL", "PAID", "VOIDED", "OVERDUE"]),
   paidAmount: z
     .number()
     .positive("El monto pagado debe ser mayor a cero")
@@ -39,7 +39,7 @@ export const payableStatusSchema = z.object({
 
 export const payableFiltersSchema = z.object({
   contactId: z.string().optional(),
-  status: z.enum(["PENDING", "PARTIAL", "PAID", "CANCELLED"]).optional(),
+  status: z.enum(["PENDING", "PARTIAL", "PAID", "VOIDED", "OVERDUE"]).optional(),
   dueDateFrom: z.coerce.date().optional(),
   dueDateTo: z.coerce.date().optional(),
 });

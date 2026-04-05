@@ -20,10 +20,11 @@ import type {
 // ── Valid status transitions ──
 
 const STATUS_TRANSITIONS: Record<ReceivableStatus, ReceivableStatus[]> = {
-  PENDING: ["PARTIAL", "PAID", "CANCELLED"],
-  PARTIAL: ["PAID", "CANCELLED"],
+  PENDING: ["PARTIAL", "PAID", "VOIDED", "OVERDUE"],
+  PARTIAL: ["PAID", "VOIDED", "OVERDUE"],
+  OVERDUE: ["PARTIAL", "PAID", "VOIDED"],
   PAID: [],
-  CANCELLED: [],
+  VOIDED: [],
 };
 
 export class ReceivablesService {
@@ -119,22 +120,26 @@ export class ReceivablesService {
       }
       paid = input.paidAmount.toString();
       balance = amount.minus(paid).toString();
-    } else {
-      // CANCELLED — keep current paid, balance = 0
+    } else if (input.status === "VOIDED") {
+      // VOIDED — keep current paid, balance = 0
       paid = receivable.paid.toString();
       balance = "0";
+    } else {
+      // OVERDUE — status change only, no financial change
+      paid = receivable.paid.toString();
+      balance = receivable.balance.toString();
     }
 
     return this.repo.updateStatus(organizationId, id, input.status, paid, balance);
   }
 
-  // ── Cancel a receivable ──
+  // ── Void a receivable ──
 
-  async cancel(
+  async void(
     organizationId: string,
     id: string,
   ): Promise<ReceivableWithContact> {
-    return this.updateStatus(organizationId, id, { status: "CANCELLED" });
+    return this.updateStatus(organizationId, id, { status: "VOIDED" });
   }
 
   // ── Open aggregate ──
