@@ -1,16 +1,18 @@
 import { seedChartOfAccounts } from "./seeds/chart-of-accounts";
+import { seedVoucherTypes } from "./seeds/voucher-types";
 
 async function main() {
   const organizationId = process.argv[2];
 
   if (!organizationId) {
     console.error("Usage: npx tsx prisma/seed.ts <organizationId>");
-    console.error("  Provide the organization ID to seed the chart of accounts for.");
+    console.error("  Provide the organization ID to seed data for.");
     process.exit(1);
   }
 
-  console.log(`Seeding chart of accounts for organization: ${organizationId}`);
+  console.log(`Seeding data for organization: ${organizationId}`);
   await seedChartOfAccounts(organizationId);
+  await seedVoucherTypes(organizationId);
   console.log("Seed complete.");
 }
 

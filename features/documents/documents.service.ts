@@ -164,6 +164,19 @@ export class DocumentsService {
     await this.repo.delete(documentId, document.organizationId);
   }
 
+  // ── Analysis ──
+
+  async findForAnalysis(documentId: string, clerkUserId: string) {
+    return this.repo.findForAnalysis(documentId, clerkUserId);
+  }
+
+  async updateAnalysis(
+    documentId: string,
+    data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
+  ) {
+    return this.repo.updateAnalysis(documentId, data);
+  }
+
   // ── Private helpers ──
 
   private async extractPdfText(file: File): Promise<string | null> {

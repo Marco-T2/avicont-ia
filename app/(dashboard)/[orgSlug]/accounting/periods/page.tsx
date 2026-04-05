@@ -1,0 +1,46 @@
+import { redirect } from "next/navigation";
+import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import PeriodList from "@/components/accounting/period-list";
+
+interface PeriodsPageProps {
+  params: Promise<{ orgSlug: string }>;
+}
+
+export default async function PeriodsPage({ params }: PeriodsPageProps) {
+  const { orgSlug } = await params;
+
+  let userId: string;
+  try {
+    const session = await requireAuth();
+    userId = session.userId;
+  } catch {
+    redirect("/sign-in");
+  }
+
+  let orgId: string;
+  try {
+    orgId = await requireOrgAccess(userId, orgSlug);
+  } catch {
+    redirect("/select-org");
+  }
+
+  const service = new FiscalPeriodsService();
+  const periods = await service.list(orgId);
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">Períodos Fiscales</h1>
+        <p className="text-gray-500 mt-1">
+          Gestión de períodos contables de la organización
+        </p>
+      </div>
+
+      <PeriodList
+        orgSlug={orgSlug}
+        periods={JSON.parse(JSON.stringify(periods))}
+      />
+    </div>
+  );
+}

@@ -1,0 +1,75 @@
+import { redirect, notFound } from "next/navigation";
+import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { JournalService, AccountsService } from "@/features/accounting";
+import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { VoucherTypesService } from "@/features/voucher-types";
+import JournalEntryForm from "@/components/accounting/journal-entry-form";
+
+interface EditJournalEntryPageProps {
+  params: Promise<{ orgSlug: string; entryId: string }>;
+}
+
+export default async function EditJournalEntryPage({
+  params,
+}: EditJournalEntryPageProps) {
+  const { orgSlug, entryId } = await params;
+
+  let userId: string;
+  try {
+    const session = await requireAuth();
+    userId = session.userId;
+  } catch {
+    redirect("/sign-in");
+  }
+
+  let orgId: string;
+  try {
+    orgId = await requireOrgAccess(userId, orgSlug);
+  } catch {
+    redirect("/select-org");
+  }
+
+  const journalService = new JournalService();
+  const accountsService = new AccountsService();
+  const periodsService = new FiscalPeriodsService();
+  const voucherTypesService = new VoucherTypesService();
+
+  let entry;
+  try {
+    entry = await journalService.getById(orgId, entryId);
+  } catch {
+    notFound();
+  }
+
+  // Only DRAFT entries can be edited
+  if (entry.status !== "DRAFT") {
+    redirect(`/${orgSlug}/accounting/journal/${entryId}`);
+  }
+
+  const [accounts, periods, voucherTypes] = await Promise.all([
+    accountsService.list(orgId),
+    periodsService.list(orgId),
+    voucherTypesService.list(orgId),
+  ]);
+
+  const serializedEntry = JSON.parse(JSON.stringify(entry));
+
+  return (
+    <div className="space-y-6">
+      <JournalEntryForm
+        orgSlug={orgSlug}
+        accounts={JSON.parse(JSON.stringify(accounts))}
+        periods={JSON.parse(JSON.stringify(periods))}
+        voucherTypes={JSON.parse(JSON.stringify(voucherTypes))}
+        editEntry={{
+          id: serializedEntry.id,
+          date: serializedEntry.date.split("T")[0],
+          description: serializedEntry.description,
+          periodId: serializedEntry.periodId,
+          voucherTypeId: serializedEntry.voucherTypeId,
+          lines: serializedEntry.lines,
+        }}
+      />
+    </div>
+  );
+}

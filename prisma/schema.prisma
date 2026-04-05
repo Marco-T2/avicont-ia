@@ -22,8 +22,11 @@ model Organization {
   chickenLots    ChickenLot[]
   expenses       Expense[]
   mortalityLogs  MortalityLog[]
-  accounts       Account[]
-  journalEntries JournalEntry[]
+  accounts        Account[]
+  journalEntries  JournalEntry[]
+  fiscalPeriods   FiscalPeriod[]
+  voucherTypes    VoucherTypeCfg[]
+  accountBalances AccountBalance[]
 
   @@map("organizations")
 }
@@ -221,26 +224,48 @@ enum AccountType {
   GASTO
 }
 
-enum VoucherType {
-  INGRESO
-  EGRESO
-  TRASPASO
-  DIARIO
+enum AccountNature {
+  DEUDORA   // Activos y Gastos: saldo aumenta con Debe
+  ACREEDORA // Pasivos, Patrimonio, Ingresos: saldo aumenta con Haber
+}
+
+enum FiscalPeriodStatus {
+  OPEN
+  CLOSED
+}
+
+enum VoucherTypeCode {
+  CI // Comprobante de Ingreso
+  CE // Comprobante de Egreso
+  CD // Comprobante de Diario
+  CT // Comprobante de Traspaso
+  CA // Comprobante de Apertura
+}
+
+enum JournalEntryStatus {
+  DRAFT
+  POSTED
+  VOIDED
 }
 
 model Account {
-  id             String      @id @default(cuid())
-  code           String
-  name           String
-  type           AccountType
-  parentId       String?
-  level          Int
-  isActive       Boolean     @default(true)
-  organizationId String
-  parent         Account?     @relation("AccountTree", fields: [parentId], references: [id])
-  children       Account[]    @relation("AccountTree")
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  journalLines   JournalLine[]
+  id              String        @id @default(cuid())
+  code            String
+  name            String
+  type            AccountType
+  nature          AccountNature
+  parentId        String?
+  level           Int
+  isDetail        Boolean       @default(false)
+  requiresContact Boolean       @default(false)
+  description     String?
+  isActive        Boolean       @default(true)
+  organizationId  String
+  parent          Account?      @relation("AccountTree", fields: [parentId], references: [id])
+  children        Account[]     @relation("AccountTree")
+  organization    Organization  @relation(fields: [organizationId], references: [id])
+  journalLines    JournalLine[]
+  balances        AccountBalance[]
 
   @@unique([organizationId, code])
   @@index([parentId])
@@ -248,19 +273,30 @@ model Account {
 }
 
 model JournalEntry {
-  id             String      @id @default(cuid())
+  id             String             @id @default(cuid())
   number         Int
   date           DateTime
   description    String
-  voucherType    VoucherType
+  status         JournalEntryStatus @default(DRAFT)
+  periodId       String
+  voucherTypeId  String
+  contactId      String?
+  sourceType     String?
+  sourceId       String?
   organizationId String
   createdById    String
-  createdAt      DateTime    @default(now())
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  createdBy      User         @relation("JournalCreator", fields: [createdById], references: [id])
+  updatedById    String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  period         FiscalPeriod       @relation(fields: [periodId], references: [id])
+  voucherType    VoucherTypeCfg     @relation(fields: [voucherTypeId], references: [id])
+  createdBy      User               @relation("JournalCreator", fields: [createdById], references: [id])
   lines          JournalLine[]
 
-  @@unique([organizationId, number])
+  @@unique([organizationId, voucherTypeId, periodId, number])
+  @@index([organizationId, periodId])
+  @@index([organizationId, status])
   @@index([createdById])
   @@map("journal_entries")
 }
@@ -272,10 +308,63 @@ model JournalLine {
   debit          Decimal      @default(0) @db.Decimal(12, 2)
   credit         Decimal      @default(0) @db.Decimal(12, 2)
   description    String?
+  contactId      String?
+  order          Int          @default(0)
   journalEntry   JournalEntry @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
   account        Account      @relation(fields: [accountId], references: [id])
 
   @@index([journalEntryId])
   @@index([accountId])
   @@map("journal_lines")
+}
+
+model FiscalPeriod {
+  id             String             @id @default(cuid())
+  organizationId String
+  name           String
+  year           Int
+  startDate      DateTime
+  endDate        DateTime
+  status         FiscalPeriodStatus @default(OPEN)
+  createdById    String
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  organization   Organization       @relation(fields: [organizationId], references: [id])
+  journalEntries JournalEntry[]
+  balances       AccountBalance[]
+
+  @@unique([organizationId, year])
+  @@index([organizationId, status])
+  @@map("fiscal_periods")
+}
+
+model VoucherTypeCfg {
+  id             String          @id @default(cuid())
+  organizationId String
+  code           VoucherTypeCode
+  name           String
+  description    String?
+  isActive       Boolean         @default(true)
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  journalEntries JournalEntry[]
+
+  @@unique([organizationId, code])
+  @@map("voucher_types")
+}
+
+model AccountBalance {
+  id             String       @id @default(cuid())
+  organizationId String
+  accountId      String
+  periodId       String
+  debitTotal     Decimal      @default(0) @db.Decimal(12, 2)
+  creditTotal    Decimal      @default(0) @db.Decimal(12, 2)
+  balance        Decimal      @default(0) @db.Decimal(12, 2)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  account        Account      @relation(fields: [accountId], references: [id])
+  period         FiscalPeriod @relation(fields: [periodId], references: [id])
+
+  @@unique([accountId, periodId])
+  @@index([organizationId, periodId])
+  @@map("account_balances")
 }

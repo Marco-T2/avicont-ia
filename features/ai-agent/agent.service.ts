@@ -235,7 +235,7 @@ export class AgentService {
         case "getTrialBalance":
           data = await ledgerService.getTrialBalance(
             orgId,
-            args.date ? new Date(args.date as string) : undefined,
+            args.periodId as string,
           );
           break;
         case "getAccountLedger":

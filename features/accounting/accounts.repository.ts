@@ -1,5 +1,5 @@
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { Account, AccountType } from "@/generated/prisma/client";
+import type { Account, AccountType, AccountNature } from "@/generated/prisma/client";
 import type { CreateAccountInput, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
 
 export class AccountsRepository extends BaseRepository {
@@ -47,7 +47,7 @@ export class AccountsRepository extends BaseRepository {
     });
   }
 
-  async create(organizationId: string, data: CreateAccountInput): Promise<Account> {
+  async create(organizationId: string, data: CreateAccountInput, nature: AccountNature): Promise<Account> {
     const scope = this.requireOrg(organizationId);
 
     return this.db.account.create({
@@ -55,8 +55,12 @@ export class AccountsRepository extends BaseRepository {
         code: data.code,
         name: data.name,
         type: data.type,
+        nature,
         parentId: data.parentId ?? null,
         level: data.level,
+        isDetail: data.isDetail ?? false,
+        requiresContact: data.requiresContact ?? false,
+        description: data.description ?? null,
         organizationId: scope.organizationId,
       },
     });
@@ -70,7 +74,19 @@ export class AccountsRepository extends BaseRepository {
       data: {
         ...(data.name !== undefined && { name: data.name }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
+        ...(data.isDetail !== undefined && { isDetail: data.isDetail }),
+        ...(data.requiresContact !== undefined && { requiresContact: data.requiresContact }),
+        ...(data.description !== undefined && { description: data.description }),
       },
+    });
+  }
+
+  async findDetailAccounts(organizationId: string): Promise<Account[]> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.account.findMany({
+      where: { ...scope, isDetail: true, isActive: true },
+      orderBy: { code: "asc" },
     });
   }
 

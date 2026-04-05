@@ -4,14 +4,14 @@ import {
   requireRole,
   handleError,
 } from "@/features/shared/middleware";
-import { UsersRepository } from "@/features/shared/users.repository";
+import { UsersService } from "@/features/shared/users.service";
 import { JournalService } from "@/features/accounting";
 import {
   createJournalEntrySchema,
   journalFiltersSchema,
 } from "@/features/accounting/accounting.validation";
 
-const usersRepo = new UsersRepository();
+const usersService = new UsersService();
 const service = new JournalService();
 
 export async function GET(
@@ -28,7 +28,9 @@ export async function GET(
     const filters = journalFiltersSchema.parse({
       dateFrom: searchParams.get("dateFrom") ?? undefined,
       dateTo: searchParams.get("dateTo") ?? undefined,
-      voucherType: searchParams.get("voucherType") ?? undefined,
+      periodId: searchParams.get("periodId") ?? undefined,
+      voucherTypeId: searchParams.get("voucherTypeId") ?? undefined,
+      status: searchParams.get("status") ?? undefined,
     });
 
     const entries = await service.list(orgId, filters);
@@ -52,7 +54,7 @@ export async function POST(
     const body = await request.json();
     const input = createJournalEntrySchema.parse(body);
 
-    const user = await usersRepo.findByClerkUserId(clerkUserId);
+    const user = await usersService.resolveByClerkId(clerkUserId);
 
     const entry = await service.createEntry(orgId, {
       ...input,

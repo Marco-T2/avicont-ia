@@ -3,14 +3,14 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
-import { UsersRepository } from "@/features/shared/users.repository";
+import { UsersService } from "@/features/shared/users.service";
 import { ExpensesService } from "@/features/expenses/expenses.service";
 import {
   createExpenseSchema,
   expenseFiltersSchema,
 } from "@/features/expenses/expenses.validation";
 
-const usersRepo = new UsersRepository();
+const usersService = new UsersService();
 const service = new ExpensesService();
 
 export async function GET(
@@ -52,7 +52,7 @@ export async function POST(
     const body = await request.json();
     const input = createExpenseSchema.parse(body);
 
-    const user = await usersRepo.findByClerkUserId(clerkUserId);
+    const user = await usersService.resolveByClerkId(clerkUserId);
 
     const expense = await service.create(orgId, {
       ...input,

@@ -1,6 +1,8 @@
 import { currentUser } from "@clerk/nextjs/server";
-import { prisma } from "@/lib/prisma";
+import { UsersService } from "@/features/shared/users.service";
 import { AppError } from "@/features/shared/errors";
+
+const usersService = new UsersService();
 
 export async function syncUserToDatabase() {
   try {
@@ -14,27 +16,21 @@ export async function syncUserToDatabase() {
       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
 
     // Check if user exists in database
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkUserId: clerkUser.id },
-    });
+    const existing = await usersService.resolveByClerkId(clerkUser.id).catch(() => null);
 
-    if (dbUser) {
+    let dbUser;
+    if (existing) {
       // Update existing user
-      dbUser = await prisma.user.update({
-        where: { id: dbUser.id },
-        data: {
-          email,
-          name: name || dbUser.name,
-        },
+      dbUser = await usersService.update(existing.id, {
+        email,
+        name: name || existing.name,
       });
     } else {
       // Create a new user in database
-      dbUser = await prisma.user.create({
-        data: {
-          clerkUserId: clerkUser.id,
-          email,
-          name: name || "User",
-        },
+      dbUser = await usersService.findOrCreate({
+        clerkUserId: clerkUser.id,
+        email,
+        name: name || "User",
       });
       console.log(`New user created: ${email}`);
     }

@@ -1,7 +1,11 @@
-import { NotFoundError, ConflictError, ValidationError } from "@/features/shared/errors";
+import { NotFoundError, ConflictError, ValidationError, INVALID_ACCOUNT_NATURE } from "@/features/shared/errors";
 import { AccountsRepository } from "./accounts.repository";
-import type { Account } from "@/generated/prisma/client";
+import type { Account, AccountType, AccountNature } from "@/generated/prisma/client";
 import type { CreateAccountInput, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
+
+function deriveNature(type: AccountType): AccountNature {
+  return (type === "ACTIVO" || type === "GASTO") ? "DEUDORA" : "ACREEDORA";
+}
 
 export class AccountsService {
   private readonly repo: AccountsRepository;
@@ -41,7 +45,16 @@ export class AccountsService {
       if (!parent) throw new NotFoundError("Cuenta padre");
     }
 
-    return this.repo.create(organizationId, input);
+    const nature = deriveNature(input.type);
+
+    if (input.nature !== undefined && input.nature !== nature) {
+      throw new ValidationError(
+        `La naturaleza de la cuenta no coincide con el tipo '${input.type}'. Naturaleza esperada: ${nature}`,
+        INVALID_ACCOUNT_NATURE,
+      );
+    }
+
+    return this.repo.create(organizationId, input, nature);
   }
 
   // ── Update an account ──

@@ -1,8 +1,8 @@
 import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { DocumentsRepository } from "@/features/documents";
+import { DocumentsService } from "@/features/documents";
 
-const docsRepo = new DocumentsRepository();
+const docsService = new DocumentsService();
 
 export async function POST(request: Request) {
   try {
@@ -16,7 +16,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const document = await docsRepo.findForAnalysis(documentId, userId);
+    const document = await docsService.findForAnalysis(documentId, userId);
 
     if (!document) {
       return Response.json(
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
 
     const summary = await analyzeWithGemini(content, analysisType);
 
-    const updatedDocument = await docsRepo.updateAnalysis(documentId, {
+    const updatedDocument = await docsService.updateAnalysis(documentId, {
       aiSummary: summary,
       aiKeywords: ["analyzed"],
       sentiment: "analyzed",

@@ -1,9 +1,10 @@
-import { prisma } from "@/lib/prisma";
 import {
   NotFoundError,
   ForbiddenError,
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
+import { UsersService } from "@/features/shared/users.service";
+import { VoucherTypesService } from "@/features/voucher-types";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";
 import type {
   CreateOrganizationInput,
@@ -11,9 +12,17 @@ import type {
 } from "./organizations.types";
 
 export class OrganizationsService {
+  private readonly voucherTypesService: VoucherTypesService;
+  private readonly usersService: UsersService;
+
   constructor(
     private readonly repo: OrganizationsRepository = new OrganizationsRepository(),
-  ) {}
+    voucherTypesService?: VoucherTypesService,
+    usersService?: UsersService,
+  ) {
+    this.voucherTypesService = voucherTypesService ?? new VoucherTypesService();
+    this.usersService = usersService ?? new UsersService();
+  }
 
   // -----------------------------------------------------------------------
   // Sync / create organization (idempotent — used by the route handler)
@@ -30,19 +39,11 @@ export class OrganizationsService {
     }
 
     // Ensure the calling user exists in our DB
-    let user = await prisma.user.findUnique({
-      where: { clerkUserId },
+    const user = await this.usersService.findOrCreate({
+      clerkUserId,
+      email: `${clerkUserId}@temp.com`,
+      name: "User",
     });
-
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          clerkUserId,
-          email: `${clerkUserId}@temp.com`,
-          name: "User",
-        },
-      });
-    }
 
     // Create the organization
     const organization = await this.repo.create(input);
@@ -53,6 +54,9 @@ export class OrganizationsService {
       organizationId: organization.id,
       role: "owner",
     });
+
+    // Seed default voucher types for the new org
+    await this.voucherTypesService.seedForOrg(organization.id);
 
     return { organization, created: true };
   }
@@ -158,5 +162,12 @@ export class OrganizationsService {
     );
     if (!member) throw new ForbiddenError();
     return member;
+  }
+
+  async getMemberById(
+    organizationId: string,
+    memberId: string,
+  ): Promise<OrganizationMember | null> {
+    return this.repo.findMemberById(organizationId, memberId);
   }
 }

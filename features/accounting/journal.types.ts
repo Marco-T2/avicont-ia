@@ -2,7 +2,7 @@ import type {
   JournalEntry,
   JournalLine,
   Account,
-  VoucherType,
+  JournalEntryStatus,
 } from "@/generated/prisma/client";
 
 // ── Input types ──
@@ -12,14 +12,28 @@ export interface JournalLineInput {
   debit: number;
   credit: number;
   description?: string;
+  contactId?: string;
+  order: number;
 }
 
 export interface CreateJournalEntryInput {
   date: Date;
   description: string;
-  voucherType: VoucherType;
+  periodId: string;
+  voucherTypeId: string;
+  contactId?: string;
+  sourceType?: string;
+  sourceId?: string;
   createdById: string;
   lines: JournalLineInput[];
+}
+
+export interface UpdateJournalEntryInput {
+  date?: Date;
+  description?: string;
+  contactId?: string | null;
+  updatedById: string;
+  lines?: JournalLineInput[];
 }
 
 // ── Filter types ──
@@ -27,7 +41,9 @@ export interface CreateJournalEntryInput {
 export interface JournalFilters {
   dateFrom?: Date;
   dateTo?: Date;
-  voucherType?: VoucherType;
+  periodId?: string;
+  voucherTypeId?: string;
+  status?: JournalEntryStatus;
 }
 
 // ── Composite types ──
