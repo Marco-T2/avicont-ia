@@ -1,6 +1,6 @@
-import { NotFoundError, ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/features/shared/errors";
 import { MortalityRepository } from "./mortality.repository";
-import { LotsRepository } from "@/features/lots/lots.repository";
+import { LotsService } from "@/features/lots/lots.service";
 import type {
   LogMortalityInput,
   MortalityLogWithRelations,
@@ -8,11 +8,11 @@ import type {
 
 export class MortalityService {
   private readonly repo: MortalityRepository;
-  private readonly lotsRepo: LotsRepository;
+  private readonly lotsService: LotsService;
 
-  constructor(repo?: MortalityRepository, lotsRepo?: LotsRepository) {
+  constructor(repo?: MortalityRepository, lotsService?: LotsService) {
     this.repo = repo ?? new MortalityRepository();
-    this.lotsRepo = lotsRepo ?? new LotsRepository();
+    this.lotsService = lotsService ?? new LotsService();
   }
 
   // ── List mortality logs for a lot ──
@@ -30,12 +30,8 @@ export class MortalityService {
     organizationId: string,
     input: LogMortalityInput,
   ): Promise<MortalityLogWithRelations> {
-    // Fetch the lot to get initialCount
-    const lot = await this.lotsRepo.findById(organizationId, input.lotId);
-
-    if (!lot) {
-      throw new NotFoundError("Lote");
-    }
+    // Fetch the lot to get initialCount (throws NotFoundError if missing)
+    const lot = await this.lotsService.getById(organizationId, input.lotId);
 
     // Get existing total mortality for this lot
     const totalMortality = await this.repo.countByLot(organizationId, input.lotId);

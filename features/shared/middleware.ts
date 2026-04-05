@@ -3,12 +3,10 @@ import { ZodError } from "zod";
 import {
   AppError,
   UnauthorizedError,
-  ForbiddenError,
-  NotFoundError,
 } from "./errors";
-import { OrganizationsRepository } from "@/features/organizations/organizations.repository";
+import { OrganizationsService } from "@/features/organizations/organizations.service";
 
-const orgRepo = new OrganizationsRepository();
+const orgsService = new OrganizationsService();
 
 export async function requireAuth() {
   const session = await auth();
@@ -20,13 +18,7 @@ export async function requireOrgAccess(
   clerkUserId: string,
   orgSlug: string,
 ): Promise<string> {
-  const org = await orgRepo.findBySlug(orgSlug);
-  if (!org) throw new NotFoundError("Organización");
-
-  const member = await orgRepo.findMemberByClerkUserId(org.id, clerkUserId);
-  if (!member) throw new ForbiddenError();
-
-  return org.id;
+  return orgsService.verifyMembership(clerkUserId, orgSlug);
 }
 
 export async function requireRole(
@@ -34,13 +26,7 @@ export async function requireRole(
   orgId: string,
   roles: string[],
 ) {
-  const member = await orgRepo.findMemberByClerkUserIdAndRoles(
-    orgId,
-    clerkUserId,
-    roles,
-  );
-  if (!member) throw new ForbiddenError();
-  return member;
+  return orgsService.requireMemberWithRoles(orgId, clerkUserId, roles);
 }
 
 export function handleError(error: unknown): Response {
