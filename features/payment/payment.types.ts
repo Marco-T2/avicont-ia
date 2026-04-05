@@ -3,20 +3,57 @@ import type {
   PaymentMethod,
   PaymentStatus,
   Contact,
+  PaymentAllocation,
   AccountsReceivable,
   AccountsPayable,
+  FiscalPeriod,
+  JournalEntry,
 } from "@/generated/prisma/client";
 
 // ── Re-export Prisma types for convenience ──
 
 export type { PaymentMethod, PaymentStatus };
 
+// ── Allocation types ──
+
+/** Allocation input for create/update */
+export interface AllocationInput {
+  receivableId?: string;
+  payableId?: string;
+  amount: number;
+}
+
+/** Allocation with resolved target info (for display) */
+export interface AllocationWithTarget {
+  id: string;
+  receivableId: string | null;
+  payableId: string | null;
+  amount: number;
+  target: {
+    description: string;
+    totalAmount: number;
+    paid: number;
+    balance: number;
+    sourceType?: string | null;
+    sourceId?: string | null;
+  };
+}
+
+/** Payment type inferred from allocations */
+export type PaymentDirection = "COBRO" | "PAGO";
+
 // ── Composite types ──
 
-export type PaymentWithRelations = Payment & {
+export type PaymentWithRelations = Omit<Payment, "amount"> & {
+  amount: number;
   contact: Contact;
-  receivable?: AccountsReceivable | null;
-  payable?: AccountsPayable | null;
+  period: FiscalPeriod;
+  journalEntry: JournalEntry | null;
+  allocations: (Omit<PaymentAllocation, "amount"> & {
+    amount: number;
+    receivable?: (AccountsReceivable & { contact: Contact }) | null;
+    payable?: (AccountsPayable & { contact: Contact }) | null;
+  })[];
 };
 
 // ── Input types ──
@@ -27,9 +64,9 @@ export interface CreatePaymentInput {
   amount: number;
   description: string;
   periodId: string;
+  contactId: string;
   referenceNumber?: number;
-  receivableId?: string;
-  payableId?: string;
+  allocations: AllocationInput[];
   notes?: string;
   createdById: string;
 }
@@ -40,6 +77,7 @@ export interface UpdatePaymentInput {
   amount?: number;
   description?: string;
   referenceNumber?: number;
+  allocations?: AllocationInput[];
   notes?: string;
 }
 
@@ -50,6 +88,4 @@ export interface PaymentFilters {
   dateFrom?: Date;
   dateTo?: Date;
   periodId?: string;
-  receivableId?: string;
-  payableId?: string;
 }

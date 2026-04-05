@@ -50,3 +50,18 @@ export interface ContactBalanceSummary {
 export interface ContactWithBalance extends Contact {
   balanceSummary: ContactBalanceSummary;
 }
+
+// ── Pending document types ──
+
+export interface PendingDocument {
+  id: string;
+  type: "receivable" | "payable";
+  description: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  dueDate: Date;
+  sourceType: string | null;
+  sourceId: string | null;
+  createdAt: Date;
+}

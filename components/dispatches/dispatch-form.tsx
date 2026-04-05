@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,11 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, ArrowLeft, Trash2, Pencil } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Trash2, Pencil, CheckCircle, XCircle, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
+import { useOrgRole } from "@/components/common/use-org-role";
 
 // ── Helpers ──
 
@@ -148,6 +150,54 @@ function computeLine(
   return { tare, netWeight, shrinkage: 0, realNetWeight: netWeight, lineAmount };
 }
 
+// ── Status badge config ──
+
+const STATUS_BADGE: Record<string, { label: string; className: string }> = {
+  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
+  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
+  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
+};
+
+// ── Existing dispatch shape (from API) ──
+
+interface ExistingDispatchDetail {
+  id: string;
+  productTypeId: string | null;
+  productType?: { id: string; name: string; code: string } | null;
+  detailNote: string | null;
+  description: string;
+  boxes: number;
+  grossWeight: number;
+  tare: number;
+  netWeight: number;
+  unitPrice: number;
+  shrinkage: number | null;
+  shortage: number | null;
+  realNetWeight: number | null;
+  lineAmount: number;
+  order: number;
+}
+
+interface ExistingDispatch {
+  id: string;
+  dispatchType: "NOTA_DESPACHO" | "BOLETA_CERRADA";
+  status: "DRAFT" | "POSTED" | "VOIDED";
+  sequenceNumber: number;
+  referenceNumber: number | null;
+  displayCode: string;
+  date: string;
+  contactId: string;
+  periodId: string;
+  description: string;
+  notes: string | null;
+  totalAmount: number;
+  farmOrigin: string | null;
+  chickenCount: number | null;
+  shrinkagePct: number | null;
+  details: ExistingDispatchDetail[];
+  contact: { id: string; name: string };
+}
+
 // ── Props ──
 
 interface ProductTypeOption {
@@ -163,6 +213,7 @@ interface DispatchFormProps {
   periods: FiscalPeriod[];
   productTypes: ProductTypeOption[];
   roundingThreshold: number;
+  existingDispatch?: ExistingDispatch;
 }
 
 const DISPATCH_TYPE_LABEL: Record<string, string> = {
@@ -177,27 +228,69 @@ export default function DispatchForm({
   periods,
   productTypes,
   roundingThreshold,
+  existingDispatch,
 }: DispatchFormProps) {
   const router = useRouter();
+  const { role } = useOrgRole();
   const isBC = dispatchType === "BOLETA_CERRADA";
+  const isEditMode = !!existingDispatch;
+  const status = existingDispatch?.status ?? "DRAFT";
+  const isReadOnly = status === "POSTED" || status === "VOIDED";
+  const isVoided = status === "VOIDED";
+
+  // ── Initialize lines from existing dispatch ──
+  function initLinesFromExisting(details: ExistingDispatchDetail[]): DetailLine[] {
+    if (details.length === 0) return [emptyLine()];
+    return details.map((d) => ({
+      id: nextLineId(),
+      productTypeId: d.productTypeId ?? "",
+      description: d.productType?.name ?? d.description ?? "",
+      detailNote: d.detailNote ?? "",
+      boxes: String(d.boxes),
+      grossWeight: String(d.grossWeight),
+      unitPrice: String(d.unitPrice),
+      shortage: d.shortage !== null && d.shortage !== 0 ? String(d.shortage) : "",
+    }));
+  }
 
   // ── Header state ──
-  const [contactId, setContactId] = useState("");
-  const [periodId, setPeriodId] = useState(periods[0]?.id ?? "");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
-  const [referenceNumber, setReferenceNumber] = useState("");
-  const [description, setDescription] = useState("");
-  const [descriptionOverride, setDescriptionOverride] = useState(false);
-  const [notes, setNotes] = useState("");
+  const [contactId, setContactId] = useState(existingDispatch?.contactId ?? "");
+  const [periodId, setPeriodId] = useState(
+    existingDispatch?.periodId ?? (periods[0]?.id ?? ""),
+  );
+  const [date, setDate] = useState(
+    existingDispatch?.date
+      ? new Date(existingDispatch.date).toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0],
+  );
+  const [referenceNumber, setReferenceNumber] = useState(
+    existingDispatch?.referenceNumber !== null && existingDispatch?.referenceNumber !== undefined
+      ? String(existingDispatch.referenceNumber)
+      : "",
+  );
+  const [description, setDescription] = useState(existingDispatch?.description ?? "");
+  const [descriptionOverride, setDescriptionOverride] = useState(!!existingDispatch);
+  const [notes, setNotes] = useState(existingDispatch?.notes ?? "");
 
   // ── BC-only header state ──
-  const [farmOrigin, setFarmOrigin] = useState("");
-  const [chickenCount, setChickenCount] = useState("");
-  const [shrinkagePct, setShrinkagePct] = useState("0");
+  const [farmOrigin, setFarmOrigin] = useState(existingDispatch?.farmOrigin ?? "");
+  const [chickenCount, setChickenCount] = useState(
+    existingDispatch?.chickenCount !== null && existingDispatch?.chickenCount !== undefined
+      ? String(existingDispatch.chickenCount)
+      : "",
+  );
+  const [shrinkagePct, setShrinkagePct] = useState(
+    existingDispatch?.shrinkagePct !== null && existingDispatch?.shrinkagePct !== undefined
+      ? String(existingDispatch.shrinkagePct)
+      : "0",
+  );
 
   // ── Detail lines state ──
-  const [lines, setLines] = useState<DetailLine[]>([emptyLine()]);
+  const [lines, setLines] = useState<DetailLine[]>(
+    existingDispatch ? initLinesFromExisting(existingDispatch.details) : [emptyLine()],
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isActioning, setIsActioning] = useState(false);
 
   // ── Computed values ──
   const shrinkagePctNum = parseFloat(shrinkagePct) || 0;
@@ -248,6 +341,7 @@ export default function DispatchForm({
   // ── Line handlers ──
 
   function addLine() {
+    if (isReadOnly) return;
     setLines((prev) => {
       const next = [...prev, emptyLine()];
       const nextComputed = next.map((l) =>
@@ -259,6 +353,7 @@ export default function DispatchForm({
   }
 
   function removeLine(id: string) {
+    if (isReadOnly) return;
     if (lines.length <= 1) {
       toast.error("El despacho debe tener al menos una línea");
       return;
@@ -274,6 +369,7 @@ export default function DispatchForm({
   }
 
   function updateLine(id: string, field: keyof DetailLine, value: string) {
+    if (isReadOnly) return;
     setLines((prev) => {
       const next = prev.map((l) => {
         if (l.id !== id) return l;
@@ -308,7 +404,7 @@ export default function DispatchForm({
     }
   }
 
-  // ── Submit ──
+  // ── Submit (Create or Update) ──
 
   const canSubmit =
     contactId &&
@@ -325,48 +421,82 @@ export default function DispatchForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit) return;
+    if (!canSubmit || isReadOnly) return;
     setIsSubmitting(true);
 
     try {
-      const body = {
-        dispatchType,
-        date,
-        contactId,
-        periodId,
-        description: description.trim(),
-        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
-        notes: notes.trim() || undefined,
-        // BC fields
-        farmOrigin: isBC ? (farmOrigin.trim() || undefined) : undefined,
-        chickenCount: isBC && chickenCount ? parseInt(chickenCount, 10) : undefined,
-        shrinkagePct: isBC ? shrinkagePctNum : undefined,
-        details: lines.map((line, i) => ({
-          productTypeId: line.productTypeId || undefined,
-          description: line.description,
-          detailNote: line.detailNote || undefined,
-          boxes: parseInt(line.boxes, 10),
-          grossWeight: parseFloat(line.grossWeight),
-          unitPrice: parseFloat(line.unitPrice),
-          shortage: isBC && line.shortage ? parseFloat(line.shortage) : undefined,
-          order: i,
-        })),
-      };
+      const detailPayload = lines.map((line, i) => ({
+        productTypeId: line.productTypeId || undefined,
+        description: line.description,
+        detailNote: line.detailNote || undefined,
+        boxes: parseInt(line.boxes, 10),
+        grossWeight: parseFloat(line.grossWeight),
+        unitPrice: parseFloat(line.unitPrice),
+        shortage: isBC && line.shortage ? parseFloat(line.shortage) : undefined,
+        order: i,
+      }));
 
-      const response = await fetch(`/api/organizations/${orgSlug}/dispatches`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
+      if (isEditMode && existingDispatch) {
+        // PATCH — update existing draft
+        const body = {
+          date,
+          contactId,
+          description: description.trim(),
+          referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+          notes: notes.trim() || undefined,
+          farmOrigin: isBC ? (farmOrigin.trim() || undefined) : undefined,
+          chickenCount: isBC && chickenCount ? parseInt(chickenCount, 10) : undefined,
+          shrinkagePct: isBC ? shrinkagePctNum : undefined,
+          details: detailPayload,
+        };
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Error al guardar el despacho");
+        const response = await fetch(
+          `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          },
+        );
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error ?? "Error al actualizar el despacho");
+        }
+
+        toast.success("Despacho actualizado");
+        router.refresh();
+      } else {
+        // POST — create new
+        const body = {
+          dispatchType,
+          date,
+          contactId,
+          periodId,
+          description: description.trim(),
+          referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+          notes: notes.trim() || undefined,
+          farmOrigin: isBC ? (farmOrigin.trim() || undefined) : undefined,
+          chickenCount: isBC && chickenCount ? parseInt(chickenCount, 10) : undefined,
+          shrinkagePct: isBC ? shrinkagePctNum : undefined,
+          details: detailPayload,
+        };
+
+        const response = await fetch(`/api/organizations/${orgSlug}/dispatches`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error ?? "Error al guardar el despacho");
+        }
+
+        toast.success("Despacho guardado como borrador");
+        router.push(`/${orgSlug}/dispatches`);
+        router.refresh();
       }
-
-      toast.success("Despacho guardado como borrador");
-      router.push(`/${orgSlug}/dispatches`);
-      router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Error al guardar el despacho",
@@ -376,7 +506,117 @@ export default function DispatchForm({
     }
   }
 
+  // ── Status action handlers ──
+
+  async function handlePost() {
+    if (!existingDispatch) return;
+    if (!window.confirm("¿Contabilizar este despacho? Esta acción generará el asiento contable y la cuenta por cobrar.")) return;
+    setIsActioning(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "POSTED" }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al contabilizar");
+      }
+      toast.success("Despacho contabilizado exitosamente");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al contabilizar");
+    } finally {
+      setIsActioning(false);
+    }
+  }
+
+  async function handleVoid() {
+    if (!existingDispatch) return;
+    if (!window.confirm("¿Anular este despacho? Se revertirá el asiento contable y la cuenta por cobrar. Esta acción no se puede deshacer.")) return;
+    setIsActioning(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "VOIDED" }),
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al anular");
+      }
+      toast.success("Despacho anulado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al anular");
+    } finally {
+      setIsActioning(false);
+    }
+  }
+
+  async function handleRecreate() {
+    if (!existingDispatch) return;
+    if (!window.confirm("¿Corregir este despacho? Se anulará el actual y se creará un nuevo borrador con los mismos datos.")) return;
+    setIsActioning(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}/recreate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+        },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al recrear");
+      }
+      const result = await response.json();
+      toast.success("Despacho anulado. Nuevo borrador creado.");
+      router.push(`/${orgSlug}/dispatches/${result.newDraftId}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al recrear");
+    } finally {
+      setIsActioning(false);
+    }
+  }
+
+  async function handleDelete() {
+    if (!existingDispatch) return;
+    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
+    setIsActioning(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}`,
+        { method: "DELETE" },
+      );
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al eliminar");
+      }
+      toast.success("Borrador eliminado");
+      router.push(`/${orgSlug}/dispatches`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al eliminar");
+    } finally {
+      setIsActioning(false);
+    }
+  }
+
   const backHref = `/${orgSlug}/dispatches`;
+  const canRecreate = role === "owner" || role === "admin";
+
+  // ── Title ──
+  const headerTitle = isEditMode
+    ? `${existingDispatch.displayCode} — ${DISPATCH_TYPE_LABEL[dispatchType]}`
+    : `Nuevo ${DISPATCH_TYPE_LABEL[dispatchType]}`;
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -388,11 +628,16 @@ export default function DispatchForm({
       </Link>
 
       {/* Header fields */}
-      <Card>
+      <Card className={isVoided ? "opacity-70" : undefined}>
         <CardHeader>
-          <CardTitle>
-            Nuevo {DISPATCH_TYPE_LABEL[dispatchType]}
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>{headerTitle}</CardTitle>
+            {isEditMode && (
+              <Badge className={STATUS_BADGE[status]?.className ?? "bg-gray-100 text-gray-800"}>
+                {STATUS_BADGE[status]?.label ?? status}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -409,35 +654,51 @@ export default function DispatchForm({
             {/* Cliente */}
             <div className="space-y-2">
               <Label htmlFor="contact">Cliente</Label>
-              <Select value={contactId} onValueChange={setContactId}>
-                <SelectTrigger id="contact" className="w-full">
-                  <SelectValue placeholder="Seleccione cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {contacts.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isReadOnly ? (
+                <Input
+                  value={existingDispatch?.contact?.name ?? "—"}
+                  readOnly
+                  className="bg-muted cursor-default"
+                />
+              ) : (
+                <Select value={contactId} onValueChange={setContactId}>
+                  <SelectTrigger id="contact" className="w-full">
+                    <SelectValue placeholder="Seleccione cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Período */}
             <div className="space-y-2">
               <Label htmlFor="period">Período</Label>
-              <Select value={periodId} onValueChange={setPeriodId}>
-                <SelectTrigger id="period" className="w-full">
-                  <SelectValue placeholder="Seleccione período" />
-                </SelectTrigger>
-                <SelectContent>
-                  {periods.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {isReadOnly ? (
+                <Input
+                  value={periods.find((p) => p.id === periodId)?.name ?? "—"}
+                  readOnly
+                  className="bg-muted cursor-default"
+                />
+              ) : (
+                <Select value={periodId} onValueChange={setPeriodId}>
+                  <SelectTrigger id="period" className="w-full">
+                    <SelectValue placeholder="Seleccione período" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {periods.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* Fecha */}
@@ -448,6 +709,8 @@ export default function DispatchForm({
                 type="date"
                 value={date}
                 onChange={(e) => setDate(e.target.value)}
+                readOnly={isReadOnly}
+                className={isReadOnly ? "bg-muted cursor-default" : undefined}
                 required
               />
             </div>
@@ -463,8 +726,22 @@ export default function DispatchForm({
                 placeholder="Ej: 738"
                 value={referenceNumber}
                 onChange={(e) => setReferenceNumber(e.target.value)}
+                readOnly={isReadOnly}
+                className={isReadOnly ? "bg-muted cursor-default" : undefined}
               />
             </div>
+
+            {/* Total (only for existing dispatches) */}
+            {isEditMode && status !== "DRAFT" && (
+              <div className="space-y-2">
+                <Label>Total</Label>
+                <Input
+                  value={formatCurrency(existingDispatch.totalAmount)}
+                  readOnly
+                  className="bg-muted cursor-default font-mono font-bold"
+                />
+              </div>
+            )}
 
             {/* Notas */}
             <div className="space-y-2 lg:col-span-3">
@@ -474,6 +751,8 @@ export default function DispatchForm({
                 placeholder="Observaciones adicionales..."
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
+                readOnly={isReadOnly}
+                className={isReadOnly ? "bg-muted cursor-default" : undefined}
               />
             </div>
 
@@ -481,24 +760,30 @@ export default function DispatchForm({
             <div className="space-y-2 lg:col-span-3">
               <div className="flex items-center justify-between">
                 <Label htmlFor="dispatch-description">Descripción</Label>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground"
-                  onClick={() => setDescriptionOverride((prev) => !prev)}
-                >
-                  <Pencil className="h-3 w-3 mr-1" />
-                  {descriptionOverride ? "Auto" : "Editar"}
-                </Button>
+                {!isReadOnly && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-muted-foreground"
+                    onClick={() => setDescriptionOverride((prev) => !prev)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    {descriptionOverride ? "Auto" : "Editar"}
+                  </Button>
+                )}
               </div>
               <Input
                 id="dispatch-description"
                 placeholder="Se genera automáticamente"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                readOnly={!descriptionOverride}
-                className={!descriptionOverride ? "bg-muted cursor-default text-xs" : "text-xs"}
+                readOnly={isReadOnly || !descriptionOverride}
+                className={
+                  isReadOnly || !descriptionOverride
+                    ? "bg-muted cursor-default text-xs"
+                    : "text-xs"
+                }
               />
             </div>
           </div>
@@ -517,6 +802,8 @@ export default function DispatchForm({
                     placeholder="Nombre de la granja"
                     value={farmOrigin}
                     onChange={(e) => setFarmOrigin(e.target.value)}
+                    readOnly={isReadOnly}
+                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
                   />
                 </div>
                 <div className="space-y-2">
@@ -529,6 +816,8 @@ export default function DispatchForm({
                     placeholder="Ej: 500"
                     value={chickenCount}
                     onChange={(e) => setChickenCount(e.target.value)}
+                    readOnly={isReadOnly}
+                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
                   />
                 </div>
                 <div className="space-y-2">
@@ -542,6 +831,8 @@ export default function DispatchForm({
                     placeholder="Ej: 2.5"
                     value={shrinkagePct}
                     onChange={(e) => setShrinkagePct(e.target.value)}
+                    readOnly={isReadOnly}
+                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
                   />
                 </div>
                 <div className="space-y-2">
@@ -560,14 +851,16 @@ export default function DispatchForm({
       </Card>
 
       {/* Detail lines */}
-      <Card>
+      <Card className={isVoided ? "opacity-70" : undefined}>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>Líneas de Detalle</CardTitle>
-            <Button type="button" variant="outline" size="sm" onClick={addLine}>
-              <Plus className="h-4 w-4 mr-1" />
-              Agregar línea
-            </Button>
+            {!isReadOnly && (
+              <Button type="button" variant="outline" size="sm" onClick={addLine}>
+                <Plus className="h-4 w-4 mr-1" />
+                Agregar línea
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -613,7 +906,7 @@ export default function DispatchForm({
                   <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
                     Subtotal
                   </th>
-                  <th className="w-10" />
+                  {!isReadOnly && <th className="w-10" />}
                 </tr>
               </thead>
               <tbody>
@@ -625,23 +918,31 @@ export default function DispatchForm({
 
                       {/* Producto (Select) */}
                       <td className="py-2 px-2">
-                        <Select
-                          value={line.productTypeId}
-                          onValueChange={(v) =>
-                            updateLine(line.id, "productTypeId", v)
-                          }
-                        >
-                          <SelectTrigger className="h-8 min-w-32">
-                            <SelectValue placeholder="Producto" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {productTypes.map((pt) => (
-                              <SelectItem key={pt.id} value={pt.id}>
-                                {pt.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        {isReadOnly ? (
+                          <Input
+                            value={productTypes.find((p) => p.id === line.productTypeId)?.name ?? line.description ?? "—"}
+                            readOnly
+                            className="h-8 min-w-32 bg-muted cursor-default"
+                          />
+                        ) : (
+                          <Select
+                            value={line.productTypeId}
+                            onValueChange={(v) =>
+                              updateLine(line.id, "productTypeId", v)
+                            }
+                          >
+                            <SelectTrigger className="h-8 min-w-32">
+                              <SelectValue placeholder="Producto" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {productTypes.map((pt) => (
+                                <SelectItem key={pt.id} value={pt.id}>
+                                  {pt.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </td>
 
                       {/* Detalle / nota */}
@@ -651,9 +952,10 @@ export default function DispatchForm({
                           onChange={(e) =>
                             updateLine(line.id, "detailNote", e.target.value)
                           }
-                          placeholder="Obs. / detalle"
+                          placeholder={isReadOnly ? "—" : "Obs. / detalle"}
                           maxLength={200}
-                          className="h-8 min-w-24"
+                          className={`h-8 min-w-24 ${isReadOnly ? "bg-muted cursor-default" : ""}`}
+                          readOnly={isReadOnly}
                         />
                       </td>
 
@@ -668,7 +970,8 @@ export default function DispatchForm({
                             updateLine(line.id, "boxes", e.target.value)
                           }
                           placeholder="0"
-                          className="h-8 text-right"
+                          className={`h-8 text-right ${isReadOnly ? "bg-muted cursor-default" : ""}`}
+                          readOnly={isReadOnly}
                         />
                       </td>
 
@@ -681,10 +984,11 @@ export default function DispatchForm({
                             updateLine(line.id, "grossWeight", e.target.value)
                           }
                           onBlur={(e) =>
-                            handleArithmeticBlur(line.id, "grossWeight", e.target.value)
+                            !isReadOnly && handleArithmeticBlur(line.id, "grossWeight", e.target.value)
                           }
                           placeholder="0.00"
-                          className="h-8 text-right"
+                          className={`h-8 text-right ${isReadOnly ? "bg-muted cursor-default" : ""}`}
+                          readOnly={isReadOnly}
                         />
                       </td>
 
@@ -736,7 +1040,8 @@ export default function DispatchForm({
                                 updateLine(line.id, "shortage", e.target.value)
                               }
                               placeholder="0.00"
-                              className="h-8 text-right"
+                              className={`h-8 text-right ${isReadOnly ? "bg-muted cursor-default" : ""}`}
+                              readOnly={isReadOnly}
                             />
                           </td>
 
@@ -765,10 +1070,11 @@ export default function DispatchForm({
                             updateLine(line.id, "unitPrice", e.target.value)
                           }
                           onBlur={(e) =>
-                            handleArithmeticBlur(line.id, "unitPrice", e.target.value)
+                            !isReadOnly && handleArithmeticBlur(line.id, "unitPrice", e.target.value)
                           }
                           placeholder="0.00"
-                          className="h-8 text-right"
+                          className={`h-8 text-right ${isReadOnly ? "bg-muted cursor-default" : ""}`}
+                          readOnly={isReadOnly}
                         />
                       </td>
 
@@ -790,17 +1096,19 @@ export default function DispatchForm({
                       </td>
 
                       {/* Delete button */}
-                      <td className="py-2 px-2">
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => removeLine(line.id)}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
+                      {!isReadOnly && (
+                        <td className="py-2 px-2">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => removeLine(line.id)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
@@ -832,7 +1140,7 @@ export default function DispatchForm({
                       </td>
                       <td />
                       <td />
-                      <td />
+                      {!isReadOnly && <td />}
                     </tr>
                     {avgKgPerChicken !== null && (
                       <tr className="bg-gray-50 text-xs text-gray-500">
@@ -842,7 +1150,7 @@ export default function DispatchForm({
                         <td className="py-1 px-2 text-right font-mono text-gray-700">
                           {formatKg(avgKgPerChicken)}
                         </td>
-                        <td colSpan={6} />
+                        <td colSpan={isReadOnly ? 5 : 6} />
                       </tr>
                     )}
                   </>
@@ -859,7 +1167,7 @@ export default function DispatchForm({
                   <td className="py-2 px-2 text-right font-mono text-sm text-gray-700">
                     {formatCurrency(subtotal)}
                   </td>
-                  <td />
+                  {!isReadOnly && <td />}
                 </tr>
 
                 {/* Total CxC row */}
@@ -873,7 +1181,7 @@ export default function DispatchForm({
                   <td className="py-3 px-2 text-right font-mono font-bold text-gray-900 text-base">
                     {totalCxC.toLocaleString("es-BO")}
                   </td>
-                  <td />
+                  {!isReadOnly && <td />}
                 </tr>
               </tfoot>
             </table>
@@ -882,22 +1190,91 @@ export default function DispatchForm({
       </Card>
 
       {/* Actions */}
-      <div className="flex justify-end gap-3">
-        <Link href={backHref}>
-          <Button type="button" variant="outline">
-            Cancelar
-          </Button>
-        </Link>
-        <Button type="submit" disabled={!canSubmit || isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
-            </>
-          ) : (
-            "Guardar Borrador"
+      <div className="flex justify-between gap-3">
+        <div className="flex gap-3">
+          {/* Destructive actions on the left */}
+          {isEditMode && status === "DRAFT" && (
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={isActioning}
+            >
+              {isActioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+              Eliminar
+            </Button>
           )}
-        </Button>
+        </div>
+
+        <div className="flex gap-3">
+          <Link href={backHref}>
+            <Button type="button" variant="outline">
+              {isReadOnly ? "Volver" : "Cancelar"}
+            </Button>
+          </Link>
+
+          {/* DRAFT actions */}
+          {(!isEditMode || status === "DRAFT") && (
+            <>
+              <Button type="submit" disabled={!canSubmit || isSubmitting || isReadOnly}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : isEditMode ? (
+                  "Guardar"
+                ) : (
+                  "Guardar Borrador"
+                )}
+              </Button>
+              {isEditMode && status === "DRAFT" && (
+                <Button
+                  type="button"
+                  variant="default"
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={handlePost}
+                  disabled={!canSubmit || isActioning}
+                >
+                  {isActioning ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Contabilizar
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* POSTED actions */}
+          {isEditMode && status === "POSTED" && (
+            <>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleVoid}
+                disabled={isActioning}
+              >
+                {isActioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
+                Anular
+              </Button>
+              {canRecreate && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleRecreate}
+                  disabled={isActioning}
+                >
+                  {isActioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                  Corregir
+                </Button>
+              )}
+            </>
+          )}
+
+          {/* VOIDED — no actions */}
+        </div>
       </div>
     </form>
   );

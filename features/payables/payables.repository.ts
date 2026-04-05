@@ -125,7 +125,7 @@ export class PayablesRepository extends BaseRepository {
       data: {
         paid: new Prisma.Decimal(paid),
         balance: new Prisma.Decimal(balance),
-        status,
+        status: status as PayableStatus,
       },
     });
   }

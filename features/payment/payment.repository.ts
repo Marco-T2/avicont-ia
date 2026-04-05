@@ -1,17 +1,24 @@
 import { Prisma } from "@/generated/prisma/client";
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { PaymentStatus } from "@/generated/prisma/client";
+import type { PaymentStatus, ReceivableStatus, PayableStatus } from "@/generated/prisma/client";
 import type {
   PaymentWithRelations,
   CreatePaymentInput,
   UpdatePaymentInput,
   PaymentFilters,
+  AllocationInput,
 } from "./payment.types";
 
 const paymentInclude = {
   contact: true,
-  receivable: true,
-  payable: true,
+  period: true,
+  journalEntry: true,
+  allocations: {
+    include: {
+      receivable: { include: { contact: true } },
+      payable: { include: { contact: true } },
+    },
+  },
 } as const;
 
 export class PaymentRepository extends BaseRepository {
@@ -27,8 +34,6 @@ export class PaymentRepository extends BaseRepository {
     if (filters?.method) where.method = filters.method;
     if (filters?.contactId) where.contactId = filters.contactId;
     if (filters?.periodId) where.periodId = filters.periodId;
-    if (filters?.receivableId) where.receivableId = filters.receivableId;
-    if (filters?.payableId) where.payableId = filters.payableId;
     if (filters?.dateFrom || filters?.dateTo) {
       where.date = {
         ...(filters.dateFrom && { gte: filters.dateFrom }),
@@ -61,8 +66,7 @@ export class PaymentRepository extends BaseRepository {
 
   async create(
     organizationId: string,
-    input: CreatePaymentInput,
-    contactId: string,
+    data: CreatePaymentInput,
   ): Promise<PaymentWithRelations> {
     const scope = this.requireOrg(organizationId);
 
@@ -70,17 +74,22 @@ export class PaymentRepository extends BaseRepository {
       data: {
         organizationId: scope.organizationId,
         status: "DRAFT",
-        method: input.method,
-        date: input.date,
-        amount: new Prisma.Decimal(input.amount),
-        description: input.description,
-        periodId: input.periodId,
-        contactId,
-        referenceNumber: input.referenceNumber ?? null,
-        receivableId: input.receivableId ?? null,
-        payableId: input.payableId ?? null,
-        notes: input.notes ?? null,
-        createdById: input.createdById,
+        method: data.method,
+        date: data.date,
+        amount: new Prisma.Decimal(data.amount),
+        description: data.description,
+        periodId: data.periodId,
+        contactId: data.contactId,
+        referenceNumber: data.referenceNumber ?? null,
+        notes: data.notes ?? null,
+        createdById: data.createdById,
+        allocations: {
+          create: data.allocations.map((a) => ({
+            receivableId: a.receivableId ?? null,
+            payableId: a.payableId ?? null,
+            amount: new Prisma.Decimal(a.amount),
+          })),
+        },
       },
       include: paymentInclude,
     });
@@ -95,6 +104,42 @@ export class PaymentRepository extends BaseRepository {
   ): Promise<PaymentWithRelations> {
     const scope = this.requireOrg(organizationId);
 
+    // If allocations are provided, delete existing and recreate within a transaction
+    if (data.allocations) {
+      const row = await this.db.$transaction(async (tx) => {
+        // Delete existing allocations
+        await tx.paymentAllocation.deleteMany({ where: { paymentId: id } });
+
+        // Update payment fields + recreate allocations
+        return tx.payment.update({
+          where: { id, ...scope },
+          data: {
+            ...(data.method !== undefined && { method: data.method }),
+            ...(data.date !== undefined && { date: data.date }),
+            ...(data.amount !== undefined && {
+              amount: new Prisma.Decimal(data.amount),
+            }),
+            ...(data.description !== undefined && { description: data.description }),
+            ...(data.referenceNumber !== undefined && {
+              referenceNumber: data.referenceNumber,
+            }),
+            ...(data.notes !== undefined && { notes: data.notes }),
+            allocations: {
+              create: data.allocations!.map((a) => ({
+                receivableId: a.receivableId ?? null,
+                payableId: a.payableId ?? null,
+                amount: new Prisma.Decimal(a.amount),
+              })),
+            },
+          },
+          include: paymentInclude,
+        });
+      });
+
+      return toPaymentWithRelations(row);
+    }
+
+    // No allocation changes — simple update
     const row = await this.db.payment.update({
       where: { id, ...scope },
       data: {
@@ -120,16 +165,13 @@ export class PaymentRepository extends BaseRepository {
     organizationId: string,
     id: string,
     status: PaymentStatus,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<void> {
     const scope = this.requireOrg(organizationId);
 
-    const row = await tx.payment.update({
+    await tx.payment.update({
       where: { id, ...scope },
       data: { status },
-      include: paymentInclude,
     });
-
-    return toPaymentWithRelations(row);
   }
 
   async linkJournalEntry(
@@ -147,14 +189,113 @@ export class PaymentRepository extends BaseRepository {
     const scope = this.requireOrg(organizationId);
     await this.db.payment.delete({ where: { id, ...scope } });
   }
+
+  // ── Allocation helpers (used within service transactions) ──
+
+  async updateAllocations(
+    tx: Prisma.TransactionClient,
+    paymentId: string,
+    allocations: AllocationInput[],
+  ): Promise<void> {
+    // Delete existing and recreate
+    await tx.paymentAllocation.deleteMany({ where: { paymentId } });
+
+    if (allocations.length > 0) {
+      await tx.paymentAllocation.createMany({
+        data: allocations.map((a) => ({
+          paymentId,
+          receivableId: a.receivableId ?? null,
+          payableId: a.payableId ?? null,
+          amount: new Prisma.Decimal(a.amount),
+        })),
+      });
+    }
+  }
+
+  async getAllocations(
+    paymentId: string,
+  ) {
+    return this.db.paymentAllocation.findMany({
+      where: { paymentId },
+      include: {
+        receivable: { include: { contact: true } },
+        payable: { include: { contact: true } },
+      },
+    });
+  }
+
+  // ── CxC / CxP payment update helpers (within transaction) ──
+
+  async updateCxCPaymentTx(
+    tx: Prisma.TransactionClient,
+    receivableId: string,
+    paid: number,
+    balance: number,
+    status: string,
+  ): Promise<void> {
+    await tx.accountsReceivable.update({
+      where: { id: receivableId },
+      data: {
+        paid: new Prisma.Decimal(paid),
+        balance: new Prisma.Decimal(balance),
+        status: status as ReceivableStatus,
+      },
+    });
+  }
+
+  async updateCxPPaymentTx(
+    tx: Prisma.TransactionClient,
+    payableId: string,
+    paid: number,
+    balance: number,
+    status: string,
+  ): Promise<void> {
+    await tx.accountsPayable.update({
+      where: { id: payableId },
+      data: {
+        paid: new Prisma.Decimal(paid),
+        balance: new Prisma.Decimal(balance),
+        status: status as PayableStatus,
+      },
+    });
+  }
+
+  // ── Fetch payment with allocations within transaction ──
+
+  async findByIdTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+  ): Promise<PaymentWithRelations | null> {
+    const scope = this.requireOrg(organizationId);
+
+    const row = await tx.payment.findFirst({
+      where: { id, ...scope },
+      include: paymentInclude,
+    });
+
+    return row ? toPaymentWithRelations(row) : null;
+  }
 }
 
 // ── Convert Prisma Decimal fields to plain numbers ──
 
 function toPaymentWithRelations(row: unknown): PaymentWithRelations {
   const r = row as Record<string, unknown>;
-  return {
+
+  // Convert top-level amount
+  const result: Record<string, unknown> = {
     ...r,
     amount: Number(r.amount),
-  } as unknown as PaymentWithRelations;
+  };
+
+  // Convert allocation amounts
+  if (Array.isArray(r.allocations)) {
+    result.allocations = (r.allocations as Record<string, unknown>[]).map((a) => ({
+      ...a,
+      amount: Number(a.amount),
+    }));
+  }
+
+  return result as unknown as PaymentWithRelations;
 }

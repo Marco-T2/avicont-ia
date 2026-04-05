@@ -60,7 +60,7 @@ export async function DELETE(
     const orgId = await requireOrgAccess(userId, orgSlug);
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
-    const receivable = await receivablesService.cancel(orgId, receivableId);
+    const receivable = await receivablesService.void(orgId, receivableId);
 
     return Response.json(receivable);
   } catch (error) {

@@ -13,6 +13,7 @@ import type {
   ContactFilters,
   ContactBalanceSummary,
   ContactWithBalance,
+  PendingDocument,
 } from "./contacts.types";
 
 // ── Lazy-injected service interfaces ──
@@ -121,6 +122,27 @@ export class ContactsService {
     if (!existing) throw new NotFoundError("Contacto");
 
     return this.repo.deactivate(organizationId, id);
+  }
+
+  // ── Credit balance ──
+
+  async getCreditBalance(organizationId: string, contactId: string): Promise<number> {
+    await this.getById(organizationId, contactId);
+    return this.repo.getCreditBalance(organizationId, contactId);
+  }
+
+  // ── Pending documents ──
+
+  async getPendingDocuments(
+    organizationId: string,
+    contactId: string,
+    type: "receivable" | "payable",
+  ): Promise<PendingDocument[]> {
+    await this.getById(organizationId, contactId);
+    if (type === "receivable") {
+      return this.repo.getPendingReceivables(organizationId, contactId);
+    }
+    return this.repo.getPendingPayables(organizationId, contactId);
   }
 
   // ── Get balance summary for a contact ──
