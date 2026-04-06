@@ -51,6 +51,7 @@ function formatDate(date: Date | string): string {
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
   POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
+  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
   VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
 };
 
@@ -293,6 +294,7 @@ export default function PaymentList({
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="DRAFT">Borrador</SelectItem>
                   <SelectItem value="POSTED">Contabilizado</SelectItem>
+                  <SelectItem value="LOCKED">Bloqueado</SelectItem>
                   <SelectItem value="VOIDED">Anulado</SelectItem>
                 </SelectContent>
               </Select>
@@ -499,6 +501,19 @@ export default function PaymentList({
                                   Anular
                                 </Button>
                               </>
+                            )}
+                            {payment.status === "LOCKED" && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() =>
+                                  router.push(
+                                    `/${orgSlug}/payments/${payment.id}`,
+                                  )
+                                }
+                              >
+                                Ver
+                              </Button>
                             )}
                             {payment.status === "VOIDED" && (
                               <Button

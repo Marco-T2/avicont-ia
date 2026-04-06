@@ -160,6 +160,98 @@ export class PaymentRepository extends BaseRepository {
     return toPaymentWithRelations(row);
   }
 
+  async createPostedTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    data: CreatePaymentInput,
+  ): Promise<PaymentWithRelations> {
+    const scope = this.requireOrg(organizationId);
+
+    const row = await tx.payment.create({
+      data: {
+        organizationId: scope.organizationId,
+        status: "POSTED",
+        method: data.method,
+        date: data.date,
+        amount: new Prisma.Decimal(data.amount),
+        description: data.description,
+        periodId: data.periodId,
+        contactId: data.contactId,
+        referenceNumber: data.referenceNumber ?? null,
+        notes: data.notes ?? null,
+        createdById: data.createdById,
+        allocations: {
+          create: data.allocations.map((a) => ({
+            receivableId: a.receivableId ?? null,
+            payableId: a.payableId ?? null,
+            amount: new Prisma.Decimal(a.amount),
+          })),
+        },
+      },
+      include: paymentInclude,
+    });
+
+    return toPaymentWithRelations(row);
+  }
+
+  async updateTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+    data: UpdatePaymentInput,
+  ): Promise<PaymentWithRelations> {
+    const scope = this.requireOrg(organizationId);
+
+    if (data.allocations) {
+      await tx.paymentAllocation.deleteMany({ where: { paymentId: id } });
+
+      const row = await tx.payment.update({
+        where: { id, ...scope },
+        data: {
+          ...(data.method !== undefined && { method: data.method }),
+          ...(data.date !== undefined && { date: data.date }),
+          ...(data.amount !== undefined && {
+            amount: new Prisma.Decimal(data.amount),
+          }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.referenceNumber !== undefined && {
+            referenceNumber: data.referenceNumber,
+          }),
+          ...(data.notes !== undefined && { notes: data.notes }),
+          allocations: {
+            create: data.allocations!.map((a) => ({
+              receivableId: a.receivableId ?? null,
+              payableId: a.payableId ?? null,
+              amount: new Prisma.Decimal(a.amount),
+            })),
+          },
+        },
+        include: paymentInclude,
+      });
+
+      return toPaymentWithRelations(row);
+    }
+
+    const row = await tx.payment.update({
+      where: { id, ...scope },
+      data: {
+        ...(data.method !== undefined && { method: data.method }),
+        ...(data.date !== undefined && { date: data.date }),
+        ...(data.amount !== undefined && {
+          amount: new Prisma.Decimal(data.amount),
+        }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.referenceNumber !== undefined && {
+          referenceNumber: data.referenceNumber,
+        }),
+        ...(data.notes !== undefined && { notes: data.notes }),
+      },
+      include: paymentInclude,
+    });
+
+    return toPaymentWithRelations(row);
+  }
+
   async updateStatusTx(
     tx: Prisma.TransactionClient,
     organizationId: string,

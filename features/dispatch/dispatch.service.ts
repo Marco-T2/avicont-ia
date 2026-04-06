@@ -10,8 +10,11 @@ import {
 import {
   validateTransition,
   validateDraftOnly,
+  validateLockedEdit,
   validatePeriodOpen,
+  type DocumentStatus,
 } from "@/features/shared/document-lifecycle.service";
+import { setAuditContext } from "@/features/shared/audit-context";
 import type { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
 import type { ComputedDetail, BcSummary } from "./dispatch.repository";
@@ -240,15 +243,174 @@ export class DispatchService {
     return withDisplayCode(row);
   }
 
-  // ── Update a DRAFT dispatch ──
+  // ── Create and post a dispatch in one atomic transaction ──
+
+  async createAndPost(
+    organizationId: string,
+    input: CreateDispatchInput,
+    userId: string,
+  ): Promise<DispatchWithDetails> {
+    // 1. Validate contact exists and is CLIENTE
+    const contact = await this.contactsService.getActiveById(organizationId, input.contactId);
+    if (contact.type !== "CLIENTE") {
+      throw new ValidationError(
+        "El contacto debe ser de tipo CLIENTE para crear un despacho",
+        DISPATCH_INVALID_CONTACT_TYPE,
+      );
+    }
+
+    // 2. Validate BC fields not provided for ND
+    if (input.dispatchType === "NOTA_DESPACHO") {
+      if (
+        input.farmOrigin !== undefined ||
+        input.chickenCount !== undefined ||
+        input.shrinkagePct !== undefined
+      ) {
+        throw new ValidationError(
+          "Los campos de Boleta Cerrada no son permitidos en Notas de Despacho",
+          DISPATCH_BC_FIELDS_ON_ND,
+        );
+      }
+    }
+
+    // 3. Validate fiscal period is OPEN
+    const period = await this.periodsService.getById(organizationId, input.periodId);
+    await validatePeriodOpen(period);
+
+    // 4. Compute details
+    const shrinkagePct =
+      input.dispatchType === "BOLETA_CERRADA" ? (input.shrinkagePct ?? 0) : 0;
+    const computedDetails = computeLineAmounts(
+      input.details,
+      input.dispatchType,
+      shrinkagePct,
+    );
+
+    if (computedDetails.length === 0) {
+      throw new ValidationError(
+        "El despacho debe tener al menos una línea de detalle para ser contabilizado",
+        DISPATCH_NO_DETAILS,
+      );
+    }
+
+    // 5. Compute BC header summary
+    let bcSummary: BcSummary | undefined;
+    if (input.dispatchType === "BOLETA_CERRADA" && input.chickenCount !== undefined) {
+      bcSummary = computeBcSummary(computedDetails, input.chickenCount);
+    }
+
+    // 6. Compute totalAmount
+    const exactTotal = computedDetails.reduce((sum, d) => sum + d.lineAmount, 0);
+    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+    const threshold = Number(settings.roundingThreshold);
+    const totalAmount = roundTotal(exactTotal, threshold);
+
+    const incomeAccountCode =
+      input.dispatchType === "NOTA_DESPACHO" ? "4.1.2" : "4.1.1";
+
+    // Pre-fetch contact payment terms before transaction
+    const paymentTermsDays = (contact as { paymentTermsDays?: number }).paymentTermsDays ?? 30;
+
+    // 7. Single atomic transaction
+    let dispatchId = "";
+
+    await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId);
+
+      const sequenceNumber = await this.repo.getNextSequenceNumber(
+        tx,
+        organizationId,
+        input.dispatchType,
+      );
+
+      const dispatch = await this.repo.createPostedTx(
+        tx,
+        organizationId,
+        input,
+        sequenceNumber,
+        computedDetails,
+        totalAmount,
+        bcSummary,
+      );
+      dispatchId = dispatch.id;
+
+      const displayCode = getDisplayCode(input.dispatchType, sequenceNumber);
+
+      const journalDescription = input.notes
+        ? `${displayCode} - ${input.description} | ${input.notes}`
+        : `${displayCode} - ${input.description}`;
+
+      const entry = await this.autoEntryGenerator.generate(tx, {
+        organizationId,
+        voucherTypeCode: "CD",
+        contactId: input.contactId,
+        date: input.date,
+        periodId: input.periodId,
+        description: journalDescription,
+        sourceType: "dispatch",
+        sourceId: dispatch.id,
+        createdById: userId,
+        lines: [
+          {
+            accountCode: settings.cxcAccountCode,
+            side: "DEBIT",
+            amount: totalAmount,
+            contactId: input.contactId,
+          },
+          {
+            accountCode: incomeAccountCode,
+            side: "CREDIT",
+            amount: totalAmount,
+          },
+        ],
+      });
+
+      await this.balancesService.applyPost(tx, entry);
+
+      const dueDate = new Date(
+        input.date.getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
+      );
+
+      const receivable = await this.receivablesRepo.createTx(tx, {
+        organizationId,
+        contactId: input.contactId,
+        description: journalDescription,
+        amount: totalAmount,
+        dueDate,
+        sourceType: "dispatch",
+        sourceId: dispatch.id,
+        journalEntryId: entry.id,
+      });
+
+      await this.repo.linkJournalAndReceivable(
+        tx,
+        dispatch.id,
+        entry.id,
+        receivable.id,
+      );
+    });
+
+    const result = await this.repo.findById(organizationId, dispatchId);
+    return withDisplayCode(result!);
+  }
+
+  // ── Update a DRAFT dispatch (or LOCKED with justification) ──
 
   async update(
     organizationId: string,
     id: string,
     input: UpdateDispatchInput,
+    role?: string,
+    justification?: string,
   ): Promise<DispatchWithDetails> {
     const dispatch = await this.getById(organizationId, id);
-    validateDraftOnly(dispatch.status as "DRAFT" | "POSTED" | "VOIDED");
+    const status = dispatch.status as DocumentStatus;
+
+    if (status === "LOCKED") {
+      validateLockedEdit(status, role!, justification);
+    } else {
+      validateDraftOnly(status);
+    }
 
     // Validate new contact type if changing
     if (input.contactId !== undefined) {
@@ -307,6 +469,23 @@ export class DispatchService {
     }
 
     const { details: _details, ...dataWithoutDetails } = input;
+
+    // For LOCKED edits, wrap in transaction with audit context
+    if (status === "LOCKED") {
+      const row = await this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, dispatch.createdById ?? "unknown", justification);
+        return this.repo.updateTx(
+          tx,
+          organizationId,
+          id,
+          dataWithoutDetails,
+          computedDetails,
+          bcSummary,
+        );
+      });
+      return withDisplayCode(row);
+    }
+
     const row = await this.repo.update(
       organizationId,
       id,
@@ -321,7 +500,7 @@ export class DispatchService {
 
   async delete(organizationId: string, id: string): Promise<void> {
     const dispatch = await this.getById(organizationId, id);
-    validateDraftOnly(dispatch.status as "DRAFT" | "POSTED" | "VOIDED");
+    validateDraftOnly(dispatch.status as DocumentStatus);
     await this.repo.delete(organizationId, id);
   }
 
@@ -336,7 +515,7 @@ export class DispatchService {
 
     // Validate lifecycle transition
     validateTransition(
-      dispatch.status as "DRAFT" | "POSTED" | "VOIDED",
+      dispatch.status as DocumentStatus,
       "POSTED",
     );
 
@@ -458,16 +637,22 @@ export class DispatchService {
     organizationId: string,
     id: string,
     userId: string,
+    role?: string,
+    justification?: string,
   ): Promise<DispatchWithDetails> {
     const dispatch = await this.getById(organizationId, id);
+    const status = dispatch.status as DocumentStatus;
 
     // Validate lifecycle transition
-    validateTransition(
-      dispatch.status as "DRAFT" | "POSTED" | "VOIDED",
-      "VOIDED",
-    );
+    validateTransition(status, "VOIDED");
+
+    // If LOCKED, require role + justification
+    if (status === "LOCKED") {
+      validateLockedEdit(status, role!, justification);
+    }
 
     await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, justification);
       await this.voidCascadeTx(tx, organizationId, dispatch, userId);
     });
 

@@ -44,17 +44,18 @@ export async function PATCH(
     const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, entryId } = await params;
     const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const member = await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const input = updateJournalEntrySchema.parse(body);
+    const { justification, ...rest } = body;
+    const input = updateJournalEntrySchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
     const entry = await service.updateEntry(orgId, entryId, {
       ...input,
       updatedById: user.id,
-    });
+    }, member.role, justification);
 
     const displayNumber = formatCorrelativeNumber(
       entry.voucherType.code,

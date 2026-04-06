@@ -1,16 +1,20 @@
 import {
   ValidationError,
+  ForbiddenError,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
   ENTRY_POSTED_LINES_IMMUTABLE,
+  ENTRY_LOCKED_IMMUTABLE,
+  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   FISCAL_PERIOD_CLOSED,
 } from "@/features/shared/errors";
 
-export type DocumentStatus = "DRAFT" | "POSTED" | "VOIDED";
+export type DocumentStatus = "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
 
 const VALID_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
   DRAFT: ["POSTED"],
-  POSTED: ["VOIDED"],
+  POSTED: ["LOCKED", "VOIDED"],
+  LOCKED: ["VOIDED"],
   VOIDED: [],
 };
 
@@ -45,10 +49,37 @@ export function validateDraftOnly(status: DocumentStatus): void {
       ENTRY_VOIDED_IMMUTABLE,
     );
   }
+  if (status === "LOCKED") {
+    throw new ValidationError(
+      "Un documento bloqueado no puede ser modificado sin justificación",
+      ENTRY_LOCKED_IMMUTABLE,
+    );
+  }
   if (status === "POSTED") {
     throw new ValidationError(
       "Un documento contabilizado no puede ser modificado",
       ENTRY_POSTED_LINES_IMMUTABLE,
+    );
+  }
+}
+
+// ── Validate that a locked document can be edited (requires admin + justification) ──
+
+export function validateLockedEdit(
+  status: string,
+  role: string,
+  justification?: string,
+): void {
+  if (status !== "LOCKED") return; // pass through for non-locked
+
+  if (role !== "owner" && role !== "admin") {
+    throw new ForbiddenError("Solo administradores pueden modificar documentos bloqueados");
+  }
+
+  if (!justification || justification.trim().length < 10) {
+    throw new ValidationError(
+      "Se requiere una justificación de al menos 10 caracteres para modificar un documento bloqueado",
+      LOCKED_EDIT_REQUIRES_JUSTIFICATION,
     );
   }
 }

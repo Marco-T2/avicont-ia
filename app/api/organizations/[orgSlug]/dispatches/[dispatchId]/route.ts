@@ -35,12 +35,13 @@ export async function PATCH(
     const { userId } = await requireAuth();
     const { orgSlug, dispatchId } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const input = updateDispatchSchema.parse(body);
+    const { justification, ...rest } = body;
+    const input = updateDispatchSchema.parse(rest);
 
-    const dispatch = await dispatchService.update(orgId, dispatchId, input);
+    const dispatch = await dispatchService.update(orgId, dispatchId, input, member.role, justification);
 
     return Response.json(dispatch);
   } catch (error) {

@@ -26,6 +26,7 @@ import Link from "next/link";
 import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
+import { JustificationModal } from "@/components/shared/justification-modal";
 
 // ── Helpers ──
 
@@ -156,6 +157,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
   POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
   VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
+  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
 };
 
 // ── Existing dispatch shape (from API) ──
@@ -181,7 +183,7 @@ interface ExistingDispatchDetail {
 interface ExistingDispatch {
   id: string;
   dispatchType: "NOTA_DESPACHO" | "BOLETA_CERRADA";
-  status: "DRAFT" | "POSTED" | "VOIDED";
+  status: "DRAFT" | "POSTED" | "VOIDED" | "LOCKED";
   sequenceNumber: number;
   referenceNumber: number | null;
   displayCode: string;
@@ -235,8 +237,15 @@ export default function DispatchForm({
   const isBC = dispatchType === "BOLETA_CERRADA";
   const isEditMode = !!existingDispatch;
   const status = existingDispatch?.status ?? "DRAFT";
-  const isReadOnly = status === "POSTED" || status === "VOIDED";
+  const isAdminOrOwner = role === "admin" || role === "owner";
+  const isLocked = status === "LOCKED";
+  const isReadOnly = status === "POSTED" || status === "VOIDED" || (isLocked && !isAdminOrOwner);
   const isVoided = status === "VOIDED";
+
+  // ── Justification modal state ──
+  const [showJustification, setShowJustification] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
+  const [isJustificationLoading, setIsJustificationLoading] = useState(false);
 
   // ── Initialize lines from existing dispatch ──
   function initLinesFromExisting(details: ExistingDispatchDetail[]): DetailLine[] {
@@ -607,6 +616,139 @@ export default function DispatchForm({
       toast.error(err instanceof Error ? err.message : "Error al eliminar");
     } finally {
       setIsActioning(false);
+    }
+  }
+
+  // ── Create and Post (atomic POSTED creation) ──
+
+  async function handleCreateAndPost() {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const detailPayload = lines.map((line, i) => ({
+        productTypeId: line.productTypeId || undefined,
+        description: line.description,
+        detailNote: line.detailNote || undefined,
+        boxes: parseInt(line.boxes, 10),
+        grossWeight: parseFloat(line.grossWeight),
+        unitPrice: parseFloat(line.unitPrice),
+        shortage: isBC && line.shortage ? parseFloat(line.shortage) : undefined,
+        order: i,
+      }));
+
+      const body = {
+        dispatchType,
+        date,
+        contactId,
+        periodId,
+        description: description.trim(),
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        notes: notes.trim() || undefined,
+        farmOrigin: isBC ? (farmOrigin.trim() || undefined) : undefined,
+        chickenCount: isBC && chickenCount ? parseInt(chickenCount, 10) : undefined,
+        shrinkagePct: isBC ? shrinkagePctNum : undefined,
+        details: detailPayload,
+        postImmediately: true,
+      };
+
+      const response = await fetch(`/api/organizations/${orgSlug}/dispatches`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al contabilizar el despacho");
+      }
+
+      toast.success("Despacho contabilizado");
+      router.push(`/${orgSlug}/dispatches`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al contabilizar el despacho");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ── LOCKED edit handlers ──
+
+  async function handleLockedSave(justification: string) {
+    if (!existingDispatch) return;
+    setIsJustificationLoading(true);
+    try {
+      const detailPayload = lines.map((line, i) => ({
+        productTypeId: line.productTypeId || undefined,
+        description: line.description,
+        detailNote: line.detailNote || undefined,
+        boxes: parseInt(line.boxes, 10),
+        grossWeight: parseFloat(line.grossWeight),
+        unitPrice: parseFloat(line.unitPrice),
+        shortage: isBC && line.shortage ? parseFloat(line.shortage) : undefined,
+        order: i,
+      }));
+
+      const body = {
+        date,
+        contactId,
+        description: description.trim(),
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        notes: notes.trim() || undefined,
+        farmOrigin: isBC ? (farmOrigin.trim() || undefined) : undefined,
+        chickenCount: isBC && chickenCount ? parseInt(chickenCount, 10) : undefined,
+        shrinkagePct: isBC ? shrinkagePctNum : undefined,
+        details: detailPayload,
+        justification,
+      };
+
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al guardar el despacho bloqueado");
+      }
+
+      toast.success("Despacho actualizado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar el despacho bloqueado");
+    } finally {
+      setIsJustificationLoading(false);
+    }
+  }
+
+  async function handleLockedVoid(justification: string) {
+    if (!existingDispatch) return;
+    setIsJustificationLoading(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "VOIDED", justification }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al anular el despacho bloqueado");
+      }
+
+      toast.success("Despacho anulado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al anular el despacho bloqueado");
+    } finally {
+      setIsJustificationLoading(false);
     }
   }
 
@@ -1209,41 +1351,95 @@ export default function DispatchForm({
         <div className="flex gap-3">
           <Link href={backHref}>
             <Button type="button" variant="outline">
-              {isReadOnly ? "Volver" : "Cancelar"}
+              {isReadOnly && !isLocked ? "Volver" : "Cancelar"}
             </Button>
           </Link>
 
-          {/* DRAFT actions */}
-          {(!isEditMode || status === "DRAFT") && (
+          {/* CREATE mode — dual buttons */}
+          {!isEditMode && (
             <>
-              <Button type="submit" disabled={!canSubmit || isSubmitting || isReadOnly}>
+              <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
                 {isSubmitting ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Guardando...
                   </>
-                ) : isEditMode ? (
-                  "Guardar"
                 ) : (
                   "Guardar Borrador"
                 )}
               </Button>
-              {isEditMode && status === "DRAFT" && (
-                <Button
-                  type="button"
-                  variant="default"
-                  className="bg-green-600 hover:bg-green-700"
-                  onClick={handlePost}
-                  disabled={!canSubmit || isActioning}
-                >
-                  {isActioning ? (
+              <Button
+                type="button"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleCreateAndPost}
+                disabled={!canSubmit || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Contabilizar
+              </Button>
+            </>
+          )}
+
+          {/* DRAFT edit actions */}
+          {isEditMode && status === "DRAFT" && (
+            <>
+              <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting ? (
+                  <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                  )}
-                  Contabilizar
-                </Button>
-              )}
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="default"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handlePost}
+                disabled={!canSubmit || isActioning}
+              >
+                {isActioning ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Contabilizar
+              </Button>
+            </>
+          )}
+
+          {/* LOCKED edit actions (admin/owner only) */}
+          {isEditMode && isLocked && isAdminOrOwner && (
+            <>
+              <Button
+                type="button"
+                onClick={() => { setPendingAction("void"); setShowJustification(true); }}
+                variant="destructive"
+                disabled={isJustificationLoading}
+              >
+                {isJustificationLoading && pendingAction === "void" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4 mr-2" />
+                )}
+                Anular
+              </Button>
+              <Button
+                type="button"
+                onClick={() => { setPendingAction("save"); setShowJustification(true); }}
+                disabled={!canSubmit || isJustificationLoading}
+              >
+                {isJustificationLoading && pendingAction === "save" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Guardar
+              </Button>
             </>
           )}
 
@@ -1276,6 +1472,19 @@ export default function DispatchForm({
           {/* VOIDED — no actions */}
         </div>
       </div>
+
+      {/* Justification Modal */}
+      <JustificationModal
+        isOpen={showJustification}
+        onClose={() => { setShowJustification(false); setPendingAction(null); }}
+        onConfirm={async (justification: string) => {
+          if (pendingAction === "save") await handleLockedSave(justification);
+          else if (pendingAction === "void") await handleLockedVoid(justification);
+          setShowJustification(false);
+          setPendingAction(null);
+        }}
+        isLoading={isJustificationLoading}
+      />
     </form>
   );
 }

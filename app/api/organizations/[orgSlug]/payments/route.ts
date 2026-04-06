@@ -53,13 +53,13 @@ export async function POST(
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const input = createPaymentSchema.parse(body);
+    const { postImmediately, ...rest } = body;
+    const input = createPaymentSchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(userId);
-    const payment = await paymentService.create(orgId, {
-      ...input,
-      createdById: user.id,
-    });
+    const payment = postImmediately
+      ? await paymentService.createAndPost(orgId, { ...input, createdById: user.id }, user.id)
+      : await paymentService.create(orgId, { ...input, createdById: user.id });
 
     return Response.json(payment, { status: 201 });
   } catch (error) {
