@@ -46,6 +46,7 @@ export type PaymentDirection = "COBRO" | "PAGO";
 
 export type PaymentWithRelations = Omit<Payment, "amount"> & {
   amount: number;
+  creditApplied: number;
   contact: Contact;
   period: FiscalPeriod;
   journalEntry: JournalEntry | null;
@@ -62,6 +63,8 @@ export interface CreatePaymentInput {
   method: PaymentMethod;
   date: Date;
   amount: number;
+  creditApplied?: number;
+  direction?: PaymentDirection;
   description: string;
   periodId: string;
   contactId: string;
@@ -88,4 +91,9 @@ export interface PaymentFilters {
   dateFrom?: Date;
   dateTo?: Date;
   periodId?: string;
+}
+
+export interface UpdateAllocationsInput {
+  allocations: AllocationInput[];
+  justification?: string;
 }

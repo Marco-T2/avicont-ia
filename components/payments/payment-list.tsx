@@ -404,6 +404,14 @@ export default function PaymentList({
                       label: payment.status,
                       className: "bg-gray-100 text-gray-800",
                     };
+                    const totalAllocated = payment.allocations.reduce(
+                      (sum, a) => sum + a.amount,
+                      0,
+                    );
+                    const unapplied = payment.amount - totalAllocated;
+                    const hasUnapplied =
+                      unapplied > 0.01 &&
+                      (payment.status === "POSTED" || payment.status === "LOCKED");
 
                     return (
                       <tr
@@ -442,7 +450,17 @@ export default function PaymentList({
                           </Badge>
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {formatCurrency(payment.amount)}
+                          <div className="flex flex-col items-end gap-1">
+                            <span>{formatCurrency(payment.amount)}</span>
+                            {hasUnapplied && (
+                              <Badge className="bg-sky-100 text-sky-700 text-xs font-normal">
+                                Crédito: Bs{unapplied.toLocaleString("es-BO", {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}
+                              </Badge>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3 px-4 text-right">
                           <div

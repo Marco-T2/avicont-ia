@@ -96,11 +96,12 @@ export class ContactsRepository extends BaseRepository {
 
   async getCreditBalance(organizationId: string, contactId: string): Promise<number> {
     const payments = await this.db.payment.findMany({
-      where: { organizationId, contactId, status: "POSTED" },
+      where: { organizationId, contactId, status: { not: "VOIDED" } },
       include: {
         allocations: {
           include: { receivable: true, payable: true },
         },
+        creditSources: true,
       },
     });
 
@@ -111,10 +112,11 @@ export class ContactsRepository extends BaseRepository {
           a.receivable?.status === "VOIDED" || a.payable?.status === "VOIDED";
         return sum + (targetVoided ? 0 : Number(a.amount));
       }, 0);
-      credit += Number(p.amount) - allocated;
+      const consumed = p.creditSources.reduce((sum, c) => sum + Number(c.amount), 0);
+      credit += Number(p.amount) - allocated - consumed;
     }
 
-    return credit;
+    return Math.max(0, credit);
   }
 
   async getPendingReceivables(

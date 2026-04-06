@@ -31,10 +31,11 @@ model Organization {
   receivables     AccountsReceivable[]
   payables        AccountsPayable[]
   settings        OrgSettings?
-  dispatches      Dispatch[]
-  payments        Payment[]
-  productTypes    ProductType[]
-  auditLogs       AuditLog[]
+  dispatches         Dispatch[]
+  payments           Payment[]
+  productTypes       ProductType[]
+  auditLogs          AuditLog[]
+  creditConsumptions CreditConsumption[]
 
   @@map("organizations")
 }
@@ -643,12 +644,15 @@ model Payment {
   createdById     String
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
+  creditApplied   Decimal              @default(0) @db.Decimal(12, 2)
   organization    Organization         @relation(fields: [organizationId], references: [id])
   contact         Contact              @relation(fields: [contactId], references: [id])
   period          FiscalPeriod         @relation(fields: [periodId], references: [id])
   journalEntry    JournalEntry?        @relation(fields: [journalEntryId], references: [id])
   createdBy       User                 @relation("PaymentCreator", fields: [createdById], references: [id])
   allocations     PaymentAllocation[]
+  creditConsumptions CreditConsumption[] @relation("CreditConsumer")
+  creditSources      CreditConsumption[] @relation("CreditSource")
 
   @@index([organizationId, status])
   @@index([organizationId, contactId])
@@ -670,6 +674,23 @@ model PaymentAllocation {
   @@index([receivableId])
   @@index([payableId])
   @@map("payment_allocations")
+}
+
+model CreditConsumption {
+  id                String   @id @default(cuid())
+  organizationId    String
+  consumerPaymentId String
+  sourcePaymentId   String
+  amount            Decimal  @db.Decimal(12, 2)
+  createdAt         DateTime @default(now())
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  consumerPayment   Payment      @relation("CreditConsumer", fields: [consumerPaymentId], references: [id])
+  sourcePayment     Payment      @relation("CreditSource", fields: [sourcePaymentId], references: [id])
+
+  @@index([consumerPaymentId])
+  @@index([sourcePaymentId])
+  @@index([organizationId])
+  @@map("credit_consumptions")
 }
 
 model AuditLog {

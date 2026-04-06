@@ -5,6 +5,7 @@ import {
   DISPATCH_BC_FIELDS_ON_ND,
   DISPATCH_INVALID_CONTACT_TYPE,
   DISPATCH_NOT_DRAFT,
+  DISPATCH_HAS_ACTIVE_PAYMENTS,
   INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
 import {
@@ -712,6 +713,31 @@ export class DispatchService {
     dispatch: DispatchWithDetails,
     userId: string,
   ): Promise<void> {
+    // 0. Guard: reject void if there are active payment allocations linked to this dispatch
+    if (dispatch.receivableId) {
+      const activeAllocations = await tx.paymentAllocation.findMany({
+        where: {
+          receivableId: dispatch.receivableId,
+          amount: { gt: 0 },
+          payment: { status: { not: "VOIDED" } },
+        },
+        include: { payment: true },
+      });
+
+      if (activeAllocations.length > 0) {
+        const detail = activeAllocations
+          .map(
+            (a) =>
+              `"${a.payment.description}" (Bs. ${a.amount.toString()})`,
+          )
+          .join(", ");
+        throw new ValidationError(
+          `No se puede anular el despacho porque tiene pagos activos asociados: ${detail}`,
+          DISPATCH_HAS_ACTIVE_PAYMENTS,
+        );
+      }
+    }
+
     // 1. Update dispatch status to VOIDED
     await this.repo.updateStatusTx(tx, organizationId, dispatch.id, "VOIDED");
 

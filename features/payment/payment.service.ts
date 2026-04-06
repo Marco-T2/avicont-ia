@@ -1,3 +1,4 @@
+import { Prisma } from "@/generated/prisma/client";
 import {
   NotFoundError,
   ValidationError,
@@ -5,7 +6,11 @@ import {
   PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
   PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
   PAYMENT_ALLOCATION_TARGET_VOIDED,
-  PAYMENT_NO_ALLOCATIONS,
+  PAYMENT_DIRECTION_REQUIRED,
+  PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+  PAYMENT_HAS_ACTIVE_CREDIT_CONSUMERS,
+  PAYMENT_INSUFFICIENT_FUNDS,
+  INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
 import {
   validateTransition,
@@ -94,38 +99,50 @@ export class PaymentService {
     input: CreatePaymentInput,
     userId: string,
   ): Promise<PaymentWithRelations> {
-    // 1. Validate allocations
-    validateAllocations(input.allocations, input.amount);
+    // 1. Validate allocations (amount=0 allowed when creditApplied covers it)
+    validateAllocations(input.allocations, input.amount, input.creditApplied ?? 0);
+
+    // 1b. Pre-validate credit if provided
+    if (input.creditApplied && input.creditApplied > 0) {
+      const balance = await this.repo.getCustomerBalance(organizationId, input.contactId);
+      if (input.creditApplied > balance.unappliedCredit) {
+        throw new ValidationError(
+          `El crédito aplicado (${input.creditApplied}) excede el crédito disponible del cliente (${balance.unappliedCredit})`,
+          PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+        );
+      }
+      const allocTotal = input.allocations.reduce((sum, a) => sum + a.amount, 0);
+      const totalFunds = input.amount + input.creditApplied;
+      if (Math.round(allocTotal * 100) > Math.round(totalFunds * 100)) {
+        throw new ValidationError(
+          `Los fondos disponibles (efectivo + crédito = ${totalFunds}) no cubren las asignaciones (${allocTotal})`,
+          PAYMENT_INSUFFICIENT_FUNDS,
+        );
+      }
+    }
 
     // 2. Validate fiscal period is OPEN
     const period = await this.periodsService.getById(organizationId, input.periodId);
     await validatePeriodOpen(period);
 
-    // 3. Determine direction from allocations
-    const direction: PaymentDirection = input.allocations[0].receivableId
-      ? "COBRO"
-      : "PAGO";
-
-    // 4. Get org settings for account codes
+    // 3. Get org settings for account codes (outside transaction — read-only)
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
-    const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
-    const amount = input.amount;
-
-    const lines = buildEntryLines(
-      direction === "COBRO",
-      input.method,
-      amount,
-      settings.cajaGeneralAccountCode,
-      settings.bancoAccountCode,
-      settings.cxcAccountCode,
-      settings.cxpAccountCode,
-      input.contactId,
-    );
 
     let paymentId = "";
 
     await this.repo.transaction(async (tx) => {
       await setAuditContext(tx, userId);
+
+      // Resolve direction inside transaction (may need to query Contact.type)
+      const direction = await resolveDirection(
+        tx,
+        input.allocations,
+        input.contactId,
+        input.direction,
+      );
+
+      const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
+      const amount = input.amount;
 
       // Create payment directly as POSTED
       const payment = await this.repo.createPostedTx(tx, organizationId, input);
@@ -172,26 +189,39 @@ export class PaymentService {
         }
       }
 
-      // Generate journal entry
-      const entry = await this.autoEntryGenerator.generate(tx, {
-        organizationId,
-        voucherTypeCode,
-        contactId: input.contactId,
-        date: input.date,
-        periodId: input.periodId,
-        description: input.description,
-        referenceNumber: input.referenceNumber ?? undefined,
-        sourceType: "payment",
-        sourceId: payment.id,
-        createdById: userId,
-        lines,
-      });
+      // Generate journal entry only when amount > 0 (skip for credit-only payments)
+      if (amount > 0) {
+        const lines = buildEntryLines(
+          direction === "COBRO",
+          input.method,
+          amount,
+          settings.cajaGeneralAccountCode,
+          settings.bancoAccountCode,
+          settings.cxcAccountCode,
+          settings.cxpAccountCode,
+          input.contactId,
+        );
 
-      // Apply account balance changes
-      await this.balancesService.applyPost(tx, entry);
+        const entry = await this.autoEntryGenerator.generate(tx, {
+          organizationId,
+          voucherTypeCode,
+          contactId: input.contactId,
+          date: input.date,
+          periodId: input.periodId,
+          description: input.description,
+          referenceNumber: input.referenceNumber ?? undefined,
+          sourceType: "payment",
+          sourceId: payment.id,
+          createdById: userId,
+          lines,
+        });
 
-      // Link journal entry to payment
-      await this.repo.linkJournalEntry(tx, payment.id, entry.id);
+        // Apply account balance changes
+        await this.balancesService.applyPost(tx, entry);
+
+        // Link journal entry to payment
+        await this.repo.linkJournalEntry(tx, payment.id, entry.id);
+      }
 
       // Update each CxC/CxP allocation target
       for (const alloc of input.allocations) {
@@ -230,6 +260,17 @@ export class PaymentService {
             newStatus,
           );
         }
+      }
+
+      // Apply credit consumption FIFO if creditApplied > 0
+      if (input.creditApplied && input.creditApplied > 0) {
+        await allocateCredit(
+          tx,
+          organizationId,
+          input.contactId,
+          payment.id,
+          input.creditApplied,
+        );
       }
     });
 
@@ -299,38 +340,24 @@ export class PaymentService {
     const period = await this.periodsService.getById(organizationId, payment.periodId);
     await validatePeriodOpen(period);
 
-    // Validate at least 1 allocation
-    if (!payment.allocations || payment.allocations.length === 0) {
-      throw new ValidationError(
-        "El pago debe tener al menos una asignación para ser contabilizado",
-        PAYMENT_NO_ALLOCATIONS,
-      );
-    }
-
-    // Determine direction from allocations
-    const direction: PaymentDirection = payment.allocations[0].receivableId
-      ? "COBRO"
-      : "PAGO";
-
-    // Get org settings for account codes
+    // Get org settings for account codes (outside transaction — read-only)
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
-    const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
-    const amount = payment.amount;
-
-    // Build entry lines based on direction and method
-    const lines = buildEntryLines(
-      direction === "COBRO",
-      payment.method,
-      amount,
-      settings.cajaGeneralAccountCode,
-      settings.bancoAccountCode,
-      settings.cxcAccountCode,
-      settings.cxpAccountCode,
-      payment.contactId,
-    );
-
     await this.repo.transaction(async (tx) => {
+      // Resolve direction inside transaction (may need to query Contact.type)
+      const direction = await resolveDirection(
+        tx,
+        payment.allocations.map((a) => ({
+          receivableId: a.receivableId ?? undefined,
+          payableId: a.payableId ?? undefined,
+          amount: a.amount,
+        })),
+        payment.contactId,
+      );
+
+      const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
+      const amount = payment.amount;
+
       // 1. Validate each allocation against fresh CxC/CxP balance
       for (const alloc of payment.allocations) {
         if (alloc.receivableId) {
@@ -375,7 +402,18 @@ export class PaymentService {
       // 2. Update payment status to POSTED
       await this.repo.updateStatusTx(tx, organizationId, id, "POSTED");
 
-      // 3. Generate journal entry
+      // 3. Build entry lines and generate journal entry
+      const lines = buildEntryLines(
+        direction === "COBRO",
+        payment.method,
+        amount,
+        settings.cajaGeneralAccountCode,
+        settings.bancoAccountCode,
+        settings.cxcAccountCode,
+        settings.cxpAccountCode,
+        payment.contactId,
+      );
+
       const entry = await this.autoEntryGenerator.generate(tx, {
         organizationId,
         voucherTypeCode,
@@ -464,6 +502,30 @@ export class PaymentService {
     await this.repo.transaction(async (tx) => {
       await setAuditContext(tx, userId, justification);
 
+      // 0. Guard: block if this payment's credit was consumed by active payments
+      const activeConsumers = await tx.creditConsumption.findMany({
+        where: {
+          sourcePaymentId: id,
+          consumerPayment: { status: { not: "VOIDED" } },
+        },
+        include: {
+          consumerPayment: { select: { description: true, amount: true } },
+        },
+      });
+
+      if (activeConsumers.length > 0) {
+        const list = activeConsumers
+          .map(
+            (c) =>
+              `${c.consumerPayment.description} (${Number(c.consumerPayment.amount).toFixed(2)})`,
+          )
+          .join(", ");
+        throw new ValidationError(
+          `No se puede anular el pago porque su crédito fue aplicado en otros cobros. Anule primero: ${list}`,
+          PAYMENT_HAS_ACTIVE_CREDIT_CONSUMERS,
+        );
+      }
+
       // 1. Update payment status to VOIDED
       await this.repo.updateStatusTx(tx, organizationId, id, "VOIDED");
 
@@ -528,40 +590,311 @@ export class PaymentService {
           );
         }
       }
+
+      // 4. Restore credit: delete consumption records where this payment consumed credit
+      await tx.creditConsumption.deleteMany({
+        where: { consumerPaymentId: id },
+      });
     });
 
     const updated = await this.repo.findById(organizationId, id);
     return updated!;
   }
+
+  // ── Update allocations on a POSTED/LOCKED payment (journal entry unchanged) ──
+
+  async updateAllocations(
+    organizationId: string,
+    id: string,
+    newAllocations: AllocationInput[],
+    userId: string,
+    role?: string,
+    justification?: string,
+  ): Promise<PaymentWithRelations> {
+    const payment = await this.getById(organizationId, id);
+    const status = payment.status as DocumentStatus;
+
+    // Only POSTED or LOCKED payments can have allocations updated this way
+    if (status !== "POSTED" && status !== "LOCKED") {
+      throw new ValidationError(
+        "Solo se pueden reasignar pagos contabilizados o bloqueados. Use la edición normal para borradores.",
+        INVALID_STATUS_TRANSITION,
+      );
+    }
+
+    // LOCKED requires role + justification
+    if (status === "LOCKED") {
+      validateLockedEdit(status, role!, justification);
+    }
+
+    // Validate new allocations against payment amount + creditApplied
+    const creditApplied = Number(payment.creditApplied ?? 0);
+    validateAllocations(newAllocations, payment.amount, creditApplied);
+
+    await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, justification);
+
+      // 1. Reverse old allocations — restore CxC/CxP balances
+      for (const alloc of payment.allocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable || receivable.status === "VOIDED") continue;
+
+          const revertedPaid = Math.max(0, Number(receivable.paid) - alloc.amount);
+          const revertedBalance = Number(receivable.amount) - revertedPaid;
+          const revertedStatus = revertedPaid === 0 ? "PENDING" : "PARTIAL";
+
+          await this.repo.updateCxCPaymentTx(
+            tx,
+            alloc.receivableId,
+            revertedPaid,
+            Math.max(0, revertedBalance),
+            revertedStatus,
+          );
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable || payable.status === "VOIDED") continue;
+
+          const revertedPaid = Math.max(0, Number(payable.paid) - alloc.amount);
+          const revertedBalance = Number(payable.amount) - revertedPaid;
+          const revertedStatus = revertedPaid === 0 ? "PENDING" : "PARTIAL";
+
+          await this.repo.updateCxPPaymentTx(
+            tx,
+            alloc.payableId,
+            revertedPaid,
+            Math.max(0, revertedBalance),
+            revertedStatus,
+          );
+        }
+      }
+
+      // 2. Delete old allocation records
+      await this.repo.updateAllocations(tx, id, []);
+
+      // 3. Validate new allocations against FRESH CxC/CxP balances (post-reversal)
+      for (const alloc of newAllocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable) throw new NotFoundError("Cuenta por cobrar");
+          if (receivable.status === "VOIDED") {
+            throw new ValidationError(
+              "No se puede aplicar pago a una cuenta por cobrar anulada",
+              PAYMENT_ALLOCATION_TARGET_VOIDED,
+            );
+          }
+          if (alloc.amount > Number(receivable.balance)) {
+            throw new ValidationError(
+              `La asignación (${alloc.amount}) excede el saldo disponible (${Number(receivable.balance)}) de la CxC`,
+              PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+            );
+          }
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable) throw new NotFoundError("Cuenta por pagar");
+          if (payable.status === "VOIDED") {
+            throw new ValidationError(
+              "No se puede aplicar pago a una cuenta por pagar anulada",
+              PAYMENT_ALLOCATION_TARGET_VOIDED,
+            );
+          }
+          if (alloc.amount > Number(payable.balance)) {
+            throw new ValidationError(
+              `La asignación (${alloc.amount}) excede el saldo disponible (${Number(payable.balance)}) de la CxP`,
+              PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+            );
+          }
+        }
+      }
+
+      // 4. Create new allocation records
+      await this.repo.updateAllocations(tx, id, newAllocations);
+
+      // 5. Apply new allocations — update CxC/CxP balances
+      for (const alloc of newAllocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable) continue;
+
+          const newPaid = Number(receivable.paid) + alloc.amount;
+          const newBalance = Number(receivable.amount) - newPaid;
+          const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+
+          await this.repo.updateCxCPaymentTx(
+            tx,
+            alloc.receivableId,
+            newPaid,
+            Math.max(0, newBalance),
+            newStatus,
+          );
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable) continue;
+
+          const newPaid = Number(payable.paid) + alloc.amount;
+          const newBalance = Number(payable.amount) - newPaid;
+          const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+
+          await this.repo.updateCxPPaymentTx(
+            tx,
+            alloc.payableId,
+            newPaid,
+            Math.max(0, newBalance),
+            newStatus,
+          );
+        }
+      }
+
+      // 6. Journal entry is NOT touched — intentional per spec (REQ-5.4)
+    });
+
+    return (await this.repo.findById(organizationId, id))!;
+  }
+
+  // ── Get customer balance summary ──
+
+  async getCustomerBalance(
+    organizationId: string,
+    contactId: string,
+  ): Promise<{
+    totalInvoiced: number;
+    totalPaid: number;
+    netBalance: number;
+    unappliedCredit: number;
+  }> {
+    return this.repo.getCustomerBalance(organizationId, contactId);
+  }
+}
+
+// ── Resolve payment direction (COBRO / PAGO) ──
+
+async function resolveDirection(
+  tx: Prisma.TransactionClient,
+  allocations: AllocationInput[],
+  contactId: string,
+  explicitDirection?: PaymentDirection,
+): Promise<PaymentDirection> {
+  if (explicitDirection) return explicitDirection;
+  if (allocations.length > 0) {
+    return allocations[0].receivableId ? "COBRO" : "PAGO";
+  }
+  const contact = await tx.contact.findUnique({
+    where: { id: contactId },
+    select: { type: true },
+  });
+  if (!contact) throw new NotFoundError("Contacto");
+  if (contact.type === "CLIENTE") return "COBRO";
+  if (contact.type === "PROVEEDOR") return "PAGO";
+  throw new ValidationError(
+    "No se puede determinar la dirección del pago. Especifique la dirección o agregue al menos una asignación.",
+    PAYMENT_DIRECTION_REQUIRED,
+  );
+}
+
+// ── Allocate credit FIFO from source payments ──
+
+async function allocateCredit(
+  tx: Prisma.TransactionClient,
+  organizationId: string,
+  contactId: string,
+  consumerPaymentId: string,
+  creditNeeded: number,
+): Promise<void> {
+  // Find non-voided payments for this contact (excluding the consumer itself), ordered FIFO
+  const payments = await tx.payment.findMany({
+    where: {
+      organizationId,
+      contactId,
+      status: { not: "VOIDED" },
+      id: { not: consumerPaymentId },
+    },
+    include: {
+      allocations: true,
+      creditSources: true, // credit already consumed FROM this payment
+    },
+    orderBy: { date: "asc" },
+  });
+
+  let remaining = creditNeeded;
+
+  for (const payment of payments) {
+    if (remaining <= 0) break;
+
+    const paymentAmount = Number(payment.amount);
+    const totalAllocated = payment.allocations.reduce(
+      (sum, a) => sum + Number(a.amount),
+      0,
+    );
+    const totalConsumedFromThis = payment.creditSources.reduce(
+      (sum, c) => sum + Number(c.amount),
+      0,
+    );
+    const available = paymentAmount - totalAllocated - totalConsumedFromThis;
+
+    if (available <= 0) continue;
+
+    const consume = Math.min(available, remaining);
+
+    await tx.creditConsumption.create({
+      data: {
+        organizationId,
+        consumerPaymentId,
+        sourcePaymentId: payment.id,
+        amount: new Prisma.Decimal(consume),
+      },
+    });
+
+    remaining -= consume;
+  }
+
+  // Safety net — should not happen if pre-validation passed
+  if (remaining > 0.001) {
+    throw new ValidationError(
+      `Crédito insuficiente: no se encontró suficiente crédito disponible`,
+      PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+    );
+  }
 }
 
 // ── Validate allocations consistency ──
 
-function validateAllocations(allocations: AllocationInput[], totalAmount: number): void {
-  if (!allocations || allocations.length === 0) {
-    throw new ValidationError(
-      "El pago debe tener al menos una asignación",
-      PAYMENT_NO_ALLOCATIONS,
-    );
+function validateAllocations(
+  allocations: AllocationInput[],
+  totalAmount: number,
+  creditApplied: number = 0,
+): void {
+  if (allocations.length > 0) {
+    // Validate all allocations same direction
+    const hasReceivable = allocations.some((a) => !!a.receivableId);
+    const hasPayable = allocations.some((a) => !!a.payableId);
+
+    if (hasReceivable && hasPayable) {
+      throw new ValidationError(
+        "Todas las asignaciones deben ser del mismo tipo (CxC o CxP), no se pueden mezclar",
+        PAYMENT_MIXED_ALLOCATION,
+      );
+    }
   }
 
-  // Validate all allocations same direction
-  const hasReceivable = allocations.some((a) => !!a.receivableId);
-  const hasPayable = allocations.some((a) => !!a.payableId);
-
-  if (hasReceivable && hasPayable) {
-    throw new ValidationError(
-      "Todas las asignaciones deben ser del mismo tipo (CxC o CxP), no se pueden mezclar",
-      PAYMENT_MIXED_ALLOCATION,
-    );
-  }
-
-  // Validate SUM(allocations) <= amount
+  // Validate SUM(allocations) <= amount + creditApplied
   const allocTotal = allocations.reduce((sum, a) => sum + a.amount, 0);
+  const availableFunds = totalAmount + creditApplied;
   // Use cent-level comparison to avoid floating point issues
-  if (Math.round(allocTotal * 100) > Math.round(totalAmount * 100)) {
+  if (Math.round(allocTotal * 100) > Math.round(availableFunds * 100)) {
     throw new ValidationError(
-      `La suma de asignaciones (${allocTotal}) excede el monto total del pago (${totalAmount})`,
+      `La suma de asignaciones (${allocTotal}) excede los fondos disponibles (${availableFunds})`,
       PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
     );
   }

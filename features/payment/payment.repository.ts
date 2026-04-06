@@ -77,6 +77,7 @@ export class PaymentRepository extends BaseRepository {
         method: data.method,
         date: data.date,
         amount: new Prisma.Decimal(data.amount),
+        creditApplied: new Prisma.Decimal(data.creditApplied ?? 0),
         description: data.description,
         periodId: data.periodId,
         contactId: data.contactId,
@@ -174,6 +175,7 @@ export class PaymentRepository extends BaseRepository {
         method: data.method,
         date: data.date,
         amount: new Prisma.Decimal(data.amount),
+        creditApplied: new Prisma.Decimal(data.creditApplied ?? 0),
         description: data.description,
         periodId: data.periodId,
         contactId: data.contactId,
@@ -316,6 +318,65 @@ export class PaymentRepository extends BaseRepository {
     });
   }
 
+  // ── Customer balance summary ──
+
+  async getCustomerBalance(
+    organizationId: string,
+    contactId: string,
+  ): Promise<{
+    totalInvoiced: number;
+    totalPaid: number;
+    netBalance: number;
+    unappliedCredit: number;
+  }> {
+    const scope = this.requireOrg(organizationId);
+
+    // 1. Sum all non-voided CxC amounts for this customer
+    const cxcAgg = await this.db.accountsReceivable.aggregate({
+      where: { ...scope, contactId, status: { not: "VOIDED" } },
+      _sum: { amount: true },
+    });
+    const totalInvoiced = Number(cxcAgg._sum.amount ?? 0);
+
+    // 2. Sum all non-voided payment amounts for this customer (cash received)
+    const payAgg = await this.db.payment.aggregate({
+      where: { ...scope, contactId, status: { not: "VOIDED" } },
+      _sum: { amount: true },
+    });
+    const totalCashPaid = Number(payAgg._sum.amount ?? 0);
+
+    // 3. Sum all allocations from non-voided payments to this customer's CxC
+    const allocAgg = await this.db.paymentAllocation.aggregate({
+      where: {
+        payment: { organizationId, contactId, status: { not: "VOIDED" } },
+        receivableId: { not: null },
+      },
+      _sum: { amount: true },
+    });
+    const totalAllocated = Number(allocAgg._sum.amount ?? 0);
+
+    // 4. Sum credit consumed FROM this customer's payments by other payments
+    const consumedAgg = await this.db.creditConsumption.aggregate({
+      where: {
+        organizationId,
+        sourcePayment: { contactId, status: { not: "VOIDED" } },
+        consumerPayment: { status: { not: "VOIDED" } },
+      },
+      _sum: { amount: true },
+    });
+    const totalConsumed = Number(consumedAgg._sum.amount ?? 0);
+
+    const unappliedCredit = Math.max(0, totalCashPaid - totalAllocated - totalConsumed);
+    const netBalance = totalInvoiced - totalCashPaid;
+
+    return {
+      totalInvoiced,
+      totalPaid: totalCashPaid,
+      netBalance,
+      unappliedCredit,
+    };
+  }
+
   // ── CxC / CxP payment update helpers (within transaction) ──
 
   async updateCxCPaymentTx(
@@ -375,10 +436,11 @@ export class PaymentRepository extends BaseRepository {
 function toPaymentWithRelations(row: unknown): PaymentWithRelations {
   const r = row as Record<string, unknown>;
 
-  // Convert top-level amount
+  // Convert top-level amount and creditApplied
   const result: Record<string, unknown> = {
     ...r,
     amount: Number(r.amount),
+    creditApplied: Number(r.creditApplied ?? 0),
   };
 
   // Convert allocation amounts
