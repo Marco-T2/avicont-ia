@@ -12,12 +12,14 @@ const allocationInputSchema = z.object({
 export const createPaymentSchema = z.object({
   method: z.enum(["EFECTIVO", "TRANSFERENCIA", "CHEQUE", "DEPOSITO"]),
   date: z.coerce.date(),
-  amount: z.number().positive(),
+  amount: z.number().min(0),
+  creditApplied: z.number().min(0).optional(),
+  direction: z.enum(["COBRO", "PAGO"]).optional(),
   description: z.string().min(1).max(500),
   periodId: z.string().min(1),
   contactId: z.string().min(1),
   referenceNumber: z.number().int().positive().optional(),
-  allocations: z.array(allocationInputSchema).min(1, "Debe incluir al menos una asignación"),
+  allocations: z.array(allocationInputSchema),
   notes: z.string().optional(),
 });
 
@@ -27,7 +29,7 @@ export const updatePaymentSchema = z.object({
   amount: z.number().positive().optional(),
   description: z.string().min(1).max(500).optional(),
   referenceNumber: z.number().int().positive().optional(),
-  allocations: z.array(allocationInputSchema).min(1, "Debe incluir al menos una asignación").optional(),
+  allocations: z.array(allocationInputSchema).optional(),
   notes: z.string().optional(),
 });
 
@@ -44,7 +46,13 @@ export const paymentFiltersSchema = z.object({
   periodId: z.string().optional(),
 });
 
+export const updateAllocationsSchema = z.object({
+  allocations: z.array(allocationInputSchema),
+  justification: z.string().min(1).optional(),
+});
+
 export type CreatePaymentDto = z.infer<typeof createPaymentSchema>;
 export type UpdatePaymentDto = z.infer<typeof updatePaymentSchema>;
 export type PaymentStatusDto = z.infer<typeof paymentStatusSchema>;
 export type PaymentFiltersDto = z.infer<typeof paymentFiltersSchema>;
+export type UpdateAllocationsDto = z.infer<typeof updateAllocationsSchema>;

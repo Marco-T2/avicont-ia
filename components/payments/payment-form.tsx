@@ -147,6 +147,9 @@ export default function PaymentForm({
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
 
+  // ── Credit to apply ──
+  const [creditApplied, setCreditApplied] = useState(0);
+
   // ── Submission state ──
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
@@ -300,8 +303,7 @@ export default function PaymentForm({
     date &&
     method &&
     description.trim() &&
-    activeAllocations.length > 0 &&
-    paymentAmount > 0 &&
+    (paymentAmount > 0 || creditApplied > 0) &&
     !hasOverAllocation;
 
   // ── Submit (create or update) ──
@@ -323,6 +325,8 @@ export default function PaymentForm({
         method,
         date,
         amount: paymentAmount,
+        creditApplied: creditApplied > 0 ? creditApplied : undefined,
+        direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
         periodId,
         contactId,
@@ -483,6 +487,8 @@ export default function PaymentForm({
         method,
         date,
         amount: paymentAmount,
+        creditApplied: creditApplied > 0 ? creditApplied : undefined,
+        direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
         periodId,
         contactId,
@@ -529,6 +535,8 @@ export default function PaymentForm({
         method,
         date,
         amount: paymentAmount,
+        creditApplied: creditApplied > 0 ? creditApplied : undefined,
+        direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
         periodId,
         contactId,
@@ -781,6 +789,45 @@ export default function PaymentForm({
                 className={isReadOnly ? "bg-muted cursor-default" : ""}
               />
             </div>
+
+            {/* Crédito a aplicar — solo visible cuando el contacto tiene saldo a favor */}
+            {!isReadOnly && isNew && creditBalance > 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="credit-applied">Crédito a aplicar</Label>
+                <Input
+                  id="credit-applied"
+                  type="number"
+                  min={0}
+                  max={creditBalance}
+                  step={0.01}
+                  value={creditApplied || ""}
+                  onChange={(e) => setCreditApplied(parseFloat(e.target.value) || 0)}
+                  placeholder="0.00"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Crédito disponible: Bs{creditBalance.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </p>
+              </div>
+            )}
+
+            {/* Dirección — solo visible cuando no hay asignaciones (pago sin facturas) */}
+            {!isReadOnly && isNew && activeAllocations.length === 0 && (
+              <div className="space-y-2">
+                <Label htmlFor="direction">Dirección</Label>
+                <Select
+                  value={paymentType}
+                  onValueChange={(v) => setPaymentType(v as PaymentDirection)}
+                >
+                  <SelectTrigger id="direction" className="w-full">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="COBRO">Cobro</SelectItem>
+                    <SelectItem value="PAGO">Pago</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
