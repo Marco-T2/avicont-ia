@@ -377,6 +377,21 @@ export class PaymentRepository extends BaseRepository {
     };
   }
 
+  async getCreditConsumedFromPayment(
+    organizationId: string,
+    paymentId: string,
+  ): Promise<number> {
+    const agg = await this.db.creditConsumption.aggregate({
+      where: {
+        organizationId,
+        sourcePaymentId: paymentId,
+        consumerPayment: { status: { not: "VOIDED" } },
+      },
+      _sum: { amount: true },
+    });
+    return Number(agg._sum.amount ?? 0);
+  }
+
   // ── CxC / CxP payment update helpers (within transaction) ──
 
   async updateCxCPaymentTx(

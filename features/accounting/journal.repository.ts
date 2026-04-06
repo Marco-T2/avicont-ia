@@ -66,6 +66,19 @@ export class JournalRepository extends BaseRepository {
     }) as Promise<JournalEntryWithLines | null>;
   }
 
+  async findByIdForBalancesTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+  ): Promise<JournalEntryWithLines | null> {
+    const scope = this.requireOrg(organizationId);
+
+    return tx.journalEntry.findFirst({
+      where: { id, ...scope },
+      include: journalIncludeLines,
+    }) as Promise<JournalEntryWithLines | null>;
+  }
+
   async getNextNumber(
     organizationId: string,
     voucherTypeId: string,

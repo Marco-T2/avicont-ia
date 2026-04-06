@@ -15,9 +15,11 @@ import {
   VOUCHER_TYPE_NOT_IN_ORG,
   CONTACT_REQUIRED_FOR_ACCOUNT,
   REFERENCE_NUMBER_DUPLICATE,
+  ENTRY_SYSTEM_GENERATED_IMMUTABLE,
 } from "@/features/shared/errors";
 import {
   validateLockedEdit,
+  validatePeriodOpen,
   type DocumentStatus,
 } from "@/features/shared/document-lifecycle.service";
 import { setAuditContext } from "@/features/shared/audit-context";
@@ -331,6 +333,7 @@ export class JournalService {
     if (!entry) throw new NotFoundError("Asiento contable");
 
     const status = entry.status as DocumentStatus;
+    const { lines, updatedById, ...data } = input;
 
     if (status === "VOIDED") {
       throw new ValidationError(
@@ -342,13 +345,27 @@ export class JournalService {
     if (status === "LOCKED") {
       validateLockedEdit(status, role!, justification);
     } else if (status === "POSTED") {
-      throw new ValidationError(
-        "No se pueden modificar las líneas de un asiento contabilizado",
-        ENTRY_POSTED_LINES_IMMUTABLE,
-      );
-    }
+      if (entry.sourceType) {
+        const sourceTypeLabel = entry.sourceType === "dispatch" ? "despacho" : "cobro/pago";
+        throw new ValidationError(
+          `Este asiento fue generado automáticamente por un ${sourceTypeLabel}. Edite el documento origen para modificar el asiento.`,
+          ENTRY_SYSTEM_GENERATED_IMMUTABLE,
+        );
+      }
+      // Manual entry — validate period is OPEN then recalculate
+      const period = await this.periodsService.getById(organizationId, entry.periodId);
+      await validatePeriodOpen(period);
 
-    const { lines, updatedById, ...data } = input;
+      // Validate double-entry balance on new lines
+      if (lines !== undefined) {
+        const totalDebit = lines.reduce((sum, l) => sum + l.debit, 0);
+        const totalCredit = lines.reduce((sum, l) => sum + l.credit, 0);
+        if (Math.round(totalDebit * 100) !== Math.round(totalCredit * 100)) {
+          throw new ValidationError("Los débitos y créditos no balancean", JOURNAL_NOT_BALANCED);
+        }
+      }
+      return this.updatePostedManualEntryTx(organizationId, entry, input);
+    }
 
     if (lines !== undefined) {
       if (lines.length < 2) {
@@ -416,6 +433,31 @@ export class JournalService {
       }
       throw error;
     }
+  }
+
+  // ── Update a POSTED manual entry with atomic balance recalculation ──
+
+  private async updatePostedManualEntryTx(
+    organizationId: string,
+    entry: JournalEntryWithLines,
+    input: UpdateJournalEntryInput,
+  ): Promise<JournalEntryWithLines> {
+    const { lines, updatedById, ...data } = input;
+
+    return this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, updatedById ?? "unknown");
+
+      // Step 1: Reverse old balance effects
+      await this.balancesService.applyVoid(tx, entry);
+
+      // Step 2: Update entry header + lines (delete+recreate lines via repo.updateTx)
+      const updated = await this.repo.updateTx(tx, organizationId, entry.id, data, lines, updatedById ?? "unknown");
+
+      // Step 3: Apply new balance effects
+      await this.balancesService.applyPost(tx, updated);
+
+      return updated;
+    });
   }
 
   // ── Validate requiresContact on journal lines ──

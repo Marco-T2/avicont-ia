@@ -41,7 +41,7 @@ export async function PATCH(
     const { justification, ...rest } = body;
     const input = updatePaymentSchema.parse(rest);
 
-    const payment = await paymentService.update(orgId, paymentId, input, member.role, justification);
+    const payment = await paymentService.update(orgId, paymentId, input, member.role, justification, userId);
 
     return Response.json(payment);
   } catch (error) {
