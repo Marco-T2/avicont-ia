@@ -15,10 +15,10 @@ function DashboardShellInner({ children }: { children: React.ReactNode }) {
   const orgSlug = params?.orgSlug as string;
 
   return (
-    <div className="flex h-[calc(100vh-4rem)]">
+    <div className="flex h-full">
       <AppSidebar onOpenAgentChat={() => setAgentChatOpen(true)} />
 
-      <div className="flex flex-1 flex-col min-w-0">
+      <div className="flex flex-1 flex-col min-w-0 min-h-0">
         {/* Mobile header with menu toggle */}
         <div className="flex items-center border-b px-4 py-2 md:hidden">
           <Button variant="ghost" size="icon-sm" onClick={toggleMobile}>

@@ -16,6 +16,6 @@ export default async function DashboardLayout({
   await syncUserToDatabase();
 
   return (
-    <div className="min-h-full">{children}</div>
+    <div className="h-full">{children}</div>
   );
 }

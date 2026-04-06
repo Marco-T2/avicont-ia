@@ -11,19 +11,23 @@ import {
   PAYMENT_HAS_ACTIVE_CREDIT_CONSUMERS,
   PAYMENT_INSUFFICIENT_FUNDS,
   INVALID_STATUS_TRANSITION,
+  PAYMENT_CREDIT_CONSUMED_EXCEEDS_NEW_AMOUNT,
 } from "@/features/shared/errors";
 import {
   validateTransition,
   validateDraftOnly,
   validateLockedEdit,
   validatePeriodOpen,
+  validateEditable,
   type DocumentStatus,
 } from "@/features/shared/document-lifecycle.service";
+import { computeReceivableStatus, computePayableStatus } from "@/features/shared/accounting-helpers";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { PaymentRepository } from "./payment.repository";
 import { OrgSettingsService } from "@/features/org-settings";
 import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
+import { JournalRepository } from "@/features/accounting/journal.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
 import { AccountBalancesService } from "@/features/account-balances";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
@@ -43,6 +47,8 @@ export class PaymentService {
   private readonly autoEntryGenerator: AutoEntryGenerator;
   private readonly balancesService: AccountBalancesService;
   private readonly periodsService: FiscalPeriodsService;
+  private readonly accountsRepo: AccountsRepository;
+  private readonly journalRepo: JournalRepository;
 
   constructor(
     repo?: PaymentRepository,
@@ -50,16 +56,19 @@ export class PaymentService {
     autoEntryGenerator?: AutoEntryGenerator,
     balancesService?: AccountBalancesService,
     periodsService?: FiscalPeriodsService,
+    accountsRepo?: AccountsRepository,
+    journalRepo?: JournalRepository,
   ) {
     this.repo = repo ?? new PaymentRepository();
     this.orgSettingsService = orgSettingsService ?? new OrgSettingsService();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? new FiscalPeriodsService();
 
-    const accountsRepo = new AccountsRepository();
+    this.accountsRepo = accountsRepo ?? new AccountsRepository();
+    this.journalRepo = journalRepo ?? new JournalRepository();
     const voucherTypesRepo = new VoucherTypesRepository();
     this.autoEntryGenerator =
-      autoEntryGenerator ?? new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
+      autoEntryGenerator ?? new AutoEntryGenerator(this.accountsRepo, voucherTypesRepo);
   }
 
   // ── List payments ──
@@ -278,7 +287,7 @@ export class PaymentService {
     return result!;
   }
 
-  // ── Update a DRAFT payment (or LOCKED with justification) ──
+  // ── Update a DRAFT payment (or LOCKED with justification, or POSTED) ──
 
   async update(
     organizationId: string,
@@ -286,12 +295,27 @@ export class PaymentService {
     input: UpdatePaymentInput,
     role?: string,
     justification?: string,
+    userId?: string,
   ): Promise<PaymentWithRelations> {
     const payment = await this.getById(organizationId, id);
     const status = payment.status as DocumentStatus;
 
     if (status === "LOCKED") {
       validateLockedEdit(status, role!, justification);
+    } else if (status === "POSTED") {
+      // POSTED edits are handled via the atomic reverse-modify-reapply path
+      validateEditable(status);
+
+      // Validate fiscal period is OPEN
+      const period = await this.periodsService.getById(organizationId, payment.periodId);
+      await validatePeriodOpen(period);
+
+      return this.updatePostedPaymentTx(
+        organizationId,
+        payment,
+        input,
+        userId ?? "unknown",
+      );
     } else {
       validateDraftOnly(status);
     }
@@ -761,6 +785,309 @@ export class PaymentService {
     });
 
     return (await this.repo.findById(organizationId, id))!;
+  }
+
+  // ── Reverse allocations (restore CxC/CxP balances) ──
+
+  private async reverseAllocations(
+    tx: Prisma.TransactionClient,
+    allocations: PaymentWithRelations["allocations"],
+  ): Promise<void> {
+    for (const alloc of allocations) {
+      if (alloc.receivableId) {
+        const receivable = await tx.accountsReceivable.findUnique({ where: { id: alloc.receivableId } });
+        if (!receivable || receivable.status === "VOIDED") continue;
+        const revertedPaid = Math.max(0, Number(receivable.paid) - Number(alloc.amount));
+        const revertedBalance = Number(receivable.amount) - revertedPaid;
+        await this.repo.updateCxCPaymentTx(
+          tx,
+          alloc.receivableId,
+          revertedPaid,
+          Math.max(0, revertedBalance),
+          computeReceivableStatus(revertedPaid, Math.max(0, revertedBalance)),
+        );
+      } else if (alloc.payableId) {
+        const payable = await tx.accountsPayable.findUnique({ where: { id: alloc.payableId } });
+        if (!payable || payable.status === "VOIDED") continue;
+        const revertedPaid = Math.max(0, Number(payable.paid) - Number(alloc.amount));
+        const revertedBalance = Number(payable.amount) - revertedPaid;
+        await this.repo.updateCxPPaymentTx(
+          tx,
+          alloc.payableId,
+          revertedPaid,
+          Math.max(0, revertedBalance),
+          computePayableStatus(revertedPaid, Math.max(0, revertedBalance)),
+        );
+      }
+    }
+  }
+
+  // ── Apply allocations forward (update CxC/CxP balances) ──
+
+  private async applyAllocations(
+    tx: Prisma.TransactionClient,
+    allocations: { receivableId?: string | null; payableId?: string | null; amount: number }[],
+  ): Promise<void> {
+    for (const alloc of allocations) {
+      if (alloc.receivableId) {
+        const receivable = await tx.accountsReceivable.findUnique({ where: { id: alloc.receivableId } });
+        if (!receivable) continue;
+        const newPaid = Number(receivable.paid) + alloc.amount;
+        const newBalance = Number(receivable.amount) - newPaid;
+        await this.repo.updateCxCPaymentTx(
+          tx,
+          alloc.receivableId,
+          newPaid,
+          Math.max(0, newBalance),
+          computeReceivableStatus(newPaid, Math.max(0, newBalance)),
+        );
+      } else if (alloc.payableId) {
+        const payable = await tx.accountsPayable.findUnique({ where: { id: alloc.payableId } });
+        if (!payable) continue;
+        const newPaid = Number(payable.paid) + alloc.amount;
+        const newBalance = Number(payable.amount) - newPaid;
+        await this.repo.updateCxPPaymentTx(
+          tx,
+          alloc.payableId,
+          newPaid,
+          Math.max(0, newBalance),
+          computePayableStatus(newPaid, Math.max(0, newBalance)),
+        );
+      }
+    }
+  }
+
+  // ── Update a POSTED payment (atomic reverse-modify-reapply) ──
+
+  private async updatePostedPaymentTx(
+    organizationId: string,
+    payment: PaymentWithRelations,
+    input: UpdatePaymentInput,
+    userId: string,
+  ): Promise<PaymentWithRelations> {
+    const newAmount = input.amount ?? payment.amount;
+    const oldAmount = payment.amount;
+    const creditApplied = Number(payment.creditApplied ?? 0);
+
+    // 1. Pre-validation (outside tx)
+    if (input.allocations) {
+      validateAllocations(input.allocations, newAmount, creditApplied);
+    }
+
+    // If amount is decreasing, check SUM(allocations) ≤ newAmount + creditApplied
+    const allocations = input.allocations ?? payment.allocations;
+    const allocTotal = allocations.reduce((sum, a) => sum + Number(a.amount), 0);
+    const availableFunds = newAmount + creditApplied;
+    if (Math.round(allocTotal * 100) > Math.round(availableFunds * 100)) {
+      throw new ValidationError(
+        `Las asignaciones (${allocTotal}) exceden los fondos disponibles (${availableFunds})`,
+        PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
+      );
+    }
+
+    // Check credit consumed from this payment
+    const consumed = await this.repo.getCreditConsumedFromPayment(organizationId, payment.id);
+    if (newAmount < allocTotal + consumed) {
+      throw new ValidationError(
+        `El nuevo monto (${newAmount}) es insuficiente. Las asignaciones (${allocTotal}) más el crédito consumido (${consumed}) superan el monto`,
+        PAYMENT_CREDIT_CONSUMED_EXCEEDS_NEW_AMOUNT,
+      );
+    }
+
+    // Pre-fetch settings for journal entry rebuild
+    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+
+    await this.repo.transaction(async (tx) => {
+      // a. Set audit context
+      await setAuditContext(tx, userId);
+
+      // b. Reverse old allocations
+      await this.reverseAllocations(tx, payment.allocations);
+
+      // c. Reverse old journal entry balances (if exists)
+      if (payment.journalEntryId) {
+        const oldEntry = await tx.journalEntry.findFirst({
+          where: { id: payment.journalEntryId, organizationId },
+          include: {
+            lines: {
+              include: { account: true, contact: true },
+              orderBy: { order: "asc" as const },
+            },
+            contact: true,
+            voucherType: true,
+          },
+        });
+        if (oldEntry) {
+          await this.balancesService.applyVoid(tx, oldEntry as never);
+        }
+      }
+
+      // d. Update payment fields
+      await this.repo.updateTx(tx, organizationId, payment.id, {
+        ...input,
+        allocations: undefined, // allocations handled separately below
+      });
+
+      // e. Handle journal entry based on amount transitions
+      const direction = await resolveDirection(
+        tx,
+        payment.allocations.map((a) => ({
+          receivableId: a.receivableId ?? undefined,
+          payableId: a.payableId ?? undefined,
+          amount: Number(a.amount),
+        })),
+        payment.contactId,
+      );
+      const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
+
+      if (oldAmount > 0 && newAmount > 0) {
+        // UPDATE existing entry in place
+        const effectiveDate = input.date ?? payment.date;
+        const effectiveDescription = input.description ?? payment.description;
+        const newLines = buildEntryLines(
+          direction === "COBRO",
+          input.method ?? payment.method,
+          newAmount,
+          settings.cajaGeneralAccountCode,
+          settings.bancoAccountCode,
+          settings.cxcAccountCode,
+          settings.cxpAccountCode,
+          payment.contactId,
+        );
+
+        // Resolve account IDs for the lines
+        const resolvedLines = await Promise.all(
+          newLines.map(async (line, idx) => {
+            const account = await this.accountsRepo.findByCode(organizationId, line.accountCode);
+            if (!account) throw new NotFoundError(`Cuenta ${line.accountCode}`);
+            return {
+              accountId: account.id,
+              debit: line.side === "DEBIT" ? newAmount : 0,
+              credit: line.side === "CREDIT" ? newAmount : 0,
+              ...(line.contactId !== undefined && { contactId: line.contactId }),
+              order: idx,
+            };
+          }),
+        );
+
+        const updatedEntry = await this.journalRepo.updateTx(
+          tx,
+          organizationId,
+          payment.journalEntryId!,
+          {
+            date: effectiveDate,
+            description: effectiveDescription,
+            contactId: payment.contactId,
+            referenceNumber: input.referenceNumber ?? payment.referenceNumber ?? undefined,
+          },
+          resolvedLines,
+          userId,
+        );
+
+        await this.balancesService.applyPost(tx, updatedEntry);
+      } else if (oldAmount === 0 && newAmount > 0) {
+        // CREATE new journal entry
+        const lines = buildEntryLines(
+          direction === "COBRO",
+          input.method ?? payment.method,
+          newAmount,
+          settings.cajaGeneralAccountCode,
+          settings.bancoAccountCode,
+          settings.cxcAccountCode,
+          settings.cxpAccountCode,
+          payment.contactId,
+        );
+
+        const entry = await this.autoEntryGenerator.generate(tx, {
+          organizationId,
+          voucherTypeCode,
+          contactId: payment.contactId,
+          date: input.date ?? payment.date,
+          periodId: payment.periodId,
+          description: input.description ?? payment.description,
+          referenceNumber: input.referenceNumber ?? payment.referenceNumber ?? undefined,
+          sourceType: "payment",
+          sourceId: payment.id,
+          createdById: userId,
+          lines,
+        });
+
+        await this.balancesService.applyPost(tx, entry);
+        await this.repo.linkJournalEntry(tx, payment.id, entry.id);
+      } else if (oldAmount > 0 && newAmount === 0) {
+        // VOID existing journal entry
+        if (payment.journalEntryId) {
+          await tx.journalEntry.update({
+            where: { id: payment.journalEntryId },
+            data: { status: "VOIDED", updatedById: userId },
+          });
+          // Note: balances were already reversed in step c
+        }
+      }
+      // oldAmount === 0 && newAmount === 0 → no journal changes
+
+      // f. Handle allocations
+      const newAllocs = input.allocations;
+      if (newAllocs !== undefined) {
+        // Delete old allocation records
+        await this.repo.updateAllocations(tx, payment.id, []);
+
+        // Validate new allocations against fresh CxC/CxP balances (post-reversal)
+        for (const alloc of newAllocs) {
+          if (alloc.receivableId) {
+            const receivable = await tx.accountsReceivable.findUnique({
+              where: { id: alloc.receivableId },
+            });
+            if (!receivable) throw new NotFoundError("Cuenta por cobrar");
+            if (receivable.status === "VOIDED") {
+              throw new ValidationError(
+                "No se puede aplicar pago a una cuenta por cobrar anulada",
+                PAYMENT_ALLOCATION_TARGET_VOIDED,
+              );
+            }
+            if (alloc.amount > Number(receivable.balance)) {
+              throw new ValidationError(
+                `La asignación (${alloc.amount}) excede el saldo disponible (${Number(receivable.balance)}) de la CxC`,
+                PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+              );
+            }
+          } else if (alloc.payableId) {
+            const payable = await tx.accountsPayable.findUnique({
+              where: { id: alloc.payableId },
+            });
+            if (!payable) throw new NotFoundError("Cuenta por pagar");
+            if (payable.status === "VOIDED") {
+              throw new ValidationError(
+                "No se puede aplicar pago a una cuenta por pagar anulada",
+                PAYMENT_ALLOCATION_TARGET_VOIDED,
+              );
+            }
+            if (alloc.amount > Number(payable.balance)) {
+              throw new ValidationError(
+                `La asignación (${alloc.amount}) excede el saldo disponible (${Number(payable.balance)}) de la CxP`,
+                PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+              );
+            }
+          }
+        }
+
+        // Create new allocation records and apply
+        await this.repo.updateAllocations(tx, payment.id, newAllocs);
+        await this.applyAllocations(tx, newAllocs);
+      } else {
+        // Re-apply old allocations (they were reversed in step b)
+        await this.applyAllocations(
+          tx,
+          payment.allocations.map((a) => ({
+            receivableId: a.receivableId,
+            payableId: a.payableId,
+            amount: Number(a.amount),
+          })),
+        );
+      }
+    });
+
+    return (await this.repo.findById(organizationId, payment.id))!;
   }
 
   // ── Get customer balance summary ──

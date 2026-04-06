@@ -34,7 +34,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
 
   return (
     <DashboardShell>
-      <div className="bg-gray-50 min-h-full">
+      <div className="bg-gray-50">
         {/* Organization Banner */}
         <div className="w-full border-b bg-white px-4 py-3.5">
           <div className="flex items-center justify-between">
@@ -54,7 +54,7 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
 
         {/* Main Content */}
         <div className="py-8">
-          <div className="container mx-auto px-4">{children}</div>
+          <div className="px-4 lg:px-8">{children}</div>
         </div>
       </div>
     </DashboardShell>

@@ -3,7 +3,6 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import Header from "@/components/common/header";
-import Footer from "@/components/common/footer";
 import { Toaster } from "sonner";
 import { esES } from "@clerk/localizations";//Modificar el idioma a español
 
@@ -23,10 +22,11 @@ export default async function RootLayout({
     <ClerkProvider localization={esES}>
       <html lang="es" suppressHydrationWarning>
         <body className={inter.className}>
-          <div className="h-screen flex flex-col">
+          <div className="flex flex-col h-screen overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-hidden">{children}</main>
-            <Footer />
+            <div className="flex-1 min-h-0 flex flex-col">
+              {children}
+            </div>
             <Toaster position="top-right" richColors />
           </div>
         </body>

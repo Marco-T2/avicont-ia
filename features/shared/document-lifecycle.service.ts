@@ -40,6 +40,24 @@ export function validateTransition(
   }
 }
 
+// ── Validate that a document can be edited (DRAFT or POSTED; blocks VOIDED and LOCKED) ──
+
+export function validateEditable(status: DocumentStatus): void {
+  if (status === "VOIDED") {
+    throw new ValidationError(
+      "Un documento anulado no puede ser modificado",
+      ENTRY_VOIDED_IMMUTABLE,
+    );
+  }
+  if (status === "LOCKED") {
+    throw new ValidationError(
+      "Un documento bloqueado no puede ser modificado sin justificación",
+      ENTRY_LOCKED_IMMUTABLE,
+    );
+  }
+  // DRAFT and POSTED both pass
+}
+
 // ── Validate that a document is in DRAFT status (for edit/delete guards) ──
 
 export function validateDraftOnly(status: DocumentStatus): void {

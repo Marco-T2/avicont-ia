@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Handshake, Eye } from "lucide-react";
+import Footer from "@/components/common/footer";
 
 export default function Home() {
   return (
@@ -69,6 +70,8 @@ export default function Home() {
           </div>
         </div>
       </div>
+
+      <Footer />
     </section>
   );
 }

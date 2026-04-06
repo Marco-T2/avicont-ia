@@ -71,6 +71,7 @@ interface AllocationLine {
   sourceId: string | null;
   dueDate: Date;
   assignedAmount: string; // string for input control
+  checked: boolean;
 }
 
 // ── Props ──
@@ -114,7 +115,7 @@ export default function PaymentForm({
   const isVoided = existingPayment?.status === "VOIDED";
   const isLocked = existingPayment?.status === "LOCKED";
   const isAdminOrOwner = userRole === "admin" || userRole === "owner";
-  const isReadOnly = isPosted || isVoided || (isLocked && !isAdminOrOwner);
+  const isReadOnly = isVoided || (isLocked && !isAdminOrOwner);
 
   // Infer direction from existing payment
   function inferDirection(payment: PaymentWithRelations): PaymentDirection {
@@ -140,7 +141,9 @@ export default function PaymentForm({
   const [method, setMethod] = useState<PaymentMethod>(existingPayment?.method ?? "EFECTIVO");
   const [description, setDescription] = useState(existingPayment?.description ?? "");
   const [notes, setNotes] = useState(existingPayment?.notes ?? "");
-  const [amountOverride, setAmountOverride] = useState("");
+  const [amountOverride, setAmountOverride] = useState(
+    existingPayment ? String(existingPayment.amount) : "",
+  );
 
   // ── Allocations state ──
   const [allocations, setAllocations] = useState<AllocationLine[]>([]);
@@ -179,6 +182,7 @@ export default function PaymentForm({
           sourceId: (target as Record<string, unknown>)?.sourceId as string | null ?? null,
           dueDate: (target as Record<string, unknown>)?.dueDate as Date ?? new Date(),
           assignedAmount: String(a.amount),
+          checked: true,
         };
       });
       setAllocations(lines);
@@ -219,6 +223,7 @@ export default function PaymentForm({
             sourceId: doc.sourceId,
             dueDate: doc.dueDate,
             assignedAmount: "0",
+            checked: false,
           }));
           setAllocations(lines);
         }
@@ -253,7 +258,25 @@ export default function PaymentForm({
 
   function selectAll() {
     setAllocations((prev) =>
-      prev.map((a) => ({ ...a, assignedAmount: String(a.balance) })),
+      prev.map((a) => ({ ...a, checked: true, assignedAmount: String(a.balance) })),
+    );
+  }
+
+  function handleCheckToggle(id: string, checked: boolean) {
+    setAllocations((prev) =>
+      prev.map((line) => {
+        if (line.id !== id) return line;
+        if (!checked) return { ...line, checked: false, assignedAmount: "0" };
+        const currentApplied = prev
+          .filter((l) => l.id !== id && l.checked)
+          .reduce((sum, l) => sum + (parseFloat(l.assignedAmount) || 0), 0);
+        const paymentAmt = parseFloat(amountOverride) || 0;
+        const remaining = paymentAmt > 0
+          ? Math.max(0, paymentAmt - currentApplied)
+          : line.balance;
+        const fillAmount = Math.min(line.balance, remaining);
+        return { ...line, checked: true, assignedAmount: String(fillAmount) };
+      }),
     );
   }
 
@@ -290,7 +313,7 @@ export default function PaymentForm({
   // ── Validation ──
 
   const activeAllocations = allocations.filter(
-    (a) => parseFloat(a.assignedAmount) > 0,
+    (a) => a.checked && parseFloat(a.assignedAmount) > 0,
   );
 
   const hasOverAllocation = allocations.some(
@@ -596,6 +619,56 @@ export default function PaymentForm({
     }
   }
 
+  // ── POSTED edit handler ──
+
+  async function handlePostedSave(justification: string) {
+    if (!existingPayment) return;
+    setIsJustificationLoading(true);
+    try {
+      const allocs = activeAllocations.map((a) => ({
+        ...(a.type === "receivable"
+          ? { receivableId: a.id }
+          : { payableId: a.id }),
+        amount: parseFloat(a.assignedAmount),
+      }));
+
+      const body = {
+        method,
+        date,
+        amount: paymentAmount,
+        creditApplied: creditApplied > 0 ? creditApplied : undefined,
+        direction: allocs.length === 0 ? paymentType : undefined,
+        description: description.trim(),
+        periodId,
+        contactId,
+        allocations: allocs,
+        notes: notes.trim() || undefined,
+        justification,
+      };
+
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/payments/${existingPayment.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al guardar el pago contabilizado");
+      }
+
+      toast.success("Pago actualizado y asiento recalculado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar el pago contabilizado");
+    } finally {
+      setIsJustificationLoading(false);
+    }
+  }
+
   const backHref = `/${orgSlug}/payments`;
 
   return (
@@ -832,6 +905,66 @@ export default function PaymentForm({
         </CardContent>
       </Card>
 
+      {/* Importe recibido — aparece antes de las asignaciones (estilo QuickBooks) */}
+      {!isVoided && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="space-y-1 flex-1 min-w-[200px]">
+                <Label htmlFor="payment-amount-override">Importe recibido (Bs.)</Label>
+                {isReadOnly && !isPosted ? (
+                  <Input
+                    value={existingPayment ? formatCurrency(existingPayment.amount) : ""}
+                    readOnly
+                    className="bg-muted cursor-default font-mono font-bold"
+                  />
+                ) : (
+                  <Input
+                    id="payment-amount-override"
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    value={amountOverride}
+                    onChange={(e) => setAmountOverride(e.target.value)}
+                    placeholder={
+                      existingPayment
+                        ? String(existingPayment.amount)
+                        : totalAllocated > 0
+                          ? totalAllocated.toFixed(2)
+                          : "0.00"
+                    }
+                    className="font-mono font-bold"
+                  />
+                )}
+                <p className="text-xs text-muted-foreground">
+                  {!isReadOnly || isPosted
+                    ? "Deje vacío para usar el total asignado en las líneas"
+                    : ""}
+                </p>
+              </div>
+
+              {/* Resumen en tiempo real */}
+              <div className="flex gap-6 text-sm flex-wrap">
+                <div className="text-center">
+                  <p className="text-muted-foreground">Importe aplicado</p>
+                  <p className="font-mono font-semibold text-gray-800">
+                    {formatCurrency(totalAllocated)}
+                  </p>
+                </div>
+                {creditFromPayment > 0 && (
+                  <div className="text-center">
+                    <p className="text-amber-700">Importe a acreditar</p>
+                    <p className="font-mono font-semibold text-amber-700">
+                      {formatCurrency(creditFromPayment)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Allocations table */}
       <Card>
         <CardHeader>
@@ -879,11 +1012,14 @@ export default function PaymentForm({
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b bg-gray-50">
+                    {!isReadOnly && (
+                      <th className="py-3 px-3 w-10" />
+                    )}
                     <th className="text-left py-3 px-4 font-medium text-gray-600">
-                      Documento
+                      Descripción
                     </th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600">
-                      Monto Total
+                      Total
                     </th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600">
                       Pagado
@@ -892,7 +1028,7 @@ export default function PaymentForm({
                       Saldo
                     </th>
                     <th className="text-right py-3 px-4 font-medium text-gray-600 w-40">
-                      Asignar
+                      Aplicar
                     </th>
                   </tr>
                 </thead>
@@ -904,9 +1040,19 @@ export default function PaymentForm({
                       <tr
                         key={alloc.id}
                         className={`border-b hover:bg-gray-50/50 ${
-                          assigned > 0 ? "bg-blue-50/30" : ""
+                          alloc.checked ? "bg-blue-50/30" : ""
                         }`}
                       >
+                        {!isReadOnly && (
+                          <td className="py-3 px-3 text-center">
+                            <input
+                              type="checkbox"
+                              checked={alloc.checked}
+                              onChange={(e) => handleCheckToggle(alloc.id, e.target.checked)}
+                              className="h-4 w-4 rounded border-gray-300 accent-blue-600 cursor-pointer"
+                            />
+                          </td>
+                        )}
                         <td className="py-3 px-4">
                           <div>
                             <p className="font-medium text-gray-800">
@@ -969,67 +1115,24 @@ export default function PaymentForm({
                 <tfoot>
                   <tr className="border-t bg-gray-50">
                     <td
-                      colSpan={4}
+                      colSpan={isReadOnly ? 4 : 5}
                       className="py-2 px-4 text-right text-sm text-gray-600"
                     >
-                      Total Asignado:
+                      Importe aplicado:
                     </td>
                     <td className="py-2 px-4 text-right font-mono font-medium">
                       {formatCurrency(totalAllocated)}
                     </td>
                   </tr>
 
-                  {/* Amount override row (only in edit mode) */}
-                  {!isReadOnly && (
-                    <tr className="border-t-2 border-gray-300 bg-gray-100">
-                      <td
-                        colSpan={4}
-                        className="py-3 px-4 text-right font-semibold text-gray-700"
-                      >
-                        <div className="flex items-center justify-end gap-2">
-                          <span>Monto del Pago (Bs.)</span>
-                          <span className="text-xs text-gray-400 font-normal">
-                            (dejar vacío = total asignado)
-                          </span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={amountOverride}
-                          onChange={(e) => setAmountOverride(e.target.value)}
-                          placeholder={totalAllocated.toFixed(2)}
-                          className="h-8 text-right font-mono font-bold"
-                        />
-                      </td>
-                    </tr>
-                  )}
-
-                  {/* Read-only total for existing payments */}
-                  {isReadOnly && existingPayment && (
-                    <tr className="border-t-2 border-gray-300 bg-gray-100">
-                      <td
-                        colSpan={4}
-                        className="py-3 px-4 text-right font-semibold text-gray-700"
-                      >
-                        Monto del Pago (Bs.)
-                      </td>
-                      <td className="py-3 px-4 text-right font-mono font-bold text-gray-900 text-base">
-                        {formatCurrency(existingPayment.amount)}
-                      </td>
-                    </tr>
-                  )}
-
                   {/* Credit balance row */}
                   {creditFromPayment > 0 && !isReadOnly && (
                     <tr className="bg-amber-50">
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="py-2 px-4 text-right text-sm text-amber-700"
                       >
-                        Saldo a Favor:
+                        Importe a acreditar:
                       </td>
                       <td className="py-2 px-4 text-right font-mono text-amber-700 font-medium">
                         {formatCurrency(creditFromPayment)}
@@ -1041,7 +1144,7 @@ export default function PaymentForm({
                   {creditBalance > 0 && isNew && (
                     <tr className="bg-blue-50">
                       <td
-                        colSpan={4}
+                        colSpan={5}
                         className="py-2 px-4 text-right text-sm text-blue-700"
                       >
                         Saldo a favor existente del contacto:
@@ -1082,7 +1185,7 @@ export default function PaymentForm({
       <div className="flex justify-end gap-3">
         <Link href={backHref}>
           <Button type="button" variant="outline">
-            {(isReadOnly && !isLocked) ? "Volver" : "Cancelar"}
+            {isVoided ? "Volver" : "Cancelar"}
           </Button>
         </Link>
 
@@ -1184,21 +1287,33 @@ export default function PaymentForm({
 
         {/* Posted actions */}
         {isPosted && (
-          <Button
-            type="button"
-            variant="destructive"
-            onClick={handleVoid}
-            disabled={isVoiding}
-          >
-            {isVoiding ? (
-              <>
+          <>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={handleVoid}
+              disabled={isVoiding || isJustificationLoading}
+            >
+              {isVoiding ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Anulando...
+                </>
+              ) : (
+                "Anular"
+              )}
+            </Button>
+            <Button
+              type="button"
+              onClick={() => { setPendingAction("save"); setShowJustification(true); }}
+              disabled={!canSubmit || isJustificationLoading}
+            >
+              {isJustificationLoading && pendingAction === "save" ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Anulando...
-              </>
-            ) : (
-              "Anular"
-            )}
-          </Button>
+              ) : null}
+              Guardar
+            </Button>
+          </>
         )}
       </div>
 
@@ -1207,7 +1322,8 @@ export default function PaymentForm({
         isOpen={showJustification}
         onClose={() => { setShowJustification(false); setPendingAction(null); }}
         onConfirm={async (justification: string) => {
-          if (pendingAction === "save") await handleLockedSave(justification);
+          if (pendingAction === "save" && isLocked) await handleLockedSave(justification);
+          else if (pendingAction === "save" && isPosted) await handlePostedSave(justification);
           else if (pendingAction === "void") await handleLockedVoid(justification);
           setShowJustification(false);
           setPendingAction(null);

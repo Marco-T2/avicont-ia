@@ -3,7 +3,7 @@ export default function Footer() {
 
   return (
     <footer className="border-t bg-gray-50">
-      <div className="container mx-auto px-4 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
+      <div className="px-4 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4">
         <div className="text-gray-600 text-sm">
           © {currentYear} Avicont-IA. Todos los derechos reservados.
         </div>
