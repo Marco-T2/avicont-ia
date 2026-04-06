@@ -90,6 +90,7 @@ export const updateJournalEntrySchema = z.object({
 
 export const statusTransitionSchema = z.object({
   status: z.enum(["POSTED", "VOIDED"], { message: "Transición de estado inválida" }),
+  justification: z.string().optional(),
 });
 
 export const journalFiltersSchema = z.object({

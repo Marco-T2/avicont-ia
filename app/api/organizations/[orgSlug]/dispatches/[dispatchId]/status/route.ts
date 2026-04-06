@@ -13,6 +13,7 @@ const dispatchService = new DispatchService();
 
 const dispatchActionSchema = z.object({
   status: z.enum(["POSTED", "VOIDED"]),
+  justification: z.string().optional(),
 });
 
 export async function PATCH(
@@ -26,7 +27,7 @@ export async function PATCH(
     await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const { status } = dispatchActionSchema.parse(body);
+    const { status, justification } = dispatchActionSchema.parse(body);
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
@@ -34,7 +35,7 @@ export async function PATCH(
     if (status === "POSTED") {
       dispatch = await dispatchService.post(orgId, dispatchId, user.id);
     } else {
-      dispatch = await dispatchService.void(orgId, dispatchId, user.id);
+      dispatch = await dispatchService.void(orgId, dispatchId, user.id, justification);
     }
 
     return Response.json(dispatch);

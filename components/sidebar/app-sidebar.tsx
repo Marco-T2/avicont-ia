@@ -83,6 +83,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
         { label: "Tipos de Comprobante", href: `/${orgSlug}/accounting/voucher-types` },
         { label: "Configuración General", href: `/${orgSlug}/settings` },
         { label: "Tipos de Producto", href: `/${orgSlug}/settings/product-types` },
+        { label: "Cierre Mensual", href: `/${orgSlug}/settings/monthly-close` },
       ],
     },
     {

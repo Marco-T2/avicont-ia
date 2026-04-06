@@ -53,14 +53,14 @@ export async function POST(
     await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const input = createJournalEntrySchema.parse(body);
+    const { postImmediately, ...rest } = body;
+    const input = createJournalEntrySchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    const entry = await service.createEntry(orgId, {
-      ...input,
-      createdById: user.id,
-    });
+    const entry = postImmediately
+      ? await service.createAndPost(orgId, { ...input, createdById: user.id }, user.id)
+      : await service.createEntry(orgId, { ...input, createdById: user.id });
 
     const displayNumber = formatCorrelativeNumber(
       entry.voucherType.code,

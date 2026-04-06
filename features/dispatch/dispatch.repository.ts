@@ -416,6 +416,164 @@ export class DispatchRepository extends BaseRepository {
 
     return toDispatchWithDetails(row);
   }
+  async createPostedTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    input: CreateDispatchInput,
+    sequenceNumber: number,
+    computedDetails: ComputedDetail[],
+    totalAmount: number,
+    bcSummary?: BcSummary,
+  ): Promise<DispatchWithDetails> {
+    const scope = this.requireOrg(organizationId);
+
+    const row = await tx.dispatch.create({
+      data: {
+        organizationId: scope.organizationId,
+        dispatchType: input.dispatchType,
+        status: "POSTED",
+        sequenceNumber,
+        referenceNumber: input.referenceNumber ?? null,
+        date: input.date,
+        contactId: input.contactId,
+        periodId: input.periodId,
+        description: input.description,
+        notes: input.notes ?? null,
+        farmOrigin: input.farmOrigin ?? null,
+        chickenCount: input.chickenCount ?? null,
+        shrinkagePct:
+          input.shrinkagePct !== undefined
+            ? new Prisma.Decimal(input.shrinkagePct)
+            : null,
+        avgKgPerChicken:
+          bcSummary !== undefined
+            ? new Prisma.Decimal(bcSummary.avgKgPerChicken)
+            : null,
+        totalGrossKg:
+          bcSummary !== undefined
+            ? new Prisma.Decimal(bcSummary.totalGrossKg)
+            : null,
+        totalNetKg:
+          bcSummary !== undefined
+            ? new Prisma.Decimal(bcSummary.totalNetKg)
+            : null,
+        totalShrinkKg:
+          bcSummary !== undefined
+            ? new Prisma.Decimal(bcSummary.totalShrinkKg)
+            : null,
+        totalShortageKg:
+          bcSummary !== undefined
+            ? new Prisma.Decimal(bcSummary.totalShortageKg)
+            : null,
+        totalRealNetKg:
+          bcSummary !== undefined
+            ? new Prisma.Decimal(bcSummary.totalRealNetKg)
+            : null,
+        totalAmount: new Prisma.Decimal(totalAmount),
+        createdById: input.createdById,
+        details: {
+          create: computedDetails.map((d) => ({
+            productTypeId: d.productTypeId ?? null,
+            detailNote: d.detailNote ?? null,
+            description: d.description,
+            boxes: d.boxes,
+            grossWeight: new Prisma.Decimal(d.grossWeight),
+            tare: new Prisma.Decimal(d.tare),
+            netWeight: new Prisma.Decimal(d.netWeight),
+            unitPrice: new Prisma.Decimal(d.unitPrice),
+            shrinkage:
+              d.shrinkage !== undefined ? new Prisma.Decimal(d.shrinkage) : null,
+            shortage:
+              d.shortage !== undefined ? new Prisma.Decimal(d.shortage) : null,
+            realNetWeight:
+              d.realNetWeight !== undefined
+                ? new Prisma.Decimal(d.realNetWeight)
+                : null,
+            lineAmount: new Prisma.Decimal(d.lineAmount),
+            order: d.order,
+          })),
+        },
+      },
+      include: dispatchInclude,
+    });
+
+    return toDispatchWithDetails(row);
+  }
+
+  async updateTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+    data: Omit<UpdateDispatchInput, "details">,
+    computedDetails?: ComputedDetail[],
+    bcSummary?: BcSummary,
+  ): Promise<DispatchWithDetails> {
+    const scope = this.requireOrg(organizationId);
+
+    const updated = await tx.dispatch.update({
+      where: { id, ...scope },
+      data: {
+        ...(data.date !== undefined && { date: data.date }),
+        ...(data.contactId !== undefined && { contactId: data.contactId }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.referenceNumber !== undefined && {
+          referenceNumber: data.referenceNumber,
+        }),
+        ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.farmOrigin !== undefined && { farmOrigin: data.farmOrigin }),
+        ...(data.chickenCount !== undefined && { chickenCount: data.chickenCount }),
+        ...(data.shrinkagePct !== undefined && {
+          shrinkagePct: new Prisma.Decimal(data.shrinkagePct),
+        }),
+        ...(bcSummary !== undefined && {
+          avgKgPerChicken: new Prisma.Decimal(bcSummary.avgKgPerChicken),
+          totalGrossKg: new Prisma.Decimal(bcSummary.totalGrossKg),
+          totalNetKg: new Prisma.Decimal(bcSummary.totalNetKg),
+          totalShrinkKg: new Prisma.Decimal(bcSummary.totalShrinkKg),
+          totalShortageKg: new Prisma.Decimal(bcSummary.totalShortageKg),
+          totalRealNetKg: new Prisma.Decimal(bcSummary.totalRealNetKg),
+        }),
+      },
+      include: dispatchInclude,
+    });
+
+    if (computedDetails !== undefined) {
+      await tx.dispatchDetail.deleteMany({ where: { dispatchId: id } });
+      if (computedDetails.length > 0) {
+        await tx.dispatchDetail.createMany({
+          data: computedDetails.map((d) => ({
+            dispatchId: id,
+            productTypeId: d.productTypeId ?? null,
+            detailNote: d.detailNote ?? null,
+            description: d.description,
+            boxes: d.boxes,
+            grossWeight: new Prisma.Decimal(d.grossWeight),
+            tare: new Prisma.Decimal(d.tare),
+            netWeight: new Prisma.Decimal(d.netWeight),
+            unitPrice: new Prisma.Decimal(d.unitPrice),
+            shrinkage:
+              d.shrinkage !== undefined ? new Prisma.Decimal(d.shrinkage) : null,
+            shortage:
+              d.shortage !== undefined ? new Prisma.Decimal(d.shortage) : null,
+            realNetWeight:
+              d.realNetWeight !== undefined
+                ? new Prisma.Decimal(d.realNetWeight)
+                : null,
+            lineAmount: new Prisma.Decimal(d.lineAmount),
+            order: d.order,
+          })),
+        });
+      }
+
+      const refreshed = await tx.dispatch.findFirst({
+        where: { id, ...scope },
+        include: dispatchInclude,
+      });
+      return toDispatchWithDetails(refreshed!);
+    }
+
+    return toDispatchWithDetails(updated);
+  }
 }
 
 // ── Convert Prisma Decimal fields to plain numbers in the return value ──

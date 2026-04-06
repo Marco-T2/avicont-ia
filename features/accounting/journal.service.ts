@@ -9,11 +9,18 @@ import {
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
   ENTRY_POSTED_LINES_IMMUTABLE,
+  ENTRY_LOCKED_IMMUTABLE,
+  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   FISCAL_PERIOD_CLOSED,
   VOUCHER_TYPE_NOT_IN_ORG,
   CONTACT_REQUIRED_FOR_ACCOUNT,
   REFERENCE_NUMBER_DUPLICATE,
 } from "@/features/shared/errors";
+import {
+  validateLockedEdit,
+  type DocumentStatus,
+} from "@/features/shared/document-lifecycle.service";
+import { setAuditContext } from "@/features/shared/audit-context";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances";
@@ -34,7 +41,8 @@ import type {
 
 const VALID_TRANSITIONS: Record<JournalEntryStatus, JournalEntryStatus[]> = {
   DRAFT: ["POSTED"],
-  POSTED: ["VOIDED"],
+  POSTED: ["LOCKED", "VOIDED"],
+  LOCKED: ["VOIDED"],
   VOIDED: [],
 };
 
@@ -170,23 +178,170 @@ export class JournalService {
     }
   }
 
-  // ── Update a DRAFT journal entry ──
+  // ── Create and post a journal entry in one atomic transaction ──
+
+  async createAndPost(
+    organizationId: string,
+    input: CreateJournalEntryInput,
+    userId: string,
+  ): Promise<JournalEntryWithLines> {
+    const { lines, ...entryData } = input;
+
+    // Validate fiscal period is OPEN
+    const period = await this.periodsService.getById(organizationId, entryData.periodId);
+    if (period.status !== "OPEN") {
+      throw new ValidationError(
+        "No se pueden crear asientos en un período cerrado",
+        FISCAL_PERIOD_CLOSED,
+      );
+    }
+
+    // Validate voucher type belongs to this org
+    await this.voucherTypesService.getById(organizationId, entryData.voucherTypeId);
+
+    // Validate at least 2 lines
+    if (lines.length < 2) {
+      throw new ValidationError(
+        "Un asiento contable debe tener al menos 2 líneas",
+        MINIMUM_TWO_LINES_REQUIRED,
+      );
+    }
+
+    // Validate each line
+    for (const line of lines) {
+      if (line.debit > 0 && line.credit > 0) {
+        throw new ValidationError(
+          "Una línea no puede tener débito y crédito simultáneamente",
+          JOURNAL_LINE_BOTH_SIDES,
+        );
+      }
+      if (line.debit === 0 && line.credit === 0) {
+        throw new ValidationError(
+          "Al menos el débito o el crédito debe ser mayor a 0",
+          JOURNAL_LINE_ZERO_AMOUNT,
+        );
+      }
+    }
+
+    // Validate all accounts exist, are active, and are detail accounts
+    const accountCache = new Map<string, Account>();
+    for (const line of lines) {
+      const account = await this.accountsRepo.findById(organizationId, line.accountId);
+      if (!account) {
+        throw new NotFoundError(`Cuenta ${line.accountId}`);
+      }
+      if (!account.isActive) {
+        throw new ValidationError(`La cuenta "${account.name}" está desactivada`);
+      }
+      if (!account.isDetail) {
+        throw new ValidationError(
+          `La cuenta "${account.name}" no es de detalle (no acepta movimientos)`,
+          ACCOUNT_NOT_POSTABLE,
+        );
+      }
+      accountCache.set(line.accountId, account);
+    }
+
+    // Validate requiresContact
+    await this.validateContactsForLines(organizationId, lines, accountCache);
+
+    // Validate double-entry balance
+    const totalDebit = lines.reduce((sum, l) => sum + l.debit, 0);
+    const totalCredit = lines.reduce((sum, l) => sum + l.credit, 0);
+
+    if (Math.round(totalDebit * 100) !== Math.round(totalCredit * 100)) {
+      throw new ValidationError(
+        "Los débitos y créditos no balancean",
+        JOURNAL_NOT_BALANCED,
+      );
+    }
+
+    // Auto-assign next correlative number
+    const number = await this.repo.getNextNumber(
+      organizationId,
+      entryData.voucherTypeId,
+      entryData.periodId,
+    );
+
+    // Single atomic transaction: create as DRAFT, then post
+    return this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId);
+
+      const created = await tx.journalEntry.create({
+        data: {
+          number,
+          date: entryData.date,
+          description: entryData.description,
+          status: "DRAFT",
+          periodId: entryData.periodId,
+          voucherTypeId: entryData.voucherTypeId,
+          contactId: entryData.contactId ?? null,
+          sourceType: entryData.sourceType ?? null,
+          sourceId: entryData.sourceId ?? null,
+          referenceNumber: entryData.referenceNumber ?? null,
+          createdById: entryData.createdById,
+          organizationId,
+          lines: {
+            create: lines.map((line) => ({
+              accountId: line.accountId,
+              debit: line.debit,
+              credit: line.credit,
+              description: line.description ?? null,
+              contactId: line.contactId ?? null,
+              order: line.order,
+            })),
+          },
+        },
+        include: {
+          lines: {
+            include: { account: true, contact: true },
+            orderBy: { order: "asc" as const },
+          },
+          contact: true,
+          voucherType: true,
+        },
+      }) as unknown as JournalEntryWithLines;
+
+      // Transition to POSTED
+      const posted = await this.repo.updateStatusTx(
+        tx,
+        organizationId,
+        created.id,
+        "POSTED",
+        userId,
+      );
+
+      // Apply account balances
+      await this.balancesService.applyPost(tx, posted);
+
+      return posted;
+    });
+  }
+
+  // ── Update a DRAFT journal entry (or LOCKED with justification) ──
 
   async updateEntry(
     organizationId: string,
     id: string,
     input: UpdateJournalEntryInput,
+    role?: string,
+    justification?: string,
   ): Promise<JournalEntryWithLines> {
     const entry = await this.repo.findById(organizationId, id);
     if (!entry) throw new NotFoundError("Asiento contable");
 
-    if (entry.status === "VOIDED") {
+    const status = entry.status as DocumentStatus;
+
+    if (status === "VOIDED") {
       throw new ValidationError(
         "Un asiento anulado no puede ser modificado",
         ENTRY_VOIDED_IMMUTABLE,
       );
     }
-    if (entry.status === "POSTED") {
+
+    if (status === "LOCKED") {
+      validateLockedEdit(status, role!, justification);
+    } else if (status === "POSTED") {
       throw new ValidationError(
         "No se pueden modificar las líneas de un asiento contabilizado",
         ENTRY_POSTED_LINES_IMMUTABLE,
@@ -239,6 +394,14 @@ export class JournalService {
     }
 
     try {
+      // For LOCKED edits, wrap in transaction with audit context
+      if (status === "LOCKED") {
+        return await this.repo.transaction(async (tx) => {
+          await setAuditContext(tx, updatedById, justification);
+          return this.repo.updateTx(tx, organizationId, id, data, lines, updatedById);
+        });
+      }
+
       return await this.repo.update(organizationId, id, data, lines, updatedById);
     } catch (error) {
       if (
@@ -342,6 +505,8 @@ export class JournalService {
     id: string,
     targetStatus: JournalEntryStatus,
     userId: string,
+    role?: string,
+    justification?: string,
   ): Promise<JournalEntryWithLines> {
     const entry = await this.repo.findById(organizationId, id);
     if (!entry) throw new NotFoundError("Asiento contable");
@@ -359,6 +524,11 @@ export class JournalService {
         `No se puede pasar de ${entry.status} a ${targetStatus}`,
         INVALID_STATUS_TRANSITION,
       );
+    }
+
+    // If transitioning from LOCKED, require role + justification
+    if (entry.status === "LOCKED" && targetStatus === "VOIDED") {
+      validateLockedEdit(entry.status as DocumentStatus, role!, justification);
     }
 
     // On POST: validate period is still OPEN and double-entry balance
@@ -383,6 +553,8 @@ export class JournalService {
     }
 
     return this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, justification);
+
       const updated = await this.repo.updateStatusTx(
         tx,
         organizationId,

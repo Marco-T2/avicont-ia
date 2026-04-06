@@ -35,12 +35,13 @@ export async function PATCH(
     const { userId } = await requireAuth();
     const { orgSlug, paymentId } = await params;
     const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const input = updatePaymentSchema.parse(body);
+    const { justification, ...rest } = body;
+    const input = updatePaymentSchema.parse(rest);
 
-    const payment = await paymentService.update(orgId, paymentId, input);
+    const payment = await paymentService.update(orgId, paymentId, input, member.role, justification);
 
     return Response.json(payment);
   } catch (error) {

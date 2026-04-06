@@ -20,11 +20,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ArrowLeft, CheckSquare } from "lucide-react";
+import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { PaymentWithRelations, PaymentDirection, PaymentMethod } from "@/features/payment/payment.types";
 import type { PendingDocument } from "@/features/contacts/contacts.types";
+import { JustificationModal } from "@/components/shared/justification-modal";
 
 // ── Helpers ──
 
@@ -54,6 +55,7 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
   POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
   VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
+  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
 };
 
 // ── Allocation line state ──
@@ -110,7 +112,9 @@ export default function PaymentForm({
   const isDraft = existingPayment?.status === "DRAFT";
   const isPosted = existingPayment?.status === "POSTED";
   const isVoided = existingPayment?.status === "VOIDED";
-  const isReadOnly = isPosted || isVoided;
+  const isLocked = existingPayment?.status === "LOCKED";
+  const isAdminOrOwner = userRole === "admin" || userRole === "owner";
+  const isReadOnly = isPosted || isVoided || (isLocked && !isAdminOrOwner);
 
   // Infer direction from existing payment
   function inferDirection(payment: PaymentWithRelations): PaymentDirection {
@@ -147,6 +151,11 @@ export default function PaymentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
+
+  // ── Justification modal state ──
+  const [showJustification, setShowJustification] = useState(false);
+  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
+  const [isJustificationLoading, setIsJustificationLoading] = useState(false);
 
   // ── Load existing allocations ──
   useEffect(() => {
@@ -454,6 +463,128 @@ export default function PaymentForm({
       toast.error(
         err instanceof Error ? err.message : "Error al eliminar el pago",
       );
+    }
+  }
+
+  // ── Create and Post (atomic POSTED creation) ──
+
+  async function handleCreateAndPost() {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const allocs = activeAllocations.map((a) => ({
+        ...(a.type === "receivable"
+          ? { receivableId: a.id }
+          : { payableId: a.id }),
+        amount: parseFloat(a.assignedAmount),
+      }));
+
+      const body = {
+        method,
+        date,
+        amount: paymentAmount,
+        description: description.trim(),
+        periodId,
+        contactId,
+        allocations: allocs,
+        notes: notes.trim() || undefined,
+        postImmediately: true,
+      };
+
+      const response = await fetch(`/api/organizations/${orgSlug}/payments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al contabilizar el pago");
+      }
+
+      toast.success("Pago contabilizado");
+      router.push(`/${orgSlug}/payments`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al contabilizar el pago");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ── LOCKED edit handlers ──
+
+  async function handleLockedSave(justification: string) {
+    if (!existingPayment) return;
+    setIsJustificationLoading(true);
+    try {
+      const allocs = activeAllocations.map((a) => ({
+        ...(a.type === "receivable"
+          ? { receivableId: a.id }
+          : { payableId: a.id }),
+        amount: parseFloat(a.assignedAmount),
+      }));
+
+      const body = {
+        method,
+        date,
+        amount: paymentAmount,
+        description: description.trim(),
+        periodId,
+        contactId,
+        allocations: allocs,
+        notes: notes.trim() || undefined,
+        justification,
+      };
+
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/payments/${existingPayment.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al guardar el pago bloqueado");
+      }
+
+      toast.success("Pago actualizado");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al guardar el pago bloqueado");
+    } finally {
+      setIsJustificationLoading(false);
+    }
+  }
+
+  async function handleLockedVoid(justification: string) {
+    if (!existingPayment) return;
+    setIsJustificationLoading(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/payments/${existingPayment.id}/status`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "VOIDED", justification }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al anular el pago bloqueado");
+      }
+
+      toast.success("Pago anulado");
+      router.push(`/${orgSlug}/payments`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al anular el pago bloqueado");
+    } finally {
+      setIsJustificationLoading(false);
     }
   }
 
@@ -904,9 +1035,38 @@ export default function PaymentForm({
       <div className="flex justify-end gap-3">
         <Link href={backHref}>
           <Button type="button" variant="outline">
-            {isReadOnly ? "Volver" : "Cancelar"}
+            {(isReadOnly && !isLocked) ? "Volver" : "Cancelar"}
           </Button>
         </Link>
+
+        {/* New mode — dual buttons */}
+        {isNew && (
+          <>
+            <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Borrador"
+              )}
+            </Button>
+            <Button
+              type="button"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleCreateAndPost}
+              disabled={!canSubmit || isSubmitting}
+            >
+              {isSubmitting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              Contabilizar
+            </Button>
+          </>
+        )}
 
         {/* Draft actions */}
         {isDraft && (
@@ -946,18 +1106,33 @@ export default function PaymentForm({
           </>
         )}
 
-        {/* New mode actions */}
-        {isNew && (
-          <Button type="submit" disabled={!canSubmit || isSubmitting}>
-            {isSubmitting ? (
-              <>
+        {/* LOCKED actions (admin/owner only) */}
+        {isLocked && isAdminOrOwner && (
+          <>
+            <Button
+              type="button"
+              variant="destructive"
+              onClick={() => { setPendingAction("void"); setShowJustification(true); }}
+              disabled={isJustificationLoading}
+            >
+              {isJustificationLoading && pendingAction === "void" ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              "Guardar Borrador"
-            )}
-          </Button>
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              Anular
+            </Button>
+            <Button
+              type="button"
+              onClick={() => { setPendingAction("save"); setShowJustification(true); }}
+              disabled={!canSubmit || isJustificationLoading}
+            >
+              {isJustificationLoading && pendingAction === "save" ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : null}
+              Guardar
+            </Button>
+          </>
         )}
 
         {/* Posted actions */}
@@ -979,6 +1154,19 @@ export default function PaymentForm({
           </Button>
         )}
       </div>
+
+      {/* Justification Modal */}
+      <JustificationModal
+        isOpen={showJustification}
+        onClose={() => { setShowJustification(false); setPendingAction(null); }}
+        onConfirm={async (justification: string) => {
+          if (pendingAction === "save") await handleLockedSave(justification);
+          else if (pendingAction === "void") await handleLockedVoid(justification);
+          setShowJustification(false);
+          setPendingAction(null);
+        }}
+        isLoading={isJustificationLoading}
+      />
     </form>
   );
 }

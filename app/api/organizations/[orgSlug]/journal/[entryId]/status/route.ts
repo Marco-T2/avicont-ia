@@ -22,11 +22,11 @@ export async function PATCH(
     await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
 
     const body = await request.json();
-    const { status } = statusTransitionSchema.parse(body);
+    const { status, justification } = statusTransitionSchema.parse(body);
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    const updated = await service.transitionStatus(orgId, entryId, status, user.id);
+    const updated = await service.transitionStatus(orgId, entryId, status, user.id, justification);
 
     return Response.json(updated);
   } catch (error) {

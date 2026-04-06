@@ -34,6 +34,7 @@ model Organization {
   dispatches      Dispatch[]
   payments        Payment[]
   productTypes    ProductType[]
+  auditLogs       AuditLog[]
 
   @@map("organizations")
 }
@@ -254,6 +255,7 @@ enum VoucherTypeCode {
 enum JournalEntryStatus {
   DRAFT
   POSTED
+  LOCKED
   VOIDED
 }
 
@@ -425,6 +427,7 @@ enum DispatchType {
 enum DispatchStatus {
   DRAFT
   POSTED
+  LOCKED
   VOIDED
 }
 
@@ -438,6 +441,7 @@ enum PaymentMethod {
 enum PaymentStatus {
   DRAFT
   POSTED
+  LOCKED
   VOIDED
 }
 
@@ -666,4 +670,22 @@ model PaymentAllocation {
   @@index([receivableId])
   @@index([payableId])
   @@map("payment_allocations")
+}
+
+model AuditLog {
+  id              String   @id @default(cuid())
+  organizationId  String
+  entityType      String   // "dispatch", "payment", "journal_entry"
+  entityId        String
+  action          String   // "CREATE", "UPDATE", "DELETE", "STATUS_CHANGE"
+  oldValues       Json?
+  newValues       Json?
+  changedById     String?
+  justification   String?
+  createdAt       DateTime @default(now())
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([organizationId, entityType, entityId])
+  @@index([organizationId, createdAt])
+  @@map("audit_logs")
 }

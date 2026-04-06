@@ -240,6 +240,52 @@ export class JournalRepository extends BaseRepository {
     });
   }
 
+  async updateTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+    data: Omit<UpdateJournalEntryInput, "updatedById" | "lines">,
+    lines: JournalLineInput[] | undefined,
+    updatedById: string,
+  ): Promise<JournalEntryWithLines> {
+    const scope = this.requireOrg(organizationId);
+
+    const entry = await tx.journalEntry.update({
+      where: { id, ...scope },
+      data: {
+        ...(data.date !== undefined && { date: data.date }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.contactId !== undefined && { contactId: data.contactId }),
+        ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber }),
+        updatedById,
+      },
+      include: journalIncludeLines,
+    });
+
+    if (lines !== undefined) {
+      await tx.journalLine.deleteMany({ where: { journalEntryId: id } });
+      await tx.journalLine.createMany({
+        data: lines.map((line) => ({
+          journalEntryId: id,
+          accountId: line.accountId,
+          debit: line.debit,
+          credit: line.credit,
+          description: line.description ?? null,
+          contactId: line.contactId ?? null,
+          order: line.order,
+        })),
+      });
+
+      const refreshed = await tx.journalEntry.findFirst({
+        where: { id, ...scope },
+        include: journalIncludeLines,
+      });
+      return refreshed as JournalEntryWithLines;
+    }
+
+    return entry as JournalEntryWithLines;
+  }
+
   async updateStatus(
     organizationId: string,
     id: string,

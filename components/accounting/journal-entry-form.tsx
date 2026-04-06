@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, ArrowLeft } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import JournalLineRow, { type JournalLineData } from "./journal-line-row";
@@ -77,6 +77,7 @@ export default function JournalEntryForm({
   const isEditing = !!editEntry;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCreatingAndPosting, setIsCreatingAndPosting] = useState(false);
   const [date, setDate] = useState(
     editEntry?.date ?? new Date().toISOString().split("T")[0],
   );
@@ -224,6 +225,58 @@ export default function JournalEntryForm({
       );
     } finally {
       setIsSubmitting(false);
+    }
+  }
+
+  // ── Create and Post (atomic POSTED creation) ──
+
+  async function handleCreateAndPost() {
+    if (!canSubmit || isEditing) return;
+    setIsCreatingAndPosting(true);
+    try {
+      const body = {
+        date,
+        description,
+        periodId,
+        voucherTypeId,
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        lines: lines.map((l, idx) => ({
+          accountId: l.accountId,
+          debit: parseFloat(l.debit) || 0,
+          credit: parseFloat(l.credit) || 0,
+          description: l.description || undefined,
+          contactId: l.contactId || undefined,
+          order: idx,
+        })),
+        postImmediately: true,
+      };
+
+      const res = await fetch(`/api/organizations/${orgSlug}/journal`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        const code: string = data.code ?? "";
+        if (code === "CONTACT_REQUIRED_FOR_ACCOUNT") {
+          throw new Error("Una o más cuentas requieren que seleccione un contacto.");
+        }
+        if (code === "REFERENCE_NUMBER_DUPLICATE") {
+          throw new Error(data.error);
+        }
+        throw new Error(data.error ?? "Error al contabilizar el asiento");
+      }
+
+      const saved = await res.json();
+      toast.success("Asiento contabilizado exitosamente");
+      router.push(`/${orgSlug}/accounting/journal/${saved.id}`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al contabilizar el asiento");
+    } finally {
+      setIsCreatingAndPosting(false);
     }
   }
 
@@ -455,18 +508,49 @@ export default function JournalEntryForm({
             Cancelar
           </Button>
         </Link>
-        <Button type="submit" disabled={!canSubmit || isSubmitting}>
-          {isSubmitting ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Guardando...
-            </>
-          ) : isEditing ? (
-            "Actualizar Asiento"
-          ) : (
-            "Guardar Asiento"
-          )}
-        </Button>
+
+        {/* Edit mode — single save button */}
+        {isEditing && (
+          <Button type="submit" disabled={!canSubmit || isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              "Actualizar Asiento"
+            )}
+          </Button>
+        )}
+
+        {/* Create mode — dual buttons */}
+        {!isEditing && (
+          <>
+            <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting || isCreatingAndPosting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar Borrador"
+              )}
+            </Button>
+            <Button
+              type="button"
+              className="bg-green-600 hover:bg-green-700"
+              onClick={handleCreateAndPost}
+              disabled={!canSubmit || isSubmitting || isCreatingAndPosting}
+            >
+              {isCreatingAndPosting ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              Contabilizar
+            </Button>
+          </>
+        )}
       </div>
     </form>
   );

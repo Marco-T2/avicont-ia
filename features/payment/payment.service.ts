@@ -10,8 +10,11 @@ import {
 import {
   validateTransition,
   validateDraftOnly,
+  validateLockedEdit,
   validatePeriodOpen,
+  type DocumentStatus,
 } from "@/features/shared/document-lifecycle.service";
+import { setAuditContext } from "@/features/shared/audit-context";
 import { PaymentRepository } from "./payment.repository";
 import { OrgSettingsService } from "@/features/org-settings";
 import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
@@ -84,20 +87,186 @@ export class PaymentService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Update a DRAFT payment ──
+  // ── Create and post a payment in one atomic transaction ──
+
+  async createAndPost(
+    organizationId: string,
+    input: CreatePaymentInput,
+    userId: string,
+  ): Promise<PaymentWithRelations> {
+    // 1. Validate allocations
+    validateAllocations(input.allocations, input.amount);
+
+    // 2. Validate fiscal period is OPEN
+    const period = await this.periodsService.getById(organizationId, input.periodId);
+    await validatePeriodOpen(period);
+
+    // 3. Determine direction from allocations
+    const direction: PaymentDirection = input.allocations[0].receivableId
+      ? "COBRO"
+      : "PAGO";
+
+    // 4. Get org settings for account codes
+    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+    const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
+    const amount = input.amount;
+
+    const lines = buildEntryLines(
+      direction === "COBRO",
+      input.method,
+      amount,
+      settings.cajaGeneralAccountCode,
+      settings.bancoAccountCode,
+      settings.cxcAccountCode,
+      settings.cxpAccountCode,
+      input.contactId,
+    );
+
+    let paymentId = "";
+
+    await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId);
+
+      // Create payment directly as POSTED
+      const payment = await this.repo.createPostedTx(tx, organizationId, input);
+      paymentId = payment.id;
+
+      // Validate each allocation against fresh CxC/CxP balance
+      for (const alloc of input.allocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable) throw new NotFoundError("Cuenta por cobrar");
+          if (receivable.status === "VOIDED") {
+            throw new ValidationError(
+              "No se puede aplicar pago a una cuenta por cobrar anulada",
+              PAYMENT_ALLOCATION_TARGET_VOIDED,
+            );
+          }
+          const balance = Number(receivable.balance);
+          if (alloc.amount > balance) {
+            throw new ValidationError(
+              `La asignación (${alloc.amount}) excede el saldo disponible (${balance}) de la CxC`,
+              PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+            );
+          }
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable) throw new NotFoundError("Cuenta por pagar");
+          if (payable.status === "VOIDED") {
+            throw new ValidationError(
+              "No se puede aplicar pago a una cuenta por pagar anulada",
+              PAYMENT_ALLOCATION_TARGET_VOIDED,
+            );
+          }
+          const balance = Number(payable.balance);
+          if (alloc.amount > balance) {
+            throw new ValidationError(
+              `La asignación (${alloc.amount}) excede el saldo disponible (${balance}) de la CxP`,
+              PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+            );
+          }
+        }
+      }
+
+      // Generate journal entry
+      const entry = await this.autoEntryGenerator.generate(tx, {
+        organizationId,
+        voucherTypeCode,
+        contactId: input.contactId,
+        date: input.date,
+        periodId: input.periodId,
+        description: input.description,
+        referenceNumber: input.referenceNumber ?? undefined,
+        sourceType: "payment",
+        sourceId: payment.id,
+        createdById: userId,
+        lines,
+      });
+
+      // Apply account balance changes
+      await this.balancesService.applyPost(tx, entry);
+
+      // Link journal entry to payment
+      await this.repo.linkJournalEntry(tx, payment.id, entry.id);
+
+      // Update each CxC/CxP allocation target
+      for (const alloc of input.allocations) {
+        if (alloc.receivableId) {
+          const receivable = await tx.accountsReceivable.findUnique({
+            where: { id: alloc.receivableId },
+          });
+          if (!receivable) continue;
+
+          const newPaid = Number(receivable.paid) + alloc.amount;
+          const newBalance = Number(receivable.amount) - newPaid;
+          const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+
+          await this.repo.updateCxCPaymentTx(
+            tx,
+            alloc.receivableId,
+            newPaid,
+            Math.max(0, newBalance),
+            newStatus,
+          );
+        } else if (alloc.payableId) {
+          const payable = await tx.accountsPayable.findUnique({
+            where: { id: alloc.payableId },
+          });
+          if (!payable) continue;
+
+          const newPaid = Number(payable.paid) + alloc.amount;
+          const newBalance = Number(payable.amount) - newPaid;
+          const newStatus = newBalance <= 0 ? "PAID" : "PARTIAL";
+
+          await this.repo.updateCxPPaymentTx(
+            tx,
+            alloc.payableId,
+            newPaid,
+            Math.max(0, newBalance),
+            newStatus,
+          );
+        }
+      }
+    });
+
+    const result = await this.repo.findById(organizationId, paymentId);
+    return result!;
+  }
+
+  // ── Update a DRAFT payment (or LOCKED with justification) ──
 
   async update(
     organizationId: string,
     id: string,
     input: UpdatePaymentInput,
+    role?: string,
+    justification?: string,
   ): Promise<PaymentWithRelations> {
     const payment = await this.getById(organizationId, id);
-    validateDraftOnly(payment.status as "DRAFT" | "POSTED" | "VOIDED");
+    const status = payment.status as DocumentStatus;
+
+    if (status === "LOCKED") {
+      validateLockedEdit(status, role!, justification);
+    } else {
+      validateDraftOnly(status);
+    }
 
     // Validate new allocations if provided
     if (input.allocations) {
       const amount = input.amount ?? payment.amount;
       validateAllocations(input.allocations, amount);
+    }
+
+    // For LOCKED edits, wrap in transaction with audit context
+    if (status === "LOCKED") {
+      return this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, payment.createdById ?? "unknown", justification);
+        return this.repo.updateTx(tx, organizationId, id, input);
+      });
     }
 
     return this.repo.update(organizationId, id, input);
@@ -107,7 +276,7 @@ export class PaymentService {
 
   async delete(organizationId: string, id: string): Promise<void> {
     const payment = await this.getById(organizationId, id);
-    validateDraftOnly(payment.status as "DRAFT" | "POSTED" | "VOIDED");
+    validateDraftOnly(payment.status as DocumentStatus);
     await this.repo.delete(organizationId, id);
   }
 
@@ -122,7 +291,7 @@ export class PaymentService {
 
     // Validate lifecycle transition
     validateTransition(
-      payment.status as "DRAFT" | "POSTED" | "VOIDED",
+      payment.status as DocumentStatus,
       "POSTED",
     );
 
@@ -278,16 +447,23 @@ export class PaymentService {
     organizationId: string,
     id: string,
     userId: string,
+    role?: string,
+    justification?: string,
   ): Promise<PaymentWithRelations> {
     const payment = await this.getById(organizationId, id);
+    const status = payment.status as DocumentStatus;
 
     // Validate lifecycle transition
-    validateTransition(
-      payment.status as "DRAFT" | "POSTED" | "VOIDED",
-      "VOIDED",
-    );
+    validateTransition(status, "VOIDED");
+
+    // If LOCKED, require role + justification
+    if (status === "LOCKED") {
+      validateLockedEdit(status, role!, justification);
+    }
 
     await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, justification);
+
       // 1. Update payment status to VOIDED
       await this.repo.updateStatusTx(tx, organizationId, id, "VOIDED");
 
