@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, ArrowLeft, Trash2, Pencil, CheckCircle, XCircle, RotateCcw } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Trash2, Pencil, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
@@ -239,7 +239,8 @@ export default function DispatchForm({
   const status = existingDispatch?.status ?? "DRAFT";
   const isAdminOrOwner = role === "admin" || role === "owner";
   const isLocked = status === "LOCKED";
-  const isReadOnly = status === "POSTED" || status === "VOIDED" || (isLocked && !isAdminOrOwner);
+  const isPosted = status === "POSTED";
+  const isReadOnly = status === "VOIDED" || (isLocked && !isAdminOrOwner);
   const isVoided = status === "VOIDED";
 
   // ── Justification modal state ──
@@ -430,7 +431,7 @@ export default function DispatchForm({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!canSubmit || isReadOnly) return;
+    if (!canSubmit || isReadOnly || isPosted || isLocked) return;
     setIsSubmitting(true);
 
     try {
@@ -569,32 +570,7 @@ export default function DispatchForm({
     }
   }
 
-  async function handleRecreate() {
-    if (!existingDispatch) return;
-    if (!window.confirm("¿Corregir este despacho? Se anulará el actual y se creará un nuevo borrador con los mismos datos.")) return;
-    setIsActioning(true);
-    try {
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}/recreate`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-        },
-      );
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Error al recrear");
-      }
-      const result = await response.json();
-      toast.success("Despacho anulado. Nuevo borrador creado.");
-      router.push(`/${orgSlug}/dispatches/${result.newDraftId}`);
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al recrear");
-    } finally {
-      setIsActioning(false);
-    }
-  }
+
 
   async function handleDelete() {
     if (!existingDispatch) return;
@@ -753,7 +729,6 @@ export default function DispatchForm({
   }
 
   const backHref = `/${orgSlug}/dispatches`;
-  const canRecreate = role === "owner" || role === "admin";
 
   // ── Title ──
   const headerTitle = isEditMode
@@ -1444,7 +1419,7 @@ export default function DispatchForm({
           )}
 
           {/* POSTED actions */}
-          {isEditMode && status === "POSTED" && (
+          {isEditMode && isPosted && (
             <>
               <Button
                 type="button"
@@ -1455,17 +1430,19 @@ export default function DispatchForm({
                 {isActioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <XCircle className="h-4 w-4 mr-2" />}
                 Anular
               </Button>
-              {canRecreate && (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleRecreate}
-                  disabled={isActioning}
-                >
-                  {isActioning ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RotateCcw className="h-4 w-4 mr-2" />}
-                  Corregir
-                </Button>
-              )}
+              <Button
+                type="button"
+                onClick={() => {
+                  setPendingAction("save");
+                  setShowJustification(true);
+                }}
+                disabled={!canSubmit || isJustificationLoading}
+              >
+                {isJustificationLoading && pendingAction === "save" ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : null}
+                Guardar
+              </Button>
             </>
           )}
 

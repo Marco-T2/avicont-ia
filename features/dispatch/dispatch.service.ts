@@ -689,19 +689,53 @@ export class DispatchService {
       await this.balancesService.applyPost(tx, updatedEntry);
 
       // h. Update CxC: amount, balance, status
+      // If newAmount < paid, cap paid at newAmount and reduce allocations LIFO
       if (dispatch.receivableId) {
         const existingReceivable = await tx.accountsReceivable.findFirst({
           where: { id: dispatch.receivableId },
           select: { paid: true },
         });
-        const paid = existingReceivable ? Number(existingReceivable.paid) : 0;
-        const newBalance = Math.max(0, effectiveTotalAmount - paid);
-        const newStatus = computeReceivableStatus(paid, newBalance);
+        const rawPaid = existingReceivable ? Number(existingReceivable.paid) : 0;
+        const cappedPaid = Math.min(rawPaid, effectiveTotalAmount);
+        const newBalance = effectiveTotalAmount - cappedPaid;
+        const newStatus = computeReceivableStatus(cappedPaid, newBalance);
+
+        // If paid exceeds new amount, reduce payment allocations LIFO
+        if (rawPaid > effectiveTotalAmount) {
+          const allocations = await tx.paymentAllocation.findMany({
+            where: {
+              receivableId: dispatch.receivableId,
+              payment: { status: { not: "VOIDED" } },
+            },
+            orderBy: { id: "desc" }, // LIFO — reduce newest first (cuid is time-sortable)
+          });
+
+          let excess = rawPaid - effectiveTotalAmount;
+          for (const alloc of allocations) {
+            if (excess <= 0) break;
+            const allocAmount = Number(alloc.amount);
+            const reduction = Math.min(allocAmount, excess);
+            const newAllocAmount = allocAmount - reduction;
+
+            if (newAllocAmount <= 0) {
+              // Remove allocation entirely
+              await tx.paymentAllocation.delete({ where: { id: alloc.id } });
+            } else {
+              // Reduce allocation amount
+              await tx.paymentAllocation.update({
+                where: { id: alloc.id },
+                data: { amount: new Prisma.Decimal(newAllocAmount) },
+              });
+            }
+            excess -= reduction;
+          }
+        }
 
         await tx.accountsReceivable.update({
           where: { id: dispatch.receivableId },
           data: {
             amount: new Prisma.Decimal(effectiveTotalAmount),
+            paid: new Prisma.Decimal(cappedPaid),
             balance: new Prisma.Decimal(newBalance),
             status: newStatus,
             ...(input.contactId !== undefined && { contactId: input.contactId }),

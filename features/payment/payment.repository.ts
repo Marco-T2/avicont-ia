@@ -7,6 +7,7 @@ import type {
   UpdatePaymentInput,
   PaymentFilters,
   AllocationInput,
+  UnappliedPayment,
 } from "./payment.types";
 
 const paymentInclude = {
@@ -17,6 +18,13 @@ const paymentInclude = {
     include: {
       receivable: { include: { contact: true } },
       payable: { include: { contact: true } },
+    },
+  },
+  creditConsumptions: {
+    include: {
+      sourcePayment: {
+        select: { id: true, description: true, date: true },
+      },
     },
   },
 } as const;
@@ -392,6 +400,57 @@ export class PaymentRepository extends BaseRepository {
     return Number(agg._sum.amount ?? 0);
   }
 
+  async findUnappliedPayments(
+    organizationId: string,
+    contactId: string,
+    excludePaymentId?: string,
+  ): Promise<UnappliedPayment[]> {
+    const scope = this.requireOrg(organizationId);
+
+    // Fetch all non-voided payments for this contact, with their allocations
+    // and creditSources (consumptions where this payment is the source)
+    const payments = await this.db.payment.findMany({
+      where: {
+        ...scope,
+        contactId,
+        status: { not: "VOIDED" },
+        ...(excludePaymentId && { id: { not: excludePaymentId } }),
+      },
+      include: {
+        allocations: { select: { amount: true } },
+        creditSources: {
+          where: { consumerPayment: { status: { not: "VOIDED" } } },
+          select: { amount: true },
+        },
+      },
+      orderBy: { date: "asc" },
+    });
+
+    return payments
+      .map((p) => {
+        const totalAllocated = p.allocations.reduce(
+          (sum, a) => sum + Number(a.amount),
+          0,
+        );
+        const totalConsumed = p.creditSources.reduce(
+          (sum, c) => sum + Number(c.amount),
+          0,
+        );
+        const available = Number(p.amount) - totalAllocated - totalConsumed;
+
+        return {
+          id: p.id,
+          date: p.date,
+          amount: Number(p.amount),
+          description: p.description,
+          totalAllocated,
+          totalConsumed,
+          available,
+        };
+      })
+      .filter((p) => p.available > 0);
+  }
+
   // ── CxC / CxP payment update helpers (within transaction) ──
 
   async updateCxCPaymentTx(
@@ -463,6 +522,14 @@ function toPaymentWithRelations(row: unknown): PaymentWithRelations {
     result.allocations = (r.allocations as Record<string, unknown>[]).map((a) => ({
       ...a,
       amount: Number(a.amount),
+    }));
+  }
+
+  // Convert creditConsumption amounts
+  if (Array.isArray(r.creditConsumptions)) {
+    result.creditConsumptions = (r.creditConsumptions as Record<string, unknown>[]).map((c) => ({
+      ...c,
+      amount: Number(c.amount),
     }));
   }
 
