@@ -8,11 +8,31 @@ import type {
   AccountsPayable,
   FiscalPeriod,
   JournalEntry,
+  CreditConsumption,
 } from "@/generated/prisma/client";
 
 // ── Re-export Prisma types for convenience ──
 
 export type { PaymentMethod, PaymentStatus };
+
+// ── Credit source types ──
+
+/** Input to specify which overpayment/credit to consume */
+export interface CreditSourceInput {
+  sourcePaymentId: string;
+  amount: number;
+}
+
+/** Unapplied payment available as credit for a contact */
+export interface UnappliedPayment {
+  id: string;
+  date: Date;
+  amount: number;
+  description: string;
+  totalAllocated: number;
+  totalConsumed: number;
+  available: number;
+}
 
 // ── Allocation types ──
 
@@ -55,6 +75,10 @@ export type PaymentWithRelations = Omit<Payment, "amount"> & {
     receivable?: (AccountsReceivable & { contact: Contact }) | null;
     payable?: (AccountsPayable & { contact: Contact }) | null;
   })[];
+  creditConsumptions: (Omit<CreditConsumption, "amount"> & {
+    amount: number;
+    sourcePayment: Pick<Payment, "id" | "description" | "date">;
+  })[];
 };
 
 // ── Input types ──
@@ -72,6 +96,7 @@ export interface CreatePaymentInput {
   allocations: AllocationInput[];
   notes?: string;
   createdById: string;
+  creditSources?: CreditSourceInput[];
 }
 
 export interface UpdatePaymentInput {
@@ -82,6 +107,7 @@ export interface UpdatePaymentInput {
   referenceNumber?: number;
   allocations?: AllocationInput[];
   notes?: string;
+  creditSources?: CreditSourceInput[];
 }
 
 export interface PaymentFilters {

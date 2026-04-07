@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const creditSourceSchema = z.object({
+  sourcePaymentId: z.string(),
+  amount: z.number().positive(),
+});
+
 const allocationInputSchema = z.object({
   receivableId: z.string().optional(),
   payableId: z.string().optional(),
@@ -21,6 +26,7 @@ export const createPaymentSchema = z.object({
   referenceNumber: z.number().int().positive().optional(),
   allocations: z.array(allocationInputSchema),
   notes: z.string().optional(),
+  creditSources: z.array(creditSourceSchema).optional(),
 });
 
 export const updatePaymentSchema = z.object({
@@ -31,6 +37,7 @@ export const updatePaymentSchema = z.object({
   referenceNumber: z.number().int().positive().optional(),
   allocations: z.array(allocationInputSchema).optional(),
   notes: z.string().optional(),
+  creditSources: z.array(creditSourceSchema).optional(),
 });
 
 export const paymentStatusSchema = z.object({

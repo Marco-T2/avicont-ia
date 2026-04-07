@@ -8,6 +8,9 @@ import {
   PAYMENT_ALLOCATION_TARGET_VOIDED,
   PAYMENT_DIRECTION_REQUIRED,
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+  PAYMENT_CREDIT_MISMATCH,
+  PAYMENT_DUPLICATE_CREDIT_SOURCE,
+  PAYMENT_CREDIT_SOURCE_NOT_FOUND,
   PAYMENT_HAS_ACTIVE_CREDIT_CONSUMERS,
   PAYMENT_INSUFFICIENT_FUNDS,
   INVALID_STATUS_TRANSITION,
@@ -38,6 +41,7 @@ import type {
   PaymentFilters,
   AllocationInput,
   PaymentDirection,
+  CreditSourceInput,
 } from "./payment.types";
 import type { EntryLineTemplate } from "@/features/shared/auto-entry-generator";
 
@@ -279,6 +283,7 @@ export class PaymentService {
           input.contactId,
           payment.id,
           input.creditApplied,
+          input.creditSources,
         );
       }
     });
@@ -1138,7 +1143,94 @@ async function allocateCredit(
   contactId: string,
   consumerPaymentId: string,
   creditNeeded: number,
+  explicitSources?: CreditSourceInput[],
 ): Promise<void> {
+  // ── Explicit source path ──
+  if (explicitSources && explicitSources.length > 0) {
+    // T3.2 — Validate sum matches creditNeeded
+    const totalRequested = explicitSources.reduce((sum, s) => sum + s.amount, 0);
+    if (Math.abs(totalRequested - creditNeeded) > 0.001) {
+      throw new ValidationError(
+        `La suma de los créditos explícitos (${totalRequested}) no coincide con el crédito requerido (${creditNeeded})`,
+        PAYMENT_CREDIT_MISMATCH,
+      );
+    }
+
+    // T3.2 — Validate no duplicate sourcePaymentIds
+    const seen = new Set<string>();
+    for (const source of explicitSources) {
+      if (seen.has(source.sourcePaymentId)) {
+        throw new ValidationError(
+          `El pago fuente "${source.sourcePaymentId}" aparece más de una vez en los créditos`,
+          PAYMENT_DUPLICATE_CREDIT_SOURCE,
+        );
+      }
+      seen.add(source.sourcePaymentId);
+    }
+
+    // T3.2 — Validate each source, compute available balance, create records
+    for (const source of explicitSources) {
+      const sourcePayment = await tx.payment.findUnique({
+        where: { id: source.sourcePaymentId },
+        include: {
+          allocations: true,
+          creditSources: true,
+        },
+      });
+
+      // Validate exists and belongs to same org + contact
+      if (
+        !sourcePayment ||
+        sourcePayment.organizationId !== organizationId ||
+        sourcePayment.contactId !== contactId
+      ) {
+        throw new ValidationError(
+          `El pago fuente "${source.sourcePaymentId}" no fue encontrado o no pertenece al mismo contacto`,
+          PAYMENT_CREDIT_SOURCE_NOT_FOUND,
+        );
+      }
+
+      // Validate not VOIDED
+      if (sourcePayment.status === "VOIDED") {
+        throw new ValidationError(
+          `El pago fuente "${source.sourcePaymentId}" está anulado y no puede ser usado como crédito`,
+          PAYMENT_CREDIT_SOURCE_NOT_FOUND,
+        );
+      }
+
+      // Re-compute available balance server-side
+      const paymentAmount = Number(sourcePayment.amount);
+      const totalAllocated = sourcePayment.allocations.reduce(
+        (sum, a) => sum + Number(a.amount),
+        0,
+      );
+      const totalConsumedFromThis = sourcePayment.creditSources.reduce(
+        (sum, c) => sum + Number(c.amount),
+        0,
+      );
+      const available = paymentAmount - totalAllocated - totalConsumedFromThis;
+
+      if (source.amount > available + 0.001) {
+        throw new ValidationError(
+          `El monto solicitado (${source.amount}) excede el crédito disponible (${available}) del pago fuente "${source.sourcePaymentId}"`,
+          PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+        );
+      }
+
+      await tx.creditConsumption.create({
+        data: {
+          organizationId,
+          consumerPaymentId,
+          sourcePaymentId: source.sourcePaymentId,
+          amount: new Prisma.Decimal(source.amount),
+        },
+      });
+    }
+
+    return;
+  }
+
+  // ── FIFO auto-pick path (backward compatible) ──
   // Find non-voided payments for this contact (excluding the consumer itself), ordered FIFO
   const payments = await tx.payment.findMany({
     where: {
