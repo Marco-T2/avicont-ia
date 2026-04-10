@@ -42,3 +42,10 @@ next-env.d.ts
 
 # generated (Prisma Client - run `npx prisma generate` to recreate)
 /generated
+
+# Windows Zone.Identifier metadata
+*:Zone.Identifier
+
+# Documentación de referencia (no es código)
+/propuestaContabilidad
+/public/estrutura.md
