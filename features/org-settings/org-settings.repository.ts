@@ -9,6 +9,9 @@ export const DEFAULT_SETTINGS = {
   cxcAccountCode: "1.1.4.1",
   cxpAccountCode: "2.1.1.1",
   roundingThreshold: new Prisma.Decimal(0.7),
+  cashParentCode: "1.1.1",
+  pettyCashParentCode: "1.1.2",
+  bankParentCode: "1.1.3",
 };
 
 export class OrgSettingsRepository extends BaseRepository {
@@ -25,6 +28,9 @@ export class OrgSettingsRepository extends BaseRepository {
         cxcAccountCode: DEFAULT_SETTINGS.cxcAccountCode,
         cxpAccountCode: DEFAULT_SETTINGS.cxpAccountCode,
         roundingThreshold: DEFAULT_SETTINGS.roundingThreshold,
+        cashParentCode: DEFAULT_SETTINGS.cashParentCode,
+        pettyCashParentCode: DEFAULT_SETTINGS.pettyCashParentCode,
+        bankParentCode: DEFAULT_SETTINGS.bankParentCode,
       },
     });
   }
@@ -47,6 +53,21 @@ export class OrgSettingsRepository extends BaseRepository {
         }),
         ...(data.roundingThreshold !== undefined && {
           roundingThreshold: new Prisma.Decimal(data.roundingThreshold),
+        }),
+        ...(data.cashParentCode !== undefined && {
+          cashParentCode: data.cashParentCode,
+        }),
+        ...(data.pettyCashParentCode !== undefined && {
+          pettyCashParentCode: data.pettyCashParentCode,
+        }),
+        ...(data.bankParentCode !== undefined && {
+          bankParentCode: data.bankParentCode,
+        }),
+        ...(data.fleteExpenseAccountCode !== undefined && {
+          fleteExpenseAccountCode: data.fleteExpenseAccountCode,
+        }),
+        ...(data.polloFaenadoCOGSAccountCode !== undefined && {
+          polloFaenadoCOGSAccountCode: data.polloFaenadoCOGSAccountCode,
         }),
       },
     });

@@ -14,17 +14,11 @@ const paymentInclude = {
   contact: true,
   period: true,
   journalEntry: true,
+  operationalDocType: { select: { id: true, code: true, name: true } },
   allocations: {
     include: {
       receivable: { include: { contact: true } },
       payable: { include: { contact: true } },
-    },
-  },
-  creditConsumptions: {
-    include: {
-      sourcePayment: {
-        select: { id: true, description: true, date: true },
-      },
     },
   },
 } as const;
@@ -85,12 +79,13 @@ export class PaymentRepository extends BaseRepository {
         method: data.method,
         date: data.date,
         amount: new Prisma.Decimal(data.amount),
-        creditApplied: new Prisma.Decimal(data.creditApplied ?? 0),
         description: data.description,
         periodId: data.periodId,
         contactId: data.contactId,
         referenceNumber: data.referenceNumber ?? null,
+        operationalDocTypeId: data.operationalDocTypeId ?? null,
         notes: data.notes ?? null,
+        accountCode: data.accountCode ?? null,
         createdById: data.createdById,
         allocations: {
           create: data.allocations.map((a) => ({
@@ -113,13 +108,13 @@ export class PaymentRepository extends BaseRepository {
   ): Promise<PaymentWithRelations> {
     const scope = this.requireOrg(organizationId);
 
-    // If allocations are provided, delete existing and recreate within a transaction
+    // Si se proveen asignaciones, eliminar las existentes y recrearlas dentro de una transacción
     if (data.allocations) {
       const row = await this.db.$transaction(async (tx) => {
-        // Delete existing allocations
+        // Eliminar asignaciones existentes
         await tx.paymentAllocation.deleteMany({ where: { paymentId: id } });
 
-        // Update payment fields + recreate allocations
+        // Actualizar campos del pago + recrear asignaciones
         return tx.payment.update({
           where: { id, ...scope },
           data: {
@@ -132,7 +127,11 @@ export class PaymentRepository extends BaseRepository {
             ...(data.referenceNumber !== undefined && {
               referenceNumber: data.referenceNumber,
             }),
+            ...(data.operationalDocTypeId !== undefined && {
+              operationalDocTypeId: data.operationalDocTypeId,
+            }),
             ...(data.notes !== undefined && { notes: data.notes }),
+            ...(data.accountCode !== undefined && { accountCode: data.accountCode }),
             allocations: {
               create: data.allocations!.map((a) => ({
                 receivableId: a.receivableId ?? null,
@@ -148,7 +147,7 @@ export class PaymentRepository extends BaseRepository {
       return toPaymentWithRelations(row);
     }
 
-    // No allocation changes — simple update
+    // Sin cambios en asignaciones — actualización simple
     const row = await this.db.payment.update({
       where: { id, ...scope },
       data: {
@@ -161,7 +160,11 @@ export class PaymentRepository extends BaseRepository {
         ...(data.referenceNumber !== undefined && {
           referenceNumber: data.referenceNumber,
         }),
+        ...(data.operationalDocTypeId !== undefined && {
+          operationalDocTypeId: data.operationalDocTypeId,
+        }),
         ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.accountCode !== undefined && { accountCode: data.accountCode }),
       },
       include: paymentInclude,
     });
@@ -183,12 +186,13 @@ export class PaymentRepository extends BaseRepository {
         method: data.method,
         date: data.date,
         amount: new Prisma.Decimal(data.amount),
-        creditApplied: new Prisma.Decimal(data.creditApplied ?? 0),
         description: data.description,
         periodId: data.periodId,
         contactId: data.contactId,
         referenceNumber: data.referenceNumber ?? null,
+        operationalDocTypeId: data.operationalDocTypeId ?? null,
         notes: data.notes ?? null,
+        accountCode: data.accountCode ?? null,
         createdById: data.createdById,
         allocations: {
           create: data.allocations.map((a) => ({
@@ -227,7 +231,11 @@ export class PaymentRepository extends BaseRepository {
           ...(data.referenceNumber !== undefined && {
             referenceNumber: data.referenceNumber,
           }),
+          ...(data.operationalDocTypeId !== undefined && {
+            operationalDocTypeId: data.operationalDocTypeId,
+          }),
           ...(data.notes !== undefined && { notes: data.notes }),
+          ...(data.accountCode !== undefined && { accountCode: data.accountCode }),
           allocations: {
             create: data.allocations!.map((a) => ({
               receivableId: a.receivableId ?? null,
@@ -254,7 +262,11 @@ export class PaymentRepository extends BaseRepository {
         ...(data.referenceNumber !== undefined && {
           referenceNumber: data.referenceNumber,
         }),
+        ...(data.operationalDocTypeId !== undefined && {
+          operationalDocTypeId: data.operationalDocTypeId,
+        }),
         ...(data.notes !== undefined && { notes: data.notes }),
+        ...(data.accountCode !== undefined && { accountCode: data.accountCode }),
       },
       include: paymentInclude,
     });
@@ -292,14 +304,14 @@ export class PaymentRepository extends BaseRepository {
     await this.db.payment.delete({ where: { id, ...scope } });
   }
 
-  // ── Allocation helpers (used within service transactions) ──
+  // ── Helpers de asignación (usados dentro de transacciones del servicio) ──
 
   async updateAllocations(
     tx: Prisma.TransactionClient,
     paymentId: string,
     allocations: AllocationInput[],
   ): Promise<void> {
-    // Delete existing and recreate
+    // Eliminar existentes y recrear
     await tx.paymentAllocation.deleteMany({ where: { paymentId } });
 
     if (allocations.length > 0) {
@@ -326,7 +338,7 @@ export class PaymentRepository extends BaseRepository {
     });
   }
 
-  // ── Customer balance summary ──
+  // ── Resumen del saldo del cliente ──
 
   async getCustomerBalance(
     organizationId: string,
@@ -339,21 +351,21 @@ export class PaymentRepository extends BaseRepository {
   }> {
     const scope = this.requireOrg(organizationId);
 
-    // 1. Sum all non-voided CxC amounts for this customer
+    // 1. Sumar todos los montos CxC no anulados para este cliente
     const cxcAgg = await this.db.accountsReceivable.aggregate({
       where: { ...scope, contactId, status: { not: "VOIDED" } },
       _sum: { amount: true },
     });
     const totalInvoiced = Number(cxcAgg._sum.amount ?? 0);
 
-    // 2. Sum all non-voided payment amounts for this customer (cash received)
+    // 2. Sumar todos los montos de pago no anulados para este cliente (efectivo recibido)
     const payAgg = await this.db.payment.aggregate({
       where: { ...scope, contactId, status: { not: "VOIDED" } },
       _sum: { amount: true },
     });
     const totalCashPaid = Number(payAgg._sum.amount ?? 0);
 
-    // 3. Sum all allocations from non-voided payments to this customer's CxC
+    // 3. Sumar todas las asignaciones de pagos no anulados a las CxC de este cliente
     const allocAgg = await this.db.paymentAllocation.aggregate({
       where: {
         payment: { organizationId, contactId, status: { not: "VOIDED" } },
@@ -363,18 +375,7 @@ export class PaymentRepository extends BaseRepository {
     });
     const totalAllocated = Number(allocAgg._sum.amount ?? 0);
 
-    // 4. Sum credit consumed FROM this customer's payments by other payments
-    const consumedAgg = await this.db.creditConsumption.aggregate({
-      where: {
-        organizationId,
-        sourcePayment: { contactId, status: { not: "VOIDED" } },
-        consumerPayment: { status: { not: "VOIDED" } },
-      },
-      _sum: { amount: true },
-    });
-    const totalConsumed = Number(consumedAgg._sum.amount ?? 0);
-
-    const unappliedCredit = Math.max(0, totalCashPaid - totalAllocated - totalConsumed);
+    const unappliedCredit = Math.max(0, totalCashPaid - totalAllocated);
     const netBalance = totalInvoiced - totalCashPaid;
 
     return {
@@ -385,21 +386,6 @@ export class PaymentRepository extends BaseRepository {
     };
   }
 
-  async getCreditConsumedFromPayment(
-    organizationId: string,
-    paymentId: string,
-  ): Promise<number> {
-    const agg = await this.db.creditConsumption.aggregate({
-      where: {
-        organizationId,
-        sourcePaymentId: paymentId,
-        consumerPayment: { status: { not: "VOIDED" } },
-      },
-      _sum: { amount: true },
-    });
-    return Number(agg._sum.amount ?? 0);
-  }
-
   async findUnappliedPayments(
     organizationId: string,
     contactId: string,
@@ -407,8 +393,7 @@ export class PaymentRepository extends BaseRepository {
   ): Promise<UnappliedPayment[]> {
     const scope = this.requireOrg(organizationId);
 
-    // Fetch all non-voided payments for this contact, with their allocations
-    // and creditSources (consumptions where this payment is the source)
+    // Obtener todos los pagos no anulados para este contacto, con sus asignaciones
     const payments = await this.db.payment.findMany({
       where: {
         ...scope,
@@ -418,10 +403,6 @@ export class PaymentRepository extends BaseRepository {
       },
       include: {
         allocations: { select: { amount: true } },
-        creditSources: {
-          where: { consumerPayment: { status: { not: "VOIDED" } } },
-          select: { amount: true },
-        },
       },
       orderBy: { date: "asc" },
     });
@@ -429,14 +410,10 @@ export class PaymentRepository extends BaseRepository {
     return payments
       .map((p) => {
         const totalAllocated = p.allocations.reduce(
-          (sum, a) => sum + Number(a.amount),
+          (sum: number, a: { amount: unknown }) => sum + Number(a.amount),
           0,
         );
-        const totalConsumed = p.creditSources.reduce(
-          (sum, c) => sum + Number(c.amount),
-          0,
-        );
-        const available = Number(p.amount) - totalAllocated - totalConsumed;
+        const available = Number(p.amount) - totalAllocated;
 
         return {
           id: p.id,
@@ -444,14 +421,13 @@ export class PaymentRepository extends BaseRepository {
           amount: Number(p.amount),
           description: p.description,
           totalAllocated,
-          totalConsumed,
           available,
         };
       })
       .filter((p) => p.available > 0);
   }
 
-  // ── CxC / CxP payment update helpers (within transaction) ──
+  // ── Helpers de actualización de pago CxC / CxP (dentro de transacción) ──
 
   async updateCxCPaymentTx(
     tx: Prisma.TransactionClient,
@@ -487,7 +463,7 @@ export class PaymentRepository extends BaseRepository {
     });
   }
 
-  // ── Fetch payment with allocations within transaction ──
+  // ── Obtener pago con asignaciones dentro de transacción ──
 
   async findByIdTx(
     tx: Prisma.TransactionClient,
@@ -505,31 +481,22 @@ export class PaymentRepository extends BaseRepository {
   }
 }
 
-// ── Convert Prisma Decimal fields to plain numbers ──
+// ── Convertir campos Decimal de Prisma a números planos ──
 
 function toPaymentWithRelations(row: unknown): PaymentWithRelations {
   const r = row as Record<string, unknown>;
 
-  // Convert top-level amount and creditApplied
+  // Convertir el monto de nivel superior
   const result: Record<string, unknown> = {
     ...r,
     amount: Number(r.amount),
-    creditApplied: Number(r.creditApplied ?? 0),
   };
 
-  // Convert allocation amounts
+  // Convertir montos de las asignaciones
   if (Array.isArray(r.allocations)) {
     result.allocations = (r.allocations as Record<string, unknown>[]).map((a) => ({
       ...a,
       amount: Number(a.amount),
-    }));
-  }
-
-  // Convert creditConsumption amounts
-  if (Array.isArray(r.creditConsumptions)) {
-    result.creditConsumptions = (r.creditConsumptions as Record<string, unknown>[]).map((c) => ({
-      ...c,
-      amount: Number(c.amount),
     }));
   }
 

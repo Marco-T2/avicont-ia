@@ -6,6 +6,9 @@ export const updateOrgSettingsSchema = z.object({
   cxcAccountCode: z.string().min(1).optional(),
   cxpAccountCode: z.string().min(1).optional(),
   roundingThreshold: z.number().min(0).max(1).optional(),
+  cashParentCode: z.string().min(1).optional(),
+  pettyCashParentCode: z.string().min(1).optional(),
+  bankParentCode: z.string().min(1).optional(),
 });
 
 export type UpdateOrgSettingsDto = z.infer<typeof updateOrgSettingsSchema>;

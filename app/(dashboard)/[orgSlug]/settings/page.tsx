@@ -43,6 +43,11 @@ export default async function SettingsPage({ params }: SettingsPageProps) {
           cxcAccountCode: settings.cxcAccountCode,
           cxpAccountCode: settings.cxpAccountCode,
           roundingThreshold: Number(settings.roundingThreshold),
+          cashParentCode: settings.cashParentCode,
+          pettyCashParentCode: settings.pettyCashParentCode,
+          bankParentCode: settings.bankParentCode,
+          fleteExpenseAccountCode: settings.fleteExpenseAccountCode,
+          polloFaenadoCOGSAccountCode: settings.polloFaenadoCOGSAccountCode,
         }}
       />
     </div>

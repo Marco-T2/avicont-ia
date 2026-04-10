@@ -190,9 +190,6 @@ const socioTools: FunctionDeclaration[] = [
 ];
 
 const contadorTools: FunctionDeclaration[] = [
-  getTrialBalanceTool,
-  getAccountLedgerTool,
-  listAccountsTool,
   searchDocumentsTool,
 ];
 

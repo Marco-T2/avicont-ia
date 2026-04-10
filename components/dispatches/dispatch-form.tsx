@@ -198,6 +198,23 @@ interface ExistingDispatch {
   shrinkagePct: number | null;
   details: ExistingDispatchDetail[];
   contact: { id: string; name: string };
+  receivable?: {
+    id: string;
+    amount: number;
+    paid: number;
+    balance: number;
+    status: string;
+    allocations: Array<{
+      id: string;
+      paymentId: string;
+      amount: number;
+      payment: {
+        id: string;
+        date: string;
+        description: string;
+      };
+    }>;
+  } | null;
 }
 
 // ── Props ──
@@ -757,212 +774,303 @@ export default function DispatchForm({
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Tipo (readonly) */}
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Input
-                value={DISPATCH_TYPE_LABEL[dispatchType]}
-                readOnly
-                className="bg-muted cursor-default"
-              />
-            </div>
-
-            {/* Cliente */}
-            <div className="space-y-2">
-              <Label htmlFor="contact">Cliente</Label>
-              {isReadOnly ? (
-                <Input
-                  value={existingDispatch?.contact?.name ?? "—"}
-                  readOnly
-                  className="bg-muted cursor-default"
-                />
-              ) : (
-                <Select value={contactId} onValueChange={setContactId}>
-                  <SelectTrigger id="contact" className="w-full">
-                    <SelectValue placeholder="Seleccione cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Período */}
-            <div className="space-y-2">
-              <Label htmlFor="period">Período</Label>
-              {isReadOnly ? (
-                <Input
-                  value={periods.find((p) => p.id === periodId)?.name ?? "—"}
-                  readOnly
-                  className="bg-muted cursor-default"
-                />
-              ) : (
-                <Select value={periodId} onValueChange={setPeriodId}>
-                  <SelectTrigger id="period" className="w-full">
-                    <SelectValue placeholder="Seleccione período" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {periods.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Fecha */}
-            <div className="space-y-2">
-              <Label htmlFor="dispatch-date">Fecha</Label>
-              <Input
-                id="dispatch-date"
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                readOnly={isReadOnly}
-                className={isReadOnly ? "bg-muted cursor-default" : undefined}
-                required
-              />
-            </div>
-
-            {/* Nro. Referencia */}
-            <div className="space-y-2">
-              <Label htmlFor="reference-number">Nro. Referencia (opcional)</Label>
-              <Input
-                id="reference-number"
-                type="number"
-                min={1}
-                step={1}
-                placeholder="Ej: 738"
-                value={referenceNumber}
-                onChange={(e) => setReferenceNumber(e.target.value)}
-                readOnly={isReadOnly}
-                className={isReadOnly ? "bg-muted cursor-default" : undefined}
-              />
-            </div>
-
-            {/* Total (only for existing dispatches) */}
-            {isEditMode && status !== "DRAFT" && (
-              <div className="space-y-2">
-                <Label>Total</Label>
-                <Input
-                  value={formatCurrency(existingDispatch.totalAmount)}
-                  readOnly
-                  className="bg-muted cursor-default font-mono font-bold"
-                />
-              </div>
-            )}
-
-            {/* Notas */}
-            <div className="space-y-2 lg:col-span-3">
-              <Label htmlFor="dispatch-notes">Notas (opcional)</Label>
-              <Textarea
-                id="dispatch-notes"
-                placeholder="Observaciones adicionales..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                readOnly={isReadOnly}
-                className={isReadOnly ? "bg-muted cursor-default" : undefined}
-              />
-            </div>
-
-            {/* Descripción auto-generada */}
-            <div className="space-y-2 lg:col-span-3">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="dispatch-description">Descripción</Label>
-                {!isReadOnly && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-muted-foreground"
-                    onClick={() => setDescriptionOverride((prev) => !prev)}
-                  >
-                    <Pencil className="h-3 w-3 mr-1" />
-                    {descriptionOverride ? "Auto" : "Editar"}
-                  </Button>
+          {isReadOnly && isEditMode ? (
+            <>
+              {/* ── Compact read-only header ── */}
+              <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                <div>
+                  <dt className="text-muted-foreground">Tipo</dt>
+                  <dd className="font-medium mt-0.5">{DISPATCH_TYPE_LABEL[dispatchType]}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Nro. Referencia</dt>
+                  <dd className="font-medium mt-0.5 font-mono">
+                    {existingDispatch.referenceNumber ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Fecha</dt>
+                  <dd className="font-medium mt-0.5">
+                    {new Date(existingDispatch.date).toLocaleDateString("es-BO")}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Período</dt>
+                  <dd className="font-medium mt-0.5">
+                    {periods.find((p) => p.id === existingDispatch.periodId)?.name ?? "—"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Cliente</dt>
+                  <dd className="font-medium mt-0.5">{existingDispatch.contact.name}</dd>
+                </div>
+                <div>
+                  <dt className="text-muted-foreground">Total</dt>
+                  <dd className="font-medium mt-0.5 font-mono font-bold">
+                    {formatCurrency(existingDispatch.totalAmount)}
+                  </dd>
+                </div>
+                {existingDispatch.notes && (
+                  <div className="col-span-2 sm:col-span-4">
+                    <dt className="text-muted-foreground">Notas</dt>
+                    <dd className="mt-0.5 text-gray-700">{existingDispatch.notes}</dd>
+                  </div>
                 )}
-              </div>
-              <Input
-                id="dispatch-description"
-                placeholder="Se genera automáticamente"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                readOnly={isReadOnly || !descriptionOverride}
-                className={
-                  isReadOnly || !descriptionOverride
-                    ? "bg-muted cursor-default text-xs"
-                    : "text-xs"
-                }
-              />
-            </div>
-          </div>
+                {existingDispatch.description && (
+                  <div className="col-span-2 sm:col-span-4">
+                    <dt className="text-muted-foreground">Descripción</dt>
+                    <dd className="mt-0.5 text-xs text-gray-600">{existingDispatch.description}</dd>
+                  </div>
+                )}
+              </dl>
 
-          {/* BC-only header fields */}
-          {isBC && (
-            <div className="border-t pt-4">
-              <p className="text-sm font-medium text-muted-foreground mb-3">
-                Campos de Boleta Cerrada
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              {/* BC-only fields in compact mode */}
+              {isBC && (
+                <div className="border-t pt-4">
+                  <p className="text-xs font-medium text-muted-foreground mb-3">
+                    Campos de Boleta Cerrada
+                  </p>
+                  <dl className="grid grid-cols-2 sm:grid-cols-4 gap-x-6 gap-y-4 text-sm">
+                    <div>
+                      <dt className="text-muted-foreground">Granja</dt>
+                      <dd className="font-medium mt-0.5">{existingDispatch.farmOrigin ?? "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">N° Pollos</dt>
+                      <dd className="font-medium mt-0.5">{existingDispatch.chickenCount ?? "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Merma General %</dt>
+                      <dd className="font-medium mt-0.5">{existingDispatch.shrinkagePct ?? "—"}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-muted-foreground">Promedio kg/pollo</dt>
+                      <dd className="font-medium mt-0.5">
+                        {avgKgPerChicken !== null ? avgKgPerChicken.toFixed(2) : "—"}
+                      </dd>
+                    </div>
+                  </dl>
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* ── Editable form grid ── */}
+              {/* Row 1: Tipo / Nro. Referencia / Fecha / Período (4 cols) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Tipo (readonly) */}
                 <div className="space-y-2">
-                  <Label htmlFor="farm-origin">Granja</Label>
+                  <Label>Tipo</Label>
                   <Input
-                    id="farm-origin"
-                    placeholder="Nombre de la granja"
-                    value={farmOrigin}
-                    onChange={(e) => setFarmOrigin(e.target.value)}
-                    readOnly={isReadOnly}
-                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
+                    value={DISPATCH_TYPE_LABEL[dispatchType]}
+                    readOnly
+                    className="bg-muted cursor-default"
                   />
                 </div>
+
+                {/* Nro. Referencia */}
                 <div className="space-y-2">
-                  <Label htmlFor="chicken-count">N° Pollos</Label>
+                  <Label htmlFor="reference-number">Nro. Referencia (opcional)</Label>
                   <Input
-                    id="chicken-count"
+                    id="reference-number"
                     type="number"
                     min={1}
                     step={1}
-                    placeholder="Ej: 500"
-                    value={chickenCount}
-                    onChange={(e) => setChickenCount(e.target.value)}
+                    placeholder="Ej: 738"
+                    value={referenceNumber}
+                    onChange={(e) => setReferenceNumber(e.target.value)}
                     readOnly={isReadOnly}
                     className={isReadOnly ? "bg-muted cursor-default" : undefined}
                   />
                 </div>
+
+                {/* Fecha */}
                 <div className="space-y-2">
-                  <Label htmlFor="shrinkage-pct">Merma General %</Label>
+                  <Label htmlFor="dispatch-date">Fecha</Label>
                   <Input
-                    id="shrinkage-pct"
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.01}
-                    placeholder="Ej: 2.5"
-                    value={shrinkagePct}
-                    onChange={(e) => setShrinkagePct(e.target.value)}
+                    id="dispatch-date"
+                    type="date"
+                    value={date}
+                    onChange={(e) => setDate(e.target.value)}
+                    readOnly={isReadOnly}
+                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
+                    required
+                  />
+                </div>
+
+                {/* Período */}
+                <div className="space-y-2">
+                  <Label htmlFor="period">Período</Label>
+                  {isReadOnly ? (
+                    <Input
+                      value={periods.find((p) => p.id === periodId)?.name ?? "—"}
+                      readOnly
+                      className="bg-muted cursor-default"
+                    />
+                  ) : (
+                    <Select value={periodId} onValueChange={setPeriodId}>
+                      <SelectTrigger id="period" className="w-full">
+                        <SelectValue placeholder="Seleccione período" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {periods.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {p.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 2: Cliente / Total (2 cols) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Cliente */}
+                <div className="space-y-2">
+                  <Label htmlFor="contact">Cliente</Label>
+                  {isReadOnly ? (
+                    <Input
+                      value={existingDispatch?.contact?.name ?? "—"}
+                      readOnly
+                      className="bg-muted cursor-default"
+                    />
+                  ) : (
+                    <Select value={contactId} onValueChange={setContactId}>
+                      <SelectTrigger id="contact" className="w-full">
+                        <SelectValue placeholder="Seleccione cliente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {contacts.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                {/* Total (only for existing dispatches) */}
+                {isEditMode && status !== "DRAFT" && (
+                  <div className="space-y-2">
+                    <Label>Total</Label>
+                    <Input
+                      value={formatCurrency(existingDispatch.totalAmount)}
+                      readOnly
+                      className="bg-muted cursor-default font-mono font-bold"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* Row 3: Notas + Descripción (full width) */}
+              <div className="grid grid-cols-1 gap-4">
+                {/* Notas */}
+                <div className="space-y-2">
+                  <Label htmlFor="dispatch-notes">Notas (opcional)</Label>
+                  <Textarea
+                    id="dispatch-notes"
+                    placeholder="Observaciones adicionales..."
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
                     readOnly={isReadOnly}
                     className={isReadOnly ? "bg-muted cursor-default" : undefined}
                   />
                 </div>
+
+                {/* Descripción auto-generada */}
                 <div className="space-y-2">
-                  <Label htmlFor="avg-kg">Promedio kg/pollo</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="dispatch-description">Descripción</Label>
+                    {!isReadOnly && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs text-muted-foreground"
+                        onClick={() => setDescriptionOverride((prev) => !prev)}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        {descriptionOverride ? "Auto" : "Editar"}
+                      </Button>
+                    )}
+                  </div>
                   <Input
-                    id="avg-kg"
-                    readOnly
-                    className="bg-muted cursor-default"
-                    value={avgKgPerChicken !== null ? avgKgPerChicken.toFixed(2) : "—"}
+                    id="dispatch-description"
+                    placeholder="Se genera automáticamente"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    readOnly={isReadOnly || !descriptionOverride}
+                    className={
+                      isReadOnly || !descriptionOverride
+                        ? "bg-muted cursor-default text-xs"
+                        : "text-xs"
+                    }
                   />
                 </div>
               </div>
-            </div>
+
+              {/* BC-only header fields */}
+              {isBC && (
+                <div className="border-t pt-4">
+                  <p className="text-sm font-medium text-muted-foreground mb-3">
+                    Campos de Boleta Cerrada
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="farm-origin">Granja</Label>
+                      <Input
+                        id="farm-origin"
+                        placeholder="Nombre de la granja"
+                        value={farmOrigin}
+                        onChange={(e) => setFarmOrigin(e.target.value)}
+                        readOnly={isReadOnly}
+                        className={isReadOnly ? "bg-muted cursor-default" : undefined}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="chicken-count">N° Pollos</Label>
+                      <Input
+                        id="chicken-count"
+                        type="number"
+                        min={1}
+                        step={1}
+                        placeholder="Ej: 500"
+                        value={chickenCount}
+                        onChange={(e) => setChickenCount(e.target.value)}
+                        readOnly={isReadOnly}
+                        className={isReadOnly ? "bg-muted cursor-default" : undefined}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="shrinkage-pct">Merma General %</Label>
+                      <Input
+                        id="shrinkage-pct"
+                        type="number"
+                        min={0}
+                        max={100}
+                        step={0.01}
+                        placeholder="Ej: 2.5"
+                        value={shrinkagePct}
+                        onChange={(e) => setShrinkagePct(e.target.value)}
+                        readOnly={isReadOnly}
+                        className={isReadOnly ? "bg-muted cursor-default" : undefined}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="avg-kg">Promedio kg/pollo</Label>
+                      <Input
+                        id="avg-kg"
+                        readOnly
+                        className="bg-muted cursor-default"
+                        value={avgKgPerChicken !== null ? avgKgPerChicken.toFixed(2) : "—"}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -1305,6 +1413,62 @@ export default function DispatchForm({
           </div>
         </CardContent>
       </Card>
+
+      {/* Payment Summary */}
+      {existingDispatch?.receivable != null &&
+        (status === "POSTED" || status === "LOCKED") && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Resumen de Cobros</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <table className="w-full text-sm">
+              <tbody>
+                <tr className="border-b">
+                  <td className="py-2 text-muted-foreground">Subtotal (exacto)</td>
+                  <td className="py-2 text-right font-mono">
+                    {formatCurrency(subtotal)}
+                  </td>
+                </tr>
+                <tr className="border-b font-semibold">
+                  <td className="py-2">Total CxC (Bs.)</td>
+                  <td className="py-2 text-right font-mono">
+                    {totalCxC.toLocaleString("es-BO")}
+                  </td>
+                </tr>
+                {existingDispatch.receivable.allocations.map((alloc) => (
+                  <tr key={alloc.id} className="text-muted-foreground">
+                    <td className="py-1.5">
+                      <Link
+                        href={`/${orgSlug}/payments/${alloc.paymentId}`}
+                        className="underline underline-offset-2 hover:text-foreground transition-colors"
+                      >
+                        Pago el{" "}
+                        {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
+                      </Link>
+                    </td>
+                    <td className="py-1.5 text-right font-mono text-green-700">
+                      -{formatCurrency(alloc.amount)}
+                    </td>
+                  </tr>
+                ))}
+                <tr className="border-t-2 font-bold">
+                  <td className="py-2">Saldo pendiente</td>
+                  <td
+                    className={`py-2 text-right font-mono ${
+                      existingDispatch.receivable.balance > 0
+                        ? "text-red-600"
+                        : "text-green-700"
+                    }`}
+                  >
+                    {formatCurrency(existingDispatch.receivable.balance)}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Actions */}
       <div className="flex justify-between gap-3">

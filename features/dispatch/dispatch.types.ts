@@ -6,28 +6,49 @@ import type {
   Contact,
 } from "@/generated/prisma/client";
 
-// ── Re-export Prisma types for convenience ──
+// ── Re-exportar tipos de Prisma por conveniencia ──
 
 export type { DispatchType, DispatchStatus };
 
-// ── Composite types ──
+// ── Tipos compuestos ──
+
+export interface PaymentAllocationSummary {
+  id: string;
+  paymentId: string;
+  amount: number;
+  payment: {
+    id: string;
+    date: string; // cadena ISO (serializada desde DateTime en JSON)
+    description: string;
+  };
+}
+
+export interface ReceivableSummary {
+  id: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  status: string; // ReceivableStatus como string
+  allocations: PaymentAllocationSummary[];
+}
 
 export type DispatchWithDetails = Dispatch & {
   details: DispatchDetail[];
   contact: Contact;
-  displayCode: string; // computed: ND-001, BC-042
+  displayCode: string; // calculado: ND-001, BC-042
+  receivable?: ReceivableSummary | null;
 };
 
-// ── Input types ──
+// ── Tipos de entrada ──
 
 export interface DispatchDetailInput {
-  productTypeId?: string; // FK to ProductType (required in form, optional here for backward compat)
-  detailNote?: string; // max 200 chars
+  productTypeId?: string; // FK a ProductType (requerido en el formulario, opcional aquí por compatibilidad)
+  detailNote?: string; // máximo 200 caracteres
   description: string;
   boxes: number;
   grossWeight: number;
   unitPrice: number;
-  shortage?: number; // BC only: faltante (manual input per row)
+  shortage?: number; // Solo BC: faltante (entrada manual por fila)
   order: number;
 }
 
@@ -40,10 +61,10 @@ export interface CreateDispatchInput {
   referenceNumber?: number;
   notes?: string;
   createdById: string;
-  // BC-only fields
+  // Campos exclusivos de BC
   farmOrigin?: string;
   chickenCount?: number;
-  shrinkagePct?: number; // percentage like 2.5
+  shrinkagePct?: number; // porcentaje, ej. 2.5
   details: DispatchDetailInput[];
 }
 

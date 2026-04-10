@@ -114,6 +114,24 @@ export class AccountsRepository extends BaseRepository {
     });
   }
 
+  async findDetailChildrenByParentCodes(
+    organizationId: string,
+    parentCodes: string[],
+  ): Promise<Account[]> {
+    const scope = this.requireOrg(organizationId);
+    return this.db.account.findMany({
+      where: {
+        ...scope,
+        isDetail: true,
+        isActive: true,
+        OR: parentCodes.map((code) => ({
+          code: { startsWith: `${code}.` },
+        })),
+      },
+      orderBy: { code: "asc" },
+    });
+  }
+
   async deactivate(organizationId: string, id: string): Promise<Account> {
     const scope = this.requireOrg(organizationId);
 
