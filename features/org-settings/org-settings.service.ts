@@ -8,7 +8,7 @@ export class OrgSettingsService {
     this.repo = repo ?? new OrgSettingsRepository();
   }
 
-  // ── Get org settings, creating with defaults if not exists ──
+  // ── Obtener configuración de la organización, creando con valores por defecto si no existe ──
 
   async getOrCreate(organizationId: string): Promise<OrgSettings> {
     const existing = await this.repo.findByOrgId(organizationId);
@@ -16,10 +16,10 @@ export class OrgSettingsService {
     return this.repo.create(organizationId);
   }
 
-  // ── Update org settings ──
+  // ── Actualizar configuración de la organización ──
 
   async update(organizationId: string, input: UpdateOrgSettingsInput): Promise<OrgSettings> {
-    // Ensure settings row exists before updating
+    // Asegurar que la fila de configuración existe antes de actualizar
     await this.getOrCreate(organizationId);
     return this.repo.update(organizationId, input);
   }

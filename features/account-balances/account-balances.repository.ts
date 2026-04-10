@@ -40,7 +40,7 @@ export class AccountBalancesRepository extends BaseRepository {
     creditDelta: number | string,
     nature: AccountNature,
   ): Promise<void> {
-    // Step 1: upsert to increment totals atomically
+    // Paso 1: upsert para incrementar los totales de forma atómica
     const record = await tx.accountBalance.upsert({
       where: {
         accountId_periodId: { accountId, periodId },
@@ -59,12 +59,12 @@ export class AccountBalancesRepository extends BaseRepository {
       },
     });
 
-    // Step 2: re-read to get post-increment totals (Prisma returns pre-update values on increment)
+    // Paso 2: releer para obtener los totales post-incremento (Prisma devuelve los valores previos al actualizar con increment)
     const fresh = await tx.accountBalance.findUniqueOrThrow({
       where: { id: record.id },
     });
 
-    // Step 3: recompute balance based on fresh totals and account nature
+    // Paso 3: recalcular el saldo en base a los totales actualizados y la naturaleza de la cuenta
     const balance =
       nature === "DEUDORA"
         ? fresh.debitTotal.minus(fresh.creditTotal)

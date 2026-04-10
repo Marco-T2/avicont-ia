@@ -8,7 +8,7 @@ import type {
 
 export class OrganizationsRepository extends BaseRepository {
   // -----------------------------------------------------------------------
-  // Organization look-ups (no org-scoping needed)
+  // Búsquedas de organización (no requieren org-scoping)
   // -----------------------------------------------------------------------
 
   async findById(id: string): Promise<Organization | null> {
@@ -24,7 +24,7 @@ export class OrganizationsRepository extends BaseRepository {
   }
 
   // -----------------------------------------------------------------------
-  // Organization mutations
+  // Mutaciones de organización
   // -----------------------------------------------------------------------
 
   async create(data: CreateOrganizationInput): Promise<Organization> {
@@ -38,7 +38,7 @@ export class OrganizationsRepository extends BaseRepository {
   }
 
   // -----------------------------------------------------------------------
-  // Member queries (org-scoped)
+  // Consultas de miembros (con org-scoping)
   // -----------------------------------------------------------------------
 
   async getMembers(organizationId: string): Promise<OrganizationWithMembers> {
@@ -137,7 +137,7 @@ export class OrganizationsRepository extends BaseRepository {
   }
 
   // -----------------------------------------------------------------------
-  // Member management
+  // Gestión de miembros
   // -----------------------------------------------------------------------
 
   async findMemberById(organizationId: string, memberId: string) {

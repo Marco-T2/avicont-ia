@@ -5,7 +5,7 @@ import type {
 } from "@/generated/prisma/client";
 
 // ---------------------------------------------------------------------------
-// Input DTOs
+// DTOs de entrada
 // ---------------------------------------------------------------------------
 
 export interface CreateOrganizationInput {
@@ -21,7 +21,7 @@ export interface AddMemberInput {
 }
 
 // ---------------------------------------------------------------------------
-// Query helpers
+// Helpers de consulta
 // ---------------------------------------------------------------------------
 
 export interface OrganizationWithMembers extends Organization {
@@ -29,7 +29,7 @@ export interface OrganizationWithMembers extends Organization {
 }
 
 // ---------------------------------------------------------------------------
-// Service return types
+// Tipos de retorno del servicio
 // ---------------------------------------------------------------------------
 
 export interface SyncOrganizationResult {

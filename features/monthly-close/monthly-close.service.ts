@@ -20,7 +20,7 @@ export class MonthlyCloseService {
     this.periodsService = periodsService ?? new FiscalPeriodsService();
   }
 
-  // ── Pre-close summary ──
+  // ── Resumen previo al cierre ──
 
   async getSummary(
     organizationId: string,
@@ -63,7 +63,7 @@ export class MonthlyCloseService {
     };
   }
 
-  // ── Execute monthly close ──
+  // ── Ejecutar cierre mensual ──
 
   async close(
     organizationId: string,
@@ -79,7 +79,7 @@ export class MonthlyCloseService {
       );
     }
 
-    // Check for DRAFT records before attempting close
+    // Verificar registros en DRAFT antes de intentar el cierre
     const [draftDispatches, draftPayments, draftJournalEntries] =
       await Promise.all([
         this.repo.countByStatus(organizationId, periodId, "dispatch", "DRAFT"),
@@ -101,7 +101,7 @@ export class MonthlyCloseService {
       );
     }
 
-    // Single atomic transaction: audit context -> lock all -> close period
+    // Transacción atómica única: contexto de auditoría -> bloquear todo -> cerrar período
     return this.repo.transaction(async (tx) => {
       await setAuditContext(tx, userId);
 

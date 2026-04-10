@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     const file = formData.get("file") as File;
     const scope = (formData.get("scope") as string) || undefined;
 
-    // Validate required fields
+    // Validar campos requeridos
     createDocumentSchema.parse({ name, organizationId: clerkOrgId });
 
     const result = await service.upload(
@@ -47,7 +47,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const clerkOrgId = searchParams.get("organizationId");
 
-    // Validate query params
+    // Validar parámetros de consulta
     const { organizationId } = listDocumentsSchema.parse({
       organizationId: clerkOrgId,
     });

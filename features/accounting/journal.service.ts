@@ -72,7 +72,7 @@ export class JournalService {
     this.contactsService = contactsService ?? new ContactsService();
   }
 
-  // ── List journal entries ──
+  // ── Listar asientos contables ──
 
   async list(
     organizationId: string,
@@ -81,7 +81,7 @@ export class JournalService {
     return this.repo.findAll(organizationId, filters);
   }
 
-  // ── Get a single journal entry ──
+  // ── Obtener un asiento contable por ID ──
 
   async getById(organizationId: string, id: string): Promise<JournalEntryWithLines> {
     const entry = await this.repo.findById(organizationId, id);
@@ -89,7 +89,7 @@ export class JournalService {
     return entry;
   }
 
-  // ── Create a journal entry in DRAFT ──
+  // ── Crear un asiento contable en DRAFT ──
 
   async createEntry(
     organizationId: string,
@@ -97,7 +97,7 @@ export class JournalService {
   ): Promise<JournalEntryWithLines> {
     const { lines, ...entryData } = input;
 
-    // Validate fiscal period is OPEN
+    // Validar que el período fiscal esté OPEN
     const period = await this.periodsService.getById(organizationId, entryData.periodId);
     if (period.status !== "OPEN") {
       throw new ValidationError(
@@ -106,10 +106,10 @@ export class JournalService {
       );
     }
 
-    // Validate voucher type belongs to this org (getById throws 404 if not found for this org)
+    // Validar que el tipo de comprobante pertenezca a esta organización (getById lanza 404 si no se encuentra)
     await this.voucherTypesService.getById(organizationId, entryData.voucherTypeId);
 
-    // Validate at least 2 lines
+    // Validar al menos 2 líneas
     if (lines.length < 2) {
       throw new ValidationError(
         "Un asiento contable debe tener al menos 2 líneas",
@@ -117,7 +117,7 @@ export class JournalService {
       );
     }
 
-    // Validate each line
+    // Validar cada línea
     for (const line of lines) {
       if (line.debit > 0 && line.credit > 0) {
         throw new ValidationError(
@@ -133,8 +133,8 @@ export class JournalService {
       }
     }
 
-    // Validate all accounts exist, are active, and are detail accounts
-    // Cache accounts to avoid redundant queries in the contact check
+    // Validar que todas las cuentas existan, estén activas y sean de detalle
+    // Cachear las cuentas para evitar consultas redundantes en la validación de contactos
     const accountCache = new Map<string, Account>();
     for (const line of lines) {
       const account = await this.accountsRepo.findById(organizationId, line.accountId);
@@ -153,10 +153,10 @@ export class JournalService {
       accountCache.set(line.accountId, account);
     }
 
-    // Validate requiresContact: if an account requires a contact, the line must have one
+    // Validar requiresContact: si una cuenta requiere contacto, la línea debe tenerlo
     await this.validateContactsForLines(organizationId, lines, accountCache);
 
-    // Auto-assign next correlative number per [orgId, voucherTypeId, periodId]
+    // Auto-asignar el siguiente número correlativo por [orgId, voucherTypeId, periodId]
     const number = await this.repo.getNextNumber(
       organizationId,
       entryData.voucherTypeId,
@@ -180,7 +180,7 @@ export class JournalService {
     }
   }
 
-  // ── Create and post a journal entry in one atomic transaction ──
+  // ── Crear y contabilizar un asiento en una sola transacción atómica ──
 
   async createAndPost(
     organizationId: string,
@@ -189,7 +189,7 @@ export class JournalService {
   ): Promise<JournalEntryWithLines> {
     const { lines, ...entryData } = input;
 
-    // Validate fiscal period is OPEN
+    // Validar que el período fiscal esté OPEN
     const period = await this.periodsService.getById(organizationId, entryData.periodId);
     if (period.status !== "OPEN") {
       throw new ValidationError(
@@ -198,10 +198,10 @@ export class JournalService {
       );
     }
 
-    // Validate voucher type belongs to this org
+    // Validar que el tipo de comprobante pertenezca a esta organización
     await this.voucherTypesService.getById(organizationId, entryData.voucherTypeId);
 
-    // Validate at least 2 lines
+    // Validar al menos 2 líneas
     if (lines.length < 2) {
       throw new ValidationError(
         "Un asiento contable debe tener al menos 2 líneas",
@@ -209,7 +209,7 @@ export class JournalService {
       );
     }
 
-    // Validate each line
+    // Validar cada línea
     for (const line of lines) {
       if (line.debit > 0 && line.credit > 0) {
         throw new ValidationError(
@@ -225,7 +225,7 @@ export class JournalService {
       }
     }
 
-    // Validate all accounts exist, are active, and are detail accounts
+    // Validar que todas las cuentas existan, estén activas y sean de detalle
     const accountCache = new Map<string, Account>();
     for (const line of lines) {
       const account = await this.accountsRepo.findById(organizationId, line.accountId);
@@ -244,10 +244,10 @@ export class JournalService {
       accountCache.set(line.accountId, account);
     }
 
-    // Validate requiresContact
+    // Validar requiresContact
     await this.validateContactsForLines(organizationId, lines, accountCache);
 
-    // Validate double-entry balance
+    // Validar la partida doble (balance)
     const totalDebit = lines.reduce((sum, l) => sum + l.debit, 0);
     const totalCredit = lines.reduce((sum, l) => sum + l.credit, 0);
 
@@ -258,14 +258,14 @@ export class JournalService {
       );
     }
 
-    // Auto-assign next correlative number
+    // Auto-asignar el siguiente número correlativo
     const number = await this.repo.getNextNumber(
       organizationId,
       entryData.voucherTypeId,
       entryData.periodId,
     );
 
-    // Single atomic transaction: create as DRAFT, then post
+    // Transacción atómica única: crear como DRAFT y luego contabilizar
     return this.repo.transaction(async (tx) => {
       await setAuditContext(tx, userId);
 
@@ -304,7 +304,7 @@ export class JournalService {
         },
       }) as unknown as JournalEntryWithLines;
 
-      // Transition to POSTED
+      // Transicionar a POSTED
       const posted = await this.repo.updateStatusTx(
         tx,
         organizationId,
@@ -313,14 +313,14 @@ export class JournalService {
         userId,
       );
 
-      // Apply account balances
+      // Aplicar los saldos de cuentas
       await this.balancesService.applyPost(tx, posted);
 
       return posted;
     });
   }
 
-  // ── Update a DRAFT journal entry (or LOCKED with justification) ──
+  // ── Actualizar un asiento DRAFT (o LOCKED con justificación) ──
 
   async updateEntry(
     organizationId: string,
@@ -352,11 +352,11 @@ export class JournalService {
           ENTRY_SYSTEM_GENERATED_IMMUTABLE,
         );
       }
-      // Manual entry — validate period is OPEN then recalculate
+      // Asiento manual — validar que el período esté OPEN y recalcular
       const period = await this.periodsService.getById(organizationId, entry.periodId);
       await validatePeriodOpen(period);
 
-      // Validate double-entry balance on new lines
+      // Validar la partida doble en las nuevas líneas
       if (lines !== undefined) {
         const totalDebit = lines.reduce((sum, l) => sum + l.debit, 0);
         const totalCredit = lines.reduce((sum, l) => sum + l.credit, 0);
@@ -406,12 +406,12 @@ export class JournalService {
         accountCache.set(line.accountId, account);
       }
 
-      // Validate requiresContact: if an account requires a contact, the line must have one
+      // Validar requiresContact: si una cuenta requiere contacto, la línea debe tenerlo
       await this.validateContactsForLines(organizationId, lines, accountCache);
     }
 
     try {
-      // For LOCKED edits, wrap in transaction with audit context
+      // Para ediciones en LOCKED, envolver en transacción con contexto de auditoría
       if (status === "LOCKED") {
         return await this.repo.transaction(async (tx) => {
           await setAuditContext(tx, updatedById, justification);
@@ -435,7 +435,7 @@ export class JournalService {
     }
   }
 
-  // ── Update a POSTED manual entry with atomic balance recalculation ──
+  // ── Actualizar un asiento POSTED manual con recálculo atómico de saldos ──
 
   private async updatePostedManualEntryTx(
     organizationId: string,
@@ -447,20 +447,20 @@ export class JournalService {
     return this.repo.transaction(async (tx) => {
       await setAuditContext(tx, updatedById ?? "unknown");
 
-      // Step 1: Reverse old balance effects
+      // Paso 1: Revertir los efectos del saldo anterior
       await this.balancesService.applyVoid(tx, entry);
 
-      // Step 2: Update entry header + lines (delete+recreate lines via repo.updateTx)
+      // Paso 2: Actualizar encabezado + líneas del asiento (eliminar y recrear líneas vía repo.updateTx)
       const updated = await this.repo.updateTx(tx, organizationId, entry.id, data, lines, updatedById ?? "unknown");
 
-      // Step 3: Apply new balance effects
+      // Paso 3: Aplicar los nuevos efectos de saldo
       await this.balancesService.applyPost(tx, updated);
 
       return updated;
     });
   }
 
-  // ── Validate requiresContact on journal lines ──
+  // ── Validar requiresContact en las líneas del asiento ──
 
   private async validateContactsForLines(
     organizationId: string,
@@ -478,13 +478,13 @@ export class JournalService {
             CONTACT_REQUIRED_FOR_ACCOUNT,
           );
         }
-        // Verify the contact is active (throws ValidationError with CONTACT_NOT_FOUND if not)
+        // Verificar que el contacto esté activo (lanza ValidationError con CONTACT_NOT_FOUND si no lo está)
         await this.contactsService.getActiveById(organizationId, line.contactId);
       }
     }
   }
 
-  // ── Get last reference number for a voucher type ──
+  // ── Obtener el último número de referencia para un tipo de comprobante ──
 
   async getLastReferenceNumber(
     organizationId: string,
@@ -503,7 +503,7 @@ export class JournalService {
     return this.repo.getNextNumber(organizationId, voucherTypeId, periodId);
   }
 
-  // ── Correlation audit ──
+  // ── Auditoría de correlatividad ──
 
   async getCorrelationAudit(
     organizationId: string,
@@ -540,7 +540,7 @@ export class JournalService {
     };
   }
 
-  // ── Transition status ──
+  // ── Transicionar estado ──
 
   async transitionStatus(
     organizationId: string,
@@ -568,12 +568,12 @@ export class JournalService {
       );
     }
 
-    // If transitioning from LOCKED, require role + justification
+    // Si se transiciona desde LOCKED, requerir rol + justificación
     if (entry.status === "LOCKED" && targetStatus === "VOIDED") {
       validateLockedEdit(entry.status as DocumentStatus, role!, justification);
     }
 
-    // On POST: validate period is still OPEN and double-entry balance
+    // Al contabilizar (POST): validar que el período siga OPEN y la partida doble
     if (targetStatus === "POSTED") {
       const period = await this.periodsService.getById(organizationId, entry.periodId);
       if (period.status !== "OPEN") {

@@ -18,7 +18,7 @@ const VALID_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
   VOIDED: [],
 };
 
-// ── Validate that a status transition is legal ──
+// ── Validar que una transición de estado sea válida ──
 
 export function validateTransition(
   current: DocumentStatus,
@@ -40,7 +40,7 @@ export function validateTransition(
   }
 }
 
-// ── Validate that a document can be edited (DRAFT or POSTED; blocks VOIDED and LOCKED) ──
+// ── Validar que un documento puede ser editado (DRAFT o POSTED; bloquea VOIDED y LOCKED) ──
 
 export function validateEditable(status: DocumentStatus): void {
   if (status === "VOIDED") {
@@ -55,10 +55,10 @@ export function validateEditable(status: DocumentStatus): void {
       ENTRY_LOCKED_IMMUTABLE,
     );
   }
-  // DRAFT and POSTED both pass
+  // DRAFT y POSTED pasan ambos
 }
 
-// ── Validate that a document is in DRAFT status (for edit/delete guards) ──
+// ── Validar que un documento esté en estado DRAFT (para guardas de edición/eliminación) ──
 
 export function validateDraftOnly(status: DocumentStatus): void {
   if (status === "VOIDED") {
@@ -81,14 +81,14 @@ export function validateDraftOnly(status: DocumentStatus): void {
   }
 }
 
-// ── Validate that a locked document can be edited (requires admin + justification) ──
+// ── Validar que un documento bloqueado puede ser editado (requiere admin + justificación) ──
 
 export function validateLockedEdit(
   status: string,
   role: string,
   justification?: string,
 ): void {
-  if (status !== "LOCKED") return; // pass through for non-locked
+  if (status !== "LOCKED") return; // pasar sin modificar para documentos no bloqueados
 
   if (role !== "owner" && role !== "admin") {
     throw new ForbiddenError("Solo administradores pueden modificar documentos bloqueados");
@@ -102,7 +102,7 @@ export function validateLockedEdit(
   }
 }
 
-// ── Validate that the given fiscal period is OPEN ──
+// ── Validar que el período fiscal dado esté ABIERTO ──
 
 export async function validatePeriodOpen(
   period: { status: string },

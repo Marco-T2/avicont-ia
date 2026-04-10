@@ -1,17 +1,17 @@
 /**
- * Pure function to generate the next account code.
- * Used by both the service (server) and the UI (client) for code preview.
+ * Función pura para generar el siguiente código de cuenta.
+ * Utilizada tanto por el servicio (servidor) como por la UI (cliente) para previsualizar el código.
  *
- * @param parentCode - The parent account's code, or null for root accounts
- * @param siblingCodes - Codes of all accounts at the same level under the same parent
- * @returns The next sequential code (e.g., "1.1.4" if siblings are ["1.1.1", "1.1.2", "1.1.3"])
+ * @param parentCode - El código de la cuenta padre, o null para cuentas raíz
+ * @param siblingCodes - Códigos de todas las cuentas al mismo nivel bajo el mismo padre
+ * @returns El siguiente código secuencial (ej. "1.1.4" si los hermanos son ["1.1.1", "1.1.2", "1.1.3"])
  */
 export function getNextCode(
   parentCode: string | null,
   siblingCodes: string[],
 ): string {
   if (!parentCode) {
-    // Root level: parse all codes as integers, find max
+    // Nivel raíz: parsear todos los códigos como enteros y encontrar el máximo
     const maxNum = siblingCodes.reduce((max, code) => {
       const num = parseInt(code, 10);
       return isNaN(num) ? max : Math.max(max, num);
@@ -19,7 +19,7 @@ export function getNextCode(
     return String(maxNum + 1);
   }
 
-  // Child level: extract last segment from each sibling, find max
+  // Nivel hijo: extraer el último segmento de cada hermano y encontrar el máximo
   const prefix = parentCode + ".";
   const maxNum = siblingCodes
     .filter((c) => c.startsWith(prefix))

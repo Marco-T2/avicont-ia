@@ -21,7 +21,7 @@ export class LedgerService {
       accountBalancesService ?? new AccountBalancesService();
   }
 
-  // ── Get account ledger with running balance ──
+  // ── Obtener el libro mayor de una cuenta con saldo acumulado ──
 
   async getAccountLedger(
     organizationId: string,
@@ -55,13 +55,13 @@ export class LedgerService {
     });
   }
 
-  // ── Get trial balance (balance de comprobación) ──
+  // ── Obtener balance de comprobación ──
 
   async getTrialBalance(
     organizationId: string,
     periodId: string,
   ): Promise<TrialBalanceRow[]> {
-    // Primary: read from AccountBalance records for the period
+    // Principal: leer desde los registros de AccountBalance para el período
     const balances = await this.accountBalancesService.getBalances(
       organizationId,
       periodId,
@@ -82,7 +82,7 @@ export class LedgerService {
       });
     }
 
-    // Fallback: aggregate directly from POSTED journal lines
+    // Fallback: agregar directamente desde las líneas de asiento POSTED
     const accounts = await this.accountsRepo.findAll(organizationId);
     const rows: TrialBalanceRow[] = [];
 

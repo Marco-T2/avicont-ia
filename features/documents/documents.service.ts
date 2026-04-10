@@ -11,13 +11,13 @@ import type {
 import path from "path";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 
-// Point to the real worker file for server-side usage
+// Apuntar al archivo worker real para uso en el servidor
 GlobalWorkerOptions.workerSrc = path.resolve(
   process.cwd(),
   "node_modules/pdfjs-dist/legacy/build/pdf.worker.mjs",
 );
 
-const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/png",
@@ -37,7 +37,7 @@ export class DocumentsService {
     this.ragService = new RagService();
   }
 
-  // ── List documents for an organization ──
+  // ── Listar documentos de una organización ──
 
   async list(clerkOrgId: string, clerkUserId: string): Promise<DocumentListResult> {
     const { orgId, org, user } = await this.resolveOrgAccess(clerkOrgId, clerkUserId);
@@ -56,7 +56,7 @@ export class DocumentsService {
     };
   }
 
-  // ── Get a single document ──
+  // ── Obtener un documento por ID ──
 
   async getById(
     documentId: string,
@@ -67,7 +67,7 @@ export class DocumentsService {
     return doc;
   }
 
-  // ── Upload / create a document ──
+  // ── Subir / crear un documento ──
 
   async upload(
     clerkOrgId: string,
@@ -79,7 +79,7 @@ export class DocumentsService {
   ): Promise<DocumentUploadResult> {
     const { orgId, org, user } = await this.resolveOrgAccess(clerkOrgId, clerkUserId);
 
-    // Validate scope against user role
+    // Validar el scope contra el rol del usuario
     const membership = user.memberships[0];
     if (!canUploadToScope(membership.role, scope)) {
       throw new ForbiddenError();
@@ -103,7 +103,7 @@ export class DocumentsService {
       fileSize = file.size;
       fileType = file.type;
 
-      // Extract text from PDFs
+      // Extraer texto de los PDFs
       if (file.type === "application/pdf") {
         extractedContent = await this.extractPdfText(file);
       } else if (!extractedContent && file.type.includes("text")) {
@@ -122,7 +122,7 @@ export class DocumentsService {
       userId: user.id,
     });
 
-    // Generate embeddings for text content (async, non-blocking for response)
+    // Generar embeddings para el contenido de texto (asíncrono, no bloquea la respuesta)
     if (extractedContent && extractedContent.length > 10) {
       this.ragService.indexDocument(document.id, orgId, scope, extractedContent).catch(
         (err) => console.error("Embedding generation failed:", err),
@@ -139,7 +139,7 @@ export class DocumentsService {
     };
   }
 
-  // ── Delete a document ──
+  // ── Eliminar un documento ──
 
   async delete(documentId: string, clerkUserId: string): Promise<void> {
     const document = await this.repo.findByIdWithMembers(documentId, clerkUserId);
@@ -149,10 +149,10 @@ export class DocumentsService {
       throw new ForbiddenError();
     }
 
-    // Delete chunks (cascade also handled by DB FK, but explicit cleanup is safer)
+    // Eliminar chunks (el cascade también lo maneja la FK de la BD, pero la limpieza explícita es más segura)
     await this.ragService.deleteByDocument(documentId);
 
-    // Delete blob if it exists
+    // Eliminar el blob si existe
     if (document.fileUrl) {
       try {
         await deleteFromBlob(document.fileUrl);
@@ -164,7 +164,7 @@ export class DocumentsService {
     await this.repo.delete(documentId, document.organizationId);
   }
 
-  // ── Analysis ──
+  // ── Análisis ──
 
   async findForAnalysis(documentId: string, clerkUserId: string) {
     return this.repo.findForAnalysis(documentId, clerkUserId);
@@ -177,7 +177,7 @@ export class DocumentsService {
     return this.repo.updateAnalysis(documentId, data);
   }
 
-  // ── Private helpers ──
+  // ── Auxiliares privados ──
 
   private async extractPdfText(file: File): Promise<string | null> {
     try {

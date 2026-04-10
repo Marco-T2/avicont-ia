@@ -18,19 +18,19 @@ export class ProductTypesService {
     this.repo = repo ?? new ProductTypesRepository();
   }
 
-  // ── List product types ──
+  // ── Listar tipos de producto ──
 
   async list(
     organizationId: string,
     filters?: ProductTypeFilters,
   ): Promise<ProductType[]> {
-    // Default: only active
+    // Por defecto: solo activos
     const effectiveFilters: ProductTypeFilters =
       filters?.isActive !== undefined ? filters : { isActive: true };
     return this.repo.findAll(organizationId, effectiveFilters);
   }
 
-  // ── Get a single product type ──
+  // ── Obtener un tipo de producto individual ──
 
   async getById(organizationId: string, id: string): Promise<ProductType> {
     const productType = await this.repo.findById(organizationId, id);
@@ -38,7 +38,7 @@ export class ProductTypesService {
     return productType;
   }
 
-  // ── Create a product type ──
+  // ── Crear un tipo de producto ──
 
   async create(
     organizationId: string,
@@ -54,17 +54,17 @@ export class ProductTypesService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Update a product type ──
+  // ── Actualizar un tipo de producto ──
 
   async update(
     organizationId: string,
     id: string,
     input: UpdateProductTypeInput,
   ): Promise<ProductType> {
-    // Verify exists
+    // Verificar que existe
     await this.getById(organizationId, id);
 
-    // Check code uniqueness if code is changing
+    // Verificar unicidad del código si está cambiando
     if (input.code !== undefined) {
       const duplicate = await this.repo.findByCode(organizationId, input.code);
       if (duplicate && duplicate.id !== id) {
@@ -78,10 +78,10 @@ export class ProductTypesService {
     return this.repo.update(organizationId, id, input);
   }
 
-  // ── Deactivate a product type (soft delete) ──
+  // ── Desactivar un tipo de producto (borrado suave) ──
 
   async deactivate(organizationId: string, id: string): Promise<ProductType> {
-    // Verify exists
+    // Verificar que existe
     await this.getById(organizationId, id);
     return this.repo.deactivate(organizationId, id);
   }
