@@ -32,8 +32,23 @@ export class AccountsRepository extends BaseRepository {
     const scope = this.requireOrg(organizationId);
 
     return this.db.account.findMany({
-      where: scope,
-      include: { children: true },
+      where: { ...scope, parentId: null },
+      include: {
+        children: {
+          orderBy: { code: "asc" },
+          include: {
+            children: {
+              orderBy: { code: "asc" },
+              include: {
+                children: {
+                  orderBy: { code: "asc" },
+                  include: { children: { orderBy: { code: "asc" } } },
+                },
+              },
+            },
+          },
+        },
+      },
       orderBy: { code: "asc" },
     }) as Promise<AccountWithChildren[]>;
   }
