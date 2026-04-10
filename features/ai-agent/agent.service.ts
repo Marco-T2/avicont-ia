@@ -19,24 +19,20 @@ const AGENT_ROLE_LABELS: Record<Role, AgentLabel> = {
   member: "socio",
 };
 
-// ── Read-only tool executors ──
+// ── Ejecutores de herramientas de solo lectura ──
 
 import { FarmsService } from "@/features/farms";
 import { LotsService } from "@/features/lots";
 import { PricingService } from "@/features/pricing";
-import { AccountsService } from "@/features/accounting";
-import { LedgerService } from "@/features/accounting";
 
 const farmsService = new FarmsService();
 const lotsService = new LotsService();
 const pricingService = new PricingService();
-const accountsService = new AccountsService();
-const ledgerService = new LedgerService();
 
 export class AgentService {
   /**
-   * Process a natural language prompt from a user and return a structured response.
-   * Write actions are NEVER executed directly — they return a suggestion for confirmation.
+   * Procesar un mensaje en lenguaje natural del usuario y retornar una respuesta estructurada.
+   * Las acciones de escritura NUNCA se ejecutan directamente — retornan una sugerencia para confirmación.
    */
   async query(
     orgId: string,
@@ -64,7 +60,7 @@ export class AgentService {
 
     const fullContext = ragContext ? `${ragContext}\n\n${context}` : context;
 
-    // Inject conversation history into context
+    // Inyectar historial de conversación en el contexto
     let historyContext = "";
     if (history.length > 0) {
       const historyLines = history.map(
@@ -83,7 +79,7 @@ export class AgentService {
       : fullContext;
     const systemPrompt = this.buildSystemPrompt(normalizedRole, contextWithHistory);
 
-    // Save user message to memory
+    // Guardar mensaje del usuario en memoria
     if (sessionId) {
       memoryRepo.saveMessage(sessionId, orgId, userId, "user", prompt).catch(
         (err) => console.error("Failed to save user message:", err),
@@ -95,13 +91,13 @@ export class AgentService {
 
       const functionCalls = result.functionCalls;
 
-      // If Gemini chose to call a function
+      // Si Gemini eligió llamar una función
       if (functionCalls && functionCalls.length > 0) {
         const call = functionCalls[0];
         const actionName = call.name;
         const args = call.args as Record<string, unknown>;
 
-        // Write actions: return suggestion for user confirmation
+        // Acciones de escritura: retornar sugerencia para confirmación del usuario
         if (isWriteAction(actionName)) {
           const response = this.buildWriteSuggestion(actionName, args, result.text);
           if (sessionId) {
@@ -112,7 +108,7 @@ export class AgentService {
           return response;
         }
 
-        // Read actions: execute immediately and return results
+        // Acciones de lectura: ejecutar inmediatamente y retornar resultados
         const response = await this.executeReadAction(
           orgId,
           normalizedRole,
@@ -128,7 +124,7 @@ export class AgentService {
         return response;
       }
 
-      // No function call — just a text response
+      // Sin llamada a función — solo respuesta de texto
       const message = result.text || "No pude procesar tu solicitud.";
       if (sessionId) {
         memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", message).catch(
@@ -151,7 +147,7 @@ export class AgentService {
     }
   }
 
-  // ── Private helpers ──
+  // ── Helpers privados ──
 
   private normalizeRole(role: string): Role {
     const lower = role.toLowerCase();
@@ -177,12 +173,14 @@ export class AgentService {
       roleDescriptions[label],
       "",
       "REGLAS IMPORTANTES:",
-      "- Responde siempre en ESPAÑOL.",
+      "- Responde siempre en ESPAÑOL y de forma corta.",
       "- Usa las herramientas disponibles cuando el usuario pida una acción.",
       "- Para crear gastos o registrar mortalidad, usa la herramienta correspondiente para extraer los datos estructurados.",
       "- Si no tienes suficiente información (por ejemplo, falta el lote), pregunta al usuario.",
-      "- Usa los IDs reales de los datos del contexto cuando sea posible.",
+      "- Tu conocimiento contable proviene EXCLUSIVAMENTE de los documentos indexados (RAG). Si no encontrás información relevante en los documentos, decilo claramente. NO inventes datos contables, códigos de cuenta ni información que no esté en los documentos.",
+      "- Cuando refieras a una cuenta contable, SIEMPRE incluí el código y el nombre completo. Ejemplo: '1.2.3.1 — Vehículos'. Nunca menciones una cuenta sin su código.",
       "- NUNCA muestres al usuario el contexto RAG, los fragmentos de documentos, ni los datos internos en bruto. Usa esa información para responder de forma natural, pero no la copies textualmente en tu respuesta.",
+      "- Si NO se te proporciona un bloque 'Contexto de Documentos (RAG)', significa que no se encontraron documentos relevantes. En ese caso, responde únicamente con los datos estructurados disponibles y, si la pregunta requiere información documental que no tenés, indicalo claramente al usuario en vez de inventar.",
       `- La fecha actual es: ${new Date().toISOString().split("T")[0]}`,
       "",
       "CONTEXTO DE DATOS DISPONIBLES:",
@@ -231,29 +229,6 @@ export class AgentService {
             orgId,
             args.lotId as string,
           );
-          break;
-        case "getTrialBalance":
-          data = await ledgerService.getTrialBalance(
-            orgId,
-            args.periodId as string,
-          );
-          break;
-        case "getAccountLedger":
-          data = await ledgerService.getAccountLedger(
-            orgId,
-            args.accountId as string,
-            {
-              dateFrom: args.dateFrom
-                ? new Date(args.dateFrom as string)
-                : undefined,
-              dateTo: args.dateTo
-                ? new Date(args.dateTo as string)
-                : undefined,
-            },
-          );
-          break;
-        case "listAccounts":
-          data = await accountsService.list(orgId);
           break;
         case "searchDocuments": {
           const ragContext = await buildRagContext(orgId, args.query as string, role);

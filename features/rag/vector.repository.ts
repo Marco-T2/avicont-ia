@@ -17,7 +17,7 @@ interface SearchResult {
 }
 
 export class VectorRepository extends BaseRepository {
-  /** Store multiple chunks with their embeddings. */
+  /** Almacena múltiples fragmentos con sus incrustaciones..*/
   async storeChunks(chunks: ChunkInput[]): Promise<void> {
     for (const chunk of chunks) {
       const vectorStr = `[${chunk.embedding.join(",")}]`;
@@ -42,6 +42,7 @@ export class VectorRepository extends BaseRepository {
     topK = 5,
   ): Promise<SearchResult[]> {
     const vectorStr = `[${queryVector.join(",")}]`;
+    const limitParamIndex = scopes.length + 3;
     const scopePlaceholders = scopes.map((_, i) => `$${i + 3}::"DocumentScope"`).join(", ");
 
     const results = await this.db.$queryRawUnsafe<
@@ -52,10 +53,11 @@ export class VectorRepository extends BaseRepository {
        WHERE "organizationId" = $2
          AND "scope" IN (${scopePlaceholders})
        ORDER BY "embedding" <=> $1::vector
-       LIMIT ${topK}`,
+       LIMIT $${limitParamIndex}`,
       vectorStr,
       organizationId,
       ...scopes,
+      topK,
     );
 
     return results;

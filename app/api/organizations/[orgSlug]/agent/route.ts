@@ -9,7 +9,7 @@ import { ExpensesService } from "@/features/expenses";
 import { MortalityService } from "@/features/mortality";
 import { createExpenseSchema } from "@/features/expenses/expenses.validation";
 import { logMortalitySchema } from "@/features/mortality/mortality.validation";
-import type { ConfirmActionRequest } from "@/features/ai-agent";
+import { agentQuerySchema, confirmActionSchema } from "@/features/ai-agent/agent.validation";
 
 const orgService = new OrganizationsService();
 const agentService = new AgentService();
@@ -40,22 +40,14 @@ export async function POST(
 
     // ── Query agent ──
     const body = await request.json();
-    const prompt = body.prompt;
-    const sessionId = body.session_id as string | undefined;
-
-    if (!prompt || typeof prompt !== "string") {
-      return Response.json(
-        { error: "Se requiere un prompt" },
-        { status: 400 },
-      );
-    }
+    const { prompt, session_id } = agentQuerySchema.parse(body);
 
     const response = await agentService.query(
       organizationId,
       member.user.id,
       member.role,
       prompt,
-      sessionId,
+      session_id,
     );
 
     return Response.json(response);
@@ -71,15 +63,8 @@ async function handleConfirm(
   organizationId: string,
   userId: string,
 ): Promise<Response> {
-  const body: ConfirmActionRequest = await request.json();
-  const { suggestion } = body;
-
-  if (!suggestion || !suggestion.action) {
-    return Response.json(
-      { error: "Se requiere una sugerencia para confirmar" },
-      { status: 400 },
-    );
-  }
+  const body = await request.json();
+  const { suggestion } = confirmActionSchema.parse(body);
 
   switch (suggestion.action) {
     case "createExpense": {

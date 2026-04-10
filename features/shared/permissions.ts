@@ -47,9 +47,3 @@ export function canAccess(role: string, resource: Resource): boolean {
   const allowed = PERMISSIONS[resource];
   return allowed.includes(role as Role);
 }
-
-export function getAccessibleResources(role: string): Resource[] {
-  return (Object.keys(PERMISSIONS) as Resource[]).filter((resource) =>
-    PERMISSIONS[resource].includes(role as Role),
-  );
-}

@@ -8,7 +8,7 @@ import type {
   DispatchFilters,
 } from "./dispatch.types";
 
-// ── Computed detail shape passed from service ──
+// ── Forma del detalle calculado que pasa el servicio ──
 
 export interface ComputedDetail {
   productTypeId?: string;
@@ -26,7 +26,7 @@ export interface ComputedDetail {
   order: number;
 }
 
-// ── BC header summary fields computed by service ──
+// ── Campos del resumen de cabecera BC calculados por el servicio ──
 
 export interface BcSummary {
   totalGrossKg: number;
@@ -43,6 +43,34 @@ const dispatchInclude = {
     include: { productType: true },
   },
   contact: true,
+} as const;
+
+const dispatchDetailInclude = {
+  ...dispatchInclude,
+  receivable: {
+    select: {
+      id: true,
+      amount: true,
+      paid: true,
+      balance: true,
+      status: true,
+      allocations: {
+        select: {
+          id: true,
+          paymentId: true,
+          amount: true,
+          payment: {
+            select: {
+              id: true,
+              date: true,
+              description: true,
+            },
+          },
+        },
+        orderBy: { payment: { date: "asc" as const } },
+      },
+    },
+  },
 } as const;
 
 export class DispatchRepository extends BaseRepository {
@@ -82,7 +110,7 @@ export class DispatchRepository extends BaseRepository {
 
     const row = await this.db.dispatch.findFirst({
       where: { id, ...scope },
-      include: dispatchInclude,
+      include: dispatchDetailInclude,
     });
 
     return row as unknown as DispatchWithDetails | null;
@@ -122,7 +150,7 @@ export class DispatchRepository extends BaseRepository {
         periodId: input.periodId,
         description: input.description,
         notes: input.notes ?? null,
-        // BC-only header fields
+        // Campos de cabecera exclusivos de BC
         farmOrigin: input.farmOrigin ?? null,
         chickenCount: input.chickenCount ?? null,
         shrinkagePct:
@@ -153,7 +181,7 @@ export class DispatchRepository extends BaseRepository {
           bcSummary !== undefined
             ? new Prisma.Decimal(bcSummary.totalRealNetKg)
             : null,
-        // totalAmount stored as 0 for DRAFT — updated at POST time
+        // totalAmount se almacena como 0 en DRAFT — se actualiza al contabilizar
         totalAmount: new Prisma.Decimal(0),
         createdById: input.createdById,
         details: {
@@ -250,12 +278,13 @@ export class DispatchRepository extends BaseRepository {
           });
         }
 
-        // Re-fetch with updated details
+        // Volver a buscar con los detalles actualizados
         const refreshed = await tx.dispatch.findFirst({
           where: { id, ...scope },
           include: dispatchInclude,
         });
-        return refreshed!;
+        if (!refreshed) throw new Error(`Dispatch ${id} not found after update`);
+        return refreshed;
       }
 
       return updated;
@@ -307,8 +336,8 @@ export class DispatchRepository extends BaseRepository {
   }
 
   /**
-   * Deletes a DRAFT dispatch within a transaction.
-   * Cascade handles detail deletion. Service must verify DRAFT status before calling.
+   * Elimina un despacho DRAFT dentro de una transacción.
+   * El cascade gestiona la eliminación de detalles. El servicio debe verificar el estado DRAFT antes de llamar.
    */
   async deleteDraft(
     tx: Prisma.TransactionClient,
@@ -321,8 +350,8 @@ export class DispatchRepository extends BaseRepository {
   }
 
   /**
-   * Non-transactional hard delete for DRAFT dispatches (used by API DELETE).
-   * Service must verify DRAFT status before calling.
+   * Eliminación definitiva no transaccional para despachos DRAFT (usada por DELETE de la API).
+   * El servicio debe verificar el estado DRAFT antes de llamar.
    */
   async hardDelete(organizationId: string, id: string): Promise<void> {
     const scope = this.requireOrg(organizationId);
@@ -330,8 +359,8 @@ export class DispatchRepository extends BaseRepository {
   }
 
   /**
-   * Creates a new DRAFT dispatch cloned from a source dispatch's data.
-   * Copies all header fields and detail lines. Resets sequence/status/links.
+   * Crea un nuevo despacho DRAFT clonado a partir de los datos de un despacho origen.
+   * Copia todos los campos de cabecera y líneas de detalle. Reinicia secuencia, estado y vínculos.
    */
   async cloneToDraft(
     tx: Prisma.TransactionClient,
@@ -569,14 +598,15 @@ export class DispatchRepository extends BaseRepository {
         where: { id, ...scope },
         include: dispatchInclude,
       });
-      return toDispatchWithDetails(refreshed!);
+      if (!refreshed) throw new Error(`Dispatch ${id} not found after update`);
+      return toDispatchWithDetails(refreshed);
     }
 
     return toDispatchWithDetails(updated);
   }
 }
 
-// ── Convert Prisma Decimal fields to plain numbers in the return value ──
+// ── Convertir campos Decimal de Prisma a números simples en el valor de retorno ──
 
 function toDispatchWithDetails(row: unknown): DispatchWithDetails {
   const r = row as Record<string, unknown>;
@@ -605,6 +635,23 @@ function toDispatchWithDetails(row: unknown): DispatchWithDetails {
         lineAmount: Number(detail.lineAmount),
       };
     }),
-    displayCode: "", // populated by service layer
+    displayCode: "", // se completa en la capa de servicio
+    receivable: r.receivable
+      ? {
+          ...(r.receivable as Record<string, unknown>),
+          amount: Number((r.receivable as Record<string, unknown>).amount),
+          paid: Number((r.receivable as Record<string, unknown>).paid),
+          balance: Number((r.receivable as Record<string, unknown>).balance),
+          allocations: (
+            (r.receivable as Record<string, unknown>).allocations as unknown[] ?? []
+          ).map((a) => {
+            const alloc = a as Record<string, unknown>;
+            return {
+              ...alloc,
+              amount: Number(alloc.amount),
+            };
+          }),
+        }
+      : null,
   } as unknown as DispatchWithDetails;
 }
