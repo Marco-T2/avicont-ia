@@ -41,15 +41,15 @@ import type {
 } from "./dispatch.types";
 import { roundTotal } from "./dispatch.utils";
 
-// ── Helper: compute display code ──
+// ── Auxiliar: calcular código de visualización ──
 
 function getDisplayCode(type: DispatchType, seq: number): string {
   const prefix = type === "NOTA_DESPACHO" ? "ND" : "BC";
   return `${prefix}-${String(seq).padStart(3, "0")}`;
 }
 
-// ── Helper: compute all derived fields per detail line ──
-// lineAmount = raw weight × unitPrice, rounded to 2 decimals (no per-line custom rounding)
+// ── Auxiliar: calcular todos los campos derivados por línea de detalle ──
+// lineAmount = peso bruto × unitPrice, redondeado a 2 decimales (sin redondeo personalizado por línea)
 
 function computeLineAmounts(
   details: DispatchDetailInput[],
@@ -99,7 +99,7 @@ function computeLineAmounts(
   });
 }
 
-// ── Helper: compute BC header summary from computed details ──
+// ── Auxiliar: calcular resumen de cabecera BC a partir de los detalles calculados ──
 
 function computeBcSummary(
   computedDetails: ComputedDetail[],
@@ -130,7 +130,7 @@ function computeBcSummary(
   };
 }
 
-// ── Helper: add displayCode to result ──
+// ── Auxiliar: agregar displayCode al resultado ──
 
 function withDisplayCode(dispatch: DispatchWithDetails): DispatchWithDetails {
   return {
@@ -178,7 +178,7 @@ export class DispatchService {
       autoEntryGenerator ?? new AutoEntryGenerator(this.accountsRepo, voucherTypesRepo);
   }
 
-  // ── List dispatches ──
+  // ── Listar despachos ──
 
   async list(
     organizationId: string,
@@ -188,7 +188,7 @@ export class DispatchService {
     return rows.map(withDisplayCode);
   }
 
-  // ── Get a single dispatch ──
+  // ── Obtener un despacho por ID ──
 
   async getById(organizationId: string, id: string): Promise<DispatchWithDetails> {
     const row = await this.repo.findById(organizationId, id);
@@ -196,13 +196,13 @@ export class DispatchService {
     return withDisplayCode(row);
   }
 
-  // ── Create a dispatch in DRAFT ──
+  // ── Crear un despacho en DRAFT ──
 
   async create(
     organizationId: string,
     input: CreateDispatchInput,
   ): Promise<DispatchWithDetails> {
-    // 1. Validate contact exists and is CLIENTE
+    // 1. Validar que el contacto exista y sea de tipo CLIENTE
     const contact = await this.contactsService.getActiveById(organizationId, input.contactId);
     if (contact.type !== "CLIENTE") {
       throw new ValidationError(
@@ -211,7 +211,7 @@ export class DispatchService {
       );
     }
 
-    // 2. Validate BC fields not provided for ND
+    // 2. Validar que los campos BC no se envíen en una ND
     if (input.dispatchType === "NOTA_DESPACHO") {
       if (
         input.farmOrigin !== undefined ||
@@ -225,7 +225,7 @@ export class DispatchService {
       }
     }
 
-    // 3. Compute all derived fields per detail line
+    // 3. Calcular todos los campos derivados por línea de detalle
     const shrinkagePct =
       input.dispatchType === "BOLETA_CERRADA" ? (input.shrinkagePct ?? 0) : 0;
     const computedDetails = computeLineAmounts(
@@ -234,14 +234,14 @@ export class DispatchService {
       shrinkagePct,
     );
 
-    // 5. Compute BC header summary
+    // 5. Calcular resumen de cabecera BC
     let bcSummary: BcSummary | undefined;
     if (input.dispatchType === "BOLETA_CERRADA" && input.chickenCount !== undefined) {
       bcSummary = computeBcSummary(computedDetails, input.chickenCount);
     }
 
-    // 6. Create with sequenceNumber = 0 (placeholder; proper seq assigned at POST)
-    //    For DRAFT, sequenceNumber = 0 so display code shows ND-000 — update at POST
+    // 6. Crear con sequenceNumber = 0 (provisional; el número definitivo se asigna al contabilizar)
+    //    En DRAFT, sequenceNumber = 0 para que el código muestre ND-000 — se actualiza al contabilizar
     const row = await this.repo.create(
       organizationId,
       input,
@@ -253,14 +253,14 @@ export class DispatchService {
     return withDisplayCode(row);
   }
 
-  // ── Create and post a dispatch in one atomic transaction ──
+  // ── Crear y contabilizar un despacho en una sola transacción atómica ──
 
   async createAndPost(
     organizationId: string,
     input: CreateDispatchInput,
     userId: string,
   ): Promise<DispatchWithDetails> {
-    // 1. Validate contact exists and is CLIENTE
+    // 1. Validar que el contacto exista y sea de tipo CLIENTE
     const contact = await this.contactsService.getActiveById(organizationId, input.contactId);
     if (contact.type !== "CLIENTE") {
       throw new ValidationError(
@@ -269,7 +269,7 @@ export class DispatchService {
       );
     }
 
-    // 2. Validate BC fields not provided for ND
+    // 2. Validar que los campos BC no se envíen en una ND
     if (input.dispatchType === "NOTA_DESPACHO") {
       if (
         input.farmOrigin !== undefined ||
@@ -283,11 +283,11 @@ export class DispatchService {
       }
     }
 
-    // 3. Validate fiscal period is OPEN
+    // 3. Validar que el período fiscal esté ABIERTO
     const period = await this.periodsService.getById(organizationId, input.periodId);
     await validatePeriodOpen(period);
 
-    // 4. Compute details
+    // 4. Calcular detalles
     const shrinkagePct =
       input.dispatchType === "BOLETA_CERRADA" ? (input.shrinkagePct ?? 0) : 0;
     const computedDetails = computeLineAmounts(
@@ -303,13 +303,13 @@ export class DispatchService {
       );
     }
 
-    // 5. Compute BC header summary
+    // 5. Calcular resumen de cabecera BC
     let bcSummary: BcSummary | undefined;
     if (input.dispatchType === "BOLETA_CERRADA" && input.chickenCount !== undefined) {
       bcSummary = computeBcSummary(computedDetails, input.chickenCount);
     }
 
-    // 6. Compute totalAmount
+    // 6. Calcular totalAmount
     const exactTotal = computedDetails.reduce((sum, d) => sum + d.lineAmount, 0);
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
     const threshold = Number(settings.roundingThreshold);
@@ -318,10 +318,10 @@ export class DispatchService {
     const incomeAccountCode =
       input.dispatchType === "NOTA_DESPACHO" ? "4.1.2" : "4.1.1";
 
-    // Pre-fetch contact payment terms before transaction
+    // Pre-cargar los días de plazo de pago del contacto antes de la transacción
     const paymentTermsDays = (contact as { paymentTermsDays?: number }).paymentTermsDays ?? 30;
 
-    // 7. Single atomic transaction
+    // 7. Transacción atómica única
     let dispatchId = "";
 
     await this.repo.transaction(async (tx) => {
@@ -404,7 +404,7 @@ export class DispatchService {
     return withDisplayCode(result!);
   }
 
-  // ── Update a DRAFT dispatch (or LOCKED with justification) ──
+  // ── Actualizar un despacho DRAFT (o LOCKED con justificación) ──
 
   async update(
     organizationId: string,
@@ -423,7 +423,7 @@ export class DispatchService {
       validateEditable(status);
     }
 
-    // Validate new contact type if changing
+    // Validar el tipo del nuevo contacto si está cambiando
     if (input.contactId !== undefined) {
       const contact = await this.contactsService.getActiveById(
         organizationId,
@@ -437,7 +437,7 @@ export class DispatchService {
       }
     }
 
-    // Validate BC fields not on ND
+    // Validar que los campos BC no estén presentes en una ND
     if (dispatch.dispatchType === "NOTA_DESPACHO") {
       if (
         input.farmOrigin !== undefined ||
@@ -451,7 +451,7 @@ export class DispatchService {
       }
     }
 
-    // Recompute lineAmounts if details changed
+    // Recalcular lineAmounts si cambiaron los detalles
     let computedDetails: ComputedDetail[] | undefined;
     let bcSummary: BcSummary | undefined;
 
@@ -468,7 +468,7 @@ export class DispatchService {
         shrinkagePct,
       );
 
-      // Recompute BC header summary if relevant
+      // Recalcular resumen de cabecera BC si aplica
       if (dispatch.dispatchType === "BOLETA_CERRADA") {
         const chickenCount =
           input.chickenCount ??
@@ -481,7 +481,7 @@ export class DispatchService {
 
     const { details: _details, ...dataWithoutDetails } = input;
 
-    // For POSTED dispatches, run the atomic reverse-modify-reapply path
+    // Para despachos POSTED, ejecutar el flujo atómico de reversión-modificación-reaplicación
     if (status === "POSTED") {
       const period = await this.periodsService.getById(organizationId, dispatch.periodId);
       await validatePeriodOpen(period);
@@ -495,7 +495,7 @@ export class DispatchService {
       );
     }
 
-    // For LOCKED edits, wrap in transaction with audit context
+    // Para ediciones LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
       const row = await this.repo.transaction(async (tx) => {
         await setAuditContext(tx, dispatch.createdById ?? "unknown", justification);
@@ -521,7 +521,7 @@ export class DispatchService {
     return withDisplayCode(row);
   }
 
-  // ── Update a POSTED dispatch (atomic reverse-modify-reapply) ──
+  // ── Actualizar un despacho POSTED (reversión-modificación-reaplicación atómica) ──
 
   private async updatePostedDispatchTx(
     organizationId: string,
@@ -531,7 +531,7 @@ export class DispatchService {
     bcSummary: BcSummary | undefined,
     userId: string,
   ): Promise<DispatchWithDetails> {
-    // 1. Validate at least 1 detail line if details are changing
+    // 1. Validar que haya al menos 1 línea de detalle si se están cambiando los detalles
     if (computedDetails !== undefined && computedDetails.length === 0) {
       throw new ValidationError(
         "El despacho debe tener al menos una línea de detalle para ser contabilizado",
@@ -539,7 +539,7 @@ export class DispatchService {
       );
     }
 
-    // 2. Pre-fetch settings and compute newTotalAmount if details changed
+    // 2. Pre-cargar configuración y calcular newTotalAmount si cambiaron los detalles
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
     let newTotalAmount: number | undefined;
     if (computedDetails !== undefined) {
@@ -548,7 +548,7 @@ export class DispatchService {
       newTotalAmount = roundTotal(exactTotal, threshold);
     }
 
-    // 3. Pre-validate contact change: block if CxC has active payment allocations
+    // 3. Pre-validar cambio de contacto: bloquear si la CxC tiene asignaciones de pago activas
     if (input.contactId !== undefined && input.contactId !== dispatch.contactId) {
       if (dispatch.receivableId) {
         const allocations = await this.repo.transaction(async (tx) => {
@@ -571,7 +571,7 @@ export class DispatchService {
 
     const { details: _details, ...dataWithoutDetails } = input;
 
-    // 4. Resolve account IDs before the transaction
+    // 4. Resolver IDs de cuentas antes de la transacción
     const incomeAccountCode =
       dispatch.dispatchType === "NOTA_DESPACHO" ? "4.1.2" : "4.1.1";
 
@@ -596,12 +596,12 @@ export class DispatchService {
       );
     }
 
-    // 5. Execute atomic transaction
+    // 5. Ejecutar transacción atómica
     await this.repo.transaction(async (tx) => {
-      // a. Set audit context
+      // a. Establecer contexto de auditoría
       await setAuditContext(tx, userId);
 
-      // b. Reverse old journal entry balances
+      // b. Revertir saldos del asiento contable anterior
       if (dispatch.journalEntryId) {
         const oldEntry = await tx.journalEntry.findFirst({
           where: { id: dispatch.journalEntryId, organizationId },
@@ -619,7 +619,7 @@ export class DispatchService {
         }
       }
 
-      // c. Update dispatch fields + details
+      // c. Actualizar campos y detalles del despacho
       await this.repo.updateTx(
         tx,
         organizationId,
@@ -629,7 +629,7 @@ export class DispatchService {
         bcSummary,
       );
 
-      // d. If totalAmount changed, update it on the dispatch record
+      // d. Si cambió totalAmount, actualizarlo en el registro del despacho
       if (newTotalAmount !== undefined) {
         await this.repo.updateStatusTx(
           tx,
@@ -640,7 +640,7 @@ export class DispatchService {
         );
       }
 
-      // e. Build new journal lines
+      // e. Construir nuevas líneas del asiento contable
       const effectiveTotalAmount = newTotalAmount ?? Number(dispatch.totalAmount);
       const effectiveContactId = input.contactId ?? dispatch.contactId;
 
@@ -660,7 +660,7 @@ export class DispatchService {
         },
       ];
 
-      // f. Update journal entry
+      // f. Actualizar el asiento contable
       const effectiveDate = input.date ?? dispatch.date;
       const effectiveDescription = input.description ?? dispatch.description;
       const effectiveNotes = input.notes ?? dispatch.notes;
@@ -685,11 +685,11 @@ export class DispatchService {
         userId,
       );
 
-      // g. Apply new balances
+      // g. Aplicar nuevos saldos
       await this.balancesService.applyPost(tx, updatedEntry);
 
-      // h. Update CxC: amount, balance, status
-      // If newAmount < paid, cap paid at newAmount and reduce allocations LIFO
+      // h. Actualizar CxC: monto, saldo, estado
+      // Si el nuevo monto es menor al pagado, limitar pagado al nuevo monto y reducir asignaciones LIFO
       if (dispatch.receivableId) {
         const existingReceivable = await tx.accountsReceivable.findFirst({
           where: { id: dispatch.receivableId },
@@ -700,14 +700,14 @@ export class DispatchService {
         const newBalance = effectiveTotalAmount - cappedPaid;
         const newStatus = computeReceivableStatus(cappedPaid, newBalance);
 
-        // If paid exceeds new amount, reduce payment allocations LIFO
+        // Si lo pagado supera el nuevo monto, reducir las asignaciones de pago en orden LIFO
         if (rawPaid > effectiveTotalAmount) {
           const allocations = await tx.paymentAllocation.findMany({
             where: {
               receivableId: dispatch.receivableId,
               payment: { status: { not: "VOIDED" } },
             },
-            orderBy: { id: "desc" }, // LIFO — reduce newest first (cuid is time-sortable)
+            orderBy: { id: "desc" }, // LIFO — reducir primero las más nuevas (cuid es ordenable por tiempo)
           });
 
           let excess = rawPaid - effectiveTotalAmount;
@@ -718,10 +718,10 @@ export class DispatchService {
             const newAllocAmount = allocAmount - reduction;
 
             if (newAllocAmount <= 0) {
-              // Remove allocation entirely
+              // Eliminar la asignación por completo
               await tx.paymentAllocation.delete({ where: { id: alloc.id } });
             } else {
-              // Reduce allocation amount
+              // Reducir el monto de la asignación
               await tx.paymentAllocation.update({
                 where: { id: alloc.id },
                 data: { amount: new Prisma.Decimal(newAllocAmount) },
@@ -748,7 +748,7 @@ export class DispatchService {
     return withDisplayCode(updated!);
   }
 
-  // ── Delete a DRAFT dispatch ──
+  // ── Eliminar un despacho DRAFT ──
 
   async delete(organizationId: string, id: string): Promise<void> {
     const dispatch = await this.getById(organizationId, id);
@@ -756,7 +756,7 @@ export class DispatchService {
     await this.repo.delete(organizationId, id);
   }
 
-  // ── Post a dispatch (DRAFT → POSTED) ──
+  // ── Contabilizar un despacho (DRAFT → POSTED) ──
 
   async post(
     organizationId: string,
@@ -765,17 +765,17 @@ export class DispatchService {
   ): Promise<DispatchWithDetails> {
     const dispatch = await this.getById(organizationId, id);
 
-    // Validate lifecycle transition
+    // Validar la transición del ciclo de vida
     validateTransition(
       dispatch.status as DocumentStatus,
       "POSTED",
     );
 
-    // Validate fiscal period is OPEN
+    // Validar que el período fiscal esté ABIERTO
     const period = await this.periodsService.getById(organizationId, dispatch.periodId);
     await validatePeriodOpen(period);
 
-    // Validate at least 1 detail line
+    // Validar que haya al menos 1 línea de detalle
     if (!dispatch.details || dispatch.details.length === 0) {
       throw new ValidationError(
         "El despacho debe tener al menos una línea de detalle para ser contabilizado",
@@ -783,7 +783,7 @@ export class DispatchService {
       );
     }
 
-    // Compute totalAmount: sum raw lineAmounts, then apply roundTotal
+    // Calcular totalAmount: sumar los lineAmounts brutos y aplicar roundTotal
     const exactTotal = dispatch.details.reduce(
       (sum, d) => sum + Number(d.lineAmount),
       0,
@@ -792,13 +792,13 @@ export class DispatchService {
     const threshold = Number(settings.roundingThreshold);
     const totalAmount = roundTotal(exactTotal, threshold);
 
-    // Determine income account based on dispatch type
+    // Determinar la cuenta de ingresos según el tipo de despacho
     const incomeAccountCode =
       dispatch.dispatchType === "NOTA_DESPACHO" ? "4.1.2" : "4.1.1";
 
-    // Get next sequence number and run all within one transaction
+    // Obtener el siguiente número de secuencia y ejecutar todo dentro de una sola transacción
     await this.repo.transaction(async (tx) => {
-      // 1. Assign sequence number within transaction
+      // 1. Asignar número de secuencia dentro de la transacción
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
         organizationId,
@@ -807,7 +807,7 @@ export class DispatchService {
 
       const displayCode = getDisplayCode(dispatch.dispatchType as DispatchType, sequenceNumber);
 
-      // 2. Update dispatch status, totalAmount, sequenceNumber
+      // 2. Actualizar estado del despacho, totalAmount y sequenceNumber
       await this.repo.updateStatusTx(
         tx,
         organizationId,
@@ -817,8 +817,8 @@ export class DispatchService {
         sequenceNumber,
       );
 
-      // 3. Build and generate journal entry
-      // (settings already fetched above — reused here)
+      // 3. Construir y generar el asiento contable
+      // (configuración ya obtenida arriba — se reutiliza aquí)
       const journalDescription = dispatch.notes
         ? `${displayCode} - ${dispatch.description} | ${dispatch.notes}`
         : `${displayCode} - ${dispatch.description}`;
@@ -847,17 +847,17 @@ export class DispatchService {
         ],
       });
 
-      // 4. Apply account balance changes
+      // 4. Aplicar cambios en saldos de cuentas
       await this.balancesService.applyPost(tx, entry);
 
-      // 5. Compute dueDate from contact paymentTermsDays
+      // 5. Calcular dueDate a partir de paymentTermsDays del contacto
       const contact = dispatch.contact as { paymentTermsDays?: number };
       const paymentTermsDays = contact.paymentTermsDays ?? 30;
       const dueDate = new Date(
         dispatch.date.getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
       );
 
-      // 6. Create AccountsReceivable
+      // 6. Crear AccountsReceivable
       const receivable = await this.receivablesRepo.createTx(tx, {
         organizationId,
         contactId: dispatch.contactId,
@@ -869,7 +869,7 @@ export class DispatchService {
         journalEntryId: entry.id,
       });
 
-      // 7. Link journalEntryId and receivableId back to dispatch
+      // 7. Vincular journalEntryId y receivableId de vuelta al despacho
       await this.repo.linkJournalAndReceivable(
         tx,
         id,
@@ -878,12 +878,12 @@ export class DispatchService {
       );
     });
 
-    // Re-fetch with all links populated
+    // Volver a buscar con todos los vínculos cargados
     const updated = await this.repo.findById(organizationId, id);
     return withDisplayCode(updated!);
   }
 
-  // ── Void a dispatch (POSTED → VOIDED) ──
+  // ── Anular un despacho (POSTED → VOIDED) ──
 
   async void(
     organizationId: string,
@@ -895,10 +895,10 @@ export class DispatchService {
     const dispatch = await this.getById(organizationId, id);
     const status = dispatch.status as DocumentStatus;
 
-    // Validate lifecycle transition
+    // Validar la transición del ciclo de vida
     validateTransition(status, "VOIDED");
 
-    // If LOCKED, require role + justification
+    // Si está LOCKED, requerir rol y justificación
     if (status === "LOCKED") {
       validateLockedEdit(status, role!, justification);
     }
@@ -912,7 +912,7 @@ export class DispatchService {
     return withDisplayCode(updated!);
   }
 
-  // ── Hard delete a DRAFT dispatch ──
+  // ── Eliminación definitiva de un despacho DRAFT ──
 
   async hardDelete(organizationId: string, id: string): Promise<void> {
     const dispatch = await this.getById(organizationId, id);
@@ -927,14 +927,14 @@ export class DispatchService {
     await this.repo.hardDelete(organizationId, id);
   }
 
-  // ── Recreate: void a POSTED dispatch and clone it to a new DRAFT ──
+  // ── Recrear: anular un despacho POSTED y clonarlo a un nuevo DRAFT ──
 
   /**
-   * @deprecated Prefer edit-in-place via update() for POSTED dispatches.
-   * This method voids and recreates, which changes document identity and
-   * breaks the continuity of the accounting trail.
-   * Kept for backward compatibility and exceptional cases.
-   * @see update() for the preferred correction path
+   * @deprecated Preferir edición en el lugar mediante update() para despachos POSTED.
+   * Este método anula y recrea, lo que cambia la identidad del documento y
+   * rompe la continuidad del rastro contable.
+   * Mantenido por compatibilidad y casos excepcionales.
+   * @see update() para la ruta de corrección preferida
    */
   async recreate(
     organizationId: string,
@@ -951,10 +951,10 @@ export class DispatchService {
     }
 
     const result = await this.repo.transaction(async (tx) => {
-      // 1. Void cascade: status, journal entry, CxC, balances
+      // 1. Cascade de anulación: estado, asiento contable, CxC, saldos
       await this.voidCascadeTx(tx, organizationId, dispatch, userId);
 
-      // 2. Clone to new DRAFT
+      // 2. Clonar a nuevo DRAFT
       const newDraft = await this.repo.cloneToDraft(tx, organizationId, dispatch);
 
       return { voidedId: dispatch.id, newDraftId: newDraft.id };
@@ -963,7 +963,7 @@ export class DispatchService {
     return result;
   }
 
-  // ── Internal: void cascade within a transaction ──
+  // ── Interno: cascade de anulación dentro de una transacción ──
 
   private async voidCascadeTx(
     tx: Prisma.TransactionClient,
@@ -971,7 +971,7 @@ export class DispatchService {
     dispatch: DispatchWithDetails,
     userId: string,
   ): Promise<void> {
-    // 0. Unlink active payment allocations before voiding
+    // 0. Desvincular asignaciones de pago activas antes de anular
     if (dispatch.receivableId) {
       const activeAllocations = await tx.paymentAllocation.findMany({
         where: {
@@ -982,7 +982,7 @@ export class DispatchService {
       });
 
       if (activeAllocations.length > 0) {
-        // Reverse allocation effects on CxC before voiding
+        // Revertir efectos de las asignaciones en la CxC antes de anular
         const receivable = await tx.accountsReceivable.findUnique({
           where: { id: dispatch.receivableId },
         });
@@ -1001,7 +1001,7 @@ export class DispatchService {
           });
         }
 
-        // Hard delete the allocation records
+        // Eliminar definitivamente los registros de asignación
         await tx.paymentAllocation.deleteMany({
           where: {
             receivableId: dispatch.receivableId,
@@ -1011,10 +1011,10 @@ export class DispatchService {
       }
     }
 
-    // 1. Update dispatch status to VOIDED
+    // 1. Actualizar el estado del despacho a VOIDED
     await this.repo.updateStatusTx(tx, organizationId, dispatch.id, "VOIDED");
 
-    // 2. Void the linked JournalEntry
+    // 2. Anular el JournalEntry vinculado
     if (dispatch.journalEntryId) {
       const journalEntry = await tx.journalEntry.findFirst({
         where: { id: dispatch.journalEntryId, organizationId },
@@ -1034,12 +1034,12 @@ export class DispatchService {
           data: { status: "VOIDED", updatedById: userId },
         });
 
-        // 3. Reverse account balances
+        // 3. Revertir saldos de cuentas
         await this.balancesService.applyVoid(tx, journalEntry as never);
       }
     }
 
-    // 4. Void the linked AccountsReceivable
+    // 4. Anular el AccountsReceivable vinculado
     if (dispatch.receivableId) {
       await this.receivablesRepo.voidTx(tx, dispatch.receivableId);
     }

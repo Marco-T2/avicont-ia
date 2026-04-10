@@ -15,7 +15,7 @@ export class MortalityService {
     this.lotsService = lotsService ?? new LotsService();
   }
 
-  // ── List mortality logs for a lot ──
+  // ── Listar registros de mortalidad de un lote ──
 
   async listByLot(
     organizationId: string,
@@ -24,16 +24,16 @@ export class MortalityService {
     return this.repo.findByLot(organizationId, lotId);
   }
 
-  // ── Log mortality ──
+  // ── Registrar mortalidad ──
 
   async log(
     organizationId: string,
     input: LogMortalityInput,
   ): Promise<MortalityLogWithRelations> {
-    // Fetch the lot to get initialCount (throws NotFoundError if missing)
+    // Obtener el lote para conocer initialCount (lanza NotFoundError si no existe)
     const lot = await this.lotsService.getById(organizationId, input.lotId);
 
-    // Get existing total mortality for this lot
+    // Obtener la mortalidad total acumulada para este lote
     const totalMortality = await this.repo.countByLot(organizationId, input.lotId);
 
     const aliveCount = lot.initialCount - totalMortality;
@@ -47,7 +47,7 @@ export class MortalityService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Get total mortality for a lot ──
+  // ── Obtener mortalidad total de un lote ──
 
   async getTotalByLot(organizationId: string, lotId: string): Promise<number> {
     return this.repo.countByLot(organizationId, lotId);

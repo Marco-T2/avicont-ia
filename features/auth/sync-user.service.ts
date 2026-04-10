@@ -15,18 +15,18 @@ export async function syncUserToDatabase() {
     const name =
       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
 
-    // Check if user exists in database
+    // Verificar si el usuario existe en la base de datos
     const existing = await usersService.resolveByClerkId(clerkUser.id).catch(() => null);
 
     let dbUser;
     if (existing) {
-      // Update existing user
+      // Actualizar usuario existente
       dbUser = await usersService.update(existing.id, {
         email,
         name: name || existing.name,
       });
     } else {
-      // Create a new user in database
+      // Crear un nuevo usuario en la base de datos
       dbUser = await usersService.findOrCreate({
         clerkUserId: clerkUser.id,
         email,

@@ -17,7 +17,7 @@ import type {
   OpenAggregate,
 } from "./receivables.types";
 
-// ── Valid status transitions ──
+// ── Transiciones de estado válidas ──
 
 const STATUS_TRANSITIONS: Record<ReceivableStatus, ReceivableStatus[]> = {
   PENDING: ["PARTIAL", "PAID", "VOIDED", "OVERDUE"],
@@ -25,7 +25,7 @@ const STATUS_TRANSITIONS: Record<ReceivableStatus, ReceivableStatus[]> = {
   OVERDUE: ["PARTIAL", "PAID", "VOIDED"],
   PAID: [],
   VOIDED: [],
-  CANCELLED: [], // kept for backward compatibility — app uses VOIDED
+  CANCELLED: [], // mantenido por compatibilidad hacia atrás — la app usa VOIDED
 };
 
 export class ReceivablesService {
@@ -38,7 +38,7 @@ export class ReceivablesService {
     this.repo = repo ?? new ReceivablesRepository();
   }
 
-  // ── List receivables ──
+  // ── Listar cuentas por cobrar ──
 
   async list(
     organizationId: string,
@@ -47,7 +47,7 @@ export class ReceivablesService {
     return this.repo.findAll(organizationId, filters);
   }
 
-  // ── Get a single receivable ──
+  // ── Obtener una cuenta por cobrar individual ──
 
   async getById(
     organizationId: string,
@@ -58,7 +58,7 @@ export class ReceivablesService {
     return receivable;
   }
 
-  // ── Create a receivable ──
+  // ── Crear una cuenta por cobrar ──
 
   async create(
     organizationId: string,
@@ -69,7 +69,7 @@ export class ReceivablesService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Update a receivable (non-amount fields only) ──
+  // ── Actualizar una cuenta por cobrar (solo campos no monetarios) ──
 
   async update(
     organizationId: string,
@@ -88,7 +88,7 @@ export class ReceivablesService {
     return this.repo.update(organizationId, id, input);
   }
 
-  // ── Update receivable status ──
+  // ── Actualizar estado de la cuenta por cobrar ──
 
   async updateStatus(
     organizationId: string,
@@ -122,11 +122,11 @@ export class ReceivablesService {
       paid = input.paidAmount.toString();
       balance = amount.minus(paid).toString();
     } else if (input.status === "VOIDED") {
-      // VOIDED — keep current paid, balance = 0
+      // VOIDED — mantener pagado actual, saldo = 0
       paid = receivable.paid.toString();
       balance = "0";
     } else {
-      // OVERDUE — status change only, no financial change
+      // OVERDUE — solo cambio de estado, sin cambio financiero
       paid = receivable.paid.toString();
       balance = receivable.balance.toString();
     }
@@ -134,7 +134,7 @@ export class ReceivablesService {
     return this.repo.updateStatus(organizationId, id, input.status, paid, balance);
   }
 
-  // ── Void a receivable ──
+  // ── Anular una cuenta por cobrar ──
 
   async void(
     organizationId: string,
@@ -143,7 +143,7 @@ export class ReceivablesService {
     return this.updateStatus(organizationId, id, { status: "VOIDED" });
   }
 
-  // ── Open aggregate ──
+  // ── Agregado de cuentas abiertas ──
 
   async aggregateOpen(
     organizationId: string,

@@ -25,44 +25,44 @@ export class OrganizationsService {
   }
 
   // -----------------------------------------------------------------------
-  // Sync / create organization (idempotent — used by the route handler)
+  // Sincronizar / crear organización (idempotente — usado por el route handler)
   // -----------------------------------------------------------------------
 
   async syncOrganization(
     input: CreateOrganizationInput,
     clerkUserId: string,
   ): Promise<SyncOrganizationResult> {
-    // If the org already exists, return it without modifying anything
+    // Si la organización ya existe, retornarla sin modificar nada
     const existing = await this.repo.findByClerkId(input.clerkOrgId);
     if (existing) {
       return { organization: existing, created: false };
     }
 
-    // Ensure the calling user exists in our DB
+    // Asegurar que el usuario que realiza la llamada exista en nuestra BD
     const user = await this.usersService.findOrCreate({
       clerkUserId,
       email: `${clerkUserId}@temp.com`,
       name: "User",
     });
 
-    // Create the organization
+    // Crear la organización
     const organization = await this.repo.create(input);
 
-    // Add the creator as owner
+    // Agregar al creador como propietario
     await this.repo.addMember({
       userId: user.id,
       organizationId: organization.id,
       role: "owner",
     });
 
-    // Seed default voucher types for the new org
+    // Inicializar los tipos de comprobante por defecto para la nueva organización
     await this.voucherTypesService.seedForOrg(organization.id);
 
     return { organization, created: true };
   }
 
   // -----------------------------------------------------------------------
-  // Look-ups
+  // Búsquedas
   // -----------------------------------------------------------------------
 
   async getBySlug(slug: string) {
@@ -84,7 +84,7 @@ export class OrganizationsService {
   }
 
   // -----------------------------------------------------------------------
-  // Membership
+  // Membresía
   // -----------------------------------------------------------------------
 
   async getOrgWithMembers(organizationId: string) {
@@ -108,7 +108,7 @@ export class OrganizationsService {
   }
 
   // -----------------------------------------------------------------------
-  // Layout & dashboard data
+  // Datos de layout y dashboard
   // -----------------------------------------------------------------------
 
   async getOrgLayoutData(

@@ -12,7 +12,7 @@ interface VoucherTypeSummary {
 }
 
 export class MonthlyCloseRepository extends BaseRepository {
-  // ── Count entities by status in a period ──
+  // ── Contar entidades por estado en un período ──
 
   async countByStatus(
     organizationId: string,
@@ -38,7 +38,7 @@ export class MonthlyCloseRepository extends BaseRepository {
     }
   }
 
-  // ── Lock POSTED dispatches in a period ──
+  // ── Bloquear despachos POSTED en un período ──
 
   async lockDispatches(
     tx: Prisma.TransactionClient,
@@ -55,7 +55,7 @@ export class MonthlyCloseRepository extends BaseRepository {
     return result.count;
   }
 
-  // ── Lock POSTED payments in a period ──
+  // ── Bloquear pagos POSTED en un período ──
 
   async lockPayments(
     tx: Prisma.TransactionClient,
@@ -72,7 +72,7 @@ export class MonthlyCloseRepository extends BaseRepository {
     return result.count;
   }
 
-  // ── Lock POSTED journal entries in a period ──
+  // ── Bloquear asientos contables POSTED en un período ──
 
   async lockJournalEntries(
     tx: Prisma.TransactionClient,
@@ -89,7 +89,7 @@ export class MonthlyCloseRepository extends BaseRepository {
     return result.count;
   }
 
-  // ── Journal summary grouped by voucher type ──
+  // ── Resumen de asientos agrupados por tipo de comprobante ──
 
   async getJournalSummaryByVoucherType(
     organizationId: string,
@@ -105,7 +105,7 @@ export class MonthlyCloseRepository extends BaseRepository {
       },
     });
 
-    // Aggregate by voucher type
+    // Agregar por tipo de comprobante
     const map = new Map<string, VoucherTypeSummary>();
 
     for (const entry of entries) {
@@ -132,7 +132,7 @@ export class MonthlyCloseRepository extends BaseRepository {
     return Array.from(map.values());
   }
 
-  // ── Close the fiscal period ──
+  // ── Cerrar el período fiscal ──
 
   async closePeriod(
     tx: Prisma.TransactionClient,

@@ -227,7 +227,7 @@ export class JournalRepository extends BaseRepository {
       });
 
       if (lines !== undefined) {
-        // Delete existing lines then re-create
+        // Eliminar las líneas existentes y volver a crearlas
         await tx.journalLine.deleteMany({ where: { journalEntryId: id } });
         await tx.journalLine.createMany({
           data: lines.map((line) => ({
@@ -241,7 +241,7 @@ export class JournalRepository extends BaseRepository {
           })),
         });
 
-        // Re-fetch with updated lines
+        // Releer con las líneas actualizadas
         const refreshed = await tx.journalEntry.findFirst({
           where: { id, ...scope },
           include: journalIncludeLines,
@@ -330,7 +330,7 @@ export class JournalRepository extends BaseRepository {
     }) as Promise<JournalEntryWithLines>;
   }
 
-  // ── Ledger: lines for a specific account ──
+  // ── Libro mayor: líneas de una cuenta específica ──
 
   async findLinesByAccount(
     organizationId: string,
@@ -370,7 +370,7 @@ export class JournalRepository extends BaseRepository {
     });
   }
 
-  // ── Ledger: aggregate debits/credits by account for a period ──
+  // ── Libro mayor: agregar débitos/créditos por cuenta para un período ──
 
   async aggregateByAccount(
     organizationId: string,

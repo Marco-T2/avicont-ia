@@ -30,19 +30,19 @@ export class AccountsService {
     this.repo = repo ?? new AccountsRepository();
   }
 
-  // ── List all accounts ──
+  // ── Listar todas las cuentas ──
 
   async list(organizationId: string): Promise<Account[]> {
     return this.repo.findAll(organizationId);
   }
 
-  // ── Get full account tree ──
+  // ── Obtener el árbol completo de cuentas ──
 
   async getTree(organizationId: string): Promise<AccountWithChildren[]> {
     return this.repo.findTree(organizationId);
   }
 
-  // ── Get a single account ──
+  // ── Obtener una cuenta por ID ──
 
   async getById(organizationId: string, id: string): Promise<Account> {
     const account = await this.repo.findById(organizationId, id);
@@ -50,20 +50,20 @@ export class AccountsService {
     return account;
   }
 
-  // ── Create an account ──
+  // ── Crear una cuenta ──
 
   async create(organizationId: string, input: CreateAccountInput): Promise<Account> {
-    // 1. Resolve parent
+    // 1. Resolver la cuenta padre
     let parent: Account | null = null;
     if (input.parentId) {
       parent = await this.repo.findById(organizationId, input.parentId);
       if (!parent) throw new NotFoundError("Cuenta padre");
     }
 
-    // 2. Calculate level
+    // 2. Calcular el nivel
     const level = parent ? parent.level + 1 : 1;
 
-    // 3. Validate max depth
+    // 3. Validar la profundidad máxima
     if (level > MAX_DEPTH) {
       throw new ValidationError(
         `No se pueden crear cuentas con más de ${MAX_DEPTH} niveles de profundidad`,
@@ -71,7 +71,7 @@ export class AccountsService {
       );
     }
 
-    // 4. Resolve type (inherit from parent or require for root)
+    // 4. Resolver el tipo (heredar del padre o requerir para cuentas raíz)
     const type = input.type ?? parent?.type;
     if (!type) {
       throw new ValidationError(
@@ -79,7 +79,7 @@ export class AccountsService {
       );
     }
 
-    // 5. Validate type consistency with parent
+    // 5. Validar coherencia del tipo con la cuenta padre
     if (parent && input.type && input.type !== parent.type) {
       throw new ValidationError(
         `El tipo de cuenta debe coincidir con la cuenta padre (${parent.type})`,
@@ -87,7 +87,7 @@ export class AccountsService {
       );
     }
 
-    // 6. Derive nature
+    // 6. Derivar la naturaleza
     const nature = deriveNature(type);
     if (input.nature !== undefined && input.nature !== nature) {
       throw new ValidationError(
@@ -96,33 +96,33 @@ export class AccountsService {
       );
     }
 
-    // 7. Resolve code (auto-generate or validate manual)
+    // 7. Resolver el código (auto-generar o validar el manual)
     let code: string;
     if (input.code) {
-      // Manual code — validate prefix matches parent
+      // Código manual — validar que el prefijo coincida con el padre
       if (parent && !input.code.startsWith(parent.code + ".")) {
         throw new ValidationError(
           `El código debe comenzar con "${parent.code}." para ser subcuenta de ${parent.name}`,
           INVALID_ACCOUNT_CODE_PREFIX,
         );
       }
-      // Check uniqueness
+      // Verificar unicidad
       const existing = await this.repo.findByCode(organizationId, input.code);
       if (existing) throw new ConflictError("Cuenta con ese código");
       code = input.code;
     } else {
-      // Auto-generate
+      // Auto-generar
       const siblings = await this.repo.findSiblings(organizationId, input.parentId ?? null);
       code = getNextCode(parent?.code ?? null, siblings.map((s) => s.code));
-      // Verify uniqueness (race condition guard)
+      // Verificar unicidad (protección ante condición de carrera)
       const existing = await this.repo.findByCode(organizationId, code);
       if (existing) throw new ConflictError("Cuenta con ese código");
     }
 
-    // 8. Default isDetail
+    // 8. Valor por defecto de isDetail
     const isDetail = input.isDetail ?? true;
 
-    // 9. Build resolved data
+    // 9. Construir los datos resueltos
     const resolved: ResolvedCreateAccountData = {
       code,
       name: input.name,
@@ -135,7 +135,7 @@ export class AccountsService {
       description: input.description ?? null,
     };
 
-    // 10. Create account + flip parent isDetail if needed (atomic)
+    // 10. Crear la cuenta + cambiar isDetail del padre si es necesario (atómico)
     if (parent && parent.isDetail) {
       return this.repo.transaction(async (tx) => {
         await this.repo.update(organizationId, parent!.id, { isDetail: false }, tx);
@@ -146,7 +146,7 @@ export class AccountsService {
     return this.repo.create(organizationId, resolved);
   }
 
-  // ── Update an account ──
+  // ── Actualizar una cuenta ──
 
   async update(organizationId: string, id: string, input: UpdateAccountInput): Promise<Account> {
     const account = await this.repo.findById(organizationId, id);
@@ -155,7 +155,7 @@ export class AccountsService {
     return this.repo.update(organizationId, id, input);
   }
 
-  // ── Deactivate an account ──
+  // ── Desactivar una cuenta ──
 
   async deactivate(organizationId: string, id: string): Promise<Account> {
     const account = await this.repo.findById(organizationId, id);

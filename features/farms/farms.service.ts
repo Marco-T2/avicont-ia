@@ -12,19 +12,19 @@ export class FarmsService {
     this.orgsService = orgsService ?? new OrganizationsService();
   }
 
-  // ── List all farms in an organization ──
+  // ── Listar todas las granjas de una organización ──
 
   async list(organizationId: string): Promise<FarmWithLots[]> {
     return this.repo.findAll(organizationId);
   }
 
-  // ── List farms for a specific member ──
+  // ── Listar granjas de un miembro específico ──
 
   async listByMember(organizationId: string, memberId: string): Promise<FarmWithLots[]> {
     return this.repo.findByMember(organizationId, memberId);
   }
 
-  // ── Get a single farm ──
+  // ── Obtener una granja individual ──
 
   async getById(organizationId: string, id: string): Promise<FarmWithLots> {
     const farm = await this.repo.findById(organizationId, id);
@@ -32,13 +32,13 @@ export class FarmsService {
     return farm;
   }
 
-  // ── Create a farm ──
+  // ── Crear una granja ──
 
   async create(organizationId: string, input: CreateFarmInput): Promise<FarmWithLots> {
     const existing = await this.repo.findByName(organizationId, input.name);
     if (existing) throw new ConflictError("Granja con ese nombre");
 
-    // Validate member is active (not deactivated)
+    // Validar que el miembro esté activo (no desactivado)
     const member = await this.orgsService.getMemberById(organizationId, input.memberId);
     if (!member) {
       throw new NotFoundError(
@@ -49,7 +49,7 @@ export class FarmsService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Update a farm ──
+  // ── Actualizar una granja ──
 
   async update(organizationId: string, id: string, input: UpdateFarmInput): Promise<FarmWithLots> {
     const farm = await this.repo.findById(organizationId, id);
@@ -63,7 +63,7 @@ export class FarmsService {
     return this.repo.update(organizationId, id, input);
   }
 
-  // ── Delete a farm ──
+  // ── Eliminar una granja ──
 
   async delete(organizationId: string, id: string): Promise<void> {
     const farm = await this.repo.findById(organizationId, id);

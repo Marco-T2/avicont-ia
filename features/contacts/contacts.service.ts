@@ -16,9 +16,9 @@ import type {
   PendingDocument,
 } from "./contacts.types";
 
-// ── Lazy-injected service interfaces ──
-// These are defined minimally to avoid circular imports.
-// Full types come from the respective feature modules.
+// ── Interfaces de servicios con inyección lazy ──
+// Se definen de forma mínima para evitar importaciones circulares.
+// Los tipos completos provienen de los módulos de cada feature.
 
 interface OpenAggregateLike {
   totalBalance: Prisma.Decimal | number;
@@ -42,7 +42,7 @@ export class ContactsService {
     this.repo = repo ?? new ContactsRepository();
   }
 
-  // ── Lazy injection setters ──
+  // ── Setters de inyección lazy ──
 
   setReceivablesService(service: ReceivablesServiceLike): void {
     this.receivablesService = service;
@@ -52,13 +52,13 @@ export class ContactsService {
     this.payablesService = service;
   }
 
-  // ── List all contacts ──
+  // ── Listar todos los contactos ──
 
   async list(organizationId: string, filters?: ContactFilters): Promise<Contact[]> {
     return this.repo.findAll(organizationId, filters);
   }
 
-  // ── Get a single contact (throws generic NotFoundError) ──
+  // ── Obtener un contacto individual (lanza NotFoundError genérico) ──
 
   async getById(organizationId: string, id: string): Promise<Contact> {
     const contact = await this.repo.findById(organizationId, id);
@@ -66,7 +66,7 @@ export class ContactsService {
     return contact;
   }
 
-  // ── Get an active contact (throws CONTACT_NOT_FOUND if missing or inactive) ──
+  // ── Obtener un contacto activo (lanza CONTACT_NOT_FOUND si no existe o está inactivo) ──
 
   async getActiveById(organizationId: string, id: string): Promise<Contact> {
     const contact = await this.repo.findById(organizationId, id);
@@ -76,7 +76,7 @@ export class ContactsService {
     return contact;
   }
 
-  // ── Create a new contact ──
+  // ── Crear un nuevo contacto ──
 
   async create(organizationId: string, input: CreateContactInput): Promise<Contact> {
     if (input.nit) {
@@ -92,7 +92,7 @@ export class ContactsService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Update a contact ──
+  // ── Actualizar un contacto ──
 
   async update(
     organizationId: string,
@@ -115,7 +115,7 @@ export class ContactsService {
     return this.repo.update(organizationId, id, input);
   }
 
-  // ── Deactivate a contact ──
+  // ── Desactivar un contacto ──
 
   async deactivate(organizationId: string, id: string): Promise<Contact> {
     const existing = await this.repo.findById(organizationId, id);
@@ -124,14 +124,14 @@ export class ContactsService {
     return this.repo.deactivate(organizationId, id);
   }
 
-  // ── Credit balance ──
+  // ── Saldo de crédito ──
 
   async getCreditBalance(organizationId: string, contactId: string): Promise<number> {
     await this.getById(organizationId, contactId);
     return this.repo.getCreditBalance(organizationId, contactId);
   }
 
-  // ── Pending documents ──
+  // ── Documentos pendientes ──
 
   async getPendingDocuments(
     organizationId: string,
@@ -145,7 +145,7 @@ export class ContactsService {
     return this.repo.getPendingPayables(organizationId, contactId);
   }
 
-  // ── Get balance summary for a contact ──
+  // ── Obtener resumen de saldo de un contacto ──
 
   async getBalanceSummary(
     organizationId: string,
@@ -174,7 +174,7 @@ export class ContactsService {
     };
   }
 
-  // ── List contacts with their balance summaries ──
+  // ── Listar contactos con sus resúmenes de saldo ──
 
   async listWithBalances(
     organizationId: string,

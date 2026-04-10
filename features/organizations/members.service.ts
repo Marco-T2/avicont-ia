@@ -36,14 +36,14 @@ export class MembersService {
   }
 
   async addMember(organizationId: string, email: string, role: string) {
-    // Find or sync the user from Clerk
+    // Buscar o sincronizar el usuario desde Clerk
     const existingUser = await this.usersService.findByEmail(email);
 
     let user;
     if (existingUser) {
       user = existingUser;
     } else {
-      // Not in local DB — search in Clerk and sync
+      // No existe en BD local — buscar en Clerk y sincronizar
       const client = await clerkClient();
       const clerkUsers = await client.users.getUserList({
         emailAddress: [email],
@@ -65,7 +65,7 @@ export class MembersService {
       });
     }
 
-    // Check if already a member (including deactivated)
+    // Verificar si ya es miembro (incluyendo desactivados)
     const existing = await this.repo.findMemberByEmail(
       organizationId,
       email,
@@ -74,14 +74,14 @@ export class MembersService {
 
     if (existing) {
       if (existing.deactivatedAt === null) {
-        // Active member — conflict
+        // Miembro activo — conflicto
         throw new ConflictError(
           "El usuario ya es miembro de esta organización",
         );
       }
 
-      // Deactivated member — reactivate
-      // Re-add to Clerk organization FIRST
+      // Miembro desactivado — reactivar
+      // Re-agregar a la organización en Clerk PRIMERO
       const org = await this.repo.findById(organizationId);
       if (!org) throw new NotFoundError("Organización");
 
@@ -95,11 +95,11 @@ export class MembersService {
       } catch (error: unknown) {
         if (!isClerkDuplicateError(error)) {
           console.error("Error re-adding member to Clerk org:", error);
-          throw error; // Abort reactivation if Clerk fails
+          throw error; // Abortar reactivación si Clerk falla
         }
       }
 
-      // Reactivate in local DB
+      // Reactivar en BD local
       const reactivated = await this.repo.reactivateMember(existing.id, role);
 
       return {
@@ -111,7 +111,7 @@ export class MembersService {
       };
     }
 
-    // No existing member — continue with normal add flow
+    // No existe miembro previo — continuar con el flujo normal de alta
     const org = await this.repo.findById(organizationId);
     if (!org) throw new NotFoundError("Organización");
 
@@ -123,7 +123,7 @@ export class MembersService {
         role: "org:member",
       });
     } catch (error: unknown) {
-      // If already a member in Clerk, ignore the error
+      // Si ya es miembro en Clerk, ignorar el error
       if (!isClerkDuplicateError(error)) {
         console.error("Error adding member to Clerk org:", error);
       }
@@ -157,7 +157,7 @@ export class MembersService {
       throw new ValidationError("No se puede cambiar el rol del propietario");
     }
 
-    // Check caller is not changing their own role
+    // Verificar que el invocador no esté cambiando su propio rol
     if (member.user.clerkUserId === currentClerkUserId) {
       throw new ValidationError("No podés cambiar tu propio rol");
     }
@@ -192,7 +192,7 @@ export class MembersService {
       throw new ValidationError("No podés desactivarte a vos mismo");
     }
 
-    // Remove from Clerk organization
+    // Eliminar de la organización en Clerk
     const org = await this.repo.findById(organizationId);
     if (!org) throw new NotFoundError("Organización");
 
@@ -203,7 +203,7 @@ export class MembersService {
         userId: member.user.clerkUserId,
       });
     } catch (error: unknown) {
-      // If not found in Clerk, ignore (already removed or never added)
+      // Si no se encuentra en Clerk, ignorar (ya fue eliminado o nunca fue agregado)
       console.error("Error removing member from Clerk org:", error);
     }
 
