@@ -39,7 +39,8 @@ export async function buildRagContext(
   if (!scopes) return "";
 
   try {
-    const results = await ragService.search(query, orgId, scopes, 5);
+    const raw = await ragService.search(query, orgId, scopes, 5);
+    const results = raw.filter((r) => r.score >= 0.35);
 
     if (results.length === 0) return "";
 
@@ -109,22 +110,15 @@ async function buildSocioContext(
 // ── Contador context: accounts, journal entries ──
 
 async function buildContadorContext(orgId: string): Promise<string> {
-  const accounts = await contextRepo.findActiveAccounts(orgId);
   const journalCount = await contextRepo.countJournalEntries(orgId);
 
   const lines: string[] = [
     "## Datos Contables",
     "",
-    `Cuentas activas: ${accounts.length}`,
     `Comprobantes registrados: ${journalCount}`,
     "",
-    "### Plan de Cuentas:",
+    "Nota: El plan de cuentas NO está precargado. Usá la herramienta 'listAccounts' si necesitás consultar cuentas específicas, o basate en los documentos disponibles vía RAG.",
   ];
-
-  for (const acc of accounts) {
-    const indent = "  ".repeat(acc.level);
-    lines.push(`${indent}${acc.code} - ${acc.name} (${acc.type}, ID: ${acc.id})`);
-  }
 
   return lines.join("\n");
 }

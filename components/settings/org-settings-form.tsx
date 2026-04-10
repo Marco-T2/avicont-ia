@@ -15,6 +15,11 @@ interface OrgSettings {
   cxcAccountCode: string;
   cxpAccountCode: string;
   roundingThreshold: number;
+  cashParentCode: string;
+  pettyCashParentCode: string;
+  bankParentCode: string;
+  fleteExpenseAccountCode: string;
+  polloFaenadoCOGSAccountCode: string;
 }
 
 interface OrgSettingsFormProps {
@@ -31,6 +36,11 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
   const [cxc, setCxc] = useState(settings.cxcAccountCode);
   const [cxp, setCxp] = useState(settings.cxpAccountCode);
   const [threshold, setThreshold] = useState(String(settings.roundingThreshold));
+  const [cashParentCode, setCashParentCode] = useState(settings.cashParentCode);
+  const [pettyCashParentCode, setPettyCashParentCode] = useState(settings.pettyCashParentCode);
+  const [bankParentCode, setBankParentCode] = useState(settings.bankParentCode);
+  const [fleteExpense, setFleteExpense] = useState(settings.fleteExpenseAccountCode);
+  const [polloCOGS, setPolloCOGS] = useState(settings.polloFaenadoCOGSAccountCode);
 
   const handleSave = async () => {
     setSaving(true);
@@ -44,6 +54,11 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
           cxcAccountCode: cxc,
           cxpAccountCode: cxp,
           roundingThreshold: parseFloat(threshold) || 0.7,
+          cashParentCode,
+          pettyCashParentCode,
+          bankParentCode,
+          fleteExpenseAccountCode: fleteExpense,
+          polloFaenadoCOGSAccountCode: polloCOGS,
         }),
       });
 
@@ -117,6 +132,92 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
               />
               <p className="text-xs text-muted-foreground">
                 Se usa en órdenes de compra y pagos a proveedores.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cuentas Padre — Tesorería</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Códigos padre que agrupan las cuentas de tesorería disponibles para seleccionar en cobros y pagos.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="cash-parent-code">Cuenta padre — Caja</Label>
+              <Input
+                id="cash-parent-code"
+                value={cashParentCode}
+                onChange={(e) => setCashParentCode(e.target.value)}
+                placeholder="1.1.1"
+              />
+              <p className="text-xs text-muted-foreground">
+                Agrupa las cuentas de caja disponibles para cobros en efectivo.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="petty-cash-parent-code">Cuenta padre — Caja Chica</Label>
+              <Input
+                id="petty-cash-parent-code"
+                value={pettyCashParentCode}
+                onChange={(e) => setPettyCashParentCode(e.target.value)}
+                placeholder="1.1.2"
+              />
+              <p className="text-xs text-muted-foreground">
+                Agrupa las cuentas de caja chica disponibles para cobros en efectivo.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="bank-parent-code">Cuenta padre — Bancos</Label>
+              <Input
+                id="bank-parent-code"
+                value={bankParentCode}
+                onChange={(e) => setBankParentCode(e.target.value)}
+                placeholder="1.1.3"
+              />
+              <p className="text-xs text-muted-foreground">
+                Agrupa las cuentas bancarias disponibles para transferencias y depósitos.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Cuentas de Gasto — Compras</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground mb-4">
+            Cuentas de gasto por defecto que se debitan al contabilizar compras de flete y pollo faenado.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="flete-expense">Gasto de Flete</Label>
+              <Input
+                id="flete-expense"
+                value={fleteExpense}
+                onChange={(e) => setFleteExpense(e.target.value)}
+                placeholder="5.1.3"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se debita al contabilizar compras de tipo Flete.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="pollo-cogs">Costo de Pollo Faenado</Label>
+              <Input
+                id="pollo-cogs"
+                value={polloCOGS}
+                onChange={(e) => setPolloCOGS(e.target.value)}
+                placeholder="5.1.1"
+              />
+              <p className="text-xs text-muted-foreground">
+                Se debita al contabilizar compras de tipo Pollo Faenado.
               </p>
             </div>
           </div>

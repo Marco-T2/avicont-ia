@@ -1,7 +1,8 @@
 import { z } from "zod";
 
-const creditSourceSchema = z.object({
+const creditAllocationSourceSchema = z.object({
   sourcePaymentId: z.string(),
+  receivableId: z.string(),
   amount: z.number().positive(),
 });
 
@@ -18,15 +19,16 @@ export const createPaymentSchema = z.object({
   method: z.enum(["EFECTIVO", "TRANSFERENCIA", "CHEQUE", "DEPOSITO"]),
   date: z.coerce.date(),
   amount: z.number().min(0),
-  creditApplied: z.number().min(0).optional(),
   direction: z.enum(["COBRO", "PAGO"]).optional(),
   description: z.string().min(1).max(500),
   periodId: z.string().min(1),
   contactId: z.string().min(1),
   referenceNumber: z.number().int().positive().optional(),
+  operationalDocTypeId: z.string().cuid().optional(),
+  accountCode: z.string().min(1).optional(),
   allocations: z.array(allocationInputSchema),
   notes: z.string().optional(),
-  creditSources: z.array(creditSourceSchema).optional(),
+  creditSources: z.array(creditAllocationSourceSchema).optional(),
 });
 
 export const updatePaymentSchema = z.object({
@@ -35,9 +37,10 @@ export const updatePaymentSchema = z.object({
   amount: z.number().positive().optional(),
   description: z.string().min(1).max(500).optional(),
   referenceNumber: z.number().int().positive().optional(),
+  operationalDocTypeId: z.string().cuid().nullish(),
+  accountCode: z.string().min(1).nullish(),
   allocations: z.array(allocationInputSchema).optional(),
   notes: z.string().optional(),
-  creditSources: z.array(creditSourceSchema).optional(),
 });
 
 export const paymentStatusSchema = z.object({

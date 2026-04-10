@@ -8,7 +8,6 @@ import type {
   AccountsPayable,
   FiscalPeriod,
   JournalEntry,
-  CreditConsumption,
 } from "@/generated/prisma/client";
 
 // ── Re-export Prisma types for convenience ──
@@ -17,9 +16,10 @@ export type { PaymentMethod, PaymentStatus };
 
 // ── Credit source types ──
 
-/** Input to specify which overpayment/credit to consume */
-export interface CreditSourceInput {
+/** Input to specify which credit payment to use as source for a new allocation */
+export interface CreditAllocationSource {
   sourcePaymentId: string;
+  receivableId: string;
   amount: number;
 }
 
@@ -30,7 +30,6 @@ export interface UnappliedPayment {
   amount: number;
   description: string;
   totalAllocated: number;
-  totalConsumed: number;
   available: number;
 }
 
@@ -66,18 +65,14 @@ export type PaymentDirection = "COBRO" | "PAGO";
 
 export type PaymentWithRelations = Omit<Payment, "amount"> & {
   amount: number;
-  creditApplied: number;
   contact: Contact;
   period: FiscalPeriod;
   journalEntry: JournalEntry | null;
+  operationalDocType?: { id: string; code: string; name: string } | null;
   allocations: (Omit<PaymentAllocation, "amount"> & {
     amount: number;
     receivable?: (AccountsReceivable & { contact: Contact }) | null;
     payable?: (AccountsPayable & { contact: Contact }) | null;
-  })[];
-  creditConsumptions: (Omit<CreditConsumption, "amount"> & {
-    amount: number;
-    sourcePayment: Pick<Payment, "id" | "description" | "date">;
   })[];
 };
 
@@ -87,16 +82,17 @@ export interface CreatePaymentInput {
   method: PaymentMethod;
   date: Date;
   amount: number;
-  creditApplied?: number;
   direction?: PaymentDirection;
   description: string;
   periodId: string;
   contactId: string;
   referenceNumber?: number;
+  operationalDocTypeId?: string;
+  accountCode?: string;
   allocations: AllocationInput[];
   notes?: string;
   createdById: string;
-  creditSources?: CreditSourceInput[];
+  creditSources?: CreditAllocationSource[];
 }
 
 export interface UpdatePaymentInput {
@@ -105,9 +101,10 @@ export interface UpdatePaymentInput {
   amount?: number;
   description?: string;
   referenceNumber?: number;
+  operationalDocTypeId?: string | null;
+  accountCode?: string | null;
   allocations?: AllocationInput[];
   notes?: string;
-  creditSources?: CreditSourceInput[];
 }
 
 export interface PaymentFilters {

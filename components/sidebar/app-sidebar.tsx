@@ -7,6 +7,7 @@ import {
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
+  ShoppingCart,
   Tractor,
   Users,
 } from "lucide-react";
@@ -69,6 +70,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
       children: [
         { label: "Operaciones", isSeparator: true },
         { label: "Despachos", href: `/${orgSlug}/dispatches` },
+        { label: "Compras y Servicios", href: `/${orgSlug}/purchases` },
         { label: "Cobros y Pagos", href: `/${orgSlug}/payments` },
         { label: "Cuentas por Cobrar", href: `/${orgSlug}/accounting/cxc` },
         { label: "Cuentas por Pagar", href: `/${orgSlug}/accounting/cxp` },
@@ -83,6 +85,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
         { label: "Tipos de Comprobante", href: `/${orgSlug}/accounting/voucher-types` },
         { label: "Configuración General", href: `/${orgSlug}/settings` },
         { label: "Tipos de Producto", href: `/${orgSlug}/settings/product-types` },
+        { label: "Tipos de Documento", href: `/${orgSlug}/settings/operational-doc-types` },
         { label: "Cierre Mensual", href: `/${orgSlug}/settings/monthly-close` },
       ],
     },

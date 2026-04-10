@@ -64,10 +64,13 @@ const METHOD_LABEL: Record<string, string> = {
 
 // ── Infer payment direction ──
 
-function inferDirection(payment: PaymentWithRelations): PaymentDirection {
-  if (payment.allocations.length > 0 && payment.allocations[0].receivableId) {
-    return "COBRO";
+function inferDirection(payment: PaymentWithRelations, contacts: ContactOption[]): PaymentDirection {
+  if (payment.allocations.length > 0) {
+    return payment.allocations[0].receivableId ? "COBRO" : "PAGO";
   }
+  const contact = contacts.find((c) => c.id === payment.contactId);
+  if (contact?.type === "CLIENTE") return "COBRO";
+  if (contact?.type === "PROVEEDOR") return "PAGO";
   return "PAGO";
 }
 
@@ -132,8 +135,8 @@ export default function PaymentList({
   });
 
   // ── Summary stats ──
-  const cobros = payments.filter((p) => inferDirection(p) === "COBRO");
-  const pagos = payments.filter((p) => inferDirection(p) === "PAGO");
+  const cobros = payments.filter((p) => inferDirection(p, contacts) === "COBRO");
+  const pagos = payments.filter((p) => inferDirection(p, contacts) === "PAGO");
   const cobrosTotal = cobros.reduce((s, p) => s + p.amount, 0);
   const pagosTotal = pagos.reduce((s, p) => s + p.amount, 0);
 
@@ -369,6 +372,9 @@ export default function PaymentList({
                     Método
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    Documento
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-gray-600">
                     Descripción
                   </th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">
@@ -385,7 +391,7 @@ export default function PaymentList({
               <tbody>
                 {filteredPayments.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center">
+                    <td colSpan={9} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
                       <p className="text-gray-600">
                         No hay cobros ni pagos registrados
@@ -399,7 +405,7 @@ export default function PaymentList({
                   </tr>
                 ) : (
                   filteredPayments.map((payment) => {
-                    const direction = inferDirection(payment);
+                    const direction = inferDirection(payment, contacts);
                     const statusBadge = STATUS_BADGE[payment.status] ?? {
                       label: payment.status,
                       className: "bg-gray-100 text-gray-800",
@@ -440,6 +446,13 @@ export default function PaymentList({
                         </td>
                         <td className="py-3 px-4 text-gray-500">
                           {METHOD_LABEL[payment.method] ?? payment.method}
+                        </td>
+                        <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+                          {payment.operationalDocType && payment.referenceNumber
+                            ? `${payment.operationalDocType.code}-${payment.referenceNumber}`
+                            : payment.referenceNumber
+                              ? String(payment.referenceNumber)
+                              : "—"}
                         </td>
                         <td className="py-3 px-4 text-gray-500 max-w-48 truncate">
                           {payment.description}

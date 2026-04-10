@@ -23,7 +23,7 @@ import {
 import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { PaymentWithRelations, PaymentDirection, PaymentMethod } from "@/features/payment/payment.types";
+import type { PaymentWithRelations, PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/features/payment/payment.types";
 import type { PendingDocument } from "@/features/contacts/contacts.types";
 import { JustificationModal } from "@/components/shared/justification-modal";
 
@@ -66,7 +66,8 @@ interface AllocationLine {
   description: string;
   totalAmount: number;
   paid: number;
-  balance: number;
+  balance: number;       // max assignable (real balance + this payment's allocation)
+  displayBalance: number; // actual CxC balance for display
   sourceType: string | null;
   sourceId: string | null;
   dueDate: Date;
@@ -128,6 +129,19 @@ interface PeriodOption {
   status: string;
 }
 
+interface DocTypeOption {
+  id: string;
+  code: string;
+  name: string;
+  direction: string;
+}
+
+interface AccountOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
 interface PaymentFormProps {
   orgSlug: string;
   contacts: ContactOption[];
@@ -135,6 +149,11 @@ interface PaymentFormProps {
   existingPayment?: PaymentWithRelations;
   userRole?: string;
   defaultType?: "COBRO" | "PAGO";
+  operationalDocTypes?: DocTypeOption[];
+  cashAccounts?: AccountOption[];
+  bankAccounts?: AccountOption[];
+  defaultCashCode?: string;
+  defaultBankCode?: string;
 }
 
 export default function PaymentForm({
@@ -144,6 +163,11 @@ export default function PaymentForm({
   existingPayment,
   userRole,
   defaultType,
+  operationalDocTypes = [],
+  cashAccounts = [],
+  bankAccounts = [],
+  defaultCashCode,
+  defaultBankCode,
 }: PaymentFormProps) {
   const router = useRouter();
 
@@ -182,8 +206,23 @@ export default function PaymentForm({
       : new Date().toISOString().split("T")[0],
   );
   const [method, setMethod] = useState<PaymentMethod>(existingPayment?.method ?? "EFECTIVO");
+
+  // ── Account selection ──
+  const isBankMethod = (m: string) =>
+    m === "TRANSFERENCIA" || m === "DEPOSITO" || m === "CHEQUE";
+
+  const [accountCode, setAccountCode] = useState(
+    existingPayment?.accountCode ?? "",
+  );
+
   const [description, setDescription] = useState(existingPayment?.description ?? "");
   const [notes, setNotes] = useState(existingPayment?.notes ?? "");
+  const [operationalDocTypeId, setOperationalDocTypeId] = useState(
+    existingPayment?.operationalDocTypeId ?? "",
+  );
+  const [referenceNumber, setReferenceNumber] = useState(
+    existingPayment?.referenceNumber?.toString() ?? "",
+  );
   const [amountOverride, setAmountOverride] = useState(
     existingPayment ? String(existingPayment.amount) : "",
   );
@@ -212,21 +251,8 @@ export default function PaymentForm({
   const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
   const [isJustificationLoading, setIsJustificationLoading] = useState(false);
 
-  // ── Load existing allocations and credit consumptions ──
+  // ── Load existing allocations ──
   useEffect(() => {
-    if (existingPayment && existingPayment.creditConsumptions.length > 0) {
-      const consumedLines: CreditLine[] = existingPayment.creditConsumptions.map((c) => ({
-        sourcePaymentId: c.sourcePayment.id,
-        description: c.sourcePayment.description,
-        date: c.sourcePayment.date,
-        originalAmount: c.amount, // amount consumed, not original payment amount
-        available: c.amount, // treat consumed amount as available for display
-        assignedAmount: String(c.amount),
-        checked: true,
-      }));
-      setCreditLines(consumedLines);
-    }
-
     if (existingPayment && existingPayment.allocations.length > 0) {
       const lines: AllocationLine[] = existingPayment.allocations.map((a) => {
         const target = a.receivable ?? a.payable;
@@ -240,6 +266,7 @@ export default function PaymentForm({
           totalAmount: Number((target as Record<string, unknown>)?.amount ?? 0),
           paid: Number((target as Record<string, unknown>)?.paid ?? 0),
           balance: Number((target as Record<string, unknown>)?.balance ?? 0) + Number(a.amount),
+          displayBalance: Number((target as Record<string, unknown>)?.balance ?? 0),
           sourceType: (target as Record<string, unknown>)?.sourceType as string | null ?? null,
           sourceId: (target as Record<string, unknown>)?.sourceId as string | null ?? null,
           dueDate: (target as Record<string, unknown>)?.dueDate as Date ?? new Date(),
@@ -280,15 +307,19 @@ export default function PaymentForm({
           ),
         ]);
 
+        // Hoist pending lines so they're accessible for credit auto-selection
+        let resolvedPendingLines: AllocationLine[] = [];
+
         if (docsRes.ok) {
           const { documents } = (await docsRes.json()) as { documents: PendingDocument[] };
-          const pendingLines: AllocationLine[] = documents.map((doc) => ({
+          resolvedPendingLines = documents.map((doc) => ({
             id: doc.id,
             type: doc.type,
             description: doc.description,
             totalAmount: doc.amount,
             paid: doc.paid,
             balance: doc.balance,
+            displayBalance: doc.balance,
             sourceType: doc.sourceType,
             sourceId: doc.sourceId,
             dueDate: doc.dueDate,
@@ -297,11 +328,12 @@ export default function PaymentForm({
           }));
 
           if (isNew) {
-            // New payment — full replacement
-            setAllocations(pendingLines);
+            // Don't auto-check invoices yet — wait for credit auto-selection
+            // Invoices will be checked only up to what credits cover
+            setAllocations(resolvedPendingLines);
           } else {
             // Editing — merge pending docs into existing allocations
-            setAllocations((prev) => mergeAllocationsWithPending(prev, pendingLines));
+            setAllocations((prev) => mergeAllocationsWithPending(prev, resolvedPendingLines));
           }
         } else if (!isNew) {
           toast.error("No se pudieron cargar los documentos pendientes adicionales");
@@ -333,7 +365,46 @@ export default function PaymentForm({
           }));
 
           if (isNew) {
-            setCreditLines(fetchedCreditLines);
+            // Auto-check credits (sorted date ASC) to cover as much of the invoices as possible
+            const totalInvoices = resolvedPendingLines.reduce(
+              (sum, a) => sum + a.balance,
+              0,
+            );
+            const sortedCredits = [...fetchedCreditLines].sort(
+              (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime(),
+            );
+            let creditRemaining = totalInvoices;
+            const autoCredits = sortedCredits.map((c) => {
+              if (creditRemaining <= 0) return c;
+              const apply = Math.min(c.available, creditRemaining);
+              creditRemaining -= apply;
+              return { ...c, checked: apply > 0, assignedAmount: String(apply) };
+            });
+            setCreditLines(autoCredits);
+
+            // Total credit applied
+            const totalCreditApplied = autoCredits.reduce(
+              (sum, c) => sum + (c.checked ? parseFloat(c.assignedAmount) || 0 : 0),
+              0,
+            );
+
+            // Auto-check invoices ONLY up to what credits cover (FIFO by dueDate)
+            if (totalCreditApplied > 0) {
+              const sorted = [...resolvedPendingLines].sort((a, b) => {
+                const dateDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+                return dateDiff !== 0 ? dateDiff : a.id < b.id ? -1 : 1;
+              });
+              let coverRemaining = totalCreditApplied;
+              const autoAllocations = sorted.map((a) => {
+                if (coverRemaining <= 0 || a.balance <= 0) return a;
+                const assign = Math.min(a.balance, coverRemaining);
+                coverRemaining -= assign;
+                return { ...a, checked: true, assignedAmount: String(assign) };
+              });
+              setAllocations(autoAllocations);
+            }
+            // If no credits: leave everything deselected, importe stays at 0
+            // User enters amount → handleAmountBlur FIFO, or checks manually
           } else {
             // Editing — merge: existing checked lines win; append new ones unchecked
             setCreditLines((prev) => {
@@ -368,6 +439,15 @@ export default function PaymentForm({
     }
   }, [contactId, isVoided, paymentType, fetchPendingDocuments]);
 
+  // ── Reset accountCode when method changes (new payments only) ──
+  useEffect(() => {
+    if (!existingPayment) {
+      setAccountCode("");
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [method]);
+
+
   // ── Allocation handlers ──
 
   function updateAllocationAmount(id: string, value: string) {
@@ -377,37 +457,74 @@ export default function PaymentForm({
   }
 
   function selectAll() {
-    setAllocations((prev) =>
-      prev.map((a) => ({ ...a, checked: true, assignedAmount: String(a.balance) })),
-    );
+    setAllocations((prev) => {
+      const updated = prev.map((a) => ({ ...a, checked: true, assignedAmount: String(a.balance) }));
+      const totalChecked = updated.reduce((sum, a) => sum + a.balance, 0);
+      const totalCredits = creditLines
+        .filter((c) => c.checked)
+        .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
+      const cashNeeded = Math.max(0, totalChecked - totalCredits);
+      setAmountOverride(cashNeeded > 0 ? String(cashNeeded) : "");
+      return updated;
+    });
   }
 
   function handleCheckToggle(id: string, checked: boolean) {
-    setAllocations((prev) =>
-      prev.map((line) => {
+    setAllocations((prev) => {
+      const updated = prev.map((line) => {
         if (line.id !== id) return line;
         if (!checked) return { ...line, checked: false, assignedAmount: "0" };
         const currentApplied = prev
           .filter((l) => l.id !== id && l.checked)
           .reduce((sum, l) => sum + (parseFloat(l.assignedAmount) || 0), 0);
         const paymentAmt = parseFloat(amountOverride) || 0;
-        const remaining = paymentAmt > 0
-          ? Math.max(0, paymentAmt - currentApplied)
+        const currentCreditTotal = creditLines
+          .filter((c) => c.checked)
+          .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
+        const totalFunds = paymentAmt + currentCreditTotal;
+        const remaining = totalFunds > 0
+          ? Math.max(0, totalFunds - currentApplied)
           : line.balance;
         const fillAmount = Math.min(line.balance, remaining);
         return { ...line, checked: true, assignedAmount: String(fillAmount) };
-      }),
-    );
+      });
+
+      // Update importe recibido to reflect cash needed:
+      // Cash needed = total checked allocations - total credits
+      const totalChecked = updated
+        .filter((a) => a.checked)
+        .reduce((sum, a) => sum + (parseFloat(a.assignedAmount) || 0), 0);
+      const totalCredits = creditLines
+        .filter((c) => c.checked)
+        .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
+      const cashNeeded = Math.max(0, totalChecked - totalCredits);
+      setAmountOverride(cashNeeded > 0 ? String(cashNeeded) : "");
+
+      return updated;
+    });
   }
 
   function handleAmountBlur() {
     const parsed = parseFloat(amountOverride);
+    const hasCreditsCovering = creditLines.some(
+      (c) => c.checked && parseFloat(c.assignedAmount) > 0,
+    );
+
+    // If amount is 0/empty but credits are covering, don't reset allocations
     if (!amountOverride || isNaN(parsed) || parsed <= 0) {
-      setAllocations((prev) =>
-        prev.map((a) => ({ ...a, checked: false, assignedAmount: "0" })),
-      );
+      if (!hasCreditsCovering) {
+        setAllocations((prev) =>
+          prev.map((a) => ({ ...a, checked: false, assignedAmount: "0" })),
+        );
+      }
       return;
     }
+
+    // FIFO allocation of cash amount across invoices
+    const currentCreditTotal = creditLines
+      .filter((c) => c.checked)
+      .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
+    const totalFunds = parsed + currentCreditTotal;
 
     const sorted = [...allocations].sort((a, b) => {
       const dateDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
@@ -415,7 +532,7 @@ export default function PaymentForm({
       return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
     });
 
-    let remaining = parsed;
+    let remaining = totalFunds;
     const newAllocations = sorted.map((a) => {
       if (remaining > 0 && a.balance > 0) {
         const assigned = Math.min(a.balance, remaining);
@@ -435,13 +552,21 @@ export default function PaymentForm({
     0,
   );
 
+  // paymentAmount = cash received (0 if empty/blank — credit-only mode)
   const paymentAmount =
     amountOverride && parseFloat(amountOverride) > 0
       ? parseFloat(amountOverride)
-      : totalAllocated;
+      : 0;
+
+  // Total funding available = cash + credits
+  const totalFunding = paymentAmount + creditApplied;
 
   const creditFromPayment =
     paymentAmount > totalAllocated ? paymentAmount - totalAllocated : 0;
+
+  // ── Mode detection ──
+  // Mode B: credit-only payment (no new cash), just apply existing credits to invoices
+  const isCreditOnly = paymentAmount === 0 && creditApplied > 0;
 
   // ── Auto-description ──
   const autoDescription = useCallback(() => {
@@ -476,36 +601,141 @@ export default function PaymentForm({
     contactId &&
     periodId &&
     date &&
-    method &&
     description.trim() &&
     (paymentAmount > 0 || creditApplied > 0) &&
     !hasOverAllocation &&
     !hasCreditOverLimit;
+
+  // ── Build CreditAllocationSource[] with receivableId FIFO mapping ──
+  // For each checked credit line, distribute its assignedAmount across checked allocations
+  // in FIFO order. Creates one entry per (sourcePayment, receivable) pair.
+  function buildCreditSources(): CreditAllocationSource[] {
+    const checkedCredits = creditLines.filter(
+      (c) => c.checked && parseFloat(c.assignedAmount) > 0,
+    );
+    if (checkedCredits.length === 0) return [];
+
+    // Only receivable allocations can be paid via credit (COBRO direction)
+    const checkedReceivables = allocations
+      .filter((a) => a.checked && a.type === "receivable" && parseFloat(a.assignedAmount) > 0)
+      .sort((a, b) => {
+        const dateDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+        return dateDiff !== 0 ? dateDiff : a.id < b.id ? -1 : 1;
+      });
+
+    if (checkedReceivables.length === 0) return [];
+
+    const sources: CreditAllocationSource[] = [];
+    // Track remaining capacity per receivable
+    const receivableRemaining = new Map<string, number>(
+      checkedReceivables.map((a) => [a.id, parseFloat(a.assignedAmount) || 0]),
+    );
+
+    for (const credit of checkedCredits) {
+      let creditRemaining = parseFloat(credit.assignedAmount) || 0;
+      for (const alloc of checkedReceivables) {
+        if (creditRemaining <= 0) break;
+        const allocRemaining = receivableRemaining.get(alloc.id) ?? 0;
+        if (allocRemaining <= 0) continue;
+        const apply = Math.min(creditRemaining, allocRemaining);
+        sources.push({
+          sourcePaymentId: credit.sourcePaymentId,
+          receivableId: alloc.id,
+          amount: apply,
+        });
+        receivableRemaining.set(alloc.id, allocRemaining - apply);
+        creditRemaining -= apply;
+      }
+    }
+
+    return sources;
+  }
+
+  // Build cash-only allocations: total assigned minus what credits cover per CxC
+  function buildCashAllocations(creditSources: CreditAllocationSource[]) {
+    const creditByReceivable = new Map<string, number>();
+    for (const cs of creditSources) {
+      creditByReceivable.set(
+        cs.receivableId,
+        (creditByReceivable.get(cs.receivableId) ?? 0) + cs.amount,
+      );
+    }
+    return activeAllocations
+      .map((a) => {
+        const totalAssigned = parseFloat(a.assignedAmount) || 0;
+        const creditCovering = creditByReceivable.get(a.id) ?? 0;
+        const cashPortion = Math.max(0, totalAssigned - creditCovering);
+        return {
+          ...(a.type === "receivable"
+            ? { receivableId: a.id }
+            : { payableId: a.id }),
+          amount: cashPortion,
+        };
+      })
+      .filter((a) => a.amount > 0);
+  }
+
+  // ── Mode B submit (credit-only — no new payment, just apply credits) ──
+
+  async function handleApplyCredits() {
+    if (!canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const creditSources = buildCreditSources();
+      if (creditSources.length === 0) {
+        toast.error("No hay créditos asignados a documentos pendientes");
+        return;
+      }
+
+      const body = {
+        contactId,
+        creditSources,
+      };
+
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/payments/apply-credits`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al aplicar créditos");
+      }
+
+      toast.success("Créditos aplicados correctamente");
+      router.push(`/${orgSlug}/payments`);
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al aplicar créditos");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   // ── Submit (create or update) ──
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    if (isCreditOnly) {
+      // Mode B: delegate to credit-only handler
+      await handleApplyCredits();
+      return;
+    }
     setIsSubmitting(true);
 
     try {
-      const allocs = activeAllocations.map((a) => ({
-        ...(a.type === "receivable"
-          ? { receivableId: a.id }
-          : { payableId: a.id }),
-        amount: parseFloat(a.assignedAmount),
-      }));
-
-      const creditSources = creditLines
-        .filter((c) => c.checked && parseFloat(c.assignedAmount) > 0)
-        .map((c) => ({ sourcePaymentId: c.sourcePaymentId, amount: parseFloat(c.assignedAmount) }));
+      const creditSources = buildCreditSources();
+      const allocs = buildCashAllocations(creditSources);
 
       const body = {
         method,
         date,
         amount: paymentAmount,
-        creditApplied: creditApplied > 0 ? creditApplied : undefined,
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
@@ -513,6 +743,9 @@ export default function PaymentForm({
         contactId,
         allocations: allocs,
         notes: notes.trim() || undefined,
+        operationalDocTypeId: operationalDocTypeId || undefined,
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        accountCode: accountCode || undefined,
       };
 
       const url = existingPayment
@@ -657,22 +890,13 @@ export default function PaymentForm({
     if (!canSubmit) return;
     setIsSubmitting(true);
     try {
-      const allocs = activeAllocations.map((a) => ({
-        ...(a.type === "receivable"
-          ? { receivableId: a.id }
-          : { payableId: a.id }),
-        amount: parseFloat(a.assignedAmount),
-      }));
-
-      const creditSources = creditLines
-        .filter((c) => c.checked && parseFloat(c.assignedAmount) > 0)
-        .map((c) => ({ sourcePaymentId: c.sourcePaymentId, amount: parseFloat(c.assignedAmount) }));
+      const creditSources = buildCreditSources();
+      const allocs = buildCashAllocations(creditSources);
 
       const body = {
         method,
         date,
         amount: paymentAmount,
-        creditApplied: creditApplied > 0 ? creditApplied : undefined,
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
@@ -680,6 +904,9 @@ export default function PaymentForm({
         contactId,
         allocations: allocs,
         notes: notes.trim() || undefined,
+        operationalDocTypeId: operationalDocTypeId || undefined,
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        accountCode: accountCode || undefined,
         postImmediately: true,
       };
 
@@ -710,22 +937,13 @@ export default function PaymentForm({
     if (!existingPayment) return;
     setIsJustificationLoading(true);
     try {
-      const allocs = activeAllocations.map((a) => ({
-        ...(a.type === "receivable"
-          ? { receivableId: a.id }
-          : { payableId: a.id }),
-        amount: parseFloat(a.assignedAmount),
-      }));
-
-      const creditSources = creditLines
-        .filter((c) => c.checked && parseFloat(c.assignedAmount) > 0)
-        .map((c) => ({ sourcePaymentId: c.sourcePaymentId, amount: parseFloat(c.assignedAmount) }));
+      const creditSources = buildCreditSources();
+      const allocs = buildCashAllocations(creditSources);
 
       const body = {
         method,
         date,
         amount: paymentAmount,
-        creditApplied: creditApplied > 0 ? creditApplied : undefined,
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
@@ -733,6 +951,9 @@ export default function PaymentForm({
         contactId,
         allocations: allocs,
         notes: notes.trim() || undefined,
+        operationalDocTypeId: operationalDocTypeId || null,
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        accountCode: accountCode || null,
         justification,
       };
 
@@ -793,22 +1014,13 @@ export default function PaymentForm({
     if (!existingPayment) return;
     setIsJustificationLoading(true);
     try {
-      const allocs = activeAllocations.map((a) => ({
-        ...(a.type === "receivable"
-          ? { receivableId: a.id }
-          : { payableId: a.id }),
-        amount: parseFloat(a.assignedAmount),
-      }));
-
-      const creditSources = creditLines
-        .filter((c) => c.checked && parseFloat(c.assignedAmount) > 0)
-        .map((c) => ({ sourcePaymentId: c.sourcePaymentId, amount: parseFloat(c.assignedAmount) }));
+      const creditSources = buildCreditSources();
+      const allocs = buildCashAllocations(creditSources);
 
       const body = {
         method,
         date,
         amount: paymentAmount,
-        creditApplied: creditApplied > 0 ? creditApplied : undefined,
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
@@ -816,6 +1028,9 @@ export default function PaymentForm({
         contactId,
         allocations: allocs,
         notes: notes.trim() || undefined,
+        operationalDocTypeId: operationalDocTypeId || null,
+        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        accountCode: accountCode || null,
         justification,
       };
 
@@ -878,95 +1093,64 @@ export default function PaymentForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {/* Tipo de Pago */}
+          {/* Row 1: Tipo Documento / Nro Referencia / Fecha / Período (4 cols) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {/* Tipo de Documento Operacional */}
             <div className="space-y-2">
-              <Label>Tipo</Label>
+              <Label htmlFor="operational-doc-type">Tipo de Documento</Label>
               {isReadOnly ? (
                 <Input
-                  value={paymentType === "COBRO" ? "Cobro" : "Pago"}
+                  value={existingPayment?.operationalDocType
+                    ? `${existingPayment.operationalDocType.code} — ${existingPayment.operationalDocType.name}`
+                    : "—"}
                   readOnly
                   className="bg-muted cursor-default"
                 />
               ) : (
                 <Select
-                  value={paymentType}
-                  onValueChange={(v) => {
-                    setPaymentType(v as PaymentDirection);
-                    // Reset allocations when type changes
-                    if (isNew) {
-                      setAllocations([]);
-                    }
-                  }}
-                  disabled={!!existingPayment}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="COBRO">Cobro</SelectItem>
-                    <SelectItem value="PAGO">Pago</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Contacto */}
-            <div className="space-y-2">
-              <Label htmlFor="contact">
-                {paymentType === "COBRO" ? "Cliente" : "Proveedor"}
-              </Label>
-              {isReadOnly ? (
-                <Input
-                  value={existingPayment?.contact?.name ?? ""}
-                  readOnly
-                  className="bg-muted cursor-default"
-                />
-              ) : (
-                <Select
-                  value={contactId}
-                  onValueChange={setContactId}
-                  disabled={!!existingPayment}
-                >
-                  <SelectTrigger id="contact" className="w-full">
-                    <SelectValue placeholder="Seleccione contacto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            </div>
-
-            {/* Método de Pago */}
-            <div className="space-y-2">
-              <Label htmlFor="method">Método de Pago</Label>
-              {isReadOnly ? (
-                <Input
-                  value={
-                    PAYMENT_METHODS.find((m) => m.value === method)?.label ??
-                    method
+                  value={operationalDocTypeId || "__none__"}
+                  onValueChange={(v) =>
+                    setOperationalDocTypeId(v === "__none__" ? "" : v)
                   }
+                >
+                  <SelectTrigger id="operational-doc-type" className="w-full">
+                    <SelectValue placeholder="Sin documento" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Sin documento</SelectItem>
+                    {operationalDocTypes
+                      .filter((dt) =>
+                        dt.direction === paymentType || dt.direction === "BOTH",
+                      )
+                      .map((dt) => (
+                        <SelectItem key={dt.id} value={dt.id}>
+                          {dt.code} — {dt.name}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Número de Referencia */}
+            <div className="space-y-2">
+              <Label htmlFor="payment-reference-number">N° Referencia (opcional)</Label>
+              {isReadOnly ? (
+                <Input
+                  value={existingPayment?.referenceNumber?.toString() ?? "—"}
                   readOnly
                   className="bg-muted cursor-default"
                 />
               ) : (
-                <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
-                  <SelectTrigger id="method" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map((m) => (
-                      <SelectItem key={m.value} value={m.value}>
-                        {m.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="payment-reference-number"
+                  type="number"
+                  min={1}
+                  step={1}
+                  value={referenceNumber}
+                  onChange={(e) => setReferenceNumber(e.target.value)}
+                  placeholder="Ej: 1234"
+                />
               )}
             </div>
 
@@ -1008,9 +1192,112 @@ export default function PaymentForm({
                 </Select>
               )}
             </div>
+          </div>
 
+          {/* Row 2: Cliente / Método de Pago / Cuenta (3 cols) */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Contacto */}
+            <div className="space-y-2">
+              <Label htmlFor="contact">
+                {paymentType === "COBRO" ? "Cliente" : "Proveedor"}
+              </Label>
+              {isReadOnly ? (
+                <Input
+                  value={existingPayment?.contact?.name ?? ""}
+                  readOnly
+                  className="bg-muted cursor-default"
+                />
+              ) : (
+                <Select
+                  value={contactId}
+                  onValueChange={setContactId}
+                  disabled={!!existingPayment}
+                >
+                  <SelectTrigger id="contact" className="w-full">
+                    <SelectValue placeholder="Seleccione contacto" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {contacts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            {/* Método de Pago — oculto en modo crédito (Mode B) */}
+            {!isCreditOnly && (
+              <div className="space-y-2">
+                <Label htmlFor="method">Método de Pago</Label>
+                {isReadOnly ? (
+                  <Input
+                    value={
+                      PAYMENT_METHODS.find((m) => m.value === method)?.label ??
+                      method
+                    }
+                    readOnly
+                    className="bg-muted cursor-default"
+                  />
+                ) : (
+                  <Select value={method} onValueChange={(v) => setMethod(v as PaymentMethod)}>
+                    <SelectTrigger id="method" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map((m) => (
+                        <SelectItem key={m.value} value={m.value}>
+                          {m.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              </div>
+            )}
+
+            {/* Cuenta — solo si hay opciones disponibles */}
+            {(() => {
+              const accountOptions = isBankMethod(method)
+                ? bankAccounts
+                : cashAccounts;
+              if (accountOptions.length === 0) return null;
+              return (
+                <div className="space-y-2">
+                  <Label htmlFor="account-code">Cuenta</Label>
+                  {isReadOnly ? (
+                    <Input
+                      value={accountCode || "—"}
+                      readOnly
+                      className="bg-muted cursor-default"
+                    />
+                  ) : (
+                    <Select
+                      value={accountCode || ""}
+                      onValueChange={setAccountCode}
+                    >
+                      <SelectTrigger id="account-code" className="w-full">
+                        <SelectValue placeholder="Seleccione cuenta..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accountOptions.map((a) => (
+                          <SelectItem key={a.id} value={a.code}>
+                            {a.code} — {a.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+
+          {/* Row 3: Descripción (full width) */}
+          <div className="grid grid-cols-1 gap-4">
             {/* Descripción */}
-            <div className="space-y-2 lg:col-span-3">
+            <div className="space-y-2">
               <Label htmlFor="payment-description">Descripción</Label>
               <Input
                 id="payment-description"
@@ -1024,7 +1311,7 @@ export default function PaymentForm({
             </div>
 
             {/* Notas */}
-            <div className="space-y-2 lg:col-span-3">
+            <div className="space-y-2">
               <Label htmlFor="payment-notes">Notas (opcional)</Label>
               <Textarea
                 id="payment-notes"
@@ -1035,25 +1322,6 @@ export default function PaymentForm({
                 className={isReadOnly ? "bg-muted cursor-default" : ""}
               />
             </div>
-
-            {/* Dirección — solo visible cuando no hay asignaciones (pago sin facturas) */}
-            {!isReadOnly && isNew && activeAllocations.length === 0 && (
-              <div className="space-y-2">
-                <Label htmlFor="direction">Dirección</Label>
-                <Select
-                  value={paymentType}
-                  onValueChange={(v) => setPaymentType(v as PaymentDirection)}
-                >
-                  <SelectTrigger id="direction" className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="COBRO">Cobro</SelectItem>
-                    <SelectItem value="PAGO">Pago</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
           </div>
         </CardContent>
       </Card>
@@ -1080,13 +1348,7 @@ export default function PaymentForm({
                     value={amountOverride}
                     onChange={(e) => setAmountOverride(e.target.value)}
                     onBlur={handleAmountBlur}
-                    placeholder={
-                      existingPayment
-                        ? String(existingPayment.amount)
-                        : totalAllocated > 0
-                          ? totalAllocated.toFixed(2)
-                          : "0.00"
-                    }
+                    placeholder="0.00"
                     className="font-mono font-bold"
                   />
                 )}
@@ -1226,7 +1488,7 @@ export default function PaymentForm({
                           {formatCurrency(alloc.paid)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-medium">
-                          {formatCurrency(alloc.balance)}
+                          {formatCurrency(alloc.displayBalance)}
                         </td>
                         <td className="py-3 px-4">
                           {isReadOnly ? (
@@ -1496,8 +1758,8 @@ export default function PaymentForm({
           </Button>
         </Link>
 
-        {/* New mode — dual buttons */}
-        {isNew && (
+        {/* New mode — dual buttons (Mode A) or credit-only button (Mode B) */}
+        {isNew && !isCreditOnly && (
           <>
             <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
               {isSubmitting ? (
@@ -1523,6 +1785,23 @@ export default function PaymentForm({
               Contabilizar
             </Button>
           </>
+        )}
+
+        {/* Mode B — credit-only: single "Aplicar créditos" button */}
+        {isNew && isCreditOnly && (
+          <Button
+            type="button"
+            className="bg-green-600 hover:bg-green-700"
+            onClick={handleApplyCredits}
+            disabled={!canSubmit || isSubmitting}
+          >
+            {isSubmitting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <CheckCircle className="h-4 w-4 mr-2" />
+            )}
+            Aplicar créditos
+          </Button>
         )}
 
         {/* Draft actions */}

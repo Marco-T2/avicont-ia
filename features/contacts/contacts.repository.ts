@@ -101,19 +101,17 @@ export class ContactsRepository extends BaseRepository {
         allocations: {
           include: { receivable: true, payable: true },
         },
-        creditSources: true,
       },
     });
 
     let credit = 0;
     for (const p of payments) {
-      const allocated = p.allocations.reduce((sum, a) => {
+      const allocated = p.allocations.reduce((sum: number, a: { amount: unknown; receivable?: { status: string } | null; payable?: { status: string } | null }) => {
         const targetVoided =
           a.receivable?.status === "VOIDED" || a.payable?.status === "VOIDED";
         return sum + (targetVoided ? 0 : Number(a.amount));
       }, 0);
-      const consumed = p.creditSources.reduce((sum, c) => sum + Number(c.amount), 0);
-      credit += Number(p.amount) - allocated - consumed;
+      credit += Number(p.amount) - allocated;
     }
 
     return Math.max(0, credit);

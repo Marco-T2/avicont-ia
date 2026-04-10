@@ -8,4 +8,9 @@ export interface UpdateOrgSettingsInput {
   cxcAccountCode?: string;
   cxpAccountCode?: string;
   roundingThreshold?: number;
+  cashParentCode?: string;
+  pettyCashParentCode?: string;
+  bankParentCode?: string;
+  fleteExpenseAccountCode?: string;
+  polloFaenadoCOGSAccountCode?: string;
 }

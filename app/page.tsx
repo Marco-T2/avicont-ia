@@ -6,8 +6,8 @@ import Footer from "@/components/common/footer";
 
 export default function Home() {
   return (
-    <section className="h-full overflow-y-auto bg-gradient-to-b from-emerald-50 via-white to-white">
-      <div className="mx-auto max-w-7xl px-6 py-12 lg:py-20">
+    <section className="min-h-full flex flex-col overflow-y-auto bg-gradient-to-b from-emerald-50 via-white to-white">
+      <div className="mx-auto max-w-7xl px-6 py-12 lg:py-20 flex-1">
         <div className="grid gap-12 lg:grid-cols-2 lg:gap-16 items-center">
           {/* Left column — institutional content */}
           <div className="order-2 lg:order-1">
