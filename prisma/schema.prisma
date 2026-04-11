@@ -34,6 +34,7 @@ model Organization {
   dispatches         Dispatch[]
   payments           Payment[]
   purchases          Purchase[]
+  sales              Sale[]
   productTypes          ProductType[]
   operationalDocTypes   OperationalDocType[]
   auditLogs             AuditLog[]
@@ -70,6 +71,7 @@ model User {
   dispatches     Dispatch[]      @relation("DispatchCreator")
   payments       Payment[]       @relation("PaymentCreator")
   purchases      Purchase[]      @relation("PurchaseCreator")
+  sales          Sale[]          @relation("SaleCreator")
 
   @@map("users")
 }
@@ -287,6 +289,7 @@ model Account {
   journalLines    JournalLine[]
   balances        AccountBalance[]
   purchaseDetails PurchaseDetail[]
+  saleDetails     SaleDetail[]
 
   @@unique([organizationId, code])
   @@index([parentId])
@@ -321,6 +324,7 @@ model JournalEntry {
   dispatch        Dispatch?
   payment         Payment?
   purchase        Purchase?
+  sale            Sale?
 
   @@unique([organizationId, voucherTypeId, periodId, number])
   @@unique([organizationId, voucherTypeId, referenceNumber])
@@ -366,6 +370,7 @@ model FiscalPeriod {
   dispatches     Dispatch[]
   payments       Payment[]
   purchases      Purchase[]
+  sales          Sale[]
 
   @@unique([organizationId, year])
   @@index([organizationId, status])
@@ -431,6 +436,13 @@ enum PayableStatus {
   OVERDUE
 }
 
+enum SaleStatus {
+  DRAFT
+  POSTED
+  LOCKED
+  VOIDED
+}
+
 enum PurchaseType {
   FLETE
   POLLO_FAENADO
@@ -493,6 +505,7 @@ model Contact {
   dispatches       Dispatch[]
   payments         Payment[]
   purchases        Purchase[]
+  sales            Sale[]
 
   @@index([organizationId, type])
   @@index([organizationId, isActive])
@@ -520,6 +533,7 @@ model AccountsReceivable {
   contact        Contact       @relation(fields: [contactId], references: [id])
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
   dispatch       Dispatch?
+  sale           Sale?
   allocations    PaymentAllocation[]
 
   @@index([organizationId, contactId])
@@ -804,6 +818,54 @@ model PaymentAllocation {
   @@map("payment_allocations")
 }
 
+
+model Sale {
+  id              String       @id @default(cuid())
+  organizationId  String
+  status          SaleStatus   @default(DRAFT)
+  sequenceNumber  Int
+  date            DateTime
+  contactId       String
+  periodId        String
+  description     String
+  referenceNumber Int?
+  notes           String?
+  totalAmount     Decimal      @default(0) @db.Decimal(12, 2)
+  journalEntryId  String?      @unique
+  receivableId    String?      @unique
+  createdById     String
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  organization    Organization         @relation(fields: [organizationId], references: [id])
+  contact         Contact              @relation(fields: [contactId], references: [id])
+  period          FiscalPeriod         @relation(fields: [periodId], references: [id])
+  journalEntry    JournalEntry?        @relation(fields: [journalEntryId], references: [id])
+  receivable      AccountsReceivable?  @relation(fields: [receivableId], references: [id])
+  createdBy       User                 @relation("SaleCreator", fields: [createdById], references: [id])
+  details         SaleDetail[]
+
+  @@unique([organizationId, sequenceNumber])
+  @@index([organizationId, status])
+  @@index([organizationId, contactId])
+  @@index([organizationId, date])
+  @@map("sales")
+}
+
+model SaleDetail {
+  id              String   @id @default(cuid())
+  saleId          String
+  description     String
+  lineAmount      Decimal  @db.Decimal(12, 2)
+  order           Int      @default(0)
+  quantity        Decimal? @db.Decimal(12, 4)
+  unitPrice       Decimal? @db.Decimal(12, 4)
+  incomeAccountId String
+  sale            Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  incomeAccount   Account  @relation(fields: [incomeAccountId], references: [id])
+
+  @@index([saleId])
+  @@map("sale_details")
+}
 
 model AuditLog {
   id              String   @id @default(cuid())

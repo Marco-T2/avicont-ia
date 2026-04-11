@@ -2,12 +2,23 @@ import { BaseRepository } from "@/features/shared/base.repository";
 import type { Prisma, Account, AccountType, AccountNature } from "@/generated/prisma/client";
 import type { ResolvedCreateAccountData, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
 
+export interface AccountListFilters {
+  type?: AccountType;
+  isDetail?: boolean;
+  isActive?: boolean;
+}
+
 export class AccountsRepository extends BaseRepository {
-  async findAll(organizationId: string): Promise<Account[]> {
+  async findAll(organizationId: string, filters?: AccountListFilters): Promise<Account[]> {
     const scope = this.requireOrg(organizationId);
 
     return this.db.account.findMany({
-      where: scope,
+      where: {
+        ...scope,
+        ...(filters?.type !== undefined && { type: filters.type }),
+        ...(filters?.isDetail !== undefined && { isDetail: filters.isDetail }),
+        ...(filters?.isActive !== undefined && { isActive: filters.isActive }),
+      },
       orderBy: { code: "asc" },
     });
   }

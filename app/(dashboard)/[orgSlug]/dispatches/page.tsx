@@ -68,9 +68,9 @@ export default async function DispatchesPage({
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Despachos</h1>
+        <h1 className="text-3xl font-bold">Ventas y Despachos</h1>
         <p className="text-gray-500 mt-1">
-          Gestión de notas de despacho y boletas cerradas
+          Gestión de ventas generales, notas de despacho y boletas cerradas
         </p>
       </div>
 

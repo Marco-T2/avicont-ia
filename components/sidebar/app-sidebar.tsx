@@ -7,7 +7,6 @@ import {
   FileText,
   PanelLeftClose,
   PanelLeftOpen,
-  ShoppingCart,
   Tractor,
   Users,
 } from "lucide-react";
@@ -69,7 +68,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
       resource: "accounting",
       children: [
         { label: "Operaciones", isSeparator: true },
-        { label: "Despachos", href: `/${orgSlug}/dispatches` },
+        { label: "Ventas y Despachos", href: `/${orgSlug}/dispatches` },
         { label: "Compras y Servicios", href: `/${orgSlug}/purchases` },
         { label: "Cobros y Pagos", href: `/${orgSlug}/payments` },
         { label: "Cuentas por Cobrar", href: `/${orgSlug}/accounting/cxc` },
