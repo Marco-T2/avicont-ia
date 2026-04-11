@@ -21,10 +21,17 @@ export async function GET(
 
     const { searchParams } = new URL(request.url);
     const tree = searchParams.get("tree") === "true";
+    const type = searchParams.get("type") as import("@/generated/prisma/client").AccountType | null;
+    const isDetail = searchParams.get("isDetail");
+    const isActive = searchParams.get("isActive");
 
     const accounts = tree
       ? await service.getTree(orgId)
-      : await service.list(orgId);
+      : await service.list(orgId, {
+          ...(type ? { type } : {}),
+          ...(isDetail !== null ? { isDetail: isDetail === "true" } : {}),
+          ...(isActive !== null ? { isActive: isActive === "true" } : {}),
+        });
 
     return Response.json(accounts);
   } catch (error) {

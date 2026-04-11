@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClipboardList, FileText, Package, Plus, Search, MoreHorizontal, Eye, Pencil, CheckCircle, XCircle, Trash2, Loader2 } from "lucide-react";
+import { ClipboardList, DollarSign, FileText, Package, Plus, Search, MoreHorizontal, Eye, Pencil, CheckCircle, XCircle, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/generated/prisma/client";
@@ -204,7 +204,30 @@ export default function DispatchList({
   return (
     <>
       {/* Type cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
+        {/* Ventas General */}
+        <Card className="cursor-pointer transition-shadow hover:shadow-md">
+          <CardHeader>
+            <div className="flex items-center gap-3">
+              <div className="rounded-lg bg-green-100 p-2">
+                <DollarSign className="h-5 w-5 text-green-600" />
+              </div>
+              <div>
+                <CardTitle>Ventas General</CardTitle>
+                <CardDescription>Servicios y productos varios</CardDescription>
+              </div>
+            </div>
+            <CardAction>
+              <Link href={`/${orgSlug}/sales/new`}>
+                <Button size="sm">
+                  <Plus className="h-4 w-4 mr-1" />
+                  Nuevo
+                </Button>
+              </Link>
+            </CardAction>
+          </CardHeader>
+        </Card>
+
         {/* Nota de Despacho */}
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>

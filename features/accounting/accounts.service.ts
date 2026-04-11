@@ -7,7 +7,7 @@ import {
   MAX_ACCOUNT_DEPTH_EXCEEDED,
   INVALID_ACCOUNT_CODE_PREFIX,
 } from "@/features/shared/errors";
-import { AccountsRepository } from "./accounts.repository";
+import { AccountsRepository, type AccountListFilters } from "./accounts.repository";
 import { getNextCode } from "./account-code.utils";
 import type { Account, AccountType, AccountNature } from "@/generated/prisma/client";
 import type {
@@ -32,8 +32,8 @@ export class AccountsService {
 
   // ── Listar todas las cuentas ──
 
-  async list(organizationId: string): Promise<Account[]> {
-    return this.repo.findAll(organizationId);
+  async list(organizationId: string, filters?: AccountListFilters): Promise<Account[]> {
+    return this.repo.findAll(organizationId, filters);
   }
 
   // ── Obtener el árbol completo de cuentas ──
