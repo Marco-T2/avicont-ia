@@ -199,7 +199,7 @@ const adminTools: FunctionDeclaration[] = [
 ];
 
 /**
- * Get the tool definitions available for a given role.
+ * Obtiene las definiciones de herramientas disponibles para un rol dado.
  */
 export function getToolsForRole(role: Role): FunctionDeclaration[] {
   switch (role) {
@@ -216,8 +216,8 @@ export function getToolsForRole(role: Role): FunctionDeclaration[] {
 }
 
 /**
- * Check whether an action is write (modifies data) vs read-only.
- * Write actions require user confirmation before execution.
+ * Verifica si una acción es de escritura (modifica datos) o de solo lectura.
+ * Las acciones de escritura requieren confirmación del usuario antes de ejecutarse.
  */
 export function isWriteAction(actionName: string): boolean {
   return actionName === "createExpense" || actionName === "logMortality";
