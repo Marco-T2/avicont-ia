@@ -143,6 +143,28 @@ describe("inferSubtype", () => {
     expect(inferSubtype("5.3.1", "Intereses Bancarios", "5.3", AccountType.GASTO)).toBe(AccountSubtype.GASTO_FINANCIERO);
   });
 
+  // Cuentas de nivel 2 con parentCode de nivel 1 (caso real en DB: parentCode = "1", "2", etc.)
+  // El parentCode de nivel 1 no tiene punto, por lo que debe caer al propio code como referencia
+  it("infiere ACTIVO_CORRIENTE para código 1.1 con parentCode nivel 1 ('1')", () => {
+    expect(inferSubtype("1.1", "Activo Corriente", "1", AccountType.ACTIVO)).toBe(AccountSubtype.ACTIVO_CORRIENTE);
+  });
+
+  it("infiere PASIVO_CORRIENTE para código 2.1 con parentCode nivel 1 ('2')", () => {
+    expect(inferSubtype("2.1", "Pasivo Corriente", "2", AccountType.PASIVO)).toBe(AccountSubtype.PASIVO_CORRIENTE);
+  });
+
+  it("infiere PATRIMONIO_CAPITAL para código 3.1 con parentCode nivel 1 ('3')", () => {
+    expect(inferSubtype("3.1", "Capital Social", "3", AccountType.PATRIMONIO)).toBe(AccountSubtype.PATRIMONIO_CAPITAL);
+  });
+
+  it("infiere INGRESO_OPERATIVO para código 4.1 con parentCode nivel 1 ('4')", () => {
+    expect(inferSubtype("4.1", "Ingresos Operativos", "4", AccountType.INGRESO)).toBe(AccountSubtype.INGRESO_OPERATIVO);
+  });
+
+  it("infiere GASTO_FINANCIERO para código 5.3 con parentCode nivel 1 ('5')", () => {
+    expect(inferSubtype("5.3", "Gastos Financieros", "5", AccountType.GASTO)).toBe(AccountSubtype.GASTO_FINANCIERO);
+  });
+
   // Código sin mapeo conocido → null
   it("retorna null para un código nivel 2 sin mapeo", () => {
     expect(inferSubtype("9.9", "Cuenta Desconocida", null, AccountType.ACTIVO)).toBeNull();
