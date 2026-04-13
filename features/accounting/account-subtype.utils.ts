@@ -1,4 +1,26 @@
-import { AccountType, AccountSubtype } from "@/generated/prisma/client";
+import { AccountType, AccountSubtype } from "@/generated/prisma/enums";
+
+/**
+ * Convierte un valor de AccountSubtype a etiqueta legible en español.
+ * Ejemplo: "ACTIVO_CORRIENTE" → "Activo Corriente"
+ */
+export function formatSubtypeLabel(subtype: AccountSubtype): string {
+  const labels: Record<AccountSubtype, string> = {
+    [AccountSubtype.ACTIVO_CORRIENTE]: "Activo Corriente",
+    [AccountSubtype.ACTIVO_NO_CORRIENTE]: "Activo No Corriente",
+    [AccountSubtype.PASIVO_CORRIENTE]: "Pasivo Corriente",
+    [AccountSubtype.PASIVO_NO_CORRIENTE]: "Pasivo No Corriente",
+    [AccountSubtype.PATRIMONIO_CAPITAL]: "Patrimonio Capital",
+    [AccountSubtype.PATRIMONIO_RESULTADOS]: "Patrimonio Resultados",
+    [AccountSubtype.INGRESO_OPERATIVO]: "Ingreso Operativo",
+    [AccountSubtype.INGRESO_NO_OPERATIVO]: "Ingreso No Operativo",
+    [AccountSubtype.GASTO_OPERATIVO]: "Gasto Operativo",
+    [AccountSubtype.GASTO_ADMINISTRATIVO]: "Gasto Administrativo",
+    [AccountSubtype.GASTO_FINANCIERO]: "Gasto Financiero",
+    [AccountSubtype.GASTO_NO_OPERATIVO]: "Gasto No Operativo",
+  };
+  return labels[subtype] ?? subtype;
+}
 
 /**
  * Matriz de subtipos permitidos por tipo de cuenta (regla NIIF/PCGA).

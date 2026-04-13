@@ -17,7 +17,8 @@ import {
 import CreateAccountDialog from "./create-account-dialog";
 import EditAccountDialog from "./edit-account-dialog";
 import DeactivateAccountDialog from "./deactivate-account-dialog";
-import type { Account } from "@/generated/prisma/client";
+import { formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
+import type { Account, AccountSubtype } from "@/generated/prisma/client";
 
 const ACCOUNT_TYPE_CONFIG: Record<
   string,
@@ -141,9 +142,16 @@ export default function AccountsPageClient({
           </span>
 
           {/* Type Badge */}
-          <Badge className={`${typeConfig.className} mr-3`}>
+          <Badge className={`${typeConfig.className} mr-1`}>
             {typeConfig.label}
           </Badge>
+
+          {/* Subtype Badge — solo visible para cuentas con subtipo asignado */}
+          {account.subtype && (
+            <Badge variant="secondary" className="mr-3 text-xs font-normal">
+              {formatSubtypeLabel(account.subtype as AccountSubtype)}
+            </Badge>
+          )}
 
           {/* Status */}
           {!account.isActive && (
