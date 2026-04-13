@@ -1,9 +1,11 @@
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { Prisma, Account, AccountType, AccountNature } from "@/generated/prisma/client";
+import type { Prisma, Account, AccountType, AccountNature, AccountSubtype } from "@/generated/prisma/client";
 import type { ResolvedCreateAccountData, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
 
 export interface AccountListFilters {
   type?: AccountType;
+  /** Filtro por subtipo de cuenta (corriente, no corriente, operativo, etc.). */
+  subtype?: AccountSubtype;
   isDetail?: boolean;
   isActive?: boolean;
 }
@@ -16,6 +18,7 @@ export class AccountsRepository extends BaseRepository {
       where: {
         ...scope,
         ...(filters?.type !== undefined && { type: filters.type }),
+        ...(filters?.subtype !== undefined && { subtype: filters.subtype }),
         ...(filters?.isDetail !== undefined && { isDetail: filters.isDetail }),
         ...(filters?.isActive !== undefined && { isActive: filters.isActive }),
       },
@@ -100,6 +103,7 @@ export class AccountsRepository extends BaseRepository {
         name: data.name,
         type: data.type,
         nature: data.nature,
+        subtype: data.subtype,
         parentId: data.parentId,
         level: data.level,
         isDetail: data.isDetail,
@@ -127,6 +131,7 @@ export class AccountsRepository extends BaseRepository {
         ...(data.isDetail !== undefined && { isDetail: data.isDetail }),
         ...(data.requiresContact !== undefined && { requiresContact: data.requiresContact }),
         ...(data.description !== undefined && { description: data.description }),
+        ...(data.subtype !== undefined && { subtype: data.subtype }),
       },
     });
   }

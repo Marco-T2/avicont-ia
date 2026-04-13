@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AccountType, JournalEntryStatus } from "@/generated/prisma/client";
+import { AccountType, AccountSubtype, JournalEntryStatus } from "@/generated/prisma/client";
 
 export const accountIdSchema = z.string().cuid("ID de cuenta inválido");
 
@@ -11,6 +11,7 @@ export const createAccountSchema = z
       .min(1, "El nombre es requerido")
       .max(200, "El nombre no puede superar los 200 caracteres"),
     type: z.nativeEnum(AccountType, { message: "Tipo de cuenta inválido" }).optional(),
+    subtype: z.nativeEnum(AccountSubtype, { message: "Subtipo de cuenta inválido" }).optional(),
     parentId: z.string().cuid("ID de cuenta padre inválido").optional(),
     isDetail: z.boolean({ message: "El campo detalle debe ser verdadero o falso" }).optional(),
     requiresContact: z.boolean({ message: "El campo requiere contacto debe ser verdadero o falso" }).default(false),
@@ -36,6 +37,7 @@ export const updateAccountSchema = z.object({
   isDetail: z.boolean({ message: "El campo detalle debe ser verdadero o falso" }).optional(),
   requiresContact: z.boolean({ message: "El campo requiere contacto debe ser verdadero o falso" }).optional(),
   description: z.string().max(500, "La descripción no puede superar los 500 caracteres").optional(),
+  subtype: z.nativeEnum(AccountSubtype, { message: "Subtipo de cuenta inválido" }).optional(),
 });
 
 export const journalLineSchema = z
