@@ -1,15 +1,15 @@
 import type { DispatchType } from "@/generated/prisma/client";
 
 /**
- * Applies cooperative rounding to the final dispatch total.
- * Algorithm:
- * 1. Truncate to one decimal place
- * 2. Extract first decimal digit
- * 3. If digit >= (threshold * 10) → ceil to integer, else floor
+ * Aplica el redondeo cooperativo al total final del despacho.
+ * Algoritmo:
+ * 1. Trunca a un decimal
+ * 2. Extrae el primer dígito decimal
+ * 3. Si el dígito >= (threshold * 10) → redondea hacia arriba, si no hacia abajo
  *
- * @param exactSum - Raw sum of all lineAmounts (unrounded)
- * @param threshold - From OrgSettings.roundingThreshold (e.g., 0.7)
- * @returns Integer total amount for CxC
+ * @param exactSum - Suma cruda de todos los lineAmounts (sin redondear)
+ * @param threshold - Desde OrgSettings.roundingThreshold (ej.: 0.7)
+ * @returns Monto total entero para CxC
  */
 export function roundTotal(exactSum: number, threshold: number): number {
   const truncated = Math.floor(exactSum * 10) / 10;
