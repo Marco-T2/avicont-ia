@@ -56,11 +56,36 @@ export async function GET(
       format: searchParams.get("format") ?? undefined,
     });
 
-    // 5. Generar el Balance General
-    const statement = await service.generateBalanceSheet(orgId, userRole, {
+    const balanceInput = {
       asOfDate: new Date(query.date),
       fiscalPeriodId: query.periodId,
-    });
+    };
+
+    // 5a. Respuesta en formato PDF
+    if (query.format === "pdf") {
+      const buffer = await service.exportBalanceSheetPdf(orgId, userRole, balanceInput, orgSlug);
+      return new Response(new Uint8Array(buffer), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="balance-general-${query.date}.pdf"`,
+        },
+      });
+    }
+
+    // 5b. Respuesta en formato Excel
+    if (query.format === "xlsx") {
+      const buffer = await service.exportBalanceSheetXlsx(orgId, userRole, balanceInput, orgSlug);
+      return new Response(new Uint8Array(buffer), {
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="balance-general-${query.date}.xlsx"`,
+        },
+      });
+    }
+
+    // 5c. Respuesta JSON (default)
+    const statement = await service.generateBalanceSheet(orgId, userRole, balanceInput);
 
     // 6. Serializar Decimals → strings en la frontera (REQ-10, D9)
     return Response.json(serializeStatement(statement));

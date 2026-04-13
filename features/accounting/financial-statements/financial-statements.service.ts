@@ -6,6 +6,14 @@ import { buildIncomeStatement } from "./income-statement.builder";
 import { calculateRetainedEarnings } from "./retained-earnings.calculator";
 import { FinancialStatementsRepository } from "./financial-statements.repository";
 import type { BalanceSheet, IncomeStatement } from "./financial-statements.types";
+import {
+  exportBalanceSheetPdf,
+  exportIncomeStatementPdf,
+} from "./exporters/pdf.exporter";
+import {
+  exportBalanceSheetExcel,
+  exportIncomeStatementExcel,
+} from "./exporters/excel.exporter";
 
 // ── Tipos de entrada públicos ──
 
@@ -216,37 +224,64 @@ export class FinancialStatementsService {
     return { orgId, current };
   }
 
-  // ── Stubs de export — se implementan en PR4 ──
+  // ── Exporters — implementados en PR4 ──
 
+  /**
+   * Genera el Balance General como PDF y retorna el Buffer.
+   *
+   * @param orgName Nombre de la organización para el encabezado del documento.
+   *                El route handler lo provee desde requireOrgAccess / parámetro URL.
+   */
   async exportBalanceSheetPdf(
-    _orgId: string,
-    _userRole: Role,
-    _input: GenerateBalanceSheetInput,
+    orgId: string,
+    userRole: Role,
+    input: GenerateBalanceSheetInput,
+    orgName: string,
   ): Promise<Buffer> {
-    throw new Error("NOT_IMPLEMENTED: exportBalanceSheetPdf se implementa en PR4");
+    assertFinancialStatementsAccess(userRole);
+    const statement = await this.generateBalanceSheet(orgId, userRole, input);
+    return exportBalanceSheetPdf(statement, orgName);
   }
 
+  /**
+   * Genera el Balance General como Excel (XLSX) y retorna el Buffer.
+   */
   async exportBalanceSheetXlsx(
-    _orgId: string,
-    _userRole: Role,
-    _input: GenerateBalanceSheetInput,
+    orgId: string,
+    userRole: Role,
+    input: GenerateBalanceSheetInput,
+    orgName: string,
   ): Promise<Buffer> {
-    throw new Error("NOT_IMPLEMENTED: exportBalanceSheetXlsx se implementa en PR4");
+    assertFinancialStatementsAccess(userRole);
+    const statement = await this.generateBalanceSheet(orgId, userRole, input);
+    return exportBalanceSheetExcel(statement, orgName);
   }
 
+  /**
+   * Genera el Estado de Resultados como PDF y retorna el Buffer.
+   */
   async exportIncomeStatementPdf(
-    _orgId: string,
-    _userRole: Role,
-    _input: GenerateIncomeStatementInput,
+    orgId: string,
+    userRole: Role,
+    input: GenerateIncomeStatementInput,
+    orgName: string,
   ): Promise<Buffer> {
-    throw new Error("NOT_IMPLEMENTED: exportIncomeStatementPdf se implementa en PR4");
+    assertFinancialStatementsAccess(userRole);
+    const statement = await this.generateIncomeStatement(orgId, userRole, input);
+    return exportIncomeStatementPdf(statement, orgName);
   }
 
+  /**
+   * Genera el Estado de Resultados como Excel (XLSX) y retorna el Buffer.
+   */
   async exportIncomeStatementXlsx(
-    _orgId: string,
-    _userRole: Role,
-    _input: GenerateIncomeStatementInput,
+    orgId: string,
+    userRole: Role,
+    input: GenerateIncomeStatementInput,
+    orgName: string,
   ): Promise<Buffer> {
-    throw new Error("NOT_IMPLEMENTED: exportIncomeStatementXlsx se implementa en PR4");
+    assertFinancialStatementsAccess(userRole);
+    const statement = await this.generateIncomeStatement(orgId, userRole, input);
+    return exportIncomeStatementExcel(statement, orgName);
   }
 }
