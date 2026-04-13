@@ -58,6 +58,10 @@ export const ACCOUNT_NOT_POSTABLE = "ACCOUNT_NOT_POSTABLE";
 export const ACCOUNT_TYPE_MISMATCH = "ACCOUNT_TYPE_MISMATCH";
 export const MAX_ACCOUNT_DEPTH_EXCEEDED = "MAX_ACCOUNT_DEPTH_EXCEEDED";
 export const INVALID_ACCOUNT_CODE_PREFIX = "INVALID_ACCOUNT_CODE_PREFIX";
+// El subtipo no es válido para el AccountType dado (ej: PASIVO + ACTIVO_CORRIENTE)
+export const INVALID_ACCOUNT_SUBTYPE = "INVALID_ACCOUNT_SUBTYPE";
+// El subtipo explícito de la subcuenta no coincide con el subtipo heredado del padre
+export const ACCOUNT_SUBTYPE_MISMATCH = "ACCOUNT_SUBTYPE_MISMATCH";
 
 // Asientos Contables
 export const JOURNAL_NOT_BALANCED = "JOURNAL_NOT_BALANCED";

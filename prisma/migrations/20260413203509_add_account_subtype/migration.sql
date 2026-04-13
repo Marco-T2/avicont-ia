@@ -1,0 +1,8 @@
+-- CreateEnum
+CREATE TYPE "AccountSubtype" AS ENUM ('ACTIVO_CORRIENTE', 'ACTIVO_NO_CORRIENTE', 'PASIVO_CORRIENTE', 'PASIVO_NO_CORRIENTE', 'PATRIMONIO_CAPITAL', 'PATRIMONIO_RESULTADOS', 'INGRESO_OPERATIVO', 'INGRESO_NO_OPERATIVO', 'GASTO_OPERATIVO', 'GASTO_ADMINISTRATIVO', 'GASTO_FINANCIERO', 'GASTO_NO_OPERATIVO');
+
+-- AlterTable
+ALTER TABLE "accounts" ADD COLUMN     "subtype" "AccountSubtype";
+
+-- CreateIndex
+CREATE INDEX "accounts_organizationId_subtype_idx" ON "accounts"("organizationId", "subtype");
