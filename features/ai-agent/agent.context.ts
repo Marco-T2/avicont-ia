@@ -7,8 +7,8 @@ const ragService = new RagService();
 const contextRepo = new AgentContextRepository();
 
 /**
- * Build context string for the Gemini system prompt based on user role and org data.
- * This gives Gemini awareness of what data exists so it can reference IDs and names.
+ * Construye el string de contexto para el system prompt de Gemini según el rol del usuario y los datos de la org.
+ * Le da a Gemini conciencia de qué datos existen para que pueda referenciar IDs y nombres.
  */
 export async function buildAgentContext(
   orgId: string,
