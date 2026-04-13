@@ -239,6 +239,26 @@ enum AccountType {
   GASTO
 }
 
+enum AccountSubtype {
+  // Activo
+  ACTIVO_CORRIENTE
+  ACTIVO_NO_CORRIENTE
+  // Pasivo
+  PASIVO_CORRIENTE
+  PASIVO_NO_CORRIENTE
+  // Patrimonio
+  PATRIMONIO_CAPITAL
+  PATRIMONIO_RESULTADOS
+  // Ingreso
+  INGRESO_OPERATIVO
+  INGRESO_NO_OPERATIVO
+  // Gasto
+  GASTO_OPERATIVO
+  GASTO_ADMINISTRATIVO
+  GASTO_FINANCIERO
+  GASTO_NO_OPERATIVO
+}
+
 enum AccountNature {
   DEUDORA   // Activos y Gastos: saldo aumenta con Debe
   ACREEDORA // Pasivos, Patrimonio, Ingresos: saldo aumenta con Haber
@@ -271,21 +291,22 @@ enum OperationalDocDirection {
 }
 
 model Account {
-  id              String        @id @default(cuid())
+  id              String         @id @default(cuid())
   code            String
   name            String
   type            AccountType
   nature          AccountNature
+  subtype         AccountSubtype? // Subtipo contable NIIF/PCGA; null solo en cuentas raíz (nivel 1)
   parentId        String?
   level           Int
-  isDetail        Boolean       @default(false)
-  requiresContact Boolean       @default(false)
+  isDetail        Boolean        @default(false)
+  requiresContact Boolean        @default(false)
   description     String?
-  isActive        Boolean       @default(true)
+  isActive        Boolean        @default(true)
   organizationId  String
-  parent          Account?      @relation("AccountTree", fields: [parentId], references: [id])
-  children        Account[]     @relation("AccountTree")
-  organization    Organization  @relation(fields: [organizationId], references: [id])
+  parent          Account?       @relation("AccountTree", fields: [parentId], references: [id])
+  children        Account[]      @relation("AccountTree")
+  organization    Organization   @relation(fields: [organizationId], references: [id])
   journalLines    JournalLine[]
   balances        AccountBalance[]
   purchaseDetails PurchaseDetail[]
@@ -293,6 +314,7 @@ model Account {
 
   @@unique([organizationId, code])
   @@index([parentId])
+  @@index([organizationId, subtype])
   @@map("accounts")
 }
 
