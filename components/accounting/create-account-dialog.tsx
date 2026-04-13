@@ -21,7 +21,8 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { getNextCode } from "@/features/accounting/account-code.utils";
-import type { Account } from "@/generated/prisma/client";
+import { SUBTYPES_BY_TYPE, formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
+import type { Account, AccountSubtype } from "@/generated/prisma/client";
 
 const ACCOUNT_TYPES = [
   { value: "ACTIVO", label: "Activo" },
@@ -53,6 +54,7 @@ export default function CreateAccountDialog({
   const [name, setName] = useState("");
   const [parentId, setParentId] = useState(preselectedParentId ?? "");
   const [type, setType] = useState("");
+  const [subtype, setSubtype] = useState<AccountSubtype | "">("");
   const [useCustomCode, setUseCustomCode] = useState(false);
   const [customCode, setCustomCode] = useState("");
 
@@ -64,6 +66,7 @@ export default function CreateAccountDialog({
       setCustomCode("");
       setName("");
       setType("");
+      setSubtype("");
     }
   }, [open, preselectedParentId]);
 
@@ -87,6 +90,17 @@ export default function CreateAccountDialog({
   // Inherited type from parent (read-only when parent is selected)
   const effectiveType = parent ? parent.type : type;
 
+  // Subtipo heredado del padre (pre-selección sugerida para subcuentas)
+  const parentSubtype = parent?.subtype ?? null;
+
+  // Opciones de subtipo filtradas según el tipo efectivo
+  const subtypeOptions = effectiveType
+    ? (SUBTYPES_BY_TYPE[effectiveType as keyof typeof SUBTYPES_BY_TYPE] ?? [])
+    : [];
+
+  // Subtipo efectivo: el que escogió el usuario, o el heredado del padre como valor inicial
+  const effectiveSubtype = subtype || (parentSubtype ?? "");
+
   // Computed level for display
   const computedLevel = parent ? parent.level + 1 : 1;
 
@@ -94,6 +108,7 @@ export default function CreateAccountDialog({
     setName("");
     setParentId(preselectedParentId ?? "");
     setType("");
+    setSubtype("");
     setUseCustomCode(false);
     setCustomCode("");
   }
@@ -104,8 +119,14 @@ export default function CreateAccountDialog({
     // Reset custom code when parent changes
     setUseCustomCode(false);
     setCustomCode("");
-    // Reset type when switching to root
-    if (!newParentId) setType("");
+    // Reset type y subtipo cuando se cambia el padre
+    if (!newParentId) {
+      setType("");
+      setSubtype("");
+    } else {
+      // El nuevo padre puede tener un subtipo diferente — limpiar la selección manual
+      setSubtype("");
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -118,8 +139,13 @@ export default function CreateAccountDialog({
       if (parentId) {
         body.parentId = parentId;
       } else {
-        // Root account — type is required
+        // Cuenta raíz — type es obligatorio
         body.type = effectiveType;
+      }
+
+      // Incluir subtipo si fue seleccionado (o heredado del padre)
+      if (effectiveSubtype) {
+        body.subtype = effectiveSubtype;
       }
 
       // Only send code if custom
@@ -247,6 +273,35 @@ export default function CreateAccountDialog({
                   ))}
                 </SelectContent>
               </Select>
+            )}
+          </div>
+
+          {/* Subtipo — habilitado solo cuando hay un tipo efectivo */}
+          <div className="space-y-2">
+            <Label htmlFor="subtype">Subtipo</Label>
+            <Select
+              value={effectiveSubtype || "none"}
+              onValueChange={(val) =>
+                setSubtype(val === "none" ? "" : (val as AccountSubtype))
+              }
+              disabled={!effectiveType || subtypeOptions.length === 0}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Seleccionar subtipo (opcional)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Sin subtipo</SelectItem>
+                {subtypeOptions.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {formatSubtypeLabel(s)}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {parent && parentSubtype && !subtype && (
+              <p className="text-xs text-gray-400">
+                Heredado del padre: {formatSubtypeLabel(parentSubtype)}
+              </p>
             )}
           </div>
 

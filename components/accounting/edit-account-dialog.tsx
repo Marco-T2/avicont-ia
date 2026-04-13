@@ -11,9 +11,17 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Account } from "@/generated/prisma/client";
+import { SUBTYPES_BY_TYPE, formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
+import type { Account, AccountSubtype } from "@/generated/prisma/client";
 
 interface EditAccountDialogProps {
   account: Account | null;
@@ -31,13 +39,21 @@ export default function EditAccountDialog({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [subtype, setSubtype] = useState<AccountSubtype | "">("");
 
   useEffect(() => {
     if (account) {
       setName(account.name);
       setDescription(account.description ?? "");
+      // Inicializar subtipo con el valor actual de la cuenta
+      setSubtype((account.subtype as AccountSubtype | null) ?? "");
     }
   }, [account]);
+
+  // Opciones de subtipo filtradas por el tipo de la cuenta
+  const subtypeOptions = account
+    ? (SUBTYPES_BY_TYPE[account.type as keyof typeof SUBTYPES_BY_TYPE] ?? [])
+    : [];
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -45,12 +61,21 @@ export default function EditAccountDialog({
     setIsSubmitting(true);
 
     try {
+      // Construir el body incluyendo subtype cuando la cuenta tiene nivel >= 2
+      const patchBody: Record<string, unknown> = {
+        name,
+        description: description || undefined,
+      };
+      if (account.level >= 2 && subtype) {
+        patchBody.subtype = subtype;
+      }
+
       const res = await fetch(
         `/api/organizations/${orgSlug}/accounts/${account.id}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name, description: description || undefined }),
+          body: JSON.stringify(patchBody),
         },
       );
 
@@ -99,6 +124,31 @@ export default function EditAccountDialog({
               placeholder="Descripcion de la cuenta"
             />
           </div>
+
+          {/* Subtipo — solo visible para cuentas de nivel >= 2 */}
+          {account && account.level >= 2 && (
+            <div className="space-y-2">
+              <Label htmlFor="edit-subtype">Subtipo</Label>
+              <Select
+                value={subtype || "none"}
+                onValueChange={(val) =>
+                  setSubtype(val === "none" ? "" : (val as AccountSubtype))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar subtipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sin subtipo</SelectItem>
+                  {subtypeOptions.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {formatSubtypeLabel(s)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           <DialogFooter>
             <Button
