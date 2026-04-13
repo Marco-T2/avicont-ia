@@ -162,6 +162,24 @@ export class AccountsService {
     const account = await this.repo.findById(organizationId, id);
     if (!account) throw new NotFoundError("Cuenta");
 
+    // Validar subtype: mismas reglas que create (matriz type↔subtype + mismatch con padre)
+    if (input.subtype !== undefined) {
+      if (account.level === 1) {
+        throw new ValidationError(
+          "Las cuentas raíz de nivel 1 no admiten subtipo",
+        );
+      }
+      const parent = account.parentId
+        ? await this.repo.findById(organizationId, account.parentId)
+        : null;
+      resolveAccountSubtype({
+        inputSubtype: input.subtype,
+        parentSubtype: parent?.subtype ?? null,
+        resolvedType: account.type,
+        level: account.level,
+      });
+    }
+
     return this.repo.update(organizationId, id, input);
   }
 
