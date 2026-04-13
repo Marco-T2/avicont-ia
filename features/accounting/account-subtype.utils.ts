@@ -93,9 +93,11 @@ export function inferSubtype(
   parentCode: string | null,
   _type: AccountType,
 ): AccountSubtype | null {
-  // Preferir parentCode si está disponible, ya que es más directo para resolver
-  // el nivel 2 sin depender del formato del propio código
-  const referenceCode = parentCode ?? code;
+  // Usar parentCode solo si este tiene nivel ≥ 2 (contiene un punto),
+  // ya que es más directo para resolver el nivel 2 sin depender del formato del código.
+  // Para cuentas de nivel 2 (parentCode es nivel 1, sin punto), usar el propio code.
+  const parentEsNivel2oMas = parentCode !== null && parentCode.includes(".");
+  const referenceCode = parentEsNivel2oMas ? parentCode : code;
   const level2 = extractLevel2Code(referenceCode);
 
   if (!level2) return null;
