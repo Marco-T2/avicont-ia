@@ -57,12 +57,47 @@ export async function GET(
       format: searchParams.get("format") ?? undefined,
     });
 
-    // 5. Generar el Estado de Resultados
-    const statement = await service.generateIncomeStatement(orgId, userRole, {
+    const incomeInput = {
       fiscalPeriodId: query.periodId,
       dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
       dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
-    });
+    };
+
+    // Nombre de archivo de descarga: usa rango de fechas si está disponible
+    const fileDateSuffix = query.dateFrom
+      ? `${query.dateFrom}_${query.dateTo}`
+      : (query.periodId ?? "periodo");
+
+    // 5a. Respuesta en formato PDF
+    if (query.format === "pdf") {
+      const buffer = await service.exportIncomeStatementPdf(orgId, userRole, incomeInput, orgSlug);
+      return new Response(new Uint8Array(buffer), {
+        headers: {
+          "Content-Type": "application/pdf",
+          "Content-Disposition": `attachment; filename="estado-resultados-${fileDateSuffix}.pdf"`,
+        },
+      });
+    }
+
+    // 5b. Respuesta en formato Excel
+    if (query.format === "xlsx") {
+      const buffer = await service.exportIncomeStatementXlsx(
+        orgId,
+        userRole,
+        incomeInput,
+        orgSlug,
+      );
+      return new Response(new Uint8Array(buffer), {
+        headers: {
+          "Content-Type":
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+          "Content-Disposition": `attachment; filename="estado-resultados-${fileDateSuffix}.xlsx"`,
+        },
+      });
+    }
+
+    // 5c. Respuesta JSON (default)
+    const statement = await service.generateIncomeStatement(orgId, userRole, incomeInput);
 
     // 6. Serializar Decimals → strings en la frontera (REQ-10, D9)
     return Response.json(serializeStatement(statement));
