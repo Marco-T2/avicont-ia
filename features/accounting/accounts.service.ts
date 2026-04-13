@@ -9,6 +9,7 @@ import {
 } from "@/features/shared/errors";
 import { AccountsRepository, type AccountListFilters } from "./accounts.repository";
 import { getNextCode } from "./account-code.utils";
+import { resolveAccountSubtype } from "./account-subtype.resolve";
 import type { Account, AccountType, AccountNature } from "@/generated/prisma/client";
 import type {
   CreateAccountInput,
@@ -96,6 +97,14 @@ export class AccountsService {
       );
     }
 
+    // 6b. Resolver el subtipo (herencia + validación)
+    const subtype = resolveAccountSubtype({
+      inputSubtype: input.subtype,
+      parentSubtype: parent?.subtype ?? null,
+      resolvedType: type,
+      level,
+    });
+
     // 7. Resolver el código (auto-generar o validar el manual)
     let code: string;
     if (input.code) {
@@ -128,6 +137,7 @@ export class AccountsService {
       name: input.name,
       type,
       nature,
+      subtype,
       parentId: input.parentId ?? null,
       level,
       isDetail,
