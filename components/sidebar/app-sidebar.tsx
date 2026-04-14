@@ -79,6 +79,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
         { label: "Libro Mayor", href: `/${orgSlug}/accounting/ledger` },
         { label: "Contactos", href: `/${orgSlug}/accounting/contacts` },
         { label: "Reportes", href: `/${orgSlug}/accounting/reports` },
+        { label: "Estados Financieros", href: `/${orgSlug}/accounting/financial-statements` },
         { label: "Configuración", isSeparator: true },
         { label: "Períodos Fiscales", href: `/${orgSlug}/accounting/periods` },
         { label: "Tipos de Comprobante", href: `/${orgSlug}/accounting/voucher-types` },
