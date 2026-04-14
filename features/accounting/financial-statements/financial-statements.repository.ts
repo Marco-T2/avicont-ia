@@ -115,19 +115,19 @@ export class FinancialStatementsRepository extends BaseRepository {
 
     const rows = await this.db.$queryRaw<RawAggregation[]>`
       SELECT
-        jl.account_id,
+        jl."accountId" AS account_id,
         SUM(jl.debit)  AS total_debit,
         SUM(jl.credit) AS total_credit,
         a.nature,
         a.subtype
       FROM journal_lines  jl
-      JOIN journal_entries je ON je.id = jl.journal_entry_id
-      JOIN accounts         a  ON a.id  = jl.account_id
+      JOIN journal_entries je ON je.id = jl."journalEntryId"
+      JOIN accounts         a  ON a.id  = jl."accountId"
       WHERE
-        je.organization_id = ${orgId}
+        je."organizationId" = ${orgId}
         AND je.status       = 'POSTED'
         AND je.date        <= ${cutoff}
-      GROUP BY jl.account_id, a.nature, a.subtype
+      GROUP BY jl."accountId", a.nature, a.subtype
     `;
 
     return rows.map((r) => ({
@@ -152,20 +152,20 @@ export class FinancialStatementsRepository extends BaseRepository {
   ): Promise<MovementAggregation[]> {
     const rows = await this.db.$queryRaw<RawAggregation[]>`
       SELECT
-        jl.account_id,
+        jl."accountId" AS account_id,
         SUM(jl.debit)  AS total_debit,
         SUM(jl.credit) AS total_credit,
         a.nature,
         a.subtype
       FROM journal_lines  jl
-      JOIN journal_entries je ON je.id = jl.journal_entry_id
-      JOIN accounts         a  ON a.id  = jl.account_id
+      JOIN journal_entries je ON je.id = jl."journalEntryId"
+      JOIN accounts         a  ON a.id  = jl."accountId"
       WHERE
-        je.organization_id = ${orgId}
+        je."organizationId" = ${orgId}
         AND je.status       = 'POSTED'
         AND je.date        >= ${dateFrom}
         AND je.date        <= ${dateTo}
-      GROUP BY jl.account_id, a.nature, a.subtype
+      GROUP BY jl."accountId", a.nature, a.subtype
     `;
 
     return rows.map((r) => ({
