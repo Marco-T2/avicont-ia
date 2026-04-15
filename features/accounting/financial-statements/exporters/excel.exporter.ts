@@ -1,28 +1,28 @@
 // Exporter de Excel usando exceljs.
 // Funciones puras: reciben datos ya calculados → retornan Promise<Buffer>.
 // Sin Prisma, sin Clerk, sin acceso al sistema de archivos.
+//
+// PR4: soporte multi-columna.
+// PR4.2: estilo QuickBooks — Arial, sin rellenos, indent nativo, bordes horizontales.
+// - Encabezado de columnas dinámico (N columnas de valor)
+// - Celdas numéricas NATIVAS (cell.value = number, cell.numFmt = FORMAT)
+// - Congelado: primera columna (xSplit:1) + filas de encabezado (ySplit:N)
+// - worksheet.views: [{ state: "frozen", xSplit: 1, ySplit: frozenRows }]
 
 import ExcelJS from "exceljs";
-import type { ExportRow, ExportSheet } from "./statement-shape";
+import type { ExportColumn, ExportRow, ExportSheet } from "./statement-shape";
 import { buildBalanceSheetExportSheet, buildIncomeStatementExportSheet } from "./sheet.builder";
 import type { BalanceSheet, IncomeStatement } from "../financial-statements.types";
 
-// ── Constantes de estilo ──
+// ── Constantes de estilo (QB-style: sin colores de fondo) ──
 
-const COLORS = {
-  headerBg: "1E3A5F",   // Azul marino — encabezado de documento
-  headerFg: "FFFFFF",
-  sectionBg: "2D6A9F",  // Azul medio — encabezado de sección
-  sectionFg: "FFFFFF",
-  subtypeBg: "DCE6F1",  // Azul claro — encabezado de subtipo
-  subtypeFg: "1E3A5F",
-  totalBg: "F0F0F0",    // Gris claro — filas de total
-  totalFg: "1E3A5F",
-  imbalanceBg: "FFCCCC", // Rojo claro — desbalance
-  imbalanceFg: "CC0000",
-  bodyFg: "333333",
-  borderColor: "CCCCCC",
-  preliminaryFg: "CC8800", // Naranja — texto PRELIMINAR
+const STYLE = {
+  text: "000000",
+  textMuted: "6B7280",
+  border: "000000",
+  borderLight: "D1D5DB",
+  danger: "B91C1C",
+  preliminary: "B45309",
 } as const;
 
 // Formato numérico para saldos BOB (negativo entre paréntesis)
@@ -30,212 +30,274 @@ const NUMBER_FORMAT = "#,##0.00;(#,##0.00)";
 
 // ── Helpers ──
 
-/** Crea un estilo de relleno sólido a partir de un código ARGB. */
-function solidFill(argb: string): ExcelJS.Fill {
-  return { type: "pattern", pattern: "solid", fgColor: { argb } };
-}
-
-/** Crea un borde fino estándar. */
-function thinBorder(): Partial<ExcelJS.Borders> {
+function arial(opts: {
+  bold?: boolean;
+  size?: number;
+  color?: string;
+  italic?: boolean;
+}): Partial<ExcelJS.Font> {
   return {
-    bottom: { style: "thin", color: { argb: COLORS.borderColor } },
-  };
-}
-
-/** Crea una fuente con estilo. */
-function font(opts: { bold?: boolean; color?: string; size?: number; italic?: boolean }): Partial<ExcelJS.Font> {
-  return {
-    name: "Calibri",
+    name: "Arial",
     bold: opts.bold ?? false,
     italic: opts.italic ?? false,
-    size: opts.size ?? 10,
-    color: { argb: opts.color ?? COLORS.bodyFg },
+    size: opts.size ?? 8,
+    color: { argb: opts.color ?? STYLE.text },
   };
+}
+
+function thinTop(): Partial<ExcelJS.Borders> {
+  return {
+    top: { style: "thin", color: { argb: STYLE.border } },
+  };
+}
+
+function thinTopBottom(): Partial<ExcelJS.Borders> {
+  return {
+    top: { style: "thin", color: { argb: STYLE.border } },
+    bottom: { style: "thin", color: { argb: STYLE.border } },
+  };
+}
+
+/**
+ * Número de la última columna Excel para un ExportSheet.
+ * Estructura: A=nombre, B=código (single-col), B..? = valores (multi-col).
+ */
+function lastExcelCol(valueColumns: ExportColumn[]): string {
+  const totalCols = valueColumns.length > 1
+    ? 1 + valueColumns.length   // nombre + N valores
+    : 3;                         // nombre + código + saldo
+  let result = "";
+  let n = totalCols;
+  while (n > 0) {
+    n--;
+    result = String.fromCharCode(65 + (n % 26)) + result;
+    n = Math.floor(n / 26);
+  }
+  return result;
 }
 
 // ── Construcción de la hoja de cálculo ──
 
 /**
- * Escribe el encabezado del documento (organización, título, fecha).
- * Retorna el número de la última fila escrita.
+ * Escribe el encabezado del documento (organización, título, fecha, columnas).
+ * Estructura QB: fila 1=título, fila 2=empresa, fila 3=período, fila 4=PRELIMINAR (opcional),
+ * fila 5=vacía, fila 6=encabezados de columna.
+ * Retorna el número de la última fila escrita (la fila de encabezados de columna).
  */
-function writeDocumentHeader(sheet: ExcelJS.Worksheet, exportSheet: ExportSheet): number {
+function writeDocumentHeader(
+  sheet: ExcelJS.Worksheet,
+  exportSheet: ExportSheet,
+): number {
+  const valueColumns = exportSheet.columns;
+  const isMultiCol = valueColumns.length > 1;
+  const lastCol = lastExcelCol(valueColumns);
   let rowNum = 1;
 
-  // Fila 1: nombre de la organización
-  const orgRow = sheet.getRow(rowNum++);
-  const orgCell = orgRow.getCell(1);
-  orgCell.value = exportSheet.orgName;
-  orgCell.font = font({ bold: true, size: 12, color: COLORS.headerFg });
-  orgCell.fill = solidFill(COLORS.headerBg);
-  orgCell.alignment = { horizontal: "center", vertical: "middle" };
-  orgRow.height = 22;
-  sheet.mergeCells(`A1:C1`);
-
-  // Fila 2: título del estado
+  // Fila 1: título del estado (ej. "Balance General")
   const titleRow = sheet.getRow(rowNum++);
   const titleCell = titleRow.getCell(1);
   titleCell.value = exportSheet.title;
-  titleCell.font = font({ bold: true, size: 11, color: COLORS.headerFg });
-  titleCell.fill = solidFill(COLORS.headerBg);
-  titleCell.alignment = { horizontal: "center", vertical: "middle" };
-  titleRow.height = 20;
-  sheet.mergeCells(`A2:C2`);
+  titleCell.font = arial({ bold: true, size: 14 });
+  titleCell.alignment = { horizontal: "center" };
+  sheet.mergeCells(`A1:${lastCol}1`);
+
+  // Fila 2: nombre de la organización
+  const orgRow = sheet.getRow(rowNum++);
+  const orgCell = orgRow.getCell(1);
+  orgCell.value = exportSheet.orgName;
+  orgCell.font = arial({ bold: true, size: 12 });
+  orgCell.alignment = { horizontal: "center" };
+  sheet.mergeCells(`A2:${lastCol}2`);
 
   // Fila 3: rango de fechas / fecha de corte
   const dateRow = sheet.getRow(rowNum++);
   const dateCell = dateRow.getCell(1);
   dateCell.value = exportSheet.subtitle;
-  dateCell.font = font({ size: 10, color: COLORS.headerFg });
-  dateCell.fill = solidFill(COLORS.sectionBg);
-  dateCell.alignment = { horizontal: "center", vertical: "middle" };
-  dateRow.height = 18;
-  sheet.mergeCells(`A3:C3`);
+  dateCell.font = arial({ size: 10 });
+  dateCell.alignment = { horizontal: "center" };
+  sheet.mergeCells(`A3:${lastCol}3`);
 
   // Fila 4: aviso PRELIMINAR si aplica
   if (exportSheet.preliminary) {
     const prelRow = sheet.getRow(rowNum++);
     const prelCell = prelRow.getCell(1);
     prelCell.value = "ESTADO PRELIMINAR — basado en datos no confirmados";
-    prelCell.font = font({ bold: true, size: 9, color: COLORS.preliminaryFg });
-    prelCell.alignment = { horizontal: "center", vertical: "middle" };
-    prelRow.height = 16;
-    sheet.mergeCells(`A${rowNum - 1}:C${rowNum - 1}`);
+    prelCell.font = arial({ bold: true, size: 9, color: STYLE.preliminary });
+    prelCell.alignment = { horizontal: "center" };
+    sheet.mergeCells(`A${rowNum - 1}:${lastCol}${rowNum - 1}`);
   }
 
   // Fila vacía de separación
   rowNum++;
 
-  // Encabezados de columna
+  // Encabezados de columna de datos
   const colRow = sheet.getRow(rowNum++);
-  const headers = ["Cuenta", "Código", "Saldo BOB"];
-  const aligns: ExcelJS.Alignment["horizontal"][] = ["left", "center", "right"];
-  headers.forEach((h, i) => {
-    const cell = colRow.getCell(i + 1);
-    cell.value = h;
-    cell.font = font({ bold: true, size: 9, color: COLORS.subtypeFg });
-    cell.fill = solidFill(COLORS.subtypeBg);
-    cell.alignment = { horizontal: aligns[i], vertical: "middle" };
-    cell.border = thinBorder();
-  });
-  colRow.height = 16;
+  const cuentaCell = colRow.getCell(1);
+  cuentaCell.value = "Cuenta";
+  cuentaCell.font = arial({ bold: true, size: 9 });
+  cuentaCell.alignment = { horizontal: "left", vertical: "middle" };
+  cuentaCell.border = {
+    top: { style: "thin", color: { argb: STYLE.border } },
+    bottom: { style: "thin", color: { argb: STYLE.border } },
+  };
+
+  if (isMultiCol) {
+    valueColumns.forEach((col, i) => {
+      const cell = colRow.getCell(i + 2);
+      cell.value = col.label;
+      cell.font = arial({ bold: true, size: 9 });
+      cell.alignment = { horizontal: "right", vertical: "middle" };
+      cell.border = {
+        top: { style: "thin", color: { argb: STYLE.border } },
+        bottom: { style: "thin", color: { argb: STYLE.border } },
+      };
+    });
+  } else {
+    const codeCell = colRow.getCell(2);
+    codeCell.value = "Código";
+    codeCell.font = arial({ bold: true, size: 9 });
+    codeCell.alignment = { horizontal: "center", vertical: "middle" };
+    codeCell.border = {
+      top: { style: "thin", color: { argb: STYLE.border } },
+      bottom: { style: "thin", color: { argb: STYLE.border } },
+    };
+
+    const balCell = colRow.getCell(3);
+    balCell.value = "Saldo BOB";
+    balCell.font = arial({ bold: true, size: 9 });
+    balCell.alignment = { horizontal: "right", vertical: "middle" };
+    balCell.border = {
+      top: { style: "thin", color: { argb: STYLE.border } },
+      bottom: { style: "thin", color: { argb: STYLE.border } },
+    };
+  }
 
   return rowNum;
 }
 
 /**
+ * Escribe una celda numérica nativa.
+ * Si el string es vacío o no parseable, escribe 0.
+ * SIEMPRE usa cell.value = number — nunca string para valores monetarios.
+ */
+function writeNumericCell(
+  cell: ExcelJS.Cell,
+  valueStr: string | undefined,
+  opts: { bold?: boolean; size?: number },
+): void {
+  const parsed = valueStr ? parseFloat(valueStr) : 0;
+  cell.value = isNaN(parsed) ? 0 : parsed;
+  cell.numFmt = NUMBER_FORMAT;
+  cell.font = arial({ bold: opts.bold, size: opts.size ?? 8 });
+  cell.alignment = { horizontal: "right" };
+}
+
+/**
  * Escribe una fila del ExportSheet en la hoja de cálculo.
+ * QB-style: sin rellenos, indent nativo (alignment.indent), bordes horizontales sólo en totales.
  */
 function writeExportRow(
   worksheet: ExcelJS.Worksheet,
   row: ExportRow,
   rowNum: number,
+  valueColumns: ExportColumn[],
 ): void {
   const excelRow = worksheet.getRow(rowNum);
-  const indentSpaces = "  ".repeat(row.indent);
+  const isMultiCol = valueColumns.length > 1;
 
   switch (row.type) {
     case "header-section": {
       const cell = excelRow.getCell(1);
       cell.value = row.label;
-      cell.font = font({ bold: true, size: 9, color: COLORS.sectionFg });
-      cell.fill = solidFill(COLORS.sectionBg);
-      cell.alignment = { horizontal: "left", vertical: "middle", indent: row.indent };
-      excelRow.getCell(2).fill = solidFill(COLORS.sectionBg);
-      excelRow.getCell(3).fill = solidFill(COLORS.sectionBg);
-      excelRow.height = 18;
-      worksheet.mergeCells(`A${rowNum}:C${rowNum}`);
+      cell.font = arial({ bold: true, size: 8 });
+      cell.alignment = { horizontal: "left", indent: 0 };
       break;
     }
 
     case "header-subtype": {
       const cell = excelRow.getCell(1);
-      cell.value = `${indentSpaces}${row.label}`;
-      cell.font = font({ bold: true, size: 9, color: COLORS.subtypeFg });
-      cell.fill = solidFill(COLORS.subtypeBg);
-      excelRow.getCell(2).fill = solidFill(COLORS.subtypeBg);
-      excelRow.getCell(3).fill = solidFill(COLORS.subtypeBg);
-      excelRow.height = 16;
-      worksheet.mergeCells(`A${rowNum}:C${rowNum}`);
+      cell.value = row.label;
+      cell.font = arial({ bold: true, size: 8 });
+      cell.alignment = { horizontal: "left", indent: row.indent };
       break;
     }
 
     case "account": {
       const labelCell = excelRow.getCell(1);
-      labelCell.value = `${indentSpaces}${row.label}`;
-      labelCell.font = font({ size: 9 });
+      labelCell.value = row.label;
+      labelCell.font = arial({ size: 8 });
+      labelCell.alignment = { horizontal: "left", indent: row.indent };
 
-      const codeCell = excelRow.getCell(2);
-      codeCell.value = row.code ?? "";
-      codeCell.font = font({ size: 9 });
-      codeCell.alignment = { horizontal: "center" };
+      if (isMultiCol) {
+        valueColumns.forEach((col, i) => {
+          const val = row.balances?.[col.id] ?? row.balance ?? "";
+          writeNumericCell(excelRow.getCell(i + 2), val, {});
+        });
+      } else {
+        const codeCell = excelRow.getCell(2);
+        codeCell.value = row.code ?? "";
+        codeCell.font = arial({ size: 8 });
+        codeCell.alignment = { horizontal: "center" };
 
-      const balCell = excelRow.getCell(3);
-      // Saldo como número para que Excel aplique formato numérico
-      balCell.value = row.balance ? parseFloat(row.balance) : 0;
-      balCell.numFmt = NUMBER_FORMAT;
-      balCell.font = font({ size: 9 });
-      balCell.alignment = { horizontal: "right" };
-      excelRow.height = 14;
+        writeNumericCell(excelRow.getCell(3), row.balance, {});
+      }
       break;
     }
 
     case "subtotal": {
       const labelCell = excelRow.getCell(1);
-      labelCell.value = `${indentSpaces}${row.label}`;
-      labelCell.font = font({ bold: true, size: 9 });
-      labelCell.fill = solidFill(COLORS.totalBg);
-      labelCell.border = { top: { style: "thin", color: { argb: COLORS.headerBg } } };
+      labelCell.value = row.label;
+      labelCell.font = arial({ bold: true, size: 8 });
+      labelCell.alignment = { horizontal: "left", indent: row.indent };
+      labelCell.border = thinTop();
 
-      excelRow.getCell(2).fill = solidFill(COLORS.totalBg);
-
-      const balCell = excelRow.getCell(3);
-      balCell.value = row.balance ? parseFloat(row.balance) : 0;
-      balCell.numFmt = NUMBER_FORMAT;
-      balCell.font = font({ bold: true, size: 9 });
-      balCell.fill = solidFill(COLORS.totalBg);
-      balCell.alignment = { horizontal: "right" };
-      balCell.border = { top: { style: "thin", color: { argb: COLORS.headerBg } } };
-      excelRow.height = 15;
+      if (isMultiCol) {
+        valueColumns.forEach((col, i) => {
+          const val = row.balances?.[col.id] ?? row.balance ?? "";
+          const cell = excelRow.getCell(i + 2);
+          writeNumericCell(cell, val, { bold: true });
+          cell.border = thinTop();
+        });
+      } else {
+        const balCell = excelRow.getCell(3);
+        writeNumericCell(balCell, row.balance, { bold: true });
+        balCell.border = thinTop();
+      }
       break;
     }
 
     case "total": {
       const labelCell = excelRow.getCell(1);
       labelCell.value = row.label;
-      labelCell.font = font({ bold: true, size: 9, color: COLORS.headerFg });
-      labelCell.fill = solidFill(COLORS.headerBg);
-      labelCell.alignment = { horizontal: "left", vertical: "middle" };
+      labelCell.font = arial({ bold: true, size: 9 });
+      labelCell.alignment = { horizontal: "left", indent: 0 };
+      labelCell.border = thinTopBottom();
 
-      excelRow.getCell(2).fill = solidFill(COLORS.headerBg);
-
-      const balCell = excelRow.getCell(3);
-      balCell.value = row.balance ? parseFloat(row.balance) : 0;
-      balCell.numFmt = NUMBER_FORMAT;
-      balCell.font = font({ bold: true, size: 9, color: COLORS.headerFg });
-      balCell.fill = solidFill(COLORS.headerBg);
-      balCell.alignment = { horizontal: "right" };
-      excelRow.height = 16;
+      if (isMultiCol) {
+        valueColumns.forEach((col, i) => {
+          const val = row.balances?.[col.id] ?? row.balance ?? "";
+          const cell = excelRow.getCell(i + 2);
+          writeNumericCell(cell, val, { bold: true, size: 9 });
+          cell.border = thinTopBottom();
+        });
+      } else {
+        const balCell = excelRow.getCell(3);
+        writeNumericCell(balCell, row.balance, { bold: true, size: 9 });
+        balCell.border = thinTopBottom();
+      }
       break;
     }
 
     case "imbalance": {
       const cell = excelRow.getCell(1);
       cell.value = row.label;
-      cell.font = font({ bold: true, size: 9, color: COLORS.imbalanceFg });
-      cell.fill = solidFill(COLORS.imbalanceBg);
-      excelRow.getCell(2).fill = solidFill(COLORS.imbalanceBg);
-      excelRow.getCell(3).fill = solidFill(COLORS.imbalanceBg);
-      excelRow.height = 16;
-      worksheet.mergeCells(`A${rowNum}:C${rowNum}`);
+      cell.font = arial({ bold: true, size: 8, color: STYLE.danger });
+      cell.alignment = { horizontal: "left" };
       break;
     }
   }
 }
 
-/**
- * Escribe el pie del documento (timestamp de generación).
- */
 function writeDocumentFooter(worksheet: ExcelJS.Worksheet, rowNum: number): void {
   const footerRow = worksheet.getRow(rowNum + 2);
   const generatedAt = new Date().toLocaleString("es-BO", {
@@ -247,43 +309,66 @@ function writeDocumentFooter(worksheet: ExcelJS.Worksheet, rowNum: number): void
     minute: "2-digit",
   });
   footerRow.getCell(1).value = `Generado: ${generatedAt}`;
-  footerRow.getCell(1).font = font({ size: 8, italic: true, color: "888888" });
+  footerRow.getCell(1).font = arial({ size: 8, italic: true, color: STYLE.textMuted });
 }
 
 /**
  * Convierte un ExportSheet en un Workbook de exceljs y retorna Buffer.
+ *
+ * PR4.2 QB-style:
+ * - Orientación portrait siempre
+ * - Columnas dinámicas (nombre 42pt + N columnas de valor)
+ * - xSplit: 1 (congela columna nombre)
+ * - ySplit: frozenRows (congela encabezados de documento + columnas)
  */
 async function exportSheetToBuffer(exportSheet: ExportSheet): Promise<Buffer> {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = "Avicont IA";
   workbook.created = new Date();
 
-  const sheetName = exportSheet.title.substring(0, 31); // Excel: max 31 chars
+  const sheetName = exportSheet.title.substring(0, 31);
   const worksheet = workbook.addWorksheet(sheetName, {
-    pageSetup: { paperSize: 5, orientation: "portrait", fitToPage: true },
+    pageSetup: {
+      paperSize: 5,
+      orientation: "portrait",
+      fitToPage: true,
+    },
     views: [{ state: "normal" }],
   });
 
-  // Anchos de columna: Cuenta, Código, Saldo BOB
-  worksheet.columns = [
-    { key: "account", width: 48 },
-    { key: "code", width: 14 },
-    { key: "balance", width: 16 },
-  ];
+  const valueColumns = exportSheet.columns;
+  const isMultiCol = valueColumns.length > 1;
+
+  if (isMultiCol) {
+    const valueCols: Partial<ExcelJS.Column>[] = valueColumns.map((col) => ({
+      key: col.id,
+      width: Math.min(18, Math.max(12, col.label.length * 1.2)),
+    }));
+    worksheet.columns = [
+      { key: "account", width: 42 },
+      ...valueCols,
+    ] as ExcelJS.Column[];
+  } else {
+    worksheet.columns = [
+      { key: "account", width: 42 },
+      { key: "code", width: 14 },
+      { key: "balance", width: 16 },
+    ] as ExcelJS.Column[];
+  }
 
   let rowNum = writeDocumentHeader(worksheet, exportSheet);
 
-  // Escribir filas de datos
   for (const row of exportSheet.rows) {
-    writeExportRow(worksheet, row, rowNum);
+    writeExportRow(worksheet, row, rowNum, valueColumns);
     rowNum++;
   }
 
   writeDocumentFooter(worksheet, rowNum);
 
-  // Congelar las primeras N filas de encabezado (header doc + col headers)
-  const frozenRows = exportSheet.preliminary ? 7 : 6;
-  worksheet.views = [{ state: "frozen", ySplit: frozenRows - 1, xSplit: 0 }];
+  // Congelar: columna nombre (xSplit:1) + filas de encabezado doc (ySplit)
+  // Estructura: fila 1=título, 2=empresa, 3=período, [4=PRELIMINAR], 5=vacía, 6=col-headers
+  const frozenRows = exportSheet.preliminary ? 6 : 5;
+  worksheet.views = [{ state: "frozen", ySplit: frozenRows, xSplit: 1 }];
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);

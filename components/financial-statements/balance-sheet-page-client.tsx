@@ -1,44 +1,71 @@
 "use client";
 
-// Cliente de la página de Balance General
-// Orquesta filtros → fetch → visualización + banners + export
-import { useState } from "react";
+// Cliente de la página de Balance General — estilo QuickBooks.
+// Orquesta: filtros → fetch → toolbar + tabla TanStack + banners.
+// Los exportadores PDF/Excel siguen disponibles vía StatementToolbar (stub en PR3, completo en PR4).
+import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 import { StatementFilters } from "./statement-filters";
-import type { StatementFilterParams } from "./statement-filters";
-import { BalanceSheetView } from "./balance-sheet-view";
-import type { SerializedBalanceSheet } from "./balance-sheet-view";
+import type { QuickBooksFilterParams } from "./statement-filters";
+import { StatementTable } from "./statement-table";
+import { StatementToolbar } from "./statement-toolbar";
 import { PreliminaryBanner } from "./preliminary-banner";
 import { ImbalanceBanner } from "./imbalance-banner";
-import { ExportButtons } from "./export-buttons";
-import { Loader2 } from "lucide-react";
+import {
+  buildBalanceSheetTableRows,
+} from "@/features/accounting/financial-statements/statement-table-rows.utils";
+import type {
+  SerializedBalanceSheetResponse,
+  SerializedColumn,
+} from "@/features/accounting/financial-statements/statement-table-rows.utils";
 
 interface BalanceSheetPageClientProps {
   orgSlug: string;
+  orgName?: string;
 }
 
-export function BalanceSheetPageClient({
-  orgSlug,
-}: BalanceSheetPageClientProps) {
-  const [statement, setStatement] = useState<SerializedBalanceSheet | null>(
-    null,
-  );
+export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageClientProps) {
+  const displayOrgName = orgName ?? orgSlug.charAt(0).toUpperCase() + orgSlug.slice(1);
+  const [statement, setStatement] = useState<SerializedBalanceSheetResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  // Guardamos los query params para poder pasarlos a ExportButtons
-  const [lastParams, setLastParams] = useState<Record<string, string>>({});
+  const [compact, setCompact] = useState(false);
+  // Guardamos los params para reutilizarlos en refresh y exportación
+  const [lastParams, setLastParams] = useState<QuickBooksFilterParams | null>(null);
+  // Params como Record<string, string> para la toolbar de exportación
+  const [exportQueryParams, setExportQueryParams] = useState<Record<string, string>>({});
 
-  async function handleSubmit(params: StatementFilterParams) {
-    if (params.type !== "balance-sheet") return;
-
+  const fetchStatement = useCallback(async (params: QuickBooksFilterParams) => {
     setLoading(true);
     setError(null);
-    setStatement(null);
 
-    const queryParams: Record<string, string> = { date: params.asOfDate };
-    if (params.periodId) queryParams["periodId"] = params.periodId;
+    // Construir query params para la API
+    const queryParams: Record<string, string> = {};
 
-    setLastParams(queryParams);
+    if (params.fiscalPeriodId) {
+      queryParams["periodId"] = params.fiscalPeriodId;
+    }
+    if (params.preset) {
+      queryParams["preset"] = params.preset;
+    }
+    // Balance General requiere asOfDate: si viene en params la usamos;
+    // si hay preset, el service la resuelve — pero la ruta exige el campo date siempre.
+    // Usamos la fecha de hoy como fallback cuando hay preset o period.
+    const asOfDate = params.asOfDate ?? new Date().toISOString().slice(0, 10);
+    queryParams["date"] = asOfDate;
+
+    if (params.breakdownBy && params.breakdownBy !== "total") {
+      queryParams["breakdownBy"] = params.breakdownBy;
+    }
+    if (params.compareWith && params.compareWith !== "none") {
+      queryParams["compareWith"] = params.compareWith;
+    }
+    if (params.compareAsOfDate) {
+      queryParams["compareAsOfDate"] = params.compareAsOfDate;
+    }
+
+    setExportQueryParams(queryParams);
 
     try {
       const searchParams = new URLSearchParams(queryParams);
@@ -48,23 +75,41 @@ export function BalanceSheetPageClient({
 
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
-        setError(
-          body.error ?? `Error al generar el balance (${res.status})`,
-        );
+        setError(body.error ?? `Error al generar el balance (${res.status})`);
         return;
       }
 
-      const data: SerializedBalanceSheet = await res.json();
-      setStatement(data);
+      const data = await res.json();
+      // La API devuelve el objeto serializado; aseguramos que columns esté presente
+      if (!data.columns || data.columns.length === 0) {
+        data.columns = [{ id: "col-current", label: "Total", role: "current" }];
+      }
+      setStatement(data as SerializedBalanceSheetResponse);
     } catch {
       setError("Error de conexión. Por favor intente nuevamente.");
     } finally {
       setLoading(false);
     }
+  }, [orgSlug]);
+
+  async function handleSubmit(params: QuickBooksFilterParams) {
+    if (params.type !== "balance-sheet") return;
+    setLastParams(params);
+    await fetchStatement(params);
   }
 
+  async function handleRefresh() {
+    if (lastParams) {
+      await fetchStatement(lastParams);
+    }
+  }
+
+  // Construir árbol de filas para TanStack Table
+  const tableRows = statement ? buildBalanceSheetTableRows(statement) : [];
+  const tableColumns: SerializedColumn[] = statement?.columns ?? [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Formulario de filtros */}
       <Card>
         <CardContent className="pt-6">
@@ -76,6 +121,20 @@ export function BalanceSheetPageClient({
           />
         </CardContent>
       </Card>
+
+      {/* Toolbar — siempre visible cuando hay o hubo un informe */}
+      {(statement || lastParams) && (
+        <StatementToolbar
+          orgSlug={orgSlug}
+          endpoint="balance-sheet"
+          queryParams={exportQueryParams}
+          compact={compact}
+          onToggleCompact={() => setCompact((c) => !c)}
+          onRefresh={handleRefresh}
+          refreshing={loading}
+          hasStatement={!!statement}
+        />
+      )}
 
       {/* Estado de carga */}
       {loading && (
@@ -105,23 +164,38 @@ export function BalanceSheetPageClient({
             imbalanceDelta={statement.current.imbalanceDelta}
           />
 
-          {/* Botones de exportación */}
-          <div className="flex justify-end">
-            <ExportButtons
-              orgSlug={orgSlug}
-              endpoint="balance-sheet"
-              queryParams={lastParams}
-            />
-          </div>
-
-          {/* Tabla jerárquica */}
+          {/* Tabla TanStack */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0">
-              <BalanceSheetView statement={statement} />
+            <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
+              <StatementTable
+                columns={tableColumns}
+                rows={tableRows}
+                compact={compact}
+                onRefresh={handleRefresh}
+                title="Balance General"
+                orgName={displayOrgName}
+                subtitle={formatAsOfDate(statement.current.asOfDate)}
+              />
             </CardContent>
           </Card>
         </div>
       )}
     </div>
   );
+}
+
+function formatAsOfDate(isoDate: string): string {
+  if (!isoDate) return "";
+  const datePart = isoDate.slice(0, 10);
+  const [y, m, d] = datePart.split("-").map(Number);
+  if (!y || !m || !d) return isoDate;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (isNaN(date.getTime())) return isoDate;
+  const formatted = new Intl.DateTimeFormat("es-BO", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(date);
+  return `A partir del ${formatted}`;
 }

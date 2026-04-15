@@ -10,12 +10,28 @@ export type ExportRow = {
   label: string;
   /** Código de cuenta (vacío para headers/totales) */
   code?: string;
-  /** Saldo formateado como string con 2 decimales */
+  /**
+   * Saldo formateado (columna única — backward compat).
+   * Para multi-columna usar `balances`.
+   */
   balance?: string;
+  /**
+   * Saldos por columna (multi-columna PR4).
+   * Clave = ExportColumn.id → valor formateado con 2 decimales.
+   * Siempre presente en sheets generadas por PR4 (incluso en columna única).
+   */
+  balances?: Record<string, string>;
   /** Nivel de indentación (0 = sección, 1 = subtipo, 2 = cuenta) */
   indent: number;
   /** Si la fila debe ir en negrita */
   bold: boolean;
+};
+
+/** Metadato de columna de valor en el ExportSheet (PR4). */
+export type ExportColumn = {
+  id: string;
+  label: string;
+  role: "current" | "comparative" | "diff_percent";
 };
 
 export type ExportSheet = {
@@ -30,6 +46,17 @@ export type ExportSheet = {
   imbalanced: boolean;
   /** Delta de desbalance formateado (solo presente si imbalanced=true) */
   imbalanceDelta?: string;
+  /**
+   * Columnas de valor del export (PR4).
+   * Siempre tiene al menos 1 elemento.
+   */
+  columns: ExportColumn[];
+  /**
+   * Orientación de página para PDF.
+   * Siempre "portrait" — el PDF usa chunking horizontal QB-style en lugar de landscape.
+   * El campo se mantiene en el tipo para no romper consumidores externos que lo lean.
+   */
+  orientation: "portrait" | "landscape";
 };
 
 export type WatermarkConfig = {
