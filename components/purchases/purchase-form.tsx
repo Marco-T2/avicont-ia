@@ -36,6 +36,7 @@ import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/features/purchase";
 import { IvaBookPurchaseModal } from "@/components/iva-books/iva-book-purchase-modal";
+import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
 
 // ── Helpers ──
 
@@ -1449,11 +1450,15 @@ export default function PurchaseForm({
               Eliminar
             </Button>
           )}
-          {/* Registrar en Libro de Compras IVA — disponible en modo edición */}
+          {/* Registrar en Libro de Compras IVA — disponible en modo edición.
+              Gate: period.status === "OPEN" (SPEC-5 / D5).
+              El servicio re-verifica el estado dentro de la transacción. */}
           {isEditMode && purchase && (
             <Button
               type="button"
               variant="outline"
+              disabled={!isFiscalPeriodOpen(purchase.period)}
+              title={!isFiscalPeriodOpen(purchase.period) ? FISCAL_PERIOD_CLOSED_MESSAGE : undefined}
               onClick={() => setIvaModalOpen(true)}
             >
               <BookOpen className="h-4 w-4 mr-2" />

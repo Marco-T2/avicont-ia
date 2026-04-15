@@ -37,6 +37,7 @@ const saleInclude = {
     select: {
       id: true,
       name: true,
+      status: true,
     },
   },
   createdBy: {
