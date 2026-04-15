@@ -1,6 +1,46 @@
 import type { Prisma } from "@/generated/prisma/client";
 import type { AccountSubtype } from "@/generated/prisma/enums";
 
+// ── Tipos para el estilo QuickBooks (PR1) ──
+
+export type DatePresetId =
+  | "all_dates"
+  | "custom_date"
+  | "today"
+  | "yesterday"
+  | "this_week"
+  | "last_week"
+  | "this_month"
+  | "this_month_to_date"
+  | "last_month"
+  | "this_quarter"
+  | "last_quarter"
+  | "this_year"
+  | "this_year_to_date"
+  | "last_year"
+  | "last_30_days"
+  | "last_90_days"
+  | "last_12_months";
+
+export type BreakdownBy = "total" | "months" | "quarters" | "years";
+
+export type CompareWith = "none" | "previous_period" | "previous_year" | "custom";
+
+export type StatementColumn = {
+  id: string;
+  label: string;
+  asOfDate?: Date;
+  dateFrom?: Date;
+  dateTo?: Date;
+  role: "current" | "comparative" | "diff_percent";
+};
+
+export type SemanticRowClass =
+  | "top-level-grouped-row"
+  | "custom-grouped-row"
+  | "custom-bg-white"
+  | "total-row";
+
 // Alias local para Decimal — se usa en todo el pipeline sin conversión a number
 export type Decimal = Prisma.Decimal;
 
@@ -50,7 +90,8 @@ export type BalanceSheetCurrent = {
 export type BalanceSheet = {
   orgId: string;
   current: BalanceSheetCurrent;
-  comparative?: BalanceSheetCurrent; // v2 — comparativos
+  comparative?: BalanceSheetCurrent;
+  columns?: StatementColumn[];
 };
 
 // ── Estado de Resultados ──
@@ -67,7 +108,8 @@ export type IncomeStatementCurrent = {
 export type IncomeStatement = {
   orgId: string;
   current: IncomeStatementCurrent;
-  comparative?: IncomeStatementCurrent; // v2 — comparativos
+  comparative?: IncomeStatementCurrent;
+  columns?: StatementColumn[];
 };
 
 // ── Inputs para los builders ──

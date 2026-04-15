@@ -178,6 +178,56 @@ export class FinancialStatementsRepository extends BaseRepository {
   }
 
   /**
+   * Ejecuta N aggregateJournalLinesUpTo en paralelo, uno por cada bucket de columna BS.
+   * Retorna un Map de columnId → MovementAggregation[] para que el service arme columnas.
+   * Estrategia: Option C (Promise.all sobre el método existente) — ver diseño §2.
+   */
+  async aggregateJournalLinesUpToBulk(
+    orgId: string,
+    buckets: Array<{ columnId: string; asOfDate: Date }>,
+  ): Promise<Map<string, MovementAggregation[]>> {
+    const results = await Promise.all(
+      buckets.map(async (bucket) => {
+        const aggregations = await this.aggregateJournalLinesUpTo(orgId, bucket.asOfDate);
+        return { columnId: bucket.columnId, aggregations };
+      }),
+    );
+
+    const map = new Map<string, MovementAggregation[]>();
+    for (const { columnId, aggregations } of results) {
+      map.set(columnId, aggregations);
+    }
+    return map;
+  }
+
+  /**
+   * Ejecuta N aggregateJournalLinesInRange en paralelo, uno por cada bucket de columna IS.
+   * Retorna un Map de columnId → MovementAggregation[] para que el service arme columnas.
+   * Estrategia: Option C (Promise.all sobre el método existente) — ver diseño §2.
+   */
+  async aggregateJournalLinesInRangeBulk(
+    orgId: string,
+    buckets: Array<{ columnId: string; dateFrom: Date; dateTo: Date }>,
+  ): Promise<Map<string, MovementAggregation[]>> {
+    const results = await Promise.all(
+      buckets.map(async (bucket) => {
+        const aggregations = await this.aggregateJournalLinesInRange(
+          orgId,
+          bucket.dateFrom,
+          bucket.dateTo,
+        );
+        return { columnId: bucket.columnId, aggregations };
+      }),
+    );
+
+    const map = new Map<string, MovementAggregation[]>();
+    for (const { columnId, aggregations } of results) {
+      map.set(columnId, aggregations);
+    }
+    return map;
+  }
+
+  /**
    * Escribe un registro en AuditLog cuando la ecuación contable falla (REQ-6, D10).
    * No bloquea la generación — se llama después de retornar el estado financiero.
    *
