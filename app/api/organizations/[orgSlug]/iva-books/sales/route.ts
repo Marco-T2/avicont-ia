@@ -107,7 +107,7 @@ export async function POST(
     const dto = createSaleInputSchema.parse(body);
     const input = toSaleInput(dto);
 
-    const entry = await service.createSale(orgId, input);
+    const entry = await service.createSale(orgId, userId, input);
 
     return Response.json(entry, { status: 201 });
   } catch (error) {

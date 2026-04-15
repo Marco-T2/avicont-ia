@@ -37,7 +37,12 @@ import type {
   PurchaseFilters,
   CreatePurchaseDetailInput,
 } from "./purchase.types";
-import { getDisplayCode, buildPurchaseEntryLines, type PurchaseOrgSettings } from "./purchase.utils";
+import {
+  getDisplayCode,
+  buildPurchaseEntryLines,
+  type PurchaseOrgSettings,
+  type IvaBookForEntry,
+} from "./purchase.utils";
 
 // ── Auxiliar: calcular todos los campos derivados por línea de detalle POLLO_FAENADO ──
 
@@ -159,6 +164,19 @@ function computeDetails(
     return computeFleteDetails(details);
   }
   return computeGeneralDetails(details);
+}
+
+// ── Auxiliar: extraer IvaBookForEntry de un IvaPurchaseBookDTO activo ──
+
+function extractIvaBookForEntry(purchase: PurchaseWithDetails): IvaBookForEntry | undefined {
+  const iva = purchase.ivaPurchaseBook;
+  if (!iva || iva.status !== "ACTIVE") return undefined;
+  return {
+    baseIvaSujetoCf: Number(iva.baseIvaSujetoCf),
+    dfCfIva: Number(iva.dfCfIva),
+    importeTotal: Number(iva.importeTotal),
+    exentos: Number(iva.exentos ?? 0),
+  };
 }
 
 // ── Auxiliar: agregar displayCode al resultado ──
@@ -323,12 +341,16 @@ export class PurchaseService {
       purchase.details as unknown as Array<{ lineAmount: number; expenseAccountId?: string | null; description: string }>,
     );
 
+    // Task 4.7: pasar ivaBook cuando hay un IvaPurchaseBook ACTIVE vinculado
+    const ivaBookForEntry = extractIvaBookForEntry(purchase);
+
     const entryLines = buildPurchaseEntryLines(
       purchase.purchaseType as PurchaseType,
       totalAmount,
       detailsForEntry,
       settings as unknown as PurchaseOrgSettings,
       purchase.contactId,
+      ivaBookForEntry,
     );
 
     const contact = purchase.contact;
@@ -929,6 +951,129 @@ export class PurchaseService {
     await this.repo.hardDelete(organizationId, id);
   }
 
+  // ── Regenerar asiento contable por cambio en IVA (SPEC-6 / D3) ──
+  //
+  // CONTRATO READ-ONLY sobre IvaPurchaseBook:
+  //   Este método LEE el IvaPurchaseBook para construir las líneas del asiento,
+  //   pero NUNCA escribe en él. Esta restricción previene el loop:
+  //   IvaBooksService → regenerateJournalForIvaChange → IvaBooksService.
+  //
+  //   GREP ENFORCEMENT: no debe existir `tx.ivaPurchaseBook.update` en este método.
+
+  async regenerateJournalForIvaChange(
+    organizationId: string,
+    purchaseId: string,
+    userId: string,
+  ): Promise<PurchaseWithDetails> {
+    // 1. Cargar la compra actualizada (incluye ivaPurchaseBook fresco)
+    const purchase = await this.getById(organizationId, purchaseId);
+
+    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+
+    // 2. Resolver cuentas de detalle para el builder
+    const detailsForEntry = await this.resolveDetailAccountCodes(
+      organizationId,
+      purchase.purchaseType as PurchaseType,
+      purchase.details as unknown as Array<{ lineAmount: number; expenseAccountId?: string | null; description: string }>,
+    );
+
+    const totalAmount = Number(purchase.totalAmount);
+
+    // 3. Extraer ivaBook (READ-ONLY — ver contrato arriba)
+    const ivaBookForEntry = extractIvaBookForEntry(purchase);
+
+    const entryLines = buildPurchaseEntryLines(
+      purchase.purchaseType as PurchaseType,
+      totalAmount,
+      detailsForEntry,
+      settings as unknown as PurchaseOrgSettings,
+      purchase.contactId,
+      ivaBookForEntry,
+    );
+
+    // 4. Pre-resolver IDs de cuenta
+    const resolvedLines: Array<{
+      accountId: string;
+      debit: number;
+      credit: number;
+      contactId?: string;
+      description?: string;
+      order: number;
+    }> = [];
+
+    for (let i = 0; i < entryLines.length; i++) {
+      const l = entryLines[i];
+      const account = await this.accountsRepo.findByCode(organizationId, l.accountCode);
+      if (!account || !account.isActive || !account.isDetail) {
+        throw new ValidationError(
+          `Cuenta ${l.accountCode} no es posteable`,
+          "ACCOUNT_NOT_POSTABLE",
+        );
+      }
+      resolvedLines.push({
+        accountId: account.id,
+        debit: l.debit,
+        credit: l.credit,
+        contactId: l.contactId,
+        description: l.description,
+        order: i,
+      });
+    }
+
+    // 5. Ejecutar transacción atómica con re-chequeo de período (D3 / D5 race guard)
+    await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId);
+
+      // Re-chequear que el período sigue ABIERTO dentro de la tx
+      await tx.fiscalPeriod.findFirstOrThrow({
+        where: { id: purchase.periodId, status: "OPEN" },
+      });
+
+      // a. Revertir saldos del asiento anterior
+      if (purchase.journalEntryId) {
+        const oldEntry = await tx.journalEntry.findFirst({
+          where: { id: purchase.journalEntryId, organizationId },
+          include: {
+            lines: { include: { account: true, contact: true }, orderBy: { order: "asc" as const } },
+            contact: true,
+            voucherType: true,
+          },
+        });
+        if (oldEntry) {
+          await this.balancesService.applyVoid(tx, oldEntry as never);
+        }
+      }
+
+      // b. Actualizar las líneas del asiento contable
+      const displayCode = getDisplayCode(
+        purchase.purchaseType as PurchaseType,
+        purchase.sequenceNumber,
+      );
+      const journalDescription = purchase.notes
+        ? `${displayCode} - ${purchase.description} | ${purchase.notes}`
+        : `${displayCode} - ${purchase.description}`;
+
+      const updatedEntry = await this.journalRepo.updateTx(
+        tx,
+        organizationId,
+        purchase.journalEntryId!,
+        {
+          date: purchase.date,
+          description: journalDescription,
+          contactId: purchase.contactId,
+        },
+        resolvedLines,
+        userId,
+      );
+
+      // c. Aplicar los nuevos saldos
+      await this.balancesService.applyPost(tx, updatedEntry);
+    });
+
+    const updated = await this.repo.findById(organizationId, purchaseId);
+    return withDisplayCode(updated!);
+  }
+
   // ── Interno: anulación en cascada dentro de una transacción ──
 
   private async voidCascadeTx(
@@ -983,6 +1128,17 @@ export class PurchaseService {
 
     // 1. Actualizar el estado de la compra a VOIDED
     await this.repo.updateStatusTx(tx, organizationId, purchase.id, "VOIDED");
+
+    // SPEC-7 / D4: Anular el IvaPurchaseBook ANTES de la reversión del asiento.
+    // El orden importa: ambas operaciones deben estar en la misma tx.
+    // LOOP GUARD: no existe `tx.ivaPurchaseBook.update` en regenerateJournalForIvaChange.
+    const ivaPurchaseBook = await tx.ivaPurchaseBook.findUnique({ where: { purchaseId: purchase.id } });
+    if (ivaPurchaseBook && ivaPurchaseBook.status !== "VOIDED") {
+      await tx.ivaPurchaseBook.update({
+        where: { id: ivaPurchaseBook.id },
+        data: { status: "VOIDED" },
+      });
+    }
 
     // 2. Anular el JournalEntry vinculado
     if (purchase.journalEntryId) {

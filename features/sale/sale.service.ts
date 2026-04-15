@@ -35,7 +35,12 @@ import type {
   SaleFilters,
   CreateSaleDetailInput,
 } from "./sale.types";
-import { getDisplayCode, buildSaleEntryLines, type SaleOrgSettings } from "./sale.utils";
+import {
+  getDisplayCode,
+  buildSaleEntryLines,
+  type SaleOrgSettings,
+  type IvaBookForEntry,
+} from "./sale.utils";
 
 // ── Auxiliar: calcular detalles de venta ──
 
@@ -57,6 +62,19 @@ function computeDetails(
       incomeAccountId: d.incomeAccountId,
     };
   });
+}
+
+// ── Auxiliar: extraer IvaBookForEntry de un IvaSalesBookDTO activo ──
+
+function extractIvaBookForEntry(sale: SaleWithDetails): IvaBookForEntry | undefined {
+  const iva = sale.ivaSalesBook;
+  if (!iva || iva.status !== "ACTIVE") return undefined;
+  return {
+    baseIvaSujetoCf: Number(iva.baseIvaSujetoCf),
+    dfCfIva: Number(iva.dfCfIva),
+    importeTotal: Number(iva.importeTotal),
+    exentos: Number(iva.exentos ?? 0),
+  };
 }
 
 // ── Auxiliar: agregar displayCode al resultado ──
@@ -199,11 +217,15 @@ export class SaleService {
       sale.details as unknown as Array<{ lineAmount: number; incomeAccountId: string; description: string }>,
     );
 
+    // Task 4.4: pasar ivaBook cuando hay un IvaSalesBook ACTIVE vinculado
+    const ivaBookForEntry = extractIvaBookForEntry(sale);
+
     const entryLines = buildSaleEntryLines(
       totalAmount,
       detailsForEntry,
       settings as unknown as SaleOrgSettings,
       sale.contactId,
+      ivaBookForEntry,
     );
 
     const contact = sale.contact;
@@ -773,6 +795,124 @@ export class SaleService {
     await this.repo.hardDelete(organizationId, id);
   }
 
+  // ── Regenerar asiento contable por cambio en IVA (SPEC-6 / D3) ──
+  //
+  // CONTRATO READ-ONLY sobre IvaSalesBook:
+  //   Este método LEE el IvaSalesBook para construir las líneas del asiento,
+  //   pero NUNCA escribe en él. Esta restricción previene el loop:
+  //   IvaBooksService → regenerateJournalForIvaChange → IvaBooksService.
+  //
+  //   GREP ENFORCEMENT: no debe existir `tx.ivaSalesBook.update` en este método.
+
+  async regenerateJournalForIvaChange(
+    organizationId: string,
+    saleId: string,
+    userId: string,
+  ): Promise<SaleWithDetails> {
+    // 1. Cargar la venta actualizada (incluye ivaSalesBook fresco)
+    const sale = await this.getById(organizationId, saleId);
+
+    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+
+    // 2. Resolver cuentas de detalle para el builder
+    const detailsForEntry = await this.resolveDetailAccountCodes(
+      organizationId,
+      sale.details as unknown as Array<{ lineAmount: number; incomeAccountId: string; description: string }>,
+    );
+
+    const totalAmount = Number(sale.totalAmount);
+
+    // 3. Extraer ivaBook (READ-ONLY — ver contrato arriba)
+    const ivaBookForEntry = extractIvaBookForEntry(sale);
+
+    const entryLines = buildSaleEntryLines(
+      totalAmount,
+      detailsForEntry,
+      settings as unknown as SaleOrgSettings,
+      sale.contactId,
+      ivaBookForEntry,
+    );
+
+    // 4. Pre-resolver IDs de cuenta
+    const resolvedLines: Array<{
+      accountId: string;
+      debit: number;
+      credit: number;
+      contactId?: string;
+      description?: string;
+      order: number;
+    }> = [];
+
+    for (let i = 0; i < entryLines.length; i++) {
+      const l = entryLines[i];
+      const account = await this.accountsRepo.findByCode(organizationId, l.accountCode);
+      if (!account || !account.isActive || !account.isDetail) {
+        throw new ValidationError(
+          `Cuenta ${l.accountCode} no es posteable`,
+          "ACCOUNT_NOT_POSTABLE",
+        );
+      }
+      resolvedLines.push({
+        accountId: account.id,
+        debit: l.debit,
+        credit: l.credit,
+        contactId: l.contactId,
+        description: l.description,
+        order: i,
+      });
+    }
+
+    // 5. Ejecutar transacción atómica con re-chequeo de período (D3 / D5 race guard)
+    await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId);
+
+      // Re-chequear que el período sigue ABIERTO dentro de la tx (cierra race condition)
+      await tx.fiscalPeriod.findFirstOrThrow({
+        where: { id: sale.periodId, status: "OPEN" },
+      });
+
+      // a. Revertir saldos del asiento anterior
+      if (sale.journalEntryId) {
+        const oldEntry = await tx.journalEntry.findFirst({
+          where: { id: sale.journalEntryId, organizationId },
+          include: {
+            lines: { include: { account: true, contact: true }, orderBy: { order: "asc" as const } },
+            contact: true,
+            voucherType: true,
+          },
+        });
+        if (oldEntry) {
+          await this.balancesService.applyVoid(tx, oldEntry as never);
+        }
+      }
+
+      // b. Actualizar las líneas del asiento contable
+      const displayCode = getDisplayCode(sale.sequenceNumber);
+      const journalDescription = sale.notes
+        ? `${displayCode} - ${sale.description} | ${sale.notes}`
+        : `${displayCode} - ${sale.description}`;
+
+      const updatedEntry = await this.journalRepo.updateTx(
+        tx,
+        organizationId,
+        sale.journalEntryId!,
+        {
+          date: sale.date,
+          description: journalDescription,
+          contactId: sale.contactId,
+        },
+        resolvedLines,
+        userId,
+      );
+
+      // c. Aplicar los nuevos saldos
+      await this.balancesService.applyPost(tx, updatedEntry);
+    });
+
+    const updated = await this.repo.findById(organizationId, saleId);
+    return withDisplayCode(updated!);
+  }
+
   // ── Interno: anulación en cascada dentro de una transacción ──
 
   private async voidCascadeTx(
@@ -827,6 +967,17 @@ export class SaleService {
 
     // 1. Actualizar el estado de la venta a VOIDED
     await this.repo.updateStatusTx(tx, organizationId, sale.id, "VOIDED");
+
+    // SPEC-7 / D4: Anular el IvaSalesBook ANTES de la reversión del asiento.
+    // El orden importa: si el journal reversal falla, el IvaBook void también
+    // debe hacer rollback (misma tx). read-only check via findUnique, write via update.
+    const ivaBook = await tx.ivaSalesBook.findUnique({ where: { saleId: sale.id } });
+    if (ivaBook && ivaBook.status !== "VOIDED") {
+      await tx.ivaSalesBook.update({
+        where: { id: ivaBook.id },
+        data: { status: "VOIDED" },
+      });
+    }
 
     // 2. Anular el JournalEntry vinculado
     if (sale.journalEntryId) {

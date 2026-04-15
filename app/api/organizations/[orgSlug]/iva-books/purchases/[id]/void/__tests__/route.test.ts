@@ -110,7 +110,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/void", () 
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.voidPurchase).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
+    expect(mockServiceInstance.voidPurchase).toHaveBeenCalledWith(ORG_ID, USER_ID, ENTRY_ID);
 
     const body = await res.json();
     expect(body.status).toBe("VOIDED");

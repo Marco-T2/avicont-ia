@@ -110,7 +110,7 @@ export async function PATCH(
     const dto = updateSaleInputSchema.parse(body);
     const input = toSaleUpdateInput(dto);
 
-    const entry = await service.updateSale(orgId, id, input);
+    const entry = await service.updateSale(orgId, userId, id, input);
 
     return Response.json(entry);
   } catch (error) {
@@ -141,7 +141,7 @@ export async function DELETE(
     const orgId = await requireOrgAccess(userId, orgSlug);
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
-    await service.voidSale(orgId, id);
+    await service.voidSale(orgId, userId, id);
 
     return new Response(null, { status: 204 });
   } catch (error) {

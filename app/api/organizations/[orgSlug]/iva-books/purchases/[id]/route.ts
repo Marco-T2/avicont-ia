@@ -109,7 +109,7 @@ export async function PATCH(
     const dto = updatePurchaseInputSchema.parse(body);
     const input = toPurchaseUpdateInput(dto);
 
-    const entry = await service.updatePurchase(orgId, id, input);
+    const entry = await service.updatePurchase(orgId, userId, id, input);
 
     return Response.json(entry);
   } catch (error) {
@@ -139,7 +139,7 @@ export async function DELETE(
     const orgId = await requireOrgAccess(userId, orgSlug);
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
-    await service.voidPurchase(orgId, id);
+    await service.voidPurchase(orgId, userId, id);
 
     return new Response(null, { status: 204 });
   } catch (error) {
