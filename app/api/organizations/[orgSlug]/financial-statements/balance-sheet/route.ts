@@ -48,18 +48,29 @@ export async function GET(
     const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
     const userRole = member.role as Role;
 
-    // 4. Validar query params con Zod
+    // 4. Validar query params con Zod (incluye nuevos params PR2)
     const { searchParams } = new URL(request.url);
     const query = balanceSheetQuerySchema.parse({
       date: searchParams.get("date") ?? undefined,
       periodId: searchParams.get("periodId") ?? undefined,
       format: searchParams.get("format") ?? undefined,
+      preset: searchParams.get("preset") ?? undefined,
+      breakdownBy: searchParams.get("breakdownBy") ?? undefined,
+      compareWith: searchParams.get("compareWith") ?? undefined,
+      compareAsOfDate: searchParams.get("compareAsOfDate") ?? undefined,
     });
 
     const balanceInput = {
       asOfDate: new Date(query.date),
       fiscalPeriodId: query.periodId,
+      preset: query.preset,
+      breakdownBy: query.breakdownBy,
+      compareWith: query.compareWith,
+      compareAsOfDate: query.compareAsOfDate ? new Date(query.compareAsOfDate) : undefined,
     };
+
+    // Sanitiza el periodLabel para nombres de archivo seguros
+    const periodLabel = (query.date ?? "sin-fecha").replace(/[^a-zA-Z0-9\-_]/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
 
     // 5a. Respuesta en formato PDF
     if (query.format === "pdf") {
@@ -67,7 +78,7 @@ export async function GET(
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="balance-general-${query.date}.pdf"`,
+          "Content-Disposition": `attachment; filename="balance-general-${orgSlug}-${periodLabel}.pdf"`,
         },
       });
     }
@@ -79,7 +90,7 @@ export async function GET(
         headers: {
           "Content-Type":
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="balance-general-${query.date}.xlsx"`,
+          "Content-Disposition": `attachment; filename="balance-general-${orgSlug}-${periodLabel}.xlsx"`,
         },
       });
     }

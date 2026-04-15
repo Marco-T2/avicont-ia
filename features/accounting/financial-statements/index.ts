@@ -40,3 +40,15 @@ export type {
   GenerateBalanceSheetInput,
   GenerateIncomeStatementInput,
 } from "./financial-statements.service";
+export { buildComparativeColumns } from "./financial-statements.service";
+export {
+  buildBalanceSheetTableRows,
+  buildIncomeStatementTableRows,
+  buildRowId,
+} from "./statement-table-rows.utils";
+export type {
+  StatementTableRow,
+  SerializedBalanceSheetResponse,
+  SerializedIncomeStatementResponse,
+  SerializedColumn,
+} from "./statement-table-rows.utils";

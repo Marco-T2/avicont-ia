@@ -48,25 +48,37 @@ export async function GET(
     const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
     const userRole = member.role as Role;
 
-    // 4. Validar query params con Zod (incluye refine dateFrom <= dateTo)
+    // 4. Validar query params con Zod (incluye refine dateFrom <= dateTo y nuevos params PR2)
     const { searchParams } = new URL(request.url);
     const query = incomeStatementQuerySchema.parse({
       periodId: searchParams.get("periodId") ?? undefined,
       dateFrom: searchParams.get("dateFrom") ?? undefined,
       dateTo: searchParams.get("dateTo") ?? undefined,
       format: searchParams.get("format") ?? undefined,
+      preset: searchParams.get("preset") ?? undefined,
+      breakdownBy: searchParams.get("breakdownBy") ?? undefined,
+      compareWith: searchParams.get("compareWith") ?? undefined,
+      compareDateFrom: searchParams.get("compareDateFrom") ?? undefined,
+      compareDateTo: searchParams.get("compareDateTo") ?? undefined,
     });
 
     const incomeInput = {
       fiscalPeriodId: query.periodId,
       dateFrom: query.dateFrom ? new Date(query.dateFrom) : undefined,
       dateTo: query.dateTo ? new Date(query.dateTo) : undefined,
+      preset: query.preset,
+      breakdownBy: query.breakdownBy,
+      compareWith: query.compareWith,
+      compareDateFrom: query.compareDateFrom ? new Date(query.compareDateFrom) : undefined,
+      compareDateTo: query.compareDateTo ? new Date(query.compareDateTo) : undefined,
     };
 
-    // Nombre de archivo de descarga: usa rango de fechas si está disponible
-    const fileDateSuffix = query.dateFrom
+    // Sanitiza el periodLabel para nombres de archivo seguros:
+    // {type}-{orgSlug}-{periodLabel}.{ext}
+    const rawPeriodLabel = query.dateFrom
       ? `${query.dateFrom}_${query.dateTo}`
       : (query.periodId ?? "periodo");
+    const periodLabel = rawPeriodLabel.replace(/[^a-zA-Z0-9\-_]/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
 
     // 5a. Respuesta en formato PDF
     if (query.format === "pdf") {
@@ -74,7 +86,7 @@ export async function GET(
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="estado-resultados-${fileDateSuffix}.pdf"`,
+          "Content-Disposition": `attachment; filename="estado-resultados-${orgSlug}-${periodLabel}.pdf"`,
         },
       });
     }
@@ -91,7 +103,7 @@ export async function GET(
         headers: {
           "Content-Type":
             "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          "Content-Disposition": `attachment; filename="estado-resultados-${fileDateSuffix}.xlsx"`,
+          "Content-Disposition": `attachment; filename="estado-resultados-${orgSlug}-${periodLabel}.xlsx"`,
         },
       });
     }

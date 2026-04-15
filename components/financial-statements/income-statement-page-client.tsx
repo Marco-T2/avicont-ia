@@ -1,47 +1,70 @@
 "use client";
 
-// Cliente de la página de Estado de Resultados
-// Orquesta filtros → fetch → visualización + banner preliminar + export
-import { useState } from "react";
+// Cliente de la página de Estado de Resultados — estilo QuickBooks.
+// Orquesta: filtros → fetch → toolbar + tabla TanStack + banner preliminar.
+import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { StatementFilters } from "./statement-filters";
-import type { StatementFilterParams } from "./statement-filters";
-import { IncomeStatementView } from "./income-statement-view";
-import type { SerializedIncomeStatement } from "./income-statement-view";
-import { PreliminaryBanner } from "./preliminary-banner";
-import { ExportButtons } from "./export-buttons";
 import { Loader2 } from "lucide-react";
+import { StatementFilters } from "./statement-filters";
+import type { QuickBooksFilterParams } from "./statement-filters";
+import { StatementTable } from "./statement-table";
+import { StatementToolbar } from "./statement-toolbar";
+import { PreliminaryBanner } from "./preliminary-banner";
+import {
+  buildIncomeStatementTableRows,
+} from "@/features/accounting/financial-statements/statement-table-rows.utils";
+import type {
+  SerializedIncomeStatementResponse,
+  SerializedColumn,
+} from "@/features/accounting/financial-statements/statement-table-rows.utils";
 
 interface IncomeStatementPageClientProps {
   orgSlug: string;
+  orgName?: string;
 }
 
-export function IncomeStatementPageClient({
-  orgSlug,
-}: IncomeStatementPageClientProps) {
-  const [statement, setStatement] = useState<SerializedIncomeStatement | null>(
-    null,
-  );
+export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementPageClientProps) {
+  const displayOrgName = orgName ?? orgSlug.charAt(0).toUpperCase() + orgSlug.slice(1);
+  const [statement, setStatement] = useState<SerializedIncomeStatementResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [lastParams, setLastParams] = useState<Record<string, string>>({});
+  const [compact, setCompact] = useState(false);
+  const [lastParams, setLastParams] = useState<QuickBooksFilterParams | null>(null);
+  const [exportQueryParams, setExportQueryParams] = useState<Record<string, string>>({});
 
-  async function handleSubmit(params: StatementFilterParams) {
-    if (params.type !== "income-statement") return;
-
+  const fetchStatement = useCallback(async (params: QuickBooksFilterParams) => {
     setLoading(true);
     setError(null);
-    setStatement(null);
 
+    // Construir query params para la API
     const queryParams: Record<string, string> = {};
-    if ("periodId" in params && params.periodId) {
-      queryParams["periodId"] = params.periodId;
-    } else if ("dateFrom" in params && params.dateFrom && params.dateTo) {
+
+    if (params.fiscalPeriodId) {
+      queryParams["periodId"] = params.fiscalPeriodId;
+    }
+    if (params.preset) {
+      queryParams["preset"] = params.preset;
+    }
+    if (params.dateFrom) {
       queryParams["dateFrom"] = params.dateFrom;
+    }
+    if (params.dateTo) {
       queryParams["dateTo"] = params.dateTo;
     }
+    if (params.breakdownBy && params.breakdownBy !== "total") {
+      queryParams["breakdownBy"] = params.breakdownBy;
+    }
+    if (params.compareWith && params.compareWith !== "none") {
+      queryParams["compareWith"] = params.compareWith;
+    }
+    if (params.compareDateFrom) {
+      queryParams["compareDateFrom"] = params.compareDateFrom;
+    }
+    if (params.compareDateTo) {
+      queryParams["compareDateTo"] = params.compareDateTo;
+    }
 
-    setLastParams(queryParams);
+    setExportQueryParams(queryParams);
 
     try {
       const searchParams = new URLSearchParams(queryParams);
@@ -57,17 +80,36 @@ export function IncomeStatementPageClient({
         return;
       }
 
-      const data: SerializedIncomeStatement = await res.json();
-      setStatement(data);
+      const data = await res.json();
+      // Garantizar que columns esté presente (backward compat)
+      if (!data.columns || data.columns.length === 0) {
+        data.columns = [{ id: "col-current", label: "Total", role: "current" }];
+      }
+      setStatement(data as SerializedIncomeStatementResponse);
     } catch {
       setError("Error de conexión. Por favor intente nuevamente.");
     } finally {
       setLoading(false);
     }
+  }, [orgSlug]);
+
+  async function handleSubmit(params: QuickBooksFilterParams) {
+    if (params.type !== "income-statement") return;
+    setLastParams(params);
+    await fetchStatement(params);
   }
 
+  async function handleRefresh() {
+    if (lastParams) {
+      await fetchStatement(lastParams);
+    }
+  }
+
+  const tableRows = statement ? buildIncomeStatementTableRows(statement) : [];
+  const tableColumns: SerializedColumn[] = statement?.columns ?? [];
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Formulario de filtros */}
       <Card>
         <CardContent className="pt-6">
@@ -79,6 +121,20 @@ export function IncomeStatementPageClient({
           />
         </CardContent>
       </Card>
+
+      {/* Toolbar */}
+      {(statement || lastParams) && (
+        <StatementToolbar
+          orgSlug={orgSlug}
+          endpoint="income-statement"
+          queryParams={exportQueryParams}
+          compact={compact}
+          onToggleCompact={() => setCompact((c) => !c)}
+          onRefresh={handleRefresh}
+          refreshing={loading}
+          hasStatement={!!statement}
+        />
+      )}
 
       {/* Estado de carga */}
       {loading && (
@@ -101,26 +157,41 @@ export function IncomeStatementPageClient({
       {/* Resultado */}
       {statement && !loading && (
         <div className="space-y-4">
-          {/* Banner PRELIMINAR (no hay ImbalanceBanner en ER) */}
           <PreliminaryBanner show={statement.current.preliminary} />
 
-          {/* Botones de exportación */}
-          <div className="flex justify-end">
-            <ExportButtons
-              orgSlug={orgSlug}
-              endpoint="income-statement"
-              queryParams={lastParams}
-            />
-          </div>
-
-          {/* Tabla jerárquica */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0">
-              <IncomeStatementView statement={statement} />
+            <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
+              <StatementTable
+                columns={tableColumns}
+                rows={tableRows}
+                compact={compact}
+                onRefresh={handleRefresh}
+                title="Estado de Resultados"
+                orgName={displayOrgName}
+                subtitle={formatDateRange(statement.current.dateFrom, statement.current.dateTo)}
+              />
             </CardContent>
           </Card>
         </div>
       )}
     </div>
   );
+}
+
+function formatDateRange(isoFrom: string, isoTo: string): string {
+  const fmt = (iso: string) => {
+    if (!iso) return "";
+    const datePart = iso.slice(0, 10);
+    const [y, m, d] = datePart.split("-").map(Number);
+    if (!y || !m || !d) return iso;
+    const date = new Date(Date.UTC(y, m - 1, d));
+    if (isNaN(date.getTime())) return iso;
+    return new Intl.DateTimeFormat("es-BO", {
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }).format(date);
+  };
+  return `Del ${fmt(isoFrom)} al ${fmt(isoTo)}`;
 }
