@@ -62,12 +62,46 @@ export interface PurchaseDetailForEntry {
 
 // ── Construir líneas de asiento contable para una compra ──
 //
-// FLETE:           DÉBITO settings.fleteExpenseAccountCode  |  CRÉDITO settings.cxpAccountCode
-// POLLO_FAENADO:   DÉBITO settings.polloFaenadoCOGSAccountCode  |  CRÉDITO settings.cxpAccountCode
-// COMPRA_GENERAL:  un DÉBITO por línea de detalle usando detail.expenseAccountCode  |  CRÉDITO settings.cxpAccountCode
-// SERVICIO:        un DÉBITO por línea de detalle usando detail.expenseAccountCode  |  CRÉDITO settings.cxpAccountCode
+// Paths de ejecución:
 //
-// Todas las líneas CRÉDITO reciben contactId (CxP lo requiere).
+// 1. Sin ivaBook (o ivaBook ausente):
+//    FLETE:           DÉBITO settings.fleteExpenseAccountCode  |  CRÉDITO settings.cxpAccountCode
+//    POLLO_FAENADO:   DÉBITO settings.polloFaenadoCOGSAccountCode  |  CRÉDITO settings.cxpAccountCode
+//    COMPRA_GENERAL:  un DÉBITO por línea de detalle usando detail.expenseAccountCode  |  CRÉDITO settings.cxpAccountCode
+//    SERVICIO:        un DÉBITO por línea de detalle usando detail.expenseAccountCode  |  CRÉDITO settings.cxpAccountCode
+//
+// 2. Con ivaBook y dfCfIva > 0 (SPEC-2, SPEC-8):
+//    Todos los tipos colapsan a 3 líneas (+ 4ta opcional de exento):
+//    DÉBITO: tipo-specific expense account  por baseIvaSujetoCf
+//    DÉBITO: IVA_CREDITO_FISCAL ("1.1.8")   por dfCfIva
+//    DÉBITO: mismo expense account           por exentos residuales — si exentos > 0
+//    CRÉDITO: cxpAccountCode                por importeTotal
+//
+//    Para FLETE/POLLO_FAENADO se usa el account fijo del tipo.
+//    Para COMPRA_GENERAL/SERVICIO se usa el account del primer detalle (collapse multi-detalle).
+//    El campo ivaBook.exentos es opcional: cuando ausente se auto-computa como residual;
+//    cuando explícito, se verifica la invariante de balance (throw si diferencia > 0.005).
+//
+// 3. Con ivaBook y dfCfIva === 0 (compra 100% exenta):
+//    Cae al path original sin IVA (sin línea 1.1.8).
+//
+// Todas las líneas CRÉDITO CxP reciben contactId.
+
+/**
+ * Resuelve la cuenta de gasto de la línea base según el tipo de compra.
+ * Para FLETE/POLLO_FAENADO se usa el código fijo del settings.
+ * Para COMPRA_GENERAL/SERVICIO se usa el expenseAccountCode del primer detalle.
+ */
+function resolveExpenseAccount(
+  purchaseType: PurchaseType,
+  details: PurchaseDetailForEntry[],
+  settings: PurchaseOrgSettings,
+): string {
+  if (purchaseType === "FLETE") return settings.fleteExpenseAccountCode;
+  if (purchaseType === "POLLO_FAENADO") return settings.polloFaenadoCOGSAccountCode;
+  // COMPRA_GENERAL o SERVICIO: primer detalle
+  return details[0]?.expenseAccountCode ?? "5.1.1";
+}
 
 export function buildPurchaseEntryLines(
   purchaseType: PurchaseType,
@@ -75,8 +109,74 @@ export function buildPurchaseEntryLines(
   details: PurchaseDetailForEntry[],
   settings: PurchaseOrgSettings,
   contactId: string,
+  ivaBook?: IvaBookForEntry,
 ): EntryLineTemplate[] {
   const cxpAccountCode = settings.cxpAccountCode;
+
+  // ── Path con IVA activo (SPEC-2, SPEC-8) ──
+  if (ivaBook !== undefined && ivaBook.dfCfIva > 0) {
+    const { baseIvaSujetoCf, dfCfIva, importeTotal } = ivaBook;
+    const expenseAccount = resolveExpenseAccount(purchaseType, details, settings);
+
+    // Calcular exento residual: lo que no es base gravable ni IVA
+    const exentosExplicit = ivaBook.exentos;
+    const exentos =
+      exentosExplicit !== undefined
+        ? exentosExplicit
+        : Math.round((importeTotal - baseIvaSujetoCf - dfCfIva) * 100) / 100;
+
+    // Invariante de balance: cuando exentos son explícitos, verificar que cuadren
+    if (exentosExplicit !== undefined) {
+      const residual = Math.abs(baseIvaSujetoCf + dfCfIva + exentosExplicit - importeTotal);
+      if (residual > 0.005) {
+        throw new Error(
+          `[buildPurchaseEntryLines] Invariante de balance violado: ` +
+          `base(${baseIvaSujetoCf}) + IVA(${dfCfIva}) + exentos(${exentosExplicit}) = ` +
+          `${baseIvaSujetoCf + dfCfIva + exentosExplicit} ≠ importeTotal(${importeTotal}). ` +
+          `Diferencia: ${residual.toFixed(4)}`
+        );
+      }
+    }
+
+    // DÉBITO: Gasto base gravable (un solo renglón — collapse multi-detalle)
+    const baseDebitLine: EntryLineTemplate = {
+      accountCode: expenseAccount,
+      debit: baseIvaSujetoCf,
+      credit: 0,
+    };
+
+    // DÉBITO: IVA Crédito Fiscal
+    const ivaLine: EntryLineTemplate = {
+      accountCode: IVA_CREDITO_FISCAL,
+      debit: dfCfIva,
+      credit: 0,
+    };
+
+    // CRÉDITO: CxP por el total
+    const creditLine: EntryLineTemplate = {
+      accountCode: cxpAccountCode,
+      debit: 0,
+      credit: importeTotal,
+      contactId,
+    };
+
+    const lines: EntryLineTemplate[] = [baseDebitLine, ivaLine];
+
+    // DÉBITO: exentos residuales (línea opcional — mismo account de gasto)
+    if (exentos > 0) {
+      lines.push({
+        accountCode: expenseAccount,
+        debit: exentos,
+        credit: 0,
+      });
+    }
+
+    lines.push(creditLine);
+
+    return lines;
+  }
+
+  // ── Path sin IVA (comportamiento original — cero regresión) ──
 
   if (purchaseType === "FLETE") {
     return [
