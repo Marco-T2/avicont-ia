@@ -75,6 +75,7 @@ const purchaseInclude = {
   details: {
     orderBy: { order: "asc" as const },
   },
+  ivaPurchaseBook: true,
 } as const;
 
 // ── Include completo para findById (incluye payable con allocations→payment) ──
