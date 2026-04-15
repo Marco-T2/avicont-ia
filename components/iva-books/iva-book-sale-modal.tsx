@@ -163,6 +163,54 @@ export function IvaBookSaleModal({
     }
   }, [mode, sourceSale]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── Fetch y pre-fill en modo edición ──
+  useEffect(() => {
+    if (!open || mode !== "edit" || !entryId) return;
+
+    fetch(`/api/organizations/${orgSlug}/iva-books/sales/${entryId}`)
+      .then((res) => {
+        if (!res.ok) throw new Error("Error al cargar la entrada del Libro de Ventas");
+        return res.json();
+      })
+      .then((data: Record<string, unknown>) => {
+        setFechaFactura(typeof data.fechaFactura === "string" ? data.fechaFactura.split("T")[0] : "");
+        setNitCliente(typeof data.nitCliente === "string" ? data.nitCliente : "");
+        setRazonSocial(typeof data.razonSocial === "string" ? data.razonSocial : "");
+        setNumeroFactura(typeof data.numeroFactura === "string" ? data.numeroFactura : "");
+        setCodigoAutorizacion(typeof data.codigoAutorizacion === "string" ? data.codigoAutorizacion : "");
+        setCodigoControl(typeof data.codigoControl === "string" ? data.codigoControl : "");
+        setEstadoSIN((typeof data.estadoSIN === "string" ? data.estadoSIN : "") as EstadoSIN);
+        setFiscalPeriodId(typeof data.fiscalPeriodId === "string" ? data.fiscalPeriodId : "");
+        setNotes(typeof data.notes === "string" ? data.notes : "");
+        const toStr = (v: unknown) => (v != null ? String(v) : "0.00");
+        setImporteTotal(toStr(data.importeTotal));
+        setImporteIce(toStr(data.importeIce));
+        setImporteIehd(toStr(data.importeIehd));
+        setImporteIpj(toStr(data.importeIpj));
+        setTasas(toStr(data.tasas));
+        setOtrosNoSujetos(toStr(data.otrosNoSujetos));
+        setExentos(toStr(data.exentos));
+        setTasaCero(toStr(data.tasaCero));
+        setCodigoDescuentoAdicional(toStr(data.codigoDescuentoAdicional));
+        setImporteGiftCard(toStr(data.importeGiftCard));
+        triggerCalc({
+          importeTotal: parseNum(toStr(data.importeTotal)),
+          importeIce: parseNum(toStr(data.importeIce)),
+          importeIehd: parseNum(toStr(data.importeIehd)),
+          importeIpj: parseNum(toStr(data.importeIpj)),
+          tasas: parseNum(toStr(data.tasas)),
+          otrosNoSujetos: parseNum(toStr(data.otrosNoSujetos)),
+          exentos: parseNum(toStr(data.exentos)),
+          tasaCero: parseNum(toStr(data.tasaCero)),
+          codigoDescuentoAdicional: parseNum(toStr(data.codigoDescuentoAdicional)),
+          importeGiftCard: parseNum(toStr(data.importeGiftCard)),
+        });
+      })
+      .catch((err: unknown) => {
+        toast.error(err instanceof Error ? err.message : "Error al cargar la entrada del Libro de Ventas");
+      });
+  }, [open, mode, entryId, orgSlug]); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!open) resetForm();
   }, [open]);

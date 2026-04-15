@@ -179,3 +179,94 @@ describe("IvaBookPurchaseModal — flujo de éxito", () => {
     });
   });
 });
+
+// ── PR6 Hotfix: edit-mode fetch ───────────────────────────────────────────────
+
+describe("IvaBookPurchaseModal — mode=edit pre-fill (PR6)", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it("llama al endpoint GET para pre-fill cuando mode=edit y entryId está presente", async () => {
+    const entryData = {
+      id: "entry-abc",
+      fechaFactura: "2025-03-15",
+      nitProveedor: "55667788",
+      razonSocial: "Proveedor Editado",
+      numeroFactura: "COMP-999",
+      codigoAutorizacion: "AUTH-COMP-999",
+      codigoControl: "",
+      tipoCompra: 1,
+      fiscalPeriodId: "period-1",
+      notes: "",
+      importeTotal: "1130.00",
+      importeIce: "0.00",
+      importeIehd: "0.00",
+      importeIpj: "0.00",
+      tasas: "0.00",
+      otrosNoSujetos: "0.00",
+      exentos: "0.00",
+      tasaCero: "0.00",
+      codigoDescuentoAdicional: "0.00",
+      importeGiftCard: "0.00",
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => entryData,
+    });
+
+    renderModal({ mode: "edit", entryId: "entry-abc" });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/iva-books/purchases/entry-abc"),
+      );
+    });
+  });
+
+  it("pre-rellena el campo NIT del proveedor desde la respuesta del GET en mode=edit", async () => {
+    const entryData = {
+      id: "entry-abc",
+      fechaFactura: "2025-03-15",
+      nitProveedor: "55667788",
+      razonSocial: "Proveedor Editado",
+      numeroFactura: "COMP-999",
+      codigoAutorizacion: "AUTH-COMP-999",
+      codigoControl: "",
+      tipoCompra: 1,
+      fiscalPeriodId: "period-1",
+      notes: "",
+      importeTotal: "1130.00",
+      importeIce: "0.00",
+      importeIehd: "0.00",
+      importeIpj: "0.00",
+      tasas: "0.00",
+      otrosNoSujetos: "0.00",
+      exentos: "0.00",
+      tasaCero: "0.00",
+      codigoDescuentoAdicional: "0.00",
+      importeGiftCard: "0.00",
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => entryData,
+    });
+
+    renderModal({ mode: "edit", entryId: "entry-abc" });
+
+    await waitFor(() => {
+      expect((screen.getByLabelText(/nit del proveedor/i) as HTMLInputElement).value).toBe("55667788");
+    });
+  });
+
+  it("NO llama al GET cuando mode=create-standalone", async () => {
+    mockFetch.mockReset();
+
+    renderModal({ mode: "create-standalone" });
+
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});

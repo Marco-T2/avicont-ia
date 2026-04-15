@@ -5,6 +5,9 @@ import {
   handleError,
 } from "@/features/shared/middleware";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
+import { IvaBooksRepository } from "@/features/accounting/iva-books/iva-books.repository";
+import { SaleService } from "@/features/sale/sale.service";
+import { PurchaseService } from "@/features/purchase/purchase.service";
 import {
   updateSaleInputSchema,
   type UpdateSaleInputDto,
@@ -13,7 +16,11 @@ import type { UpdateSaleInput } from "@/features/accounting/iva-books/iva-books.
 import { NotFoundError } from "@/features/shared/errors";
 import { Prisma } from "@/generated/prisma/client";
 
-const service = new IvaBooksService();
+const service = new IvaBooksService(
+  new IvaBooksRepository(),
+  new SaleService(),
+  new PurchaseService(),
+);
 
 /**
  * Convierte los campos monetarios string del DTO Zod parcial a Prisma.Decimal.

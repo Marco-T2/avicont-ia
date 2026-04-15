@@ -780,7 +780,7 @@ export default function SaleForm({
               Eliminar
             </Button>
           )}
-          {/* Registrar en Libro de Ventas IVA — disponible en modo edición.
+          {/* Registrar / Editar en Libro de Ventas IVA — disponible en modo edición.
               Gate: period.status === "OPEN" (SPEC-5 / D5).
               El servicio re-verifica el estado dentro de la transacción. */}
           {isEditMode && sale && (
@@ -792,7 +792,7 @@ export default function SaleForm({
               onClick={() => setIvaModalOpen(true)}
             >
               <BookOpen className="h-4 w-4 mr-2" />
-              Registrar Libro de Ventas
+              {sale.ivaSalesBook ? "Editar Libro de Ventas IVA" : "Registrar Libro de Ventas"}
             </Button>
           )}
         </div>
@@ -899,7 +899,7 @@ export default function SaleForm({
       </div>
     </form>
 
-    {/* Modal Libro de Ventas IVA — pre-fill desde esta venta */}
+    {/* Modal Libro de Ventas IVA — pre-fill desde esta venta o edición de entrada existente */}
     {sale && (
       <IvaBookSaleModal
         open={ivaModalOpen}
@@ -916,7 +916,8 @@ export default function SaleForm({
           endDate: new Date(p.endDate).toISOString().split("T")[0],
           status: p.status,
         }))}
-        mode="create-from-source"
+        mode={sale.ivaSalesBook ? "edit" : "create-from-source"}
+        entryId={sale.ivaSalesBook?.id}
         sourceSale={{
           id: sale.id,
           date: new Date(sale.date).toISOString().split("T")[0],

@@ -177,6 +177,98 @@ describe("IvaBookSaleModal — pre-fill desde sourceSale", () => {
   });
 });
 
+// ── PR6 Hotfix: edit-mode fetch ───────────────────────────────────────────────
+
+describe("IvaBookSaleModal — mode=edit pre-fill (PR6)", () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+  });
+
+  it("llama al endpoint GET para pre-fill cuando mode=edit y entryId está presente", async () => {
+    const entryData = {
+      id: "entry-xyz",
+      fechaFactura: "2025-03-15",
+      nitCliente: "11223344",
+      razonSocial: "Cliente Editado",
+      numeroFactura: "FACT-999",
+      codigoAutorizacion: "AUTH-999",
+      codigoControl: "",
+      estadoSIN: "A",
+      fiscalPeriodId: "period-1",
+      notes: "",
+      importeTotal: "1130.00",
+      importeIce: "0.00",
+      importeIehd: "0.00",
+      importeIpj: "0.00",
+      tasas: "0.00",
+      otrosNoSujetos: "0.00",
+      exentos: "0.00",
+      tasaCero: "0.00",
+      codigoDescuentoAdicional: "0.00",
+      importeGiftCard: "0.00",
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => entryData,
+    });
+
+    renderModal({ mode: "edit", entryId: "entry-xyz" });
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining("/iva-books/sales/entry-xyz"),
+      );
+    });
+  });
+
+  it("pre-rellena el campo NIT desde la respuesta del GET en mode=edit", async () => {
+    const entryData = {
+      id: "entry-xyz",
+      fechaFactura: "2025-03-15",
+      nitCliente: "11223344",
+      razonSocial: "Cliente Editado",
+      numeroFactura: "FACT-999",
+      codigoAutorizacion: "AUTH-999",
+      codigoControl: "",
+      estadoSIN: "A",
+      fiscalPeriodId: "period-1",
+      notes: "",
+      importeTotal: "1130.00",
+      importeIce: "0.00",
+      importeIehd: "0.00",
+      importeIpj: "0.00",
+      tasas: "0.00",
+      otrosNoSujetos: "0.00",
+      exentos: "0.00",
+      tasaCero: "0.00",
+      codigoDescuentoAdicional: "0.00",
+      importeGiftCard: "0.00",
+    };
+
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => entryData,
+    });
+
+    renderModal({ mode: "edit", entryId: "entry-xyz" });
+
+    await waitFor(() => {
+      expect((screen.getByLabelText(/nit.*cliente/i) as HTMLInputElement).value).toBe("11223344");
+    });
+  });
+
+  it("NO llama al GET cuando mode=create-standalone", async () => {
+    mockFetch.mockReset();
+
+    renderModal({ mode: "create-standalone" });
+
+    // Wait a tick — no fetch should happen
+    await new Promise((r) => setTimeout(r, 10));
+    expect(mockFetch).not.toHaveBeenCalled();
+  });
+});
+
 describe("IvaBookSaleModal — endpoint correcto", () => {
   beforeEach(() => {
     mockFetch.mockReset();

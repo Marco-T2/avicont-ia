@@ -1450,7 +1450,7 @@ export default function PurchaseForm({
               Eliminar
             </Button>
           )}
-          {/* Registrar en Libro de Compras IVA — disponible en modo edición.
+          {/* Registrar / Editar en Libro de Compras IVA — disponible en modo edición.
               Gate: period.status === "OPEN" (SPEC-5 / D5).
               El servicio re-verifica el estado dentro de la transacción. */}
           {isEditMode && purchase && (
@@ -1462,7 +1462,7 @@ export default function PurchaseForm({
               onClick={() => setIvaModalOpen(true)}
             >
               <BookOpen className="h-4 w-4 mr-2" />
-              Registrar Libro de Compras
+              {purchase.ivaPurchaseBook ? "Editar Libro de Compras IVA" : "Registrar Libro de Compras"}
             </Button>
           )}
         </div>
@@ -1569,7 +1569,7 @@ export default function PurchaseForm({
       </div>
     </form>
 
-    {/* Modal Libro de Compras IVA — pre-fill desde esta compra */}
+    {/* Modal Libro de Compras IVA — pre-fill desde esta compra o edición de entrada existente */}
     {purchase && (
       <IvaBookPurchaseModal
         open={ivaModalOpen}
@@ -1586,7 +1586,8 @@ export default function PurchaseForm({
           endDate: new Date(p.endDate).toISOString().split("T")[0],
           status: p.status,
         }))}
-        mode="create-from-source"
+        mode={purchase.ivaPurchaseBook ? "edit" : "create-from-source"}
+        entryId={purchase.ivaPurchaseBook?.id}
         sourcePurchase={{
           id: purchase.id,
           date: new Date(purchase.date).toISOString().split("T")[0],
