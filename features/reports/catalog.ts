@@ -292,14 +292,14 @@ export const reportRegistry: readonly ReportEntry[] = [
     icon: "ShieldCheck",
   },
 
-  // ── Impuestos — planificados ───────────────────────────────────────────────
+  // ── Impuestos — disponibles ────────────────────────────────────────────────
   {
     id: "iva-book-sales",
     title: "Libro de Ventas IVA",
     description: "Registro oficial de ventas gravadas y débito fiscal.",
     category: "impuestos",
-    status: "planned",
-    route: null,
+    status: "available",
+    route: "/informes/impuestos/libro-ventas",
     icon: "BookMarked",
   },
   {
@@ -307,10 +307,12 @@ export const reportRegistry: readonly ReportEntry[] = [
     title: "Libro de Compras IVA",
     description: "Registro oficial de compras gravadas y crédito fiscal.",
     category: "impuestos",
-    status: "planned",
-    route: null,
+    status: "available",
+    route: "/informes/impuestos/libro-compras",
     icon: "BookMarked",
   },
+
+  // ── Impuestos — planificados ───────────────────────────────────────────────
   {
     id: "rc-iva-summary",
     title: "Resumen RC-IVA",

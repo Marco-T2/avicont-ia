@@ -215,12 +215,12 @@ describe("reportCategories — datos curados (PR3)", () => {
 });
 
 describe("reportRegistry — datos curados (PR3)", () => {
-  it("tiene al menos 4 entradas con status 'available'", () => {
+  it("tiene al menos 6 entradas con status 'available'", () => {
     const available = reportRegistry.filter((e) => e.status === "available");
-    expect(available.length).toBeGreaterThanOrEqual(4);
+    expect(available.length).toBeGreaterThanOrEqual(6);
   });
 
-  it("las 4 entradas available conocidas existen con routes correctos", () => {
+  it("las 6 entradas available conocidas existen con routes correctos", () => {
     const availableMap = new Map(
       reportRegistry
         .filter((e) => e.status === "available")
@@ -232,6 +232,8 @@ describe("reportRegistry — datos curados (PR3)", () => {
       { id: "income-statement", route: "/accounting/financial-statements/income-statement" },
       { id: "trial-balance", route: "/accounting/reports" },
       { id: "correlation-audit", route: "/accounting/correlation-audit" },
+      { id: "iva-book-purchases", route: "/informes/impuestos/libro-compras" },
+      { id: "iva-book-sales", route: "/informes/impuestos/libro-ventas" },
     ];
 
     for (const { id, route } of expected) {
@@ -241,9 +243,9 @@ describe("reportRegistry — datos curados (PR3)", () => {
     }
   });
 
-  it("tiene al menos 21 entradas con status 'planned'", () => {
+  it("tiene al menos 19 entradas con status 'planned'", () => {
     const planned = reportRegistry.filter((e) => e.status === "planned");
-    expect(planned.length).toBeGreaterThanOrEqual(21);
+    expect(planned.length).toBeGreaterThanOrEqual(19);
   });
 
   it("balance-sheet pertenece a la categoría 'estados-financieros'", () => {
