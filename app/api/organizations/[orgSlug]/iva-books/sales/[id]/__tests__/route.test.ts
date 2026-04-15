@@ -174,6 +174,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
     expect(res.status).toBe(200);
     expect(mockServiceInstance.updateSale).toHaveBeenCalledWith(
       ORG_ID,
+      USER_ID,
       ENTRY_ID,
       expect.objectContaining({ razonSocial: "Cliente Actualizado" }),
     );
@@ -235,7 +236,7 @@ describe("DELETE /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(mockServiceInstance.voidSale).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
+    expect(mockServiceInstance.voidSale).toHaveBeenCalledWith(ORG_ID, USER_ID, ENTRY_ID);
   });
 
   it("retorna 404 si la entrada no existe", async () => {

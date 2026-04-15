@@ -30,7 +30,7 @@ export async function PATCH(
     const orgId = await requireOrgAccess(userId, orgSlug);
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
-    const entry = await service.voidPurchase(orgId, id);
+    const entry = await service.voidPurchase(orgId, userId, id);
 
     return Response.json(entry);
   } catch (error) {

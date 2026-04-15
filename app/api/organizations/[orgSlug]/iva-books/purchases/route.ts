@@ -106,7 +106,7 @@ export async function POST(
     const dto = createPurchaseInputSchema.parse(body);
     const input = toPurchaseInput(dto);
 
-    const entry = await service.createPurchase(orgId, input);
+    const entry = await service.createPurchase(orgId, userId, input);
 
     return Response.json(entry, { status: 201 });
   } catch (error) {

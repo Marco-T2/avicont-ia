@@ -208,7 +208,7 @@ describe("POST /api/organizations/[orgSlug]/iva-books/sales", () => {
     const res = await POST(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
 
     expect(res.status).toBe(201);
-    expect(mockServiceInstance.createSale).toHaveBeenCalledWith(ORG_ID, expect.any(Object));
+    expect(mockServiceInstance.createSale).toHaveBeenCalledWith(ORG_ID, USER_ID, expect.any(Object));
   });
 
   it("retorna 400 cuando estadoSIN tiene valor inválido (fuera de A/V/C/L)", async () => {
