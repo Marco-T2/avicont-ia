@@ -49,6 +49,7 @@ const saleInclude = {
   details: {
     orderBy: { order: "asc" as const },
   },
+  ivaSalesBook: true,
 } as const;
 
 // ── Include completo para findById (incluye receivable con allocations→payment) ──

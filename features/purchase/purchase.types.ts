@@ -4,10 +4,12 @@ import type {
   PurchaseType,
   PurchaseStatus,
 } from "@/generated/prisma/client";
+import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books/iva-books.types";
 
 // ── Re-exportar tipos de Prisma para mayor comodidad ──
 
 export type { PurchaseType, PurchaseStatus };
+export type { IvaPurchaseBookDTO };
 
 // ── Tipos compuestos ──
 
@@ -95,6 +97,7 @@ export interface PurchaseWithDetails
   details: PurchaseDetailRow[];
   payable?: PayableSummary | null;
   displayCode: string; // calculado: FL-001, PF-042, CG-003, SV-007
+  ivaPurchaseBook?: IvaPurchaseBookDTO | null;
 }
 
 // ── Tipos de entrada ──

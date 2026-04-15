@@ -3,6 +3,29 @@ export interface SaleOrgSettings {
   cxcAccountCode: string;
 }
 
+// ── Constantes de cuenta IVA — Plan de cuentas Bolivia SIN (V1) ──
+
+/** Código de cuenta Débito Fiscal IVA (ventas). Fijo Bolivia SIN. */
+export const IVA_DEBITO_FISCAL = "2.1.6";
+
+// ── Interfaz de libro IVA reducida para uso en builders de asientos ──
+
+/**
+ * Datos del IvaSalesBook necesarios para generar las líneas IVA del asiento.
+ * Todos los campos son `number` (no Prisma.Decimal) — la conversión ocurre
+ * en la capa de servicio, manteniendo los builders como funciones puras.
+ */
+export interface IvaBookForEntry {
+  /** Base imponible (subtotal sujeto a IVA). */
+  baseIvaSujetoCf: number;
+  /** Débito/Crédito Fiscal IVA (13% sobre baseIvaSujetoCf). */
+  dfCfIva: number;
+  /** Total factura (= totalAmount de la venta). */
+  importeTotal: number;
+  /** Importe exento/tasa-cero/no-sujeto residual. Opcional; default 0. */
+  exentos?: number;
+}
+
 export function getDisplayCode(seq: number): string {
   return `VG-${String(seq).padStart(3, "0")}`;
 }

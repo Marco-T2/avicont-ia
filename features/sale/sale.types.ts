@@ -3,10 +3,12 @@ import type {
   SaleDetail,
   SaleStatus,
 } from "@/generated/prisma/client";
+import type { IvaSalesBookDTO } from "@/features/accounting/iva-books/iva-books.types";
 
 // ── Re-exportar tipos de Prisma para mayor comodidad ──
 
 export type { SaleStatus };
+export type { IvaSalesBookDTO };
 
 // ── Tipos compuestos ──
 
@@ -60,6 +62,7 @@ export interface SaleWithDetails
   details: SaleDetailRow[];
   receivable?: ReceivableSummary | null;
   displayCode: string;
+  ivaSalesBook?: IvaSalesBookDTO | null;
 }
 
 // ── Tipos de entrada ──

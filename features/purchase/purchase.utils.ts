@@ -1,5 +1,28 @@
 import type { PurchaseType } from "@/generated/prisma/client";
 
+// ── Constantes de cuenta IVA — Plan de cuentas Bolivia SIN (V1) ──
+
+/** Código de cuenta Crédito Fiscal IVA (compras). Fijo Bolivia SIN. */
+export const IVA_CREDITO_FISCAL = "1.1.8";
+
+// ── Interfaz de libro IVA reducida para uso en builders de asientos ──
+
+/**
+ * Datos del IvaPurchaseBook necesarios para generar las líneas IVA del asiento.
+ * Todos los campos son `number` (no Prisma.Decimal) — la conversión ocurre
+ * en la capa de servicio, manteniendo los builders como funciones puras.
+ */
+export interface IvaBookForEntry {
+  /** Base imponible (subtotal sujeto a IVA). */
+  baseIvaSujetoCf: number;
+  /** Débito/Crédito Fiscal IVA (13% sobre baseIvaSujetoCf). */
+  dfCfIva: number;
+  /** Total factura (= totalAmount de la compra). */
+  importeTotal: number;
+  /** Importe exento/tasa-cero/no-sujeto residual. Opcional; default 0. */
+  exentos?: number;
+}
+
 // Forma mínima de OrgSettings usada por la contabilidad de compras.
 // Incluye los nuevos campos agregados en la migración add_purchase_module.
 export interface PurchaseOrgSettings {
