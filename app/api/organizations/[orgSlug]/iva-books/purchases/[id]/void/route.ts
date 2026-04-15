@@ -5,8 +5,15 @@ import {
   handleError,
 } from "@/features/shared/middleware";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
+import { IvaBooksRepository } from "@/features/accounting/iva-books/iva-books.repository";
+import { SaleService } from "@/features/sale/sale.service";
+import { PurchaseService } from "@/features/purchase/purchase.service";
 
-const service = new IvaBooksService();
+const service = new IvaBooksService(
+  new IvaBooksRepository(),
+  new SaleService(),
+  new PurchaseService(),
+);
 
 /**
  * PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/void
