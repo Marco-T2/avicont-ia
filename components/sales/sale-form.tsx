@@ -36,6 +36,7 @@ import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/features/sale";
 import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
+import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
 
 // ── Helpers ──
 
@@ -779,11 +780,15 @@ export default function SaleForm({
               Eliminar
             </Button>
           )}
-          {/* Registrar en Libro de Ventas IVA — disponible en modo edición */}
+          {/* Registrar en Libro de Ventas IVA — disponible en modo edición.
+              Gate: period.status === "OPEN" (SPEC-5 / D5).
+              El servicio re-verifica el estado dentro de la transacción. */}
           {isEditMode && sale && (
             <Button
               type="button"
               variant="outline"
+              disabled={!isFiscalPeriodOpen(sale.period)}
+              title={!isFiscalPeriodOpen(sale.period) ? FISCAL_PERIOD_CLOSED_MESSAGE : undefined}
               onClick={() => setIvaModalOpen(true)}
             >
               <BookOpen className="h-4 w-4 mr-2" />

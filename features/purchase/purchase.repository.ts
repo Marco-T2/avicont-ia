@@ -63,6 +63,7 @@ const purchaseInclude = {
     select: {
       id: true,
       name: true,
+      status: true,
     },
   },
   createdBy: {

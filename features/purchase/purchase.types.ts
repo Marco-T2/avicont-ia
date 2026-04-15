@@ -88,6 +88,7 @@ export interface PurchaseWithDetails
   period: {
     id: string;
     name: string;
+    status: string;
   };
   createdBy: {
     id: string;

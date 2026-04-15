@@ -53,6 +53,7 @@ export interface SaleWithDetails
   period: {
     id: string;
     name: string;
+    status: string;
   };
   createdBy: {
     id: string;
