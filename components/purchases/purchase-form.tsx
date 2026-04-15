@@ -27,6 +27,7 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -34,6 +35,7 @@ import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/features/purchase";
+import { IvaBookPurchaseModal } from "@/components/iva-books/iva-book-purchase-modal";
 
 // ── Helpers ──
 
@@ -255,6 +257,7 @@ export default function PurchaseForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
+  const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
   // ── Computed totals ──
   const shrinkagePctNum = parseFloat(shrinkagePct) || 0;
@@ -602,6 +605,7 @@ export default function PurchaseForm({
 
   // ── Render ──
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       <Link href={backHref}>
         <Button type="button" variant="ghost" size="sm">
@@ -1445,6 +1449,17 @@ export default function PurchaseForm({
               Eliminar
             </Button>
           )}
+          {/* Registrar en Libro de Compras IVA — disponible en modo edición */}
+          {isEditMode && purchase && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIvaModalOpen(true)}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Registrar Libro de Compras
+            </Button>
+          )}
         </div>
 
         <div className="flex gap-3">
@@ -1548,5 +1563,36 @@ export default function PurchaseForm({
         </div>
       </div>
     </form>
+
+    {/* Modal Libro de Compras IVA — pre-fill desde esta compra */}
+    {purchase && (
+      <IvaBookPurchaseModal
+        open={ivaModalOpen}
+        onClose={() => setIvaModalOpen(false)}
+        onSuccess={() => {
+          setIvaModalOpen(false);
+          router.refresh();
+        }}
+        orgSlug={orgSlug}
+        periods={periods.map((p) => ({
+          id: p.id,
+          name: p.name,
+          startDate: new Date(p.startDate).toISOString().split("T")[0],
+          endDate: new Date(p.endDate).toISOString().split("T")[0],
+          status: p.status,
+        }))}
+        mode="create-from-source"
+        sourcePurchase={{
+          id: purchase.id,
+          date: new Date(purchase.date).toISOString().split("T")[0],
+          totalAmount: purchase.totalAmount,
+          contact: {
+            name: purchase.contact.name,
+            nit: purchase.contact.nit ?? null,
+          },
+        }}
+      />
+    )}
+    </>
   );
 }
