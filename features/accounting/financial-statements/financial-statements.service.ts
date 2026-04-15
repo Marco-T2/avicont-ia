@@ -5,7 +5,26 @@ import { buildBalanceSheet } from "./balance-sheet.builder";
 import { buildIncomeStatement } from "./income-statement.builder";
 import { calculateRetainedEarnings } from "./retained-earnings.calculator";
 import { FinancialStatementsRepository } from "./financial-statements.repository";
-import type { BalanceSheet, IncomeStatement } from "./financial-statements.types";
+import type {
+  BalanceSheet,
+  BalanceSheetCurrent,
+  IncomeStatement,
+  IncomeStatementCurrent,
+  StatementColumn,
+  DatePresetId,
+  BreakdownBy,
+  CompareWith,
+  AccountMetadata,
+  MovementAggregation,
+} from "./financial-statements.types";
+import {
+  resolveDatePreset,
+  applyFilterPrecedence,
+  generateBreakdownBuckets,
+  resolveComparativePeriod,
+  computeDiffPercent,
+} from "./date-presets.utils";
+import type { DateRange } from "./date-presets.utils";
 import {
   exportBalanceSheetPdf,
   exportIncomeStatementPdf,
@@ -22,19 +41,72 @@ export type GenerateBalanceSheetInput = {
   asOfDate: Date;
   /** Si se provee, se intenta usar snapshot del período cerrado */
   fiscalPeriodId?: string;
+  /** Macro de período (PR2) */
+  preset?: DatePresetId;
+  /** Granularidad de columnas, por defecto "total" (PR2) */
+  breakdownBy?: BreakdownBy;
+  /** Modo comparativo, por defecto "none" (PR2) */
+  compareWith?: CompareWith;
+  /** Fecha de corte del período comparativo cuando compareWith="custom" (PR2) */
+  compareAsOfDate?: Date;
 };
 
 export type GenerateIncomeStatementInput = {
   /** Si se provee, se deriva el rango desde el período fiscal */
   fiscalPeriodId?: string;
-  /** Fecha de inicio del rango (requerido si no hay fiscalPeriodId) */
+  /** Fecha de inicio del rango (requerido si no hay fiscalPeriodId ni preset) */
   dateFrom?: Date;
-  /** Fecha de fin del rango (requerido si no hay fiscalPeriodId) */
+  /** Fecha de fin del rango (requerido si no hay fiscalPeriodId ni preset) */
   dateTo?: Date;
+  /** Macro de período (PR2) */
+  preset?: DatePresetId;
+  /** Granularidad de columnas, por defecto "total" (PR2) */
+  breakdownBy?: BreakdownBy;
+  /** Modo comparativo, por defecto "none" (PR2) */
+  compareWith?: CompareWith;
+  /** Inicio del período comparativo cuando compareWith="custom" (PR2) */
+  compareDateFrom?: Date;
+  /** Fin del período comparativo cuando compareWith="custom" (PR2) */
+  compareDateTo?: Date;
 };
 
 // ── Roles autorizados a ver estados financieros (REQ-13) ──
 const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
+
+// ── Helpers de columnas — puros, sin Prisma (PR2) ──
+
+/**
+ * Construye las StatementColumn[] comparativas a partir del rango comparativo.
+ * Genera una columna comparative y una diff_percent por cada columna current del main.
+ *
+ * Pura: recibe data ya calculada, retorna columnas extendidas.
+ * Exportada para TDD en tests de integración del service.
+ */
+export function buildComparativeColumns(
+  currentColumns: StatementColumn[],
+  comparativeRange: DateRange,
+): StatementColumn[] {
+  const extra: StatementColumn[] = [];
+
+  for (const col of currentColumns) {
+    // Columna comparativa espejada con el mismo id prefijado
+    extra.push({
+      id: `${col.id}-comp`,
+      label: `Comparativo`,
+      dateFrom: comparativeRange.dateFrom,
+      dateTo: comparativeRange.dateTo,
+      role: "comparative",
+    });
+    // Columna de diferencia porcentual
+    extra.push({
+      id: `${col.id}-diff`,
+      label: `Var %`,
+      role: "diff_percent",
+    });
+  }
+
+  return extra;
+}
 
 /**
  * Valida que el rol tenga acceso a los estados financieros.
@@ -71,13 +143,17 @@ export class FinancialStatementsService {
   /**
    * Genera el Balance General (Estado de Situación Patrimonial) a la fecha de corte.
    *
-   * Flujo (design §2):
+   * Flujo PR2 (diseño §6):
    * 1. Gate RBAC
-   * 2. Resolver la fuente de saldos (snapshot vs on-the-fly) vía balanceSourceResolver
-   * 3. Obtener metadata de cuentas
-   * 4. Calcular Utilidad del Ejercicio (single source of truth vía IncomeStatement)
-   * 5. Construir el Balance con el builder puro
-   * 6. Si está desbalanceado → escribir audit log (no bloquea)
+   * 2. Resolver rango: preset → applyFilterPrecedence → resolvedRange
+   * 3. generateBreakdownBuckets → StatementColumn[] (buckets para columnas)
+   * 4. aggregateJournalLinesUpToBulk → Map<columnId, MovementAggregation[]>
+   * 5. Por cada bucket → resolveBalances (usando aggregations) → buildBalanceSheet
+   * 6. Si compareWith ≠ none → comparativo paralelo
+   * 7. Retornar { orgId, current (legacy=first column), comparative?, columns }
+   *
+   * Backward compat: sin nuevos params → breakdownBy="total", compareWith="none",
+   * columns tiene 1 elemento, current y comparative se mantienen sin cambios.
    */
   async generateBalanceSheet(
     orgId: string,
@@ -87,61 +163,100 @@ export class FinancialStatementsService {
     // 1. Gate RBAC
     assertFinancialStatementsAccess(userRole);
 
-    // 2. Resolver la fuente de saldos (período cerrado vs on-the-fly)
-    const resolved = await resolveBalances(this.repo, {
-      orgId,
-      date: input.asOfDate,
-      periodId: input.fiscalPeriodId,
-    });
+    const breakdownBy = input.breakdownBy ?? "total";
+    const compareWith = input.compareWith ?? "none";
 
-    // 3. Determinar el estado y rango del período para el cálculo de utilidad
+    // 2. Resolver rango efectivo
+    // El asOfDate siempre es la fecha de corte para BS (incluso sin preset)
+    let resolvedRange: DateRange;
     let periodStatus: "OPEN" | "CLOSED" | null = null;
-    let incomeFrom: Date = new Date(input.asOfDate.getFullYear(), 0, 1); // Inicio del año fiscal por defecto
-    let incomeTo: Date = input.asOfDate;
 
     if (input.fiscalPeriodId) {
       const period = await this.repo.findFiscalPeriod(orgId, input.fiscalPeriodId);
       if (period) {
         periodStatus = period.status as "OPEN" | "CLOSED";
-        incomeFrom = period.startDate;
-        incomeTo = input.asOfDate;
+        // Para BS el rango va desde inicio del período hasta asOfDate
+        resolvedRange = {
+          dateFrom: period.startDate,
+          dateTo: input.asOfDate,
+        };
+      } else {
+        resolvedRange = { dateFrom: new Date(input.asOfDate.getFullYear(), 0, 1), dateTo: input.asOfDate };
       }
+    } else if (input.preset) {
+      const [from, to] = resolveDatePreset(input.preset, { tz: "America/La_Paz" });
+      resolvedRange = { dateFrom: from, dateTo: to };
+    } else {
+      // Fallback: rango desde inicio del año hasta asOfDate (legacy)
+      resolvedRange = {
+        dateFrom: new Date(Date.UTC(input.asOfDate.getUTCFullYear(), 0, 1)),
+        dateTo: input.asOfDate,
+      };
     }
 
-    // 4. Obtener metadata de cuentas (para agrupación por subtype)
+    // 3. Generar buckets de columnas
+    const buckets = generateBreakdownBuckets(resolvedRange, breakdownBy);
+
+    // 4. Obtener metadata de cuentas (una sola vez)
     const accounts = await this.repo.findAccountsWithSubtype(orgId);
 
-    // 5. Calcular Utilidad del Ejercicio — single source of truth (REQ-3)
-    // Se agrega el rango del período para obtener los movimientos de ingresos/gastos
-    const incomeMovements = await this.repo.aggregateJournalLinesInRange(
-      orgId,
-      incomeFrom,
-      incomeTo,
+    // 5. Agregar movimientos en paralelo para todas las columnas BS (upTo = asOfDate del bucket)
+    const bsBuckets = buckets.map((col) => ({
+      columnId: col.id,
+      asOfDate: col.asOfDate ?? col.dateTo ?? input.asOfDate,
+    }));
+
+    const aggregationsMap = await this.repo.aggregateJournalLinesUpToBulk(orgId, bsBuckets);
+
+    // 6. Construir BalanceSheetCurrent por cada columna
+    const columnCurrents = await Promise.all(
+      buckets.map(async (col) => {
+        const colAggregations = aggregationsMap.get(col.id) ?? [];
+        const asOf = col.asOfDate ?? col.dateTo ?? input.asOfDate;
+
+        // Calcular utilidad del ejercicio para este corte (inicio año → asOf)
+        const incomeFrom = new Date(Date.UTC(asOf.getUTCFullYear(), 0, 1));
+        const incomeMovements = await this.repo.aggregateJournalLinesInRange(
+          orgId,
+          incomeFrom,
+          asOf,
+        );
+
+        const incomeStatCurrent = buildIncomeStatement({
+          accounts,
+          movements: incomeMovements,
+          dateFrom: incomeFrom,
+          dateTo: asOf,
+          periodStatus,
+          source: "on-the-fly",
+        });
+
+        const retainedEarnings = calculateRetainedEarnings(incomeStatCurrent);
+
+        // Convertir aggregations a ResolvedBalance (aplicar convención de signo)
+        const balances = colAggregations.map((a) => ({
+          accountId: a.accountId,
+          balance:
+            a.nature === "DEUDORA"
+              ? a.totalDebit.minus(a.totalCredit)
+              : a.totalCredit.minus(a.totalDebit),
+        }));
+
+        return buildBalanceSheet({
+          accounts,
+          balances,
+          retainedEarningsOfPeriod: retainedEarnings,
+          date: asOf,
+          periodStatus,
+          source: "on-the-fly",
+        });
+      }),
     );
 
-    const incomeStatementCurrent = buildIncomeStatement({
-      accounts,
-      movements: incomeMovements,
-      dateFrom: incomeFrom,
-      dateTo: incomeTo,
-      periodStatus,
-      source: resolved.source,
-    });
+    // 7. Columna "current" legacy = primera columna (backward compat)
+    const current = columnCurrents[0];
 
-    const retainedEarnings = calculateRetainedEarnings(incomeStatementCurrent);
-
-    // 6. Construir el Balance General
-    const current = buildBalanceSheet({
-      accounts,
-      balances: resolved.balances,
-      retainedEarningsOfPeriod: retainedEarnings,
-      date: input.asOfDate,
-      periodStatus,
-      source: resolved.source,
-    });
-
-    // 7. Audit log si la ecuación contable está desbalanceada (REQ-6, D10)
-    // Fire-and-forget deliberado: no bloquea la respuesta al cliente
+    // Audit log si la primera columna está desbalanceada (REQ-6, D10)
     if (current.imbalanced) {
       this.repo
         .writeImbalanceAuditLog(orgId, {
@@ -149,26 +264,84 @@ export class FinancialStatementsService {
           delta: current.imbalanceDelta,
         })
         .catch((err) => {
-          // No silenciar completamente — loguear para visibilidad operacional
           console.error("[financial-statements] Error escribiendo audit log de desbalance:", err);
         });
     }
 
-    return { orgId, current };
+    // 8. Comparative si se solicita
+    let comparative: BalanceSheetCurrent | undefined;
+    let allColumns = [...buckets];
+
+    if (compareWith !== "none") {
+      const customCompRange =
+        compareWith === "custom" && input.compareAsOfDate
+          ? {
+              dateFrom: new Date(Date.UTC(input.compareAsOfDate.getUTCFullYear(), 0, 1)),
+              dateTo: input.compareAsOfDate,
+            }
+          : undefined;
+
+      const compRange = resolveComparativePeriod(resolvedRange, compareWith, {
+        customRange: customCompRange,
+      });
+
+      if (compRange) {
+        // Comparative es siempre single-column (el mismo breakdownBy pero sobre compRange)
+        // Según diseño §6: comparative period → mismo flujo single range
+        const compAggregations = await this.repo.aggregateJournalLinesUpTo(orgId, compRange.dateTo);
+        const compIncomeFrom = new Date(Date.UTC(compRange.dateTo.getUTCFullYear(), 0, 1));
+        const compIncomeMovements = await this.repo.aggregateJournalLinesInRange(
+          orgId,
+          compIncomeFrom,
+          compRange.dateTo,
+        );
+        const compIncomeStat = buildIncomeStatement({
+          accounts,
+          movements: compIncomeMovements,
+          dateFrom: compIncomeFrom,
+          dateTo: compRange.dateTo,
+          periodStatus: null,
+          source: "on-the-fly",
+        });
+        const compRetained = calculateRetainedEarnings(compIncomeStat);
+        const compBalances = compAggregations.map((a) => ({
+          accountId: a.accountId,
+          balance:
+            a.nature === "DEUDORA"
+              ? a.totalDebit.minus(a.totalCredit)
+              : a.totalCredit.minus(a.totalDebit),
+        }));
+        comparative = buildBalanceSheet({
+          accounts,
+          balances: compBalances,
+          retainedEarningsOfPeriod: compRetained,
+          date: compRange.dateTo,
+          periodStatus: null,
+          source: "on-the-fly",
+        });
+
+        // Añadir columnas comparativas + diff_percent
+        const compCols = buildComparativeColumns(buckets, compRange);
+        allColumns = [...allColumns, ...compCols];
+      }
+    }
+
+    return { orgId, current, comparative, columns: allColumns };
   }
 
   /**
    * Genera el Estado de Resultados para un rango de fechas o período fiscal.
    *
-   * Flujo (design §2):
+   * Flujo PR2 (diseño §6):
    * 1. Gate RBAC
-   * 2. Resolver el rango de fechas (desde período o desde input directo)
-   * 3. Agregar movimientos del rango
-   * 4. Construir el Estado de Resultados con el builder puro
+   * 2. Resolver rango base: fiscalPeriod > preset > custom (applyFilterPrecedence)
+   * 3. generateBreakdownBuckets → StatementColumn[]
+   * 4. aggregateJournalLinesInRangeBulk → Map<columnId, MovementAggregation[]>
+   * 5. buildIncomeStatement por columna
+   * 6. Comparative si compareWith ≠ none
+   * 7. Retornar { orgId, current (legacy=first column), comparative?, columns }
    *
-   * La marca `preliminary` es siempre true cuando:
-   * - No se provee fiscalPeriodId (rango libre), O
-   * - El período está OPEN
+   * Backward compat: sin nuevos params → breakdownBy="total", 1 columna, current idéntico.
    */
   async generateIncomeStatement(
     orgId: string,
@@ -178,7 +351,10 @@ export class FinancialStatementsService {
     // 1. Gate RBAC
     assertFinancialStatementsAccess(userRole);
 
-    // 2. Resolver el rango de fechas
+    const breakdownBy = input.breakdownBy ?? "total";
+    const compareWith = input.compareWith ?? "none";
+
+    // 2. Resolver rango base
     let dateFrom: Date;
     let dateTo: Date;
     let periodStatus: "OPEN" | "CLOSED" | null = null;
@@ -187,41 +363,99 @@ export class FinancialStatementsService {
     if (input.fiscalPeriodId) {
       const period = await this.repo.findFiscalPeriod(orgId, input.fiscalPeriodId);
       if (!period) {
-        // NotFoundError será lanzado por el route handler — re-throw
         throw new NotFoundError("Período fiscal");
       }
       dateFrom = period.startDate;
       dateTo = period.endDate;
       periodStatus = period.status as "OPEN" | "CLOSED";
       source = periodStatus === "CLOSED" ? "snapshot" : "on-the-fly";
+    } else if (input.preset) {
+      const [from, to] = resolveDatePreset(input.preset, { tz: "America/La_Paz" });
+      // applyFilterPrecedence con solo preset
+      const resolved = applyFilterPrecedence({ presetRange: { dateFrom: from, dateTo: to } });
+      dateFrom = resolved.dateFrom;
+      dateTo = resolved.dateTo;
     } else if (input.dateFrom && input.dateTo) {
-      dateFrom = input.dateFrom;
-      dateTo = input.dateTo;
-      // Sin período → siempre on-the-fly + preliminary
-      source = "on-the-fly";
+      // applyFilterPrecedence con solo custom
+      const resolved = applyFilterPrecedence({
+        customRange: { dateFrom: input.dateFrom, dateTo: input.dateTo },
+      });
+      dateFrom = resolved.dateFrom;
+      dateTo = resolved.dateTo;
     } else {
       throw new ValidationError(
-        "Se requiere fiscalPeriodId o dateFrom + dateTo para generar el Estado de Resultados",
+        "Se requiere fiscalPeriodId, preset, o dateFrom + dateTo para generar el Estado de Resultados",
       );
     }
 
-    // 3. Obtener cuentas y movimientos
-    const [accounts, movements] = await Promise.all([
+    const resolvedRange: DateRange = { dateFrom, dateTo };
+
+    // 3. Generar buckets
+    const buckets = generateBreakdownBuckets(resolvedRange, breakdownBy);
+
+    // 4. Obtener cuentas y movimientos en bulk (paralelo)
+    const isBuckets = buckets.map((col) => ({
+      columnId: col.id,
+      dateFrom: col.dateFrom ?? dateFrom,
+      dateTo: col.dateTo ?? dateTo,
+    }));
+
+    const [accounts, aggregationsMap] = await Promise.all([
       this.repo.findAccountsWithSubtype(orgId),
-      this.repo.aggregateJournalLinesInRange(orgId, dateFrom, dateTo),
+      this.repo.aggregateJournalLinesInRangeBulk(orgId, isBuckets),
     ]);
 
-    // 4. Construir el Estado de Resultados
-    const current = buildIncomeStatement({
-      accounts,
-      movements,
-      dateFrom,
-      dateTo,
-      periodStatus,
-      source,
+    // 5. Construir IncomeStatementCurrent por columna
+    const columnCurrents: IncomeStatementCurrent[] = buckets.map((col) => {
+      const movements = aggregationsMap.get(col.id) ?? [];
+      return buildIncomeStatement({
+        accounts,
+        movements,
+        dateFrom: col.dateFrom ?? dateFrom,
+        dateTo: col.dateTo ?? dateTo,
+        periodStatus,
+        source,
+      });
     });
 
-    return { orgId, current };
+    // 6. Columna "current" legacy = primera columna (backward compat)
+    const current = columnCurrents[0];
+    let allColumns = [...buckets];
+
+    // 7. Comparative si se solicita
+    let comparative: IncomeStatementCurrent | undefined;
+
+    if (compareWith !== "none") {
+      const customCompRange =
+        compareWith === "custom" && input.compareDateFrom && input.compareDateTo
+          ? { dateFrom: input.compareDateFrom, dateTo: input.compareDateTo }
+          : undefined;
+
+      const compRange = resolveComparativePeriod(resolvedRange, compareWith, {
+        customRange: customCompRange,
+      });
+
+      if (compRange) {
+        const compMovements = await this.repo.aggregateJournalLinesInRange(
+          orgId,
+          compRange.dateFrom,
+          compRange.dateTo,
+        );
+        comparative = buildIncomeStatement({
+          accounts,
+          movements: compMovements,
+          dateFrom: compRange.dateFrom,
+          dateTo: compRange.dateTo,
+          periodStatus: null,
+          source: "on-the-fly",
+        });
+
+        const compCols = buildComparativeColumns(buckets, compRange);
+        allColumns = [...allColumns, ...compCols];
+      }
+    }
+
+    return { orgId, current, comparative, columns: allColumns };
   }
 
   // ── Exporters — implementados en PR4 ──
