@@ -50,8 +50,15 @@ export interface SaleDetailForEntry {
 
 // ── Construir líneas de asiento contable para una venta general ──
 //
-// DÉBITO: settings.cxcAccountCode (CxC) por el total — lleva contactId
-// CRÉDITO: un CRÉDITO por línea de detalle usando detail.incomeAccountCode (4.1.x)
+// Sin ivaBook (o ivaBook.dfCfIva === 0):
+//   DÉBITO: settings.cxcAccountCode (CxC) por el total — lleva contactId
+//   CRÉDITO: un CRÉDITO por línea de detalle usando detail.incomeAccountCode (4.1.x)
+//
+// Con ivaBook y dfCfIva > 0 (SPEC-1, SPEC-4, SPEC-8):
+//   DÉBITO: CxC por importeTotal
+//   CRÉDITO: incomeAccount (primer detalle) por baseIvaSujetoCf
+//   CRÉDITO: IVA_DEBITO_FISCAL ("2.1.6") por dfCfIva
+//   CRÉDITO: incomeAccount (primer detalle) por exentos residuales — si exentos > 0
 //
 // Espejo inverso de buildPurchaseEntryLines para COMPRA_GENERAL.
 
@@ -60,7 +67,71 @@ export function buildSaleEntryLines(
   details: SaleDetailForEntry[],
   settings: SaleOrgSettings,
   contactId: string,
+  ivaBook?: IvaBookForEntry,
 ): EntryLineTemplate[] {
+  // ── Path con IVA activo ──
+  if (ivaBook !== undefined && ivaBook.dfCfIva > 0) {
+    const { baseIvaSujetoCf, dfCfIva, importeTotal } = ivaBook;
+    const primaryAccount = details[0]?.incomeAccountCode ?? "4.1.1";
+
+    // Calcular exento residual: lo que no es base gravable ni IVA
+    const exentosExplicit = ivaBook.exentos;
+    const exentos =
+      exentosExplicit !== undefined
+        ? exentosExplicit
+        : Math.round((importeTotal - baseIvaSujetoCf - dfCfIva) * 100) / 100;
+
+    // Invariante de balance: cuando exentos son explícitos, verificar que cuadren
+    if (exentosExplicit !== undefined) {
+      const residual = Math.abs(baseIvaSujetoCf + dfCfIva + exentosExplicit - importeTotal);
+      if (residual > 0.005) {
+        throw new Error(
+          `[buildSaleEntryLines] Invariante de balance violado: ` +
+          `base(${baseIvaSujetoCf}) + IVA(${dfCfIva}) + exentos(${exentosExplicit}) = ` +
+          `${baseIvaSujetoCf + dfCfIva + exentosExplicit} ≠ importeTotal(${importeTotal}). ` +
+          `Diferencia: ${residual.toFixed(4)}`
+        );
+      }
+    }
+
+    // DÉBITO: CxC por el total
+    const debitLine: EntryLineTemplate = {
+      accountCode: settings.cxcAccountCode,
+      debit: importeTotal,
+      credit: 0,
+      contactId,
+    };
+
+    // CRÉDITO: Ventas base gravable (un solo renglón — collapse multi-detail)
+    const baseCreditLine: EntryLineTemplate = {
+      accountCode: primaryAccount,
+      debit: 0,
+      credit: baseIvaSujetoCf,
+    };
+
+    // CRÉDITO: IVA Débito Fiscal
+    const ivaLine: EntryLineTemplate = {
+      accountCode: IVA_DEBITO_FISCAL,
+      debit: 0,
+      credit: dfCfIva,
+    };
+
+    const lines: EntryLineTemplate[] = [debitLine, baseCreditLine, ivaLine];
+
+    // CRÉDITO: exentos residuales (4ta línea opcional)
+    if (exentos > 0) {
+      lines.push({
+        accountCode: primaryAccount,
+        debit: 0,
+        credit: exentos,
+      });
+    }
+
+    return lines;
+  }
+
+  // ── Path sin IVA (comportamiento original — cero regresión) ──
+
   // DÉBITO: CxC por el total con contactId
   const debitLine: EntryLineTemplate = {
     accountCode: settings.cxcAccountCode,
