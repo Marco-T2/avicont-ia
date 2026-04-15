@@ -51,3 +51,8 @@ export type {
   CalcTotalesParams,
   CalcTotalesResult,
 } from "./iva-calc.utils";
+
+// ── Exporters ─────────────────────────────────────────────────────────────────
+export { exportIvaBookExcel } from "./exporters/excel.exporter";
+export { getColumns, dataColumnCount } from "./exporters/sheet.builder";
+export type { IvaBookColumn, ColumnType } from "./exporters/sheet.builder";
