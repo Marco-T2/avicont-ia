@@ -27,6 +27,7 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
+  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -34,6 +35,7 @@ import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/features/sale";
+import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
 
 // ── Helpers ──
 
@@ -148,6 +150,7 @@ export default function SaleForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
+  const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
   // ── Total calculado ──
   const subtotal = lines.reduce((sum, l) => {
@@ -376,6 +379,7 @@ export default function SaleForm({
 
   // ── Render ──
   return (
+    <>
     <form onSubmit={handleSubmit} className="space-y-6">
       <Link href={backHref}>
         <Button type="button" variant="ghost" size="sm">
@@ -775,6 +779,17 @@ export default function SaleForm({
               Eliminar
             </Button>
           )}
+          {/* Registrar en Libro de Ventas IVA — disponible en modo edición */}
+          {isEditMode && sale && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setIvaModalOpen(true)}
+            >
+              <BookOpen className="h-4 w-4 mr-2" />
+              Registrar Libro de Ventas
+            </Button>
+          )}
         </div>
 
         <div className="flex gap-3">
@@ -878,5 +893,36 @@ export default function SaleForm({
         </div>
       </div>
     </form>
+
+    {/* Modal Libro de Ventas IVA — pre-fill desde esta venta */}
+    {sale && (
+      <IvaBookSaleModal
+        open={ivaModalOpen}
+        onClose={() => setIvaModalOpen(false)}
+        onSuccess={() => {
+          setIvaModalOpen(false);
+          router.refresh();
+        }}
+        orgSlug={orgSlug}
+        periods={periods.map((p) => ({
+          id: p.id,
+          name: p.name,
+          startDate: new Date(p.startDate).toISOString().split("T")[0],
+          endDate: new Date(p.endDate).toISOString().split("T")[0],
+          status: p.status,
+        }))}
+        mode="create-from-source"
+        sourceSale={{
+          id: sale.id,
+          date: new Date(sale.date).toISOString().split("T")[0],
+          totalAmount: sale.totalAmount,
+          contact: {
+            name: sale.contact.name,
+            nit: sale.contact.nit ?? null,
+          },
+        }}
+      />
+    )}
+    </>
   );
 }
