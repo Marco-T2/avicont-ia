@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { requireAuth, requireOrgAccess } from "@/features/shared";
-import { DispatchService } from "@/features/dispatch";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { HubService, DispatchService } from "@/features/dispatch";
+import { SaleService } from "@/features/sale";
 import DispatchList from "@/components/dispatches/dispatch-list";
-import type { DispatchFilters } from "@/features/dispatch";
+import type { HubFilters } from "@/features/dispatch";
 
 interface DispatchesPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -32,38 +32,33 @@ export default async function DispatchesPage({
     redirect("/select-org");
   }
 
-  const dispatchService = new DispatchService();
-  const periodsService = new FiscalPeriodsService();
+  // SSR: call HubService directly — no network round-trip (D5 of design)
+  const hubService = new HubService(new SaleService(), new DispatchService());
 
-  const filters: DispatchFilters = {};
+  const filters: HubFilters = {};
+  if (sp.type && typeof sp.type === "string") {
+    filters.type = sp.type as HubFilters["type"];
+  }
+  if (sp.status && typeof sp.status === "string") {
+    filters.status = sp.status as HubFilters["status"];
+  }
+  if (sp.contactId && typeof sp.contactId === "string") {
+    filters.contactId = sp.contactId;
+  }
   if (sp.periodId && typeof sp.periodId === "string") {
     filters.periodId = sp.periodId;
   }
-  if (sp.dispatchType && typeof sp.dispatchType === "string") {
-    filters.dispatchType = sp.dispatchType as DispatchFilters["dispatchType"];
+  if (sp.dateFrom && typeof sp.dateFrom === "string") {
+    filters.dateFrom = new Date(sp.dateFrom);
   }
-  if (sp.status && typeof sp.status === "string") {
-    filters.status = sp.status as DispatchFilters["status"];
+  if (sp.dateTo && typeof sp.dateTo === "string") {
+    filters.dateTo = new Date(sp.dateTo);
   }
 
-  const [dispatches, periods] = await Promise.all([
-    dispatchService.list(orgId, filters),
-    periodsService.list(orgId),
-  ]);
+  const { items } = await hubService.listHub(orgId, filters);
 
-  // Client-side referenceNumber filter (search by prefix/contains)
-  const refSearch =
-    sp.referenceNumber && typeof sp.referenceNumber === "string"
-      ? sp.referenceNumber.trim()
-      : undefined;
-
-  const filteredDispatches = refSearch
-    ? dispatches.filter(
-        (d) =>
-          d.referenceNumber !== null &&
-          String(d.referenceNumber).includes(refSearch),
-      )
-    : dispatches;
+  // Serialise Dates to plain objects for client component (Next.js requirement)
+  const serialisedItems = JSON.parse(JSON.stringify(items));
 
   return (
     <div className="space-y-6">
@@ -76,17 +71,14 @@ export default async function DispatchesPage({
 
       <DispatchList
         orgSlug={orgSlug}
-        dispatches={JSON.parse(JSON.stringify(filteredDispatches))}
-        periods={JSON.parse(JSON.stringify(periods))}
+        items={serialisedItems}
         filters={{
-          periodId: typeof sp.periodId === "string" ? sp.periodId : undefined,
-          dispatchType:
-            typeof sp.dispatchType === "string" ? sp.dispatchType : undefined,
+          type: typeof sp.type === "string" ? sp.type : undefined,
           status: typeof sp.status === "string" ? sp.status : undefined,
-          referenceNumber:
-            typeof sp.referenceNumber === "string"
-              ? sp.referenceNumber
-              : undefined,
+          contactId: typeof sp.contactId === "string" ? sp.contactId : undefined,
+          periodId: typeof sp.periodId === "string" ? sp.periodId : undefined,
+          dateFrom: typeof sp.dateFrom === "string" ? sp.dateFrom : undefined,
+          dateTo: typeof sp.dateTo === "string" ? sp.dateTo : undefined,
         }}
       />
     </div>
