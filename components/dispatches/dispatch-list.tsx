@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -21,15 +19,29 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ClipboardList, DollarSign, FileText, Package, Plus, Search, MoreHorizontal, Eye, Pencil, CheckCircle, XCircle, Trash2, Loader2 } from "lucide-react";
+import {
+  ClipboardList,
+  DollarSign,
+  FileText,
+  Package,
+  Plus,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { FiscalPeriod } from "@/generated/prisma/client";
+import type { HubItem } from "@/features/dispatch/hub.types";
 
-// ── Helpers ──
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
+function formatCurrency(amount: string): string {
+  const num = parseFloat(amount);
+  return `Bs. ${num.toLocaleString("es-BO", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -50,72 +62,218 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
 };
 
-const DISPATCH_TYPE_LABEL: Record<string, string> = {
+const TYPE_LABEL: Record<string, string> = {
+  VENTA_GENERAL: "Venta General",
   NOTA_DESPACHO: "Nota de Despacho",
   BOLETA_CERRADA: "Boleta Cerrada",
 };
 
-// ── Local interfaces (no Prisma client in client components) ──
-
-interface DispatchContact {
-  id: string;
-  name: string;
-  type: string;
-}
-
-interface DispatchItem {
-  id: string;
-  organizationId: string;
-  dispatchType: "NOTA_DESPACHO" | "BOLETA_CERRADA";
-  status: "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
-  sequenceNumber: number;
-  referenceNumber: number | null;
-  date: Date | string;
-  contactId: string;
-  periodId: string;
-  description: string;
-  totalAmount: number;
-  displayCode: string;
-  contact: DispatchContact;
-}
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 interface DispatchListProps {
   orgSlug: string;
-  dispatches: DispatchItem[];
-  periods: FiscalPeriod[];
+  items: HubItem[];
   filters: {
-    dispatchType?: string;
+    type?: string;
     status?: string;
     periodId?: string;
-    referenceNumber?: string;
+    contactId?: string;
+    dateFrom?: string;
+    dateTo?: string;
   };
 }
 
+// ── Action routing — exhaustive switch on source (D7) ─────────────────────────
+
+function getViewPath(orgSlug: string, item: HubItem): string {
+  switch (item.source) {
+    case "sale":
+      return `/${orgSlug}/sales/${item.id}`;
+    case "dispatch":
+      return `/${orgSlug}/dispatches/${item.id}`;
+    default: {
+      const _exhaustive: never = item;
+      return `/${orgSlug}/dispatches`;
+    }
+  }
+}
+
+function getEditPath(orgSlug: string, item: HubItem): string {
+  switch (item.source) {
+    case "sale":
+      return `/${orgSlug}/sales/${item.id}`;
+    case "dispatch":
+      return `/${orgSlug}/dispatches/${item.id}`;
+    default: {
+      const _exhaustive: never = item;
+      return `/${orgSlug}/dispatches`;
+    }
+  }
+}
+
+function getStatusApiPath(orgSlug: string, item: HubItem): string {
+  switch (item.source) {
+    case "sale":
+      return `/api/organizations/${orgSlug}/sales/${item.id}/status`;
+    case "dispatch":
+      return `/api/organizations/${orgSlug}/dispatches/${item.id}/status`;
+    default: {
+      const _exhaustive: never = item;
+      void _exhaustive;
+      return `/api/organizations/${orgSlug}/dispatches/unknown/status`;
+    }
+  }
+}
+
+function getDeleteApiPath(orgSlug: string, item: HubItem): string {
+  switch (item.source) {
+    case "sale":
+      return `/api/organizations/${orgSlug}/sales/${item.id}`;
+    case "dispatch":
+      return `/api/organizations/${orgSlug}/dispatches/${item.id}`;
+    default: {
+      const _exhaustive: never = item;
+      void _exhaustive;
+      return `/api/organizations/${orgSlug}/dispatches/unknown`;
+    }
+  }
+}
+
+// ── HubItemRow sub-component (task 3.9 refactor) ─────────────────────────────
+
+interface HubItemRowProps {
+  orgSlug: string;
+  item: HubItem;
+  isLoading: boolean;
+  onPost: (item: HubItem) => void;
+  onVoid: (item: HubItem) => void;
+  onDelete: (item: HubItem) => void;
+}
+
+function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubItemRowProps) {
+  const router = useRouter();
+  const statusBadge = STATUS_BADGE[item.status] ?? {
+    label: item.status,
+    className: "bg-gray-100 text-gray-800",
+  };
+  const typeName = TYPE_LABEL[item.type] ?? item.type;
+  const viewPath = getViewPath(orgSlug, item);
+  const editPath = getEditPath(orgSlug, item);
+
+  return (
+    <tr
+      className="border-b hover:bg-gray-50 cursor-pointer"
+      onClick={() => router.push(viewPath)}
+    >
+      <td className="py-3 px-4 font-mono text-blue-600 font-medium">
+        {item.displayCode}
+      </td>
+      <td className="py-3 px-4 font-mono text-gray-500">
+        {item.referenceNumber ?? "—"}
+      </td>
+      <td className="py-3 px-4 whitespace-nowrap">
+        {formatDate(item.date)}
+      </td>
+      <td className="py-3 px-4">{typeName}</td>
+      <td className="py-3 px-4 text-gray-500">{item.contactName}</td>
+      <td className="py-3 px-4 text-center">
+        <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
+      </td>
+      <td className="py-3 px-4 text-right font-mono">
+        {formatCurrency(item.totalAmount)}
+      </td>
+      <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon-sm" className="h-8 w-8">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {item.status === "DRAFT" && (
+                <>
+                  <DropdownMenuItem onClick={() => router.push(editPath)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onPost(item)}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Contabilizar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDelete(item)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </>
+              )}
+              {item.status === "POSTED" && (
+                <>
+                  <DropdownMenuItem onClick={() => router.push(viewPath)}>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Ver
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onVoid(item)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Anular
+                  </DropdownMenuItem>
+                </>
+              )}
+              {(item.status === "LOCKED" || item.status === "VOIDED") && (
+                <DropdownMenuItem onClick={() => router.push(viewPath)}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Ver
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </td>
+    </tr>
+  );
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function DispatchList({
   orgSlug,
-  dispatches,
-  periods,
+  items,
   filters,
 }: DispatchListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
 
-  const periodMap = new Map(periods.map((p) => [p.id, p.name]));
+  function buildQuery(overrides: Record<string, string | undefined>): string {
+    const params = new URLSearchParams();
+    const merged = {
+      type: filters.type,
+      status: filters.status,
+      periodId: filters.periodId,
+      contactId: filters.contactId,
+      dateFrom: filters.dateFrom,
+      dateTo: filters.dateTo,
+      ...overrides,
+    };
+    for (const [key, value] of Object.entries(merged)) {
+      if (value && value !== "all") {
+        params.set(key, value);
+      }
+    }
+    return params.toString();
+  }
 
   function applyFilter(key: string, value: string) {
-    const params = new URLSearchParams();
-    if (filters.periodId) params.set("periodId", filters.periodId);
-    if (filters.dispatchType) params.set("dispatchType", filters.dispatchType);
-    if (filters.status) params.set("status", filters.status);
-    if (filters.referenceNumber) params.set("referenceNumber", filters.referenceNumber);
-
-    if (value && value !== "all" && value !== "") {
-      params.set(key, value);
-    } else {
-      params.delete(key);
-    }
-
-    const query = params.toString();
+    const query = buildQuery({ [key]: value });
     router.push(`/${orgSlug}/dispatches${query ? `?${query}` : ""}`);
   }
 
@@ -123,23 +281,21 @@ export default function DispatchList({
     router.push(`/${orgSlug}/dispatches`);
   }
 
-  async function handlePostFromList(dispatchId: string) {
-    if (!window.confirm("¿Contabilizar este despacho?")) return;
-    setActioningId(dispatchId);
+  async function handlePostFromList(item: HubItem) {
+    const label = item.source === "sale" ? "venta" : "despacho";
+    if (!window.confirm(`¿Contabilizar este ${label}?`)) return;
+    setActioningId(item.id);
     try {
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/dispatches/${dispatchId}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "POSTED" }),
-        },
-      );
+      const response = await fetch(getStatusApiPath(orgSlug, item), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "POSTED" }),
+      });
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error ?? "Error al contabilizar");
+        throw new Error(data.error ?? `Error al contabilizar`);
       }
-      toast.success("Despacho contabilizado");
+      toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} contabilizado`);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar");
@@ -148,23 +304,21 @@ export default function DispatchList({
     }
   }
 
-  async function handleVoidFromList(dispatchId: string) {
-    if (!window.confirm("¿Anular este despacho? Se revertirá el asiento contable y la cuenta por cobrar.")) return;
-    setActioningId(dispatchId);
+  async function handleVoidFromList(item: HubItem) {
+    const label = item.source === "sale" ? "venta" : "despacho";
+    if (!window.confirm(`¿Anular este ${label}? Se revertirá el asiento contable.`)) return;
+    setActioningId(item.id);
     try {
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/dispatches/${dispatchId}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "VOIDED" }),
-        },
-      );
+      const response = await fetch(getStatusApiPath(orgSlug, item), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: "VOIDED" }),
+      });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error ?? "Error al anular");
       }
-      toast.success("Despacho anulado");
+      toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} anulado`);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
@@ -173,14 +327,11 @@ export default function DispatchList({
     }
   }
 
-  async function handleDeleteFromList(dispatchId: string) {
+  async function handleDeleteFromList(item: HubItem) {
     if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
-    setActioningId(dispatchId);
+    setActioningId(item.id);
     try {
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/dispatches/${dispatchId}`,
-        { method: "DELETE" },
-      );
+      const response = await fetch(getDeleteApiPath(orgSlug, item), { method: "DELETE" });
       if (!response.ok) {
         const data = await response.json();
         throw new Error(data.error ?? "Error al eliminar");
@@ -194,12 +345,7 @@ export default function DispatchList({
     }
   }
 
-  const hasFilters = !!(
-    filters.periodId ||
-    filters.dispatchType ||
-    filters.status ||
-    filters.referenceNumber
-  );
+  const hasFilters = !!(filters.type || filters.status || filters.periodId || filters.contactId || filters.dateFrom || filters.dateTo);
 
   return (
     <>
@@ -280,36 +426,17 @@ export default function DispatchList({
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
-              <Label className="text-sm">Período</Label>
+              <label className="text-sm font-medium">Tipo</label>
               <Select
-                value={filters.periodId ?? "all"}
-                onValueChange={(v) => applyFilter("periodId", v)}
+                value={filters.type ?? "all"}
+                onValueChange={(v) => applyFilter("type", v)}
               >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Todos los períodos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los períodos</SelectItem>
-                  {periods.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-sm">Tipo</Label>
-              <Select
-                value={filters.dispatchType ?? "all"}
-                onValueChange={(v) => applyFilter("dispatchType", v)}
-              >
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-48" data-testid="filter-type">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="VENTA_GENERAL">Venta General</SelectItem>
                   <SelectItem value="NOTA_DESPACHO">Nota de Despacho</SelectItem>
                   <SelectItem value="BOLETA_CERRADA">Boleta Cerrada</SelectItem>
                 </SelectContent>
@@ -317,12 +444,12 @@ export default function DispatchList({
             </div>
 
             <div className="space-y-1">
-              <Label className="text-sm">Estado</Label>
+              <label className="text-sm font-medium">Estado</label>
               <Select
                 value={filters.status ?? "all"}
                 onValueChange={(v) => applyFilter("status", v)}
               >
-                <SelectTrigger className="w-40">
+                <SelectTrigger className="w-40" data-testid="filter-status">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -335,24 +462,8 @@ export default function DispatchList({
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-sm">Búsqueda por Ref.</Label>
-              <Input
-                className="w-40"
-                placeholder="Nro. de referencia"
-                defaultValue={filters.referenceNumber ?? ""}
-                onBlur={(e) => applyFilter("referenceNumber", e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    applyFilter("referenceNumber", (e.target as HTMLInputElement).value);
-                  }
-                }}
-              />
-            </div>
-
             {hasFilters && (
               <Button variant="ghost" size="sm" onClick={clearFilters}>
-                <Search className="h-4 w-4 mr-2" />
                 Limpiar filtros
               </Button>
             )}
@@ -371,7 +482,6 @@ export default function DispatchList({
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Tipo</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Período</th>
                   <th className="text-left py-3 px-4 font-medium text-gray-600">Cliente</th>
                   <th className="text-center py-3 px-4 font-medium text-gray-600">Estado</th>
                   <th className="text-right py-3 px-4 font-medium text-gray-600">Total</th>
@@ -379,134 +489,30 @@ export default function DispatchList({
                 </tr>
               </thead>
               <tbody>
-                {dispatches.length === 0 ? (
+                {items.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center">
+                    <td colSpan={8} className="py-12 text-center" data-testid="dispatch-list-empty">
                       <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">No hay despachos registrados</p>
+                      <p className="text-gray-600">No hay registros</p>
                       <p className="text-sm text-gray-400 mt-1">
                         {hasFilters
-                          ? "Ningún despacho coincide con los filtros aplicados"
-                          : "Cree el primer despacho para comenzar"}
+                          ? "Ningún registro coincide con los filtros aplicados"
+                          : "Cree el primer registro para comenzar"}
                       </p>
                     </td>
                   </tr>
                 ) : (
-                  dispatches.map((dispatch) => {
-                    const statusBadge = STATUS_BADGE[dispatch.status] ?? {
-                      label: dispatch.status,
-                      className: "bg-gray-100 text-gray-800",
-                    };
-                    const periodName = periodMap.get(dispatch.periodId) ?? "—";
-                    const typeName = DISPATCH_TYPE_LABEL[dispatch.dispatchType] ?? dispatch.dispatchType;
-                    const isLoading = actioningId === dispatch.id;
-
-                    return (
-                      <tr
-                        key={dispatch.id}
-                        className="border-b hover:bg-gray-50 cursor-pointer"
-                        onClick={() =>
-                          router.push(`/${orgSlug}/dispatches/${dispatch.id}`)
-                        }
-                      >
-                        <td className="py-3 px-4 font-mono text-blue-600 font-medium">
-                          {dispatch.displayCode}
-                        </td>
-                        <td className="py-3 px-4 font-mono text-gray-500">
-                          {dispatch.referenceNumber ?? "—"}
-                        </td>
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          {formatDate(dispatch.date)}
-                        </td>
-                        <td className="py-3 px-4">{typeName}</td>
-                        <td className="py-3 px-4 text-gray-500">{periodName}</td>
-                        <td className="py-3 px-4 text-gray-500">
-                          {dispatch.contact?.name ?? "—"}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <Badge className={statusBadge.className}>
-                            {statusBadge.label}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono">
-                          {formatCurrency(dispatch.totalAmount)}
-                        </td>
-                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
-                          {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
-                          ) : (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon-sm" className="h-8 w-8">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                {dispatch.status === "DRAFT" && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
-                                    >
-                                      <Pencil className="h-4 w-4 mr-2" />
-                                      Editar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => handlePostFromList(dispatch.id)}
-                                    >
-                                      <CheckCircle className="h-4 w-4 mr-2" />
-                                      Contabilizar
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleDeleteFromList(dispatch.id)}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2" />
-                                      Eliminar
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {dispatch.status === "POSTED" && (
-                                  <>
-                                    <DropdownMenuItem
-                                      onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
-                                    >
-                                      <Eye className="h-4 w-4 mr-2" />
-                                      Ver
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      onClick={() => handleVoidFromList(dispatch.id)}
-                                      className="text-red-600 focus:text-red-600"
-                                    >
-                                      <XCircle className="h-4 w-4 mr-2" />
-                                      Anular
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                                {dispatch.status === "LOCKED" && (
-                                  <DropdownMenuItem
-                                    onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Ver
-                                  </DropdownMenuItem>
-                                )}
-                                {dispatch.status === "VOIDED" && (
-                                  <DropdownMenuItem
-                                    onClick={() => router.push(`/${orgSlug}/dispatches/${dispatch.id}`)}
-                                  >
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    Ver
-                                  </DropdownMenuItem>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
+                  items.map((item) => (
+                    <HubItemRow
+                      key={item.id}
+                      orgSlug={orgSlug}
+                      item={item}
+                      isLoading={actioningId === item.id}
+                      onPost={handlePostFromList}
+                      onVoid={handleVoidFromList}
+                      onDelete={handleDeleteFromList}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
