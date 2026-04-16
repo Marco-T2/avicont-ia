@@ -84,12 +84,12 @@ describe("IvaBookPurchaseModal — auto-calc en onBlur", () => {
     fireEvent.change(importeTotalInput, { target: { value: "1000" } });
     fireEvent.blur(importeTotalInput);
 
-    // subtotal = 1000 (sin deducciones), cfIva = 1000 * 13/113 ≈ 115.04
+    // SIN nominal: subtotal = 1000, base = 1000, cfIva = 1000 × 0.13 = 130.00
     await waitFor(() => {
       expect(screen.getByTestId("computed-subtotal")).toHaveTextContent("1000.00");
     });
     await waitFor(() => {
-      expect(screen.getByTestId("computed-credito-fiscal")).toHaveTextContent("115.04");
+      expect(screen.getByTestId("computed-credito-fiscal")).toHaveTextContent("130.00");
     });
   });
 

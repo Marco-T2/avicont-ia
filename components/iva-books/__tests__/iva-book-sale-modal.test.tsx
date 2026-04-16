@@ -129,12 +129,12 @@ describe("IvaBookSaleModal — auto-calc en onBlur", () => {
     renderModal();
 
     const importeTotalInput = screen.getByLabelText(/importe total/i);
-    fireEvent.change(importeTotalInput, { target: { value: "1130" } });
+    fireEvent.change(importeTotalInput, { target: { value: "1000" } });
     fireEvent.blur(importeTotalInput);
 
-    // 1130 * 13/113 = 130.00
+    // SIN nominal: base = 1000, DF = 1000 × 0.13 = 130.00
     await waitFor(() => {
-      expect(screen.getByTestId("computed-subtotal")).toHaveTextContent("1130.00");
+      expect(screen.getByTestId("computed-subtotal")).toHaveTextContent("1000.00");
     });
     await waitFor(() => {
       expect(screen.getByTestId("computed-debito-fiscal")).toHaveTextContent("130.00");

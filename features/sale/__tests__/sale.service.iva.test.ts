@@ -45,7 +45,7 @@ function makeIvaBook(overrides: Partial<IvaSalesBookDTO> = {}): IvaSalesBookDTO 
     codigoAutorizacion: "AUTH-001",
     codigoControl: "",
     estadoSIN: "A",
-    importeTotal: D("113.00"),
+    importeTotal: D("100.00"),
     importeIce: D("0"),
     importeIehd: D("0"),
     importeIpj: D("0"),
@@ -55,7 +55,7 @@ function makeIvaBook(overrides: Partial<IvaSalesBookDTO> = {}): IvaSalesBookDTO 
     tasaCero: D("0"),
     codigoDescuentoAdicional: D("0"),
     importeGiftCard: D("0"),
-    subtotal: D("113.00"),
+    subtotal: D("100.00"),
     dfIva: D("13.00"),
     baseIvaSujetoCf: D("100.00"),
     dfCfIva: D("13.00"),
@@ -84,23 +84,21 @@ function makeSale(overrides: Partial<SaleWithDetails> = {}): SaleWithDetails {
     createdById: USER_ID,
     createdAt: new Date(),
     updatedAt: new Date(),
-    totalAmount: 113,
+    totalAmount: 100,
     displayCode: "VG-001",
     contact: { id: "contact-001", name: "Cliente Test", type: "CLIENTE", paymentTermsDays: 30 },
-    period: { id: PERIOD_ID, name: "Marzo 2025" },
+    period: { id: PERIOD_ID, name: "Marzo 2025", status: "OPEN" },
     createdBy: { id: USER_ID, name: "Test User", email: "test@test.com" },
     details: [
       {
         id: "detail-01",
         saleId: SALE_ID,
         description: "Servicio A",
-        lineAmount: 113,
+        lineAmount: 100,
         order: 0,
         quantity: null,
         unitPrice: null,
         incomeAccountId: "account-income-id",
-        createdAt: new Date(),
-        updatedAt: new Date(),
       },
     ],
     receivable: null,
@@ -145,7 +143,7 @@ function createMocks() {
   } as unknown as SaleRepository;
 
   const orgSettingsService = {
-    getOrCreate: vi.fn().mockResolvedValue({ cxcAccountCode: "1.1.3" }),
+    getOrCreate: vi.fn().mockResolvedValue({ cxcAccountCode: "1.1.3", itExpenseAccountCode: "5.3.3", itPayableAccountCode: "2.1.7" }),
   } as unknown as OrgSettingsService;
 
   const autoEntryGenerator = {
@@ -221,12 +219,12 @@ describe("SaleService — IVA journal integration", () => {
 
       await mocks.service.post(ORG_ID, SALE_ID, USER_ID);
 
-      // autoEntryGenerator.generate debe haber sido llamado con 3 líneas (IVA path)
+      // autoEntryGenerator.generate debe haber sido llamado con líneas IVA + IT
       const generateCall = vi.mocked(mocks.autoEntryGenerator.generate).mock.calls[0];
       expect(generateCall).toBeDefined();
       const lines = generateCall[1].lines;
-      // 3 líneas: DR CxC 113, CR ingreso 100, CR IVA 13
-      expect(lines).toHaveLength(3);
+      // 5 líneas: DR CxC 100, CR ingreso 87, CR IVA 13, DR IT 3, CR IT 3
+      expect(lines).toHaveLength(5);
       expect(lines.find((l: { accountCode: string }) => l.accountCode === "2.1.6")).toBeDefined();
     });
   });
@@ -318,7 +316,7 @@ describe("SaleService — IVA journal integration", () => {
           paymentAllocation: { findMany: vi.fn().mockResolvedValue([]) },
           accountsReceivable: { findUnique: vi.fn() },
         };
-        await fn(mockTx);
+        await fn(mockTx as unknown as Prisma.TransactionClient);
         // SPEC-7: IvaBook void DEBE ir antes que journalEntry void
         const ivaIdx = order.indexOf("ivaBook.update");
         const journalIdx = order.indexOf("journalEntry.update");
@@ -369,7 +367,7 @@ describe("SaleService — IVA journal integration", () => {
           paymentAllocation: { findMany: vi.fn().mockResolvedValue([]) },
           accountsReceivable: { findUnique: vi.fn() },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await expect(mocks.service.void(ORG_ID, SALE_ID, USER_ID)).resolves.not.toThrow();
@@ -417,16 +415,16 @@ describe("SaleService — IVA journal integration", () => {
           sale: { update: vi.fn() },
           saleDetail: { deleteMany: vi.fn(), createMany: vi.fn() },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);
 
-      // El asiento debe haber sido actualizado con líneas IVA (3 líneas)
+      // El asiento debe haber sido actualizado con líneas IVA + IT (5 líneas)
       expect(vi.mocked(mocks.journalRepo.updateTx)).toHaveBeenCalled();
       const updateCall = vi.mocked(mocks.journalRepo.updateTx).mock.calls[0];
       const resolvedLines = updateCall[4];
-      expect(resolvedLines).toHaveLength(3);
+      expect(resolvedLines).toHaveLength(5);
       // Verificar que el chequeo de período ocurrió dentro de la tx
       expect(fiscalPeriodChecked).toBe(true);
     });
@@ -451,7 +449,7 @@ describe("SaleService — IVA journal integration", () => {
             ),
           },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await expect(
@@ -495,7 +493,7 @@ describe("SaleService — IVA journal integration", () => {
           sale: { update: vi.fn() },
           saleDetail: { deleteMany: vi.fn(), createMany: vi.fn() },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);

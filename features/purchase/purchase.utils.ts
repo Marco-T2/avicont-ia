@@ -11,11 +11,17 @@ export const IVA_CREDITO_FISCAL = "1.1.8";
  * Datos del IvaPurchaseBook necesarios para generar las líneas IVA del asiento.
  * Todos los campos son `number` (no Prisma.Decimal) — la conversión ocurre
  * en la capa de servicio, manteniendo los builders como funciones puras.
+ *
+ * Convención SIN Bolivia (Form. 200): `baseIvaSujetoCf` es el "Importe Base"
+ * que YA contiene el IVA conceptualmente. Por eso:
+ *   - dfCfIva = baseIvaSujetoCf × 0.13 (alícuota nominal)
+ *   - Línea de Gasto a registrar = baseIvaSujetoCf − dfCfIva (≈ × 0.87)
+ *   - Invariante de balance: baseIvaSujetoCf + exentos = importeTotal
  */
 export interface IvaBookForEntry {
-  /** Base imponible (subtotal sujeto a IVA). */
+  /** Importe Base SIAT (gravable que incluye IVA). */
   baseIvaSujetoCf: number;
-  /** Débito/Crédito Fiscal IVA (13% sobre baseIvaSujetoCf). */
+  /** Crédito Fiscal IVA = baseIvaSujetoCf × 0.13. */
   dfCfIva: number;
   /** Total factura (= totalAmount de la compra). */
   importeTotal: number;
@@ -113,39 +119,42 @@ export function buildPurchaseEntryLines(
 ): EntryLineTemplate[] {
   const cxpAccountCode = settings.cxpAccountCode;
 
-  // ── Path con IVA activo (SPEC-2, SPEC-8) ──
+  // ── Path con IVA activo (convención SIN Bolivia, alícuota nominal) ──
   if (ivaBook !== undefined && ivaBook.dfCfIva > 0) {
     const { baseIvaSujetoCf, dfCfIva, importeTotal } = ivaBook;
     const expenseAccount = resolveExpenseAccount(purchaseType, details, settings);
 
-    // Calcular exento residual: lo que no es base gravable ni IVA
+    // Exento residual: importeTotal − baseIvaSujetoCf (el IVA ya está dentro de la base)
     const exentosExplicit = ivaBook.exentos;
     const exentos =
       exentosExplicit !== undefined
         ? exentosExplicit
-        : Math.round((importeTotal - baseIvaSujetoCf - dfCfIva) * 100) / 100;
+        : Math.round((importeTotal - baseIvaSujetoCf) * 100) / 100;
 
-    // Invariante de balance: cuando exentos son explícitos, verificar que cuadren
+    // Invariante de balance (nueva semántica): base + exentos = importeTotal
     if (exentosExplicit !== undefined) {
-      const residual = Math.abs(baseIvaSujetoCf + dfCfIva + exentosExplicit - importeTotal);
+      const residual = Math.abs(baseIvaSujetoCf + exentosExplicit - importeTotal);
       if (residual > 0.005) {
         throw new Error(
           `[buildPurchaseEntryLines] Invariante de balance violado: ` +
-          `base(${baseIvaSujetoCf}) + IVA(${dfCfIva}) + exentos(${exentosExplicit}) = ` +
-          `${baseIvaSujetoCf + dfCfIva + exentosExplicit} ≠ importeTotal(${importeTotal}). ` +
+          `base(${baseIvaSujetoCf}) + exentos(${exentosExplicit}) = ` +
+          `${baseIvaSujetoCf + exentosExplicit} ≠ importeTotal(${importeTotal}). ` +
           `Diferencia: ${residual.toFixed(4)}`
         );
       }
     }
 
-    // DÉBITO: Gasto base gravable (un solo renglón — collapse multi-detalle)
+    // Gasto neto = base − IVA (preserva balance ante redondeos)
+    const gastoNeto = Math.round((baseIvaSujetoCf - dfCfIva) * 100) / 100;
+
+    // DÉBITO: Gasto neto (≈ 87% de la base)
     const baseDebitLine: EntryLineTemplate = {
       accountCode: expenseAccount,
-      debit: baseIvaSujetoCf,
+      debit: gastoNeto,
       credit: 0,
     };
 
-    // DÉBITO: IVA Crédito Fiscal
+    // DÉBITO: IVA Crédito Fiscal (13% de la base)
     const ivaLine: EntryLineTemplate = {
       accountCode: IVA_CREDITO_FISCAL,
       debit: dfCfIva,

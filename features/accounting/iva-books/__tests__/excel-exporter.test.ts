@@ -56,11 +56,11 @@ function makePurchaseDTO(overrides: Partial<IvaPurchaseBookDTO> = {}): IvaPurcha
     exentos: ZERO,
     tasaCero: ZERO,
     subtotal: D("1000.00"),
-    dfIva: D("115.04"),
+    dfIva: D("130.00"),
     codigoDescuentoAdicional: ZERO,
     importeGiftCard: ZERO,
     baseIvaSujetoCf: D("1000.00"),
-    dfCfIva: D("115.04"),
+    dfCfIva: D("130.00"),
     tasaIva: TASA_IVA,
     status: "ACTIVE",
     createdAt: new Date("2025-03-15T10:00:00Z"),
@@ -90,11 +90,11 @@ function makeSaleDTO(overrides: Partial<IvaSalesBookDTO> = {}): IvaSalesBookDTO 
     exentos: ZERO,
     tasaCero: ZERO,
     subtotal: D("2000.00"),
-    dfIva: D("230.09"),
+    dfIva: D("260.00"),
     codigoDescuentoAdicional: ZERO,
     importeGiftCard: ZERO,
     baseIvaSujetoCf: D("2000.00"),
-    dfCfIva: D("230.09"),
+    dfCfIva: D("260.00"),
     tasaIva: TASA_IVA,
     status: "ACTIVE",
     createdAt: new Date("2025-03-15T10:00:00Z"),
@@ -184,7 +184,7 @@ describe("exportIvaBookExcel('purchases') — golden-file vs plantilla SIN", () 
   });
 
   it("las celdas monetarias son numéricas (no strings) en compras", async () => {
-    const entries = [makePurchaseDTO({ importeTotal: D("1000.00"), dfCfIva: D("115.04") })];
+    const entries = [makePurchaseDTO({ importeTotal: D("1000.00"), dfCfIva: D("130.00") })];
     const buffer = await exportIvaBookExcel("purchases", entries, "2025-03");
 
     const wb = new ExcelJS.Workbook();
@@ -200,10 +200,10 @@ describe("exportIvaBookExcel('purchases') — golden-file vs plantilla SIN", () 
     expect(typeof importeTotalCell.value).toBe("number");
     expect(importeTotalCell.value).toBe(1000);
 
-    // Columna 21 = CREDITO FISCAL (type: number)
+    // Columna 21 = CREDITO FISCAL (type: number) — 1000 × 0.13 = 130
     const creditoFiscalCell = dataRow.getCell(21);
     expect(typeof creditoFiscalCell.value).toBe("number");
-    expect(creditoFiscalCell.value).toBeCloseTo(115.04, 1);
+    expect(creditoFiscalCell.value).toBeCloseTo(130, 1);
   });
 
   it("la fila de totales está presente y contiene valores numéricos", async () => {
@@ -269,7 +269,7 @@ describe("exportIvaBookExcel('sales') — golden-file vs plantilla SIN", () => {
   });
 
   it("las celdas monetarias son numéricas (no strings) en ventas", async () => {
-    const entries = [makeSaleDTO({ importeTotal: D("2000.00"), dfIva: D("230.09") })];
+    const entries = [makeSaleDTO({ importeTotal: D("2000.00"), dfIva: D("260.00") })];
     const buffer = await exportIvaBookExcel("sales", entries, "2025-03");
 
     const wb = new ExcelJS.Workbook();
@@ -285,10 +285,10 @@ describe("exportIvaBookExcel('sales') — golden-file vs plantilla SIN", () => {
     expect(typeof importeTotalCell.value).toBe("number");
     expect(importeTotalCell.value).toBe(2000);
 
-    // Columna 21 = DEBITO FISCAL
+    // Columna 21 = DEBITO FISCAL — 2000 × 0.13 = 260
     const debitoFiscalCell = dataRow.getCell(21);
     expect(typeof debitoFiscalCell.value).toBe("number");
-    expect(debitoFiscalCell.value).toBeCloseTo(230.09, 1);
+    expect(debitoFiscalCell.value).toBeCloseTo(260, 1);
   });
 
   it("el campo estadoSIN se exporta como texto en la columna ESTADO", async () => {

@@ -122,11 +122,11 @@ function makePurchaseDTO(overrides: Partial<IvaPurchaseBookDTO> = {}): IvaPurcha
     exentos: ZERO,
     tasaCero: ZERO,
     subtotal: D("1000.00"),
-    dfIva: D("115.04"),
+    dfIva: D("130.00"),
     codigoDescuentoAdicional: ZERO,
     importeGiftCard: ZERO,
     baseIvaSujetoCf: D("1000.00"),
-    dfCfIva: D("115.04"),
+    dfCfIva: D("130.00"),
     tasaIva: TASA_IVA,
     status: "ACTIVE",
     createdAt: new Date(),
@@ -156,11 +156,11 @@ function makeSaleDTO(overrides: Partial<IvaSalesBookDTO> = {}): IvaSalesBookDTO 
     exentos: ZERO,
     tasaCero: ZERO,
     subtotal: D("2000.00"),
-    dfIva: D("230.09"),
+    dfIva: D("260.00"),
     codigoDescuentoAdicional: ZERO,
     importeGiftCard: ZERO,
     baseIvaSujetoCf: D("2000.00"),
-    dfCfIva: D("230.09"),
+    dfCfIva: D("260.00"),
     tasaIva: TASA_IVA,
     status: "ACTIVE",
     createdAt: new Date(),
@@ -195,10 +195,10 @@ describe("IvaBooksService", () => {
 
       // subtotal = 1000 - 0 - 0 - 0 - 0 - 0 - 0 - 0 = 1000.00
       expect(new Prisma.Decimal(calledInput.subtotal).toFixed(2)).toBe("1000.00");
-      // baseIvaSujetoCf = subtotal - descuento - giftCard = 1000
+      // baseIvaSujetoCf = gravableConIva = 1000 (alícuota nominal SIN: base = total facturado)
       expect(new Prisma.Decimal(calledInput.baseIvaSujetoCf).toFixed(2)).toBe("1000.00");
-      // dfCfIva = 1000 * 13 / 113 = 115.04 (ROUND_HALF_UP)
-      expect(calledInput.dfCfIva.toString()).toBe("115.04");
+      // dfCfIva = gravableConIva × 0.13 = 1000 × 0.13 = 130.00 (alícuota nominal)
+      expect(calledInput.dfCfIva.toString()).toBe("130");
       // tasaIva = 0.1300 (Decimal.toFixed(4) para preservar la precisión)
       expect(new Prisma.Decimal(calledInput.tasaIva).toFixed(4)).toBe("0.1300");
     });
@@ -248,8 +248,8 @@ describe("IvaBooksService", () => {
       expect(calledOrgId).toBe(orgId);
       // subtotal = 2000 (Decimal.toString() omite trailing zeros)
       expect(new Prisma.Decimal(calledInput.subtotal).toFixed(2)).toBe("2000.00");
-      // dfCfIva = 2000 * 13 / 113 ≈ 230.09
-      expect(calledInput.dfCfIva.toString()).toBe("230.09");
+      // dfCfIva = 2000 × 0.13 = 260 (alícuota nominal SIN)
+      expect(calledInput.dfCfIva.toString()).toBe("260");
     });
 
     it("estadoSIN se pasa tal cual desde el input (sin lógica automática)", async () => {
@@ -328,7 +328,7 @@ describe("IvaBooksService", () => {
       const updatedDTO = makePurchaseDTO({
         importeTotal: D("500.00"),
         subtotal: D("500.00"),
-        dfCfIva: D("57.52"),
+        dfCfIva: D("65.00"),
       });
       vi.mocked(repo.updatePurchase).mockResolvedValueOnce(updatedDTO);
 
@@ -342,7 +342,8 @@ describe("IvaBooksService", () => {
       const [, , calledInput] = vi.mocked(repo.updatePurchase).mock.calls[0];
       // El service debe recomputar IVA con los nuevos montos
       expect(new Prisma.Decimal(calledInput.subtotal!).toFixed(2)).toBe("500.00");
-      expect(calledInput.dfCfIva?.toString()).toBe("57.52");
+      // dfCfIva = 500 × 0.13 = 65 (alícuota nominal SIN)
+      expect(calledInput.dfCfIva?.toString()).toBe("65");
     });
   });
 });

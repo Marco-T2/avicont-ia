@@ -47,8 +47,10 @@ function calcClientTotales(params: {
       params.tasaCero,
   );
   const descuento = params.codigoDescuentoAdicional + params.importeGiftCard;
+  // baseImponible = subtotal − descuento ("Importe Base SIAT", Form. 200 Rubro 1.a)
   const baseImponible = Math.max(0, subtotal - descuento);
-  const ivaAmount = baseImponible === 0 ? 0 : roundHalfUp((baseImponible * 13) / 113);
+  // ivaAmount = baseImponible × 0.13 (alícuota nominal SIN Bolivia, NO se divide entre 1.13)
+  const ivaAmount = baseImponible === 0 ? 0 : roundHalfUp(baseImponible * 0.13);
 
   return {
     subtotal: roundHalfUp(subtotal),
@@ -148,6 +150,9 @@ export function IvaBookSaleModal({
   const [computedBase, setComputedBase] = useState("0.00");
   const [computedDebitoFiscal, setComputedDebitoFiscal] = useState("0.00");
 
+  // Lock state: true cuando la entrada está vinculada a una venta (saleId presente)
+  const [isLinkedToSale, setIsLinkedToSale] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -193,6 +198,8 @@ export function IvaBookSaleModal({
         setTasaCero(toStr(data.tasaCero));
         setCodigoDescuentoAdicional(toStr(data.codigoDescuentoAdicional));
         setImporteGiftCard(toStr(data.importeGiftCard));
+        // Determinar si la entrada está vinculada a una venta
+        setIsLinkedToSale(typeof data.saleId === "string" && data.saleId !== "");
         triggerCalc({
           importeTotal: parseNum(toStr(data.importeTotal)),
           importeIce: parseNum(toStr(data.importeIce)),
@@ -238,6 +245,7 @@ export function IvaBookSaleModal({
     setComputedSubtotal("0.00");
     setComputedBase("0.00");
     setComputedDebitoFiscal("0.00");
+    setIsLinkedToSale(false);
     setErrors({});
   }
 
@@ -384,6 +392,16 @@ export function IvaBookSaleModal({
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
+          {/* ── Banner: entrada vinculada a venta ── */}
+          {isLinkedToSale && (
+            <div
+              role="note"
+              className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+            >
+              Los importes se calculan automáticamente desde la venta vinculada. Para modificarlos, editá la venta.
+            </div>
+          )}
+
           {/* ── Datos del documento ── */}
           <fieldset>
             <legend className="text-sm font-medium text-gray-700 mb-3">Datos del documento</legend>
@@ -535,7 +553,8 @@ export function IvaBookSaleModal({
                   value={importeTotal}
                   onChange={(e) => setImporteTotal(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -549,7 +568,8 @@ export function IvaBookSaleModal({
                   value={importeIce}
                   onChange={(e) => setImporteIce(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -563,7 +583,8 @@ export function IvaBookSaleModal({
                   value={importeIehd}
                   onChange={(e) => setImporteIehd(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -577,7 +598,8 @@ export function IvaBookSaleModal({
                   value={importeIpj}
                   onChange={(e) => setImporteIpj(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -591,7 +613,8 @@ export function IvaBookSaleModal({
                   value={tasas}
                   onChange={(e) => setTasas(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -605,7 +628,8 @@ export function IvaBookSaleModal({
                   value={otrosNoSujetos}
                   onChange={(e) => setOtrosNoSujetos(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -619,7 +643,8 @@ export function IvaBookSaleModal({
                   value={exentos}
                   onChange={(e) => setExentos(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -633,7 +658,8 @@ export function IvaBookSaleModal({
                   value={tasaCero}
                   onChange={(e) => setTasaCero(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -647,7 +673,8 @@ export function IvaBookSaleModal({
                   value={codigoDescuentoAdicional}
                   onChange={(e) => setCodigoDescuentoAdicional(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -661,7 +688,8 @@ export function IvaBookSaleModal({
                   value={importeGiftCard}
                   onChange={(e) => setImporteGiftCard(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToSale}
+                  className={`text-right${isLinkedToSale ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
             </div>
