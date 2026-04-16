@@ -14,7 +14,9 @@ import {
   validateLockedEdit,
   validatePeriodOpen,
   type DocumentStatus,
+  type TrimPreviewItem,
 } from "@/features/shared/document-lifecycle.service";
+export type { TrimPreviewItem };
 import { computePayableStatus } from "@/features/shared/accounting-helpers";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { setAuditContext } from "@/features/shared/audit-context";
@@ -43,6 +45,60 @@ import {
   type PurchaseOrgSettings,
   type IvaBookForEntry,
 } from "./purchase.utils";
+import { calcTotales } from "@/features/accounting/iva-books/iva-calc.utils";
+
+// ── Bridge interface: IvaBooksService (evitar importación circular) ──────────
+
+/**
+ * Contrato mínimo de IvaBooksService necesario para el cascade de editPosted.
+ * Usar la interfaz en vez del tipo concreto para evitar acoplamiento circular
+ * (IvaBooksService ya tiene un bridge hacia PurchaseService en el sentido inverso).
+ */
+export interface IvaBooksServiceForPurchaseCascade {
+  recomputeFromPurchaseCascade(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    purchaseId: string,
+    newTotal: Prisma.Decimal,
+  ): Promise<void>;
+}
+
+// ── Auxiliar: computar plan de recorte LIFO (sin DB, sin efectos) ─────────────
+
+/**
+ * Dado un array de asignaciones ordenado LIFO (id desc) y el exceso a absorber,
+ * retorna qué asignaciones se recortarían y a qué monto.
+ * Sólo incluye en el resultado las asignaciones que serían modificadas.
+ */
+function computeTrimPlan(
+  allocations: Array<{
+    id: string;
+    amount: { toString(): string } | number;
+    payment: { date: Date };
+  }>,
+  excess: number,
+): TrimPreviewItem[] {
+  const plan: TrimPreviewItem[] = [];
+  let remaining = excess;
+
+  for (const alloc of allocations) {
+    if (remaining <= 0) break;
+    const allocAmount = Number(alloc.amount);
+    const reduction = Math.min(allocAmount, remaining);
+    const newAllocAmount = allocAmount - reduction;
+
+    plan.push({
+      allocationId: alloc.id,
+      paymentDate: alloc.payment.date.toISOString().split("T")[0],
+      originalAmount: allocAmount.toFixed(2),
+      trimmedTo: newAllocAmount.toFixed(2),
+    });
+
+    remaining -= reduction;
+  }
+
+  return plan;
+}
 
 // ── Auxiliar: calcular todos los campos derivados por línea de detalle POLLO_FAENADO ──
 
@@ -201,6 +257,7 @@ export class PurchaseService {
   private readonly periodsService: FiscalPeriodsService;
   private readonly accountsRepo: AccountsRepository;
   private readonly journalRepo: JournalRepository;
+  private readonly ivaBooksService?: IvaBooksServiceForPurchaseCascade;
 
   constructor(
     repo?: PurchaseRepository,
@@ -212,6 +269,7 @@ export class PurchaseService {
     periodsService?: FiscalPeriodsService,
     accountsRepo?: AccountsRepository,
     journalRepo?: JournalRepository,
+    ivaBooksService?: IvaBooksServiceForPurchaseCascade,
   ) {
     this.repo = repo ?? new PurchaseRepository();
     this.orgSettingsService = orgSettingsService ?? new OrgSettingsService();
@@ -221,6 +279,7 @@ export class PurchaseService {
     this.periodsService = periodsService ?? new FiscalPeriodsService();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.journalRepo = journalRepo ?? new JournalRepository();
+    this.ivaBooksService = ivaBooksService;
 
     const voucherTypesRepo = new VoucherTypesRepository();
     this.autoEntryGenerator =
@@ -673,6 +732,50 @@ export class PurchaseService {
     return withDisplayCode(row);
   }
 
+  // ── Preview de recorte de asignaciones (dryRun / pre-flight) ────────────────
+
+  /**
+   * Calcula qué asignaciones de pago serían recortadas (LIFO) si la compra
+   * se editara a `newTotal`. No ejecuta ninguna escritura.
+   *
+   * REQ-11 — mirror de SaleService.getEditPreview (D3/D5)
+   */
+  async getEditPreview(
+    purchaseId: string,
+    organizationId: string,
+    newTotal: number,
+  ): Promise<{ trimPreview: TrimPreviewItem[] }> {
+    const purchase = await this.getById(organizationId, purchaseId);
+    if (!purchase.payableId) {
+      return { trimPreview: [] };
+    }
+
+    const trimPreview = await this.repo.transaction(async (tx) => {
+      const payable = await tx.accountsPayable.findFirst({
+        where: { id: purchase.payableId! },
+        select: { paid: true },
+      });
+      const rawPaid = payable ? Number(payable.paid) : 0;
+
+      if (newTotal >= rawPaid) {
+        return [];
+      }
+
+      const allocations = await tx.paymentAllocation.findMany({
+        where: {
+          payableId: purchase.payableId!,
+          payment: { status: { not: "VOIDED" } },
+        },
+        orderBy: { id: "desc" },
+        include: { payment: { select: { date: true } } },
+      });
+
+      return computeTrimPlan(allocations, rawPaid - newTotal);
+    });
+
+    return { trimPreview };
+  }
+
   // ── Editar una compra POSTED (revertir-modificar-reaplicar de forma atómica) ──
 
   private async editPosted(
@@ -741,12 +844,38 @@ export class PurchaseService {
 
     // 5. Resolver los objetos de cuenta necesarios para la actualización de líneas del asiento
     const effectiveTotalForEntry = newTotalAmount ?? Number(purchase.totalAmount);
+
+    let ivaBookForEntry: IvaBookForEntry | undefined;
+    if (purchase.ivaPurchaseBook && purchase.ivaPurchaseBook.status === "ACTIVE") {
+      const iva = purchase.ivaPurchaseBook;
+      const D = (v: number | string) => new Prisma.Decimal(String(v));
+      const totals = calcTotales({
+        importeTotal: D(effectiveTotalForEntry),
+        importeIce: iva.importeIce as Prisma.Decimal,
+        importeIehd: iva.importeIehd as Prisma.Decimal,
+        importeIpj: iva.importeIpj as Prisma.Decimal,
+        tasas: iva.tasas as Prisma.Decimal,
+        otrosNoSujetos: iva.otrosNoSujetos as Prisma.Decimal,
+        exentos: iva.exentos as Prisma.Decimal,
+        tasaCero: iva.tasaCero as Prisma.Decimal,
+        codigoDescuentoAdicional: iva.codigoDescuentoAdicional as Prisma.Decimal,
+        importeGiftCard: iva.importeGiftCard as Prisma.Decimal,
+      });
+      ivaBookForEntry = {
+        baseIvaSujetoCf: Number(totals.baseImponible),
+        dfCfIva: Number(totals.ivaAmount),
+        importeTotal: effectiveTotalForEntry,
+        exentos: Number(iva.exentos ?? 0),
+      };
+    }
+
     const entryLines = buildPurchaseEntryLines(
       effectivePurchaseType,
       effectiveTotalForEntry,
       detailsForEntry,
       settings as unknown as PurchaseOrgSettings,
       input.contactId ?? purchase.contactId,
+      ivaBookForEntry,
     );
 
     // 6. Pre-resolver los IDs de cuenta para todas las líneas de débito
@@ -902,6 +1031,19 @@ export class PurchaseService {
             ...(input.contactId !== undefined && { contactId: input.contactId }),
           },
         });
+      }
+
+      // g. Recomputar IvaPurchaseBook si existe uno vinculado (REQ-11, D5).
+      // Se llama al final de la tx para que todo lo anterior sea visible dentro
+      // del mismo bloque atómico. NO llama a maybeRegenerateJournal (loop guard).
+      if (purchase.ivaPurchaseBook && this.ivaBooksService) {
+        const effectiveNewTotal = newTotalAmount ?? Number(purchase.totalAmount);
+        await this.ivaBooksService.recomputeFromPurchaseCascade(
+          tx,
+          organizationId,
+          purchase.id,
+          new Prisma.Decimal(effectiveNewTotal),
+        );
       }
     });
 

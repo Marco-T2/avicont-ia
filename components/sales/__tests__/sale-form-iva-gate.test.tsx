@@ -55,7 +55,7 @@ const BASE_SALE = {
   periodId: "period-1",
   contactId: "contact-1",
   date: new Date("2026-01-15"),
-  status: "DRAFT" as const,
+  status: "DRAFT" as string,
   totalAmount: 113,
   description: "Venta de prueba",
   referenceNumber: null,
@@ -67,8 +67,8 @@ const BASE_SALE = {
   updatedAt: new Date(),
   journalEntryId: null,
   ivaSalesBook: null,
-  contact: { id: "contact-1", name: "Cliente SA", type: "CLIENT", nit: "12345", paymentTermsDays: 30 },
-  period: { id: "period-1", name: "Enero 2026", status: "OPEN" as const },
+  contact: { id: "contact-1", name: "Cliente SA", type: "CLIENTE", nit: "12345", paymentTermsDays: 30 },
+  period: { id: "period-1", name: "Enero 2026", status: "OPEN" as string },
   createdBy: { id: "user-1", name: "Admin", email: "admin@test.com" },
   details: [
     {
@@ -92,7 +92,7 @@ function renderForm(salePatch: Partial<typeof BASE_SALE> = {}) {
   return render(
     <SaleForm
       orgSlug="test-org"
-      contacts={[{ id: "contact-1", name: "Cliente SA", type: "CLIENT", nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), notes: null, email: null, phone: null, address: null, createdById: "user-1", updatedById: null }]}
+      contacts={[{ id: "contact-1", name: "Cliente SA", type: "CLIENTE" as any, nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), email: null, phone: null, address: null, creditLimit: null, isActive: true }]}
       periods={[BASE_PERIOD]}
       incomeAccounts={[INCOME_ACCOUNT]}
       sale={sale as any}

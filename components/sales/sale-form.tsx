@@ -37,6 +37,8 @@ import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/features/sale";
 import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
 import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
+import { ConfirmTrimDialog } from "@/components/sales/confirm-trim-dialog";
+import type { TrimPreviewItem } from "@/components/sales/confirm-trim-dialog";
 
 // ── Helpers ──
 
@@ -153,6 +155,12 @@ export default function SaleForm({
   const [isActioning, setIsActioning] = useState(false);
   const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
+  // ── Estado del diálogo de confirmación de trim (REQ-7) ──
+  const [trimPreview, setTrimPreview] = useState<TrimPreviewItem[] | null>(null);
+  const [showTrimDialog, setShowTrimDialog] = useState(false);
+  // Snapshot del body listo para reenviar con confirmTrim: true
+  const [pendingEditBody, setPendingEditBody] = useState<object | null>(null);
+
   // ── Total calculado ──
   const subtotal = lines.reduce((sum, l) => {
     const qty = parseFloat(l.quantity) || 1;
@@ -256,7 +264,7 @@ export default function SaleForm({
           throw new Error(data.error ?? "Error al guardar la venta");
         }
         toast.success("Venta guardada como borrador");
-        router.push(`/${orgSlug}/sales`);
+        router.push(`/${orgSlug}/dispatches`);
         router.refresh();
       }
     } catch (err) {
@@ -283,7 +291,7 @@ export default function SaleForm({
         throw new Error(data.error ?? "Error al contabilizar la venta");
       }
       toast.success("Venta contabilizada");
-      router.push(`/${orgSlug}/sales`);
+      router.push(`/${orgSlug}/dispatches`);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar la venta");
@@ -318,6 +326,88 @@ export default function SaleForm({
     } finally {
       setIsActioning(false);
     }
+  }
+
+  // ── Editar venta contabilizada (POSTED) con pre-flight dryRun ──
+
+  async function handleEditPosted() {
+    if (!sale || !canSubmit) return;
+    setIsSubmitting(true);
+    try {
+      const body = buildBody(false);
+
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/sales/${sale.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al actualizar la venta");
+      }
+
+      const data = await response.json();
+
+      if (data.requiresConfirmation && Array.isArray(data.trimPreview) && data.trimPreview.length > 0) {
+        // El servidor indica que hay allocations que se deben recortar → abrir diálogo
+        setTrimPreview(data.trimPreview as TrimPreviewItem[]);
+        setPendingEditBody(body);
+        setShowTrimDialog(true);
+        return; // No continuar — el usuario decide desde el diálogo
+      }
+
+      // Sin trim necesario → guardado exitoso
+      toast.success("Venta actualizada");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al actualizar la venta");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ── Confirmar trim desde el diálogo ──
+
+  async function handleConfirmTrim() {
+    if (!sale || !pendingEditBody) return;
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(
+        `/api/organizations/${orgSlug}/sales/${sale.id}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ...pendingEditBody, confirmTrim: true }),
+        },
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error ?? "Error al actualizar la venta");
+      }
+
+      setShowTrimDialog(false);
+      setTrimPreview(null);
+      setPendingEditBody(null);
+      toast.success("Venta actualizada");
+      router.refresh();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Error al actualizar la venta");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  // ── Cancelar trim desde el diálogo ──
+
+  function handleCancelTrim() {
+    setShowTrimDialog(false);
+    setTrimPreview(null);
+    setPendingEditBody(null);
   }
 
   // ── Anular ──
@@ -364,7 +454,7 @@ export default function SaleForm({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Borrador eliminado");
-      router.push(`/${orgSlug}/sales`);
+      router.push(`/${orgSlug}/dispatches`);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al eliminar");
@@ -373,7 +463,7 @@ export default function SaleForm({
     }
   }
 
-  const backHref = `/${orgSlug}/sales`;
+  const backHref = `/${orgSlug}/dispatches`;
   const headerTitle = isEditMode
     ? `${sale!.displayCode} — Venta General`
     : "Nueva Venta General";
@@ -864,19 +954,36 @@ export default function SaleForm({
 
           {/* Acciones en estado POSTED */}
           {isEditMode && isPosted && (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleVoid}
-              disabled={isActioning}
-            >
-              {isActioning ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
+            <>
+              <Button
+                type="button"
+                variant="default"
+                onClick={handleEditPosted}
+                disabled={!canSubmit || isSubmitting}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar cambios"
+                )}
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleVoid}
+                disabled={isActioning}
+              >
+                {isActioning ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4 mr-2" />
+                )}
+                Anular
+              </Button>
+            </>
           )}
 
           {/* Acciones en estado LOCKED (solo admin/owner) */}
@@ -898,6 +1005,18 @@ export default function SaleForm({
         </div>
       </div>
     </form>
+
+    {/* Diálogo de confirmación de trim (REQ-7) */}
+    {showTrimDialog && trimPreview && (
+      <ConfirmTrimDialog
+        open={showTrimDialog}
+        onOpenChange={(open) => { if (!open) handleCancelTrim(); }}
+        trimPreview={trimPreview}
+        onConfirm={handleConfirmTrim}
+        onCancel={handleCancelTrim}
+        isLoading={isSubmitting}
+      />
+    )}
 
     {/* Modal Libro de Ventas IVA — pre-fill desde esta venta o edición de entrada existente */}
     {sale && (
