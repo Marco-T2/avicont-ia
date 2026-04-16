@@ -45,7 +45,7 @@ function makeIvaBook(overrides: Partial<IvaPurchaseBookDTO> = {}): IvaPurchaseBo
     codigoAutorizacion: "AUTH-COMP-001",
     codigoControl: "",
     tipoCompra: 1,
-    importeTotal: D("113.00"),
+    importeTotal: D("100.00"),
     importeIce: D("0"),
     importeIehd: D("0"),
     importeIpj: D("0"),
@@ -55,7 +55,7 @@ function makeIvaBook(overrides: Partial<IvaPurchaseBookDTO> = {}): IvaPurchaseBo
     tasaCero: D("0"),
     codigoDescuentoAdicional: D("0"),
     importeGiftCard: D("0"),
-    subtotal: D("113.00"),
+    subtotal: D("100.00"),
     dfIva: D("13.00"),
     baseIvaSujetoCf: D("100.00"),
     dfCfIva: D("13.00"),
@@ -85,7 +85,7 @@ function makePurchase(overrides: Partial<PurchaseWithDetails> = {}): PurchaseWit
     createdById: USER_ID,
     createdAt: new Date(),
     updatedAt: new Date(),
-    totalAmount: 113,
+    totalAmount: 100,
     shrinkagePct: null,
     totalGrossKg: null,
     totalNetKg: null,
@@ -97,20 +97,19 @@ function makePurchase(overrides: Partial<PurchaseWithDetails> = {}): PurchaseWit
     chickenCount: null,
     displayCode: "CG-001",
     contact: { id: "contact-prov-001", name: "Proveedor Test", type: "PROVEEDOR", paymentTermsDays: 30 },
-    period: { id: PERIOD_ID, name: "Marzo 2025" },
+    period: { id: PERIOD_ID, name: "Marzo 2025", status: "OPEN" },
     createdBy: { id: USER_ID, name: "Test User", email: "test@test.com" },
     details: [
       {
         id: "det-01",
         purchaseId: PURCHASE_ID,
         description: "Insumo A",
-        lineAmount: 113,
+        lineAmount: 100,
         order: 0,
         quantity: null,
         unitPrice: null,
         expenseAccountId: "account-expense-id",
-        createdAt: new Date(),
-        updatedAt: new Date(),
+        chickenQty: null,
         pricePerChicken: null,
         grossWeight: null,
         tare: null,
@@ -254,7 +253,7 @@ describe("PurchaseService — IVA journal integration", () => {
       const generateCall = vi.mocked(mocks.autoEntryGenerator.generate).mock.calls[0];
       expect(generateCall).toBeDefined();
       const lines = generateCall[1].lines;
-      // IVA path: DR gasto 100, DR 1.1.8 13, CR CxP 113
+      // IVA path (alícuota nominal SIN): 3 líneas (DR gasto + DR 1.1.8 + CR CxP)
       expect(lines).toHaveLength(3);
       expect(lines.find((l: { accountCode: string }) => l.accountCode === "1.1.8")).toBeDefined();
     });
@@ -341,7 +340,7 @@ describe("PurchaseService — IVA journal integration", () => {
           paymentAllocation: { findMany: vi.fn().mockResolvedValue([]) },
           accountsPayable: { findUnique: vi.fn() },
         };
-        await fn(mockTx);
+        await fn(mockTx as unknown as Prisma.TransactionClient);
 
         // D4: IvaBook void ANTES que journalEntry void
         const ivaIdx = order.indexOf("ivaPurchaseBook.update");
@@ -391,7 +390,7 @@ describe("PurchaseService — IVA journal integration", () => {
           paymentAllocation: { findMany: vi.fn().mockResolvedValue([]) },
           accountsPayable: { findUnique: vi.fn() },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await expect(mocks.service.void(ORG_ID, PURCHASE_ID, USER_ID)).resolves.not.toThrow();
@@ -436,7 +435,7 @@ describe("PurchaseService — IVA journal integration", () => {
           purchase: { update: vi.fn() },
           purchaseDetail: { deleteMany: vi.fn(), createMany: vi.fn() },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await mocks.service.regenerateJournalForIvaChange(ORG_ID, PURCHASE_ID, USER_ID);
@@ -444,7 +443,7 @@ describe("PurchaseService — IVA journal integration", () => {
       expect(vi.mocked(mocks.journalRepo.updateTx)).toHaveBeenCalled();
       const updateCall = vi.mocked(mocks.journalRepo.updateTx).mock.calls[0];
       const resolvedLines = updateCall[4];
-      // 3 líneas IVA: DR gasto 100, DR 1.1.8 13, CR CxP 113
+      // 3 líneas IVA (alícuota nominal SIN): DR gasto + DR 1.1.8 + CR CxP
       expect(resolvedLines).toHaveLength(3);
       expect(fiscalPeriodChecked).toBe(true);
     });
@@ -468,7 +467,7 @@ describe("PurchaseService — IVA journal integration", () => {
             ),
           },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await expect(
@@ -511,7 +510,7 @@ describe("PurchaseService — IVA journal integration", () => {
           purchase: { update: vi.fn() },
           purchaseDetail: { deleteMany: vi.fn(), createMany: vi.fn() },
         };
-        return fn(mockTx);
+        return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
       await mocks.service.regenerateJournalForIvaChange(ORG_ID, PURCHASE_ID, USER_ID);

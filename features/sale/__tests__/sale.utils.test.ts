@@ -1,8 +1,12 @@
 /**
  * Tests del builder de asientos contables de Ventas.
  *
- * PR1 — Tasks 1.1 (RED): Baseline de regresión para buildSaleEntryLines
- * sin IvaBook — bloquea el comportamiento actual antes de cualquier cambio.
+ * Convención SIN Bolivia (Form. 200):
+ * - baseIvaSujetoCf = "Importe Base SIAT" (ya incluye IVA conceptualmente)
+ * - dfCfIva = baseIvaSujetoCf × 0.13 (alícuota nominal)
+ * - Línea Ventas = baseIvaSujetoCf − dfCfIva (≈ 87% del Importe Base)
+ * - IT = importeTotal × 0.03 (Art. 74 Ley 843)
+ * - Invariante: baseIvaSujetoCf + exentos = importeTotal
  */
 
 import { describe, it, expect } from "vitest";
@@ -18,6 +22,8 @@ import {
 
 const settings: SaleOrgSettings = {
   cxcAccountCode: "1.1.3",
+  itExpenseAccountCode: "5.3.3",
+  itPayableAccountCode: "2.1.7",
 };
 
 const contactId = "contact-test-001";
@@ -33,16 +39,12 @@ describe("buildSaleEntryLines — non-IVA path (regression baseline)", () => {
     const lines = buildSaleEntryLines(100, details, settings, contactId);
 
     expect(lines).toHaveLength(2);
-
-    // DR CxC
     expect(lines[0]).toMatchObject({
       accountCode: "1.1.3",
       debit: 100,
       credit: 0,
       contactId,
     });
-
-    // CR Ingreso
     expect(lines[1]).toMatchObject({
       accountCode: "4.1.1",
       debit: 0,
@@ -60,16 +62,12 @@ describe("buildSaleEntryLines — non-IVA path (regression baseline)", () => {
     const lines = buildSaleEntryLines(100, details, settings, contactId);
 
     expect(lines).toHaveLength(4);
-
-    // DR CxC por el total
     expect(lines[0]).toMatchObject({
       accountCode: "1.1.3",
       debit: 100,
       credit: 0,
       contactId,
     });
-
-    // CRs por cada detalle
     expect(lines[1]).toMatchObject({ accountCode: "4.1.1", debit: 0, credit: 50 });
     expect(lines[2]).toMatchObject({ accountCode: "4.1.2", debit: 0, credit: 30 });
     expect(lines[3]).toMatchObject({ accountCode: "4.1.3", debit: 0, credit: 20 });
@@ -89,7 +87,7 @@ describe("buildSaleEntryLines — non-IVA path (regression baseline)", () => {
     expect(totalDebits).toBe(totalCredits);
   });
 
-  it("ivaBook = undefined produce el mismo resultado que no pasarlo (SPEC-3 doble cobertura)", () => {
+  it("ivaBook = undefined produce el mismo resultado que no pasarlo", () => {
     const details: SaleDetailForEntry[] = [
       { lineAmount: 100, incomeAccountCode: "4.1.1" },
     ];
@@ -101,37 +99,38 @@ describe("buildSaleEntryLines — non-IVA path (regression baseline)", () => {
   });
 });
 
-// ── describe: buildSaleEntryLines — con IvaBook (PR2) ─────────────────────────
+// ── describe: buildSaleEntryLines — con IvaBook (alícuota nominal SIN) ────────
 
-describe("buildSaleEntryLines — con IvaBook activo y base IVA completa (SPEC-1, SPEC-8)", () => {
-  // Fixture A: 1 detalle, base gravable completa (sin exentos)
-  it("Fixture A — 1 detalle, base 100, IVA 13, total 113: genera exactamente 3 líneas balanceadas", () => {
+describe("buildSaleEntryLines — con IvaBook activo y base IVA completa", () => {
+  // Fixture A: total = base = 100 (sin exentos), IT = 100 × 0.03 = 3
+  it("Fixture A — base=100, IVA=13, total=100: 5 líneas balanceadas (Ventas=87, IVA=13, IT=3)", () => {
     const details: SaleDetailForEntry[] = [
-      { lineAmount: 113, incomeAccountCode: "4.1.1" },
+      { lineAmount: 100, incomeAccountCode: "4.1.1" },
     ];
     const ivaBook: IvaBookForEntry = {
       baseIvaSujetoCf: 100,
       dfCfIva: 13,
-      importeTotal: 113,
+      importeTotal: 100,
     };
 
-    const lines = buildSaleEntryLines(113, details, settings, contactId, ivaBook);
+    const lines = buildSaleEntryLines(100, details, settings, contactId, ivaBook);
 
-    expect(lines).toHaveLength(3);
+    // 3 base + 2 IT = 5 líneas
+    expect(lines).toHaveLength(5);
 
     // DR CxC por el total
     expect(lines[0]).toMatchObject({
       accountCode: "1.1.3",
-      debit: 113,
+      debit: 100,
       credit: 0,
       contactId,
     });
 
-    // CR Ventas por base IVA (baseIvaSujetoCf)
+    // CR Ventas (ingreso neto = base − IVA = 87)
     expect(lines[1]).toMatchObject({
       accountCode: "4.1.1",
       debit: 0,
-      credit: 100,
+      credit: 87,
     });
 
     // CR IVA Débito Fiscal
@@ -141,47 +140,55 @@ describe("buildSaleEntryLines — con IvaBook activo y base IVA completa (SPEC-1
       credit: 13,
     });
 
+    // DR IT Gasto (100 × 0.03 = 3)
+    expect(lines[3]).toMatchObject({
+      accountCode: "5.3.3",
+      debit: 3,
+      credit: 0,
+    });
+
+    // CR IT por Pagar
+    expect(lines[4]).toMatchObject({
+      accountCode: "2.1.7",
+      debit: 0,
+      credit: 3,
+    });
+
     // balance invariant
     const totalDebits = lines.reduce((s, l) => s + l.debit, 0);
     const totalCredits = lines.reduce((s, l) => s + l.credit, 0);
     expect(totalDebits).toBe(totalCredits);
   });
 
-  // Fixture B: 3 detalles, collapse a 1 línea CR ingreso (SPEC-8)
-  it("Fixture B — 3 detalles con IvaBook: colapsa a 3 líneas (no 5); usa cuenta del primer detalle", () => {
+  // Fixture B: 3 detalles colapsan a 1 línea CR ingreso
+  it("Fixture B — 3 detalles con IvaBook: colapsa a Ventas+IVA+IT; usa cuenta del primer detalle", () => {
     const details: SaleDetailForEntry[] = [
       { lineAmount: 50, incomeAccountCode: "4.1.1", description: "Detalle 1" },
-      { lineAmount: 40, incomeAccountCode: "4.1.2", description: "Detalle 2" },
-      { lineAmount: 23, incomeAccountCode: "4.1.3", description: "Detalle 3" },
+      { lineAmount: 30, incomeAccountCode: "4.1.2", description: "Detalle 2" },
+      { lineAmount: 20, incomeAccountCode: "4.1.3", description: "Detalle 3" },
     ];
     const ivaBook: IvaBookForEntry = {
       baseIvaSujetoCf: 100,
       dfCfIva: 13,
-      importeTotal: 113,
+      importeTotal: 100,
     };
 
-    const lines = buildSaleEntryLines(113, details, settings, contactId, ivaBook);
+    const lines = buildSaleEntryLines(100, details, settings, contactId, ivaBook);
 
-    // SPEC-8: exactly 3 lines (not 5)
-    expect(lines).toHaveLength(3);
-
-    // DR CxC
-    expect(lines[0]).toMatchObject({ accountCode: "1.1.3", debit: 113, credit: 0 });
-
-    // CR Ventas — primer detalle's account
-    expect(lines[1]).toMatchObject({ accountCode: "4.1.1", credit: 100 });
-
-    // CR IVA
+    expect(lines).toHaveLength(5);
+    expect(lines[0]).toMatchObject({ accountCode: "1.1.3", debit: 100, credit: 0 });
+    expect(lines[1]).toMatchObject({ accountCode: "4.1.1", credit: 87 });
     expect(lines[2]).toMatchObject({ accountCode: IVA_DEBITO_FISCAL, credit: 13 });
+    expect(lines[3]).toMatchObject({ accountCode: "5.3.3", debit: 3 });
+    expect(lines[4]).toMatchObject({ accountCode: "2.1.7", credit: 3 });
 
-    // balance
     const dr = lines.reduce((s, l) => s + l.debit, 0);
     const cr = lines.reduce((s, l) => s + l.credit, 0);
     expect(dr).toBe(cr);
   });
 
-  // Fixture D: exento residual → 4ta línea (Design Risk-1)
-  it("Fixture D — exento residual: base 100, IVA 13, exentos 37, total 150 → 4 líneas balanceadas", () => {
+  // Fixture D: exento residual → 4ta línea
+  it("Fixture D — exento residual: base=100, IVA=13, total=150, exentos=50 → 6 líneas balanceadas", () => {
     const details: SaleDetailForEntry[] = [
       { lineAmount: 150, incomeAccountCode: "4.1.1" },
     ];
@@ -193,53 +200,55 @@ describe("buildSaleEntryLines — con IvaBook activo y base IVA completa (SPEC-1
 
     const lines = buildSaleEntryLines(150, details, settings, contactId, ivaBook);
 
-    expect(lines).toHaveLength(4);
+    // 4 base + 2 IT = 6 líneas
+    expect(lines).toHaveLength(6);
 
-    // DR CxC 150
     expect(lines[0]).toMatchObject({ accountCode: "1.1.3", debit: 150, credit: 0 });
-
-    // CR Ventas base gravable
-    expect(lines[1]).toMatchObject({ accountCode: "4.1.1", credit: 100 });
-
-    // CR IVA 2.1.6
+    expect(lines[1]).toMatchObject({ accountCode: "4.1.1", credit: 87 });
     expect(lines[2]).toMatchObject({ accountCode: IVA_DEBITO_FISCAL, credit: 13 });
+    // exento residual = total − base = 150 − 100 = 50
+    expect(lines[3]).toMatchObject({ accountCode: "4.1.1", credit: 50 });
+    // IT = 150 × 0.03 = 4.50
+    expect(lines[4]).toMatchObject({ accountCode: "5.3.3", debit: 4.5 });
+    expect(lines[5]).toMatchObject({ accountCode: "2.1.7", credit: 4.5 });
 
-    // CR Ventas exento residual (150 - 100 - 13 = 37)
-    expect(lines[3]).toMatchObject({ accountCode: "4.1.1", credit: 37 });
-
-    // balance invariant
     const dr = lines.reduce((s, l) => s + l.debit, 0);
     const cr = lines.reduce((s, l) => s + l.credit, 0);
     expect(dr).toBe(cr);
   });
 
   // Fixture E: rounding edge — debe balancear sin throw
-  it("Fixture E — edge de redondeo: base 100.01, IVA 13.00, total 113.01 → balanceado, sin throw", () => {
+  it("Fixture E — edge de redondeo: base=100.01, IVA=13.00, total=100.01 → balanceado", () => {
     const details: SaleDetailForEntry[] = [
-      { lineAmount: 113.01, incomeAccountCode: "4.1.1" },
+      { lineAmount: 100.01, incomeAccountCode: "4.1.1" },
     ];
     const ivaBook: IvaBookForEntry = {
       baseIvaSujetoCf: 100.01,
       dfCfIva: 13,
-      importeTotal: 113.01,
+      importeTotal: 100.01,
     };
 
     expect(() =>
-      buildSaleEntryLines(113.01, details, settings, contactId, ivaBook)
+      buildSaleEntryLines(100.01, details, settings, contactId, ivaBook),
     ).not.toThrow();
 
-    const lines = buildSaleEntryLines(113.01, details, settings, contactId, ivaBook);
+    const lines = buildSaleEntryLines(100.01, details, settings, contactId, ivaBook);
+    expect(lines).toHaveLength(5);
+    // Ingreso = 100.01 − 13.00 = 87.01
+    expect(lines[1]).toMatchObject({ accountCode: "4.1.1", credit: 87.01 });
+    // IT = 100.01 × 0.03 = 3.0003 → 3.00
+    expect(lines[3]).toMatchObject({ accountCode: "5.3.3", debit: 3 });
+    expect(lines[4]).toMatchObject({ accountCode: "2.1.7", credit: 3 });
     const dr = lines.reduce((s, l) => s + l.debit, 0);
     const cr = lines.reduce((s, l) => s + l.credit, 0);
     expect(Math.abs(dr - cr)).toBeLessThan(0.01);
   });
 });
 
-// ── describe: buildSaleEntryLines — venta exenta (SPEC-4) ─────────────────────
+// ── describe: buildSaleEntryLines — venta exenta (dfCfIva = 0) ────────────────
 
-describe("buildSaleEntryLines — venta exenta con IvaBook (dfCfIva = 0) (SPEC-4)", () => {
-  // Fixture C: dfCfIva = 0 → sin línea 2.1.6, cae a path no-IVA
-  it("Fixture C — dfCfIva=0: no genera línea 2.1.6 y usa N líneas de detalle", () => {
+describe("buildSaleEntryLines — venta exenta con IvaBook (dfCfIva = 0)", () => {
+  it("Fixture C — dfCfIva=0: no genera línea 2.1.6 ni IT, cae a path no-IVA", () => {
     const details: SaleDetailForEntry[] = [
       { lineAmount: 50, incomeAccountCode: "4.1.1" },
       { lineAmount: 50, incomeAccountCode: "4.1.2" },
@@ -252,7 +261,6 @@ describe("buildSaleEntryLines — venta exenta con IvaBook (dfCfIva = 0) (SPEC-4
 
     const lines = buildSaleEntryLines(100, details, settings, contactId, ivaBook);
 
-    // No line with accountCode 2.1.6
     const ivaLine = lines.find((l) => l.accountCode === IVA_DEBITO_FISCAL);
     expect(ivaLine).toBeUndefined();
 
@@ -262,32 +270,119 @@ describe("buildSaleEntryLines — venta exenta con IvaBook (dfCfIva = 0) (SPEC-4
   });
 });
 
-// ── describe: buildSaleEntryLines — invariante de balance (SPEC-8) ─────────────
+// ── describe: buildSaleEntryLines — invariante de balance ─────────────────────
 
-describe("buildSaleEntryLines — invariante de balance (SPEC-8)", () => {
-  it("lanza error descriptivo cuando base + IVA + exentos ≠ importeTotal (residual > 0.005)", () => {
+describe("buildSaleEntryLines — invariante de balance", () => {
+  it("lanza error cuando base + exentos ≠ importeTotal (residual > 0.005)", () => {
     const details: SaleDetailForEntry[] = [
-      { lineAmount: 113, incomeAccountCode: "4.1.1" },
+      { lineAmount: 120, incomeAccountCode: "4.1.1" },
+    ];
+    const badIvaBook: IvaBookForEntry = {
+      baseIvaSujetoCf: 100,
+      dfCfIva: 13,
+      exentos: 5,
+      importeTotal: 120, // 100 + 5 = 105 ≠ 120 → MUST throw
+    };
+
+    expect(() =>
+      buildSaleEntryLines(120, details, settings, contactId, badIvaBook),
+    ).toThrow();
+  });
+});
+
+// ── describe: buildSaleEntryLines — IT 3% inline ──────────────────────────────
+
+describe("buildSaleEntryLines — IT 3% inline", () => {
+  it("sin IVA no genera líneas IT", () => {
+    const details: SaleDetailForEntry[] = [
+      { lineAmount: 100, incomeAccountCode: "4.1.1" },
+    ];
+
+    const lines = buildSaleEntryLines(100, details, settings, contactId);
+
+    const itLines = lines.filter(
+      (l) => l.accountCode === "5.3.3" || l.accountCode === "2.1.7",
+    );
+    expect(itLines).toHaveLength(0);
+  });
+
+  it("dfCfIva=0 (exenta) no genera líneas IT", () => {
+    const details: SaleDetailForEntry[] = [
+      { lineAmount: 100, incomeAccountCode: "4.1.1" },
+    ];
+    const ivaBook: IvaBookForEntry = {
+      baseIvaSujetoCf: 100,
+      dfCfIva: 0,
+      importeTotal: 100,
+    };
+
+    const lines = buildSaleEntryLines(100, details, settings, contactId, ivaBook);
+
+    const itLines = lines.filter(
+      (l) => l.accountCode === "5.3.3" || l.accountCode === "2.1.7",
+    );
+    expect(itLines).toHaveLength(0);
+  });
+
+  it("IT se calcula como importeTotal × 0.03 redondeado a 2 decimales", () => {
+    const details: SaleDetailForEntry[] = [
+      { lineAmount: 100, incomeAccountCode: "4.1.1" },
     ];
     const ivaBook: IvaBookForEntry = {
       baseIvaSujetoCf: 100,
       dfCfIva: 13,
-      importeTotal: 120, // deliberadamente no cierra: 100 + 13 + residual(7) → pero el residual se emite como 4ta línea, así que ponemos totales que NO baten
-      exentos: 0, // override explicit exentos=0 so residual gets auto-computed...
-      // Actually we need a case where base+iva+explicit_exentos != importeTotal.
-      // The spec says builder throws when invariant violated with explicit exentos provided.
-      // We'll test passing explicit exentos that don't match: base=100, iva=13, exentos=5, total=120 → 100+13+5=118 ≠ 120
-    };
-    // Override: use explicit exentos that causes mismatch
-    const badIvaBook: IvaBookForEntry = {
-      baseIvaSujetoCf: 100,
-      dfCfIva: 13,
-      exentos: 5, // explicitly provided
-      importeTotal: 120, // 100 + 13 + 5 = 118 ≠ 120 → MUST throw
+      importeTotal: 100,
     };
 
-    expect(() =>
-      buildSaleEntryLines(120, details, settings, contactId, badIvaBook)
-    ).toThrow();
+    const lines = buildSaleEntryLines(100, details, settings, contactId, ivaBook);
+
+    // IT = 100 × 0.03 = 3.00
+    const itDebit = lines.find((l) => l.accountCode === "5.3.3");
+    const itCredit = lines.find((l) => l.accountCode === "2.1.7");
+    expect(itDebit?.debit).toBe(3);
+    expect(itCredit?.credit).toBe(3);
+  });
+
+  it("IT con redondeo HALF_UP: total=88.55 → 88.55 × 0.03 = 2.6565 → 2.66", () => {
+    const details: SaleDetailForEntry[] = [
+      { lineAmount: 88.55, incomeAccountCode: "4.1.1" },
+    ];
+    const ivaBook: IvaBookForEntry = {
+      baseIvaSujetoCf: 88.55,
+      dfCfIva: 11.51,
+      importeTotal: 88.55,
+    };
+
+    const lines = buildSaleEntryLines(88.55, details, settings, contactId, ivaBook);
+
+    const itDebit = lines.find((l) => l.accountCode === "5.3.3");
+    const itCredit = lines.find((l) => l.accountCode === "2.1.7");
+    expect(itDebit?.debit).toBe(2.66);
+    expect(itCredit?.credit).toBe(2.66);
+  });
+
+  it("IT usa cuentas configurables de settings", () => {
+    const customSettings: SaleOrgSettings = {
+      cxcAccountCode: "1.1.3",
+      itExpenseAccountCode: "6.1.1",
+      itPayableAccountCode: "2.2.9",
+    };
+    const details: SaleDetailForEntry[] = [
+      { lineAmount: 100, incomeAccountCode: "4.1.1" },
+    ];
+    const ivaBook: IvaBookForEntry = {
+      baseIvaSujetoCf: 100,
+      dfCfIva: 13,
+      importeTotal: 100,
+    };
+
+    const lines = buildSaleEntryLines(100, details, customSettings, contactId, ivaBook);
+
+    const itDebit = lines.find((l) => l.accountCode === "6.1.1");
+    const itCredit = lines.find((l) => l.accountCode === "2.2.9");
+    expect(itDebit).toBeDefined();
+    expect(itCredit).toBeDefined();
+    expect(itDebit?.debit).toBe(3);
+    expect(itCredit?.credit).toBe(3);
   });
 });

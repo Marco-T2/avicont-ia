@@ -76,11 +76,11 @@ function makeVoidedSaleDTO() {
     exentos: ZERO,
     tasaCero: ZERO,
     subtotal: D("2000.00"),
-    dfIva: D("230.09"),
+    dfIva: D("260.00"),
     codigoDescuentoAdicional: ZERO,
     importeGiftCard: ZERO,
     baseIvaSujetoCf: D("2000.00"),
-    dfCfIva: D("230.09"),
+    dfCfIva: D("260.00"),
     tasaIva: D("0.1300"),
     // Solo esto cambia:
     status: "VOIDED" as const,

@@ -6,7 +6,7 @@
  * Incluye:
  * - Selector de período fiscal
  * - Botón "Nueva entrada" → abre modal
- * - Botón "Exportar Excel" (stub PR4 — funcional en PR5)
+ * - Botón "Exportar Excel"
  *
  * Mirrors the architecture of statement-toolbar.tsx.
  */
@@ -55,7 +55,6 @@ export function IvaBooksToolbar({
   }, [orgSlug]);
 
   async function handleExport() {
-    // Stub PR4 — wiring completo en PR5
     if (!selectedPeriodId) return;
     setExportingXlsx(true);
     try {
@@ -118,7 +117,7 @@ export function IvaBooksToolbar({
         Nueva entrada
       </Button>
 
-      {/* Exportar Excel — stub PR4, completo en PR5 */}
+      {/* Exportar Excel */}
       <Button
         type="button"
         variant="outline"

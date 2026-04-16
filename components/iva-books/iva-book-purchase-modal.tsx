@@ -50,8 +50,10 @@ function calcClientTotales(params: {
       params.tasaCero,
   );
   const descuento = params.codigoDescuentoAdicional + params.importeGiftCard;
+  // baseImponible = subtotal − descuento ("Importe Base SIAT", Form. 200 Rubro 1.a)
   const baseImponible = Math.max(0, subtotal - descuento);
-  const ivaAmount = baseImponible === 0 ? 0 : roundHalfUp((baseImponible * 13) / 113);
+  // ivaAmount = baseImponible × 0.13 (alícuota nominal SIN Bolivia, NO se divide entre 1.13)
+  const ivaAmount = baseImponible === 0 ? 0 : roundHalfUp(baseImponible * 0.13);
 
   return {
     subtotal: roundHalfUp(subtotal),
@@ -148,6 +150,9 @@ export function IvaBookPurchaseModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // Lock state: true cuando la entrada está vinculada a una compra (purchaseId presente)
+  const [isLinkedToPurchase, setIsLinkedToPurchase] = useState(false);
+
   // ── Pre-fill desde sourcePurchase ──
   useEffect(() => {
     if (mode === "create-from-source" && sourcePurchase) {
@@ -201,6 +206,7 @@ export function IvaBookPurchaseModal({
         setTasaCero(toStr(data.tasaCero));
         setCodigoDescuentoAdicional(toStr(data.codigoDescuentoAdicional));
         setImporteGiftCard(toStr(data.importeGiftCard));
+        setIsLinkedToPurchase(typeof data.purchaseId === "string" && data.purchaseId !== "");
         triggerCalc({
           importeTotal: parseNum(toStr(data.importeTotal)),
           importeIce: parseNum(toStr(data.importeIce)),
@@ -249,6 +255,7 @@ export function IvaBookPurchaseModal({
     setComputedSubtotal("0.00");
     setComputedBase("0.00");
     setComputedCreditoFiscal("0.00");
+    setIsLinkedToPurchase(false);
     setErrors({});
   }
 
@@ -527,6 +534,13 @@ export function IvaBookPurchaseModal({
             </div>
           </fieldset>
 
+          {/* ── Banner: importes bloqueados por compra vinculada ── */}
+          {isLinkedToPurchase && (
+            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+              Los importes se calculan automáticamente desde la compra vinculada. Para modificarlos, editá la compra.
+            </div>
+          )}
+
           {/* ── Sección: Importes ── */}
           <fieldset>
             <legend className="text-sm font-medium text-gray-700 mb-3">Importes (Bs.)</legend>
@@ -541,7 +555,8 @@ export function IvaBookPurchaseModal({
                   value={importeTotal}
                   onChange={(e) => setImporteTotal(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -555,7 +570,8 @@ export function IvaBookPurchaseModal({
                   value={importeIce}
                   onChange={(e) => setImporteIce(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -569,7 +585,8 @@ export function IvaBookPurchaseModal({
                   value={importeIehd}
                   onChange={(e) => setImporteIehd(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -583,7 +600,8 @@ export function IvaBookPurchaseModal({
                   value={importeIpj}
                   onChange={(e) => setImporteIpj(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -597,7 +615,8 @@ export function IvaBookPurchaseModal({
                   value={tasas}
                   onChange={(e) => setTasas(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -611,7 +630,8 @@ export function IvaBookPurchaseModal({
                   value={otrosNoSujetos}
                   onChange={(e) => setOtrosNoSujetos(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -625,7 +645,8 @@ export function IvaBookPurchaseModal({
                   value={exentos}
                   onChange={(e) => setExentos(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -639,7 +660,8 @@ export function IvaBookPurchaseModal({
                   value={tasaCero}
                   onChange={(e) => setTasaCero(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -653,7 +675,8 @@ export function IvaBookPurchaseModal({
                   value={codigoDescuentoAdicional}
                   onChange={(e) => setCodigoDescuentoAdicional(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
 
@@ -667,7 +690,8 @@ export function IvaBookPurchaseModal({
                   value={importeGiftCard}
                   onChange={(e) => setImporteGiftCard(e.target.value)}
                   onBlur={handleBlurCalc}
-                  className="text-right"
+                  readOnly={isLinkedToPurchase}
+                  className={`text-right${isLinkedToPurchase ? " opacity-60 cursor-not-allowed bg-muted" : ""}`}
                 />
               </div>
             </div>

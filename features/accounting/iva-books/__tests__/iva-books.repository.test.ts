@@ -100,7 +100,7 @@ function makePurchaseInput(overrides: Partial<CreatePurchaseInput> = {}): Create
     importeTotal: D("1000.00"),
     subtotal: D("1000.00"),
     baseIvaSujetoCf: D("1000.00"),
-    dfCfIva: D("115.04"),
+    dfCfIva: D("130.00"),
     ...overrides,
   };
 }
@@ -120,8 +120,8 @@ function makeSaleInput(overrides: Partial<CreateSaleInput> = {}): CreateSaleInpu
     importeTotal: D("2000.00"),
     subtotal: D("2000.00"),
     baseIvaSujetoCf: D("2000.00"),
-    dfCfIva: D("230.09"),
-    dfIva: D("230.09"),
+    dfCfIva: D("260.00"),
+    dfIva: D("260.00"),
     ...overrides,
   };
 }

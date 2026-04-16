@@ -5,8 +5,9 @@ type Decimal = Prisma.Decimal;
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const TASA_IVA = new Prisma.Decimal("13");
-const DIVISOR_IVA = new Prisma.Decimal("113");
+// Convención SIN Bolivia (Formulario 200): Débito Fiscal = Total × 13% (alícuota nominal).
+// El "Importe Base" del LCV = subtotal − descuento (NO se divide entre 1.13).
+const TASA_IVA = new Prisma.Decimal("0.13");
 const ZERO = new Prisma.Decimal("0");
 
 // ── roundHalfUp ───────────────────────────────────────────────────────────────
@@ -66,30 +67,35 @@ export function calcSubtotal(params: CalcSubtotalParams): Decimal {
 // ── calcBaseImponible ─────────────────────────────────────────────────────────
 
 /**
- * Calcula la base imponible sujeta a crédito fiscal (Libro Compras) o
- * débito fiscal (Libro Ventas) restando el descuento adicional y gift card.
+ * Calcula el "Importe Base" SIAT (Formulario 200, Rubro 1.a) sobre el cual se
+ * aplica la alícuota del 13% para Débito/Crédito Fiscal:
  *
- * @param subtotal    - resultado de calcSubtotal
+ *   baseImponible = subtotal - descuento
+ *
+ * Convención SIN Bolivia: el 13% es alícuota NOMINAL aplicada al Importe Base
+ * (NO se divide entre 1.13). El total facturado es el Importe Base.
+ *
+ * @param subtotal    - resultado de calcSubtotal (ya sin ICE, IEHD, IPJ, exentos, etc.)
  * @param descuento   - codigoDescuentoAdicional + importeGiftCard
  */
 export function calcBaseImponible(subtotal: Decimal, descuento: Decimal): Decimal {
-  const result = subtotal.minus(descuento);
-  return roundHalfUp(result.lt(ZERO) ? ZERO : result);
+  const gravable = subtotal.minus(descuento);
+  if (gravable.lte(ZERO)) return ZERO;
+  return roundHalfUp(gravable);
 }
 
 // ── calcIvaCreditoFiscal ──────────────────────────────────────────────────────
 
 /**
- * Calcula el crédito fiscal IVA 13% a partir de la base imponible.
- * Fórmula: base × 13 / 113 (IVA está INCLUIDO en el precio).
+ * Calcula el crédito fiscal IVA 13% a partir del Importe Base SIAT.
+ * Fórmula: baseImponible × 0.13 (alícuota nominal SIN Bolivia).
  *
- * Caso especial: si base = 0 (factura 100% exenta), devuelve 0 sin dividir.
+ * Caso especial: si base = 0 (factura 100% exenta), devuelve 0.
  * Redondea con ROUND_HALF_UP a 2dp.
  */
 export function calcIvaCreditoFiscal(baseImponible: Decimal): Decimal {
   if (baseImponible.isZero()) return ZERO;
-  const iva = baseImponible.mul(TASA_IVA).div(DIVISOR_IVA);
-  return roundHalfUp(iva);
+  return roundHalfUp(baseImponible.mul(TASA_IVA));
 }
 
 // ── calcDebitoFiscal ──────────────────────────────────────────────────────────
@@ -118,15 +124,20 @@ export type CalcTotalesResult = {
 
 /**
  * Función de conveniencia que ejecuta el pipeline completo de cálculo:
- *   1. calcSubtotal (deduce ICE, IEHD, IPJ, tasas, exentos, tasaCero)
- *   2. calcBaseImponible (deduce descuento y gift card)
- *   3. calcIvaCreditoFiscal / calcDebitoFiscal
+ *   1. calcSubtotal   — deduce ICE, IEHD, IPJ, tasas, exentos, tasaCero
+ *   2. baseImponible  — subtotal − descuento (Importe Base SIAT, Form. 200 Rubro 1.a)
+ *   3. ivaAmount      — baseImponible × 0.13 (alícuota nominal SIN)
+ *
+ * El "Importe Base" es el monto facturado depurado (sin ICE/IEHD/exentos/descuentos)
+ * sobre el cual se aplica el 13% nominal. El ingreso contable a registrar es
+ * baseImponible × 0.87 (queda a cargo del builder de asientos).
  *
  * El result.ivaAmount sirve tanto para dfCfIva (compras) como dfIva (ventas).
  */
 export function calcTotales(params: CalcTotalesParams): CalcTotalesResult {
   const subtotal = calcSubtotal(params);
   const descuento = params.codigoDescuentoAdicional.plus(params.importeGiftCard);
+
   const baseImponible = calcBaseImponible(subtotal, descuento);
   const ivaAmount = calcIvaCreditoFiscal(baseImponible);
 
