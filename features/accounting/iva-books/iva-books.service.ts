@@ -58,7 +58,7 @@ function computeIvaFields(input: {
     subtotal,
     baseIvaSujetoCf: baseImponible,
     dfCfIva: ivaAmount,
-    dfIva: ivaAmount, // simétrico: dfIva = dfCfIva (mismo 13/113)
+    dfIva: ivaAmount, // simétrico: dfIva = dfCfIva (alícuota nominal 0.13)
     tasaIva: TASA_IVA,
   };
 }
@@ -513,6 +513,122 @@ export class IvaBooksService {
     }
 
     return result;
+  }
+
+  // ── Cascade desde SaleService.editPosted ─────────────────────────────────
+
+  /**
+   * Recomputa los campos IVA de un IvaSalesBook desde dentro de la transacción
+   * de SaleService.editPosted.
+   *
+   * Contrato:
+   * - Recibe la transacción activa (tx) para ejecutarse en el mismo bloque atómico.
+   * - NO llama a maybeRegenerateJournal — esto previene el loop Sale→IVA→Journal→Sale.
+   * - Si no existe IvaSalesBook para el saleId dado, es un no-op (no lanza error).
+   * - Conserva todas las deducciones (importeIce, importeIehd, importeIpj, tasas,
+   *   otrosNoSujetos, exentos, tasaCero, codigoDescuentoAdicional, importeGiftCard)
+   *   sin modificarlas — solo actualiza importeTotal y los campos derivados.
+   */
+  async recomputeFromSaleCascade(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    saleId: string,
+    newTotal: Prisma.Decimal,
+  ): Promise<void> {
+    const existing = await tx.ivaSalesBook.findFirst({
+      where: { saleId, organizationId: orgId },
+    });
+
+    if (!existing) return; // no-op: no IvaSalesBook linked
+
+    // Leer deducciones existentes (se conservan sin cambios)
+    const D = (v: Prisma.Decimal) => v;
+    const ZERO = new Prisma.Decimal("0");
+
+    const deductions = {
+      importeTotal: newTotal,
+      importeIce: D(existing.importeIce ?? ZERO),
+      importeIehd: D(existing.importeIehd ?? ZERO),
+      importeIpj: D(existing.importeIpj ?? ZERO),
+      tasas: D(existing.tasas ?? ZERO),
+      otrosNoSujetos: D(existing.otrosNoSujetos ?? ZERO),
+      exentos: D(existing.exentos ?? ZERO),
+      tasaCero: D(existing.tasaCero ?? ZERO),
+      codigoDescuentoAdicional: D(existing.codigoDescuentoAdicional ?? ZERO),
+      importeGiftCard: D(existing.importeGiftCard ?? ZERO),
+    };
+
+    // Recomputar usando la misma utilidad que el resto del servicio
+    const { subtotal, baseImponible, ivaAmount } = calcTotales(deductions);
+
+    await tx.ivaSalesBook.update({
+      where: { id: existing.id },
+      data: {
+        importeTotal: newTotal,
+        subtotal,
+        baseIvaSujetoCf: baseImponible,
+        dfIva: ivaAmount,
+        dfCfIva: ivaAmount,
+        tasaIva: TASA_IVA,
+      },
+    });
+  }
+
+  // ── Cascade desde PurchaseService.editPosted ─────────────────────────────
+
+  /**
+   * Recomputa los campos IVA de un IvaPurchaseBook desde dentro de la transacción
+   * de PurchaseService.editPosted.
+   *
+   * Contrato:
+   * - Recibe la transacción activa (tx) para ejecutarse en el mismo bloque atómico.
+   * - NO llama a maybeRegenerateJournal — previene el loop Purchase→IVA→Journal→Purchase.
+   * - Si no existe IvaPurchaseBook para el purchaseId dado, es un no-op (no lanza error).
+   * - Conserva todas las deducciones (importeIce, importeIehd, importeIpj, tasas,
+   *   otrosNoSujetos, exentos, tasaCero, codigoDescuentoAdicional, importeGiftCard)
+   *   sin modificarlas — solo actualiza importeTotal y los campos derivados.
+   */
+  async recomputeFromPurchaseCascade(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    purchaseId: string,
+    newTotal: Prisma.Decimal,
+  ): Promise<void> {
+    const existing = await tx.ivaPurchaseBook.findFirst({
+      where: { purchaseId, organizationId: orgId },
+    });
+
+    if (!existing) return; // no-op: no IvaPurchaseBook linked
+
+    const D = (v: Prisma.Decimal) => v;
+    const ZERO = new Prisma.Decimal("0");
+
+    const deductions = {
+      importeTotal: newTotal,
+      importeIce: D(existing.importeIce ?? ZERO),
+      importeIehd: D(existing.importeIehd ?? ZERO),
+      importeIpj: D(existing.importeIpj ?? ZERO),
+      tasas: D(existing.tasas ?? ZERO),
+      otrosNoSujetos: D(existing.otrosNoSujetos ?? ZERO),
+      exentos: D(existing.exentos ?? ZERO),
+      tasaCero: D(existing.tasaCero ?? ZERO),
+      codigoDescuentoAdicional: D(existing.codigoDescuentoAdicional ?? ZERO),
+      importeGiftCard: D(existing.importeGiftCard ?? ZERO),
+    };
+
+    const { subtotal, baseImponible, ivaAmount } = calcTotales(deductions);
+
+    await tx.ivaPurchaseBook.update({
+      where: { id: existing.id },
+      data: {
+        importeTotal: newTotal,
+        subtotal,
+        baseIvaSujetoCf: baseImponible,
+        dfIva: ivaAmount,
+        dfCfIva: ivaAmount,
+        tasaIva: TASA_IVA,
+      },
+    });
   }
 
   async voidSale(

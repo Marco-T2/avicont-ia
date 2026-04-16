@@ -29,11 +29,11 @@ const PERIOD_ID = "period-cascade-test";
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const baseMonetary = {
-  importeTotal: D("113.00"),
+  importeTotal: D("100.00"),
   importeIce: ZERO, importeIehd: ZERO, importeIpj: ZERO,
   tasas: ZERO, otrosNoSujetos: ZERO, exentos: ZERO, tasaCero: ZERO,
   codigoDescuentoAdicional: ZERO, importeGiftCard: ZERO,
-  subtotal: D("113.00"), dfIva: D("13.00"),
+  subtotal: D("100.00"), dfIva: D("13.00"),
   baseIvaSujetoCf: D("100.00"), dfCfIva: D("13.00"), tasaIva: D("0.1300"),
 };
 
@@ -186,8 +186,8 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       } as never);
 
       await mocks.service.updateSale(ORG_ID, USER_ID, "iva-sale-book-id", {
-        importeTotal: D("226.00"),
         ...baseMonetary,
+        importeTotal: D("226.00"),
       });
 
       expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
@@ -344,5 +344,104 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       expect(mocks.purchaseService.getById).not.toHaveBeenCalled();
       expect(mocks.purchaseService.regenerateJournalForIvaChange).not.toHaveBeenCalled();
     });
+  });
+});
+
+// ── PR5 — recomputeFromPurchaseCascade (SC-21) ─────────────────────────────────
+
+describe("IvaBooksService.recomputeFromPurchaseCascade — cascade desde PurchaseService.editPosted (PR5)", () => {
+  const PURCHASE_ID_CASCADE = "purchase-cascade-pr5";
+  const IVA_PURCHASE_ID = "iva-purchase-book-pr5";
+
+  function makePurchaseIvaRow(overrides: Partial<IvaPurchaseBookDTO> = {}): IvaPurchaseBookDTO {
+    return {
+      id: IVA_PURCHASE_ID,
+      organizationId: ORG_ID,
+      fiscalPeriodId: PERIOD_ID,
+      purchaseId: PURCHASE_ID_CASCADE,
+      fechaFactura: "2025-03-15",
+      nitProveedor: "7654321",
+      razonSocial: "Proveedor Cascade Test",
+      numeroFactura: "FAC-COMP-CASCADE-001",
+      codigoAutorizacion: "AUTH-COMP-CASCADE-001",
+      codigoControl: "",
+      tipoCompra: 1,
+      status: "ACTIVE",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      notes: undefined,
+      importeTotal: D("100.00"),
+      importeIce: ZERO,
+      importeIehd: ZERO,
+      importeIpj: ZERO,
+      tasas: ZERO,
+      otrosNoSujetos: ZERO,
+      exentos: ZERO,
+      tasaCero: ZERO,
+      codigoDescuentoAdicional: ZERO,
+      importeGiftCard: ZERO,
+      subtotal: D("100.00"),
+      dfIva: D("13.00"),
+      baseIvaSujetoCf: D("100.00"),
+      dfCfIva: D("13.00"),
+      tasaIva: D("0.1300"),
+      ...overrides,
+    };
+  }
+
+  // SC-21: recomputa IvaPurchaseBook cuando cambia totalAmount
+  it("SC-21 — recomputa IvaPurchaseBook con los campos derivados correctos cuando newTotal=200", async () => {
+    const existingRow = makePurchaseIvaRow();
+    const updateMock = vi.fn().mockResolvedValue({});
+    const findFirstMock = vi.fn().mockResolvedValue(existingRow);
+
+    const tx = {
+      ivaPurchaseBook: {
+        findFirst: findFirstMock,
+        update: updateMock,
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    const { service } = createMocks();
+    await service.recomputeFromPurchaseCascade(tx, ORG_ID, PURCHASE_ID_CASCADE, D("200.00"));
+
+    expect(findFirstMock).toHaveBeenCalledWith({
+      where: { purchaseId: PURCHASE_ID_CASCADE, organizationId: ORG_ID },
+    });
+
+    expect(updateMock).toHaveBeenCalledOnce();
+    const updateCall = updateMock.mock.calls[0][0];
+    expect(updateCall.where.id).toBe(IVA_PURCHASE_ID);
+
+    // importeTotal debe ser 200
+    expect(Number(updateCall.data.importeTotal)).toBeCloseTo(200, 2);
+    // subtotal = 200 (sin deducciones), baseIvaSujetoCf = 200 (alícuota nominal: base = total)
+    expect(Number(updateCall.data.subtotal)).toBeCloseTo(200, 2);
+    expect(Number(updateCall.data.baseIvaSujetoCf)).toBeCloseTo(200, 0);
+    // dfIva = dfCfIva = 200 × 0.13 = 26
+    expect(Number(updateCall.data.dfIva)).toBeCloseTo(26, 0);
+    expect(Number(updateCall.data.dfCfIva)).toBeCloseTo(26, 0);
+    // tasaIva = 0.13
+    expect(Number(updateCall.data.tasaIva)).toBeCloseTo(0.13, 4);
+  });
+
+  // SC-21 (no-op): retorna sin error cuando no existe IvaPurchaseBook para ese purchaseId
+  it("SC-21 no-op — retorna silenciosamente cuando no hay IvaPurchaseBook vinculado", async () => {
+    const findFirstMock = vi.fn().mockResolvedValue(null);
+    const updateMock = vi.fn();
+
+    const tx = {
+      ivaPurchaseBook: {
+        findFirst: findFirstMock,
+        update: updateMock,
+      },
+    } as unknown as Prisma.TransactionClient;
+
+    const { service } = createMocks();
+    await expect(
+      service.recomputeFromPurchaseCascade(tx, ORG_ID, PURCHASE_ID_CASCADE, D("200.00")),
+    ).resolves.toBeUndefined();
+
+    expect(updateMock).not.toHaveBeenCalled();
   });
 });

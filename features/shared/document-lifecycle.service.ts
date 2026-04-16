@@ -102,6 +102,15 @@ export function validateLockedEdit(
   }
 }
 
+// ── Tipo compartido: item del preview de recorte de asignaciones ─────────────
+
+export interface TrimPreviewItem {
+  allocationId: string;
+  paymentDate: string;   // ISO date "YYYY-MM-DD"
+  originalAmount: string; // monetary as string, 2 dp
+  trimmedTo: string;     // monetary as string, 2 dp
+}
+
 // ── Validar que el período fiscal dado esté ABIERTO ──
 
 export async function validatePeriodOpen(

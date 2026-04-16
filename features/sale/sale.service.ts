@@ -13,7 +13,9 @@ import {
   validateLockedEdit,
   validatePeriodOpen,
   type DocumentStatus,
+  type TrimPreviewItem,
 } from "@/features/shared/document-lifecycle.service";
+export type { TrimPreviewItem };
 import { computeReceivableStatus } from "@/features/shared/accounting-helpers";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { setAuditContext } from "@/features/shared/audit-context";
@@ -41,6 +43,60 @@ import {
   type SaleOrgSettings,
   type IvaBookForEntry,
 } from "./sale.utils";
+import { calcTotales } from "@/features/accounting/iva-books/iva-calc.utils";
+
+// ── Bridge interface: IvaBooksService (evitar importación circular) ──────────
+
+/**
+ * Contrato mínimo de IvaBooksService necesario para el cascade de editPosted.
+ * Usar la interfaz en vez del tipo concreto para evitar acoplamiento circular
+ * (IvaBooksService ya tiene un bridge hacia SaleService en el sentido inverso).
+ */
+export interface IvaBooksServiceForSaleCascade {
+  recomputeFromSaleCascade(
+    tx: Prisma.TransactionClient,
+    orgId: string,
+    saleId: string,
+    newTotal: Prisma.Decimal,
+  ): Promise<void>;
+}
+
+// ── Auxiliar: computar plan de recorte LIFO (sin DB, sin efectos) ─────────────
+
+/**
+ * Dado un array de asignaciones ordenado LIFO (id desc) y el exceso a absorber,
+ * retorna qué asignaciones se recortarían y a qué monto.
+ * Sólo incluye en el resultado las asignaciones que serían modificadas.
+ */
+function computeTrimPlan(
+  allocations: Array<{
+    id: string;
+    amount: { toString(): string } | number;
+    payment: { date: Date };
+  }>,
+  excess: number,
+): TrimPreviewItem[] {
+  const plan: TrimPreviewItem[] = [];
+  let remaining = excess;
+
+  for (const alloc of allocations) {
+    if (remaining <= 0) break;
+    const allocAmount = Number(alloc.amount);
+    const reduction = Math.min(allocAmount, remaining);
+    const newAllocAmount = allocAmount - reduction;
+
+    plan.push({
+      allocationId: alloc.id,
+      paymentDate: alloc.payment.date.toISOString().split("T")[0],
+      originalAmount: allocAmount.toFixed(2),
+      trimmedTo: newAllocAmount.toFixed(2),
+    });
+
+    remaining -= reduction;
+  }
+
+  return plan;
+}
 
 // ── Auxiliar: calcular detalles de venta ──
 
@@ -96,6 +152,7 @@ export class SaleService {
   private readonly periodsService: FiscalPeriodsService;
   private readonly accountsRepo: AccountsRepository;
   private readonly journalRepo: JournalRepository;
+  private readonly ivaBooksService?: IvaBooksServiceForSaleCascade;
 
   constructor(
     repo?: SaleRepository,
@@ -107,6 +164,7 @@ export class SaleService {
     periodsService?: FiscalPeriodsService,
     accountsRepo?: AccountsRepository,
     journalRepo?: JournalRepository,
+    ivaBooksService?: IvaBooksServiceForSaleCascade,
   ) {
     this.repo = repo ?? new SaleRepository();
     this.orgSettingsService = orgSettingsService ?? new OrgSettingsService();
@@ -116,6 +174,7 @@ export class SaleService {
     this.periodsService = periodsService ?? new FiscalPeriodsService();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.journalRepo = journalRepo ?? new JournalRepository();
+    this.ivaBooksService = ivaBooksService;
 
     const voucherTypesRepo = new VoucherTypesRepository();
     this.autoEntryGenerator =
@@ -434,6 +493,51 @@ export class SaleService {
     return withDisplayCode(result!);
   }
 
+  // ── Preview de recorte de asignaciones (dryRun / pre-flight) ────────────────
+
+  /**
+   * Calcula qué asignaciones de pago serían recortadas (LIFO) si la venta
+   * se editara a `newTotal`. No ejecuta ninguna escritura.
+   *
+   * REQ-5 / D3
+   */
+  async getEditPreview(
+    saleId: string,
+    organizationId: string,
+    newTotal: number,
+  ): Promise<{ trimPreview: TrimPreviewItem[] }> {
+    const sale = await this.getById(organizationId, saleId);
+    if (!sale.receivableId) {
+      return { trimPreview: [] };
+    }
+
+    // Use a read-only transaction to fetch allocations with payment date
+    const trimPreview = await this.repo.transaction(async (tx) => {
+      const receivable = await tx.accountsReceivable.findFirst({
+        where: { id: sale.receivableId! },
+        select: { paid: true },
+      });
+      const rawPaid = receivable ? Number(receivable.paid) : 0;
+
+      if (newTotal >= rawPaid) {
+        return [];
+      }
+
+      const allocations = await tx.paymentAllocation.findMany({
+        where: {
+          receivableId: sale.receivableId!,
+          payment: { status: { not: "VOIDED" } },
+        },
+        orderBy: { id: "desc" },
+        include: { payment: { select: { date: true } } },
+      });
+
+      return computeTrimPlan(allocations, rawPaid - newTotal);
+    });
+
+    return { trimPreview };
+  }
+
   // ── Actualizar una venta (DRAFT directamente, POSTED mediante editPosted) ──
 
   async update(
@@ -571,11 +675,38 @@ export class SaleService {
     }
 
     const effectiveTotalForEntry = newTotalAmount ?? Number(sale.totalAmount);
+
+    // Construir ivaBookForEntry con valores IVA recalculados del nuevo total
+    let ivaBookForEntry: IvaBookForEntry | undefined;
+    if (sale.ivaSalesBook && sale.ivaSalesBook.status === "ACTIVE") {
+      const iva = sale.ivaSalesBook;
+      const D = (v: number | string) => new Prisma.Decimal(String(v));
+      const totals = calcTotales({
+        importeTotal: D(effectiveTotalForEntry),
+        importeIce: iva.importeIce as Prisma.Decimal,
+        importeIehd: iva.importeIehd as Prisma.Decimal,
+        importeIpj: iva.importeIpj as Prisma.Decimal,
+        tasas: iva.tasas as Prisma.Decimal,
+        otrosNoSujetos: iva.otrosNoSujetos as Prisma.Decimal,
+        exentos: iva.exentos as Prisma.Decimal,
+        tasaCero: iva.tasaCero as Prisma.Decimal,
+        codigoDescuentoAdicional: iva.codigoDescuentoAdicional as Prisma.Decimal,
+        importeGiftCard: iva.importeGiftCard as Prisma.Decimal,
+      });
+      ivaBookForEntry = {
+        baseIvaSujetoCf: Number(totals.baseImponible),
+        dfCfIva: Number(totals.ivaAmount),
+        importeTotal: effectiveTotalForEntry,
+        exentos: Number(iva.exentos ?? 0),
+      };
+    }
+
     const entryLines = buildSaleEntryLines(
       effectiveTotalForEntry,
       detailsForEntry,
       settings as unknown as SaleOrgSettings,
       input.contactId ?? sale.contactId,
+      ivaBookForEntry,
     );
 
     // Pre-resolver los IDs de cuenta para todas las líneas
@@ -746,6 +877,19 @@ export class SaleService {
             ...(input.contactId !== undefined && { contactId: input.contactId }),
           },
         });
+      }
+
+      // g. Recomputar IvaSalesBook si existe uno vinculado (D1, D2).
+      // Se llama al final de la tx para que todo lo anterior sea visible dentro
+      // del mismo bloque atómico. NO llama a maybeRegenerateJournal (REQ-3 / D2).
+      if (sale.ivaSalesBook && this.ivaBooksService) {
+        const effectiveNewTotal = newTotalAmount ?? Number(sale.totalAmount);
+        await this.ivaBooksService.recomputeFromSaleCascade(
+          tx,
+          organizationId,
+          sale.id,
+          new Prisma.Decimal(effectiveNewTotal),
+        );
       }
     });
 
