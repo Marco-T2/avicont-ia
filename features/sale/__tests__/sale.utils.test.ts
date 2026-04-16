@@ -385,4 +385,26 @@ describe("buildSaleEntryLines — IT 3% inline", () => {
     expect(itDebit?.debit).toBe(3);
     expect(itCredit?.credit).toBe(3);
   });
+
+  // FOLLOWUP-1 (REQ-3): importeTotal = 0 → itAmount = 0 → guard if(itAmount > 0) → no IT lines
+  it("FOLLOWUP-1 — importeTotal=0, dfCfIva=0: no genera líneas IT (guard itAmount > 0)", () => {
+    const details: SaleDetailForEntry[] = [
+      { lineAmount: 0, incomeAccountCode: "4.1.1" },
+    ];
+    const ivaBook: IvaBookForEntry = {
+      baseIvaSujetoCf: 0,
+      dfCfIva: 0,
+      importeTotal: 0,
+    };
+
+    // dfCfIva = 0 → cae al path no-IVA; pero el guard IT también protege el path IVA
+    const lines = buildSaleEntryLines(0, details, settings, contactId, ivaBook);
+
+    const itLines = lines.filter(
+      (l) =>
+        l.accountCode === settings.itExpenseAccountCode ||
+        l.accountCode === settings.itPayableAccountCode,
+    );
+    expect(itLines).toHaveLength(0);
+  });
 });

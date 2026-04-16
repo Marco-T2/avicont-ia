@@ -460,6 +460,80 @@ describe("SaleService — IVA journal integration", () => {
       expect(vi.mocked(mocks.journalRepo.updateTx)).not.toHaveBeenCalled();
     });
 
+    // FOLLOWUP-2 (REQ-6): IT cascade — líneas IT reflejan nuevo importeTotal × 0.03
+    it("FOLLOWUP-2 — IT lines en journalRepo.updateTx reflejan nuevo importeTotal (Y × 0.03, no X × 0.03)", async () => {
+      // X = 100 (original), Y = 200 (nuevo total post-edit)
+      // Esperado: IT = ROUND(200 × 0.03, 2) = 6.00 (no 3.00)
+      const ivaBookY: IvaSalesBookDTO = {
+        ...makeIvaBook(),
+        importeTotal: D("200.00"),
+        baseIvaSujetoCf: D("200.00"),
+        dfCfIva: D("26.00"),
+        dfIva: D("26.00"),
+        subtotal: D("200.00"),
+      };
+      const postedSaleY = makeSale({
+        status: "POSTED",
+        totalAmount: 200,
+        ivaSalesBook: ivaBookY,
+        journalEntryId: ENTRY_ID,
+      });
+      const finalSale = makeSale({ status: "POSTED", ivaSalesBook: ivaBookY, journalEntryId: ENTRY_ID, totalAmount: 200 });
+
+      vi.mocked(mocks.repo.findById)
+        .mockResolvedValueOnce(postedSaleY)  // reload interno
+        .mockResolvedValueOnce(finalSale);   // retorno final
+
+      vi.mocked(mocks.periodsService.getById).mockResolvedValueOnce({ id: PERIOD_ID, status: "OPEN" } as never);
+
+      vi.mocked(mocks.repo.transaction).mockImplementationOnce(async (fn) => {
+        const mockTx = {
+          $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+          fiscalPeriod: {
+            findFirstOrThrow: vi.fn().mockResolvedValue({ id: PERIOD_ID, status: "OPEN" }),
+          },
+          journalEntry: {
+            findFirst: vi.fn().mockResolvedValue({
+              id: ENTRY_ID, lines: [], contact: null, voucherType: { code: "CI" },
+            }),
+            update: vi.fn().mockResolvedValue({}),
+          },
+          accountsReceivable: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn() },
+          paymentAllocation: { findMany: vi.fn().mockResolvedValue([]) },
+          sale: { update: vi.fn() },
+          saleDetail: { deleteMany: vi.fn(), createMany: vi.fn() },
+        };
+        return fn(mockTx as unknown as Prisma.TransactionClient);
+      });
+
+      await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);
+
+      expect(vi.mocked(mocks.journalRepo.updateTx)).toHaveBeenCalled();
+      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+      const resolvedLines = vi.mocked(mocks.journalRepo.updateTx).mock.calls[0]![4] as Array<{
+        debit: number;
+        credit: number;
+        accountId: string;
+      }>;
+
+      // journalRepo.updateTx recibe resolvedLines (accountId, not accountCode).
+      // accountsRepo.findByCode siempre devuelve { id: "account-income-id", code: "4.1.1" }
+      // para todas las cuentas en el mock. Verificamos por importe IT:
+      // IT expense line: debit = 6.00, credit = 0
+      // IT payable line: debit = 0, credit = 6.00
+      const expectedItAmount = Math.round(200 * 0.03 * 100) / 100; // 6.00
+      const itExpenseLine = resolvedLines.find(
+        (l) => l.debit === expectedItAmount && l.credit === 0,
+      );
+      const itPayableLine = resolvedLines.find(
+        (l) => l.credit === expectedItAmount && l.debit === 0,
+      );
+      expect(itExpenseLine).toBeDefined();
+      expect(itPayableLine).toBeDefined();
+      // Sanity: 5 líneas (DR CxC 200, CR Ventas 174, CR IVA 26, DR IT 6, CR IT 6)
+      expect(resolvedLines).toHaveLength(5);
+    });
+
     it("NO escribe en ivaSalesBook (read-only — guard anti-loop)", async () => {
       const ivaBook = makeIvaBook({ status: "ACTIVE" });
       const postedSale = makeSale({

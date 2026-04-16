@@ -455,6 +455,66 @@ describe("buildPurchaseEntryLines — compra exenta con IvaBook (dfCfIva = 0)", 
   });
 });
 
+// ── describe: buildPurchaseEntryLines — REQ-8: sin líneas IT ─────────────────
+//
+// FOLLOWUP-3: Positive assertion that purchases NEVER emit IT lines.
+// IT account defaults come from OrgSettings (prisma/schema.prisma):
+//   itExpenseAccountCode @default("5.3.3")
+//   itPayableAccountCode @default("2.1.7")
+// PurchaseOrgSettings does NOT include these fields — structural guarantee.
+// These tests lock in that behavioral invariant explicitly.
+
+const IT_EXPENSE_CODE = "5.3.3"; // OrgSettings.itExpenseAccountCode default
+const IT_PAYABLE_CODE = "2.1.7"; // OrgSettings.itPayableAccountCode default
+
+describe("buildPurchaseEntryLines — REQ-8: no genera líneas IT en compras", () => {
+  // FOLLOWUP-3a: COMPRA_GENERAL con IVA crédito fiscal — nunca emite cuentas IT
+  it("FOLLOWUP-3a — COMPRA_GENERAL con IvaBook activo: ninguna línea tiene cuentas IT", () => {
+    const details: PurchaseDetailForEntry[] = [
+      { lineAmount: 500, expenseAccountCode: "5.3.1", description: "Insumos con IVA" },
+    ];
+    const ivaBook: IvaBookForEntry = {
+      baseIvaSujetoCf: 500,
+      dfCfIva: 65,
+      importeTotal: 500,
+    };
+
+    const lines = buildPurchaseEntryLines(
+      "COMPRA_GENERAL",
+      500,
+      details,
+      settings,
+      contactId,
+      ivaBook,
+    );
+
+    const itLines = lines.filter(
+      (l) => l.accountCode === IT_EXPENSE_CODE || l.accountCode === IT_PAYABLE_CODE,
+    );
+    expect(itLines).toHaveLength(0);
+  });
+
+  // FOLLOWUP-3b: COMPRA_GENERAL sin IVA (non-IVA path) — nunca emite cuentas IT
+  it("FOLLOWUP-3b — COMPRA_GENERAL sin IvaBook (non-IVA): ninguna línea tiene cuentas IT", () => {
+    const details: PurchaseDetailForEntry[] = [
+      { lineAmount: 800, expenseAccountCode: "5.3.2", description: "Compra sin factura IVA" },
+    ];
+
+    const lines = buildPurchaseEntryLines(
+      "COMPRA_GENERAL",
+      800,
+      details,
+      settings,
+      contactId,
+    );
+
+    const itLines = lines.filter(
+      (l) => l.accountCode === IT_EXPENSE_CODE || l.accountCode === IT_PAYABLE_CODE,
+    );
+    expect(itLines).toHaveLength(0);
+  });
+});
+
 // ── describe: buildPurchaseEntryLines — invariante de balance ────────────────
 
 describe("buildPurchaseEntryLines — invariante de balance", () => {
