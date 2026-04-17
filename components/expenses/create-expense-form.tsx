@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { todayLocal } from "@/lib/date-utils";
 
 const EXPENSE_CATEGORIES = [
   { value: "ALIMENTO", label: "Alimento" },
@@ -50,7 +51,7 @@ export default function CreateExpenseForm({
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [description, setDescription] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(todayLocal());
 
   const handleSubmit = async () => {
     if (!amount || Number(amount) <= 0) {
@@ -84,7 +85,7 @@ export default function CreateExpenseForm({
         setAmount("");
         setCategory("");
         setDescription("");
-        setDate(new Date().toISOString().split("T")[0]);
+        setDate(todayLocal());
         setIsOpen(false);
         onCreated?.();
       } else {
@@ -105,7 +106,7 @@ export default function CreateExpenseForm({
       setAmount("");
       setCategory("");
       setDescription("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(todayLocal());
     }
   };
 
