@@ -151,3 +151,43 @@ All 13 requirements (REQ-A.1 through REQ-E.1) have at least one RED task. **Cove
 | PR3 (form defaults) | 6 | 3 RED + 3 GREEN |
 | PR4 (display layer) | 11 | 6 RED + 4 GREEN + 1 sweep |
 | **Total** | **30** | |
+
+---
+
+## Fix Batch (post-verify) — C-1, W-1, W-2
+
+Issues found by sdd-verify after PR0–PR4. Fixed 2026-04-17.
+
+### C-1 — Remaining `new Date().toISOString().split("T")[0]` refs (CRITICAL)
+
+- [x] FC-1.1 RED+GREEN — `components/payments/payment-form.tsx:206` → `todayLocal()`
+- [x] FC-1.2 RED+GREEN — `components/lots/create-lot-dialog.tsx` (3 refs: lines 35, 74, 95) → `todayLocal()`
+- [x] FC-1.3 RED+GREEN — `components/expenses/create-expense-form.tsx` (3 refs: lines 53, 87, 108) → `todayLocal()`
+- [x] FC-1.4 RED+GREEN — `components/mortality/log-mortality-form.tsx` (3 refs: lines 35, 68, 88) → `todayLocal()`
+
+Tests added: `payment-form-today-default.test.tsx`, `create-lot-dialog-today-default.test.tsx`, `create-expense-form-today-default.test.tsx`, `log-mortality-form-today-default.test.tsx`
+
+Commits: `92fdeee`
+
+### W-1 — `emptyFleteeLine()` fecha default (WARNING)
+
+- [x] FW-1.1 RED+GREEN — `components/purchases/purchase-form.tsx:161` `emptyFleteeLine()` → `fecha: todayLocal()`
+
+Tests added: `purchase-form-flete-line-today-default.test.tsx`
+
+Commit: `4cc4869`
+
+### W-2 — Journal entry forms (WARNING)
+
+- [x] FW-2.1 RED+GREEN — `components/accounting/journal-entry-form.tsx:82` → `todayLocal()`
+- [x] FW-2.2 RED+GREEN — `components/accounting/create-journal-entry-form.tsx:60` → `todayLocal()`
+
+Tests added: `journal-entry-form-today-default.test.tsx`
+
+Commit: `cfffd76`
+
+### Result
+
+- Tests: 899/899 (was 884/884 before fix batch)
+- TSC: clean
+- `new Date().toISOString().split("T")[0]` in `components/` outside tests: **0 hits**
