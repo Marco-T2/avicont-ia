@@ -109,6 +109,34 @@ _Independent of all other PRs (purely mechanical swap). Can be implemented after
 
 ---
 
+---
+
+## PR7: Detail Edit button + period-gate (REQ-A.2 + REQ-A.1 amended)
+
+_Gap: botón Editar solo aparecía para DRAFT; la página /edit no comprueba período. Enmienda post-PR3._
+
+### Detail button (REQ-A.2)
+
+- [ ] T7.1 RED (REQ-A.2, S-A2.1) — test: DRAFT manual + periodStatus="OPEN" → "Editar" button renders with link to `/edit`
+- [ ] T7.2 RED (REQ-A.2, S-A2.2) — test: POSTED manual (sourceType=null) + periodStatus="OPEN" → "Editar" button renders
+- [ ] T7.3 RED (REQ-A.2, S-A2.3) — test: POSTED auto (sourceType="sale") + periodStatus="OPEN" → "Editar" button hidden
+- [ ] T7.4 RED (REQ-A.2, S-A2.4) — test: DRAFT manual + periodStatus="CLOSED" → "Editar" button hidden
+- [ ] T7.5 RED (REQ-A.2, S-A2.5) — test: POSTED manual + periodStatus="CLOSED" → "Editar" button hidden
+- [ ] T7.6 RED (REQ-A.2, S-A2.6) — test: VOIDED + any → "Editar" button hidden
+- [ ] T7.7 GREEN (REQ-A.2) — update conditional in `journal-entry-detail.tsx` to new rule; add `periodStatus` prop; pass from parent page
+
+### Edit page guard (REQ-A.1 amended)
+
+- [ ] T7.8 RED (REQ-A.1, S-A1.6) — page test: DRAFT manual + period CLOSED → /edit returns notFound (was passing period check before)
+- [ ] T7.9 RED (REQ-A.1, S-A1.7) — page test: POSTED manual + period CLOSED → /edit returns notFound
+- [ ] T7.10 GREEN (REQ-A.1) — update guard in `app/(dashboard)/[orgSlug]/accounting/journal/[entryId]/edit/page.tsx` to also check `period.status === "OPEN"`
+
+### Dialog copy (cosmetic)
+
+- [ ] T7.11 GREEN (cosmetic) — update "Contabilizar" dialog description in `journal-entry-detail.tsx` from "Una vez contabilizado, no podrá ser editado." to "Una vez contabilizado, el asiento seguirá siendo editable mientras el período esté abierto. Al cerrar el período quedará inmutable."
+
+---
+
 ## Deployment Order
 
 ```
