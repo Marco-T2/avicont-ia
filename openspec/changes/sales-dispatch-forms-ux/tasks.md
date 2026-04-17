@@ -28,14 +28,14 @@
 
 ## PR4: Notas + Resumen layout (sale-form)
 
-- [ ] T4.1 RED (REQ-A.4) — Test: Notas renders inside `grid grid-cols-1 sm:grid-cols-2` row (assert CSS class or sibling element Resumen de Cobros).
-- [ ] T4.2 GREEN (REQ-A.4) — In `sale-form.tsx` lines ~635–659: move Notas textarea out of standalone `grid-cols-1` div; create new bottom `grid grid-cols-1 sm:grid-cols-2 gap-4` row containing Notas (left) + Resumen de Cobros slot (right). AC: T4.1 green.
-- [ ] T4.3 RED (REQ-A.4 DRAFT) — Test: when `sale.receivable` is null, Notas container still renders inside the 2-col grid; right slot is empty (no Resumen card). Grid structure preserved.
-- [ ] T4.4 GREEN (REQ-A.4 DRAFT) — Conditionally render Resumen card in right slot; left (Notas) always present. AC: T4.3 green.
-- [ ] T4.5 RED (REQ-A.5) — Test: Resumen de Cobros payment rows container has class `ml-auto` or `flex justify-end` (assert on wrapper div).
-- [ ] T4.6 GREEN (REQ-A.5) — In `sale-form.tsx` lines ~807–853: replace `<table className="w-full">` with `<div className="flex flex-col gap-1 ml-auto w-fit">` rows using `flex justify-between gap-4`. AC: T4.5 green.
-- [ ] T4.7 RED (REQ-A.4) — Test: grid collapses to 1 col below `sm:` (assert `grid-cols-1` present, `sm:grid-cols-2` present).
-- [ ] T4.8 GREEN (REQ-A.4) — Confirm responsive classes applied in T4.2 green step already satisfy. AC: T4.7 green.
+- [x] T4.1 RED (REQ-A.4) — Test: Notas renders inside `grid grid-cols-1 sm:grid-cols-2` row (assert CSS class or sibling element Resumen de Cobros).
+- [x] T4.2 GREEN (REQ-A.4) — In `sale-form.tsx` lines ~635–659: move Notas textarea out of standalone `grid-cols-1` div; create new bottom `grid grid-cols-1 sm:grid-cols-2 gap-4` row containing Notas (left) + Resumen de Cobros slot (right). AC: T4.1 green.
+- [x] T4.3 RED (REQ-A.4 DRAFT) — Test: when `sale.receivable` is null, Notas container still renders inside the 2-col grid; right slot is empty (no Resumen card). Grid structure preserved.
+- [x] T4.4 GREEN (REQ-A.4 DRAFT) — Conditionally render Resumen card in right slot; left (Notas) always present. AC: T4.3 green.
+- [x] T4.5 RED (REQ-A.5) — Test: Resumen de Cobros payment rows container has class `ml-auto` or `flex justify-end` (assert on wrapper div).
+- [x] T4.6 GREEN (REQ-A.5) — In `sale-form.tsx` lines ~807–853: replace `<table className="w-full">` with `<div className="flex flex-col gap-1 ml-auto w-fit">` rows using `flex justify-between gap-4`. AC: T4.5 green.
+- [x] T4.7 RED (REQ-A.4) — Test: grid collapses to 1 col below `sm:` (assert `grid-cols-1` present, `sm:grid-cols-2` present).
+- [x] T4.8 GREEN (REQ-A.4) — Confirm responsive classes applied in T4.2 green step already satisfy. AC: T4.7 green.
 
 ## PR5: Notas + Resumen layout (dispatch-form NDD + BC)
 
