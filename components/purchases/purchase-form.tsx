@@ -27,7 +27,6 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -37,6 +36,8 @@ import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/features/purchase";
 import { IvaBookPurchaseModal } from "@/components/iva-books/iva-book-purchase-modal";
 import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
+import { LcvIndicator } from "@/components/common/lcv-indicator";
+import type { LcvState } from "@/components/common/lcv-indicator";
 
 // ── Helpers ──
 
@@ -52,6 +53,24 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+// ── Derivación del estado LCV ──
+
+/**
+ * Deriva el estado del LcvIndicator a partir de la compra.
+ * S1: borrador (sin id) o status DRAFT
+ * S2: guardada, sin ivaPurchaseBook activo (null o VOIDED)
+ * S3: guardada, con ivaPurchaseBook activo (status ACTIVE)
+ */
+function deriveLcvStatePurchase(
+  purchase:
+    | { status: string; ivaPurchaseBook?: { id: string; status?: string } | null }
+    | undefined,
+): LcvState {
+  if (!purchase || purchase.status === "DRAFT") return "S1";
+  if (!purchase.ivaPurchaseBook || purchase.ivaPurchaseBook.status === "VOIDED") return "S2";
+  return "S3";
 }
 
 // ── Status badge config ──
@@ -259,6 +278,12 @@ export default function PurchaseForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
   const [ivaModalOpen, setIvaModalOpen] = useState(false);
+
+  // ── Estado y hook de desvinculación LCV (T3.2 REQ-A.1) ──
+  const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
+
+  // ── Estado y hook de reactivación LCV (T3.2 REQ-A.1) ──
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
 
   // ── Computed totals ──
   const shrinkagePctNum = parseFloat(shrinkagePct) || 0;
@@ -771,8 +796,8 @@ export default function PurchaseForm({
                 </div>
               </div>
 
-              {/* Row 2: Proveedor / Total */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Row 2: Proveedor / Total / LCV */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="contact">Proveedor</Label>
                   {isReadOnly ? (
@@ -807,6 +832,23 @@ export default function PurchaseForm({
                     />
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label>Libro de Compras (LCV)</Label>
+                  <LcvIndicator
+                    state={deriveLcvStatePurchase(purchase)}
+                    periodOpen={purchase ? isFiscalPeriodOpen(purchase.period) : false}
+                    onRegister={() => {
+                      if (purchase?.ivaPurchaseBook?.status === "VOIDED") {
+                        setReactivateDialogOpen(true);
+                      } else {
+                        setIvaModalOpen(true);
+                      }
+                    }}
+                    onEdit={() => setIvaModalOpen(true)}
+                    onUnlink={() => setUnlinkDialogOpen(true)}
+                  />
+                </div>
               </div>
 
               {/* FLETE extra: Ruta */}
@@ -1450,21 +1492,7 @@ export default function PurchaseForm({
               Eliminar
             </Button>
           )}
-          {/* Registrar / Editar en Libro de Compras IVA — disponible en modo edición.
-              Gate: period.status === "OPEN" (SPEC-5 / D5).
-              El servicio re-verifica el estado dentro de la transacción. */}
-          {isEditMode && purchase && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!isFiscalPeriodOpen(purchase.period)}
-              title={!isFiscalPeriodOpen(purchase.period) ? FISCAL_PERIOD_CLOSED_MESSAGE : undefined}
-              onClick={() => setIvaModalOpen(true)}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              {purchase.ivaPurchaseBook ? "Editar Libro de Compras IVA" : "Registrar Libro de Compras"}
-            </Button>
-          )}
+          {/* LCV button removed — now handled by LcvIndicator in header row 2 (REQ-A.1) */}
         </div>
 
         <div className="flex gap-3">
@@ -1586,8 +1614,12 @@ export default function PurchaseForm({
           endDate: new Date(p.endDate).toISOString().split("T")[0],
           status: p.status,
         }))}
-        mode={purchase.ivaPurchaseBook ? "edit" : "create-from-source"}
-        entryId={purchase.ivaPurchaseBook?.id}
+        mode={purchase.ivaPurchaseBook && purchase.ivaPurchaseBook.status !== "VOIDED" ? "edit" : "create-from-source"}
+        entryId={
+          purchase.ivaPurchaseBook && purchase.ivaPurchaseBook.status !== "VOIDED"
+            ? purchase.ivaPurchaseBook.id
+            : undefined
+        }
         sourcePurchase={{
           id: purchase.id,
           date: new Date(purchase.date).toISOString().split("T")[0],
