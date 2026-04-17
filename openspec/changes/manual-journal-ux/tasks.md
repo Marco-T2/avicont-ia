@@ -93,19 +93,19 @@ _Depends on PR4 (list component already updated). Can overlap in implementation 
 
 _Independent of all other PRs (purely mechanical swap). Can be implemented after PR1 or in parallel. Merges last to avoid merge conflicts with PR4/PR5 which also touch list and detail._
 
-- [ ] T6.1 RED (REQ-D.1, S-D.1) — In `components/accounting/__tests__/journal-entry-list.test.tsx` (add scenario or create dedicated date test block): use `vi.useFakeTimers()` + `vi.setSystemTime("2026-04-18T01:00:00.000Z")`. Render list with entry `date = "2026-04-17T00:00:00.000Z"`. Assert `screen.getByText("17/04/2026")` is in the document. Also assert `screen.queryByText("16/04/2026")` is null.
+- [x] T6.1 RED (REQ-D.1, S-D.1) — In `components/accounting/__tests__/journal-entry-list.test.tsx` (add scenario or create dedicated date test block): use `vi.useFakeTimers()` + `vi.setSystemTime("2026-04-18T01:00:00.000Z")`. Render list with entry `date = "2026-04-17T00:00:00.000Z"`. Assert `screen.getByText("17/04/2026")` is in the document. Also assert `screen.queryByText("16/04/2026")` is null.
 
-- [ ] T6.2 RED (REQ-D.1, S-D.2 + S-D.3) — In same file: (a) render with `date = "2026-04-17T12:00:00.000Z"` → assert `"17/04/2026"` visible; (b) render with `date = null` → assert no crash and date cell renders `""`.
+- [x] T6.2 RED (REQ-D.1, S-D.2 + S-D.3) — In same file: (a) render with `date = "2026-04-17T12:00:00.000Z"` → assert `"17/04/2026"` visible; (b) render with `date = null` → assert no crash and date cell renders `""`.
 
-- [ ] T6.3 RED (REQ-D.2, S-D.1) — In `components/accounting/__tests__/journal-entry-detail.test.tsx` (add scenario): same fake-timer pattern. Render detail with `date = "2026-04-17T00:00:00.000Z"`. Assert `screen.getByText("17/04/2026")` visible. Assert `screen.queryByText("16/04/2026")` is null.
+- [x] T6.3 RED (REQ-D.2, S-D.1) — In `components/accounting/__tests__/journal-entry-detail.test.tsx` (add scenario): same fake-timer pattern. Render detail with `date = "2026-04-17T00:00:00.000Z"`. Assert `screen.getByText("17/04/2026")` visible. Assert `screen.queryByText("16/04/2026")` is null.
 
-- [ ] T6.4 RED (REQ-D.2, S-D.2 + S-D.3) — In same detail test file: (a) noon UTC → `"17/04/2026"`; (b) null date → no crash, empty string rendered.
+- [x] T6.4 RED (REQ-D.2, S-D.2 + S-D.3) — In same detail test file: (a) noon UTC → `"17/04/2026"`; (b) null date → no crash, empty string rendered.
 
-- [ ] T6.5 GREEN (REQ-D.1) — Update `components/accounting/journal-entry-list.tsx`: (a) remove the local `formatDate` function (lines 27-33); (b) add `import { formatDateBO } from "@/lib/date-utils"`; (c) replace all call sites `formatDate(x)` with `formatDateBO(x)`. Only one call site expected (line ~269).
+- [x] T6.5 GREEN (REQ-D.1) — Update `components/accounting/journal-entry-list.tsx`: (a) remove the local `formatDate` function (lines 27-33); (b) add `import { formatDateBO } from "@/lib/date-utils"`; (c) replace all call sites `formatDate(x)` with `formatDateBO(x)`. Only one call site expected (line ~269).
 
-- [ ] T6.6 GREEN (REQ-D.2) — Update `components/accounting/journal-entry-detail.tsx`: (a) remove the local `formatDate` function (lines 32-38); (b) add `import { formatDateBO } from "@/lib/date-utils"`; (c) replace all call sites `formatDate(x)` with `formatDateBO(x)`. Two call sites expected (lines ~190 and ~210).
+- [x] T6.6 GREEN (REQ-D.2) — Update `components/accounting/journal-entry-detail.tsx`: (a) remove the local `formatDate` function (lines 32-38); (b) add `import { formatDateBO } from "@/lib/date-utils"`; (c) replace all call sites `formatDate(x)` with `formatDateBO(x)`. Two call sites expected (lines ~190 and ~210).
 
-- [ ] T6.7 CLEANUP (REQ-D.1, REQ-D.2) — Search `components/accounting/__tests__/` for any existing test assertions using locale-format strings (`"17 abr 2026"`, `"17 de abril de 2026"`, `"abr"`, `"abril"`) and migrate them to `"DD/MM/YYYY"` format. Verify with grep: `grep -rn "abr\|abril" components/accounting/__tests__/`. Update affected test expectations to match `formatDateBO` output.
+- [x] T6.7 CLEANUP (REQ-D.1, REQ-D.2) — Search `components/accounting/__tests__/` for any existing test assertions using locale-format strings (`"17 abr 2026"`, `"17 de abril de 2026"`, `"abr"`, `"abril"`) and migrate them to `"DD/MM/YYYY"` format. Verify with grep: `grep -rn "abr\|abril" components/accounting/__tests__/`. Update affected test expectations to match `formatDateBO` output.
 
 ---
 
