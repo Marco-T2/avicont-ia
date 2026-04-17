@@ -17,6 +17,9 @@ export default defineConfig({
           environment: "node",
           include: ["**/__tests__/**/*.test.ts"],
           setupFiles: ["./vitest.setup.ts"],
+          // TZ=America/La_Paz garantiza que todayLocal() use UTC-4 en tests
+          // (getFullYear/getMonth/getDate leen la TZ del proceso, no el reloj JS)
+          env: { TZ: "America/La_Paz" },
         },
         resolve: { alias },
       },
@@ -31,6 +34,8 @@ export default defineConfig({
             "features/reports/__tests__/**/*.test.tsx",
           ],
           setupFiles: ["./vitest.setup.ts"],
+          // TZ=America/La_Paz para consistencia con el proyecto node
+          env: { TZ: "America/La_Paz" },
         },
         resolve: { alias },
       },
