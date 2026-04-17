@@ -191,14 +191,13 @@ describe("LcvIndicator — S3 (guardado, vinculado al LCV)", () => {
 
     // Las opciones del menú deben ser visibles tras el click
     expect(
-      await screen.findByText(/ver detalle lcv/i),
-    ).toBeInTheDocument();
-    expect(
       await screen.findByText(/editar/i),
     ).toBeInTheDocument();
     expect(
       await screen.findByText(/desvincular del lcv/i),
     ).toBeInTheDocument();
+    // "Ver detalle LCV" fue removido — no debe aparecer
+    expect(screen.queryByText(/ver detalle lcv/i)).not.toBeInTheDocument();
   });
 
   it("LCV-S3-3 — item 'Editar' del menú S3 llama a onEdit", async () => {
