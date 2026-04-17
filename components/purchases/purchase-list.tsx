@@ -73,8 +73,8 @@ const STATUS_BADGE: Record<string, { label: string; className: string }> = {
 const PURCHASE_TYPE_LABEL: Record<string, string> = {
   FLETE: "Flete",
   POLLO_FAENADO: "Pollo Faenado",
-  COMPRA_GENERAL: "Compra General",
-  SERVICIO: "Servicio",
+  COMPRA_GENERAL: "Compra / Servicio",
+  SERVICIO: "Compra / Servicio",
 };
 
 // ── Props ──
@@ -91,7 +91,13 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   const filtered = purchases.filter((p) => {
-    if (typeFilter !== "all" && p.purchaseType !== typeFilter) return false;
+    if (typeFilter !== "all") {
+      if (typeFilter === "COMPRA_GENERAL_O_SERVICIO") {
+        if (p.purchaseType !== "COMPRA_GENERAL" && p.purchaseType !== "SERVICIO") return false;
+      } else if (p.purchaseType !== typeFilter) {
+        return false;
+      }
+    }
     if (statusFilter !== "all" && p.status !== statusFilter) return false;
     return true;
   });
@@ -170,7 +176,7 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
   return (
     <>
       {/* Type cards / quick create */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -222,37 +228,15 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
                 <ShoppingCart className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <CardTitle className="text-sm">Compra General</CardTitle>
-                <CardDescription className="text-xs">Compras diversas</CardDescription>
+                <CardTitle className="text-sm">Compra / Servicio</CardTitle>
+                <CardDescription className="text-xs">Compras y servicios contratados</CardDescription>
               </div>
             </div>
             <CardAction>
               <Link href={`/${orgSlug}/purchases/new?type=COMPRA_GENERAL`}>
                 <Button size="sm">
                   <Plus className="h-4 w-4 mr-1" />
-                  Nuevo
-                </Button>
-              </Link>
-            </CardAction>
-          </CardHeader>
-        </Card>
-
-        <Card className="cursor-pointer transition-shadow hover:shadow-md">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <Wrench className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <CardTitle className="text-sm">Servicio</CardTitle>
-                <CardDescription className="text-xs">Servicios contratados</CardDescription>
-              </div>
-            </div>
-            <CardAction>
-              <Link href={`/${orgSlug}/purchases/new?type=SERVICIO`}>
-                <Button size="sm">
-                  <Plus className="h-4 w-4 mr-1" />
-                  Nuevo
+                  Nueva Compra / Servicio
                 </Button>
               </Link>
             </CardAction>
@@ -274,8 +258,7 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
                   <SelectItem value="all">Todos</SelectItem>
                   <SelectItem value="FLETE">Flete</SelectItem>
                   <SelectItem value="POLLO_FAENADO">Pollo Faenado</SelectItem>
-                  <SelectItem value="COMPRA_GENERAL">Compra General</SelectItem>
-                  <SelectItem value="SERVICIO">Servicio</SelectItem>
+                  <SelectItem value="COMPRA_GENERAL_O_SERVICIO">Compras y Servicios</SelectItem>
                 </SelectContent>
               </Select>
             </div>
