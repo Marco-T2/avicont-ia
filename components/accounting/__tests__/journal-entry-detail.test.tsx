@@ -62,6 +62,90 @@ function makeDetailEntry(overrides: Record<string, unknown> = {}) {
   };
 }
 
+// ── T7.1–T7.6 RED: "Editar" button visibility follows period-gate + origin rule (REQ-A.2) ──
+
+describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
+  it("T7.1 — DRAFT manual + periodStatus=OPEN → Editar button renders with /edit link", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry({ status: "DRAFT", sourceType: null }) as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />,
+    );
+    const editButton = screen.getByRole("link", { name: /editar/i });
+    expect(editButton).toBeInTheDocument();
+    expect(editButton).toHaveAttribute("href", "/test-org/accounting/journal/je-1/edit");
+  });
+
+  it("T7.2 — POSTED manual (sourceType=null) + periodStatus=OPEN → Editar button renders", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry({ status: "POSTED", sourceType: null }) as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />,
+    );
+    expect(screen.getByRole("link", { name: /editar/i })).toBeInTheDocument();
+  });
+
+  it("T7.3 — POSTED auto (sourceType=sale) + periodStatus=OPEN → Editar button hidden", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry({ status: "POSTED", sourceType: "sale" }) as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /editar/i })).not.toBeInTheDocument();
+  });
+
+  it("T7.4 — DRAFT manual + periodStatus=CLOSED → Editar button hidden", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry({ status: "DRAFT", sourceType: null }) as any}
+        periodName="Abril 2026"
+        periodStatus="CLOSED"
+        voucherTypeName="Egreso"
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /editar/i })).not.toBeInTheDocument();
+  });
+
+  it("T7.5 — POSTED manual + periodStatus=CLOSED → Editar button hidden", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry({ status: "POSTED", sourceType: null }) as any}
+        periodName="Abril 2026"
+        periodStatus="CLOSED"
+        voucherTypeName="Egreso"
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /editar/i })).not.toBeInTheDocument();
+  });
+
+  it("T7.6 — VOIDED + periodStatus=OPEN → Editar button hidden", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry({ status: "VOIDED", sourceType: null }) as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />,
+    );
+    expect(screen.queryByRole("link", { name: /editar/i })).not.toBeInTheDocument();
+  });
+});
+
 // ── T4.2: detail renders origin badge in metadata section ──
 
 describe("JournalEntryDetail — origin badge (REQ-B.2)", () => {
