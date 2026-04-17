@@ -42,6 +42,7 @@ import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lc
 import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purchase";
 import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
 import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
+import { todayLocal } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -212,7 +213,7 @@ export default function PurchaseForm({
   const [date, setDate] = useState(
     purchase?.date
       ? new Date(purchase.date).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+      : todayLocal(),
   );
   const [referenceNumber, setReferenceNumber] = useState(
     purchase?.referenceNumber != null ? String(purchase.referenceNumber) : "",
