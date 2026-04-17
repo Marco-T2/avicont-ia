@@ -41,8 +41,13 @@ export default async function EditJournalEntryPage({
     notFound();
   }
 
-  // Only DRAFT entries can be edited
-  if (entry.status !== "DRAFT") {
+  // REQ-A.1: DRAFT entries and POSTED manual entries (sourceType=null) are editable.
+  // POSTED auto-generated entries and VOIDED entries redirect to the detail view.
+  const isEditable =
+    entry.status === "DRAFT" ||
+    (entry.status === "POSTED" && entry.sourceType === null);
+
+  if (!isEditable) {
     redirect(`/${orgSlug}/accounting/journal/${entryId}`);
   }
 
