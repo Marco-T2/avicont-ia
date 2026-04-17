@@ -5,6 +5,8 @@
  *   S1 — borrador/no guardado → deshabilitado, sin interacción
  *   S2 — guardado, sin IvaSalesBook → botón neutro, onRegister al hacer click
  *   S3 — guardado, con IvaSalesBook → emerald, DropdownMenu con Ver/Editar/Desvincular
+ *
+ * T1.1 — PR1 — import path apunta a @/components/common/lcv-indicator
  */
 
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
