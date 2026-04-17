@@ -21,6 +21,10 @@ import {
 import { ArrowLeft, Loader2, Pencil, CheckCircle, XCircle } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
+import {
+  sourceTypeLabel,
+  sourceTypeBadgeClassName,
+} from "@/features/accounting/journal.ui";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
@@ -62,6 +66,7 @@ interface JournalEntryDetailProps {
     status: string;
     periodId: string;
     voucherTypeId: string;
+    sourceType?: string | null;
     createdAt?: string;
     contact?: { name: string } | null;
     lines: JournalLine[];
@@ -196,6 +201,16 @@ export default function JournalEntryDetail({
             <div>
               <dt className="text-gray-500">Tipo de Comprobante</dt>
               <dd className="font-medium mt-0.5">{voucherTypeName}</dd>
+            </div>
+            <div>
+              <dt className="text-gray-500">Origen</dt>
+              <dd className="mt-0.5">
+                <Badge
+                  className={sourceTypeBadgeClassName(entry.sourceType ?? null)}
+                >
+                  {sourceTypeLabel(entry.sourceType ?? null)}
+                </Badge>
+              </dd>
             </div>
             {entry.contact && (
               <div>
