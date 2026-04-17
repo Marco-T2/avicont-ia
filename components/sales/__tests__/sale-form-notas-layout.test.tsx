@@ -194,12 +194,13 @@ describe("SaleForm — DRAFT state bottom-row (T4.3/T4.4 REQ-A.4)", () => {
 // ── T4.5/T4.6: Resumen payment rows right-aligned, no table ──
 
 describe("SaleForm — Resumen de Cobros right-aligned payments (T4.5/T4.6 REQ-A.5)", () => {
-  it("A.5.1 — Resumen payment block has ml-auto class (right-aligned)", () => {
+  it("A.5.1 — Resumen rows use justify-between + w-full so amounts share the right edge", () => {
     const { container } = renderForm({ status: "POSTED", receivable: BASE_RECEIVABLE });
     const bottomRow = container.querySelector("[data-testid='bottom-row']");
-    // Find the payment rows wrapper inside Resumen
-    const mlAutoEl = bottomRow?.querySelector(".ml-auto");
-    expect(mlAutoEl).toBeInTheDocument();
+    const wFullEl = bottomRow?.querySelector(".w-full.flex-col");
+    expect(wFullEl).toBeInTheDocument();
+    const justifyRows = bottomRow?.querySelectorAll(".justify-between");
+    expect(justifyRows?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 
   it("A.5.2 — Resumen does NOT use a <table> element", () => {

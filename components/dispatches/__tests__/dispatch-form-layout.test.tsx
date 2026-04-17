@@ -222,11 +222,13 @@ describe("DispatchForm BC — Notas bottom-row layout (T5.3/T5.4 REQ-B.2)", () =
 // ── T5.5/T5.6: Resumen right-aligned (ml-auto, no table) ──
 
 describe("DispatchForm — Resumen right-aligned, no table (T5.5/T5.6 REQ-B.3)", () => {
-  it("B.3.1 — Resumen payment block has ml-auto class (right-aligned) in NDD", () => {
+  it("B.3.1 — Resumen rows use justify-between + w-full so amounts share the right edge (NDD)", () => {
     const { container } = renderNDD();
     const bottomRow = container.querySelector("[data-testid='bottom-row-dispatch']");
-    const mlAutoEl = bottomRow?.querySelector(".ml-auto");
-    expect(mlAutoEl).toBeInTheDocument();
+    const wFullEl = bottomRow?.querySelector(".w-full.flex-col");
+    expect(wFullEl).toBeInTheDocument();
+    const justifyRows = bottomRow?.querySelectorAll(".justify-between");
+    expect(justifyRows?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 
   it("B.3.2 — Resumen does NOT use a <table> element in NDD", () => {
@@ -236,11 +238,13 @@ describe("DispatchForm — Resumen right-aligned, no table (T5.5/T5.6 REQ-B.3)",
     expect(table).toBeNull();
   });
 
-  it("B.3.3 — Resumen payment block has ml-auto class (right-aligned) in BC", () => {
+  it("B.3.3 — Resumen rows use justify-between + w-full so amounts share the right edge (BC)", () => {
     const { container } = renderBC();
     const bottomRow = container.querySelector("[data-testid='bottom-row-dispatch']");
-    const mlAutoEl = bottomRow?.querySelector(".ml-auto");
-    expect(mlAutoEl).toBeInTheDocument();
+    const wFullEl = bottomRow?.querySelector(".w-full.flex-col");
+    expect(wFullEl).toBeInTheDocument();
+    const justifyRows = bottomRow?.querySelectorAll(".justify-between");
+    expect(justifyRows?.length ?? 0).toBeGreaterThanOrEqual(2);
   });
 
   it("B.3.4 — Resumen does NOT use a <table> element in BC", () => {
