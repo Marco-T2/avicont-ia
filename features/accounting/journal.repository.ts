@@ -47,6 +47,12 @@ export class JournalRepository extends BaseRepository {
       where.status = filters.status;
     }
 
+    if (filters?.origin === "manual") {
+      where.sourceType = null;
+    } else if (filters?.origin === "auto") {
+      where.sourceType = { not: null };
+    }
+
     return this.db.journalEntry.findMany({
       where,
       include: journalIncludeLines,

@@ -166,7 +166,9 @@ describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
         filters={{}}
       />,
     );
-    expect(screen.getByText("Origen")).toBeInTheDocument();
+    // "Origen" appears both as filter Label and as table <th> column header
+    const origenElements = screen.getAllByText("Origen");
+    expect(origenElements.length).toBeGreaterThanOrEqual(1);
   });
 
   it("T5.4b — filters.origin='auto' → Select shows value 'Automático'", () => {

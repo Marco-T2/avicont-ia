@@ -72,6 +72,7 @@ interface JournalEntryListProps {
     periodId?: string;
     voucherTypeId?: string;
     status?: string;
+    origin?: "manual" | "auto";
   };
 }
 
@@ -94,6 +95,7 @@ export default function JournalEntryList({
     if (filters.periodId) params.set("periodId", filters.periodId);
     if (filters.voucherTypeId) params.set("voucherTypeId", filters.voucherTypeId);
     if (filters.status) params.set("status", filters.status);
+    if (filters.origin) params.set("origin", filters.origin);
 
     if (value && value !== "all") {
       params.set(key, value);
@@ -109,7 +111,7 @@ export default function JournalEntryList({
     router.push(`/${orgSlug}/accounting/journal`);
   }
 
-  const hasFilters = !!(filters.periodId || filters.voucherTypeId || filters.status);
+  const hasFilters = !!(filters.periodId || filters.voucherTypeId || filters.status || filters.origin);
 
   return (
     <>
@@ -171,6 +173,23 @@ export default function JournalEntryList({
                   <SelectItem value="DRAFT">Borrador</SelectItem>
                   <SelectItem value="POSTED">Contabilizado</SelectItem>
                   <SelectItem value="VOIDED">Anulado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-sm">Origen</Label>
+              <Select
+                value={filters.origin ?? "all"}
+                onValueChange={(v) => applyFilter("origin", v)}
+              >
+                <SelectTrigger className="w-40">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  <SelectItem value="manual">Manual</SelectItem>
+                  <SelectItem value="auto">Automático</SelectItem>
                 </SelectContent>
               </Select>
             </div>

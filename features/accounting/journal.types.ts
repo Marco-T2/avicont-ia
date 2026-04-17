@@ -48,6 +48,7 @@ export interface JournalFilters {
   periodId?: string;
   voucherTypeId?: string;
   status?: JournalEntryStatus;
+  origin?: "manual" | "auto" | "all";
 }
 
 // ── Composite types ──
