@@ -16,6 +16,7 @@ import {
   CONTACT_REQUIRED_FOR_ACCOUNT,
   REFERENCE_NUMBER_DUPLICATE,
   ENTRY_SYSTEM_GENERATED_IMMUTABLE,
+  AUTO_ENTRY_VOID_FORBIDDEN,
 } from "@/features/shared/errors";
 import {
   validateLockedEdit,
@@ -552,6 +553,16 @@ export class JournalService {
   ): Promise<JournalEntryWithLines> {
     const entry = await this.repo.findById(organizationId, id);
     if (!entry) throw new NotFoundError("Asiento contable");
+
+    // REQ-E.1: auto-generated entries cannot be voided via the public API.
+    // Internal cascades (SaleService, PurchaseService, etc.) use tx.journalEntry.update
+    // directly and never call transitionStatus — so this guard is safe (D.1, D.7).
+    if (targetStatus === "VOIDED" && entry.sourceType !== null) {
+      throw new ValidationError(
+        "Este asiento fue generado automáticamente. Para anularlo, anulá el documento de origen (Venta, Compra, Despacho o Pago).",
+        AUTO_ENTRY_VOID_FORBIDDEN,
+      );
+    }
 
     if (entry.status === "VOIDED") {
       throw new ValidationError(
