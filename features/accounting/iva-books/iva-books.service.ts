@@ -682,4 +682,21 @@ export class IvaBooksService {
 
     return result;
   }
+
+  async reactivatePurchase(
+    orgId: string,
+    userId: string,
+    id: string,
+  ): Promise<IvaPurchaseBookDTO> {
+    // status = ACTIVE — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
+    const result = await this.repo.reactivatePurchase(orgId, id);
+
+    // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
+    const purchaseId = result.purchaseId;
+    if (purchaseId && userId) {
+      await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId);
+    }
+
+    return result;
+  }
 }

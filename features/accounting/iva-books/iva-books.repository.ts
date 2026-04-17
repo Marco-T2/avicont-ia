@@ -443,4 +443,24 @@ export class IvaBooksRepository extends BaseRepository {
 
     return toSaleDTO(row);
   }
+
+  async reactivatePurchase(orgId: string, id: string): Promise<IvaPurchaseBookDTO> {
+    const existing = await this.db.ivaPurchaseBook.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!existing) throw new NotFoundError("Entrada de Libro de Compras");
+
+    // Guard: solo se puede reactivar desde VOIDED (idempotencia/sanidad)
+    if (existing.status !== "VOIDED") {
+      throw new ConflictError("La entrada ya está activa (status !== VOIDED)");
+    }
+
+    // SOLO status — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
+    const row = await this.db.ivaPurchaseBook.update({
+      where: { id },
+      data: { status: "ACTIVE" },
+    });
+
+    return toPurchaseDTO(row);
+  }
 }
