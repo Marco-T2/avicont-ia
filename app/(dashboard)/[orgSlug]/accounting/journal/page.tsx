@@ -46,6 +46,13 @@ export default async function JournalPage({
   if (sp.status && typeof sp.status === "string") {
     filters.status = sp.status;
   }
+  if (
+    sp.origin &&
+    typeof sp.origin === "string" &&
+    (sp.origin === "manual" || sp.origin === "auto")
+  ) {
+    filters.origin = sp.origin;
+  }
 
   const [entries, periods, voucherTypes] = await Promise.all([
     journalService.list(orgId, filters),
@@ -70,6 +77,10 @@ export default async function JournalPage({
           voucherTypeId:
             typeof sp.voucherTypeId === "string" ? sp.voucherTypeId : undefined,
           status: typeof sp.status === "string" ? sp.status : undefined,
+          origin:
+            sp.origin === "manual" || sp.origin === "auto"
+              ? (sp.origin as "manual" | "auto")
+              : undefined,
         }}
       />
     </div>
