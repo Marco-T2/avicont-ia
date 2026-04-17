@@ -43,9 +43,13 @@ vi.mock("@/features/accounting", () => ({
   }),
 }));
 
+const { mockPeriodsList } = vi.hoisted(() => ({
+  mockPeriodsList: vi.fn(),
+}));
+
 vi.mock("@/features/fiscal-periods", () => ({
   FiscalPeriodsService: vi.fn().mockImplementation(function () {
-    return { list: vi.fn().mockResolvedValue([]) };
+    return { list: mockPeriodsList };
   }),
 }));
 
@@ -68,6 +72,7 @@ function makeEntry(
   status: string,
   sourceType: string | null,
   id = "je-test-001",
+  periodId = "period-001",
 ) {
   return {
     id,
@@ -77,7 +82,7 @@ function makeEntry(
     number: 1,
     date: new Date("2026-01-15"),
     description: "Test entry",
-    periodId: "period-001",
+    periodId,
     voucherTypeId: "vt-001",
     referenceNumber: null,
     createdById: "user-001",
@@ -85,6 +90,18 @@ function makeEntry(
     updatedAt: new Date(),
     lines: [],
     voucherType: { id: "vt-001", name: "VG", prefix: "VG" },
+  };
+}
+
+function makePeriod(id: string, status: "OPEN" | "CLOSED") {
+  return {
+    id,
+    organizationId: "org-db-id",
+    name: `Período ${id}`,
+    status,
+    year: 2026,
+    startDate: new Date("2026-01-01"),
+    endDate: new Date("2026-12-31"),
   };
 }
 
@@ -97,6 +114,8 @@ function makeParams() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Default: return an OPEN period for period-001
+  mockPeriodsList.mockResolvedValue([makePeriod("period-001", "OPEN")]);
 });
 
 // ── T3.3 — DRAFT manual → renders (regression check, should pass before T3.5) ──
@@ -168,5 +187,31 @@ describe("EditJournalEntryPage — VOIDED (REQ-A.1)", () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       `/${ORG_SLUG}/accounting/journal/${ENTRY_ID}`,
     );
+  });
+});
+
+// ── T7.8 — DRAFT manual + period CLOSED → notFound (period-gate) ─────────────
+// RED: current guard does not check period.status, so these will pass through.
+
+describe("EditJournalEntryPage — period CLOSED gate (REQ-A.1 amended, PR7)", () => {
+  it("T7.8 — DRAFT manual + period CLOSED → notFound or redirect (immutable)", async () => {
+    mockGetById.mockResolvedValue(makeEntry("DRAFT", null, ENTRY_ID, "period-closed"));
+    mockPeriodsList.mockResolvedValue([makePeriod("period-closed", "CLOSED")]);
+
+    await EditJournalEntryPage({ params: makeParams() });
+
+    // Either notFound() or redirect() must have been called — period is closed
+    const blocked = mockNotFound.mock.calls.length > 0 || mockRedirect.mock.calls.length > 0;
+    expect(blocked).toBe(true);
+  });
+
+  it("T7.9 — POSTED manual + period CLOSED → notFound or redirect (immutable)", async () => {
+    mockGetById.mockResolvedValue(makeEntry("POSTED", null, ENTRY_ID, "period-closed"));
+    mockPeriodsList.mockResolvedValue([makePeriod("period-closed", "CLOSED")]);
+
+    await EditJournalEntryPage({ params: makeParams() });
+
+    const blocked = mockNotFound.mock.calls.length > 0 || mockRedirect.mock.calls.length > 0;
+    expect(blocked).toBe(true);
   });
 });
