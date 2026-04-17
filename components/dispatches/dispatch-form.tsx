@@ -1424,15 +1424,18 @@ export default function DispatchForm({
               <CardTitle className="text-base">Resumen de Cobros</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col gap-1 ml-auto w-fit text-sm">
-                <div className="flex gap-4 border-b pb-2 font-semibold">
+              <div className="flex flex-col gap-1 w-full text-sm">
+                <div className="flex justify-between items-start gap-4 border-b pb-2 font-semibold">
                   <span>Total CxC (Bs.)</span>
-                  <span className="font-mono">
+                  <span className="font-mono text-right">
                     {totalCxC.toLocaleString("es-BO")}
                   </span>
                 </div>
                 {existingDispatch.receivable.allocations.map((alloc) => (
-                  <div key={alloc.id} className="flex gap-4 text-muted-foreground py-1">
+                  <div
+                    key={alloc.id}
+                    className="flex justify-between items-start gap-4 text-muted-foreground py-1"
+                  >
                     <Link
                       href={`/${orgSlug}/payments/${alloc.paymentId}`}
                       className="underline underline-offset-2 hover:text-foreground transition-colors"
@@ -1440,20 +1443,20 @@ export default function DispatchForm({
                       Pago el{" "}
                       {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
                     </Link>
-                    <span className="font-mono text-green-700">
+                    <span className="font-mono text-green-700 text-right whitespace-nowrap">
                       -{formatCurrency(alloc.amount)}
                     </span>
                   </div>
                 ))}
                 <div
-                  className={`flex gap-4 border-t-2 pt-2 font-bold ${
+                  className={`flex justify-between items-start gap-4 border-t-2 pt-2 font-bold ${
                     existingDispatch.receivable.balance > 0
                       ? "text-red-600"
                       : "text-green-700"
                   }`}
                 >
                   <span className="text-foreground">Saldo pendiente</span>
-                  <span className="font-mono">
+                  <span className="font-mono text-right">
                     {formatCurrency(existingDispatch.receivable.balance)}
                   </span>
                 </div>
