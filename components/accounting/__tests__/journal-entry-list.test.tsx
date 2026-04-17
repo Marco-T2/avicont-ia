@@ -1,9 +1,9 @@
 /**
- * T4.1 RED (REQ-B.1, S-B1.1..S-B1.5)
+ * T4.1 RED (REQ-B.1, S-B1.1..S-B1.5) — origin badge in list rows
+ * T5.4 RED (REQ-C.1, S-C1.5) — Origen <Select> filter control renders with correct value
  *
- * JournalEntryList renders an origin badge for each entry using
- * sourceTypeLabel(). Fails until JournalEntry interface and badge cell
- * are added in T4.3 GREEN.
+ * T4.1 fails until JournalEntry interface and badge cell are added (T4.3).
+ * T5.4 fails until the Origen Select control is added to filters bar (T5.8).
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -150,5 +150,49 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     expect(screen.getByText("Generado por Compra")).toBeInTheDocument();
     expect(screen.getByText("Generado por Despacho")).toBeInTheDocument();
     expect(screen.getByText("Generado por Pago")).toBeInTheDocument();
+  });
+});
+
+// ── T5.4: Origen <Select> filter control (REQ-C.1, S-C1.5) ──
+
+describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
+  it("T5.4a — Origen Select label is rendered in the filters bar", () => {
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={[]}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{}}
+      />,
+    );
+    expect(screen.getByText("Origen")).toBeInTheDocument();
+  });
+
+  it("T5.4b — filters.origin='auto' → Select shows value 'Automático'", () => {
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={[]}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{ origin: "auto" }}
+      />,
+    );
+    // The SelectTrigger value text should be visible
+    expect(screen.getByText("Automático")).toBeInTheDocument();
+  });
+
+  it("T5.4c — filters.origin='manual' → Select shows value 'Manual'", () => {
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={[]}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{ origin: "manual" }}
+      />,
+    );
+    expect(screen.getByText("Manual")).toBeInTheDocument();
   });
 });
