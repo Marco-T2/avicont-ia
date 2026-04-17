@@ -668,30 +668,17 @@ export default function SaleForm({
                 </div>
               </div>
 
-              {/* Descripción y Notas */}
-              <div className="grid grid-cols-1 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="sale-description">Descripción</Label>
-                  <Input
-                    id="sale-description"
-                    placeholder="Descripción del documento"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    readOnly={isReadOnly}
-                    className={isReadOnly ? "bg-muted cursor-default text-xs" : "text-xs"}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="sale-notes">Notas (opcional)</Label>
-                  <Textarea
-                    id="sale-notes"
-                    placeholder="Observaciones adicionales..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    readOnly={isReadOnly}
-                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
-                  />
-                </div>
+              {/* Descripción */}
+              <div className="space-y-2">
+                <Label htmlFor="sale-description">Descripción</Label>
+                <Input
+                  id="sale-description"
+                  placeholder="Descripción del documento"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  readOnly={isReadOnly}
+                  className={isReadOnly ? "bg-muted cursor-default text-xs" : "text-xs"}
+                />
               </div>
             </>
           )}
@@ -840,53 +827,63 @@ export default function SaleForm({
         </CardContent>
       </Card>
 
-      {/* Resumen de cobros (CxC) */}
-      {sale?.receivable != null && (status === "POSTED" || status === "LOCKED") && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Resumen de Cobros (CxC)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <tbody>
-                <tr className="border-b font-semibold">
-                  <td className="py-2">Total CxC (Bs.)</td>
-                  <td className="py-2 text-right font-mono">
-                    {formatCurrency(sale.receivable.amount)}
-                  </td>
-                </tr>
+      {/* Fila inferior: Notas (izq) + Resumen de Cobros (der) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="bottom-row">
+        {/* Notas — siempre visible en slot izquierdo */}
+        <div className="space-y-2">
+          <Label htmlFor="sale-notes">Notas (opcional)</Label>
+          <Textarea
+            id="sale-notes"
+            placeholder="Observaciones adicionales..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-muted cursor-default" : undefined}
+          />
+        </div>
+
+        {/* Resumen de Cobros — slot derecho, solo cuando hay receivable */}
+        {sale?.receivable != null && (status === "POSTED" || status === "LOCKED") ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Resumen de Cobros (CxC)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-1 ml-auto w-fit text-sm">
+                <div className="flex gap-4 border-b pb-2 font-semibold">
+                  <span>Total CxC (Bs.)</span>
+                  <span className="font-mono">{formatCurrency(sale.receivable.amount)}</span>
+                </div>
                 {sale.receivable.allocations.map((alloc) => (
-                  <tr key={alloc.id} className="text-muted-foreground">
-                    <td className="py-1.5">
-                      <Link
-                        href={`/${orgSlug}/payments/${alloc.paymentId}`}
-                        className="underline underline-offset-2 hover:text-foreground transition-colors"
-                      >
-                        Cobro el{" "}
-                        {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
-                        {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
-                      </Link>
-                    </td>
-                    <td className="py-1.5 text-right font-mono text-green-700">
+                  <div key={alloc.id} className="flex gap-4 text-muted-foreground py-1">
+                    <Link
+                      href={`/${orgSlug}/payments/${alloc.paymentId}`}
+                      className="underline underline-offset-2 hover:text-foreground transition-colors"
+                    >
+                      Cobro el{" "}
+                      {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
+                      {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
+                    </Link>
+                    <span className="font-mono text-green-700">
                       -{formatCurrency(alloc.amount)}
-                    </td>
-                  </tr>
+                    </span>
+                  </div>
                 ))}
-                <tr className="border-t-2 font-bold">
-                  <td className="py-2">Saldo pendiente</td>
-                  <td
-                    className={`py-2 text-right font-mono ${
-                      sale.receivable.balance > 0 ? "text-red-600" : "text-green-700"
-                    }`}
-                  >
-                    {formatCurrency(sale.receivable.balance)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
+                <div
+                  className={`flex gap-4 border-t-2 pt-2 font-bold ${
+                    sale.receivable.balance > 0 ? "text-red-600" : "text-green-700"
+                  }`}
+                >
+                  <span className="text-foreground">Saldo pendiente</span>
+                  <span className="font-mono">{formatCurrency(sale.receivable.balance)}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div />
+        )}
+      </div>
 
       {/* Acciones */}
       <div className="flex justify-between gap-3">
