@@ -44,7 +44,7 @@ import { UnlinkLcvConfirmDialog } from "@/components/sales/unlink-lcv-confirm-di
 import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
 import { ReactivateLcvConfirmDialog } from "@/components/sales/reactivate-lcv-confirm-dialog";
 import { useLcvReactivate } from "@/components/sales/use-lcv-reactivate";
-import { todayLocal } from "@/lib/date-utils";
+import { todayLocal, formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -543,7 +543,7 @@ export default function SaleForm({
               <div>
                 <dt className="text-muted-foreground">Fecha</dt>
                 <dd className="font-medium mt-0.5">
-                  {new Date(sale!.date).toLocaleDateString("es-BO")}
+                  {formatDateBO(sale!.date)}
                 </dd>
               </div>
               <div>
@@ -886,7 +886,7 @@ export default function SaleForm({
                       className="underline underline-offset-2 hover:text-foreground transition-colors"
                     >
                       Cobro el{" "}
-                      {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
+                      {formatDateBO(alloc.payment.date)}
                       {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
                     </Link>
                     <span className="font-mono text-green-700 text-right whitespace-nowrap">

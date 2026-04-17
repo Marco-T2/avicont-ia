@@ -27,7 +27,7 @@ import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import { JustificationModal } from "@/components/shared/justification-modal";
-import { todayLocal } from "@/lib/date-utils";
+import { todayLocal, formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -792,7 +792,7 @@ export default function DispatchForm({
                 <div>
                   <dt className="text-muted-foreground">Fecha</dt>
                   <dd className="font-medium mt-0.5">
-                    {new Date(existingDispatch.date).toLocaleDateString("es-BO")}
+                    {formatDateBO(existingDispatch.date)}
                   </dd>
                 </div>
                 <div>
@@ -1442,7 +1442,7 @@ export default function DispatchForm({
                       className="underline underline-offset-2 hover:text-foreground transition-colors"
                     >
                       Pago el{" "}
-                      {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
+                      {formatDateBO(alloc.payment.date)}
                     </Link>
                     <span className="font-mono text-green-700 text-right whitespace-nowrap">
                       -{formatCurrency(alloc.amount)}

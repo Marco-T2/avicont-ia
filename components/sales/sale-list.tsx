@@ -42,6 +42,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import type { SaleWithDetails } from "@/features/sale";
+import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -50,14 +51,6 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -254,7 +247,7 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                           {sale.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          {formatDate(sale.date)}
+                          {formatDateBO(sale.date)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(sale.totalAmount)}
