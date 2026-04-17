@@ -20,20 +20,13 @@ import {
   sourceTypeLabel,
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
+import { formatDateBO } from "@/lib/date-utils";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -293,7 +286,7 @@ export default function JournalEntryList({
                           {entry.referenceNumber ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          {formatDate(entry.date)}
+                          {formatDateBO(entry.date)}
                         </td>
                         <td className="py-3 px-4">{voucherName}</td>
                         <td className="py-3 px-4 text-gray-500">{periodName}</td>

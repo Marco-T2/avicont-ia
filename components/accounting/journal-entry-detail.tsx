@@ -25,20 +25,13 @@ import {
   sourceTypeLabel,
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
+import { formatDateBO } from "@/lib/date-utils";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric",
-  });
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -192,7 +185,7 @@ export default function JournalEntryDetail({
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
               <dt className="text-gray-500">Fecha</dt>
-              <dd className="font-medium mt-0.5">{formatDate(entry.date)}</dd>
+              <dd className="font-medium mt-0.5">{formatDateBO(entry.date)}</dd>
             </div>
             <div>
               <dt className="text-gray-500">Período</dt>
@@ -222,7 +215,7 @@ export default function JournalEntryDetail({
               <div>
                 <dt className="text-gray-500">Creado</dt>
                 <dd className="font-medium mt-0.5">
-                  {formatDate(entry.createdAt)}
+                  {formatDateBO(entry.createdAt)}
                 </dd>
               </div>
             )}
