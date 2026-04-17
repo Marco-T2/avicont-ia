@@ -20,6 +20,7 @@ import {
 import { Plus, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { Account } from "@/generated/prisma/client";
+import { todayLocal } from "@/lib/date-utils";
 
 interface JournalLineRow {
   id: string;
@@ -56,9 +57,7 @@ export default function CreateJournalEntryForm({
   onCreated,
 }: CreateJournalEntryFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [date, setDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
+  const [date, setDate] = useState(todayLocal());
   const [description, setDescription] = useState("");
   const [voucherType, setVoucherType] = useState("");
   const [lines, setLines] = useState<JournalLineRow[]>([

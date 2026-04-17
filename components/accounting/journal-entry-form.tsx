@@ -24,6 +24,7 @@ import Link from "next/link";
 import JournalLineRow, { type JournalLineData } from "./journal-line-row";
 import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
+import { todayLocal } from "@/lib/date-utils";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
@@ -79,7 +80,7 @@ export default function JournalEntryForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingAndPosting, setIsCreatingAndPosting] = useState(false);
   const [date, setDate] = useState(
-    editEntry?.date ?? new Date().toISOString().split("T")[0],
+    editEntry?.date ?? todayLocal(),
   );
   const [description, setDescription] = useState(editEntry?.description ?? "");
   const [periodId, setPeriodId] = useState(
