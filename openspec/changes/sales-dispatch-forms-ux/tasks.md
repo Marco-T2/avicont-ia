@@ -21,10 +21,10 @@
 
 ## PR3: Sale form header row 2 + footer cleanup
 
-- [ ] T3.1 RED (REQ-A.1) — Extend `components/sales/__tests__/sale-form-iva-gate.test.tsx` (or new file): saved sale renders `<LcvIndicator>` in header row 2 alongside Cliente and Total.
-- [ ] T3.2 GREEN (REQ-A.1) — In `sale-form.tsx` line ~597: add third column to `grid-cols-2` row → `sm:grid-cols-3`; insert `<LcvIndicator>` with derived state `(isEditMode, sale?.id, sale?.ivaSalesBook)`. Wire `onRegister → setIvaModalOpen(true)`, `onEdit → setIvaModalOpen(true)`, `onUnlink → setUnlinkDialogOpen(true)`. AC: T3.1 green.
-- [ ] T3.3 RED (REQ-A.1/removal) — Test: footer does NOT render "Registrar Libro de Ventas" button in any state.
-- [ ] T3.4 GREEN (REQ-A.1/removal) — Remove block `lines 873–887` from `sale-form.tsx`. AC: T3.3 green + tsc clean.
+- [x] T3.1 RED (REQ-A.1) — Created `components/sales/__tests__/sale-form-lcv-header.test.tsx`: 5 tests asserting LcvIndicator in header row 2, S1/S2/S3 state derivation, sm:grid-cols-3 class. RED confirmed (4 fail).
+- [x] T3.2 GREEN (REQ-A.1) — In `sale-form.tsx`: added `LcvIndicator`, `useLcvUnlink`, `UnlinkLcvConfirmDialog` imports + `deriveLcvState` helper; changed header row 2 to `sm:grid-cols-3`; wired `onRegister/onEdit → setIvaModalOpen(true)`, `onUnlink → setUnlinkDialogOpen(true)`; added `UnlinkLcvConfirmDialog` at bottom of JSX. AC: all 5 tests green.
+- [x] T3.3 RED (REQ-A.1/removal) — Created `components/sales/__tests__/sale-form-footer-lcv-removed.test.tsx`: 4 tests asserting footer NOT rendering old LCV button. RED confirmed (4 fail).
+- [x] T3.4 GREEN (REQ-A.1/removal) — Removed footer button block (BookOpen + "Registrar/Editar Libro de Ventas"); removed dead imports (`BookOpen`, `FISCAL_PERIOD_CLOSED_MESSAGE`); updated `sale-form-iva-gate.test.tsx` to test LcvIndicator gate instead. AC: all tests green + tsc clean. 688 tests total, 0 regressions.
 
 ## PR4: Notas + Resumen layout (sale-form)
 
