@@ -39,14 +39,14 @@
 
 ## PR5: Notas + Resumen layout (dispatch-form NDD + BC)
 
-- [ ] T5.1 RED (REQ-B.1) — Create `components/dispatches/__tests__/dispatch-form-layout.test.tsx`: NDD variant — Notas shares row with Resumen (assert grid class on wrapper).
-- [ ] T5.2 GREEN (REQ-B.1) — In `dispatch-form.tsx` lines ~967–1012: replace standalone `grid-cols-1` Notas row with `grid grid-cols-1 sm:grid-cols-2 gap-4` containing Notas + Resumen slot. AC: T5.1 green.
-- [ ] T5.3 RED (REQ-B.2) — Extend test: BC variant same assertion as T5.1.
-- [ ] T5.4 GREEN (REQ-B.2) — Verify same grid change already covers BC (same component path); add BC-specific render test if branching differs. AC: T5.3 green.
-- [ ] T5.5 RED (REQ-B.3) — Test: dispatch Resumen de Cobros rows wrapper has `ml-auto` / `flex justify-end` (both NDD and BC).
-- [ ] T5.6 GREEN (REQ-B.3) — In `dispatch-form.tsx` lines ~1418–1470: replace `<table className="w-full">` in Resumen block with `<div className="flex flex-col gap-1 ml-auto w-fit">` rows. AC: T5.5 green.
-- [ ] T5.7 RED (REQ-B.1/B.2) — Test: responsive collapse — `grid-cols-1` + `sm:grid-cols-2` classes present on Notas/Resumen wrapper.
-- [ ] T5.8 GREEN (REQ-B.1/B.2) — Confirm T5.2 green step already applies responsive classes; adjust if needed. AC: T5.7 green.
+- [x] T5.1 RED (REQ-B.1) — Create `components/dispatches/__tests__/dispatch-form-layout.test.tsx`: NDD variant — Notas shares row with Resumen (assert grid class on wrapper).
+- [x] T5.2 GREEN (REQ-B.1) — In `dispatch-form.tsx` lines ~967–1012: replace standalone `grid-cols-1` Notas row with `grid grid-cols-1 sm:grid-cols-2 gap-4` containing Notas + Resumen slot. AC: T5.1 green.
+- [x] T5.3 RED (REQ-B.2) — Extend test: BC variant same assertion as T5.1.
+- [x] T5.4 GREEN (REQ-B.2) — Verify same grid change already covers BC (same component path); add BC-specific render test if branching differs. AC: T5.3 green.
+- [x] T5.5 RED (REQ-B.3) — Test: dispatch Resumen de Cobros rows wrapper has `ml-auto` / `flex justify-end` (both NDD and BC).
+- [x] T5.6 GREEN (REQ-B.3) — In `dispatch-form.tsx` lines ~1418–1470: replace `<table className="w-full">` in Resumen block with `<div className="flex flex-col gap-1 ml-auto w-fit">` rows. AC: T5.5 green.
+- [x] T5.7 RED (REQ-B.1/B.2) — Test: responsive collapse — `grid-cols-1` + `sm:grid-cols-2` classes present on Notas/Resumen wrapper.
+- [x] T5.8 GREEN (REQ-B.1/B.2) — Confirm T5.2 green step already applies responsive classes; adjust if needed. AC: T5.7 green.
 
 ## PR6: Type check + full test run + commits
 
