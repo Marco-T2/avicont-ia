@@ -38,6 +38,8 @@ import { IvaBookPurchaseModal } from "@/components/iva-books/iva-book-purchase-m
 import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
 import { LcvIndicator } from "@/components/common/lcv-indicator";
 import type { LcvState } from "@/components/common/lcv-indicator";
+import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lcv-confirm-dialog-purchase";
+import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purchase";
 
 // ── Helpers ──
 
@@ -279,10 +281,14 @@ export default function PurchaseForm({
   const [isActioning, setIsActioning] = useState(false);
   const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
-  // ── Estado y hook de desvinculación LCV (T3.2 REQ-A.1) ──
+  // ── Estado y hook de desvinculación LCV (T4.5 REQ-A.3) ──
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
+  const { handleUnlink, isPending: isUnlinking } = useLcvUnlinkPurchase(
+    orgSlug,
+    purchase?.ivaPurchaseBook?.id,
+  );
 
-  // ── Estado y hook de reactivación LCV (T3.2 REQ-A.1) ──
+  // ── Estado y hook de reactivación LCV (T3.2 REQ-A.1 stub — wired in T5.6) ──
   const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
 
   // ── Computed totals ──
@@ -1631,6 +1637,17 @@ export default function PurchaseForm({
         }}
       />
     )}
+
+    {/* Dialog de desvinculación del LCV (REQ-A.3) */}
+    <UnlinkLcvConfirmDialogPurchase
+      open={unlinkDialogOpen}
+      onOpenChange={setUnlinkDialogOpen}
+      onConfirm={async () => {
+        await handleUnlink();
+        setUnlinkDialogOpen(false);
+      }}
+      isPending={isUnlinking}
+    />
     </>
   );
 }
