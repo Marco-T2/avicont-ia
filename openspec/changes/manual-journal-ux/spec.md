@@ -111,7 +111,7 @@ El helper `sourceTypeLabel(sourceType: string | null): string` DEBE residir en `
 | `"purchase"` | `"Generado por Compra"` |
 | `"dispatch"` | `"Generado por Despacho"` |
 | `"payment"` | `"Generado por Pago"` |
-| cualquier otro string | `"Origen desconocido"` |
+| cualquier otro string | `"Generado automáticamente"` |
 
 **Escenarios:**
 
@@ -120,7 +120,7 @@ El helper `sourceTypeLabel(sourceType: string | null): string` DEBE residir en `
 - **S-B3.3**: `sourceTypeLabel("purchase")` → `"Generado por Compra"`.
 - **S-B3.4**: `sourceTypeLabel("dispatch")` → `"Generado por Despacho"`.
 - **S-B3.5**: `sourceTypeLabel("payment")` → `"Generado por Pago"`.
-- **S-B3.6**: `sourceTypeLabel("unknown_future_type")` → `"Origen desconocido"`.
+- **S-B3.6**: `sourceTypeLabel("unknown_future_type")` → `"Generado automáticamente"`.
 
 ---
 
