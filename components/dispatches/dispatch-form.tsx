@@ -27,6 +27,7 @@ import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import { JustificationModal } from "@/components/shared/justification-modal";
+import { todayLocal } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -288,7 +289,7 @@ export default function DispatchForm({
   const [date, setDate] = useState(
     existingDispatch?.date
       ? new Date(existingDispatch.date).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+      : todayLocal(),
   );
   const [referenceNumber, setReferenceNumber] = useState(
     existingDispatch?.referenceNumber !== null && existingDispatch?.referenceNumber !== undefined
