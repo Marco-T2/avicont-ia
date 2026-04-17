@@ -423,4 +423,24 @@ export class IvaBooksRepository extends BaseRepository {
 
     return toSaleDTO(row);
   }
+
+  async reactivateSale(orgId: string, id: string): Promise<IvaSalesBookDTO> {
+    const existing = await this.db.ivaSalesBook.findFirst({
+      where: { id, organizationId: orgId },
+    });
+    if (!existing) throw new NotFoundError("Entrada de Libro de Ventas");
+
+    // Guard: solo se puede reactivar desde VOIDED (idempotency/sanity)
+    if (existing.status !== "VOIDED") {
+      throw new ConflictError("La entrada ya está activa (status !== VOIDED)");
+    }
+
+    // SOLO status — estadoSIN NO se toca (orthogonal axes per design decision)
+    const row = await this.db.ivaSalesBook.update({
+      where: { id },
+      data: { status: "ACTIVE" },
+    });
+
+    return toSaleDTO(row);
+  }
 }

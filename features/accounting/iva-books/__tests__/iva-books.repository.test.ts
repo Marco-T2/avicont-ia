@@ -389,6 +389,41 @@ describe("IvaBooksRepository", () => {
     });
   });
 
+  // ── reactivateSale ──────────────────────────────────────────────────────────
+
+  describe("reactivateSale", () => {
+    it("cambia status a ACTIVE desde VOIDED sin modificar estadoSIN", async () => {
+      const created = await repo.createSale(orgId, makeSaleInput({ estadoSIN: "A" }));
+      // Primero void
+      await repo.voidSale(orgId, created.id);
+
+      const reactivated = await repo.reactivateSale(orgId, created.id);
+
+      expect(reactivated.status).toBe("ACTIVE");
+      // estadoSIN NO debe cambiar — axes son ortogonales
+      expect(reactivated.estadoSIN).toBe("A");
+      // Resto de datos intactos
+      expect(reactivated.id).toBe(created.id);
+
+      await prisma.ivaSalesBook.delete({ where: { id: created.id } });
+    });
+
+    it("lanza NotFoundError si la entrada no existe", async () => {
+      const { NotFoundError } = await import("@/features/shared/errors");
+      await expect(repo.reactivateSale(orgId, "non-existent-id")).rejects.toThrow(NotFoundError);
+    });
+
+    it("lanza ConflictError si la entrada ya está ACTIVE (guard idempotencia)", async () => {
+      const created = await repo.createSale(orgId, makeSaleInput());
+      // created.status es ACTIVE
+
+      const { ConflictError } = await import("@/features/shared/errors");
+      await expect(repo.reactivateSale(orgId, created.id)).rejects.toThrow(ConflictError);
+
+      await prisma.ivaSalesBook.delete({ where: { id: created.id } });
+    });
+  });
+
   // ── Unique constraint violation ─────────────────────────────────────────────
 
   describe("unique constraint", () => {

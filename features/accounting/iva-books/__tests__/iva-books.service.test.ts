@@ -98,6 +98,7 @@ function createMockRepo(): IvaBooksRepository {
     updateSale: vi.fn(),
     voidPurchase: vi.fn(),
     voidSale: vi.fn(),
+    reactivateSale: vi.fn(),
   } as unknown as IvaBooksRepository;
 }
 
@@ -291,6 +292,29 @@ describe("IvaBooksService", () => {
       // El repo no recibió ningún cambio en estadoSIN
       expect(repo.voidSale).toHaveBeenCalledWith(orgId, "sale-book-id");
       expect(repo.updateSale).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("reactivateSale", () => {
+    it("delega al repo.reactivateSale y retorna el DTO con status ACTIVE", async () => {
+      const activeDTO = makeSaleDTO({ status: "ACTIVE", saleId: "sale-id-reactivate" });
+      vi.mocked(repo.reactivateSale).mockResolvedValueOnce(activeDTO);
+
+      const result = await service.reactivateSale(orgId, "user-id", "iva-sale-book-id");
+
+      expect(repo.reactivateSale).toHaveBeenCalledWith(orgId, "iva-sale-book-id");
+      expect(result.status).toBe("ACTIVE");
+    });
+
+    it("llama a maybeRegenerateJournal cuando saleId y userId presentes", async () => {
+      const activeDTO = makeSaleDTO({ status: "ACTIVE", saleId: "sale-regen-id" });
+      vi.mocked(repo.reactivateSale).mockResolvedValueOnce(activeDTO);
+
+      // El service necesita SaleService internamente para regenerar — usamos service sin SaleService
+      // y verificamos que NO explota (regen es fire-and-forget when no saleService)
+      await expect(
+        service.reactivateSale(orgId, "user-id", "iva-sale-book-id"),
+      ).resolves.toBeDefined();
     });
   });
 

@@ -42,6 +42,8 @@ import { LcvIndicator } from "@/components/sales/lcv-indicator";
 import type { LcvState } from "@/components/sales/lcv-indicator";
 import { UnlinkLcvConfirmDialog } from "@/components/sales/unlink-lcv-confirm-dialog";
 import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
+import { ReactivateLcvConfirmDialog } from "@/components/sales/reactivate-lcv-confirm-dialog";
+import { useLcvReactivate } from "@/components/sales/use-lcv-reactivate";
 
 // ── Helpers ──
 
@@ -186,6 +188,13 @@ export default function SaleForm({
   // ── Estado y hook de desvinculación LCV (T3.2 REQ-A.1) ──
   const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
   const { handleUnlink, isPending: isUnlinking } = useLcvUnlink(
+    orgSlug,
+    sale?.ivaSalesBook?.id,
+  );
+
+  // ── Estado y hook de reactivación LCV ──
+  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
+  const { handleReactivate, isPending: isReactivating } = useLcvReactivate(
     orgSlug,
     sale?.ivaSalesBook?.id,
   );
@@ -666,7 +675,14 @@ export default function SaleForm({
                   <LcvIndicator
                     state={deriveLcvState(sale)}
                     periodOpen={isFiscalPeriodOpen(sale?.period ?? { status: "CLOSED" })}
-                    onRegister={() => setIvaModalOpen(true)}
+                    onRegister={() => {
+                      // Si hay un registro VOIDED → reactivar; si no → crear nuevo
+                      if (sale?.ivaSalesBook?.status === "VOIDED") {
+                        setReactivateDialogOpen(true);
+                      } else {
+                        setIvaModalOpen(true);
+                      }
+                    }}
                     onEdit={() => setIvaModalOpen(true)}
                     onUnlink={() => setUnlinkDialogOpen(true)}
                   />
@@ -1059,7 +1075,7 @@ export default function SaleForm({
           endDate: new Date(p.endDate).toISOString().split("T")[0],
           status: p.status,
         }))}
-        mode={sale.ivaSalesBook ? "edit" : "create-from-source"}
+        mode={sale.ivaSalesBook && sale.ivaSalesBook.status !== "VOIDED" ? "edit" : "create-from-source"}
         entryId={sale.ivaSalesBook?.id}
         sourceSale={{
           id: sale.id,
@@ -1082,6 +1098,17 @@ export default function SaleForm({
         setUnlinkDialogOpen(false);
       }}
       isPending={isUnlinking}
+    />
+
+    {/* Diálogo de confirmación de reactivación LCV */}
+    <ReactivateLcvConfirmDialog
+      open={reactivateDialogOpen}
+      onOpenChange={setReactivateDialogOpen}
+      onConfirm={async () => {
+        await handleReactivate();
+        setReactivateDialogOpen(false);
+      }}
+      isPending={isReactivating}
     />
     </>
   );
