@@ -12,12 +12,12 @@
 
 ## PR2: UnlinkLcvConfirmDialog + unlink handler
 
-- [ ] T2.1 RED (REQ-A.3) — Create `components/sales/__tests__/unlink-lcv-confirm-dialog.test.tsx`: assert copy does NOT contain "Anular"; "Confirmar" calls `onConfirm`; "Cancelar" calls `onCancel` without side effects.
-- [ ] T2.2 GREEN (REQ-A.3) — Create `components/sales/unlink-lcv-confirm-dialog.tsx` mirroring `confirm-trim-dialog.tsx` pattern (wraps `dialog.tsx`). Copy: "La venta se conserva. El asiento contable se regenera sin IVA ni IT." AC: T2.1 green.
-- [ ] T2.3 RED (REQ-A.3) — Create `components/sales/__tests__/sale-form-unlink-flow.test.tsx`: mock `fetch` to `PATCH /api/…/iva-books/sales/{ivaBookId}/void`; assert URL uses `sale.ivaSalesBook.id` (NOT `sale.id`); assert revalidation (`router.refresh`) called on success.
-- [ ] T2.4 GREEN (REQ-A.3) — Add `handleUnlinkLcv(ivaBookId: string)` in `sale-form.tsx` calling `PATCH` endpoint; wire to `UnlinkLcvConfirmDialog` `onConfirm`. AC: T2.3 green.
-- [ ] T2.5 RED (REQ-A.3) — Extend `features/accounting/iva-books/__tests__/iva-books.service.cascade.test.ts`: "unlink then read journal — no IVA lines, no IT lines, sale unchanged".
-- [ ] T2.6 GREEN (REQ-A.3) — Verify `IvaBooksService.voidSale` + `maybeRegenerateJournal` already satisfies (likely no code change). AC: T2.5 green.
+- [x] T2.1 RED (REQ-A.3) — Create `components/sales/__tests__/unlink-lcv-confirm-dialog.test.tsx`: assert copy does NOT contain "Anular"; "Confirmar" calls `onConfirm`; "Cancelar" calls `onCancel` without side effects.
+- [x] T2.2 GREEN (REQ-A.3) — Create `components/sales/unlink-lcv-confirm-dialog.tsx` mirroring `confirm-trim-dialog.tsx` pattern (wraps `dialog.tsx`). Copy: "La venta se conserva. El asiento contable se regenera sin IVA ni IT." AC: T2.1 green.
+- [x] T2.3 RED (REQ-A.3) — Create `components/sales/__tests__/sale-form-unlink.test.tsx`: mock `fetch` to `PATCH /api/…/iva-books/sales/{ivaBookId}/void`; assert URL uses `sale.ivaSalesBook.id` (NOT `sale.id`); assert revalidation (`router.refresh`) called on success.
+- [x] T2.4 GREEN (REQ-A.3) — Created `components/sales/use-lcv-unlink.ts` hook with `handleUnlink()`; calls PATCH endpoint using ivaBookId; on success calls router.refresh(); on error calls toast.error. AC: T2.3 green.
+- [x] T2.5 RED (REQ-A.3) — Extended `features/accounting/iva-books/__tests__/iva-books.service.cascade.test.ts`: "unlink then read journal — no IVA lines, no IT lines, sale unchanged".
+- [x] T2.6 GREEN (REQ-A.3) — `buildSaleEntryLines` without ivaBook already produces non-IVA path (no code change needed). AC: T2.5 green. 4 regression tests added, all green.
 
 ## PR3: Sale form header row 2 + footer cleanup
 
