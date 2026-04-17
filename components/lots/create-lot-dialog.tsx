@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { todayLocal } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -32,7 +33,7 @@ export default function CreateLotDialog({
   const [barnNumber, setBarnNumber] = useState("");
   const [initialCount, setInitialCount] = useState("");
   const [startDate, setStartDate] = useState(
-    new Date().toISOString().split("T")[0],
+    todayLocal(),
   );
 
   const handleSubmit = async () => {
@@ -71,7 +72,7 @@ export default function CreateLotDialog({
         setName("");
         setBarnNumber("");
         setInitialCount("");
-        setStartDate(new Date().toISOString().split("T")[0]);
+        setStartDate(todayLocal());
         setIsOpen(false);
         onCreated?.();
       } else {
@@ -92,7 +93,7 @@ export default function CreateLotDialog({
       setName("");
       setBarnNumber("");
       setInitialCount("");
-      setStartDate(new Date().toISOString().split("T")[0]);
+      setStartDate(todayLocal());
     }
   };
 

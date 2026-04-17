@@ -26,6 +26,7 @@ import Link from "next/link";
 import type { PaymentWithRelations, PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/features/payment/payment.types";
 import type { PendingDocument } from "@/features/contacts/contacts.types";
 import { JustificationModal } from "@/components/shared/justification-modal";
+import { todayLocal } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -203,7 +204,7 @@ export default function PaymentForm({
   const [date, setDate] = useState(
     existingPayment
       ? new Date(existingPayment.date).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+      : todayLocal(),
   );
   const [method, setMethod] = useState<PaymentMethod>(existingPayment?.method ?? "EFECTIVO");
 

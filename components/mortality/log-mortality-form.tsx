@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { todayLocal } from "@/lib/date-utils";
 
 interface LogMortalityFormProps {
   orgSlug: string;
@@ -32,7 +33,7 @@ export default function LogMortalityForm({
   const [isLoading, setIsLoading] = useState(false);
   const [count, setCount] = useState("");
   const [cause, setCause] = useState("");
-  const [date, setDate] = useState(new Date().toISOString().split("T")[0]);
+  const [date, setDate] = useState(todayLocal());
 
   const handleSubmit = async () => {
     const countNum = Number(count);
@@ -65,7 +66,7 @@ export default function LogMortalityForm({
         toast.success("Mortalidad registrada");
         setCount("");
         setCause("");
-        setDate(new Date().toISOString().split("T")[0]);
+        setDate(todayLocal());
         setIsOpen(false);
         onCreated?.();
       } else {
@@ -85,7 +86,7 @@ export default function LogMortalityForm({
     if (!open) {
       setCount("");
       setCause("");
-      setDate(new Date().toISOString().split("T")[0]);
+      setDate(todayLocal());
     }
   };
 
