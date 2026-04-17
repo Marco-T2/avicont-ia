@@ -347,6 +347,67 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
   });
 });
 
+// ── PR2 T2.5 — Regression: unlink produces journal WITHOUT IVA/IT lines ──────────
+//
+// Locks in the behavior described in REQ-A.3:
+//   voidSale(ivaSalesBookId) → regenerateJournalForIvaChange is called on the
+//   underlying sale → at the point of regen the IvaSalesBook is VOIDED →
+//   buildSaleEntryLines receives ivaBookForEntry=undefined → non-IVA path →
+//   journal has NO IVA (2.1.6) lines and NO IT lines.
+//
+// This test exercises buildSaleEntryLines in isolation to lock in the pure
+// function behavior without needing to traverse the full service stack.
+
+import { buildSaleEntryLines } from "@/features/sale/sale.utils";
+
+describe("Regression T2.5 — unlink LCV: buildSaleEntryLines without ivaBook produces no IVA/IT lines", () => {
+  const settings = {
+    cxcAccountCode: "1.1.3",
+    itExpenseAccountCode: "5.3.3",
+    itPayableAccountCode: "2.1.7",
+  };
+
+  const details = [
+    { lineAmount: 100, incomeAccountCode: "4.1.1", description: "Servicio A" },
+  ];
+
+  it("T2.5 — sin ivaBook: NO genera línea IVA (2.1.6)", () => {
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01");
+
+    const ivaLine = lines.find((l) => l.accountCode === "2.1.6");
+    expect(ivaLine).toBeUndefined();
+  });
+
+  it("T2.5 — sin ivaBook: NO genera líneas IT (5.3.3 / 2.1.7)", () => {
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01");
+
+    const itExpense = lines.find((l) => l.accountCode === "5.3.3");
+    const itPayable = lines.find((l) => l.accountCode === "2.1.7");
+    expect(itExpense).toBeUndefined();
+    expect(itPayable).toBeUndefined();
+  });
+
+  it("T2.5 — sin ivaBook: genera exactamente 2 líneas (1 DR CxC + 1 CR ingreso)", () => {
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01");
+    expect(lines).toHaveLength(2);
+  });
+
+  it("T2.5 — con ivaBook ACTIVE: genera 5 líneas (DR CxC + CR ingreso + CR IVA + DR IT + CR IT)", () => {
+    // Control para asegurar que el path CON IVA sigue funcionando (no regresión)
+    const ivaBook = {
+      baseIvaSujetoCf: 100,
+      dfCfIva: 13,
+      importeTotal: 100,
+      exentos: 0,
+    };
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01", ivaBook);
+    expect(lines).toHaveLength(5);
+    expect(lines.find((l) => l.accountCode === "2.1.6")).toBeDefined();
+    expect(lines.find((l) => l.accountCode === "5.3.3")).toBeDefined();
+    expect(lines.find((l) => l.accountCode === "2.1.7")).toBeDefined();
+  });
+});
+
 // ── PR5 — recomputeFromPurchaseCascade (SC-21) ─────────────────────────────────
 
 describe("IvaBooksService.recomputeFromPurchaseCascade — cascade desde PurchaseService.editPosted (PR5)", () => {
