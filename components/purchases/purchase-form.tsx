@@ -158,7 +158,7 @@ function nextLineId() {
 }
 
 function emptyFleteeLine(): FleteDetailLine {
-  return { id: nextLineId(), fecha: "", docRef: "", description: "", chickenQty: "", pricePerChicken: "" };
+  return { id: nextLineId(), fecha: todayLocal(), docRef: "", description: "", chickenQty: "", pricePerChicken: "" };
 }
 
 function emptyPfLine(): PfDetailLine {
