@@ -964,21 +964,8 @@ export default function DispatchForm({
                 )}
               </div>
 
-              {/* Row 3: Notas + Descripción (full width) */}
+              {/* Row 3: Descripción auto-generada */}
               <div className="grid grid-cols-1 gap-4">
-                {/* Notas */}
-                <div className="space-y-2">
-                  <Label htmlFor="dispatch-notes">Notas (opcional)</Label>
-                  <Textarea
-                    id="dispatch-notes"
-                    placeholder="Observaciones adicionales..."
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    readOnly={isReadOnly}
-                    className={isReadOnly ? "bg-muted cursor-default" : undefined}
-                  />
-                </div>
-
                 {/* Descripción auto-generada */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -1414,61 +1401,69 @@ export default function DispatchForm({
         </CardContent>
       </Card>
 
-      {/* Payment Summary */}
-      {existingDispatch?.receivable != null &&
-        (status === "POSTED" || status === "LOCKED") && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Resumen de Cobros</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <table className="w-full text-sm">
-              <tbody>
-                <tr className="border-b">
-                  <td className="py-2 text-muted-foreground">Subtotal (exacto)</td>
-                  <td className="py-2 text-right font-mono">
-                    {formatCurrency(subtotal)}
-                  </td>
-                </tr>
-                <tr className="border-b font-semibold">
-                  <td className="py-2">Total CxC (Bs.)</td>
-                  <td className="py-2 text-right font-mono">
+      {/* Fila inferior: Notas (izq) + Resumen de Cobros (der) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" data-testid="bottom-row-dispatch">
+        {/* Notas — siempre visible en slot izquierdo */}
+        <div className="space-y-2">
+          <Label htmlFor="dispatch-notes">Notas (opcional)</Label>
+          <Textarea
+            id="dispatch-notes"
+            placeholder="Observaciones adicionales..."
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            readOnly={isReadOnly}
+            className={isReadOnly ? "bg-muted cursor-default" : undefined}
+          />
+        </div>
+
+        {/* Resumen de Cobros — slot derecho, solo cuando hay receivable */}
+        {existingDispatch?.receivable != null &&
+        (status === "POSTED" || status === "LOCKED") ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Resumen de Cobros</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-col gap-1 ml-auto w-fit text-sm">
+                <div className="flex gap-4 border-b pb-2 font-semibold">
+                  <span>Total CxC (Bs.)</span>
+                  <span className="font-mono">
                     {totalCxC.toLocaleString("es-BO")}
-                  </td>
-                </tr>
+                  </span>
+                </div>
                 {existingDispatch.receivable.allocations.map((alloc) => (
-                  <tr key={alloc.id} className="text-muted-foreground">
-                    <td className="py-1.5">
-                      <Link
-                        href={`/${orgSlug}/payments/${alloc.paymentId}`}
-                        className="underline underline-offset-2 hover:text-foreground transition-colors"
-                      >
-                        Pago el{" "}
-                        {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
-                      </Link>
-                    </td>
-                    <td className="py-1.5 text-right font-mono text-green-700">
+                  <div key={alloc.id} className="flex gap-4 text-muted-foreground py-1">
+                    <Link
+                      href={`/${orgSlug}/payments/${alloc.paymentId}`}
+                      className="underline underline-offset-2 hover:text-foreground transition-colors"
+                    >
+                      Pago el{" "}
+                      {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
+                    </Link>
+                    <span className="font-mono text-green-700">
                       -{formatCurrency(alloc.amount)}
-                    </td>
-                  </tr>
+                    </span>
+                  </div>
                 ))}
-                <tr className="border-t-2 font-bold">
-                  <td className="py-2">Saldo pendiente</td>
-                  <td
-                    className={`py-2 text-right font-mono ${
-                      existingDispatch.receivable.balance > 0
-                        ? "text-red-600"
-                        : "text-green-700"
-                    }`}
-                  >
+                <div
+                  className={`flex gap-4 border-t-2 pt-2 font-bold ${
+                    existingDispatch.receivable.balance > 0
+                      ? "text-red-600"
+                      : "text-green-700"
+                  }`}
+                >
+                  <span className="text-foreground">Saldo pendiente</span>
+                  <span className="font-mono">
                     {formatCurrency(existingDispatch.receivable.balance)}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
-      )}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        ) : (
+          <div />
+        )}
+      </div>
 
       {/* Actions */}
       <div className="flex justify-between gap-3">
