@@ -44,6 +44,7 @@ import { UnlinkLcvConfirmDialog } from "@/components/sales/unlink-lcv-confirm-di
 import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
 import { ReactivateLcvConfirmDialog } from "@/components/sales/reactivate-lcv-confirm-dialog";
 import { useLcvReactivate } from "@/components/sales/use-lcv-reactivate";
+import { todayLocal } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -153,7 +154,7 @@ export default function SaleForm({
   const [date, setDate] = useState(
     sale?.date
       ? new Date(sale.date).toISOString().split("T")[0]
-      : new Date().toISOString().split("T")[0],
+      : todayLocal(),
   );
   const [referenceNumber, setReferenceNumber] = useState(
     sale?.referenceNumber != null ? String(sale.referenceNumber) : "",
