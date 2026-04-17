@@ -41,13 +41,13 @@ export default async function EditJournalEntryPage({
     notFound();
   }
 
-  // REQ-A.1: DRAFT entries and POSTED manual entries (sourceType=null) are editable.
-  // POSTED auto-generated entries and VOIDED entries redirect to the detail view.
-  const isEditable =
+  // REQ-A.1 (amended PR7): DRAFT and POSTED manual entries are candidates for editing,
+  // BUT only while their period is OPEN. Auto-generated and VOIDED redirect to detail.
+  const isManualEditable =
     entry.status === "DRAFT" ||
     (entry.status === "POSTED" && entry.sourceType === null);
 
-  if (!isEditable) {
+  if (!isManualEditable) {
     redirect(`/${orgSlug}/accounting/journal/${entryId}`);
   }
 
@@ -56,6 +56,12 @@ export default async function EditJournalEntryPage({
     periodsService.list(orgId),
     voucherTypesService.list(orgId),
   ]);
+
+  // Period-gate: closed periods make entries immutable (same rule as sales/purchases).
+  const period = periods.find((p) => p.id === entry.periodId);
+  if (!period || period.status !== "OPEN") {
+    notFound();
+  }
 
   const serializedEntry = JSON.parse(JSON.stringify(entry));
 

@@ -65,6 +65,7 @@ interface JournalEntryDetailProps {
     lines: JournalLine[];
   };
   periodName: string;
+  periodStatus?: string;
   voucherTypeName: string;
 }
 
@@ -72,6 +73,7 @@ export default function JournalEntryDetail({
   orgSlug,
   entry,
   periodName,
+  periodStatus,
   voucherTypeName,
 }: JournalEntryDetailProps) {
   const router = useRouter();
@@ -81,6 +83,12 @@ export default function JournalEntryDetail({
   const totalDebit = entry.lines.reduce((sum, l) => sum + Number(l.debit), 0);
   const totalCredit = entry.lines.reduce((sum, l) => sum + Number(l.credit), 0);
   const isBalanced = Math.round(totalDebit * 100) === Math.round(totalCredit * 100);
+
+  // REQ-A.2: show Edit button only for manual entries (sourceType=null) in an OPEN period.
+  const canEdit =
+    (entry.status === "DRAFT" ||
+      (entry.status === "POSTED" && !entry.sourceType)) &&
+    periodStatus === "OPEN";
 
   const statusBadge = STATUS_BADGE[entry.status] ?? {
     label: entry.status,
@@ -144,14 +152,16 @@ export default function JournalEntryDetail({
 
             {/* Action buttons */}
             <div className="flex gap-2 shrink-0">
+              {canEdit && (
+                <Link href={`/${orgSlug}/accounting/journal/${entry.id}/edit`}>
+                  <Button variant="outline" size="sm">
+                    <Pencil className="h-4 w-4 mr-1" />
+                    Editar
+                  </Button>
+                </Link>
+              )}
               {entry.status === "DRAFT" && (
                 <>
-                  <Link href={`/${orgSlug}/accounting/journal/${entry.id}/edit`}>
-                    <Button variant="outline" size="sm">
-                      <Pencil className="h-4 w-4 mr-1" />
-                      Editar
-                    </Button>
-                  </Link>
                   <Button
                     size="sm"
                     onClick={() => setActionDialog("POST")}
@@ -314,7 +324,8 @@ export default function JournalEntryDetail({
             <DialogTitle>Contabilizar Asiento</DialogTitle>
             <DialogDescription>
               Esta acción publicará el asiento #{entry.number} y actualizará los saldos
-              contables. Una vez contabilizado, no podrá ser editado.
+              contables. Una vez contabilizado, el asiento seguirá siendo editable mientras
+              el período esté abierto. Al cerrar el período quedará inmutable.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
