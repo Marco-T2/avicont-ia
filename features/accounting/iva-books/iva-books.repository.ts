@@ -1,6 +1,7 @@
 import { BaseRepository } from "@/features/shared/base.repository";
 import { ConflictError, NotFoundError } from "@/features/shared/errors";
 import { Prisma } from "@/generated/prisma/client";
+import { toNoonUtc } from "@/lib/date-utils";
 import type { IvaBookStatus } from "@/generated/prisma/enums";
 import type {
   CreatePurchaseInput,
@@ -186,7 +187,7 @@ export class IvaBooksRepository extends BaseRepository {
           organizationId: orgId,
           fiscalPeriodId: input.fiscalPeriodId,
           purchaseId: input.purchaseId ?? null,
-          fechaFactura: new Date(input.fechaFactura),
+          fechaFactura: toNoonUtc(input.fechaFactura),
           nitProveedor: input.nitProveedor,
           razonSocial: input.razonSocial,
           numeroFactura: input.numeroFactura,
@@ -255,7 +256,7 @@ export class IvaBooksRepository extends BaseRepository {
       where: { id },
       data: {
         ...(input.fechaFactura !== undefined
-          ? { fechaFactura: new Date(input.fechaFactura) }
+          ? { fechaFactura: toNoonUtc(input.fechaFactura) }
           : {}),
         ...(input.nitProveedor !== undefined ? { nitProveedor: input.nitProveedor } : {}),
         ...(input.razonSocial !== undefined ? { razonSocial: input.razonSocial } : {}),
@@ -314,7 +315,7 @@ export class IvaBooksRepository extends BaseRepository {
           organizationId: orgId,
           fiscalPeriodId: input.fiscalPeriodId,
           saleId: input.saleId ?? null,
-          fechaFactura: new Date(input.fechaFactura),
+          fechaFactura: toNoonUtc(input.fechaFactura),
           nitCliente: input.nitCliente,
           razonSocial: input.razonSocial,
           numeroFactura: input.numeroFactura,
@@ -375,7 +376,7 @@ export class IvaBooksRepository extends BaseRepository {
       where: { id },
       data: {
         ...(input.fechaFactura !== undefined
-          ? { fechaFactura: new Date(input.fechaFactura) }
+          ? { fechaFactura: toNoonUtc(input.fechaFactura) }
           : {}),
         ...(input.nitCliente !== undefined ? { nitCliente: input.nitCliente } : {}),
         ...(input.razonSocial !== undefined ? { razonSocial: input.razonSocial } : {}),

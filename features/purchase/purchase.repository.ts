@@ -9,6 +9,7 @@ import type {
   PurchaseDetailRow,
 } from "./purchase.types";
 import { getDisplayCode } from "./purchase.utils";
+import { toNoonUtc } from "@/lib/date-utils";
 
 // ── Forma de detalle computado que pasa el servicio ──
 
@@ -183,7 +184,7 @@ export class PurchaseRepository extends BaseRepository {
         status: "DRAFT",
         sequenceNumber: 0,
         referenceNumber: input.referenceNumber ?? null,
-        date: new Date(input.date),
+        date: toNoonUtc(input.date),
         contactId: input.contactId,
         periodId: input.periodId,
         description: input.description,
@@ -246,7 +247,7 @@ export class PurchaseRepository extends BaseRepository {
         status: "POSTED",
         sequenceNumber,
         referenceNumber: input.referenceNumber ?? null,
-        date: new Date(input.date),
+        date: toNoonUtc(input.date),
         contactId: input.contactId,
         periodId: input.periodId,
         description: input.description,
@@ -458,7 +459,7 @@ function buildUpdateData(
   pfSummary?: PfSummary,
 ): Record<string, unknown> {
   return {
-    ...(data.date !== undefined && { date: new Date(data.date) }),
+    ...(data.date !== undefined && { date: toNoonUtc(data.date) }),
     ...(data.contactId !== undefined && { contactId: data.contactId }),
     ...(data.description !== undefined && { description: data.description }),
     ...(data.referenceNumber !== undefined && {
