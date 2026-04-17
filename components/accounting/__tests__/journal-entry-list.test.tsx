@@ -1,9 +1,11 @@
 /**
  * T4.1 RED (REQ-B.1, S-B1.1..S-B1.5) — origin badge in list rows
  * T5.4 RED (REQ-C.1, S-C1.5) — Origen <Select> filter control renders with correct value
+ * T6.1 RED (REQ-D.1) — list renders date via formatDateBO (TZ-safe DD/MM/YYYY)
  *
  * T4.1 fails until JournalEntry interface and badge cell are added (T4.3).
  * T5.4 fails until the Origen Select control is added to filters bar (T5.8).
+ * T6.1 fails until local formatDate is replaced with formatDateBO (T6.2).
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -11,7 +13,10 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import JournalEntryList from "../journal-entry-list";
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 // ── Mocks ──
 
@@ -196,5 +201,33 @@ describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
       />,
     );
     expect(screen.getByText("Manual")).toBeInTheDocument();
+  });
+});
+
+// ── T6.1 RED: list renders date via formatDateBO (TZ-safe) ──
+
+describe("JournalEntryList — display-date TZ-safe (REQ-D.1)", () => {
+  it("T6.1 — renders date as DD/MM/YYYY, not shifted under UTC-4", () => {
+    // Simulate Bolivia at 21:00 local = 01:00 UTC next day
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-04-18T01:00:00.000Z"));
+
+    // Entry date stored at UTC-noon (TZ-safe convention)
+    const entry = makeEntry({
+      date: "2026-04-17T12:00:00.000Z",
+    });
+
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={[entry] as any}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{}}
+      />,
+    );
+
+    // Must show 17/04/2026, not 18/04/2026 (UTC day) nor locale-shifted
+    expect(screen.getByText("17/04/2026")).toBeInTheDocument();
   });
 });
