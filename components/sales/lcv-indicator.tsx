@@ -129,9 +129,6 @@ export function LcvIndicator({
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
-        <DropdownMenuItem onSelect={undefined}>
-          Ver detalle LCV
-        </DropdownMenuItem>
         <DropdownMenuItem onSelect={onEdit}>
           Editar
         </DropdownMenuItem>

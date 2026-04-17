@@ -192,4 +192,45 @@ describe("SaleForm — LCV indicator in header row 2 (T3.1/T3.2 REQ-A.1)", () =>
     expect(indicator).toBeInTheDocument();
     expect(indicator).toHaveAttribute("data-lcv-state", "S1");
   });
+
+  it("A.1.6 — ivaSalesBook VOIDED → LcvIndicator vuelve a S2 (desvinculado)", () => {
+    renderForm({
+      status: "POSTED",
+      ivaSalesBook: {
+        id: "iva-1",
+        organizationId: "org-1",
+        status: "VOIDED" as any,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        fiscalPeriodId: "period-1",
+        saleId: "sale-1",
+        date: "2026-01-15",
+        nit: "12345",
+        razonSocial: "Cliente SA",
+        nroFactura: 1,
+        autorizacion: "123",
+        importe: 113,
+        importeExentoIva: 0,
+        descuentosBonificaciones: 0,
+        importeSujetoIva: 113,
+        creditoFiscal: 13,
+        codigoControl: null,
+        estadoSIN: "V",
+        tipoVenta: "C",
+        iceIehd: 0,
+        ipj: 0,
+        tasas: 0,
+        otrosNoSujetosIva: 0,
+        exportaciones: 0,
+        tasasCero: 0,
+        subtotalVentas: 100,
+        descuentoSujeto: 0,
+        gitAmount: 0,
+        itAmount: 0,
+      } as any,
+    });
+    const indicator = screen.getByRole("button", { name: /registrar en lcv/i });
+    expect(indicator).toBeInTheDocument();
+    expect(indicator).toHaveAttribute("data-lcv-state", "S2");
+  });
 });

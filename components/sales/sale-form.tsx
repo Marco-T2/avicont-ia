@@ -57,12 +57,17 @@ function formatCurrency(amount: number): string {
 /**
  * Deriva el estado del LcvIndicator a partir de la venta.
  * S1: borrador (sin id) o status DRAFT
- * S2: guardada, sin ivaSalesBook
- * S3: guardada, con ivaSalesBook vinculado
+ * S2: guardada, sin ivaSalesBook activo (null o VOIDED)
+ * S3: guardada, con ivaSalesBook activo (status !== VOIDED)
  */
-function deriveLcvState(sale: { status: string; ivaSalesBook?: { id: string } | null } | undefined | null): LcvState {
+function deriveLcvState(
+  sale:
+    | { status: string; ivaSalesBook?: { id: string; status?: string } | null }
+    | undefined
+    | null,
+): LcvState {
   if (!sale || sale.status === "DRAFT") return "S1";
-  if (!sale.ivaSalesBook) return "S2";
+  if (!sale.ivaSalesBook || sale.ivaSalesBook.status === "VOIDED") return "S2";
   return "S3";
 }
 
