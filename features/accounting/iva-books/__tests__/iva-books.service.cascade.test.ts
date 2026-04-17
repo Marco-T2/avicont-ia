@@ -121,6 +121,7 @@ function createMocks() {
     updatePurchase: vi.fn().mockResolvedValue(makePurchaseDTO()),
     voidSale: vi.fn().mockResolvedValue(makeSaleDTO({ status: "VOIDED" })),
     voidPurchase: vi.fn().mockResolvedValue(makePurchaseDTO({ status: "VOIDED" })),
+    reactivateSale: vi.fn().mockResolvedValue(makeSaleDTO({ status: "ACTIVE" })),
   } as unknown as IvaBooksRepository;
 
   const saleService = {
@@ -204,6 +205,21 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       } as never);
 
       await mocks.service.voidSale(ORG_ID, USER_ID, "iva-sale-book-id");
+
+      expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
+        ORG_ID, SALE_ID, USER_ID,
+      );
+    });
+  });
+
+  describe("reactivateSale — POSTED + OPEN → regenera journal (IVA path)", () => {
+    it("llama a saleService.regenerateJournalForIvaChange cuando reactivate de IvaBook en venta POSTED", async () => {
+      vi.mocked(mocks.saleService.getById).mockResolvedValueOnce({
+        id: SALE_ID, status: "POSTED", periodId: PERIOD_ID,
+        period: { id: PERIOD_ID, status: "OPEN" },
+      } as never);
+
+      await mocks.service.reactivateSale(ORG_ID, USER_ID, "iva-sale-book-id");
 
       expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
         ORG_ID, SALE_ID, USER_ID,
@@ -344,6 +360,56 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       expect(mocks.purchaseService.getById).not.toHaveBeenCalled();
       expect(mocks.purchaseService.regenerateJournalForIvaChange).not.toHaveBeenCalled();
     });
+  });
+});
+
+// ── Regression T3 — reactivate LCV: buildSaleEntryLines WITH ivaBook produces IVA/IT lines ──
+
+describe("Regression T3 — reactivate LCV: buildSaleEntryLines con ivaBook ACTIVE produce líneas IVA/IT", () => {
+  const settings = {
+    cxcAccountCode: "1.1.3",
+    itExpenseAccountCode: "5.3.3",
+    itPayableAccountCode: "2.1.7",
+  };
+
+  const details = [
+    { lineAmount: 100, incomeAccountCode: "4.1.1", description: "Servicio A" },
+  ];
+
+  const ivaBook = {
+    baseIvaSujetoCf: 100,
+    dfCfIva: 13,
+    importeTotal: 100,
+    exentos: 0,
+  };
+
+  it("T3.1 — con ivaBook ACTIVE: genera línea IVA (2.1.6)", () => {
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01", ivaBook);
+    const ivaLine = lines.find((l) => l.accountCode === "2.1.6");
+    expect(ivaLine).toBeDefined();
+  });
+
+  it("T3.2 — con ivaBook ACTIVE: genera líneas IT (5.3.3 y 2.1.7)", () => {
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01", ivaBook);
+    const itExpense = lines.find((l) => l.accountCode === "5.3.3");
+    const itPayable = lines.find((l) => l.accountCode === "2.1.7");
+    expect(itExpense).toBeDefined();
+    expect(itPayable).toBeDefined();
+  });
+
+  it("T3.3 — con ivaBook ACTIVE: genera exactamente 5 líneas (DR CxC + CR ingreso + CR IVA + DR IT + CR IT)", () => {
+    const lines = buildSaleEntryLines(100, details, settings, "contact-01", ivaBook);
+    expect(lines).toHaveLength(5);
+  });
+
+  it("T3.4 — reactivate es inverso de unlink: voidSale produce 2 líneas, reactivate produce 5", () => {
+    // Sin ivaBook (unlink / VOIDED path)
+    const linesWithout = buildSaleEntryLines(100, details, settings, "contact-01");
+    expect(linesWithout).toHaveLength(2);
+
+    // Con ivaBook (reactivate / ACTIVE path)
+    const linesWith = buildSaleEntryLines(100, details, settings, "contact-01", ivaBook);
+    expect(linesWith).toHaveLength(5);
   });
 });
 

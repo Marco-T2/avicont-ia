@@ -665,4 +665,21 @@ export class IvaBooksService {
 
     return result;
   }
+
+  async reactivateSale(
+    orgId: string,
+    userId: string,
+    id: string,
+  ): Promise<IvaSalesBookDTO> {
+    // status = ACTIVE — estadoSIN NO se toca (eje ortogonal, design decision)
+    const result = await this.repo.reactivateSale(orgId, id);
+
+    // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
+    const saleId = result.saleId;
+    if (saleId && userId) {
+      await this.maybeRegenerateJournal("sale", saleId, orgId, userId);
+    }
+
+    return result;
+  }
 }
