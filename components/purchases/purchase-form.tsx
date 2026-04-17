@@ -40,6 +40,8 @@ import { LcvIndicator } from "@/components/common/lcv-indicator";
 import type { LcvState } from "@/components/common/lcv-indicator";
 import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lcv-confirm-dialog-purchase";
 import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purchase";
+import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
+import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
 
 // ── Helpers ──
 
@@ -288,8 +290,12 @@ export default function PurchaseForm({
     purchase?.ivaPurchaseBook?.id,
   );
 
-  // ── Estado y hook de reactivación LCV (T3.2 REQ-A.1 stub — wired in T5.6) ──
+  // ── Estado y hook de reactivación LCV (T5.6 REQ-A.4) ──
   const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
+  const { handleReactivate, isPending: isReactivating } = useLcvReactivatePurchase(
+    orgSlug,
+    purchase?.ivaPurchaseBook?.id,
+  );
 
   // ── Computed totals ──
   const shrinkagePctNum = parseFloat(shrinkagePct) || 0;
@@ -1647,6 +1653,17 @@ export default function PurchaseForm({
         setUnlinkDialogOpen(false);
       }}
       isPending={isUnlinking}
+    />
+
+    {/* Dialog de reactivación del LCV (REQ-A.4) */}
+    <ReactivateLcvConfirmDialogPurchase
+      open={reactivateDialogOpen}
+      onOpenChange={setReactivateDialogOpen}
+      onConfirm={async () => {
+        await handleReactivate();
+        setReactivateDialogOpen(false);
+      }}
+      isPending={isReactivating}
     />
     </>
   );
