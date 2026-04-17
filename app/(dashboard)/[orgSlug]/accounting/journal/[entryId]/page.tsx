@@ -53,6 +53,7 @@ export default async function EntryDetailPage({
       orgSlug={orgSlug}
       entry={JSON.parse(JSON.stringify(entry))}
       periodName={period?.name ?? "—"}
+      periodStatus={period?.status ?? "CLOSED"}
       voucherTypeName={voucherType?.name ?? "—"}
     />
   );
