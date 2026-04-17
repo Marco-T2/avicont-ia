@@ -45,6 +45,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import type { PurchaseWithDetails } from "@/features/purchase";
+import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -53,14 +54,6 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -334,7 +327,7 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
                           {purchase.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
-                          {formatDate(purchase.date)}
+                          {formatDateBO(purchase.date)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(purchase.totalAmount)}

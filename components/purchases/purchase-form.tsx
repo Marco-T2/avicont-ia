@@ -42,7 +42,7 @@ import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lc
 import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purchase";
 import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
 import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
-import { todayLocal } from "@/lib/date-utils";
+import { todayLocal, formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
 
@@ -682,7 +682,7 @@ export default function PurchaseForm({
               <div>
                 <dt className="text-muted-foreground">Fecha</dt>
                 <dd className="font-medium mt-0.5">
-                  {new Date(purchase!.date).toLocaleDateString("es-BO")}
+                  {formatDateBO(purchase!.date)}
                 </dd>
               </div>
               <div>
@@ -1463,7 +1463,7 @@ export default function PurchaseForm({
                       className="underline underline-offset-2 hover:text-foreground transition-colors"
                     >
                       Pago el{" "}
-                      {new Date(alloc.payment.date).toLocaleDateString("es-BO")}
+                      {formatDateBO(alloc.payment.date)}
                       {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
                     </Link>
                     <span className="font-mono text-green-700 text-right whitespace-nowrap">

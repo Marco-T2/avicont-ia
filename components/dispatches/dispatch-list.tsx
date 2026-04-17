@@ -36,6 +36,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import type { HubItem } from "@/features/dispatch/hub.types";
+import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -45,14 +46,6 @@ function formatCurrency(amount: string): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
@@ -172,7 +165,7 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
         {item.referenceNumber ?? "—"}
       </td>
       <td className="py-3 px-4 whitespace-nowrap">
-        {formatDate(item.date)}
+        {formatDateBO(item.date)}
       </td>
       <td className="py-3 px-4">{typeName}</td>
       <td className="py-3 px-4 text-gray-500">{item.contactName}</td>
