@@ -11,7 +11,7 @@
  *   - saved, ivaPurchaseBook VOIDED → S2 (treated as unregistered)
  */
 
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PurchaseForm from "../purchase-form";
@@ -233,5 +233,93 @@ describe("PurchaseForm — LCV indicator in header row 2 (T3.1 REQ-A.1, A.2)", (
     const { container } = renderForm({ status: "POSTED", ivaPurchaseBook: null });
     const row2 = container.querySelector(".sm\\:grid-cols-3");
     expect(row2).toBeInTheDocument();
+  });
+});
+
+// ── T5.5 REQ-A.4 — reactivate dialog branching ──
+
+describe("PurchaseForm — S2 click branching: reactivate vs register (T5.5 REQ-A.4)", () => {
+  it("T5.5a — VOIDED ivaPurchaseBook + click S2 → ReactivateLcvConfirmDialogPurchase becomes visible", () => {
+    const { container } = renderForm({
+      status: "POSTED",
+      ivaPurchaseBook: {
+        id: "iva-1",
+        organizationId: "org-1",
+        status: "VOIDED" as any,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        fiscalPeriodId: "period-1",
+        purchaseId: "purchase-1",
+        date: "2026-01-15",
+        nit: "12345",
+        razonSocial: "Proveedor SA",
+        nroFactura: 1,
+        autorizacion: "123",
+        importe: 113,
+        importeExentoIva: 0,
+        descuentosBonificaciones: 0,
+        importeSujetoIva: 113,
+        creditoFiscal: 13,
+        itAmount: 0,
+        codigoControl: null,
+      } as any,
+    });
+
+    // S2 indicator shown (VOIDED)
+    const indicator = container.querySelector("[data-lcv-state='S2']") as HTMLElement;
+    expect(indicator).toBeInTheDocument();
+
+    // click to trigger reactivate dialog
+    fireEvent.pointerDown(indicator);
+    fireEvent.click(indicator);
+
+    // ReactivateLcvConfirmDialogPurchase should be visible (title appears)
+    expect(screen.getByText(/reactivar registro en el libro de compras/i)).toBeInTheDocument();
+  });
+
+  it("T5.5b — no ivaPurchaseBook + click S2 → IvaBookPurchaseModal opens (NOT reactivate dialog)", () => {
+    renderForm({ status: "POSTED", ivaPurchaseBook: null });
+
+    const indicator = screen.getByRole("button", { name: /registrar en lcv/i });
+    fireEvent.pointerDown(indicator);
+    fireEvent.click(indicator);
+
+    // Reactivate dialog must NOT appear
+    expect(screen.queryByText(/reactivar registro en el libro de compras/i)).not.toBeInTheDocument();
+  });
+
+  it("T5.5c — S3 indicator shows 'Desvincular del LCV' option in dropdown", async () => {
+    renderForm({
+      status: "POSTED",
+      ivaPurchaseBook: {
+        id: "iva-1",
+        organizationId: "org-1",
+        status: "ACTIVE" as any,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        fiscalPeriodId: "period-1",
+        purchaseId: "purchase-1",
+        date: "2026-01-15",
+        nit: "12345",
+        razonSocial: "Proveedor SA",
+        nroFactura: 1,
+        autorizacion: "123",
+        importe: 113,
+        importeExentoIva: 0,
+        descuentosBonificaciones: 0,
+        importeSujetoIva: 113,
+        creditoFiscal: 13,
+        itAmount: 0,
+        codigoControl: null,
+      } as any,
+    });
+
+    // S3 dropdown trigger
+    const trigger = screen.getByRole("button", { name: /registrado en lcv/i });
+    fireEvent.pointerDown(trigger);
+    fireEvent.click(trigger);
+
+    // Dropdown should contain "Desvincular del LCV"
+    expect(screen.getByText(/desvincular del lcv/i)).toBeInTheDocument();
   });
 });
