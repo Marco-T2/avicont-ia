@@ -57,13 +57,13 @@ _Independent of PR2. Can be implemented in parallel after PR1 merges (no strict 
 
 _Depends on T1.4 (sourceTypeLabel). Merges after PR1._
 
-- [ ] T4.1 RED (REQ-B.1, S-B1.1..S-B1.5) — Create `components/accounting/__tests__/journal-entry-list.test.tsx`. Render `JournalEntryList` with 5 fixture entries each with a different `sourceType` (null, "sale", "purchase", "dispatch", "payment"). Assert badges "Manual", "Generado por Venta", "Generado por Compra", "Generado por Despacho", "Generado por Pago" are visible in the DOM (`screen.getByText`).
+- [x] T4.1 RED (REQ-B.1, S-B1.1..S-B1.5) — Create `components/accounting/__tests__/journal-entry-list.test.tsx`. Render `JournalEntryList` with 5 fixture entries each with a different `sourceType` (null, "sale", "purchase", "dispatch", "payment"). Assert badges "Manual", "Generado por Venta", "Generado por Compra", "Generado por Despacho", "Generado por Pago" are visible in the DOM (`screen.getByText`).
 
-- [ ] T4.2 RED (REQ-B.2, S-B2.1 + S-B2.2) — Create `components/accounting/__tests__/journal-entry-detail.test.tsx`. Render `JournalEntryDetail` once with `sourceType=null` and once with `sourceType="sale"`. Assert badge "Manual" / "Generado por Venta" appears in the metadata section.
+- [x] T4.2 RED (REQ-B.2, S-B2.1 + S-B2.2) — Create `components/accounting/__tests__/journal-entry-detail.test.tsx`. Render `JournalEntryDetail` once with `sourceType=null` and once with `sourceType="sale"`. Assert badge "Manual" / "Generado por Venta" appears in the metadata section.
 
-- [ ] T4.3 GREEN (REQ-B.1) — Update `components/accounting/journal-entry-list.tsx`: (a) extend local `JournalEntry` interface to include `sourceType: string | null`; (b) import `sourceTypeLabel, sourceTypeBadgeClassName` from `@/features/accounting/journal.ui`; (c) add a badge cell in the list row using `sourceTypeLabel(entry.sourceType)` and `sourceTypeBadgeClassName(entry.sourceType)` for styling.
+- [x] T4.3 GREEN (REQ-B.1) — Update `components/accounting/journal-entry-list.tsx`: (a) extend local `JournalEntry` interface to include `sourceType: string | null`; (b) import `sourceTypeLabel, sourceTypeBadgeClassName` from `@/features/accounting/journal.ui`; (c) add a badge cell in the list row using `sourceTypeLabel(entry.sourceType)` and `sourceTypeBadgeClassName(entry.sourceType)` for styling.
 
-- [ ] T4.4 GREEN (REQ-B.2) — Update `components/accounting/journal-entry-detail.tsx`: (a) extend local `entry` type to include `sourceType: string | null`; (b) import `sourceTypeLabel, sourceTypeBadgeClassName` from `@/features/accounting/journal.ui`; (c) add badge in the header metadata block.
+- [x] T4.4 GREEN (REQ-B.2) — Update `components/accounting/journal-entry-detail.tsx`: (a) extend local `entry` type to include `sourceType: string | null`; (b) import `sourceTypeLabel, sourceTypeBadgeClassName` from `@/features/accounting/journal.ui`; (c) add badge in the header metadata block.
 
 ---
 
@@ -71,21 +71,21 @@ _Depends on T1.4 (sourceTypeLabel). Merges after PR1._
 
 _Depends on PR4 (list component already updated). Can overlap in implementation with PR4. Merges after PR4._
 
-- [ ] T5.1 RED (REQ-C.1, S-C1.1) — Create `features/accounting/__tests__/journal.repository.origin-filter.test.ts`. Seed 1 manual JE (`sourceType=null`) and 1 auto JE (`sourceType="sale"`). Call `repo.findAll(orgId, { origin: "manual" })`. Assert result length is 1 and the entry has `sourceType === null`.
+- [x] T5.1 RED (REQ-C.1, S-C1.1) — Create `features/accounting/__tests__/journal.repository.origin-filter.test.ts`. Seed 1 manual JE (`sourceType=null`) and 1 auto JE (`sourceType="sale"`). Call `repo.findAll(orgId, { origin: "manual" })`. Assert result length is 1 and the entry has `sourceType === null`.
 
-- [ ] T5.2 RED (REQ-C.1, S-C1.2) — In same file: call `repo.findAll(orgId, { origin: "auto" })`. Assert result length is 1 and the entry has `sourceType !== null`.
+- [x] T5.2 RED (REQ-C.1, S-C1.2) — In same file: call `repo.findAll(orgId, { origin: "auto" })`. Assert result length is 1 and the entry has `sourceType !== null`.
 
-- [ ] T5.3 RED (REQ-C.1, S-C1.3 + S-C1.4) — In same file: (a) `findAll(orgId, {})` → both entries returned (length 2); (b) `findAll(orgId, { origin: "manual", periodId: somePeriod })` → only the manual entry of that period (composability check).
+- [x] T5.3 RED (REQ-C.1, S-C1.3 + S-C1.4) — In same file: (a) `findAll(orgId, {})` → both entries returned (length 2); (b) `findAll(orgId, { origin: "manual", periodId: somePeriod })` → only the manual entry of that period (composability check).
 
-- [ ] T5.4 RED (REQ-C.1, S-C1.5) — In `components/accounting/__tests__/journal-entry-list.test.tsx` (add scenario): render `JournalEntryList` with `filters.origin="auto"`. Assert the origin `<Select>` control shows the value "Automático" as selected.
+- [x] T5.4 RED (REQ-C.1, S-C1.5) — In `components/accounting/__tests__/journal-entry-list.test.tsx` (add scenario): render `JournalEntryList` with `filters.origin="auto"`. Assert the origin `<Select>` control shows the value "Automático" as selected.
 
-- [ ] T5.5 GREEN (REQ-C.1) — Add `origin?: "manual" | "auto"` to `JournalFilters` interface in `features/accounting/journal.types.ts` (line 51, after `status?: JournalEntryStatus`).
+- [x] T5.5 GREEN (REQ-C.1) — Add `origin?: "manual" | "auto"` to `JournalFilters` interface in `features/accounting/journal.types.ts` (line 51, after `status?: JournalEntryStatus`).
 
-- [ ] T5.6 GREEN (REQ-C.1) — Update `features/accounting/journal.repository.ts` inside `findAll()`: translate `filters.origin` to Prisma `where.sourceType` conditions per design D.4. `"manual"` → `where.sourceType = null`; `"auto"` → `where.sourceType = { not: null }`.
+- [x] T5.6 GREEN (REQ-C.1) — Update `features/accounting/journal.repository.ts` inside `findAll()`: translate `filters.origin` to Prisma `where.sourceType` conditions per design D.4. `"manual"` → `where.sourceType = null`; `"auto"` → `where.sourceType = { not: null }`.
 
-- [ ] T5.7 GREEN (REQ-C.1) — Update `app/(dashboard)/[orgSlug]/accounting/journal/page.tsx`: parse `sp.origin` searchParam (`"manual"` | `"auto"`) and pass it as `filters.origin` to the repository call and as a prop to `JournalEntryList`.
+- [x] T5.7 GREEN (REQ-C.1) — Update `app/(dashboard)/[orgSlug]/accounting/journal/page.tsx`: parse `sp.origin` searchParam (`"manual"` | `"auto"`) and pass it as `filters.origin` to the repository call and as a prop to `JournalEntryList`.
 
-- [ ] T5.8 GREEN (REQ-C.1) — Update `components/accounting/journal-entry-list.tsx`: (a) extend `JournalEntryListProps.filters` to include `origin?: "manual" | "auto"`; (b) add `<Select>` control "Origen" sibling to the Status select per design D.4 snippet; (c) extend `applyFilter` to handle the `origin` key; (d) extend `hasFilters` to include `origin` in the active-filter check.
+- [x] T5.8 GREEN (REQ-C.1) — Update `components/accounting/journal-entry-list.tsx`: (a) extend `JournalEntryListProps.filters` to include `origin?: "manual" | "auto"`; (b) add `<Select>` control "Origen" sibling to the Status select per design D.4 snippet; (c) extend `applyFilter` to handle the `origin` key; (d) extend `hasFilters` to include `origin` in the active-filter check.
 
 ---
 
