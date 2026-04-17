@@ -1,6 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { DispatchStatus, DispatchType } from "@/generated/prisma/client";
+import { toNoonUtc } from "@/lib/date-utils";
 import type {
   DispatchWithDetails,
   CreateDispatchInput,
@@ -145,7 +146,7 @@ export class DispatchRepository extends BaseRepository {
         status: "DRAFT",
         sequenceNumber,
         referenceNumber: input.referenceNumber ?? null,
-        date: input.date,
+        date: toNoonUtc(input.date),
         contactId: input.contactId,
         periodId: input.periodId,
         description: input.description,
@@ -226,7 +227,7 @@ export class DispatchRepository extends BaseRepository {
       const updated = await tx.dispatch.update({
         where: { id, ...scope },
         data: {
-          ...(data.date !== undefined && { date: data.date }),
+          ...(data.date !== undefined && { date: toNoonUtc(data.date) }),
           ...(data.contactId !== undefined && { contactId: data.contactId }),
           ...(data.description !== undefined && { description: data.description }),
           ...(data.referenceNumber !== undefined && {
@@ -463,7 +464,7 @@ export class DispatchRepository extends BaseRepository {
         status: "POSTED",
         sequenceNumber,
         referenceNumber: input.referenceNumber ?? null,
-        date: input.date,
+        date: toNoonUtc(input.date),
         contactId: input.contactId,
         periodId: input.periodId,
         description: input.description,
@@ -542,7 +543,7 @@ export class DispatchRepository extends BaseRepository {
     const updated = await tx.dispatch.update({
       where: { id, ...scope },
       data: {
-        ...(data.date !== undefined && { date: data.date }),
+        ...(data.date !== undefined && { date: toNoonUtc(data.date) }),
         ...(data.contactId !== undefined && { contactId: data.contactId }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.referenceNumber !== undefined && {

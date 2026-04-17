@@ -88,29 +88,33 @@ export function formatDateBO(value: string | Date | null | undefined): string {
 // ── toNoonUtc ─────────────────────────────────────────────────────────────────
 
 /**
- * Normalize a "YYYY-MM-DD" client input to a UTC-noon Date for persistence.
+ * Normalize a date input to a UTC-noon Date for persistence.
  *
  * Storing the instant at 12:00 UTC guarantees the calendar day round-trips
  * unambiguously for any timezone within UTC-12 .. UTC+12. Use this as the
  * single code path for Sale / Purchase / Dispatch / IVA books repository date
  * writes — do NOT inline `new Date(input.date + "T12:00:00.000Z")`.
  *
- * Always calls `slice(0, 10)` on the input first, so full ISO strings
+ * Always calls `slice(0, 10)` on the ISO string first, so full ISO strings
  * ("YYYY-MM-DDTHH:mm:ss.sssZ") are handled correctly without double-appending
  * the time suffix. This means `toNoonUtc("2026-04-17T00:00:00.000Z")` and
  * `toNoonUtc("2026-04-17")` both return `new Date("2026-04-17T12:00:00.000Z")`.
  *
- * @param yyyymmdd  a bare "YYYY-MM-DD" string or a full ISO string.
- *                  Anything longer is truncated to first 10 chars before appending noon UTC.
+ * When a `Date` instance is passed (e.g. from Zod's `z.coerce.date()` boundary),
+ * its ISO string is extracted first via `toISOString()` before slicing.
+ *
+ * @param value  a bare "YYYY-MM-DD" string, a full ISO string, or a `Date` instance.
+ *               Anything longer than 10 chars is truncated before appending noon UTC.
  * @returns a Date representing noon UTC on the given calendar day.
  * @throws  RangeError if the resulting Date is Invalid (caller sends trash).
  *          Callers are expected to validate via Zod before calling.
  */
-export function toNoonUtc(yyyymmdd: string): Date {
-  const datePart = yyyymmdd.slice(0, 10);
+export function toNoonUtc(value: string | Date): Date {
+  const raw = value instanceof Date ? value.toISOString() : value;
+  const datePart = raw.slice(0, 10);
   const d = new Date(`${datePart}T12:00:00.000Z`);
   if (isNaN(d.getTime())) {
-    throw new RangeError(`Invalid date: "${yyyymmdd}"`);
+    throw new RangeError(`Invalid date: "${String(value)}"`);
   }
   return d;
 }

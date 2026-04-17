@@ -124,11 +124,17 @@ describe("toNoonUtc", () => {
     expect(result.toISOString()).toBe("2026-04-17T12:00:00.000Z");
   });
 
-  it("(d) empty string → throws RangeError", () => {
+  it("(d) Date instance (from z.coerce.date boundary) → same noon UTC", () => {
+    // Dispatch uses z.coerce.date() so repo receives a Date, not a string
+    const result = toNoonUtc(new Date("2026-04-17T00:00:00.000Z"));
+    expect(result.toISOString()).toBe("2026-04-17T12:00:00.000Z");
+  });
+
+  it("(e) empty string → throws RangeError", () => {
     expect(() => toNoonUtc("")).toThrow(RangeError);
   });
 
-  it("(e) garbage string → throws RangeError", () => {
+  it("(f) garbage string → throws RangeError", () => {
     expect(() => toNoonUtc("abcd")).toThrow(RangeError);
   });
 });
