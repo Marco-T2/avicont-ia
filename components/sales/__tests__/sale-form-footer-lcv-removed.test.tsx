@@ -1,11 +1,10 @@
 /**
- * Tests RTL: gate del LcvIndicator por fiscalPeriod.status.
+ * T3.3 RED → T3.4 GREEN
+ * REQ-A.1 (removal): footer action bar MUST NOT contain the old
+ * "Registrar Libro de Ventas" / "Editar Libro de Ventas IVA" button.
  *
- * SPEC-5: el LcvIndicator en S2/S3 debe estar habilitado cuando
- * period.status === "OPEN" y deshabilitado cuando === "CLOSED".
- *
- * NOTA: El botón "Registrar Libro de Ventas" fue eliminado del footer en PR3 (T3.4).
- * El gate ahora vive en el LcvIndicator del encabezado (T3.2).
+ * After PR3 the LCV action lives in the header LcvIndicator (T3.2).
+ * The footer button is dead UI and must be removed.
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -15,7 +14,7 @@ import SaleForm from "../sale-form";
 
 afterEach(() => cleanup());
 
-// ── Mocks de dependencias externas ──
+// ── Mocks ──
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
@@ -29,7 +28,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-// El modal IVA es un componente pesado; lo silenciamos para tests de gate
 vi.mock("@/components/iva-books/iva-book-sale-modal", () => ({
   IvaBookSaleModal: () => null,
 }));
@@ -51,13 +49,29 @@ const BASE_PERIOD = {
 
 const INCOME_ACCOUNT = { id: "acc-1", code: "4.1.1", name: "Ventas" };
 
+const BASE_CONTACT = {
+  id: "contact-1",
+  name: "Cliente SA",
+  type: "CLIENTE" as const,
+  nit: "12345",
+  paymentTermsDays: 30,
+  organizationId: "org-1",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  email: null,
+  phone: null,
+  address: null,
+  creditLimit: null,
+  isActive: true,
+};
+
 const BASE_SALE = {
   id: "sale-1",
   organizationId: "org-1",
   periodId: "period-1",
   contactId: "contact-1",
   date: new Date("2026-01-15"),
-  status: "DRAFT" as string,
+  status: "POSTED" as string,
   totalAmount: 113,
   description: "Venta de prueba",
   referenceNumber: null,
@@ -94,7 +108,7 @@ function renderForm(salePatch: Partial<typeof BASE_SALE> = {}) {
   return render(
     <SaleForm
       orgSlug="test-org"
-      contacts={[{ id: "contact-1", name: "Cliente SA", type: "CLIENTE" as any, nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), email: null, phone: null, address: null, creditLimit: null, isActive: true }]}
+      contacts={[BASE_CONTACT]}
       periods={[BASE_PERIOD]}
       incomeAccounts={[INCOME_ACCOUNT]}
       sale={sale as any}
@@ -105,44 +119,40 @@ function renderForm(salePatch: Partial<typeof BASE_SALE> = {}) {
 
 // ── Tests ──
 
-describe("SaleForm — LcvIndicator fiscal period gate (SPEC-5)", () => {
-  it("5.1 — OPEN period + DRAFT sale → LcvIndicator S1 (disabled — DRAFT, not OPEN gate)", () => {
-    // DRAFT → always S1 regardless of period
-    renderForm({ status: "DRAFT", period: { id: "period-1", name: "Enero 2026", status: "OPEN" } });
-    const btn = screen.getByRole("button", { name: /lcv no disponible/i });
-    expect(btn).toBeInTheDocument();
-    expect(btn).toBeDisabled(); // S1 is always disabled
-  });
-
-  it("5.2 — OPEN period + POSTED sale, no ivaSalesBook → LcvIndicator S2 is enabled", () => {
-    renderForm({ status: "POSTED", period: { id: "period-1", name: "Enero 2026", status: "OPEN" } });
-    const btn = screen.getByRole("button", { name: /registrar en lcv/i });
-    expect(btn).toBeInTheDocument();
-    expect(btn).not.toBeDisabled();
-  });
-
-  it("5.3 — CLOSED period + POSTED sale, no ivaSalesBook → LcvIndicator S2 is disabled", () => {
-    renderForm({ status: "POSTED", period: { id: "period-1", name: "Enero 2026", status: "CLOSED" } });
-    const btn = screen.getByRole("button", { name: /registrar en lcv/i });
-    expect(btn).toBeInTheDocument();
-    expect(btn).toBeDisabled();
-  });
-
-  it("5.3b — CLOSED period + POSTED sale with ivaSalesBook → LcvIndicator S3 trigger is disabled", () => {
-    renderForm({
-      status: "POSTED",
-      period: { id: "period-1", name: "Enero 2026", status: "CLOSED" },
-      ivaSalesBook: { id: "iva-1" } as any,
-    });
-    const btn = screen.getByRole("button", { name: /registrado en lcv/i });
-    expect(btn).toBeInTheDocument();
-    expect(btn).toBeDisabled();
-  });
-
-  it("5.4 — footer does NOT contain old 'Registrar Libro de Ventas' button (PR3 removal)", () => {
-    renderForm({ status: "POSTED", period: { id: "period-1", name: "Enero 2026", status: "OPEN" } });
+describe("SaleForm — footer LCV button removed (T3.3/T3.4 REQ-A.1)", () => {
+  it("R.1 — DRAFT sale → footer does NOT contain old 'Registrar Libro de Ventas' button", () => {
+    renderForm({ status: "DRAFT", ivaSalesBook: null });
+    // Footer button must NOT exist — LCV action is now in the header indicator
     expect(
       screen.queryByRole("button", { name: /registrar libro de ventas/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("R.2 — POSTED sale, no ivaSalesBook → footer does NOT contain old 'Registrar Libro de Ventas'", () => {
+    renderForm({ status: "POSTED", ivaSalesBook: null });
+    expect(
+      screen.queryByRole("button", { name: /registrar libro de ventas/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("R.3 — POSTED sale with ivaSalesBook → footer does NOT contain 'Editar Libro de Ventas IVA'", () => {
+    renderForm({
+      status: "POSTED",
+      ivaSalesBook: { id: "iva-1" } as any,
+    });
+    expect(
+      screen.queryByRole("button", { name: /editar libro de ventas iva/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("R.4 — OPEN period, POSTED sale → footer does NOT contain old LCV button of any kind", () => {
+    renderForm({ status: "POSTED", period: { id: "period-1", name: "Enero 2026", status: "OPEN" } });
+    // Neither variant of the old footer button text should appear
+    expect(
+      screen.queryByRole("button", { name: /registrar libro de ventas/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /editar libro de ventas iva/i }),
     ).not.toBeInTheDocument();
   });
 });

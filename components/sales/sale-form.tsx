@@ -27,7 +27,6 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  BookOpen,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -36,9 +35,13 @@ import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/features/sale";
 import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
-import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
+import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { ConfirmTrimDialog } from "@/components/sales/confirm-trim-dialog";
 import type { TrimPreviewItem } from "@/components/sales/confirm-trim-dialog";
+import { LcvIndicator } from "@/components/sales/lcv-indicator";
+import type { LcvState } from "@/components/sales/lcv-indicator";
+import { UnlinkLcvConfirmDialog } from "@/components/sales/unlink-lcv-confirm-dialog";
+import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
 
 // ── Helpers ──
 
@@ -47,6 +50,20 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
+}
+
+// ── Derivación del estado LCV ──
+
+/**
+ * Deriva el estado del LcvIndicator a partir de la venta.
+ * S1: borrador (sin id) o status DRAFT
+ * S2: guardada, sin ivaSalesBook
+ * S3: guardada, con ivaSalesBook vinculado
+ */
+function deriveLcvState(sale: { status: string; ivaSalesBook?: { id: string } | null } | undefined | null): LcvState {
+  if (!sale || sale.status === "DRAFT") return "S1";
+  if (!sale.ivaSalesBook) return "S2";
+  return "S3";
 }
 
 // ── Configuración de badge de estado ──
@@ -160,6 +177,13 @@ export default function SaleForm({
   const [showTrimDialog, setShowTrimDialog] = useState(false);
   // Snapshot del body listo para reenviar con confirmTrim: true
   const [pendingEditBody, setPendingEditBody] = useState<object | null>(null);
+
+  // ── Estado y hook de desvinculación LCV (T3.2 REQ-A.1) ──
+  const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
+  const { handleUnlink, isPending: isUnlinking } = useLcvUnlink(
+    orgSlug,
+    sale?.ivaSalesBook?.id,
+  );
 
   // ── Total calculado ──
   const subtotal = lines.reduce((sum, l) => {
@@ -594,8 +618,8 @@ export default function SaleForm({
                 </div>
               </div>
 
-              {/* Fila 2: Cliente / Total */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Fila 2: Cliente / Total / LCV */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="contact">Cliente</Label>
                   {isReadOnly ? (
@@ -630,6 +654,18 @@ export default function SaleForm({
                     />
                   </div>
                 )}
+
+                {/* LCV Indicator — siempre visible en fila 2 */}
+                <div className="space-y-2">
+                  <Label>Libro de Ventas (LCV)</Label>
+                  <LcvIndicator
+                    state={deriveLcvState(sale)}
+                    periodOpen={isFiscalPeriodOpen(sale?.period ?? { status: "CLOSED" })}
+                    onRegister={() => setIvaModalOpen(true)}
+                    onEdit={() => setIvaModalOpen(true)}
+                    onUnlink={() => setUnlinkDialogOpen(true)}
+                  />
+                </div>
               </div>
 
               {/* Descripción y Notas */}
@@ -870,21 +906,7 @@ export default function SaleForm({
               Eliminar
             </Button>
           )}
-          {/* Registrar / Editar en Libro de Ventas IVA — disponible en modo edición.
-              Gate: period.status === "OPEN" (SPEC-5 / D5).
-              El servicio re-verifica el estado dentro de la transacción. */}
-          {isEditMode && sale && (
-            <Button
-              type="button"
-              variant="outline"
-              disabled={!isFiscalPeriodOpen(sale.period)}
-              title={!isFiscalPeriodOpen(sale.period) ? FISCAL_PERIOD_CLOSED_MESSAGE : undefined}
-              onClick={() => setIvaModalOpen(true)}
-            >
-              <BookOpen className="h-4 w-4 mr-2" />
-              {sale.ivaSalesBook ? "Editar Libro de Ventas IVA" : "Registrar Libro de Ventas"}
-            </Button>
-          )}
+          {/* LCV action moved to header row 2 LcvIndicator (T3.4 REQ-A.1) */}
         </div>
 
         <div className="flex gap-3">
@@ -1048,6 +1070,17 @@ export default function SaleForm({
         }}
       />
     )}
+
+    {/* Diálogo de confirmación de desvinculación LCV (T3.2 REQ-A.3) */}
+    <UnlinkLcvConfirmDialog
+      open={unlinkDialogOpen}
+      onOpenChange={setUnlinkDialogOpen}
+      onConfirm={async () => {
+        await handleUnlink();
+        setUnlinkDialogOpen(false);
+      }}
+      isPending={isUnlinking}
+    />
     </>
   );
 }
