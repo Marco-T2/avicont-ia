@@ -4,6 +4,9 @@
  */
 export type Role = string;
 
+// Lazy import to avoid circular deps at module load time
+const getCacheModule = () => import("./permissions.cache");
+
 export const SYSTEM_ROLES = [
   "owner",
   "admin",
@@ -107,11 +110,43 @@ export function canUploadToScope(role: string, scope: DocumentScope): boolean {
   return allowed ? allowed.includes(scope) : false;
 }
 
+/**
+ * Sync 3-param overload — uses static maps. For client-side code (React
+ * components, sidebar filter) where awaiting is not possible. (D.7 / D.8)
+ */
+export function canAccess(role: string, resource: Resource, action: Action): boolean;
+
+/**
+ * Async 4-param overload — reads from the org's cached permission matrix.
+ * Use this in server-side code. The cache handles TTL, single-flight, and
+ * the fallback seed is handled by requirePermission / getMatrix. (D.7 / P.2mod)
+ */
 export function canAccess(
   role: string,
   resource: Resource,
   action: Action,
-): boolean {
+  orgId: string,
+): Promise<boolean>;
+
+export function canAccess(
+  role: string,
+  resource: Resource,
+  action: Action,
+  orgId?: string,
+): boolean | Promise<boolean> {
+  if (orgId !== undefined) {
+    // Async path: look up from cached matrix
+    return getCacheModule().then(({ getMatrix }) =>
+      getMatrix(orgId).then((matrix) => {
+        const roleEntry = matrix.roles.get(role);
+        if (!roleEntry) return false;
+        return action === "read"
+          ? roleEntry.permissionsRead.has(resource)
+          : roleEntry.permissionsWrite.has(resource);
+      }),
+    );
+  }
+  // Sync path: use static maps (backward compat for client-side)
   const map = action === "read" ? PERMISSIONS_READ : PERMISSIONS_WRITE;
   return map[resource].includes(role as Role);
 }

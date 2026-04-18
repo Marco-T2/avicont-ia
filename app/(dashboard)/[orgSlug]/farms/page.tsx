@@ -37,7 +37,7 @@ export default async function FarmsPage({ params }: FarmsPageProps) {
   }
 
   const farmsService = new FarmsService();
-  const canManageFarms = canAccess(member.role, "members", "write");
+  const canManageFarms = await canAccess(member.role, "members", "write", orgId);
   const farms = canManageFarms
     ? await farmsService.list(orgId)
     : await farmsService.listByMember(orgId, member.id);
