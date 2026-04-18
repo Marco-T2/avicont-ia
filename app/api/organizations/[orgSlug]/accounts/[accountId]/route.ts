@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { AccountsService } from "@/features/accounting";
 import { updateAccountSchema } from "@/features/accounting/accounting.validation";
 
@@ -14,10 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; accountId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, accountId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
     const account = await service.getById(orgId, accountId);
 
@@ -32,10 +26,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; accountId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, accountId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const body = await request.json();
     const input = updateAccountSchema.parse(body);
@@ -53,10 +45,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; accountId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, accountId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const account = await service.deactivate(orgId, accountId);
 

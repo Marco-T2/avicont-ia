@@ -12,9 +12,6 @@ const { mockTransitionStatus } = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/shared/middleware", () => ({
-  requireAuth: vi.fn(),
-  requireOrgAccess: vi.fn(),
-  requireRole: vi.fn(),
   handleError: vi.fn((err: unknown) => {
     if (err != null && typeof err === "object" && "statusCode" in err) {
       const e = err as { message: string; code?: string; statusCode: number };
@@ -25,6 +22,10 @@ vi.mock("@/features/shared/middleware", () => ({
     }
     return Response.json({ error: "Error interno del servidor" }, { status: 500 });
   }),
+}));
+
+vi.mock("@/features/shared/permissions.server", () => ({
+  requirePermission: vi.fn(),
 }));
 
 vi.mock("@/features/shared/users.service", () => ({
@@ -41,11 +42,7 @@ vi.mock("@/features/accounting", () => ({
   }),
 }));
 
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-} from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { ValidationError, AUTO_ENTRY_VOID_FORBIDDEN } from "@/features/shared/errors";
 import { PATCH } from "../route";
 
@@ -70,11 +67,11 @@ function makeRequest(body: Record<string, unknown>): Request {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  (requireAuth as ReturnType<typeof vi.fn>).mockResolvedValue({
-    userId: "clerk-user-id",
+  (requirePermission as ReturnType<typeof vi.fn>).mockResolvedValue({
+    session: { userId: "clerk-user-id" },
+    orgId: ORG_ID,
+    role: "owner",
   });
-  (requireOrgAccess as ReturnType<typeof vi.fn>).mockResolvedValue(ORG_ID);
-  (requireRole as ReturnType<typeof vi.fn>).mockResolvedValue(undefined);
 });
 
 describe("PATCH /journal/[entryId]/status — void guard (REQ-E.1)", () => {

@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { JournalService } from "@/features/accounting";
 import { updateJournalEntrySchema } from "@/features/accounting/accounting.validation";
@@ -17,10 +13,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; entryId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, entryId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("journal", "read", orgSlug);
 
     const entry = await service.getById(orgId, entryId);
 
@@ -41,10 +35,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; entryId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, entryId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    const member = await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "journal",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const { justification, ...rest } = body;
@@ -55,7 +52,7 @@ export async function PATCH(
     const entry = await service.updateEntry(orgId, entryId, {
       ...input,
       updatedById: user.id,
-    }, member.role, justification);
+    }, role, justification);
 
     const displayNumber = formatCorrelativeNumber(
       entry.voucherType.prefix,

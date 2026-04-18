@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts";
 import { PayablesService } from "@/features/payables";
 import { updatePayableSchema } from "@/features/payables";
@@ -16,10 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; payableId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, payableId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("purchases", "read", orgSlug);
 
     const payable = await payablesService.getById(orgId, payableId);
 
@@ -34,10 +28,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; payableId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, payableId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("purchases", "write", orgSlug);
 
     const body = await request.json();
     const input = updatePayableSchema.parse(body);
@@ -55,10 +47,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; payableId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, payableId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("purchases", "write", orgSlug);
 
     const payable = await payablesService.void(orgId, payableId);
 

@@ -1,17 +1,65 @@
-export type Role = "owner" | "admin" | "contador" | "member";
+export type Role =
+  | "owner"
+  | "admin"
+  | "contador"
+  | "cobrador"
+  | "auxiliar"
+  | "member";
 
-export type Resource = "members" | "accounting" | "accounting-config" | "farms" | "documents" | "agent" | "contacts";
+export type Resource =
+  | "members"
+  | "accounting-config"
+  | "sales"
+  | "purchases"
+  | "payments"
+  | "journal"
+  | "dispatches"
+  | "reports"
+  | "contacts"
+  | "farms"
+  | "documents"
+  | "agent";
+
+export type Action = "read" | "write";
 
 export type DocumentScope = "ORGANIZATION" | "ACCOUNTING" | "FARM";
 
-export const PERMISSIONS: Record<Resource, Role[]> = {
+export const PERMISSIONS_READ: Record<Resource, Role[]> = {
   members: ["owner", "admin"],
-  accounting: ["owner", "admin", "contador"],
   "accounting-config": ["owner", "admin"],
-  farms: ["owner", "admin", "contador", "member"],
-  documents: ["owner", "admin", "contador", "member"],
-  agent: ["owner", "admin", "contador", "member"],
-  contacts: ["owner", "admin", "contador"],
+  sales: ["owner", "admin", "contador", "cobrador"],
+  purchases: ["owner", "admin", "contador"],
+  payments: ["owner", "admin", "contador", "cobrador"],
+  journal: ["owner", "admin", "contador"],
+  dispatches: ["owner", "admin", "contador", "auxiliar"],
+  reports: ["owner", "admin", "contador", "cobrador"],
+  contacts: ["owner", "admin", "contador", "cobrador", "auxiliar"],
+  farms: ["owner", "admin", "contador", "auxiliar", "member"],
+  documents: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+  agent: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+};
+
+export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
+  members: ["owner", "admin"],
+  "accounting-config": ["owner", "admin"],
+  sales: ["owner", "admin", "contador", "auxiliar"],
+  purchases: ["owner", "admin", "contador", "auxiliar"],
+  payments: ["owner", "admin", "contador", "cobrador"],
+  journal: ["owner", "admin", "contador"],
+  dispatches: ["owner", "admin", "auxiliar"],
+  reports: ["owner", "admin"],
+  contacts: ["owner", "admin", "contador", "cobrador"],
+  farms: ["owner", "admin", "contador", "auxiliar", "member"],
+  documents: ["owner", "admin", "contador"],
+  agent: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+};
+
+export type PostableResource = "sales" | "purchases" | "journal";
+
+export const POST_ALLOWED_ROLES: Record<PostableResource, Role[]> = {
+  sales: ["owner", "admin", "contador"],
+  purchases: ["owner", "admin", "contador"],
+  journal: ["owner", "admin", "contador"],
 };
 
 /** Scopes each role can search via RAG. null = no RAG access. */
@@ -19,6 +67,8 @@ const RAG_SCOPES: Record<string, DocumentScope[]> = {
   owner: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   contador: ["ORGANIZATION", "ACCOUNTING"],
+  cobrador: ["ORGANIZATION"],
+  auxiliar: ["ORGANIZATION", "FARM"],
   member: ["ORGANIZATION", "FARM"],
 };
 
@@ -27,6 +77,7 @@ const UPLOAD_SCOPES: Record<string, DocumentScope[]> = {
   owner: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   contador: ["ACCOUNTING"],
+  auxiliar: ["FARM"],
   member: ["FARM"],
 };
 
@@ -43,7 +94,15 @@ export function canUploadToScope(role: string, scope: DocumentScope): boolean {
   return allowed ? allowed.includes(scope) : false;
 }
 
-export function canAccess(role: string, resource: Resource): boolean {
-  const allowed = PERMISSIONS[resource];
-  return allowed.includes(role as Role);
+export function canAccess(
+  role: string,
+  resource: Resource,
+  action: Action,
+): boolean {
+  const map = action === "read" ? PERMISSIONS_READ : PERMISSIONS_WRITE;
+  return map[resource].includes(role as Role);
+}
+
+export function canPost(role: string, resource: PostableResource): boolean {
+  return POST_ALLOWED_ROLES[resource].includes(role as Role);
 }

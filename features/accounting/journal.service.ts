@@ -1,6 +1,8 @@
 import {
   NotFoundError,
   ValidationError,
+  ForbiddenError,
+  POST_NOT_ALLOWED_FOR_ROLE,
   MINIMUM_TWO_LINES_REQUIRED,
   JOURNAL_LINE_BOTH_SIDES,
   JOURNAL_LINE_ZERO_AMOUNT,
@@ -18,6 +20,7 @@ import {
   ENTRY_SYSTEM_GENERATED_IMMUTABLE,
   AUTO_ENTRY_VOID_FORBIDDEN,
 } from "@/features/shared/errors";
+import { canPost } from "@/features/shared/permissions";
 import {
   validateLockedEdit,
   validatePeriodOpen,
@@ -180,8 +183,17 @@ export class JournalService {
   async createAndPost(
     organizationId: string,
     input: CreateJournalEntryInput,
-    userId: string,
+    context: { userId: string; role: string },
   ): Promise<JournalEntryWithLines> {
+    // 0. RBAC: canPost (REQ-P.3 / D.3) — sólo owner/admin/contador contabilizan
+    if (!canPost(context.role, "journal")) {
+      throw new ForbiddenError(
+        "Tu rol no tiene permiso para contabilizar asientos",
+        POST_NOT_ALLOWED_FOR_ROLE,
+      );
+    }
+    const { userId } = context;
+
     const { lines, ...entryData } = input;
 
     // Validar que el período fiscal esté OPEN

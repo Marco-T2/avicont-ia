@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import {
   ContactsService,
   updateContactSchema,
@@ -16,10 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; contactId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, contactId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("contacts", "read", orgSlug);
 
     const contact = await service.getById(orgId, contactId);
 
@@ -34,10 +28,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; contactId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, contactId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("contacts", "write", orgSlug);
 
     const body = await request.json();
     const input = updateContactSchema.parse(body);
@@ -55,10 +47,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; contactId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, contactId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("contacts", "write", orgSlug);
 
     const contact = await service.deactivate(orgId, contactId);
 

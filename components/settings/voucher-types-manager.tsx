@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, X, Check, Loader2, PowerOff } from "lucide-react";
 import { toast } from "sonner";
+import { Gated } from "@/components/common/gated";
 
 interface VoucherTypeItem {
   id: string;
@@ -193,16 +194,18 @@ export default function VoucherTypesManager({
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle>Tipos de Comprobante</CardTitle>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={openCreate}
-            disabled={!!creating}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Nuevo tipo de comprobante
-          </Button>
+          <Gated resource="accounting-config" action="write">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={openCreate}
+              disabled={!!creating}
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Nuevo tipo de comprobante
+            </Button>
+          </Gated>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -417,38 +420,40 @@ export default function VoucherTypesManager({
                       </Badge>
                     </td>
                     <td className="py-3 px-4">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="ghost"
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
-                          onClick={() => openEdit(item)}
-                          disabled={isLoading}
-                          title="Editar"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          type="button"
-                          size="icon-sm"
-                          variant="ghost"
-                          className={
-                            item.isActive
-                              ? "text-red-500 hover:text-red-700 hover:bg-red-50"
-                              : "text-green-500 hover:text-green-700 hover:bg-green-50"
-                          }
-                          onClick={() => handleToggleActive(item)}
-                          disabled={isLoading}
-                          title={item.isActive ? "Desactivar" : "Reactivar"}
-                        >
-                          {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                          ) : (
-                            <PowerOff className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
+                      <Gated resource="accounting-config" action="write">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                            onClick={() => openEdit(item)}
+                            disabled={isLoading}
+                            title="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            size="icon-sm"
+                            variant="ghost"
+                            className={
+                              item.isActive
+                                ? "text-red-500 hover:text-red-700 hover:bg-red-50"
+                                : "text-green-500 hover:text-green-700 hover:bg-green-50"
+                            }
+                            onClick={() => handleToggleActive(item)}
+                            disabled={isLoading}
+                            title={item.isActive ? "Desactivar" : "Reactivar"}
+                          >
+                            {isLoading ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <PowerOff className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
+                      </Gated>
                     </td>
                   </tr>
                 );

@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { MembersService, addMemberSchema } from "@/features/organizations";
 
 const service = new MembersService();
@@ -13,10 +9,12 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const organizationId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, organizationId, ["admin", "owner"]);
+    const { orgId: organizationId } = await requirePermission(
+      "members",
+      "read",
+      orgSlug,
+    );
 
     const members = await service.listMembers(organizationId);
 
@@ -31,10 +29,12 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const organizationId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, organizationId, ["admin", "owner"]);
+    const { orgId: organizationId } = await requirePermission(
+      "members",
+      "write",
+      orgSlug,
+    );
 
     const body = await request.json();
     const input = addMemberSchema.parse(body);

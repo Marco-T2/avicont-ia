@@ -3,7 +3,14 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
-type MemberRole = "owner" | "admin" | "contador" | "member" | null;
+type MemberRole =
+  | "owner"
+  | "admin"
+  | "contador"
+  | "cobrador"
+  | "auxiliar"
+  | "member"
+  | null;
 
 export function useOrgRole() {
   const params = useParams();

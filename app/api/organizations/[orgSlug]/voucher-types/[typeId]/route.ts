@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { VoucherTypesService } from "@/features/voucher-types";
 import { updateVoucherTypeSchema } from "@/features/voucher-types/voucher-types.validation";
 
@@ -14,10 +10,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; typeId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, typeId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const body = await request.json();
     const input = updateVoucherTypeSchema.parse(body);

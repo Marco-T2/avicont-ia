@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import { closeFiscalPeriodSchema } from "@/features/fiscal-periods";
 
@@ -14,10 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; periodId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, periodId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
     const period = await service.getById(orgId, periodId);
 
@@ -32,10 +26,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; periodId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, periodId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const body = await request.json();
     closeFiscalPeriodSchema.parse(body);

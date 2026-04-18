@@ -1,10 +1,6 @@
 import { z } from "zod";
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PaymentService } from "@/features/payment";
 
 const paymentService = new PaymentService();
@@ -25,10 +21,8 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("payments", "write", orgSlug);
 
     const body = await request.json();
     const { contactId, creditSources } = applyCreditSchema.parse(body);

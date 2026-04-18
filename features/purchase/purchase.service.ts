@@ -1,12 +1,15 @@
 import {
   NotFoundError,
   ValidationError,
+  ForbiddenError,
+  POST_NOT_ALLOWED_FOR_ROLE,
   PURCHASE_NO_DETAILS,
   PURCHASE_INVALID_CONTACT_TYPE,
   PURCHASE_NOT_DRAFT,
   PURCHASE_CONTACT_CHANGE_BLOCKED,
   PURCHASE_EXPENSE_ACCOUNT_REQUIRED,
 } from "@/features/shared/errors";
+import { canPost } from "@/features/shared/permissions";
 import {
   validateTransition,
   validateDraftOnly,
@@ -495,8 +498,17 @@ export class PurchaseService {
   async createAndPost(
     organizationId: string,
     input: CreatePurchaseInput,
-    userId: string,
+    context: { userId: string; role: string },
   ): Promise<PurchaseWithDetails> {
+    // 0. RBAC: canPost (REQ-P.3-S3 / D.3) — auxiliar bloqueado en POST
+    if (!canPost(context.role, "purchases")) {
+      throw new ForbiddenError(
+        "Tu rol no tiene permiso para contabilizar compras",
+        POST_NOT_ALLOWED_FOR_ROLE,
+      );
+    }
+    const { userId } = context;
+
     // 1. Validar que el contacto sea PROVEEDOR
     const contact = await this.contactsService.getActiveById(organizationId, input.contactId);
     if (contact.type !== "PROVEEDOR") {

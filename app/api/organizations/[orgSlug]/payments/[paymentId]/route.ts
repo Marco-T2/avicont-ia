@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PaymentService } from "@/features/payment";
 import { updatePaymentSchema } from "@/features/payment";
 
@@ -14,10 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; paymentId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, paymentId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("payments", "read", orgSlug);
 
     const payment = await paymentService.getById(orgId, paymentId);
 
@@ -32,16 +26,19 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; paymentId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, paymentId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "payments",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     const body = await request.json();
     const { justification, ...rest } = body;
     const input = updatePaymentSchema.parse(rest);
 
-    const payment = await paymentService.update(orgId, paymentId, input, member.role, justification, userId);
+    const payment = await paymentService.update(orgId, paymentId, input, role, justification, userId);
 
     return Response.json(payment);
   } catch (error) {
@@ -54,10 +51,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; paymentId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, paymentId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("payments", "write", orgSlug);
 
     await paymentService.delete(orgId, paymentId);
 

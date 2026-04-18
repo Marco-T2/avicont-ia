@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { FinancialStatementsService } from "@/features/accounting/financial-statements";
 import { serializeStatement } from "@/features/accounting/financial-statements";
 import { balanceSheetQuerySchema } from "@/features/accounting/financial-statements/financial-statements.validation";
@@ -37,16 +33,10 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    // 1. Autenticación Clerk (REQ-13)
-    const { userId } = await requireAuth();
-
-    // 2. Resolver orgSlug → orgId y verificar membresía
+    // 1-3. Autenticación + membresía + rol (via requirePermission)
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-
-    // 3. Verificar rol (solo owner, admin, contador — REQ-13)
-    const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
-    const userRole = member.role as Role;
+    const { orgId, role } = await requirePermission("reports", "read", orgSlug);
+    const userRole = role as Role;
 
     // 4. Validar query params con Zod (incluye nuevos params PR2)
     const { searchParams } = new URL(request.url);
