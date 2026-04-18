@@ -1,14 +1,15 @@
 /**
  * /settings/roles page — auth gate tests.
  *
- * Page is read-only; requires accounting-config:read. On failure, redirect
- * to the org root (authenticated user without permission, NOT sign-in).
+ * Page requires accounting-config:read. On failure, redirect to org root.
+ * PR7.5: page now lists roles via RolesService + renders RolesListClient.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRedirect, mockRequirePermission } = vi.hoisted(() => ({
+const { mockRedirect, mockRequirePermission, mockListRoles } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
+  mockListRoles: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({
@@ -19,8 +20,18 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/components/settings/roles-permissions-matrix", () => ({
-  RolesPermissionsMatrix: vi.fn().mockReturnValue(null),
+// Mock RolesService — inject mockListRoles so we control what the page receives
+vi.mock("@/features/organizations", () => {
+  class RolesRepository {}
+  class RolesService {
+    listRoles = mockListRoles;
+  }
+  return { RolesRepository, RolesService };
+});
+
+// Mock the client component — server-rendering it in node env fails
+vi.mock("@/components/settings/roles-list-client", () => ({
+  default: vi.fn().mockReturnValue(null),
 }));
 
 import RolesPage from "../page";
@@ -33,9 +44,10 @@ function makeParams() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockListRoles.mockResolvedValue([]);
 });
 
-describe("/settings/roles — auth gate", () => {
+describe("/settings/roles — auth gate (PR7.5)", () => {
   it("allows render when requirePermission resolves", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1", userId: "u-1" });
 
@@ -55,5 +67,13 @@ describe("/settings/roles — auth gate", () => {
     await RolesPage({ params: makeParams() });
 
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
+  });
+
+  it("calls listRoles with the resolved orgId", async () => {
+    mockRequirePermission.mockResolvedValue({ orgId: "org-42", userId: "u-1" });
+
+    await RolesPage({ params: makeParams() });
+
+    expect(mockListRoles).toHaveBeenCalledWith("org-42");
   });
 });
