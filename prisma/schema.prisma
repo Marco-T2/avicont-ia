@@ -271,14 +271,6 @@ enum FiscalPeriodStatus {
   CLOSED
 }
 
-enum VoucherTypeCode {
-  CI // Comprobante de Ingreso
-  CE // Comprobante de Egreso
-  CD // Comprobante de Diario
-  CT // Comprobante de Traspaso
-  CA // Comprobante de Apertura
-}
-
 enum JournalEntryStatus {
   DRAFT
   POSTED
@@ -406,7 +398,8 @@ model FiscalPeriod {
 model VoucherTypeCfg {
   id             String          @id @default(cuid())
   organizationId String
-  code           VoucherTypeCode
+  code           String
+  prefix         String
   name           String
   description    String?
   isActive       Boolean         @default(true)

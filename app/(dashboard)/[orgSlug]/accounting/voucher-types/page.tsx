@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth, requireOrgAccess } from "@/features/shared";
-import { Card, CardContent } from "@/components/ui/card";
-import { Settings } from "lucide-react";
+import { VoucherTypesService } from "@/features/voucher-types";
+import VoucherTypesManager from "@/components/settings/voucher-types-manager";
 
 interface VoucherTypesPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -18,11 +18,15 @@ export default async function VoucherTypesPage({ params }: VoucherTypesPageProps
     redirect("/sign-in");
   }
 
+  let orgId: string;
   try {
-    await requireOrgAccess(userId, orgSlug);
+    orgId = await requireOrgAccess(userId, orgSlug);
   } catch {
     redirect("/select-org");
   }
+
+  const service = new VoucherTypesService();
+  const voucherTypes = await service.list(orgId, { includeCounts: true });
 
   return (
     <div className="space-y-6">
@@ -33,15 +37,18 @@ export default async function VoucherTypesPage({ params }: VoucherTypesPageProps
         </p>
       </div>
 
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Settings className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-          <p className="text-gray-600">Próximamente</p>
-          <p className="text-sm text-gray-400 mt-1">
-            La gestión de tipos de comprobante estará disponible en una próxima versión
-          </p>
-        </CardContent>
-      </Card>
+      <VoucherTypesManager
+        orgSlug={orgSlug}
+        initialVoucherTypes={voucherTypes.map((vt) => ({
+          id: vt.id,
+          code: vt.code,
+          name: vt.name,
+          prefix: vt.prefix,
+          description: vt.description,
+          isActive: vt.isActive,
+          _count: (vt as { _count?: { journalEntries: number } })._count,
+        }))}
+      />
     </div>
   );
 }

@@ -174,6 +174,39 @@ describe("JournalEntryDetail — origin badge (REQ-B.2)", () => {
   });
 });
 
+// ── T5.5 (voucher-types REQ-A.4-S3): inactive voucher type badge in detail ──
+
+describe("JournalEntryDetail — inactive voucher type badge (REQ-A.4-S3)", () => {
+  it("A.4-S3 — voucherTypeActive=false renders 'Inactivo' badge next to name", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry() as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Legacy"
+        voucherTypeActive={false}
+      />,
+    );
+    expect(screen.getByText("Legacy")).toBeInTheDocument();
+    expect(screen.getByText("Inactivo")).toBeInTheDocument();
+  });
+
+  it("A.4-S3 — voucherTypeActive=true does NOT render 'Inactivo' badge", () => {
+    render(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeDetailEntry() as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+        voucherTypeActive={true}
+      />,
+    );
+    expect(screen.queryByText("Inactivo")).not.toBeInTheDocument();
+  });
+});
+
 // ── T6.4 RED: detail renders date via formatDateBO (TZ-safe) ──
 
 describe("JournalEntryDetail — display-date TZ-safe (REQ-D.2)", () => {

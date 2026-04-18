@@ -63,7 +63,7 @@ export async function POST(
       : await service.createEntry(orgId, { ...input, createdById: user.id });
 
     const displayNumber = formatCorrelativeNumber(
-      entry.voucherType.code,
+      entry.voucherType.prefix,
       entry.date,
       entry.number,
     );

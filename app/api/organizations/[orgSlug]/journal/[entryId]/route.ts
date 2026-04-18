@@ -25,7 +25,7 @@ export async function GET(
     const entry = await service.getById(orgId, entryId);
 
     const displayNumber = formatCorrelativeNumber(
-      entry.voucherType.code,
+      entry.voucherType.prefix,
       entry.date,
       entry.number,
     );
@@ -58,7 +58,7 @@ export async function PATCH(
     }, member.role, justification);
 
     const displayNumber = formatCorrelativeNumber(
-      entry.voucherType.code,
+      entry.voucherType.prefix,
       entry.date,
       entry.number,
     );

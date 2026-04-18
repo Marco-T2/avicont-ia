@@ -1,19 +1,26 @@
-import type { VoucherTypeCfg, VoucherTypeCode } from "@/generated/prisma/client";
+import type { VoucherTypeCfg } from "@/generated/prisma/client";
 
 // ── Input types ──
 
 export interface CreateVoucherTypeInput {
-  code: VoucherTypeCode;
+  code: string;
+  prefix: string;
   name: string;
   description?: string;
 }
 
 export interface UpdateVoucherTypeInput {
   name?: string;
+  prefix?: string;
   description?: string;
   isActive?: boolean;
 }
 
+export interface ListVoucherTypesOptions {
+  isActive?: boolean;
+  includeCounts?: boolean;
+}
+
 // ── Re-export the Prisma model for convenience ──
 
-export type { VoucherTypeCfg, VoucherTypeCode };
+export type { VoucherTypeCfg };

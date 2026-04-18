@@ -285,13 +285,13 @@ export default function JournalEntryForm({
   const previewDisplayNumber = (() => {
     if (isEditing && editEntry && selectedVoucherType) {
       return formatCorrelativeNumber(
-        selectedVoucherType.code,
+        selectedVoucherType.prefix,
         new Date(editEntry.date),
         editEntry.number,
       );
     }
     if (!isEditing && selectedVoucherType && nextNumber && date) {
-      return formatCorrelativeNumber(selectedVoucherType.code, new Date(date), nextNumber);
+      return formatCorrelativeNumber(selectedVoucherType.prefix, new Date(date), nextNumber);
     }
     return null;
   })();
@@ -359,11 +359,16 @@ export default function JournalEntryForm({
                   <SelectValue placeholder="Seleccione tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {voucherTypes.map((vt) => (
-                    <SelectItem key={vt.id} value={vt.id}>
-                      {vt.name}
-                    </SelectItem>
-                  ))}
+                  {voucherTypes
+                    .filter((vt) => vt.isActive || vt.id === editEntry?.voucherTypeId)
+                    .map((vt) => (
+                      <SelectItem key={vt.id} value={vt.id}>
+                        {vt.name}
+                        {!vt.isActive && (
+                          <span className="text-gray-400 ml-1">(inactivo)</span>
+                        )}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
