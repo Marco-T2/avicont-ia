@@ -149,13 +149,17 @@ describe("REQ-P.2 — PERMISSIONS_READ/WRITE matrix (144 cases, static maps)", (
   }
 });
 
-describe("REQ-P.3-S3 — canPost(role, resource) — W-draft guard (18 cases)", () => {
+describe("REQ-P.3-S3 — canPost seed map (18 cases, via getPostAllowedRoles)", () => {
+  // PR8.3: sync 2-param canPost removed. The static seed map is tested directly
+  // against getPostAllowedRoles() as source of truth.
+  // The async canPost(role, resource, orgId) is tested via matrix mock below.
+  const postMap = getPostAllowedRoles();
   for (const resource of POST_RESOURCES) {
     const allowed = EXPECTED_POST[resource];
     for (const role of ALL_ROLES) {
       const expected = allowed.includes(role);
       it(`${role} × ${resource} → ${expected}`, () => {
-        expect(canPost(role, resource)).toBe(expected);
+        expect(postMap[resource].includes(role as Role)).toBe(expected);
       });
     }
   }
@@ -192,8 +196,10 @@ describe("Spec scenarios verbatim (via static maps)", () => {
   });
 
   it("P.3-S3 — auxiliar cannot post sales (W-draft)", () => {
+    // auxiliar can write-draft (PERMISSIONS_WRITE) but cannot post (seed canPost map)
+    // PR8.3: sync 2-param canPost removed — check the seed map directly.
     expect(PERMISSIONS_WRITE["sales"].includes("auxiliar")).toBe(true);
-    expect(canPost("auxiliar", "sales")).toBe(false);
+    expect(getPostAllowedRoles()["sales"].includes("auxiliar")).toBe(false);
   });
 });
 
