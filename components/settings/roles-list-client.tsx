@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import RoleCreateDialog from "./role-create-dialog";
@@ -27,6 +27,12 @@ export default function RolesListClient({
 }: RolesListClientProps) {
   const router = useRouter();
   const [roles, setRoles] = useState<CustomRoleShape[]>(initialRoles);
+
+  // W-1 fix: sync local state when server re-renders with updated initialRoles
+  // (happens after router.refresh() causes Next.js to re-fetch server data)
+  useEffect(() => {
+    setRoles(initialRoles);
+  }, [initialRoles]);
 
   function handleRefresh() {
     router.refresh();

@@ -159,7 +159,7 @@ export default function RoleEditDrawer({
   const disabled = role.isSystem || isLoading;
 
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
+    <Sheet key={role.id} open={open} onOpenChange={handleOpenChange}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm">
           <Pencil className="h-3.5 w-3.5 mr-1.5" />

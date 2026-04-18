@@ -219,6 +219,94 @@ describe("GET /api/organizations/[orgSlug]/roles", () => {
   });
 });
 
+// ─── W-3: Cross-org slug isolation (CR.4-S3) ─────────────────────────────────
+
+describe("GET /api/organizations/[orgSlug]/roles — cross-org slug isolation (CR.4-S3)", () => {
+  const ORG_A_SLUG = "org-a";
+  const ORG_A_ID = "org_a_id";
+  const ORG_B_SLUG = "org-b";
+  const ORG_B_ID = "org_b_id";
+
+  it("(j) same role slug in two orgs returns separate records scoped to each org", async () => {
+    const roleA = {
+      id: "r-a-facturador",
+      organizationId: ORG_A_ID,
+      slug: "facturador",
+      name: "Facturador A",
+      description: null,
+      isSystem: false,
+      permissionsRead: ["sales"],
+      permissionsWrite: [],
+      canPost: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    const roleB = {
+      id: "r-b-facturador",
+      organizationId: ORG_B_ID,
+      slug: "facturador",
+      name: "Facturador B",
+      description: null,
+      isSystem: false,
+      permissionsRead: ["purchases"],
+      permissionsWrite: [],
+      canPost: [],
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    const { GET } = await import("../route");
+
+    // ── Org A request ─────────────────────────────────────────────────────────
+    vi.mocked(requirePermission).mockResolvedValueOnce({
+      session: { userId: CLERK_USER_ID },
+      orgId: ORG_A_ID,
+      role: "admin",
+    } as Awaited<ReturnType<typeof requirePermission>>);
+    mockRolesServiceInstance.listRoles.mockResolvedValueOnce([roleA]);
+
+    const reqA = new Request(
+      `http://localhost/api/organizations/${ORG_A_SLUG}/roles`,
+    );
+    const resA = await GET(reqA, {
+      params: Promise.resolve({ orgSlug: ORG_A_SLUG }),
+    });
+
+    expect(resA.status).toBe(200);
+    const bodyA = (await resA.json()) as { roles: Array<{ id: string; slug: string }> };
+    expect(bodyA.roles).toHaveLength(1);
+    expect(bodyA.roles[0].id).toBe("r-a-facturador");
+    expect(mockRolesServiceInstance.listRoles).toHaveBeenLastCalledWith(ORG_A_ID);
+
+    // ── Org B request ─────────────────────────────────────────────────────────
+    vi.mocked(requirePermission).mockResolvedValueOnce({
+      session: { userId: CLERK_USER_ID },
+      orgId: ORG_B_ID,
+      role: "admin",
+    } as Awaited<ReturnType<typeof requirePermission>>);
+    mockRolesServiceInstance.listRoles.mockResolvedValueOnce([roleB]);
+
+    const reqB = new Request(
+      `http://localhost/api/organizations/${ORG_B_SLUG}/roles`,
+    );
+    const resB = await GET(reqB, {
+      params: Promise.resolve({ orgSlug: ORG_B_SLUG }),
+    });
+
+    expect(resB.status).toBe(200);
+    const bodyB = (await resB.json()) as { roles: Array<{ id: string; slug: string }> };
+    expect(bodyB.roles).toHaveLength(1);
+    expect(bodyB.roles[0].id).toBe("r-b-facturador");
+    expect(mockRolesServiceInstance.listRoles).toHaveBeenLastCalledWith(ORG_B_ID);
+
+    // ── Verify route properly scoped each call to the correct orgId ───────────
+    // Both calls share the same slug "facturador" but returned different records,
+    // proving the route delegates org scope via orgId (from requirePermission),
+    // not the URL slug alone.
+    expect(bodyA.roles[0].id).not.toBe(bodyB.roles[0].id);
+  });
+});
+
 // ─── POST ────────────────────────────────────────────────────────────────────
 
 describe("POST /api/organizations/[orgSlug]/roles", () => {
