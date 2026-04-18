@@ -3,6 +3,7 @@ import { Brain, FileText, Home, LogIn, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { RoleBadge } from "@/components/common/role-badge";
 import { useOrganization, UserButton, useUser } from "@clerk/nextjs";
 
 export default function Header() {
@@ -43,6 +44,7 @@ export default function Header() {
                             <span className="text-sm text-gray-600">
                                 {organization ? `En ${organization.name}` : user?.firstName || user?.username}
                             </span>
+                            <RoleBadge />
                             <UserButton />
                         </div>
                     ) : (
