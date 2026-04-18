@@ -74,7 +74,7 @@
 
 > Swap static map for cache-backed matrix. All 62+ routes untouched (signature frozen).
 
-### PR2.1 — `requirePermission` reads from cache + fallback seed
+### PR2.1 — ✅ `requirePermission` reads from cache + fallback seed
 
 **RED**: `features/shared/__tests__/require-permission.test.ts` (extend existing) — add: (a) matrix loaded from cache on call, (b) org with 0 roles triggers inline seed then re-checks, (c) unauthorized returns 403 `FORBIDDEN`, (d) signature `(resource, action, orgSlug)` contract test with 62+ call sites assertion (count grep).
 
@@ -82,11 +82,11 @@
 
 **Satisfies**: P.3mod (signature frozen, DB-driven), CR.1-S3 (fallback seed), D.6 (runtime fallback)
 
-**Done when**: existing 62+ route integration tests pass without touching route files.
+**Done when**: existing 62+ route integration tests pass without touching route files. ✅
 
 ---
 
-### PR2.2 — `canAccess` facade reads from cache
+### PR2.2 — ✅ `canAccess` facade reads from cache
 
 **RED**: `features/shared/__tests__/permissions.test.ts` (extend) — add: (a) `canAccess("contador","reports","read",orgId)` → true from seeded system snapshot; (b) unknown role → false; (c) custom role with `journal.write=true` in mock matrix → true; (d) expired cache (mock TTL) triggers reload.
 
@@ -94,7 +94,7 @@
 
 **Satisfies**: P.2mod-S1..S5, D.7 (async facade)
 
-**Done when**: all P.2 scenarios pass; `<Gated>` / `useCanAccess` still compile (public API unchanged).
+**Done when**: all P.2 scenarios pass; `<Gated>` / `useCanAccess` still compile (public API unchanged). ✅
 
 ---
 
