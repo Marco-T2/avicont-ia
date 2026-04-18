@@ -1,55 +1,120 @@
+import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess, requireRole } from "@/features/shared/middleware";
-import { OrgSettingsService } from "@/features/org-settings";
-import { OrgSettingsForm } from "@/components/settings/org-settings-form";
+import {
+  Settings,
+  Calendar,
+  Receipt,
+  Package,
+  FileText,
+  type LucideIcon,
+} from "lucide-react";
+import { requirePermission } from "@/features/shared/permissions.server";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
-const settingsService = new OrgSettingsService();
-
-interface SettingsPageProps {
+interface SettingsHubPageProps {
   params: Promise<{ orgSlug: string }>;
 }
 
-export default async function SettingsPage({ params }: SettingsPageProps) {
+export const metadata: Metadata = {
+  title: "Configuración",
+};
+
+interface SettingsCard {
+  id: string;
+  title: string;
+  description: string;
+  href: (orgSlug: string) => string;
+  Icon: LucideIcon;
+}
+
+const SETTINGS_CARDS: SettingsCard[] = [
+  {
+    id: "general",
+    title: "Configuración General",
+    description: "Cuentas contables y parámetros de la organización",
+    href: (orgSlug) => `/${orgSlug}/settings/general`,
+    Icon: Settings,
+  },
+  {
+    id: "periods",
+    title: "Períodos Fiscales",
+    description: "Apertura y cierre de períodos contables",
+    href: (orgSlug) => `/${orgSlug}/settings/periods`,
+    Icon: Calendar,
+  },
+  {
+    id: "voucher-types",
+    title: "Tipos de Comprobante",
+    description: "Prefijos y correlativos de comprobantes",
+    href: (orgSlug) => `/${orgSlug}/settings/voucher-types`,
+    Icon: Receipt,
+  },
+  {
+    id: "product-types",
+    title: "Tipos de Producto",
+    description: "Catálogo de productos y sus cuentas asociadas",
+    href: (orgSlug) => `/${orgSlug}/settings/product-types`,
+    Icon: Package,
+  },
+  {
+    id: "operational-doc-types",
+    title: "Tipos de Documento",
+    description: "Documentos operativos (remitos, órdenes, etc.)",
+    href: (orgSlug) => `/${orgSlug}/settings/operational-doc-types`,
+    Icon: FileText,
+  },
+];
+
+export default async function SettingsHubPage({ params }: SettingsHubPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  let orgId: string;
   try {
-    const session = await requireAuth();
-    userId = session.userId;
-    orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    await requirePermission("accounting-config", "read", orgSlug);
   } catch {
-    redirect("/sign-in");
+    redirect(`/${orgSlug}`);
   }
-
-  const settings = await settingsService.getOrCreate(orgId);
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Configuración General</h1>
+        <h1 className="text-3xl font-bold">Configuración</h1>
         <p className="text-gray-500 mt-1">
-          Cuentas contables y parámetros de la organización
+          Catálogo de parámetros y catálogos de la organización
         </p>
       </div>
 
-      <OrgSettingsForm
-        orgSlug={orgSlug}
-        settings={{
-          id: settings.id,
-          cajaGeneralAccountCode: settings.cajaGeneralAccountCode,
-          bancoAccountCode: settings.bancoAccountCode,
-          cxcAccountCode: settings.cxcAccountCode,
-          cxpAccountCode: settings.cxpAccountCode,
-          roundingThreshold: Number(settings.roundingThreshold),
-          cashParentCode: settings.cashParentCode,
-          pettyCashParentCode: settings.pettyCashParentCode,
-          bankParentCode: settings.bankParentCode,
-          fleteExpenseAccountCode: settings.fleteExpenseAccountCode,
-          polloFaenadoCOGSAccountCode: settings.polloFaenadoCOGSAccountCode,
-        }}
-      />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {SETTINGS_CARDS.map(({ id, title, description, href, Icon }) => (
+          <Link
+            key={id}
+            href={href(orgSlug)}
+            className="block h-full hover:no-underline"
+            aria-label={title}
+          >
+            <Card size="sm" className="h-full transition-colors">
+              <CardHeader>
+                <div className="flex items-start gap-3">
+                  <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <CardTitle className="text-sm">{title}</CardTitle>
+                    <CardDescription className="mt-1">
+                      {description}
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent />
+            </Card>
+          </Link>
+        ))}
+      </div>
     </div>
   );
 }
