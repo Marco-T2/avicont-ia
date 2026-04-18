@@ -139,3 +139,12 @@ export const LOCKED_EDIT_REQUIRES_JUSTIFICATION = "LOCKED_EDIT_REQUIRES_JUSTIFIC
 // RBAC — Membership & Authorization
 export const CANNOT_CHANGE_OWN_ROLE = "CANNOT_CHANGE_OWN_ROLE";
 export const POST_NOT_ALLOWED_FOR_ROLE = "POST_NOT_ALLOWED_FOR_ROLE";
+
+// RBAC — Custom Roles (PR1.3)
+// NOTE: spec uses SELF_LOCK_GUARD; design D.4 used CANNOT_SELF_LOCK. Spec name chosen.
+// NOTE: spec uses ROLE_HAS_MEMBERS (CR.7); design D.10 used ROLE_IN_USE. Spec name chosen.
+export const SYSTEM_ROLE_IMMUTABLE = "SYSTEM_ROLE_IMMUTABLE";
+export const SELF_LOCK_GUARD = "SELF_LOCK_GUARD";
+export const SLUG_TAKEN = "SLUG_TAKEN";
+export const RESERVED_SLUG = "RESERVED_SLUG";
+export const ROLE_HAS_MEMBERS = "ROLE_HAS_MEMBERS";
