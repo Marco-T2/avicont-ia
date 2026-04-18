@@ -31,8 +31,6 @@ import { getMatrix } from "../permissions.cache";
 import type { OrgMatrix } from "../permissions.cache";
 
 import {
-  canAccess,
-  canPost,
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
   getPostAllowedRoles,
@@ -40,6 +38,7 @@ import {
   type Resource,
   type Action,
 } from "@/features/shared/permissions";
+import { canAccess, canPost } from "@/features/shared/permissions.server";
 
 const ALL_ROLES: Role[] = [
   "owner",

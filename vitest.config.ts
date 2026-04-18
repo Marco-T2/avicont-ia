@@ -2,7 +2,14 @@ import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
 import path from "path";
 
-const alias = { "@": path.resolve(__dirname, ".") };
+// server-only is a Next.js runtime guard — stub it in Vitest so tests can import
+// server-side modules (permissions.server, permissions.cache) without throwing.
+const serverOnlyStub = path.resolve(__dirname, "__mocks__/server-only.ts");
+
+const alias = {
+  "@": path.resolve(__dirname, "."),
+  "server-only": serverOnlyStub,
+};
 
 export default defineConfig({
   test: {

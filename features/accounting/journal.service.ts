@@ -20,7 +20,7 @@ import {
   ENTRY_SYSTEM_GENERATED_IMMUTABLE,
   AUTO_ENTRY_VOID_FORBIDDEN,
 } from "@/features/shared/errors";
-import { canPost } from "@/features/shared/permissions";
+import { canPost } from "@/features/shared/permissions.server";
 import {
   validateLockedEdit,
   validatePeriodOpen,

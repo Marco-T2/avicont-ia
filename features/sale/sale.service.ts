@@ -9,7 +9,7 @@ import {
   SALE_CONTACT_CHANGE_BLOCKED,
   SALE_INCOME_ACCOUNT_REQUIRED,
 } from "@/features/shared/errors";
-import { canPost } from "@/features/shared/permissions";
+import { canPost } from "@/features/shared/permissions.server";
 import {
   validateTransition,
   validateEditable,

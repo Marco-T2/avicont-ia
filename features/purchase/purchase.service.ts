@@ -9,7 +9,7 @@ import {
   PURCHASE_CONTACT_CHANGE_BLOCKED,
   PURCHASE_EXPENSE_ACCOUNT_REQUIRED,
 } from "@/features/shared/errors";
-import { canPost } from "@/features/shared/permissions";
+import { canPost } from "@/features/shared/permissions.server";
 import {
   validateTransition,
   validateDraftOnly,
