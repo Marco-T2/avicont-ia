@@ -152,7 +152,7 @@
 
 > Business logic: slugify, reserved-slug guard, self-lock guard, array normalize, member-guard on delete.
 
-### PR4.1 — `slugify` + reserved-slug utilities
+### PR4.1 — ✅ `slugify` + reserved-slug utilities
 
 **RED**: `features/organizations/__tests__/roles.validation.test.ts` — assert: `slugify("Mi Rol Especial") === "mi-rol-especial"`; diacritics stripped; max 32 chars; reserved slugs list rejects with `RESERVED_SLUG`; collision suffix `-2`..`-99`.
 
