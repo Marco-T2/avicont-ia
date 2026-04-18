@@ -1,7 +1,6 @@
 import { requireAuth, requireOrgAccess, requireRole } from "./middleware";
-import { getMatrix, revalidateOrgMatrix } from "./permissions.cache";
+import { ensureOrgSeeded } from "./permissions.cache";
 import type { Action, Resource } from "./permissions";
-import { seedOrgSystemRoles } from "@/prisma/seed-system-roles";
 
 /**
  * Single server-side authorization gate used by all org route handlers.
@@ -25,25 +24,11 @@ export async function requirePermission(
   const session = await requireAuth();
   const orgId = await requireOrgAccess(session.userId, orgSlug);
 
-  // Load permission matrix from cache (single-flight, 60s TTL)
-  let matrix = await getMatrix(orgId);
-
-  // Fallback: seed 6 system roles if org has none (D.6 / CR.1-S3).
-  // The try/catch ensures a seed failure (e.g. test environment without DB)
-  // does not crash the request — the permission check continues with whatever
-  // matrix was loaded. In production, seedOrgSystemRoles() is idempotent and
-  // skipDuplicates=true, so a concurrent race is safe.
-  if (matrix.roles.size === 0) {
-    try {
-      await seedOrgSystemRoles(orgId);
-      revalidateOrgMatrix(orgId);
-      matrix = await getMatrix(orgId);
-    } catch {
-      // Seed failed (e.g. test environment without DB, or migration not run yet).
-      // Proceed with the empty matrix; requireRole will enforce access using
-      // its own mocked/real logic.
-    }
-  }
+  // Load permission matrix from cache, seeding 6 system roles if the org has none.
+  // ensureOrgSeeded handles the D.6 / CR.1-S3 fallback: if roles.size === 0, seeds
+  // the org, revalidates the cache, and reloads. Seed failures are swallowed silently
+  // so test environments without a DB don't crash.
+  const matrix = await ensureOrgSeeded(orgId);
 
   // Derive the allowed roles for this (resource, action) from the matrix
   const allowedRoles: string[] = [];

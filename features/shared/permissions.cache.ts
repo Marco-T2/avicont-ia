@@ -10,6 +10,10 @@
  *
  * Test hook: _setLoader(fn) allows tests to inject a custom loader.
  * Default loader: prisma.customRole.findMany — wired up as identity per D.6 fallback.
+ *
+ * ensureOrgSeeded: D.6 / CR.1-S3 shared fallback — seeds the 6 system roles when an
+ * org has none. Shared by requirePermission (server auth gate) and buildClientMatrixSnapshot
+ * (layout snapshot path) to keep the fallback behavior consistent.
  */
 
 import type { Resource, PostableResource } from "@/features/shared/permissions";
@@ -150,4 +154,30 @@ function _evictOldest(): void {
   if (firstKey !== undefined) {
     cache.delete(firstKey);
   }
+}
+
+/**
+ * Ensures an org's permission matrix has at least the 6 system roles.
+ * If the cached matrix is empty, seeds the org and returns the fresh matrix.
+ * If seeding fails (e.g. test env without DB), returns the empty matrix
+ * silently — callers that hard-depend on non-empty matrices handle that case.
+ *
+ * Idempotent via Prisma `skipDuplicates:true` + cache revalidation. (D.6 / CR.1-S3)
+ */
+export async function ensureOrgSeeded(orgId: string): Promise<OrgMatrix> {
+  let matrix = await getMatrix(orgId);
+
+  if (matrix.roles.size === 0) {
+    try {
+      const { seedOrgSystemRoles } = await import("@/prisma/seed-system-roles");
+      await seedOrgSystemRoles(orgId);
+      revalidateOrgMatrix(orgId);
+      matrix = await getMatrix(orgId);
+    } catch {
+      // Seed failed (e.g. test environment without DB, or migration not run yet).
+      // Return the empty matrix silently — callers handle the empty case.
+    }
+  }
+
+  return matrix;
 }

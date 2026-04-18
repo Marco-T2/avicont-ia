@@ -23,6 +23,9 @@ vi.mock("../permissions.cache", async (importOriginal) => {
     ...actual,
     getMatrix: vi.fn(),
     revalidateOrgMatrix: vi.fn(),
+    // ensureOrgSeeded delegates to the mocked getMatrix so existing tests remain valid.
+    // It mirrors the real implementation: calls getMatrix once for non-empty, twice for empty.
+    ensureOrgSeeded: vi.fn(),
   };
 });
 
@@ -38,7 +41,7 @@ import {
   requireOrgAccess,
   requireRole,
 } from "../middleware";
-import { getMatrix, revalidateOrgMatrix } from "../permissions.cache";
+import { getMatrix, revalidateOrgMatrix, ensureOrgSeeded } from "../permissions.cache";
 import type { OrgMatrix } from "../permissions.cache";
 import { ForbiddenError } from "../errors";
 import {
@@ -55,6 +58,7 @@ const mockedRequireOrgAccess = vi.mocked(requireOrgAccess);
 const mockedRequireRole = vi.mocked(requireRole);
 const mockedGetMatrix = vi.mocked(getMatrix);
 const mockedRevalidateOrgMatrix = vi.mocked(revalidateOrgMatrix);
+const mockedEnsureOrgSeeded = vi.mocked(ensureOrgSeeded);
 
 const ORG_SLUG = "acme";
 const ORG_ID = "org_acme";
@@ -104,9 +108,16 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
 
 // Global default: all tests get a real system matrix from getMatrix unless overridden.
 // This ensures existing tests (which don't set up getMatrix) don't break.
+//
+// ensureOrgSeeded is mocked to proxy through mockedGetMatrix so that:
+// - call-count assertions on mockedGetMatrix remain valid (ensureOrgSeeded calls it once for non-empty path)
+// - the seed fallback path can be exercised by making mockedGetMatrix return empty then populated
 beforeEach(() => {
   mockedGetMatrix.mockImplementation((orgId: string) =>
     Promise.resolve(makeSystemMatrix(orgId)),
+  );
+  mockedEnsureOrgSeeded.mockImplementation((orgId: string) =>
+    mockedGetMatrix(orgId),
   );
 });
 
@@ -116,6 +127,9 @@ describe("requirePermission (REQ-P.3 / REQ-P.4 / D.2)", () => {
     // Re-apply default after vi.clearAllMocks() clears the implementation
     mockedGetMatrix.mockImplementation((orgId: string) =>
       Promise.resolve(makeSystemMatrix(orgId)),
+    );
+    mockedEnsureOrgSeeded.mockImplementation((orgId: string) =>
+      mockedGetMatrix(orgId),
     );
   });
 
@@ -291,6 +305,9 @@ describe("PR2.1 — requirePermission reads from cache + fallback seed", () => {
     mockedGetMatrix.mockImplementation((orgId: string) =>
       Promise.resolve(makeSystemMatrix(orgId)),
     );
+    mockedEnsureOrgSeeded.mockImplementation((orgId: string) =>
+      mockedGetMatrix(orgId),
+    );
   });
 
   describe("(a) requirePermission calls getMatrix exactly once per request", () => {
@@ -334,6 +351,17 @@ describe("PR2.1 — requirePermission reads from cache + fallback seed", () => {
         .mockResolvedValueOnce(emptyMatrix)
         .mockResolvedValueOnce(seededMatrix);
       mockedRequireRole.mockResolvedValue({ id: "m1", role: "admin" } as never);
+
+      // Override ensureOrgSeeded to mirror the real fallback behavior:
+      // calls getMatrix twice (detect empty + reload) and revalidateOrgMatrix once.
+      mockedEnsureOrgSeeded.mockImplementationOnce(async (orgId: string) => {
+        const matrix = await mockedGetMatrix(orgId);
+        if (matrix.roles.size === 0) {
+          mockedRevalidateOrgMatrix(orgId);
+          return mockedGetMatrix(orgId);
+        }
+        return matrix;
+      });
 
       const result = await requirePermission("members", "read", ORG_SLUG);
 
