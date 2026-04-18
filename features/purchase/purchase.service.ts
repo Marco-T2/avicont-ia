@@ -500,8 +500,8 @@ export class PurchaseService {
     input: CreatePurchaseInput,
     context: { userId: string; role: string },
   ): Promise<PurchaseWithDetails> {
-    // 0. RBAC: canPost (REQ-P.3-S3 / D.3) — auxiliar bloqueado en POST
-    if (!canPost(context.role, "purchases")) {
+    // 0. RBAC: canPost (PR3.2 / P.6 / D.7) — matrix-backed async check
+    if (!(await canPost(context.role, "purchases", organizationId))) {
       throw new ForbiddenError(
         "Tu rol no tiene permiso para contabilizar compras",
         POST_NOT_ALLOWED_FOR_ROLE,
