@@ -1,3 +1,8 @@
+// [PR1 regression gate] must pass before and after import swap (PR1.4).
+// This file is READ-ONLY for PR1. Do NOT modify existing assertions.
+// All 15 tests in this file must remain green after dropOrphanSeparators
+// is extracted from active-module-nav.tsx to lib/sidebar/drop-orphan-separators.ts.
+
 /**
  * PR3.5 [RED] — REQ-MS.7 wiring (no per-child RBAC yet — that's PR4):
  * ActiveModuleNav renders the active module's navItems through <NavItem>,

@@ -93,9 +93,10 @@ describe("<RolesPermissionsMatrix />", () => {
   });
 
   describe("post column (REQ-P.3)", () => {
-    it("renders a 'Contabilizar' section separate from read/write", () => {
+    it("renders post-capable cells for postable resources (Ventas, Compras, Libro Diario)", () => {
       render(<RolesPermissionsMatrix />);
-      expect(screen.getByText(/contabilizar/i)).toBeInTheDocument();
+      // Post cells are present — verified via testId (shape unchanged)
+      expect(screen.getByTestId("cell-sales-contador-post")).toBeInTheDocument();
     });
 
     it("auxiliar + sales/post → denied (W-draft excludes post)", () => {
@@ -112,9 +113,31 @@ describe("<RolesPermissionsMatrix />", () => {
   });
 
   describe("table structure", () => {
-    it("renders three tables: read, write, post", () => {
+    it("renders a single grouped table (REQ-RM.25 — grouped layout)", () => {
       render(<RolesPermissionsMatrix />);
-      expect(screen.getAllByRole("table")).toHaveLength(3);
+      expect(screen.getAllByRole("table")).toHaveLength(1);
+    });
+  });
+
+  // ── PR2.9 [RED] — Grouped layout assertions (REQ-RM.25) ─────────────────────
+  // These two tests will fail until PR2.10 applies the grouping.
+
+  describe("grouped layout (REQ-RM.25)", () => {
+    it("resource rows grouped under section headings matching Module.label + 'Organización'", () => {
+      render(<RolesPermissionsMatrix />);
+      // After grouping, there should be section headings for each module + Organización
+      expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
+      expect(screen.getAllByText("Granjas").length).toBeGreaterThan(0);
+      expect(screen.getByText("Organización")).toBeInTheDocument();
+    });
+
+    it("flat RESOURCE_ORDER without section headers is gone (grouped layout applied)", () => {
+      render(<RolesPermissionsMatrix />);
+      // With grouping, there is only one table (grouped) rather than three flat tables
+      // Section headings act as separators. The single table should be present.
+      const tables = screen.getAllByRole("table");
+      // After grouping: 1 table (grouped) replaces the 3 flat tables
+      expect(tables).toHaveLength(1);
     });
   });
 });

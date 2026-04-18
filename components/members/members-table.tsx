@@ -1,15 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -20,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, UserMinus, UserCog } from "lucide-react";
 import { toast } from "sonner";
+import RolePicker from "@/components/settings/role-picker";
 
 interface Member {
   id: string;
@@ -35,8 +29,9 @@ interface MembersTableProps {
   onUpdated?: () => void;
 }
 
-// Owner displayable (alguien lo es) pero NO asignable. Resto: 5 roles asignables.
-const ROLE_LABELS: Record<string, string> = {
+// Built-in labels for the 6 system roles. Custom roles fall back to the name
+// fetched from /api/organizations/[orgSlug]/roles.
+const SYSTEM_ROLE_LABELS: Record<string, string> = {
   owner: "Propietario",
   admin: "Administrador",
   contador: "Contador",
@@ -45,6 +40,7 @@ const ROLE_LABELS: Record<string, string> = {
   member: "Socio",
 };
 
+// System-role colors. Custom roles use a neutral slate color.
 const ROLE_COLORS: Record<string, string> = {
   owner: "bg-purple-100 text-purple-800 border-purple-200",
   admin: "bg-blue-100 text-blue-800 border-blue-200",
@@ -54,13 +50,7 @@ const ROLE_COLORS: Record<string, string> = {
   member: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
-const ASSIGNABLE_ROLES = [
-  "member",
-  "auxiliar",
-  "cobrador",
-  "contador",
-  "admin",
-] as const;
+const CUSTOM_ROLE_COLOR = "bg-slate-100 text-slate-800 border-slate-200";
 
 export default function MembersTable({
   orgSlug,
@@ -71,6 +61,25 @@ export default function MembersTable({
   const [roleDialogMember, setRoleDialogMember] = useState<Member | null>(null);
   const [deactivateDialogMember, setDeactivateDialogMember] = useState<Member | null>(null);
   const [newRole, setNewRole] = useState("");
+  const [roleNameBySlug, setRoleNameBySlug] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    fetch(`/api/organizations/${orgSlug}/roles`)
+      .then((r) => r.json())
+      .then((data: { roles: { slug: string; name: string }[] }) => {
+        const map: Record<string, string> = {};
+        for (const role of data.roles) map[role.slug] = role.name;
+        setRoleNameBySlug(map);
+      })
+      .catch(() => {
+        // fallback to built-in labels only
+      });
+  }, [orgSlug]);
+
+  const labelFor = (slug: string) =>
+    SYSTEM_ROLE_LABELS[slug] ?? roleNameBySlug[slug] ?? slug;
+  const colorFor = (slug: string) =>
+    ROLE_COLORS[slug] ?? CUSTOM_ROLE_COLOR;
 
   const handleUpdateRole = async () => {
     if (!roleDialogMember || !newRole) return;
@@ -153,9 +162,9 @@ export default function MembersTable({
                 <td className="px-4 py-3">
                   <Badge
                     variant="outline"
-                    className={ROLE_COLORS[member.role] ?? ROLE_COLORS.member}
+                    className={colorFor(member.role)}
                   >
-                    {ROLE_LABELS[member.role] ?? member.role}
+                    {labelFor(member.role)}
                   </Badge>
                 </td>
                 <td className="px-4 py-3 text-right">
@@ -202,18 +211,12 @@ export default function MembersTable({
             <label className="block text-sm font-medium mb-2">
               Nuevo Rol
             </label>
-            <Select value={newRole} onValueChange={setNewRole}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {ASSIGNABLE_ROLES.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {ROLE_LABELS[r]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RolePicker
+              orgSlug={orgSlug}
+              value={newRole}
+              onChange={setNewRole}
+              disabled={!!loadingId}
+            />
           </div>
           <DialogFooter>
             <Button
