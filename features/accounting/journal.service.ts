@@ -185,8 +185,8 @@ export class JournalService {
     input: CreateJournalEntryInput,
     context: { userId: string; role: string },
   ): Promise<JournalEntryWithLines> {
-    // 0. RBAC: canPost (REQ-P.3 / D.3) — sólo owner/admin/contador contabilizan
-    if (!canPost(context.role, "journal")) {
+    // 0. RBAC: canPost (PR3.3 / P.6 / D.7) — matrix-backed async check
+    if (!(await canPost(context.role, "journal", organizationId))) {
       throw new ForbiddenError(
         "Tu rol no tiene permiso para contabilizar asientos",
         POST_NOT_ALLOWED_FOR_ROLE,

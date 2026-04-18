@@ -1,7 +1,8 @@
 # Tasks: Custom Roles per Organization
 
 > REQ coverage: CR.1–CR.8 · P.2mod · P.3mod · P.5 · P.6 · R.1mod · R.3mod · R.4 · U.1mod · U.2mod · U.4mod · U.5
-> Structure: 8 PRs · 32 tasks · TDD RED→GREEN→REFACTOR throughout
+> Structure: 8 PRs · 33 tasks · TDD RED→GREEN→REFACTOR throughout
+> PR3 = 3 tasks (PR3.1 sale + PR3.2 purchase + PR3.3 journal — added after verification proved design D.7 misread the journal code).
 
 ---
 
@@ -98,9 +99,13 @@
 
 ---
 
-## PR3 — Service `canPost` migration (sale + purchase)
+## PR3 — Service `canPost` migration (sale + purchase + journal)
 
-> Only 2 service files; journal gates via `requirePermission` (no canPost needed).
+> 3 service files: `sale.service.ts`, `purchase.service.ts`, `journal.service.ts`.
+> NOTE: design D.7 originally (and incorrectly) claimed journal did not use `canPost`.
+> Verification proved `journal.service.ts:189` DOES call `canPost(context.role, "journal")`,
+> so PR3.3 was added to restore exploration's original scope and close the gap before
+> PR8.2 removes `POST_ALLOWED_ROLES`.
 
 ### PR3.1 — ✅ `sale.service.ts` async `canPost`
 
@@ -123,6 +128,23 @@
 **Satisfies**: P.6 (purchase branch), D.7
 
 **Done when**: existing purchase.service.iva.test.ts still green; new canPost tests green.
+
+---
+
+### PR3.3 — ✅ `journal.service.ts` async `canPost`
+
+> Scope correction: design D.7 originally misread the codebase and claimed journal did
+> not use `canPost`. `journal.service.ts:189` in fact calls `canPost(context.role, "journal")`
+> inside `createAndPost`. PR3.3 restores exploration's original 3-file scope so PR8.2
+> can safely remove `POST_ALLOWED_ROLES` without breaking journal posting at runtime.
+
+**RED**: `features/accounting/__tests__/journal-canpost-async.test.ts` — mirror sale/purchase tests: (a) a custom slug (`custom_asentador`) NOT present in `POST_ALLOWED_ROLES.journal` but granted `canPost=['journal']` in the matrix → passes the guard (REQUIRES the async path to succeed); (b) `auxiliar` with no `journal` in canPost → `ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)` / 403; (c) `getMatrix` called exactly once per `createAndPost`; (d) `_setLoader` hook used — no real DB.
+
+**GREEN**: `features/accounting/journal.service.ts:189` — replace `if (!canPost(context.role, "journal"))` with `if (!(await canPost(context.role, "journal", organizationId)))`. `createAndPost` is already async and already receives `organizationId` — no signature change required. `transitionStatus` does NOT call `canPost`, so this is the single runtime migration site in the file.
+
+**Satisfies**: P.6-S1, P.6-S2 (journal branch), D.7 (journal migration — closes D.7 misread gap)
+
+**Done when**: 6 new journal async tests green; full `features/accounting` suite stays green; grep audit reports zero non-awaited `canPost(` call sites outside tests/definitions/archive.
 
 ---
 
@@ -321,7 +343,7 @@
 | P.2mod (canAccess dynamic) | PR2 | PR2.2 |
 | P.3mod (requirePermission frozen) | PR2 | PR2.1 |
 | P.5 (cache) | PR1 | PR1.4 |
-| P.6 (canPost via matrix) | PR3, PR8 | PR3.1, PR3.2, PR8.2 |
+| P.6 (canPost via matrix) | PR3, PR8 | PR3.1, PR3.2, PR3.3, PR8.2 |
 | R.1mod (Role = string) | PR1 | PR1.2 |
 | R.3mod (admin changes role) | PR6 | PR6.2 |
 | R.4 (CRUD API) | PR5 | PR5.1, PR5.2 |
