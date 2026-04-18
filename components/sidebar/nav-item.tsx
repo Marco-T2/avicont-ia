@@ -11,11 +11,24 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import type { Resource } from "@/features/shared/permissions";
 
 export interface NavSubItem {
   label: string;
   href?: string;
   isSeparator?: boolean;
+  /**
+   * PR4: Optional per-child RBAC resource. When present, callers may use it
+   * to gate visibility (matrix.canAccess(resource, "read")). Optional for
+   * backward compatibility — existing usages without `resource` continue
+   * to work exactly as before.
+   *
+   * Note: <ActiveModuleNav> performs the RBAC filter at the parent level
+   * before passing navItems here; this field is provided primarily as a
+   * type-level affordance for other callers that may want to thread a
+   * resource through.
+   */
+  resource?: Resource;
 }
 
 export interface NavItemProps {

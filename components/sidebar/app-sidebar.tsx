@@ -1,20 +1,37 @@
 "use client";
 
+/**
+ * PR3.8 [GREEN] — REQ-MS.9 + REQ-MS.16: AppSidebar composition refactor.
+ *
+ * Pre-PR3 shape: a flat `navItems[]` array with a parent-level RBAC filter
+ * (by resource) rendered inline via <NavItem> children.
+ *
+ * Post-PR3 shape: a composition of small, focused sub-components driven by
+ * the module registry + useActiveModule() hook:
+ *   - <ModuleSwitcher />      (PR2) — module picker (active + available)
+ *   - <ActiveModuleNav />     (PR3) — active module's navItems (hrefs pre-resolved)
+ *   - <CrossModuleNav />      (PR3) — Agente IA / Miembros / Documentos
+ *   - <SidebarFooter />       (PR3) — Configuración link (org-level)
+ *
+ * Notes:
+ * - orgSlug is sourced from useParams() once and passed to all children.
+ * - useActiveModule() derives the current module from the route / localStorage
+ *   / role default — no module state lives in <AppSidebar>.
+ * - Per-child RBAC filter is PR4's job; PR3 renders navItems as-is.
+ * - No `app/` route files are imported or touched — REQ-MS.16 preserved.
+ * - sidebar-provider.tsx is NOT modified — it continues to own collapse /
+ *   mobile UI state only.
+ */
+
 import { useParams } from "next/navigation";
-import {
-  Bot,
-  Calculator,
-  FileText,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Tractor,
-  Users,
-} from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Resource } from "@/features/shared/permissions";
-import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import { useSidebar } from "./sidebar-provider";
-import { NavItem, type NavSubItem } from "./nav-item";
+import { ModuleSwitcher } from "./module-switcher";
+import { ActiveModuleNav } from "./active-module-nav";
+import { CrossModuleNav } from "./cross-module-nav";
+import { SidebarFooter } from "./sidebar-footer";
+import { useActiveModule } from "./modules/use-active-module";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,18 +40,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import {
-  TooltipProvider,
-} from "@/components/ui/tooltip";
-
-interface NavItemConfig {
-  icon: React.ReactNode;
-  label: string;
-  href?: string;
-  onClick?: () => void;
-  children?: NavSubItem[];
-  resource?: Resource;
-}
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 interface AppSidebarProps {
   onOpenAgentChat: () => void;
@@ -43,104 +49,44 @@ interface AppSidebarProps {
 export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
   const { isCollapsed, toggleSidebar, isMobileOpen, toggleMobile } =
     useSidebar();
-  const matrix = useRolesMatrix();
   const params = useParams();
   const orgSlug = params?.orgSlug as string;
-
-  const navItems: NavItemConfig[] = [
-    {
-      icon: <Bot className="h-5 w-5" />,
-      label: "Agente IA",
-      onClick: onOpenAgentChat,
-      resource: "agent",
-    },
-    {
-      icon: <Tractor className="h-5 w-5" />,
-      label: "Granjas",
-      resource: "farms",
-      children: [
-        { label: "Mis Granjas", href: `/${orgSlug}/farms` },
-      ],
-    },
-    {
-      icon: <Calculator className="h-5 w-5" />,
-      label: "Contabilidad",
-      resource: "journal",
-      children: [
-        { label: "Operaciones", isSeparator: true },
-        { label: "Ventas y Despachos", href: `/${orgSlug}/dispatches` },
-        { label: "Compras y Servicios", href: `/${orgSlug}/purchases` },
-        { label: "Cobros y Pagos", href: `/${orgSlug}/payments` },
-        { label: "Cuentas por Cobrar", href: `/${orgSlug}/accounting/cxc` },
-        { label: "Cuentas por Pagar", href: `/${orgSlug}/accounting/cxp` },
-        { label: "Contabilidad", isSeparator: true },
-        { label: "Plan de Cuentas", href: `/${orgSlug}/accounting/accounts` },
-        { label: "Libro Diario", href: `/${orgSlug}/accounting/journal` },
-        { label: "Libro Mayor", href: `/${orgSlug}/accounting/ledger` },
-        { label: "Contactos", href: `/${orgSlug}/accounting/contacts` },
-        { label: "Informes", href: `/${orgSlug}/informes` },
-        { label: "Cierre Mensual", href: `/${orgSlug}/accounting/monthly-close` },
-        { label: "Configuración", href: `/${orgSlug}/settings` },
-      ],
-    },
-    {
-      icon: <FileText className="h-5 w-5" />,
-      label: "Documentos",
-      href: `/${orgSlug}/documents`,
-      resource: "documents",
-    },
-    {
-      icon: <Users className="h-5 w-5" />,
-      label: "Miembros",
-      href: `/${orgSlug}/members`,
-      resource: "members",
-    },
-  ];
-
-  const filteredItems = navItems.filter((item) => {
-    if (!item.resource) return true;
-    if (!matrix) return false;
-    return matrix.canAccess(item.resource, "read");
-  });
+  const { activeModule } = useActiveModule();
 
   const sidebarContent = (
-    <div className="flex h-full flex-col">
-      <div className="flex items-center justify-between px-3 pt-4 pb-2">
-        {!isCollapsed && (
-          <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
-            Menú
-          </span>
-        )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={toggleSidebar}
-          className={cn("h-7 w-7", isCollapsed && "mx-auto")}
-        >
-          {isCollapsed ? (
-            <PanelLeftOpen className="h-4 w-4" />
-          ) : (
-            <PanelLeftClose className="h-4 w-4" />
+    <TooltipProvider>
+      <div className="flex h-full flex-col">
+        <div className="flex items-center justify-between px-3 pt-4 pb-2">
+          {!isCollapsed && (
+            <span className="text-xs font-semibold uppercase text-muted-foreground tracking-wider">
+              Menú
+            </span>
           )}
-        </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+            className={cn("h-7 w-7", isCollapsed && "mx-auto")}
+          >
+            {isCollapsed ? (
+              <PanelLeftOpen className="h-4 w-4" />
+            ) : (
+              <PanelLeftClose className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+        <ScrollArea className="flex-1 px-3">
+          <div className="mb-2 pt-1">
+            <ModuleSwitcher isCollapsed={isCollapsed} isMobile={isMobileOpen} />
+          </div>
+          <ActiveModuleNav module={activeModule} orgSlug={orgSlug} />
+          {/* Visual boundary between module-scoped nav and cross-module nav */}
+          <div className="my-3 h-px bg-border/60" />
+          <CrossModuleNav orgSlug={orgSlug} onOpenAgentChat={onOpenAgentChat} />
+        </ScrollArea>
+        <SidebarFooter orgSlug={orgSlug} />
       </div>
-      <ScrollArea className="flex-1 px-3">
-        <TooltipProvider>
-          <nav className="flex flex-col gap-1">
-            {filteredItems.map((item) => (
-              <NavItem
-                key={item.label}
-                icon={item.icon}
-                label={item.label}
-                href={item.href}
-                onClick={item.onClick}
-                children={item.children}
-              />
-            ))}
-          </nav>
-        </TooltipProvider>
-      </ScrollArea>
-    </div>
+    </TooltipProvider>
   );
 
   return (
@@ -149,7 +95,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
       <aside
         className={cn(
           "hidden md:flex h-full flex-col border-r bg-white transition-all duration-200",
-          isCollapsed ? "w-16" : "w-64"
+          isCollapsed ? "w-16" : "w-64",
         )}
       >
         {sidebarContent}
