@@ -239,7 +239,7 @@ bridge from a bridge that always rejects or always passes.
 
 ## PR6 — Members Async Role Validation
 
-### PR6.1 — `buildAddMemberSchema(orgId)` factory
+### PR6.1 — ✅ `buildAddMemberSchema(orgId)` factory
 
 **RED**: `features/organizations/__tests__/members.validation.test.ts` (extend) — add: (a) `buildAddMemberSchema("alpha")` with mock `rolesService.exists` returning true → `parseAsync` resolves; (b) unknown slug → `parseAsync` rejects with 422 shape; (c) `owner` slug → still rejected (R.1-S2 preserved).
 
@@ -247,7 +247,7 @@ bridge from a bridge that always rejects or always passes.
 
 **Satisfies**: CR.8-S1, CR.8-S2, R.1-S3, R.1-S4, D.9
 
-**Done when**: async-refine integration test green; owner still rejected.
+**Done when**: async-refine integration test green; owner still rejected. ✅ (12 cases delivered including sync .parse contract, non-assignable system slug short-circuit with `abort: true`, factory returns distinct schemas per orgId)
 
 ---
 
