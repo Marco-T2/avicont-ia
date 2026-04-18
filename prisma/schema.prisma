@@ -40,8 +40,28 @@ model Organization {
   auditLogs             AuditLog[]
   ivaPurchaseBooks      IvaPurchaseBook[]
   ivaSalesBooks         IvaSalesBook[]
+  customRoles           CustomRole[]
 
   @@map("organizations")
+}
+
+model CustomRole {
+  id               String   @id @default(cuid())
+  organizationId   String
+  slug             String
+  name             String
+  description      String?
+  isSystem         Boolean  @default(false)
+  permissionsRead  String[]
+  permissionsWrite String[]
+  canPost          String[]
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, isSystem])
+  @@map("custom_roles")
 }
 
 model OrganizationMember {
