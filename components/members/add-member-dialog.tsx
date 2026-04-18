@@ -12,29 +12,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import RolePicker from "@/components/settings/role-picker";
 
 interface AddMemberDialogProps {
   orgSlug: string;
   onAdded?: () => void;
 }
-
-// 5 roles asignables (owner es implícito al crear la org, no asignable por admin)
-const ROLE_LABELS: Record<string, string> = {
-  admin: "Administrador",
-  contador: "Contador",
-  cobrador: "Cobrador",
-  auxiliar: "Auxiliar",
-  member: "Socio",
-};
 
 export default function AddMemberDialog({
   orgSlug,
@@ -121,18 +106,12 @@ export default function AddMemberDialog({
             <label className="block text-sm font-medium mb-2">
               Rol *
             </label>
-            <Select value={role} onValueChange={setRole} disabled={isLoading}>
-              <SelectTrigger className="w-full">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(ROLE_LABELS).map(([value, label]) => (
-                  <SelectItem key={value} value={value}>
-                    {label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <RolePicker
+              orgSlug={orgSlug}
+              value={role}
+              onChange={setRole}
+              disabled={isLoading}
+            />
           </div>
         </div>
 
