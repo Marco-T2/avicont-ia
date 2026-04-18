@@ -151,6 +151,37 @@ export function canAccess(
   return map[resource].includes(role as Role);
 }
 
-export function canPost(role: string, resource: PostableResource): boolean {
+/**
+ * Sync 2-param overload — uses static POST_ALLOWED_ROLES map.
+ * Kept for backward compat (journal.service, existing tests). (D.7)
+ */
+export function canPost(role: string, resource: PostableResource): boolean;
+
+/**
+ * Async 3-param overload — reads from the org's cached permission matrix.
+ * Use this in server-side service code (sale.service, purchase.service). (D.7 / P.6)
+ */
+export function canPost(
+  role: string,
+  resource: PostableResource,
+  orgId: string,
+): Promise<boolean>;
+
+export function canPost(
+  role: string,
+  resource: PostableResource,
+  orgId?: string,
+): boolean | Promise<boolean> {
+  if (orgId !== undefined) {
+    // Async path: look up from cached matrix
+    return getCacheModule().then(({ getMatrix }) =>
+      getMatrix(orgId).then((matrix) => {
+        const roleEntry = matrix.roles.get(role);
+        if (!roleEntry) return false;
+        return roleEntry.canPost.has(resource);
+      }),
+    );
+  }
+  // Sync path: use static map (backward compat)
   return POST_ALLOWED_ROLES[resource].includes(role as Role);
 }

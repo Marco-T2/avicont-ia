@@ -372,8 +372,8 @@ export class SaleService {
     input: CreateSaleInput,
     context: { userId: string; role: string },
   ): Promise<SaleWithDetails> {
-    // 0. RBAC: canPost (REQ-P.3-S3 / D.3) — auxiliar bloqueado en POST
-    if (!canPost(context.role, "sales")) {
+    // 0. RBAC: canPost (PR3.1 / P.6 / D.7) — matrix-backed async check
+    if (!(await canPost(context.role, "sales", organizationId))) {
       throw new ForbiddenError(
         "Tu rol no tiene permiso para contabilizar ventas",
         POST_NOT_ALLOWED_FOR_ROLE,
