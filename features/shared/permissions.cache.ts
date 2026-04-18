@@ -43,8 +43,18 @@ const cache = new Map<string, CacheEntry>();
  * Default loader — queries the DB for all custom roles for an org.
  * Returns a minimal matrix for the org. This is the production path.
  * Tests replace this via _setLoader().
+ *
+ * In a test environment without a DB (VITEST=true + no DATABASE_URL), the
+ * loader returns an empty matrix. Route tests mock requireRole directly, so
+ * an empty matrix is safe: requireRole will still resolve via its mock.
  */
 let _loader: (orgId: string) => Promise<OrgMatrix> = async (orgId) => {
+  // Safe empty-matrix fallback for test environments without a real DB.
+  // Tests that need the real cache behaviour use _setLoader() to inject their own loader.
+  if (process.env.VITEST && !process.env.DATABASE_URL) {
+    return { orgId, roles: new Map(), loadedAt: Date.now() };
+  }
+
   // Lazy import to avoid circular deps + allow module to load without DB in tests
   const { prisma } = await import("@/lib/prisma");
   const rows = await prisma.customRole.findMany({ where: { organizationId: orgId } });
