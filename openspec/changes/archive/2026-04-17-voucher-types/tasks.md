@@ -51,6 +51,6 @@
 
 ## PR6 — Verify + cleanup
 
-- [ ] 6.1 E2E — manual walk: create type `CX`/prefix `X`, create JE, see `X2604-000001`, deactivate, confirm dropdown filters + historical badge.
-- [ ] 6.2 FULL SUITE — `pnpm vitest run` + `tsc --noEmit` clean.
-- [ ] 6.3 DOCS — commit `openspec/changes/voucher-types/*` artifacts.
+- [x] 6.1 E2E — manual walk: create type `CX`/prefix `X`, create JE, see `X2604-000001`, deactivate, confirm dropdown filters + historical badge.
+- [x] 6.2 FULL SUITE — `pnpm vitest run` + `tsc --noEmit` clean.
+- [x] 6.3 DOCS — commit `openspec/changes/voucher-types/*` artifacts.
