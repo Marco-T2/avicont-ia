@@ -73,12 +73,12 @@ export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
 export type PostableResource = "sales" | "purchases" | "journal";
 
 /**
- * Static map used internally for the sync canPost 2-param overload.
- * Not exported — production code uses the async 3-param canPost(role, resource, orgId)
- * which reads from the org's cached matrix. This map is only kept for:
- *   1. The sync 2-param canPost backward compat path (journal.service.ts)
- *   2. seed-system-roles.ts buildSystemRolePayloads (seeding day-one rows)
- * PR8.2: removed `export` keyword — import via buildSystemRolePayloads if needed.
+ * Seed source for system-role `canPost` defaults.
+ * Used by buildSystemRolePayloads (prisma/seed-system-roles.ts) to seed day-one rows,
+ * and by the UI (roles-permissions-matrix.tsx) to display system defaults.
+ * Access via getPostAllowedRoles() — not part of the public API.
+ * PR8.2: removed `export` keyword.
+ * PR8.3: removed stale reference to sync 2-param canPost backward-compat path.
  */
 const POST_ALLOWED_ROLES: Record<PostableResource, Role[]> = {
   sales: ["owner", "admin", "contador"],
@@ -153,36 +153,22 @@ export function canAccess(
 }
 
 /**
- * Sync 2-param overload — uses static POST_ALLOWED_ROLES map.
- * Kept for backward compat (journal.service, existing tests). (D.7)
- */
-export function canPost(role: string, resource: PostableResource): boolean;
-
-/**
- * Async 3-param overload — reads from the org's cached permission matrix.
- * Use this in server-side service code (sale.service, purchase.service). (D.7 / P.6)
+ * Async — reads from the org's cached permission matrix.
+ * Use this in server-side service code (sale.service, purchase.service, journal.service).
+ * (D.7 / P.6)
+ *
+ * PR8.3: sync 2-param overload removed — all callers must pass orgId.
  */
 export function canPost(
   role: string,
   resource: PostableResource,
   orgId: string,
-): Promise<boolean>;
-
-export function canPost(
-  role: string,
-  resource: PostableResource,
-  orgId?: string,
-): boolean | Promise<boolean> {
-  if (orgId !== undefined) {
-    // Async path: look up from cached matrix
-    return getCacheModule().then(({ getMatrix }) =>
-      getMatrix(orgId).then((matrix) => {
-        const roleEntry = matrix.roles.get(role);
-        if (!roleEntry) return false;
-        return roleEntry.canPost.has(resource);
-      }),
-    );
-  }
-  // Sync path: use static map (backward compat)
-  return POST_ALLOWED_ROLES[resource].includes(role as Role);
+): Promise<boolean> {
+  return getCacheModule().then(({ getMatrix }) =>
+    getMatrix(orgId).then((matrix) => {
+      const roleEntry = matrix.roles.get(role);
+      if (!roleEntry) return false;
+      return roleEntry.canPost.has(resource);
+    }),
+  );
 }

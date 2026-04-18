@@ -47,4 +47,13 @@ describe("PR8.2 — permissions.ts export contract", () => {
     // Since we cannot easily test arity at runtime, we assert result is a Promise.
     expect(result).toBeInstanceOf(Promise);
   });
+
+  it("PR8.3 — canPost 2-param call returns a Promise, not a boolean (sync overload removed)", async () => {
+    // After PR8.3, the sync 2-param overload is removed.
+    // Calling canPost with 2 args must return a Promise (the only remaining path).
+    const { canPost } = await import("@/features/shared/permissions");
+    // @ts-expect-error — 2-param call removed; TS overload is gone after PR8.3
+    const result = canPost("owner", "sales");
+    expect(result).toBeInstanceOf(Promise);
+  });
 });
