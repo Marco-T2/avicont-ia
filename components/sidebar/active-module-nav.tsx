@@ -32,6 +32,7 @@ import { NavItem } from "./nav-item";
 import type { Module, ModuleNavItem } from "./modules/registry";
 import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import type { ClientMatrix } from "@/components/common/roles-matrix-provider";
+import { dropOrphanSeparators } from "@/lib/sidebar/drop-orphan-separators";
 
 interface ActiveModuleNavProps {
   /** The active module; null renders nothing */
@@ -55,31 +56,6 @@ function isChildVisible(
   return matrix.canAccess(item.resource, "read");
 }
 
-/**
- * PR4.6: Drop separators that have no surviving child between them and the
- * next separator (or the end of the list). Operates on the already
- * RBAC-filtered list so "surviving" means "child that passed canAccess".
- */
-function dropOrphanSeparators(items: ModuleNavItem[]): ModuleNavItem[] {
-  const result: ModuleNavItem[] = [];
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (!item.isSeparator) {
-      result.push(item);
-      continue;
-    }
-    // Look ahead: find the next separator (or end of list). If any non-
-    // separator item exists in that window, keep this separator; else drop.
-    let hasChild = false;
-    for (let j = i + 1; j < items.length; j++) {
-      if (items[j].isSeparator) break;
-      hasChild = true;
-      break;
-    }
-    if (hasChild) result.push(item);
-  }
-  return result;
-}
 
 export function ActiveModuleNav({ module, orgSlug }: ActiveModuleNavProps) {
   const matrix = useRolesMatrix();

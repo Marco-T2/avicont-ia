@@ -4,17 +4,21 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-  SheetFooter,
-} from "@/components/ui/sheet";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Pencil, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import type { Resource, PostableResource } from "@/features/shared/permissions";
+import { MODULES } from "@/components/sidebar/modules/registry";
+import { RolesMatrixGrouped } from "@/components/settings/roles-matrix-grouped";
+import { MatrixWarnings } from "@/components/settings/matrix-warnings";
+import { RoleSidebarPreview } from "@/components/settings/role-sidebar-preview";
+import { computeWarnings } from "@/lib/settings/compute-warnings";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -34,50 +38,21 @@ interface RoleEditDrawerProps {
   onUpdated: () => void;
 }
 
-// ─── Constants (12 resources × 2 actions, same order as matrix viewer) ───────
-
-const RESOURCE_ORDER: Resource[] = [
-  "members",
-  "accounting-config",
-  "sales",
-  "purchases",
-  "payments",
-  "journal",
-  "dispatches",
-  "reports",
-  "contacts",
-  "farms",
-  "documents",
-  "agent",
-];
-
-const RESOURCE_LABELS: Record<Resource, string> = {
-  members: "Miembros",
-  "accounting-config": "Config. contable",
-  sales: "Ventas",
-  purchases: "Compras",
-  payments: "Cobros y Pagos",
-  journal: "Libro Diario",
-  dispatches: "Despachos",
-  reports: "Informes",
-  contacts: "Contactos",
-  farms: "Granjas",
-  documents: "Documentos",
-  agent: "Agente IA",
-};
-
-const POSTABLE_RESOURCES: PostableResource[] = ["sales", "purchases", "journal"];
-
 // ─── Component ────────────────────────────────────────────────────────────────
 
 /**
- * RoleEditDrawer — matrix toggle grid + canPost switch for a custom role.
+ * RoleEditDrawer — grouped matrix (Ver/Editar/Registrar) + live sidebar preview
+ * + soft inline warnings for a custom role.
  *
- * PR7.4 / REQ CR.5-S1, CR.5-S2, CR.2-S3, U.5-S1, U.5-S2
- * - Shows 12 resources × (read + write) checkboxes
- * - Shows 3 canPost checkboxes (sales, purchases, journal)
- * - All controls disabled when role.isSystem
- * - PATCH /api/organizations/[orgSlug]/roles/[roleSlug] on Save
+ * PR5.2 / REQ-RM.1–8, RM.15–24
+ * - RolesMatrixGrouped replaces the old flat table + "Contabilizar" section
+ * - MatrixWarnings shows soft yellow badges (write-without-read, etc.)
+ * - RoleSidebarPreview renders as desktop side-panel or mobile <details>
+ * - Dialog (modal) instead of Sheet: centered, wider canvas (sm:max-w-6xl)
+ *   avoids the lateral-scroll issue caused by the 2-col layout inside a side-drawer
+ * - All controls disabled when role.isSystem (REQ-RM.21)
+ * - Save button hidden for system roles (REQ-RM.22)
+ * - PATCH payload unchanged: permissionsRead, permissionsWrite, canPost (REQ-RM.23)
  */
 export default function RoleEditDrawer({
   orgSlug,
@@ -88,21 +63,21 @@ export default function RoleEditDrawer({
   const [open, setOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Local copies of permission arrays (editing state)
-  const [readSet, setReadSet] = useState<Set<string>>(
-    new Set(role.permissionsRead),
+  // Local copies of permission sets (editing state)
+  const [readSet, setReadSet] = useState<Set<Resource>>(
+    new Set(role.permissionsRead as Resource[]),
   );
-  const [writeSet, setWriteSet] = useState<Set<string>>(
-    new Set(role.permissionsWrite),
+  const [writeSet, setWriteSet] = useState<Set<Resource>>(
+    new Set(role.permissionsWrite as Resource[]),
   );
-  const [postSet, setPostSet] = useState<Set<string>>(
-    new Set(role.canPost),
+  const [postSet, setPostSet] = useState<Set<PostableResource>>(
+    new Set(role.canPost as PostableResource[]),
   );
 
   function resetState() {
-    setReadSet(new Set(role.permissionsRead));
-    setWriteSet(new Set(role.permissionsWrite));
-    setPostSet(new Set(role.canPost));
+    setReadSet(new Set(role.permissionsRead as Resource[]));
+    setWriteSet(new Set(role.permissionsWrite as Resource[]));
+    setPostSet(new Set(role.canPost as PostableResource[]));
   }
 
   function handleOpenChange(v: boolean) {
@@ -110,18 +85,25 @@ export default function RoleEditDrawer({
     if (v) resetState(); // reset to server state every time drawer opens
   }
 
-  function toggleSet(
-    set: Set<string>,
-    setter: (s: Set<string>) => void,
-    key: string,
+  /** Unified toggle handler wired to RolesMatrixGrouped. */
+  function handleToggle(
+    resource: Resource,
+    column: "read" | "write" | "post",
+    next: boolean,
   ) {
-    const next = new Set(set);
-    if (next.has(key)) {
-      next.delete(key);
+    if (column === "read") {
+      const s = new Set(readSet);
+      next ? s.add(resource) : s.delete(resource);
+      setReadSet(s);
+    } else if (column === "write") {
+      const s = new Set(writeSet);
+      next ? s.add(resource) : s.delete(resource);
+      setWriteSet(s);
     } else {
-      next.add(key);
+      const s = new Set(postSet);
+      next ? s.add(resource as PostableResource) : s.delete(resource as PostableResource);
+      setPostSet(s);
     }
-    setter(next);
   }
 
   async function handleSave() {
@@ -156,107 +138,57 @@ export default function RoleEditDrawer({
     }
   }
 
-  const disabled = role.isSystem || isLoading;
+  // Derived at render time — no new state, no useMemo needed (MODULES.length is tiny)
+  const warnings = computeWarnings(readSet, writeSet, postSet, MODULES);
+
+  const matrixDisabled = role.isSystem || isLoading;
 
   return (
-    <Sheet key={role.id} open={open} onOpenChange={handleOpenChange}>
-      <SheetTrigger asChild>
+    <Dialog key={role.id} open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
         <Button variant="outline" size="sm">
           <Pencil className="h-3.5 w-3.5 mr-1.5" />
           Editar
         </Button>
-      </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>
+      </DialogTrigger>
+      <DialogContent className="w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>
             Editar rol: <span className="font-mono">{role.name}</span>
-          </SheetTitle>
+          </DialogTitle>
           {role.isSystem && (
             <p className="text-sm text-muted-foreground">
               Los roles del sistema no se pueden modificar.
             </p>
           )}
-        </SheetHeader>
+        </DialogHeader>
 
-        {/* Matrix grid */}
-        <div className="mt-4 space-y-4">
-          {/* Read + Write */}
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Permisos de recurso</h3>
-            <div className="overflow-x-auto border rounded-md">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-medium">Recurso</th>
-                    <th className="text-center px-3 py-2 font-medium">Leer</th>
-                    <th className="text-center px-3 py-2 font-medium">Escribir</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {RESOURCE_ORDER.map((res, i) => (
-                    <tr
-                      key={res}
-                      className={cn(
-                        "border-b last:border-b-0",
-                        i % 2 === 1 && "bg-gray-50/50",
-                      )}
-                    >
-                      <td className="px-3 py-2 font-medium">
-                        {RESOURCE_LABELS[res]}
-                      </td>
-                      <td className="text-center px-3 py-2">
-                        <input
-                          type="checkbox"
-                          data-testid={`toggle-read-${res}`}
-                          checked={readSet.has(res)}
-                          disabled={disabled}
-                          onChange={() =>
-                            toggleSet(readSet, setReadSet, res)
-                          }
-                          className="h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
-                        />
-                      </td>
-                      <td className="text-center px-3 py-2">
-                        <input
-                          type="checkbox"
-                          data-testid={`toggle-write-${res}`}
-                          checked={writeSet.has(res)}
-                          disabled={disabled}
-                          onChange={() =>
-                            toggleSet(writeSet, setWriteSet, res)
-                          }
-                          className="h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        {/* Main body — matrix + preview side by side on sm+; stacked on mobile */}
+        <div className="mt-4 flex flex-col sm:grid sm:grid-cols-[3fr_2fr] gap-6">
+
+          {/* Left column: grouped matrix + warnings */}
+          <div className="space-y-3 min-w-0">
+            <RolesMatrixGrouped
+              readSet={readSet}
+              writeSet={writeSet}
+              postSet={postSet}
+              disabled={matrixDisabled}
+              onToggle={handleToggle}
+            />
+            <MatrixWarnings warnings={warnings} />
           </div>
 
-          {/* canPost */}
-          <div>
-            <h3 className="text-sm font-semibold mb-2">Contabilizar (post)</h3>
-            <div className="border rounded-md divide-y">
-              {POSTABLE_RESOURCES.map((res) => (
-                <div key={res} className="flex items-center justify-between px-3 py-2">
-                  <span className="text-sm">{RESOURCE_LABELS[res as Resource]}</span>
-                  <input
-                    type="checkbox"
-                    data-testid={`toggle-canpost-${res}`}
-                    checked={postSet.has(res)}
-                    disabled={disabled}
-                    onChange={() => toggleSet(postSet, setPostSet, res)}
-                    className="h-4 w-4 cursor-pointer disabled:cursor-not-allowed"
-                  />
-                </div>
-              ))}
-            </div>
+          {/* Right column: live sidebar preview (dual-mount via RoleSidebarPreview) */}
+          <div className="min-w-0">
+            <RoleSidebarPreview
+              readSet={readSet}
+              writeSet={writeSet}
+              orgSlug={orgSlug}
+            />
           </div>
         </div>
 
-        <SheetFooter className="mt-6">
+        <DialogFooter className="mt-6">
           <Button
             variant="outline"
             onClick={() => setOpen(false)}
@@ -264,18 +196,21 @@ export default function RoleEditDrawer({
           >
             Cancelar
           </Button>
-          <Button onClick={handleSave} disabled={disabled || role.isSystem}>
-            {isLoading ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Guardando...
-              </>
-            ) : (
-              "Guardar"
-            )}
-          </Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+          {/* REQ-RM.22: Save button hidden for system roles */}
+          {!role.isSystem && (
+            <Button onClick={handleSave} disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                "Guardar"
+              )}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
