@@ -11,6 +11,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import SaleForm from "../sale-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -93,14 +94,16 @@ const BASE_SALE = {
 function renderForm(salePatch: Partial<typeof BASE_SALE> = {}) {
   const sale = { ...BASE_SALE, ...salePatch };
   return render(
-    <SaleForm
-      orgSlug="test-org"
-      contacts={[{ id: "contact-1", name: "Cliente SA", type: "CLIENTE" as any, nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), email: null, phone: null, address: null, creditLimit: null, isActive: true }]}
-      periods={[BASE_PERIOD]}
-      incomeAccounts={[INCOME_ACCOUNT]}
-      sale={sale as any}
-      mode="edit"
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <SaleForm
+        orgSlug="test-org"
+        contacts={[{ id: "contact-1", name: "Cliente SA", type: "CLIENTE" as any, nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), email: null, phone: null, address: null, creditLimit: null, isActive: true }]}
+        periods={[BASE_PERIOD]}
+        incomeAccounts={[INCOME_ACCOUNT]}
+        sale={sale as any}
+        mode="edit"
+      />
+    </SystemRoleProvider>,
   );
 }
 

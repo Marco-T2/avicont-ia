@@ -13,6 +13,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import VoucherTypesManager from "../voucher-types-manager";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(cleanup);
 
@@ -46,7 +47,9 @@ const ACTIVE = {
 
 function renderManager() {
   return render(
-    <VoucherTypesManager orgSlug="test-org" initialVoucherTypes={[ACTIVE]} />,
+    <SystemRoleProvider role={mockRole.current}>
+      <VoucherTypesManager orgSlug="test-org" initialVoucherTypes={[ACTIVE]} />
+    </SystemRoleProvider>,
   );
 }
 

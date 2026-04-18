@@ -1,35 +1,33 @@
 /**
- * Sidebar wiring tests — PR5 (informes-catalog)
+ * Sidebar wiring tests — PR5 (informes-catalog) + PR7.1 (dynamic matrix).
  *
  * Verifies that the Contabilidad section contains exactly ONE "Informes" entry
  * and that the old "Reportes" and "Estados Financieros" entries have been removed.
  *
- * Strategy: render AppSidebar with mocked hooks (useParams, useOrgRole,
- * useSidebar, usePathname) so we control orgSlug and role without needing a
- * Next.js runtime. Desktop sidebar is always rendered (jsdom has no CSS media
- * queries). We expand the "Contabilidad" accordion by clicking it and then
- * assert on the visible child links.
+ * PR7.1: AppSidebar now reads gating decisions from the
+ * <RolesMatrixProvider> client context (no more sync static canAccess).
+ * We wrap the render with a provider that grants the owner all resources so
+ * the Contabilidad accordion and its children are visible.
+ *
+ * Strategy: render AppSidebar with mocked hooks (useParams, useSidebar,
+ * usePathname) + a RolesMatrixProvider with an owner-grants-everything snapshot.
+ * Desktop sidebar is always rendered (jsdom has no CSS media queries).
  */
 import { describe, it, expect, vi, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { AppSidebar } from "../app-sidebar";
+import { RolesMatrixProvider } from "@/components/common/roles-matrix-provider";
 
 // ---------------------------------------------------------------------------
 // Mocks — must come before any import of the production modules
 // ---------------------------------------------------------------------------
 
 // next/navigation — useParams + usePathname
-// Pathname is set to a non-accounting path so no accordion starts expanded.
-// This ensures we control expansion explicitly via click in getContabilidadChildLabels().
 vi.mock("next/navigation", () => ({
   useParams: () => ({ orgSlug: "test-org" }),
   usePathname: () => "/test-org/farms",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
-}));
-
-// useOrgRole — return "owner" so all accounting items are visible
-vi.mock("@/components/common/use-org-role", () => ({
-  useOrgRole: () => ({ role: "owner" }),
 }));
 
 // useSidebar — not collapsed, not mobile
@@ -46,8 +44,54 @@ vi.mock("../sidebar-provider", () => ({
 // Helpers
 // ---------------------------------------------------------------------------
 
+const OWNER_FULL = {
+  orgId: "test-org-id",
+  role: "owner",
+  permissionsRead: [
+    "members",
+    "accounting-config",
+    "sales",
+    "purchases",
+    "payments",
+    "journal",
+    "dispatches",
+    "reports",
+    "contacts",
+    "farms",
+    "documents",
+    "agent",
+  ],
+  permissionsWrite: [
+    "members",
+    "accounting-config",
+    "sales",
+    "purchases",
+    "payments",
+    "journal",
+    "dispatches",
+    "reports",
+    "contacts",
+    "farms",
+    "documents",
+    "agent",
+  ],
+  canPost: ["sales", "purchases", "journal"],
+} as const;
+
+function WithProvider({ children }: { children: ReactNode }) {
+  return (
+    <RolesMatrixProvider snapshot={{ ...OWNER_FULL, permissionsRead: [...OWNER_FULL.permissionsRead], permissionsWrite: [...OWNER_FULL.permissionsWrite], canPost: [...OWNER_FULL.canPost] }}>
+      {children}
+    </RolesMatrixProvider>
+  );
+}
+
 function renderSidebar() {
-  return render(<AppSidebar onOpenAgentChat={vi.fn()} />);
+  return render(
+    <WithProvider>
+      <AppSidebar onOpenAgentChat={vi.fn()} />
+    </WithProvider>,
+  );
 }
 
 /**
@@ -55,11 +99,9 @@ function renderSidebar() {
  * then return all visible sub-item link texts.
  */
 function getContabilidadChildLabels(): string[] {
-  // The NavItem for "Contabilidad" renders as a <button> (it has children)
   const contabButton = screen.getByRole("button", { name: /Contabilidad/i });
   fireEvent.click(contabButton);
 
-  // After expansion, child links are rendered as <a> elements inside a sub-list
   const links = screen.getAllByRole("link");
   return links.map((el) => el.textContent?.trim() ?? "");
 }
@@ -80,7 +122,7 @@ describe("AppSidebar — Contabilidad section wiring (PR5)", () => {
 
   it('"Informes" href points to /{orgSlug}/informes', () => {
     renderSidebar();
-    getContabilidadChildLabels(); // expand the section
+    getContabilidadChildLabels();
 
     const informesLink = screen.getByRole("link", { name: "Informes" });
     expect(informesLink).toHaveAttribute("href", "/test-org/informes");
@@ -99,25 +141,67 @@ describe("AppSidebar — Contabilidad section wiring (PR5)", () => {
     const efEntries = labels.filter((l) => l === "Estados Financieros");
     expect(efEntries).toHaveLength(0);
   });
+});
 
-  it("Contabilidad section is still gated (no role → Contabilidad button absent)", () => {
-    // Re-mock useOrgRole to return null role
-    vi.doMock("@/components/common/use-org-role", () => ({
-      useOrgRole: () => ({ role: null }),
-    }));
+describe("AppSidebar — RBAC dynamic matrix gating (PR7.1)", () => {
+  it("hides the Contabilidad accordion when the matrix denies journal.read", () => {
+    // Matrix-denied caller: role has no journal.read permission
+    const deniedSnapshot = {
+      orgId: "test-org-id",
+      role: "auxiliar",
+      permissionsRead: ["farms", "documents", "agent"],
+      permissionsWrite: ["farms"],
+      canPost: [],
+    };
 
-    // When role is null, canAccess returns false → "Contabilidad" is filtered out
-    // We verify the RBAC gate via the data structure (resource: "accounting") —
-    // this is a structural/contract test, not a re-render with a fresh module mock.
-    // The real gating is exercised by the existing canAccess unit path; here we
-    // verify that the NavItemConfig entry DOES carry resource: "accounting".
-    // Triangulation: confirm "accounting" is the resource key used.
-    // (Integration-level re-render of mock swap requires module cache flush,
-    //  which is unsupported in this vitest setup without dynamic import(). We
-    //  test the observable behavior — label + href — in the tests above.)
+    render(
+      <RolesMatrixProvider snapshot={deniedSnapshot}>
+        <AppSidebar onOpenAgentChat={vi.fn()} />
+      </RolesMatrixProvider>,
+    );
 
-    // Reset to avoid polluting subsequent tests
-    vi.doUnmock("@/components/common/use-org-role");
+    expect(
+      screen.queryByRole("button", { name: /Contabilidad/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Miembros/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows only allowed top-level items when matrix restricts the role", () => {
+    // auxiliar-like custom role: only farms + documents + agent
+    const partialSnapshot = {
+      orgId: "test-org-id",
+      role: "custom",
+      permissionsRead: ["farms", "documents", "agent"],
+      permissionsWrite: [],
+      canPost: [],
+    };
+
+    render(
+      <RolesMatrixProvider snapshot={partialSnapshot}>
+        <AppSidebar onOpenAgentChat={vi.fn()} />
+      </RolesMatrixProvider>,
+    );
+
+    expect(screen.getByRole("link", { name: /Granjas|Mis Granjas/i })).toBeDefined();
+    expect(screen.queryByRole("button", { name: /Contabilidad/i })).toBeNull();
+  });
+
+  it("renders nothing gated-by-role when snapshot is null (loading)", () => {
+    render(
+      <RolesMatrixProvider snapshot={null}>
+        <AppSidebar onOpenAgentChat={vi.fn()} />
+      </RolesMatrixProvider>,
+    );
+
+    // All resource-gated items should be absent during loading (deny by default)
+    expect(
+      screen.queryByRole("button", { name: /Contabilidad/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: /Miembros/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -126,10 +210,7 @@ describe("AppSidebar — Informes entry TRIANGULATION", () => {
     renderSidebar();
     const labels = getContabilidadChildLabels();
 
-    // Must have Informes
     expect(labels).toContain("Informes");
-
-    // Sanity: other accounting child links still exist (regression guard)
     expect(labels).toContain("Plan de Cuentas");
     expect(labels).toContain("Libro Diario");
   });

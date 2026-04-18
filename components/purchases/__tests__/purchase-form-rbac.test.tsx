@@ -11,6 +11,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PurchaseForm from "../purchase-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -89,15 +90,17 @@ const BASE_PURCHASE = {
 function renderForm(patch: Partial<typeof BASE_PURCHASE> = {}) {
   const purchase = { ...BASE_PURCHASE, ...patch };
   return render(
-    <PurchaseForm
-      orgSlug="test-org"
-      purchaseType="COMPRA_GENERAL"
-      contacts={[{ id: "contact-1", name: "Proveedor SA", type: "PROVEEDOR" as any, nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), email: null, phone: null, address: null, creditLimit: null, isActive: true }]}
-      periods={[BASE_PERIOD]}
-      productTypes={[PRODUCT_TYPE]}
-      purchase={purchase as any}
-      mode="edit"
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <PurchaseForm
+        orgSlug="test-org"
+        purchaseType="COMPRA_GENERAL"
+        contacts={[{ id: "contact-1", name: "Proveedor SA", type: "PROVEEDOR" as any, nit: "12345", paymentTermsDays: 30, organizationId: "org-1", createdAt: new Date(), updatedAt: new Date(), email: null, phone: null, address: null, creditLimit: null, isActive: true }]}
+        periods={[BASE_PERIOD]}
+        productTypes={[PRODUCT_TYPE]}
+        purchase={purchase as any}
+        mode="edit"
+      />
+    </SystemRoleProvider>,
   );
 }
 

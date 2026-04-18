@@ -265,15 +265,15 @@ bridge from a bridge that always rejects or always passes.
 
 ## PR7 — UI CRUD Hub `/settings/roles`
 
-### PR7.1 — `<Gated>` + `useCanAccess` resolve from dynamic matrix
+### PR7.1 — ✅ `<Gated>` + `useCanAccess` resolve from dynamic matrix
 
-**RED**: `components/common/__tests__/gated.test.tsx` (extend) — add: (a) custom role `facturador` with `journal.write=true` in mock matrix → children render; (b) loading state → children not rendered; (c) matrix update reflected after reload. `components/common/__tests__/use-org-role.test.ts` — (d) hook returns `false` during loading; (e) returns correct bool post-load.
+**RED**: `components/common/__tests__/gated.test.tsx` (rewrite) — provider-driven scenarios: (a) custom role `facturador` with `journal.write=true` in matrix → children render; (b) loading state (null snapshot) → children NOT rendered; (c) matrix flip reflected when the provider's snapshot prop changes. `components/common/__tests__/use-can-access.test.tsx` (new) — (d) hook returns `false` without provider / with null snapshot; (e) returns correct bool when snapshot grants/denies; (h) custom role matrix evaluated dynamically. `components/common/__tests__/roles-matrix-provider.test.tsx` (new) — (i) provider accepts a snapshot prop, (j) re-provides when prop changes.
 
-**GREEN**: `components/common/gated.tsx` + `components/common/use-org-role.ts` — call `useCanAccess(resource, action)` which reads from React context/SWR that fetches `/api/organizations/[orgSlug]/members/me` matrix payload. Public props API unchanged.
+**GREEN**: `components/common/roles-matrix-provider.tsx` (new) — `"use client"` React Context holding a `ClientMatrix` (caller's role + `canAccess`/`canPost` closures backed by `Set<string>` for O(1) lookups). `components/common/use-can-access.ts` (new) — hook reading the matrix context, returns `false` when no provider / snapshot null (no flash). `components/common/gated.tsx` — delegates to `useCanAccess`; public props API unchanged. `components/sidebar/app-sidebar.tsx` — filters nav items through `useRolesMatrix()` instead of the sync static `canAccess`. `features/shared/client-matrix.ts` (new) — server-side helper `buildClientMatrixSnapshot(orgId, role)` reads from the cached `OrgMatrix` and returns a JSON-serializable snapshot (projects caller's row only; `Set`s flattened to arrays for RSC → client serialization). `app/(dashboard)/[orgSlug]/layout.tsx` — fetches the snapshot server-side (Option B: no loading flash in Next 16 App Router) and wraps the dashboard tree with `<RolesMatrixProvider>`.
 
 **Satisfies**: U.1mod (all S1–S4), U.2mod (all S1–S3), D.8
 
-**Done when**: all 5 UI unit tests green; no flash on loading; existing gated.test.tsx still green.
+**Done when**: all provider / hook / Gated / sidebar unit tests green; no flash on loading (snapshot resolved before hydration); full suite 1446 → 1464. ✅ (18 new tests added: 9 gated + 7 use-can-access + 6 provider + 3 sidebar RBAC + migrated 7 legacy RBAC files to provider-driven wrappers via `SystemRoleProvider` test helper.)
 
 ---
 

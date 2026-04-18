@@ -11,6 +11,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import DispatchForm from "../dispatch-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -62,14 +63,16 @@ const PRODUCT_TYPE = { id: "pt-1", name: "Pollo", code: "PLO" };
 
 function renderCreateMode() {
   return render(
-    <DispatchForm
-      orgSlug="test-org"
-      dispatchType="NOTA_DESPACHO"
-      contacts={[BASE_CONTACT]}
-      periods={[BASE_PERIOD]}
-      productTypes={[PRODUCT_TYPE]}
-      roundingThreshold={0.5}
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <DispatchForm
+        orgSlug="test-org"
+        dispatchType="NOTA_DESPACHO"
+        contacts={[BASE_CONTACT]}
+        periods={[BASE_PERIOD]}
+        productTypes={[PRODUCT_TYPE]}
+        roundingThreshold={0.5}
+      />
+    </SystemRoleProvider>,
   );
 }
 

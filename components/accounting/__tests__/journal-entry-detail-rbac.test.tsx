@@ -11,6 +11,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import JournalEntryDetail from "../journal-entry-detail";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -53,13 +54,15 @@ function makeEntry(overrides: Record<string, unknown> = {}) {
 
 function renderDetail() {
   return render(
-    <JournalEntryDetail
-      orgSlug="test-org"
-      entry={makeEntry({ status: "DRAFT", sourceType: null }) as any}
-      periodName="Abril 2026"
-      periodStatus="OPEN"
-      voucherTypeName="Egreso"
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={makeEntry({ status: "DRAFT", sourceType: null }) as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />
+    </SystemRoleProvider>,
   );
 }
 
@@ -99,13 +102,15 @@ describe("JournalEntryDetail — RBAC gating (journal/write)", () => {
   it("T6.1-je-5 — role=admin: acciones VISIBLES sobre POSTED (Anular)", () => {
     mockRole.current = "admin";
     render(
-      <JournalEntryDetail
-        orgSlug="test-org"
-        entry={makeEntry({ status: "POSTED", sourceType: null }) as any}
-        periodName="Abril 2026"
-        periodStatus="OPEN"
-        voucherTypeName="Egreso"
-      />,
+      <SystemRoleProvider role={mockRole.current}>
+        <JournalEntryDetail
+          orgSlug="test-org"
+          entry={makeEntry({ status: "POSTED", sourceType: null }) as any}
+          periodName="Abril 2026"
+          periodStatus="OPEN"
+          voucherTypeName="Egreso"
+        />
+      </SystemRoleProvider>,
     );
 
     expect(screen.getByRole("link", { name: /editar/i })).toBeInTheDocument();

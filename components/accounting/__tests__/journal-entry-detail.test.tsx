@@ -10,6 +10,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import JournalEntryDetail from "../journal-entry-detail";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => {
   cleanup();
@@ -33,6 +34,14 @@ vi.mock("@/components/common/use-org-role", () => ({
 }));
 
 // ── Fixtures ──
+
+// PR7.1: all tests in this file assume role=owner. Wrap the render with
+// SystemRoleProvider so <Gated> resolves via the client matrix.
+function renderOwner(node: React.ReactNode) {
+  return render(
+    <SystemRoleProvider role="owner">{node}</SystemRoleProvider>,
+  );
+}
 
 function makeDetailEntry(overrides: Record<string, unknown> = {}) {
   return {
@@ -72,7 +81,7 @@ function makeDetailEntry(overrides: Record<string, unknown> = {}) {
 
 describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
   it("T7.1 — DRAFT manual + periodStatus=OPEN → Editar button renders with /edit link", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ status: "DRAFT", sourceType: null }) as any}
@@ -87,7 +96,7 @@ describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
   });
 
   it("T7.2 — POSTED manual (sourceType=null) + periodStatus=OPEN → Editar button renders", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ status: "POSTED", sourceType: null }) as any}
@@ -100,7 +109,7 @@ describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
   });
 
   it("T7.3 — POSTED auto (sourceType=sale) + periodStatus=OPEN → Editar button hidden", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ status: "POSTED", sourceType: "sale" }) as any}
@@ -113,7 +122,7 @@ describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
   });
 
   it("T7.4 — DRAFT manual + periodStatus=CLOSED → Editar button hidden", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ status: "DRAFT", sourceType: null }) as any}
@@ -126,7 +135,7 @@ describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
   });
 
   it("T7.5 — POSTED manual + periodStatus=CLOSED → Editar button hidden", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ status: "POSTED", sourceType: null }) as any}
@@ -139,7 +148,7 @@ describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
   });
 
   it("T7.6 — VOIDED + periodStatus=OPEN → Editar button hidden", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ status: "VOIDED", sourceType: null }) as any}
@@ -156,7 +165,7 @@ describe("JournalEntryDetail — Editar button visibility (REQ-A.2)", () => {
 
 describe("JournalEntryDetail — origin badge (REQ-B.2)", () => {
   it("S-B2.1 — sourceType=null renders badge 'Manual' in metadata", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ sourceType: null }) as any}
@@ -168,7 +177,7 @@ describe("JournalEntryDetail — origin badge (REQ-B.2)", () => {
   });
 
   it("S-B2.2 — sourceType='sale' renders badge 'Generado por Venta' in metadata", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry({ sourceType: "sale" }) as any}
@@ -184,7 +193,7 @@ describe("JournalEntryDetail — origin badge (REQ-B.2)", () => {
 
 describe("JournalEntryDetail — inactive voucher type badge (REQ-A.4-S3)", () => {
   it("A.4-S3 — voucherTypeActive=false renders 'Inactivo' badge next to name", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry() as any}
@@ -199,7 +208,7 @@ describe("JournalEntryDetail — inactive voucher type badge (REQ-A.4-S3)", () =
   });
 
   it("A.4-S3 — voucherTypeActive=true does NOT render 'Inactivo' badge", () => {
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={makeDetailEntry() as any}
@@ -227,7 +236,7 @@ describe("JournalEntryDetail — display-date TZ-safe (REQ-D.2)", () => {
       createdAt: "2026-04-17T12:00:00.000Z",
     });
 
-    render(
+    renderOwner(
       <JournalEntryDetail
         orgSlug="test-org"
         entry={entry as any}

@@ -1,23 +1,25 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useOrgRole } from "./use-org-role";
-import { canAccess } from "@/features/shared/permissions";
 import type { Action, Resource } from "@/features/shared/permissions";
+import { useCanAccess } from "./use-can-access";
+
+// Re-export so legacy imports like `import { useCanAccess } from "./gated"`
+// keep working during the PR7.1 transition.
+export { useCanAccess };
 
 /**
- * Defensive UI gate. Returns false while role is loading or when there is no
- * role (logged-out or non-member). Once resolved, delegates to the matrix.
+ * Defensive UI gate. Returns false while the client matrix is loading (no
+ * provider yet, or snapshot=null). Once resolved, delegates to the dynamic
+ * matrix via useCanAccess — so custom roles and admin edits are reflected
+ * without any static-map fallback (PR7.1 / D.8 / U.1mod).
  *
- * Real authorization lives server-side in requirePermission (PR4) — this is
- * only UX polish to hide controls the caller cannot invoke.
+ * Real authorization lives server-side in requirePermission — this is only
+ * UX polish to hide controls the caller cannot invoke.
+ *
+ * Public props API is frozen: {resource, action, children}. Do not change
+ * without a spec update.
  */
-export function useCanAccess(resource: Resource, action: Action): boolean {
-  const { role, isLoading } = useOrgRole();
-  if (isLoading || !role) return false;
-  return canAccess(role, resource, action);
-}
-
 export function Gated({
   resource,
   action,
