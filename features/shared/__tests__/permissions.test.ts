@@ -35,7 +35,7 @@ import {
   canPost,
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
-  POST_ALLOWED_ROLES,
+  getPostAllowedRoles,
   type Role,
   type Resource,
   type Action,
@@ -130,15 +130,19 @@ describe("REQ-P.1 — Resource catalog", () => {
   });
 });
 
-describe("REQ-P.2 — canAccess(role, resource, action) matrix (144 cases)", () => {
+describe("REQ-P.2 — PERMISSIONS_READ/WRITE matrix (144 cases, static maps)", () => {
+  // PR8.2: sync 3-param canAccess removed. The static matrix is tested directly
+  // against PERMISSIONS_READ / PERMISSIONS_WRITE as source of truth.
+  // The async canAccess(role, resource, action, orgId) is tested in PR2.2 block below.
   for (const resource of ALL_RESOURCES) {
     for (const action of ALL_ACTIONS) {
       const allowed =
         action === "read" ? EXPECTED_READ[resource] : EXPECTED_WRITE[resource];
+      const map = action === "read" ? PERMISSIONS_READ : PERMISSIONS_WRITE;
       for (const role of ALL_ROLES) {
         const expected = allowed.includes(role);
         it(`${role} × ${resource} × ${action} → ${expected}`, () => {
-          expect(canAccess(role, resource, action)).toBe(expected);
+          expect(map[resource].includes(role as Role)).toBe(expected);
         });
       }
     }
@@ -157,36 +161,38 @@ describe("REQ-P.3-S3 — canPost(role, resource) — W-draft guard (18 cases)", 
   }
 });
 
-describe("POST_ALLOWED_ROLES map", () => {
+describe("getPostAllowedRoles() map", () => {
   it("covers exactly the 3 postable resources", () => {
-    expect(Object.keys(POST_ALLOWED_ROLES).sort()).toEqual(
+    expect(Object.keys(getPostAllowedRoles()).sort()).toEqual(
       [...POST_RESOURCES].sort(),
     );
   });
 
   it("excludes auxiliar from every postable resource", () => {
+    const map = getPostAllowedRoles();
     for (const r of POST_RESOURCES) {
-      expect(POST_ALLOWED_ROLES[r]).not.toContain("auxiliar");
+      expect(map[r]).not.toContain("auxiliar");
     }
   });
 });
 
-describe("Spec scenarios verbatim", () => {
+describe("Spec scenarios verbatim (via static maps)", () => {
+  // PR8.2: sync canAccess removed — use PERMISSIONS_READ/WRITE directly for static checks.
   it("P.2-S1 — contador reads reports", () => {
-    expect(canAccess("contador", "reports", "read")).toBe(true);
+    expect(PERMISSIONS_READ["reports"].includes("contador")).toBe(true);
   });
 
   it("P.2-S2 — cobrador cannot touch journal (read or write)", () => {
-    expect(canAccess("cobrador", "journal", "read")).toBe(false);
-    expect(canAccess("cobrador", "journal", "write")).toBe(false);
+    expect(PERMISSIONS_READ["journal"].includes("cobrador")).toBe(false);
+    expect(PERMISSIONS_WRITE["journal"].includes("cobrador")).toBe(false);
   });
 
   it("P.2-S3 — auxiliar writes dispatches", () => {
-    expect(canAccess("auxiliar", "dispatches", "write")).toBe(true);
+    expect(PERMISSIONS_WRITE["dispatches"].includes("auxiliar")).toBe(true);
   });
 
   it("P.3-S3 — auxiliar cannot post sales (W-draft)", () => {
-    expect(canAccess("auxiliar", "sales", "write")).toBe(true);
+    expect(PERMISSIONS_WRITE["sales"].includes("auxiliar")).toBe(true);
     expect(canPost("auxiliar", "sales")).toBe(false);
   });
 });
@@ -206,6 +212,7 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
     isSystem: boolean;
   }>();
 
+  const postAllowedRoles = getPostAllowedRoles();
   const ALL_SYS_ROLES = ["owner", "admin", "contador", "cobrador", "auxiliar", "member"] as const;
   for (const slug of ALL_SYS_ROLES) {
     const permissionsRead = new Set<Resource>(
@@ -220,7 +227,7 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
     );
     const canPostSet = new Set<"sales" | "purchases" | "journal">(
       (["sales", "purchases", "journal"] as const).filter((r) =>
-        POST_ALLOWED_ROLES[r].includes(slug),
+        postAllowedRoles[r].includes(slug),
       ),
     );
     roles.set(slug, { permissionsRead, permissionsWrite, canPost: canPostSet, isSystem: true });
@@ -285,15 +292,16 @@ describe("PR2.2 — canAccess async (4-param) reads from cache", () => {
     expect(mockedGetMatrix).toHaveBeenCalledTimes(2);
   });
 
-  it("(e) 3-param sync overload still works — backward compat for <Gated> / useCanAccess", () => {
-    // This test exercises the sync overload (3 params — no orgId).
-    // The mock for getMatrix should NOT be called here.
-    const result = canAccess("contador", "reports", "read");
+  it("(e) canAccess always async — calls getMatrix (sync 3-param overload removed in PR8.2)", async () => {
+    // PR8.2: sync 3-param overload removed. canAccess always calls getMatrix.
+    // Client-side checks use useCanAccess() / <Gated> from RolesMatrixProvider (PR7.1).
+    const matrix = makeSystemMatrix(ORG_ID);
+    mockedGetMatrix.mockResolvedValue(matrix);
 
-    // Static map still says true for contador + reports + read
+    const result = await canAccess("contador", "reports", "read", ORG_ID);
     expect(result).toBe(true);
-    // Sync path does NOT touch the cache
-    expect(mockedGetMatrix).not.toHaveBeenCalled();
+    // All paths now hit the cache
+    expect(mockedGetMatrix).toHaveBeenCalledWith(ORG_ID);
   });
 
   it("triangulation: cobrador cannot write journal via cache-backed path", async () => {

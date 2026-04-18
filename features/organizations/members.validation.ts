@@ -2,8 +2,8 @@
  * members.validation.ts — Zod schemas for the /members API payloads.
  *
  * PR6.1 / D.9:
- *   Introduces `buildAddMemberSchema(orgId)` and `buildUpdateMemberRoleSchema(orgId)`
- *   FACTORIES. The returned schemas replace the previous static enum with an
+ *   `buildAddMemberSchema(orgId)` and `buildUpdateMemberRoleSchema(orgId)`
+ *   are the ONLY production validation path. The returned schemas contain an
  *   ASYNC refine that checks the role slug against the org's current
  *   `CustomRole` table via `rolesService.exists(orgId, slug)`.
  *
@@ -17,42 +17,15 @@
  *   Callers MUST use `parseAsync` / `safeParseAsync`. Calling `.parse` on a
  *   schema containing async refinements throws — this is Zod's contract and
  *   we rely on it as the regression-prevention mechanism for PR6.2 (see
- *   contract grep in members.service.test.ts).
+ *   contract grep in members.validation.contract.test.ts).
  *
- * Legacy exports:
- *   `addMemberSchema` / `updateRoleSchema` (static enum-based) remain exported
- *   until PR8.2 final sweep. They are used only by tests/barrels today and are
- *   no longer the production validation path once PR6.2 routes migrate.
+ * PR8.2:
+ *   Removed: `addMemberSchema`, `updateRoleSchema` (static enum-based legacy),
+ *   `AddMemberDto`, `UpdateRoleDto`, and the `assignableRoles` private const.
+ *   They were dead code — no production path called them after PR6.2.
  */
 import { z } from "zod";
 import { rolesService } from "./roles.service.singleton";
-
-// ───────────────────────────────────────────────────────────────
-// Legacy static enum — kept only for backward compatibility with
-// existing tests and barrel imports until PR8.2 removes dead exports.
-// ───────────────────────────────────────────────────────────────
-const assignableRoles = [
-  "admin",
-  "contador",
-  "cobrador",
-  "auxiliar",
-  "member",
-] as const;
-
-const ROLE_ERROR =
-  "Rol inválido. Debe ser: admin, contador, cobrador, auxiliar o member";
-
-export const addMemberSchema = z.object({
-  email: z.string().email("Email inválido"),
-  role: z.enum(assignableRoles, { message: ROLE_ERROR }),
-});
-
-export const updateRoleSchema = z.object({
-  role: z.enum(assignableRoles, { message: ROLE_ERROR }),
-});
-
-export type AddMemberDto = z.infer<typeof addMemberSchema>;
-export type UpdateRoleDto = z.infer<typeof updateRoleSchema>;
 
 // ───────────────────────────────────────────────────────────────
 // PR6.1 — factory-based async schemas (production path)

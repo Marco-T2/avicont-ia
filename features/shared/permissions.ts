@@ -72,11 +72,28 @@ export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
 
 export type PostableResource = "sales" | "purchases" | "journal";
 
-export const POST_ALLOWED_ROLES: Record<PostableResource, Role[]> = {
+/**
+ * Static map used internally for the sync canPost 2-param overload.
+ * Not exported — production code uses the async 3-param canPost(role, resource, orgId)
+ * which reads from the org's cached matrix. This map is only kept for:
+ *   1. The sync 2-param canPost backward compat path (journal.service.ts)
+ *   2. seed-system-roles.ts buildSystemRolePayloads (seeding day-one rows)
+ * PR8.2: removed `export` keyword — import via buildSystemRolePayloads if needed.
+ */
+const POST_ALLOWED_ROLES: Record<PostableResource, Role[]> = {
   sales: ["owner", "admin", "contador"],
   purchases: ["owner", "admin", "contador"],
   journal: ["owner", "admin", "contador"],
 };
+
+/**
+ * Returns the static canPost map for internal use by seed helpers.
+ * Used by buildSystemRolePayloads in prisma/seed-system-roles.ts.
+ * @internal — not part of the public API.
+ */
+export function getPostAllowedRoles(): Readonly<Record<PostableResource, Role[]>> {
+  return POST_ALLOWED_ROLES;
+}
 
 /** Scopes each role can search via RAG. null = no RAG access. */
 const RAG_SCOPES: Record<string, DocumentScope[]> = {
@@ -111,44 +128,28 @@ export function canUploadToScope(role: string, scope: DocumentScope): boolean {
 }
 
 /**
- * Sync 3-param overload — uses static maps. For client-side code (React
- * components, sidebar filter) where awaiting is not possible. (D.7 / D.8)
- */
-export function canAccess(role: string, resource: Resource, action: Action): boolean;
-
-/**
- * Async 4-param overload — reads from the org's cached permission matrix.
+ * Async — reads from the org's cached permission matrix.
  * Use this in server-side code. The cache handles TTL, single-flight, and
  * the fallback seed is handled by requirePermission / getMatrix. (D.7 / P.2mod)
+ *
+ * PR8.2: sync 3-param overload removed — all callers must pass orgId.
+ * Client-side permission checks go through useCanAccess() / <Gated> (PR7.1).
  */
 export function canAccess(
   role: string,
   resource: Resource,
   action: Action,
   orgId: string,
-): Promise<boolean>;
-
-export function canAccess(
-  role: string,
-  resource: Resource,
-  action: Action,
-  orgId?: string,
-): boolean | Promise<boolean> {
-  if (orgId !== undefined) {
-    // Async path: look up from cached matrix
-    return getCacheModule().then(({ getMatrix }) =>
-      getMatrix(orgId).then((matrix) => {
-        const roleEntry = matrix.roles.get(role);
-        if (!roleEntry) return false;
-        return action === "read"
-          ? roleEntry.permissionsRead.has(resource)
-          : roleEntry.permissionsWrite.has(resource);
-      }),
-    );
-  }
-  // Sync path: use static maps (backward compat for client-side)
-  const map = action === "read" ? PERMISSIONS_READ : PERMISSIONS_WRITE;
-  return map[resource].includes(role as Role);
+): Promise<boolean> {
+  return getCacheModule().then(({ getMatrix }) =>
+    getMatrix(orgId).then((matrix) => {
+      const roleEntry = matrix.roles.get(role);
+      if (!roleEntry) return false;
+      return action === "read"
+        ? roleEntry.permissionsRead.has(resource)
+        : roleEntry.permissionsWrite.has(resource);
+    }),
+  );
 }
 
 /**
