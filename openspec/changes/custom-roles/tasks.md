@@ -176,7 +176,7 @@
 
 ---
 
-### PR4.3 — `RolesService` CRUD + self-lock guard + member guard
+### PR4.3 — ✅ `RolesService` CRUD + self-lock guard + member guard
 
 **RED**: `features/organizations/__tests__/roles.service.test.ts` — mock repository; assert: (a) `createRole` snapshots template matrix, sets `isSystem=false`; (b) `updateRole` calls `revalidateOrgMatrix`; (c) self-lock guard: PATCH that removes `members.write` from caller's own role → `ForbiddenError(SELF_LOCK_GUARD)`; (d) other admin patching same role → no guard; (e) `deleteRole` with members → `ConflictError(ROLE_HAS_MEMBERS)`; (f) `deleteRole` with 0 members → calls `repo.delete`; (g) PATCH/DELETE system role → `ForbiddenError(SYSTEM_ROLE_IMMUTABLE)`; (h) array normalize called on write (sort+dedupe); (i) `exists(orgId, slug)` returns bool.
 
