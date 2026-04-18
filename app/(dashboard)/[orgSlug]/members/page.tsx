@@ -12,7 +12,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
 
   let orgId: string;
   try {
-    const result = await requirePermission("members", orgSlug);
+    const result = await requirePermission("members", "read", orgSlug);
     orgId = result.orgId;
   } catch {
     redirect(`/${orgSlug}`);

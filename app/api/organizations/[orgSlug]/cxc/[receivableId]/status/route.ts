@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts";
 import { ReceivablesService } from "@/features/receivables";
 import { receivableStatusSchema } from "@/features/receivables";
@@ -16,10 +12,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; receivableId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, receivableId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("sales", "write", orgSlug);
 
     const body = await request.json();
     const input = receivableStatusSchema.parse(body);

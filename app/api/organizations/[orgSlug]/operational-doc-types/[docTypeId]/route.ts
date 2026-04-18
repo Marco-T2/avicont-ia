@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import {
   OperationalDocTypesService,
   updateOperationalDocTypeSchema,
@@ -17,10 +13,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; docTypeId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, docTypeId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const body = await request.json();
     const input = updateOperationalDocTypeSchema.parse(body);
@@ -38,10 +32,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; docTypeId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, docTypeId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const deactivated = await service.deactivate(orgId, docTypeId);
 

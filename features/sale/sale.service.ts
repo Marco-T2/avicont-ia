@@ -1,12 +1,15 @@
 import {
   NotFoundError,
   ValidationError,
+  ForbiddenError,
+  POST_NOT_ALLOWED_FOR_ROLE,
   SALE_NO_DETAILS,
   SALE_INVALID_CONTACT_TYPE,
   SALE_NOT_DRAFT,
   SALE_CONTACT_CHANGE_BLOCKED,
   SALE_INCOME_ACCOUNT_REQUIRED,
 } from "@/features/shared/errors";
+import { canPost } from "@/features/shared/permissions";
 import {
   validateTransition,
   validateEditable,
@@ -367,8 +370,17 @@ export class SaleService {
   async createAndPost(
     organizationId: string,
     input: CreateSaleInput,
-    userId: string,
+    context: { userId: string; role: string },
   ): Promise<SaleWithDetails> {
+    // 0. RBAC: canPost (REQ-P.3-S3 / D.3) — auxiliar bloqueado en POST
+    if (!canPost(context.role, "sales")) {
+      throw new ForbiddenError(
+        "Tu rol no tiene permiso para contabilizar ventas",
+        POST_NOT_ALLOWED_FOR_ROLE,
+      );
+    }
+    const { userId } = context;
+
     // 1. Validar que el contacto sea CLIENTE
     const contact = await this.contactsService.getActiveById(organizationId, input.contactId);
     if (contact.type !== "CLIENTE") {

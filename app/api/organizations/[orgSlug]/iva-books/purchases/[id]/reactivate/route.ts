@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { IvaBooksRepository } from "@/features/accounting/iva-books/iva-books.repository";
 import { SaleService } from "@/features/sale/sale.service";
@@ -33,10 +29,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; id: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, id } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId } = await requirePermission(
+      "reports",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     const entry = await service.reactivatePurchase(orgId, userId, id);
 

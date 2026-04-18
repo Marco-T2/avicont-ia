@@ -27,6 +27,7 @@ import type { PaymentWithRelations, PaymentDirection, PaymentMethod, CreditAlloc
 import type { PendingDocument } from "@/features/contacts/contacts.types";
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { todayLocal } from "@/lib/date-utils";
+import { Gated } from "@/components/common/gated";
 
 // ── Helpers ──
 
@@ -1759,23 +1760,42 @@ export default function PaymentForm({
           </Button>
         </Link>
 
-        {/* New mode — dual buttons (Mode A) or credit-only button (Mode B) */}
-        {isNew && !isCreditOnly && (
-          <>
-            <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? (
-                <>
+        <Gated resource="payments" action="write">
+          {/* New mode — dual buttons (Mode A) or credit-only button (Mode B) */}
+          {isNew && !isCreditOnly && (
+            <>
+              <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar Borrador"
+                )}
+              </Button>
+              <Button
+                type="button"
+                className="bg-green-600 hover:bg-green-700"
+                onClick={handleCreateAndPost}
+                disabled={!canSubmit || isSubmitting}
+              >
+                {isSubmitting ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                "Guardar Borrador"
-              )}
-            </Button>
+                ) : (
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                )}
+                Contabilizar
+              </Button>
+            </>
+          )}
+
+          {/* Mode B — credit-only: single "Aplicar créditos" button */}
+          {isNew && isCreditOnly && (
             <Button
               type="button"
               className="bg-green-600 hover:bg-green-700"
-              onClick={handleCreateAndPost}
+              onClick={handleApplyCredits}
               disabled={!canSubmit || isSubmitting}
             >
               {isSubmitting ? (
@@ -1783,125 +1803,108 @@ export default function PaymentForm({
               ) : (
                 <CheckCircle className="h-4 w-4 mr-2" />
               )}
-              Contabilizar
+              Aplicar créditos
             </Button>
-          </>
-        )}
+          )}
 
-        {/* Mode B — credit-only: single "Aplicar créditos" button */}
-        {isNew && isCreditOnly && (
-          <Button
-            type="button"
-            className="bg-green-600 hover:bg-green-700"
-            onClick={handleApplyCredits}
-            disabled={!canSubmit || isSubmitting}
-          >
-            {isSubmitting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <CheckCircle className="h-4 w-4 mr-2" />
-            )}
-            Aplicar créditos
-          </Button>
-        )}
+          {/* Draft actions */}
+          {isDraft && (
+            <>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleDelete}
+              >
+                Eliminar
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handlePost}
+                disabled={isPosting || !canSubmit}
+              >
+                {isPosting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Contabilizando...
+                  </>
+                ) : (
+                  "Contabilizar"
+                )}
+              </Button>
+              <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  "Guardar"
+                )}
+              </Button>
+            </>
+          )}
 
-        {/* Draft actions */}
-        {isDraft && (
-          <>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleDelete}
-            >
-              Eliminar
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handlePost}
-              disabled={isPosting || !canSubmit}
-            >
-              {isPosting ? (
-                <>
+          {/* LOCKED actions (admin/owner only) */}
+          {isLocked && isAdminOrOwner && (
+            <>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={() => { setPendingAction("void"); setShowJustification(true); }}
+                disabled={isJustificationLoading}
+              >
+                {isJustificationLoading && pendingAction === "void" ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Contabilizando...
-                </>
-              ) : (
-                "Contabilizar"
-              )}
-            </Button>
-            <Button type="submit" disabled={!canSubmit || isSubmitting}>
-              {isSubmitting ? (
-                <>
+                ) : (
+                  <XCircle className="h-4 w-4 mr-2" />
+                )}
+                Anular
+              </Button>
+              <Button
+                type="button"
+                onClick={() => { setPendingAction("save"); setShowJustification(true); }}
+                disabled={!canSubmit || isJustificationLoading}
+              >
+                {isJustificationLoading && pendingAction === "save" ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Guardando...
-                </>
-              ) : (
-                "Guardar"
-              )}
-            </Button>
-          </>
-        )}
+                ) : null}
+                Guardar
+              </Button>
+            </>
+          )}
 
-        {/* LOCKED actions (admin/owner only) */}
-        {isLocked && isAdminOrOwner && (
-          <>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={() => { setPendingAction("void"); setShowJustification(true); }}
-              disabled={isJustificationLoading}
-            >
-              {isJustificationLoading && pendingAction === "void" ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
-            <Button
-              type="button"
-              onClick={() => { setPendingAction("save"); setShowJustification(true); }}
-              disabled={!canSubmit || isJustificationLoading}
-            >
-              {isJustificationLoading && pendingAction === "save" ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              Guardar
-            </Button>
-          </>
-        )}
-
-        {/* Posted actions */}
-        {isPosted && (
-          <>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleVoid}
-              disabled={isVoiding || isJustificationLoading}
-            >
-              {isVoiding ? (
-                <>
+          {/* Posted actions */}
+          {isPosted && (
+            <>
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleVoid}
+                disabled={isVoiding || isJustificationLoading}
+              >
+                {isVoiding ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Anulando...
+                  </>
+                ) : (
+                  "Anular"
+                )}
+              </Button>
+              <Button
+                type="button"
+                onClick={() => { setPendingAction("save"); setShowJustification(true); }}
+                disabled={!canSubmit || isJustificationLoading}
+              >
+                {isJustificationLoading && pendingAction === "save" ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Anulando...
-                </>
-              ) : (
-                "Anular"
-              )}
-            </Button>
-            <Button
-              type="button"
-              onClick={() => { setPendingAction("save"); setShowJustification(true); }}
-              disabled={!canSubmit || isJustificationLoading}
-            >
-              {isJustificationLoading && pendingAction === "save" ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : null}
-              Guardar
-            </Button>
-          </>
-        )}
+                ) : null}
+                Guardar
+              </Button>
+            </>
+          )}
+        </Gated>
       </div>
 
       {/* Justification Modal */}

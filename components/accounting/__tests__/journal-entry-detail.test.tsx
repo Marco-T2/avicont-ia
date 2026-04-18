@@ -20,10 +20,16 @@ afterEach(() => {
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useParams: () => ({ orgSlug: "test-org" }),
 }));
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
+}));
+
+// accounting-rbac PR6: default owner so <Gated> renders children
+vi.mock("@/components/common/use-org-role", () => ({
+  useOrgRole: () => ({ role: "owner", isLoading: false, orgSlug: "test-org" }),
 }));
 
 // ── Fixtures ──

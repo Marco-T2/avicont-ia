@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { DispatchService } from "@/features/dispatch";
 
@@ -15,10 +11,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string; dispatchId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, dispatchId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin"]);
+    const { session, orgId } = await requirePermission(
+      "dispatches",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 

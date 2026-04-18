@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { MonthlyCloseService } from "@/features/monthly-close";
 import { UsersService } from "@/features/shared/users.service";
 
@@ -15,10 +11,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const { session, orgId } = await requirePermission(
+      "reports",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     const { periodId } = await request.json();
     const user = await usersService.resolveByClerkId(userId);

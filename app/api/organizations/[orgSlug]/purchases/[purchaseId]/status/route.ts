@@ -1,10 +1,6 @@
 import { z } from "zod";
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { PurchaseService } from "@/features/purchase";
 
@@ -21,10 +17,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string; purchaseId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, purchaseId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId } = await requirePermission(
+      "purchases",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const { status, justification } = purchaseActionSchema.parse(body);

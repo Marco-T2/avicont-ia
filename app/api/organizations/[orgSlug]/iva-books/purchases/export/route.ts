@@ -22,12 +22,8 @@
 // Node.js runtime: exceljs requiere Buffer/streams — NO Edge compatible
 export const runtime = "nodejs";
 
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { listQuerySchema } from "@/features/accounting/iva-books/iva-books.validation";
 import { exportIvaBookExcel } from "@/features/accounting/iva-books/exporters/excel.exporter";
@@ -39,10 +35,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("reports", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
     const query = listQuerySchema.parse({

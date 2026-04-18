@@ -1,10 +1,6 @@
 import { z } from "zod";
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { PaymentService } from "@/features/payment";
 
@@ -21,10 +17,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; paymentId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, paymentId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId } = await requirePermission(
+      "payments",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const { status, justification } = paymentActionSchema.parse(body);

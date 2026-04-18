@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { SaleService } from "@/features/sale";
 import { updateSaleSchema } from "@/features/sale";
 import { UsersService } from "@/features/shared/users.service";
@@ -29,10 +25,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; saleId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, saleId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("sales", "read", orgSlug);
 
     const sale = await saleService.getById(orgId, saleId);
 
@@ -47,10 +41,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; saleId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, saleId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    const member = await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "sales",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     // Parse dryRun and confirmTrim at route level BEFORE Zod schema validation.
     // These are route-level concerns, not domain validation (D3).
@@ -81,7 +78,7 @@ export async function PATCH(
 
     // confirmTrim: true OR no trim needed → proceed with normal edit
     const user = await usersService.resolveByClerkId(clerkUserId);
-    const sale = await saleService.update(orgId, saleId, input, user.id, member.role, justification);
+    const sale = await saleService.update(orgId, saleId, input, user.id, role, justification);
 
     return Response.json(sale);
   } catch (error) {
@@ -108,10 +105,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; saleId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, saleId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("sales", "write", orgSlug);
 
     await saleService.delete(orgId, saleId);
 

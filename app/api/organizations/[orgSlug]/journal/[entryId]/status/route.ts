@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { JournalService } from "@/features/accounting";
 import { statusTransitionSchema } from "@/features/accounting/accounting.validation";
@@ -16,10 +12,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; entryId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, entryId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId } = await requirePermission(
+      "journal",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const { status, justification } = statusTransitionSchema.parse(body);

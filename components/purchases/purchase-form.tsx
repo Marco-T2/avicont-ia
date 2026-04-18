@@ -43,6 +43,7 @@ import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purc
 import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
 import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { Gated } from "@/components/common/gated";
 
 // ── Helpers ──
 
@@ -1515,97 +1516,99 @@ export default function PurchaseForm({
             </Button>
           </Link>
 
-          {/* CREATE mode — dual buttons */}
-          {!isEditMode && (
-            <>
-              <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
-                {isSubmitting ? (
-                  <>
+          <Gated resource="purchases" action="write">
+            {/* CREATE mode — dual buttons */}
+            {!isEditMode && (
+              <>
+                <Button type="submit" variant="outline" disabled={!canSubmit || isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar Borrador"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={handleCreateAndPost}
+                  disabled={!canSubmit || isSubmitting}
+                >
+                  {isSubmitting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  "Guardar Borrador"
-                )}
-              </Button>
-              <Button
-                type="button"
-                className="bg-green-600 hover:bg-green-700"
-                onClick={handleCreateAndPost}
-                disabled={!canSubmit || isSubmitting}
-              >
-                {isSubmitting ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                )}
-                Guardar y Contabilizar
-              </Button>
-            </>
-          )}
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Guardar y Contabilizar
+                </Button>
+              </>
+            )}
 
-          {/* DRAFT edit actions */}
-          {isEditMode && status === "DRAFT" && (
-            <>
-              <Button type="submit" disabled={!canSubmit || isSubmitting}>
-                {isSubmitting ? (
-                  <>
+            {/* DRAFT edit actions */}
+            {isEditMode && status === "DRAFT" && (
+              <>
+                <Button type="submit" disabled={!canSubmit || isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Guardando...
+                    </>
+                  ) : (
+                    "Guardar"
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  className="bg-green-600 hover:bg-green-700"
+                  onClick={handlePost}
+                  disabled={!canSubmit || isActioning}
+                >
+                  {isActioning ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Guardando...
-                  </>
-                ) : (
-                  "Guardar"
-                )}
-              </Button>
+                  ) : (
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                  )}
+                  Contabilizar
+                </Button>
+              </>
+            )}
+
+            {/* POSTED actions */}
+            {isEditMode && isPosted && (
               <Button
                 type="button"
-                className="bg-green-600 hover:bg-green-700"
-                onClick={handlePost}
-                disabled={!canSubmit || isActioning}
+                variant="destructive"
+                onClick={handleVoid}
+                disabled={isActioning}
               >
                 {isActioning ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
-                  <CheckCircle className="h-4 w-4 mr-2" />
+                  <XCircle className="h-4 w-4 mr-2" />
                 )}
-                Contabilizar
+                Anular
               </Button>
-            </>
-          )}
+            )}
 
-          {/* POSTED actions */}
-          {isEditMode && isPosted && (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleVoid}
-              disabled={isActioning}
-            >
-              {isActioning ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
-          )}
-
-          {/* LOCKED actions (admin/owner only) */}
-          {isEditMode && isLocked && isAdminOrOwner && (
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={handleVoid}
-              disabled={isActioning}
-            >
-              {isActioning ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
-          )}
+            {/* LOCKED actions (admin/owner only) */}
+            {isEditMode && isLocked && isAdminOrOwner && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={handleVoid}
+                disabled={isActioning}
+              >
+                {isActioning ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <XCircle className="h-4 w-4 mr-2" />
+                )}
+                Anular
+              </Button>
+            )}
+          </Gated>
         </div>
       </div>
     </form>

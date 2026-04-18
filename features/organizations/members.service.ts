@@ -4,6 +4,7 @@ import {
   ConflictError,
   ForbiddenError,
   ValidationError,
+  CANNOT_CHANGE_OWN_ROLE,
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/shared/users.service";
@@ -157,9 +158,12 @@ export class MembersService {
       throw new ValidationError("No se puede cambiar el rol del propietario");
     }
 
-    // Verificar que el invocador no esté cambiando su propio rol
+    // Verificar que el invocador no esté cambiando su propio rol (D.4)
     if (member.user.clerkUserId === currentClerkUserId) {
-      throw new ValidationError("No podés cambiar tu propio rol");
+      throw new ForbiddenError(
+        "No podés cambiar tu propio rol",
+        CANNOT_CHANGE_OWN_ROLE,
+      );
     }
 
     const updated = await this.repo.updateMemberRole(
@@ -189,7 +193,10 @@ export class MembersService {
     }
 
     if (member.user.clerkUserId === currentClerkUserId) {
-      throw new ValidationError("No podés desactivarte a vos mismo");
+      throw new ForbiddenError(
+        "No podés desactivarte a vos mismo",
+        CANNOT_CHANGE_OWN_ROLE,
+      );
     }
 
     // Eliminar de la organización en Clerk

@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PaymentRepository } from "@/features/payment";
 
 const paymentRepository = new PaymentRepository();
@@ -13,10 +9,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; contactId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, contactId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("payments", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
     const excludePaymentId = searchParams.get("excludePaymentId") ?? undefined;

@@ -27,9 +27,12 @@ interface AddMemberDialogProps {
   onAdded?: () => void;
 }
 
+// 5 roles asignables (owner es implícito al crear la org, no asignable por admin)
 const ROLE_LABELS: Record<string, string> = {
   admin: "Administrador",
   contador: "Contador",
+  cobrador: "Cobrador",
+  auxiliar: "Auxiliar",
   member: "Socio",
 };
 

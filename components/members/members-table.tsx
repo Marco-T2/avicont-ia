@@ -35,10 +35,13 @@ interface MembersTableProps {
   onUpdated?: () => void;
 }
 
+// Owner displayable (alguien lo es) pero NO asignable. Resto: 5 roles asignables.
 const ROLE_LABELS: Record<string, string> = {
   owner: "Propietario",
   admin: "Administrador",
   contador: "Contador",
+  cobrador: "Cobrador",
+  auxiliar: "Auxiliar",
   member: "Socio",
 };
 
@@ -46,10 +49,18 @@ const ROLE_COLORS: Record<string, string> = {
   owner: "bg-purple-100 text-purple-800 border-purple-200",
   admin: "bg-blue-100 text-blue-800 border-blue-200",
   contador: "bg-green-100 text-green-800 border-green-200",
+  cobrador: "bg-amber-100 text-amber-800 border-amber-200",
+  auxiliar: "bg-teal-100 text-teal-800 border-teal-200",
   member: "bg-gray-100 text-gray-800 border-gray-200",
 };
 
-const ASSIGNABLE_ROLES = ["member", "contador", "admin"] as const;
+const ASSIGNABLE_ROLES = [
+  "member",
+  "auxiliar",
+  "cobrador",
+  "contador",
+  "admin",
+] as const;
 
 export default function MembersTable({
   orgSlug,

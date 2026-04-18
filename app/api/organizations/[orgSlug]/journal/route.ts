@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { JournalService } from "@/features/accounting";
 import {
@@ -20,10 +16,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("journal", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
     const filters = journalFiltersSchema.parse({
@@ -47,10 +41,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "journal",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const { postImmediately, ...rest } = body;
@@ -59,7 +56,11 @@ export async function POST(
     const user = await usersService.resolveByClerkId(clerkUserId);
 
     const entry = postImmediately
-      ? await service.createAndPost(orgId, { ...input, createdById: user.id }, user.id)
+      ? await service.createAndPost(
+          orgId,
+          { ...input, createdById: user.id },
+          { userId: user.id, role },
+        )
       : await service.createEntry(orgId, { ...input, createdById: user.id });
 
     const displayNumber = formatCorrelativeNumber(

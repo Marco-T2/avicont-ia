@@ -26,6 +26,7 @@ import {
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
+import { Gated } from "@/components/common/gated";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
@@ -154,16 +155,16 @@ export default function JournalEntryDetail({
 
             {/* Action buttons */}
             <div className="flex gap-2 shrink-0">
-              {canEdit && (
-                <Link href={`/${orgSlug}/accounting/journal/${entry.id}/edit`}>
-                  <Button variant="outline" size="sm">
-                    <Pencil className="h-4 w-4 mr-1" />
-                    Editar
-                  </Button>
-                </Link>
-              )}
-              {entry.status === "DRAFT" && (
-                <>
+              <Gated resource="journal" action="write">
+                {canEdit && (
+                  <Link href={`/${orgSlug}/accounting/journal/${entry.id}/edit`}>
+                    <Button variant="outline" size="sm">
+                      <Pencil className="h-4 w-4 mr-1" />
+                      Editar
+                    </Button>
+                  </Link>
+                )}
+                {entry.status === "DRAFT" && (
                   <Button
                     size="sm"
                     onClick={() => setActionDialog("POST")}
@@ -172,19 +173,19 @@ export default function JournalEntryDetail({
                     <CheckCircle className="h-4 w-4 mr-1" />
                     Contabilizar
                   </Button>
-                </>
-              )}
-              {entry.status === "POSTED" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setActionDialog("VOID")}
-                  className="border-red-300 text-red-600 hover:bg-red-50"
-                >
-                  <XCircle className="h-4 w-4 mr-1" />
-                  Anular
-                </Button>
-              )}
+                )}
+                {entry.status === "POSTED" && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setActionDialog("VOID")}
+                    className="border-red-300 text-red-600 hover:bg-red-50"
+                  >
+                    <XCircle className="h-4 w-4 mr-1" />
+                    Anular
+                  </Button>
+                )}
+              </Gated>
               {entry.status === "VOIDED" && (
                 <Badge className="bg-red-100 text-red-700 text-sm px-3 py-1">
                   Asiento Anulado

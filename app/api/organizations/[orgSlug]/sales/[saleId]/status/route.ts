@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { SaleService, saleStatusSchema } from "@/features/sale";
 
@@ -15,10 +11,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string; saleId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, saleId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    const member = await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "sales",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const { status, justification } = saleStatusSchema.parse(body);
@@ -29,7 +28,7 @@ export async function POST(
     if (status === "POSTED") {
       sale = await saleService.post(orgId, saleId, user.id);
     } else {
-      sale = await saleService.void(orgId, saleId, user.id, member.role, justification);
+      sale = await saleService.void(orgId, saleId, user.id, role, justification);
     }
 
     return Response.json(sale);

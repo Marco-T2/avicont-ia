@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PurchaseService } from "@/features/purchase";
 import {
   createPurchaseSchema,
@@ -19,10 +15,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("purchases", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
     const filters = purchaseFiltersSchema.parse({
@@ -47,10 +41,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "purchases",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     const body = await request.json();
     const { postImmediately, ...rest } = body;
@@ -58,7 +55,10 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(userId);
     const purchase = postImmediately
-      ? await purchaseService.createAndPost(orgId, input, user.id)
+      ? await purchaseService.createAndPost(orgId, input, {
+          userId: user.id,
+          role,
+        })
       : await purchaseService.createDraft(orgId, input, user.id);
 
     return Response.json(purchase, { status: 201 });

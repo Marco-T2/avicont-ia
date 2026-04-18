@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { OrgSettingsService } from "@/features/org-settings";
 import { updateOrgSettingsSchema } from "@/features/org-settings";
 
@@ -14,10 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
     const settings = await orgSettingsService.getOrCreate(orgId);
 
@@ -32,10 +26,8 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
 
     const body = await request.json();
     const input = updateOrgSettingsSchema.parse(body);

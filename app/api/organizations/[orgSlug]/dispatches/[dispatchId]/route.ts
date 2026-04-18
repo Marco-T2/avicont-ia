@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { DispatchService } from "@/features/dispatch";
 import { updateDispatchSchema } from "@/features/dispatch";
 
@@ -14,10 +10,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; dispatchId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, dispatchId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("dispatches", "read", orgSlug);
 
     const dispatch = await dispatchService.getById(orgId, dispatchId);
 
@@ -32,16 +26,19 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; dispatchId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, dispatchId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    const member = await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "dispatches",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     const body = await request.json();
     const { justification, ...rest } = body;
     const input = updateDispatchSchema.parse(rest);
 
-    const dispatch = await dispatchService.update(orgId, dispatchId, input, member.role, justification, userId);
+    const dispatch = await dispatchService.update(orgId, dispatchId, input, role, justification, userId);
 
     return Response.json(dispatch);
   } catch (error) {
@@ -54,10 +51,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; dispatchId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, dispatchId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("dispatches", "write", orgSlug);
 
     await dispatchService.hardDelete(orgId, dispatchId);
 

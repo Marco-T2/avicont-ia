@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import { createFiscalPeriodSchema } from "@/features/fiscal-periods";
@@ -16,10 +12,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
     const periods = await service.list(orgId);
 
@@ -34,10 +28,13 @@ export async function POST(
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    await requireRole(clerkUserId, orgId, ["owner", "admin"]);
+    const { session, orgId } = await requirePermission(
+      "accounting-config",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     const body = await request.json();
     const input = createFiscalPeriodSchema.parse(body);

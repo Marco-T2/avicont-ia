@@ -65,7 +65,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
     {
       icon: <Calculator className="h-5 w-5" />,
       label: "Contabilidad",
-      resource: "accounting",
+      resource: "journal",
       children: [
         { label: "Operaciones", isSeparator: true },
         { label: "Ventas y Despachos", href: `/${orgSlug}/dispatches` },
@@ -105,7 +105,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
   const filteredItems = navItems.filter((item) => {
     if (!item.resource) return true;
     if (!role) return false;
-    return canAccess(role, item.resource);
+    return canAccess(role, item.resource, "read");
   });
 
   const sidebarContent = (

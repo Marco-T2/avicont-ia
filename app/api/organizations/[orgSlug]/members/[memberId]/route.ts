@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { MembersService, updateRoleSchema } from "@/features/organizations";
 
 const service = new MembersService();
@@ -13,10 +9,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; memberId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, memberId } = await params;
-    const organizationId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, organizationId, ["admin", "owner"]);
+    const { session, orgId: organizationId } = await requirePermission(
+      "members",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     const body = await request.json();
     const input = updateRoleSchema.parse(body);
@@ -39,10 +38,13 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; memberId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, memberId } = await params;
-    const organizationId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, organizationId, ["admin", "owner"]);
+    const { session, orgId: organizationId } = await requirePermission(
+      "members",
+      "write",
+      orgSlug,
+    );
+    const userId = session.userId;
 
     await service.removeMember(organizationId, memberId, userId);
 

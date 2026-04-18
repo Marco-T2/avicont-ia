@@ -1,9 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-  handleError,
-} from "@/features/shared/middleware";
+import { handleError } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PurchaseService } from "@/features/purchase";
 import { updatePurchaseSchema } from "@/features/purchase";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
@@ -29,10 +25,8 @@ export async function GET(
   { params }: { params: Promise<{ orgSlug: string; purchaseId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, purchaseId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("purchases", "read", orgSlug);
 
     const purchase = await purchaseService.getById(orgId, purchaseId);
 
@@ -47,10 +41,13 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; purchaseId: string }> },
 ) {
   try {
-    const { userId: clerkUserId } = await requireAuth();
     const { orgSlug, purchaseId } = await params;
-    const orgId = await requireOrgAccess(clerkUserId, orgSlug);
-    const member = await requireRole(clerkUserId, orgId, ["owner", "admin", "contador"]);
+    const { session, orgId, role } = await requirePermission(
+      "purchases",
+      "write",
+      orgSlug,
+    );
+    const clerkUserId = session.userId;
 
     // Parse dryRun and confirmTrim at route level BEFORE Zod schema validation.
     // These are route-level concerns, not domain validation (mirrors Sale route D3/D5).
@@ -81,7 +78,7 @@ export async function PATCH(
 
     // confirmTrim: true OR no trim needed → proceed with normal edit
     const user = await usersService.resolveByClerkId(clerkUserId);
-    const purchase = await purchaseService.update(orgId, purchaseId, input, user.id, member.role, justification);
+    const purchase = await purchaseService.update(orgId, purchaseId, input, user.id, role, justification);
 
     return Response.json(purchase);
   } catch (error) {
@@ -108,10 +105,8 @@ export async function DELETE(
   { params }: { params: Promise<{ orgSlug: string; purchaseId: string }> },
 ) {
   try {
-    const { userId } = await requireAuth();
     const { orgSlug, purchaseId } = await params;
-    const orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    const { orgId } = await requirePermission("purchases", "write", orgSlug);
 
     await purchaseService.delete(orgId, purchaseId);
 
