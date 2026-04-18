@@ -1,10 +1,6 @@
-# rbac-roles Specification
+# Delta for rbac-roles
 
-## Purpose
-
-Define el conjunto cerrado de roles asignables por organización, su asignación por miembro, y la API de administración. Los roles gobiernan qué recursos y acciones puede ejecutar cada usuario dentro de una organización.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Role Set
 
@@ -38,24 +34,6 @@ The system MUST define a base set of 6 system roles (`owner`, `admin`, `contador
 
 ---
 
-### Requirement: Per-Org Role Scope
-
-The system MUST scope roles per `(organizationId, userId)`. A user MAY hold different roles in different organizations. A user MUST hold at most one role per organization.
-
-#### Scenario: R.2-S1 — mismo user, orgs distintas
-
-- GIVEN user `U` is `admin` in org `A` and `cobrador` in org `B`
-- WHEN `U` fetches `/api/organizations/B/members/me`
-- THEN the response returns `role: "cobrador"`
-
-#### Scenario: R.2-S2 — duplicado rechazado
-
-- GIVEN user `U` is already member of org `A`
-- WHEN another POST attempts to add `U` to org `A` again
-- THEN the request fails with 409 (duplicate)
-
----
-
 ### Requirement: Role Mutability via Admin
 
 The system SHALL allow `owner` and `admin` to change another member's role via PATCH, where the new role MUST exist in the org's `CustomRole` table (system or custom). Members MUST NOT be able to change their own role. Role changes that would trigger the self-lock guard (CR.6) on the caller's own role assignment MUST be blocked.
@@ -79,8 +57,6 @@ The system SHALL allow `owner` and `admin` to change another member's role via P
 - GIVEN custom role `facturador` exists in the org
 - WHEN admin PATCHes a member to `role: "facturador"`
 - THEN the update succeeds and the member now resolves permissions through the `facturador` matrix
-
----
 
 ## ADDED Requirements
 

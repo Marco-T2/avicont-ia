@@ -1,47 +1,12 @@
-# rbac-permissions-matrix Specification
+# Delta for rbac-permissions-matrix
 
-## Purpose
-
-Define la matriz de autorización Role × Resource × Action como fuente única de verdad. Todo enforcement server-side (API) y UI deriva de esta matriz. El mecanismo concreto de encoding (maps separados read/write vs recursos duplicados) se decide en design.
-
-## Requirements
-
-### Requirement: Resource Catalog
-
-The system MUST define exactly 12 resources: `members`, `accounting-config`, `sales`, `purchases`, `payments`, `journal`, `dispatches`, `reports`, `contacts`, `farms`, `documents`, `agent`. The coarse `accounting` resource MUST be deprecated after the sweep.
-
-#### Scenario: P.1-S1 — catálogo completo
-
-- GIVEN the `Resource` type export
-- WHEN inspected at compile-time
-- THEN it contains exactly the 12 listed literals and no `accounting` literal
-
----
+## MODIFIED Requirements
 
 ### Requirement: Authorization Matrix
 
 The system MUST expose a `canAccess(role, resource, action)` function where `action ∈ {"read", "write"}` and `role` is a `string` (no longer a closed literal union). For any call, the function MUST load the org's permission matrix from the in-process cache (keyed by `orgId`, TTL 60s) and evaluate the tuple against it. System roles retain their hardcoded matrix as the initial snapshot. Any call with a tuple not in the matrix returns `false`.
 
 (Previously: `role` was constrained to 6 literals; matrix was a static in-memory map; no cache or org scope.)
-
-The matrix MUST match the table below for system roles. Any call with a tuple not allowed by the matrix returns `false`.
-
-| Resource | Owner | Admin | Contador | Cobrador | Auxiliar | Member |
-|----------|:-----:|:-----:|:--------:|:--------:|:--------:|:------:|
-| members | RW | RW | — | — | — | — |
-| accounting-config | RW | RW | — | — | — | — |
-| sales | RW | RW | RW | R | W-draft | — |
-| purchases | RW | RW | RW | — | W-draft | — |
-| payments | RW | RW | RW | RW | — | — |
-| journal | RW | RW | RW | — | — | — |
-| dispatches | RW | RW | R | — | RW | — |
-| reports | RW | RW | R | R | — | — |
-| contacts | RW | RW | RW | RW | R | — |
-| farms | RW | RW | RW | — | RW | RW |
-| documents | RW | RW | RW | R | R | R |
-| agent | RW | RW | RW | RW | RW | RW |
-
-`W-draft` means the role can create draft documents but cannot POST/VOID; enforced at the service layer, surfaced here as `canAccess(role, "sales", "write") === true` plus a status-level guard.
 
 #### Scenario: P.2-S1 — contador lee reports
 
@@ -105,20 +70,6 @@ The system MUST enforce authorization via `requirePermission(resource, action, o
 - GIVEN 62+ existing route call sites using `requirePermission(resource, action, orgSlug)`
 - WHEN the matrix becomes DB-driven
 - THEN no call site is modified; a contract test asserts the function accepts exactly those 3 arguments
-
----
-
-### Requirement: No Legacy Role Checks in Migrated Routes
-
-After sweep completion, `grep -r "requireRole(" app/api/` MUST return zero matches in route handlers (excluding tests and the deprecated export itself).
-
-#### Scenario: P.4-S1 — sweep completo
-
-- GIVEN the post-migration codebase
-- WHEN `grep -r "requireRole(" app/api/` is run
-- THEN zero matches returned
-
----
 
 ## ADDED Requirements
 
