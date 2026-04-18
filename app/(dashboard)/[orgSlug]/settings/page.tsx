@@ -7,6 +7,8 @@ import {
   Receipt,
   Package,
   FileText,
+  Users,
+  ShieldCheck,
   type LucideIcon,
 } from "lucide-react";
 import { requirePermission } from "@/features/shared/permissions.server";
@@ -69,6 +71,20 @@ const SETTINGS_CARDS: SettingsCard[] = [
     description: "Documentos operativos (remitos, órdenes, etc.)",
     href: (orgSlug) => `/${orgSlug}/settings/operational-doc-types`,
     Icon: FileText,
+  },
+  {
+    id: "members",
+    title: "Miembros",
+    description: "Invitaciones y asignación de roles por usuario",
+    href: (orgSlug) => `/${orgSlug}/members`,
+    Icon: Users,
+  },
+  {
+    id: "roles",
+    title: "Roles y Permisos",
+    description: "Matriz de qué puede hacer cada rol en cada módulo",
+    href: (orgSlug) => `/${orgSlug}/settings/roles`,
+    Icon: ShieldCheck,
   },
 ];
 
