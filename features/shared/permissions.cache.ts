@@ -16,6 +16,7 @@
  * (layout snapshot path) to keep the fallback behavior consistent.
  */
 
+import "server-only";
 import type { Resource, PostableResource } from "@/features/shared/permissions";
 
 export type OrgMatrix = {

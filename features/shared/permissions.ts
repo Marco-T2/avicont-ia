@@ -4,9 +4,6 @@
  */
 export type Role = string;
 
-// Lazy import to avoid circular deps at module load time
-const getCacheModule = () => import("./permissions.cache");
-
 export const SYSTEM_ROLES = [
   "owner",
   "admin",
@@ -127,48 +124,7 @@ export function canUploadToScope(role: string, scope: DocumentScope): boolean {
   return allowed ? allowed.includes(scope) : false;
 }
 
-/**
- * Async — reads from the org's cached permission matrix.
- * Use this in server-side code. The cache handles TTL, single-flight, and
- * the fallback seed is handled by requirePermission / getMatrix. (D.7 / P.2mod)
- *
- * PR8.2: sync 3-param overload removed — all callers must pass orgId.
- * Client-side permission checks go through useCanAccess() / <Gated> (PR7.1).
- */
-export function canAccess(
-  role: string,
-  resource: Resource,
-  action: Action,
-  orgId: string,
-): Promise<boolean> {
-  return getCacheModule().then(({ getMatrix }) =>
-    getMatrix(orgId).then((matrix) => {
-      const roleEntry = matrix.roles.get(role);
-      if (!roleEntry) return false;
-      return action === "read"
-        ? roleEntry.permissionsRead.has(resource)
-        : roleEntry.permissionsWrite.has(resource);
-    }),
-  );
-}
-
-/**
- * Async — reads from the org's cached permission matrix.
- * Use this in server-side service code (sale.service, purchase.service, journal.service).
- * (D.7 / P.6)
- *
- * PR8.3: sync 2-param overload removed — all callers must pass orgId.
- */
-export function canPost(
-  role: string,
-  resource: PostableResource,
-  orgId: string,
-): Promise<boolean> {
-  return getCacheModule().then(({ getMatrix }) =>
-    getMatrix(orgId).then((matrix) => {
-      const roleEntry = matrix.roles.get(role);
-      if (!roleEntry) return false;
-      return roleEntry.canPost.has(resource);
-    }),
-  );
-}
+// NOTE: async canAccess() and canPost() were moved to permissions.server.ts
+// (with "server-only" guard) to prevent the permissions.cache → prisma → pg → dns
+// module chain from being bundled into client chunks.
+// Client-side permission checks use useCanAccess() / <Gated> (PR7.1).

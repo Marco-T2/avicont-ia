@@ -1,6 +1,7 @@
+import "server-only";
 import { requireAuth, requireOrgAccess, requireRole } from "./middleware";
-import { ensureOrgSeeded } from "./permissions.cache";
-import type { Action, Resource } from "./permissions";
+import { ensureOrgSeeded, getMatrix } from "./permissions.cache";
+import type { Action, Resource, PostableResource } from "./permissions";
 
 /**
  * Single server-side authorization gate used by all org route handlers.
@@ -45,4 +46,46 @@ export async function requirePermission(
   // Check caller's role against the allowed list
   const member = await requireRole(session.userId, orgId, allowedRoles);
   return { session, orgId, role: member.role };
+}
+
+/**
+ * Async — reads from the org's cached permission matrix.
+ * Use this in server-side code. The cache handles TTL, single-flight, and
+ * the fallback seed is handled by requirePermission / getMatrix. (D.7 / P.2mod)
+ *
+ * Moved from permissions.ts to permissions.server.ts to prevent the module from
+ * being bundled into client chunks (permissions.cache → prisma → pg → dns).
+ * Client-side permission checks go through useCanAccess() / <Gated> (PR7.1).
+ */
+export async function canAccess(
+  role: string,
+  resource: Resource,
+  action: Action,
+  orgId: string,
+): Promise<boolean> {
+  const matrix = await getMatrix(orgId);
+  const roleEntry = matrix.roles.get(role);
+  if (!roleEntry) return false;
+  return action === "read"
+    ? roleEntry.permissionsRead.has(resource)
+    : roleEntry.permissionsWrite.has(resource);
+}
+
+/**
+ * Async — reads from the org's cached permission matrix.
+ * Use this in server-side service code (sale.service, purchase.service, journal.service).
+ * (D.7 / P.6)
+ *
+ * Moved from permissions.ts to permissions.server.ts to prevent the module from
+ * being bundled into client chunks (permissions.cache → prisma → pg → dns).
+ */
+export async function canPost(
+  role: string,
+  resource: PostableResource,
+  orgId: string,
+): Promise<boolean> {
+  const matrix = await getMatrix(orgId);
+  const roleEntry = matrix.roles.get(role);
+  if (!roleEntry) return false;
+  return roleEntry.canPost.has(resource);
 }
