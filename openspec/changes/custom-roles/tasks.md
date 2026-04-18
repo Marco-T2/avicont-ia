@@ -190,7 +190,7 @@
 
 ## PR5 — Roles API Routes (5 endpoints)
 
-### PR5.1 — `GET /api/organizations/[orgSlug]/roles` + `POST`
+### PR5.1 — ✅ `GET /api/organizations/[orgSlug]/roles` + `POST`
 
 **RED**: `app/api/organizations/[orgSlug]/roles/__tests__/route.test.ts` — mock `RolesService`; assert: (a) GET returns 200 + array of 7 roles for seeded org (6 system + 1 custom); (b) member (no `members.write`) GET → 403; (c) POST with valid body → 201 + created role; (d) POST reserved slug → 422 `RESERVED_SLUG`; (e) POST duplicate slug → 409 `SLUG_TAKEN`; (f) unauthorized POST → 403.
 
@@ -198,11 +198,11 @@
 
 **Satisfies**: R.4-S1, R.4-S2, CR.3-S3, CR.4-S2, D.10
 
-**Done when**: all 6 route test cases green.
+**Done when**: all 6 route test cases green. ✅ (9 cases delivered: a–i including Zod + malformed JSON + 401)
 
 ---
 
-### PR5.2 — `GET/PATCH/DELETE /api/organizations/[orgSlug]/roles/[roleSlug]`
+### PR5.2 — ✅ `GET/PATCH/DELETE /api/organizations/[orgSlug]/roles/[roleSlug]`
 
 **RED**: `app/api/organizations/[orgSlug]/roles/[roleSlug]/__tests__/route.test.ts` — assert: (a) GET → 200 with full role; (b) PATCH system role → 403 `SYSTEM_ROLE_IMMUTABLE`; (c) PATCH self-lock → 403 `SELF_LOCK_GUARD`; (d) PATCH valid custom role → 200 + `revalidateOrgMatrix` called; (e) DELETE system role → 403 `SYSTEM_ROLE_IMMUTABLE`; (f) DELETE with members → 409 `ROLE_HAS_MEMBERS`; (g) DELETE with 0 members → 200.
 
@@ -210,7 +210,7 @@
 
 **Satisfies**: CR.2-S1, CR.2-S2, CR.5-S3, CR.6-S1, CR.7-S1, CR.7-S2, D.10
 
-**Done when**: all 7 route test cases green.
+**Done when**: all 7 route test cases green. ✅ (9 cases delivered: a–i including NOT_FOUND + Zod strict rejecting slug on UPDATE)
 
 ---
 
