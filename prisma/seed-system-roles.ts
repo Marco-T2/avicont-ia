@@ -59,6 +59,16 @@ export async function seedSystemRoles(): Promise<void> {
   }
 }
 
+/**
+ * Idempotent inline seed for a single org — used as the runtime fallback
+ * inside getMatrix when an org has 0 custom_roles rows (D.6, CR.1-S3).
+ * Safe to call multiple times: skipDuplicates prevents re-insertion.
+ */
+export async function seedOrgSystemRoles(orgId: string): Promise<void> {
+  const data = buildSystemRolePayloads(orgId);
+  await prisma.customRole.createMany({ data, skipDuplicates: true });
+}
+
 // Main entry point when run directly
 if (require.main === module || process.argv[1]?.endsWith("seed-system-roles.ts")) {
   seedSystemRoles()
