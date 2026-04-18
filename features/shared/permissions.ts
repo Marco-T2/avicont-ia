@@ -1,10 +1,23 @@
-export type Role =
-  | "owner"
-  | "admin"
-  | "contador"
-  | "cobrador"
-  | "auxiliar"
-  | "member";
+/**
+ * Role is widened to string to support custom roles per organization (PR1.2 / D.8).
+ * Use SystemRole for guards that apply only to the 6 built-in slugs.
+ */
+export type Role = string;
+
+export const SYSTEM_ROLES = [
+  "owner",
+  "admin",
+  "contador",
+  "cobrador",
+  "auxiliar",
+  "member",
+] as const;
+
+export type SystemRole = (typeof SYSTEM_ROLES)[number];
+
+export function isSystemRole(slug: string): slug is SystemRole {
+  return (SYSTEM_ROLES as readonly string[]).includes(slug);
+}
 
 export type Resource =
   | "members"
