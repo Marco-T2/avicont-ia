@@ -11,8 +11,8 @@ import {
   Users,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { canAccess, type Resource } from "@/features/shared/permissions";
-import { useOrgRole } from "@/components/common/use-org-role";
+import type { Resource } from "@/features/shared/permissions";
+import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import { useSidebar } from "./sidebar-provider";
 import { NavItem, type NavSubItem } from "./nav-item";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -43,7 +43,7 @@ interface AppSidebarProps {
 export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
   const { isCollapsed, toggleSidebar, isMobileOpen, toggleMobile } =
     useSidebar();
-  const { role } = useOrgRole();
+  const matrix = useRolesMatrix();
   const params = useParams();
   const orgSlug = params?.orgSlug as string;
 
@@ -99,8 +99,8 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
 
   const filteredItems = navItems.filter((item) => {
     if (!item.resource) return true;
-    if (!role) return false;
-    return canAccess(role, item.resource, "read");
+    if (!matrix) return false;
+    return matrix.canAccess(item.resource, "read");
   });
 
   const sidebarContent = (

@@ -11,6 +11,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PaymentForm from "../payment-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -64,13 +65,15 @@ const BASE_CONTACT = {
 
 function renderNewForm() {
   return render(
-    <PaymentForm
-      orgSlug="test-org"
-      contacts={[BASE_CONTACT]}
-      periods={[BASE_PERIOD]}
-      existingPayment={undefined}
-      defaultType="COBRO"
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <PaymentForm
+        orgSlug="test-org"
+        contacts={[BASE_CONTACT]}
+        periods={[BASE_PERIOD]}
+        existingPayment={undefined}
+        defaultType="COBRO"
+      />
+    </SystemRoleProvider>,
   );
 }
 
