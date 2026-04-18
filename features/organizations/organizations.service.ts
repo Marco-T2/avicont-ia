@@ -5,6 +5,8 @@ import {
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/shared/users.service";
 import { VoucherTypesService } from "@/features/voucher-types";
+import { prisma } from "@/lib/prisma";
+import { buildSystemRolePayloads } from "@/prisma/seed-system-roles";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";
 import type {
   CreateOrganizationInput,
@@ -57,6 +59,14 @@ export class OrganizationsService {
 
     // Inicializar los tipos de comprobante por defecto para la nueva organización
     await this.voucherTypesService.seedForOrg(organization.id);
+
+    // Seed the 6 system roles for the new organization (idempotent via skipDuplicates)
+    // This is preventive: on-demand fallback in permissions.server.ts handles the
+    // last-resort case. Both use skipDuplicates so they cannot conflict.
+    await prisma.customRole.createMany({
+      data: buildSystemRolePayloads(organization.id),
+      skipDuplicates: true,
+    });
 
     return { organization, created: true };
   }
