@@ -164,7 +164,7 @@
 
 ---
 
-### PR4.2 — `roles.repository.ts`
+### PR4.2 — ✅ `roles.repository.ts`
 
 **RED**: `features/organizations/__tests__/roles.repository.test.ts` — mock Prisma; assert: `findAllByOrg(orgId)`, `findBySlug(orgId, slug)`, `create(data)`, `update(id, patch)`, `delete(id)`, `countMembers(roleSlug, orgId)` each call correct Prisma method with correct args.
 
