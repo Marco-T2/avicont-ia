@@ -214,6 +214,29 @@
 
 ---
 
+### PR5.3 — ✅ Self-lock end-to-end integration test (closes PR5.2 wiring gap)
+
+> PR5.2 case (d) verified HTTP taxonomy with a mocked `RolesService`. It did NOT verify
+> that the route-local per-request `Map<"orgId::clerkUserId", callerRoleSlug>` closure
+> actually delivers the caller's slug to the REAL `RolesService.getCallerRoleSlug` DI
+> slot. PR5.3 adds one E2E test that exercises the REAL service behind the REAL route.
+
+**RED**: `app/api/organizations/[orgSlug]/roles/[roleSlug]/__tests__/self-lock-integration.test.ts`
+— two cases using the REAL `RolesService` + REAL route-local closure + fake `RolesRepository`:
+(α) PATCH OWN role stripping `members` from `permissionsWrite` → 403 `SELF_LOCK_GUARD`;
+(β) PATCH OWN role keeping `members` → 200. Case (β) is essential — it proves the bridge
+does not falsely fire for legitimate edits. Together the two cases distinguish a working
+bridge from a bridge that always rejects or always passes.
+
+**GREEN**: no production code changes required — bridge verified working as designed.
+
+**Satisfies**: CR.6-S1 end-to-end wiring; closes PR5.2 self-lock gap flagged during verification.
+
+**Done when**: both E2E cases green; HTTP status and error code match taxonomy;
+`findBySlug` spy proves the REAL service algorithm ran; `update` not called on guard fire. ✅
+
+---
+
 ## PR6 — Members Async Role Validation
 
 ### PR6.1 — `buildAddMemberSchema(orgId)` factory
