@@ -11,7 +11,7 @@ import { prisma } from "@/lib/prisma";
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
-  POST_ALLOWED_ROLES,
+  getPostAllowedRoles,
   SYSTEM_ROLES,
   type SystemRole,
   type Resource,
@@ -30,8 +30,9 @@ export function buildSystemRolePayloads(orgId: string) {
     const permissionsWrite = (Object.keys(PERMISSIONS_WRITE) as Resource[]).filter(
       (resource) => PERMISSIONS_WRITE[resource].includes(slug),
     );
-    const canPost = (Object.keys(POST_ALLOWED_ROLES) as PostableResource[]).filter(
-      (resource) => POST_ALLOWED_ROLES[resource].includes(slug),
+    const postAllowedRoles = getPostAllowedRoles();
+    const canPost = (Object.keys(postAllowedRoles) as PostableResource[]).filter(
+      (resource) => postAllowedRoles[resource].includes(slug),
     );
 
     return {

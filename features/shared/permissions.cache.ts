@@ -44,17 +44,12 @@ const cache = new Map<string, CacheEntry>();
  * Returns a minimal matrix for the org. This is the production path.
  * Tests replace this via _setLoader().
  *
- * In a test environment without a DB (VITEST=true + no DATABASE_URL), the
- * loader returns an empty matrix. Route tests mock requireRole directly, so
- * an empty matrix is safe: requireRole will still resolve via its mock.
+ * PR8.2: removed the VITEST env guard (empty-matrix fallback for test envs
+ * without a DB). Every test that touches the cache MUST mock the loader via
+ * _setLoader() or mock the entire getMatrix via vi.mock. The guard was masking
+ * missing mocks and making tests pass silently without exercising the real path.
  */
 let _loader: (orgId: string) => Promise<OrgMatrix> = async (orgId) => {
-  // Safe empty-matrix fallback for test environments without a real DB.
-  // Tests that need the real cache behaviour use _setLoader() to inject their own loader.
-  if (process.env.VITEST && !process.env.DATABASE_URL) {
-    return { orgId, roles: new Map(), loadedAt: Date.now() };
-  }
-
   // Lazy import to avoid circular deps + allow module to load without DB in tests
   const { prisma } = await import("@/lib/prisma");
   const rows = await prisma.customRole.findMany({ where: { organizationId: orgId } });

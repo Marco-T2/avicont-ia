@@ -2,7 +2,7 @@ import { Check, X } from "lucide-react";
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
-  POST_ALLOWED_ROLES,
+  getPostAllowedRoles,
   type PostableResource,
   type Resource,
   type Role,
@@ -162,7 +162,7 @@ export function RolesPermissionsMatrix() {
         title="Contabilizar"
         description="Quién puede postear (cambiar de borrador a definitivo) en los recursos contabilizables."
         action="post"
-        matrix={POST_ALLOWED_ROLES as Record<string, Role[]>}
+        matrix={getPostAllowedRoles() as Record<string, Role[]>}
         resources={POSTABLE_RESOURCES}
       />
     </div>

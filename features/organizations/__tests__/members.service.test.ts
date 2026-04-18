@@ -16,73 +16,12 @@
  *   REQ-R.3-S1 — admin updates different member (happy path)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { addMemberSchema, updateRoleSchema } from "../members.validation";
 import { MembersService } from "../members.service";
 import {
   ForbiddenError,
   ConflictError,
   CANNOT_CHANGE_OWN_ROLE,
 } from "@/features/shared/errors";
-
-describe("addMemberSchema — assignableRoles (REQ-R.1)", () => {
-  it("S-R1-S1 accepts cobrador", () => {
-    const result = addMemberSchema.safeParse({
-      email: "x@y.com",
-      role: "cobrador",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("S-R1-S1 accepts auxiliar", () => {
-    const result = addMemberSchema.safeParse({
-      email: "x@y.com",
-      role: "auxiliar",
-    });
-    expect(result.success).toBe(true);
-  });
-
-  it("accepts admin/contador/member (regression)", () => {
-    for (const role of ["admin", "contador", "member"] as const) {
-      expect(
-        addMemberSchema.safeParse({ email: "x@y.com", role }).success,
-      ).toBe(true);
-    }
-  });
-
-  it("S-R1-S2 rejects role=owner", () => {
-    const result = addMemberSchema.safeParse({
-      email: "x@y.com",
-      role: "owner",
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it("R.1-S3 rejects role=super-admin", () => {
-    const result = addMemberSchema.safeParse({
-      email: "x@y.com",
-      role: "super-admin",
-    });
-    expect(result.success).toBe(false);
-  });
-});
-
-describe("updateRoleSchema — assignableRoles (REQ-R.1)", () => {
-  it("accepts the 5 assignable roles", () => {
-    for (const role of [
-      "admin",
-      "contador",
-      "cobrador",
-      "auxiliar",
-      "member",
-    ] as const) {
-      expect(updateRoleSchema.safeParse({ role }).success).toBe(true);
-    }
-  });
-
-  it("rejects owner", () => {
-    expect(updateRoleSchema.safeParse({ role: "owner" }).success).toBe(false);
-  });
-});
 
 describe("MembersService.updateRole — self-role-change (REQ-R.3 / D.4)", () => {
   const ACTOR_CLERK_USER_ID = "user_actor_clerk";

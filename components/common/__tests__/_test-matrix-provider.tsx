@@ -22,7 +22,7 @@ import {
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
-  POST_ALLOWED_ROLES,
+  getPostAllowedRoles,
   type Resource,
   type PostableResource,
 } from "@/features/shared/permissions";
@@ -38,8 +38,9 @@ export function buildSystemRoleSnapshot(
     if (PERMISSIONS_WRITE[resource].includes(role)) write.push(resource);
   }
   const post: string[] = [];
-  for (const resource of Object.keys(POST_ALLOWED_ROLES) as PostableResource[]) {
-    if (POST_ALLOWED_ROLES[resource].includes(role)) post.push(resource);
+  const postAllowedRoles = getPostAllowedRoles();
+  for (const resource of Object.keys(postAllowedRoles) as PostableResource[]) {
+    if (postAllowedRoles[resource].includes(role)) post.push(resource);
   }
   return {
     orgId,
