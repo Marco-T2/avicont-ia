@@ -9,6 +9,11 @@
  * (e) single-flight: two concurrent calls issue one DB read
  * (f) LRU cap 1000 drops oldest
  * (g) _resetCache() clears all
+ *
+ * ensureOrgSeeded (D.6 completeness):
+ * (h) when loader returns empty matrix, seeder is called, cache revalidated, populated matrix returned
+ * (i) when loader returns non-empty matrix, seeder NOT called, matrix returned as-is
+ * (j) when seedOrgSystemRoles throws, ensureOrgSeeded does NOT throw — returns empty matrix silently
  */
 import {
   describe,
@@ -23,12 +28,36 @@ import {
   revalidateOrgMatrix,
   _resetCache,
   _setLoader,
+  ensureOrgSeeded,
   type OrgMatrix,
 } from "@/features/shared/permissions.cache";
+import { seedOrgSystemRoles } from "@/prisma/seed-system-roles";
+import type { Resource, PostableResource } from "@/features/shared/permissions";
+
+vi.mock("@/prisma/seed-system-roles", () => ({
+  buildSystemRolePayloads: vi.fn(),
+  seedSystemRoles: vi.fn(),
+  seedOrgSystemRoles: vi.fn().mockResolvedValue(undefined),
+}));
+
+const mockedSeedOrgSystemRoles = vi.mocked(seedOrgSystemRoles);
 
 const makeMatrix = (orgId: string): OrgMatrix => ({
   orgId,
   roles: new Map(),
+  loadedAt: Date.now(),
+});
+
+const makePopulatedMatrix = (orgId: string): OrgMatrix => ({
+  orgId,
+  roles: new Map([
+    ["owner", {
+      permissionsRead: new Set<Resource>(),
+      permissionsWrite: new Set<Resource>(),
+      canPost: new Set<PostableResource>(),
+      isSystem: true,
+    }],
+  ]),
   loadedAt: Date.now(),
 });
 
@@ -161,5 +190,56 @@ describe("PR1.4 — permissions.cache", () => {
     await getMatrix("org-g1");
     await getMatrix("org-g2");
     expect(loader).toHaveBeenCalledTimes(4);
+  });
+});
+
+describe("ensureOrgSeeded (D.6 completeness)", () => {
+  beforeEach(() => {
+    _resetCache();
+    vi.clearAllMocks();
+    mockedSeedOrgSystemRoles.mockResolvedValue(undefined);
+  });
+
+  it("(h) empty matrix → seeds org, revalidates cache, returns populated matrix", async () => {
+    const emptyMatrix = makeMatrix("org-h");
+    const populatedMatrix = makePopulatedMatrix("org-h");
+
+    // loader returns empty on first call, populated on second (after revalidate)
+    const loader = vi.fn()
+      .mockResolvedValueOnce(emptyMatrix)
+      .mockResolvedValueOnce(populatedMatrix);
+    _setLoader(loader);
+
+    const result = await ensureOrgSeeded("org-h");
+
+    expect(mockedSeedOrgSystemRoles).toHaveBeenCalledWith("org-h");
+    // Loader called twice: once for initial load, once after revalidate
+    expect(loader).toHaveBeenCalledTimes(2);
+    expect(result.roles.size).toBe(1); // the populated matrix has 1 role
+  });
+
+  it("(i) non-empty matrix → seeder NOT called, matrix returned as-is", async () => {
+    const populatedMatrix = makePopulatedMatrix("org-i");
+    const loader = vi.fn().mockResolvedValue(populatedMatrix);
+    _setLoader(loader);
+
+    const result = await ensureOrgSeeded("org-i");
+
+    expect(mockedSeedOrgSystemRoles).not.toHaveBeenCalled();
+    expect(result).toBe(populatedMatrix);
+  });
+
+  it("(j) seedOrgSystemRoles throws → ensureOrgSeeded does NOT throw, returns empty matrix", async () => {
+    const emptyMatrix = makeMatrix("org-j");
+    const loader = vi.fn().mockResolvedValue(emptyMatrix);
+    _setLoader(loader);
+
+    mockedSeedOrgSystemRoles.mockRejectedValue(new Error("DB connection failed"));
+
+    const result = await ensureOrgSeeded("org-j");
+
+    // Must not throw, returns the empty matrix silently
+    expect(result.roles.size).toBe(0);
+    expect(result.orgId).toBe("org-j");
   });
 });

@@ -10,7 +10,7 @@
  * matrix. The full matrix lives in the cache and is reachable via the admin
  * CRUD API; gating on the client only needs the caller's row.
  */
-import { getMatrix } from "./permissions.cache";
+import { ensureOrgSeeded } from "./permissions.cache";
 
 export type ClientMatrixSnapshot = {
   orgId: string;
@@ -36,7 +36,7 @@ export async function buildClientMatrixSnapshot(
   orgId: string,
   role: string,
 ): Promise<ClientMatrixSnapshot | null> {
-  const matrix = await getMatrix(orgId);
+  const matrix = await ensureOrgSeeded(orgId);
   const row = matrix.roles.get(role);
   if (!row) return null;
   return {
