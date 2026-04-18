@@ -55,6 +55,7 @@ export default async function EntryDetailPage({
       periodName={period?.name ?? "—"}
       periodStatus={period?.status ?? "CLOSED"}
       voucherTypeName={voucherType?.name ?? "—"}
+      voucherTypeActive={voucherType?.isActive ?? true}
     />
   );
 }

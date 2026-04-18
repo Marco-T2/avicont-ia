@@ -81,7 +81,7 @@ export default function JournalEntryList({
   // Build lookup maps
   const periodMap = new Map(periods.map((p) => [p.id, p.name]));
   const voucherTypeMap = new Map(voucherTypes.map((vt) => [vt.id, vt.name]));
-  const voucherTypeCodeMap = new Map(voucherTypes.map((vt) => [vt.id, vt.code]));
+  const voucherTypePrefixMap = new Map(voucherTypes.map((vt) => [vt.id, vt.prefix]));
 
   function applyFilter(key: string, value: string) {
     const params = new URLSearchParams();
@@ -275,9 +275,9 @@ export default function JournalEntryList({
                       >
                         <td className="py-3 px-4 font-mono text-blue-600 font-medium">
                           {(() => {
-                            const code = voucherTypeCodeMap.get(entry.voucherTypeId);
-                            const display = code
-                              ? formatCorrelativeNumber(code, entry.date, entry.number)
+                            const prefix = voucherTypePrefixMap.get(entry.voucherTypeId);
+                            const display = prefix
+                              ? formatCorrelativeNumber(prefix, entry.date, entry.number)
                               : null;
                             return display ?? entry.number;
                           })()}

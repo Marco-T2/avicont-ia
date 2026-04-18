@@ -67,6 +67,7 @@ interface JournalEntryDetailProps {
   periodName: string;
   periodStatus?: string;
   voucherTypeName: string;
+  voucherTypeActive?: boolean;
 }
 
 export default function JournalEntryDetail({
@@ -75,6 +76,7 @@ export default function JournalEntryDetail({
   periodName,
   periodStatus,
   voucherTypeName,
+  voucherTypeActive = true,
 }: JournalEntryDetailProps) {
   const router = useRouter();
   const [actionDialog, setActionDialog] = useState<"POST" | "VOID" | null>(null);
@@ -203,7 +205,12 @@ export default function JournalEntryDetail({
             </div>
             <div>
               <dt className="text-gray-500">Tipo de Comprobante</dt>
-              <dd className="font-medium mt-0.5">{voucherTypeName}</dd>
+              <dd className="font-medium mt-0.5 flex items-center gap-2">
+                <span>{voucherTypeName}</span>
+                {!voucherTypeActive && (
+                  <Badge className="bg-gray-100 text-gray-600">Inactivo</Badge>
+                )}
+              </dd>
             </div>
             <div>
               <dt className="text-gray-500">Origen</dt>

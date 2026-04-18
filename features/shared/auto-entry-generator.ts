@@ -5,9 +5,10 @@ import {
   JOURNAL_NOT_BALANCED,
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
-import type { Prisma, VoucherTypeCode } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import type { AccountsRepository } from "@/features/accounting/accounts.repository";
 import type { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
+import { JournalRepository } from "@/features/accounting/journal.repository";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 
 // ── Entry template types ──
@@ -22,7 +23,7 @@ export interface EntryLineTemplate {
 
 export interface EntryTemplate {
   organizationId: string;
-  voucherTypeCode: VoucherTypeCode;
+  voucherTypeCode: string;
   contactId?: string;
   date: Date;
   periodId: string;
@@ -37,10 +38,15 @@ export interface EntryTemplate {
 // ── Auto-entry generator ──
 
 export class AutoEntryGenerator {
+  private readonly journalRepo: JournalRepository;
+
   constructor(
     private readonly accountsRepo: AccountsRepository,
     private readonly voucherTypesRepo: VoucherTypesRepository,
-  ) {}
+    journalRepo?: JournalRepository,
+  ) {
+    this.journalRepo = journalRepo ?? new JournalRepository();
+  }
 
   async generate(
     tx: Prisma.TransactionClient,
@@ -111,54 +117,33 @@ export class AutoEntryGenerator {
       );
     }
 
-    // 4. Get next correlative number (same MAX+1 strategy as JournalRepository.getNextNumber)
-    const last = await tx.journalEntry.findFirst({
-      where: {
-        organizationId: template.organizationId,
-        voucherTypeId: voucherType.id,
-        periodId: template.periodId,
-      },
-      orderBy: { number: "desc" },
-      select: { number: true },
-    });
-    const number = (last?.number ?? 0) + 1;
-
-    // 5. Create JournalEntry with status POSTED directly (system-generated entries skip DRAFT)
-    const entry = await tx.journalEntry.create({
-      data: {
-        number,
+    // 4. Create JournalEntry with status POSTED directly (system-generated entries
+    //    skip DRAFT). Number is allocated atomically inside the retry loop, which
+    //    is critical because auto-entries from sales/purchases/dispatches run in
+    //    bulk and race each other on the unique (org, type, period, number) index.
+    return this.journalRepo.createWithRetryTx(
+      tx,
+      template.organizationId,
+      {
         date: template.date,
         description: template.description,
-        status: "POSTED",
         periodId: template.periodId,
         voucherTypeId: voucherType.id,
-        contactId: template.contactId ?? null,
+        contactId: template.contactId,
         sourceType: template.sourceType,
         sourceId: template.sourceId,
-        referenceNumber: template.referenceNumber ?? null,
+        referenceNumber: template.referenceNumber,
         createdById: template.createdById,
-        organizationId: template.organizationId,
-        lines: {
-          create: resolvedLines.map((l) => ({
-            accountId: l.accountId,
-            debit: l.debit,
-            credit: l.credit,
-            description: l.description ?? null,
-            contactId: l.contactId ?? null,
-            order: l.order,
-          })),
-        },
       },
-      include: {
-        lines: {
-          include: { account: true, contact: true },
-          orderBy: { order: "asc" as const },
-        },
-        contact: true,
-        voucherType: true,
-      },
-    });
-
-    return entry as JournalEntryWithLines;
+      resolvedLines.map((l) => ({
+        accountId: l.accountId,
+        debit: l.debit,
+        credit: l.credit,
+        description: l.description,
+        contactId: l.contactId,
+        order: l.order,
+      })),
+      "POSTED",
+    );
   }
 }

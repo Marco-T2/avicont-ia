@@ -1,5 +1,10 @@
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { JournalEntryStatus, Prisma } from "@/generated/prisma/client";
+import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
+import {
+  AppError,
+  VOUCHER_NUMBER_CONTENTION,
+} from "@/features/shared/errors";
 import type {
   CreateJournalEntryInput,
   UpdateJournalEntryInput,
@@ -9,6 +14,10 @@ import type {
   ReferenceNumberEntry,
 } from "./journal.types";
 import type { DateRangeFilter } from "./ledger.types";
+
+const JOURNAL_NUMBER_UNIQUE_INDEX =
+  "organizationId_voucherTypeId_periodId_number";
+const MAX_CONTENTION_ATTEMPTS = 5;
 
 const journalIncludeLines = {
   lines: {
@@ -173,41 +182,85 @@ export class JournalRepository extends BaseRepository {
     organizationId: string,
     data: Omit<CreateJournalEntryInput, "lines">,
     lines: JournalLineInput[],
-    number: number,
+  ): Promise<JournalEntryWithLines> {
+    return this.db.$transaction((tx) =>
+      this.createWithRetryTx(tx, organizationId, data, lines, "DRAFT"),
+    );
+  }
+
+  /**
+   * Race-safe create inside a caller-provided transaction. Reads the current
+   * max `number` for {org, voucherType, period}, attempts INSERT, and retries
+   * up to `MAX_CONTENTION_ATTEMPTS` times on unique-constraint violations on
+   * the compound index `organizationId_voucherTypeId_periodId_number`. Any
+   * other error surfaces immediately.
+   *
+   * On retry exhaustion throws `VOUCHER_NUMBER_CONTENTION` — a real system
+   * issue the caller must surface to the user.
+   */
+  async createWithRetryTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    data: Omit<CreateJournalEntryInput, "lines">,
+    lines: JournalLineInput[],
+    status: JournalEntryStatus = "DRAFT",
   ): Promise<JournalEntryWithLines> {
     const scope = this.requireOrg(organizationId);
 
-    return this.db.$transaction(async (tx) => {
-      const entry = await tx.journalEntry.create({
-        data: {
-          number,
-          date: data.date,
-          description: data.description,
-          status: "DRAFT",
-          periodId: data.periodId,
+    for (let attempt = 0; attempt < MAX_CONTENTION_ATTEMPTS; attempt++) {
+      const last = await tx.journalEntry.findFirst({
+        where: {
+          ...scope,
           voucherTypeId: data.voucherTypeId,
-          contactId: data.contactId ?? null,
-          sourceType: data.sourceType ?? null,
-          sourceId: data.sourceId ?? null,
-          referenceNumber: data.referenceNumber ?? null,
-          createdById: data.createdById,
-          organizationId: scope.organizationId,
-          lines: {
-            create: lines.map((line) => ({
-              accountId: line.accountId,
-              debit: line.debit,
-              credit: line.credit,
-              description: line.description ?? null,
-              contactId: line.contactId ?? null,
-              order: line.order,
-            })),
-          },
+          periodId: data.periodId,
         },
-        include: journalIncludeLines,
+        orderBy: { number: "desc" },
+        select: { number: true },
       });
+      const candidate = (last?.number ?? 0) + 1;
 
-      return entry as JournalEntryWithLines;
-    });
+      try {
+        const entry = await tx.journalEntry.create({
+          data: {
+            number: candidate,
+            date: data.date,
+            description: data.description,
+            status,
+            periodId: data.periodId,
+            voucherTypeId: data.voucherTypeId,
+            contactId: data.contactId ?? null,
+            sourceType: data.sourceType ?? null,
+            sourceId: data.sourceId ?? null,
+            referenceNumber: data.referenceNumber ?? null,
+            createdById: data.createdById,
+            organizationId: scope.organizationId,
+            lines: {
+              create: lines.map((line) => ({
+                accountId: line.accountId,
+                debit: line.debit,
+                credit: line.credit,
+                description: line.description ?? null,
+                contactId: line.contactId ?? null,
+                order: line.order,
+              })),
+            },
+          },
+          include: journalIncludeLines,
+        });
+        return entry as JournalEntryWithLines;
+      } catch (err) {
+        if (isPrismaUniqueViolation(err, JOURNAL_NUMBER_UNIQUE_INDEX)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw new AppError(
+      "No se pudo asignar un número correlativo tras varios intentos",
+      409,
+      VOUCHER_NUMBER_CONTENTION,
+    );
   }
 
   async update(

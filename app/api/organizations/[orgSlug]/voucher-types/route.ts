@@ -5,11 +5,12 @@ import {
   handleError,
 } from "@/features/shared/middleware";
 import { VoucherTypesService } from "@/features/voucher-types";
+import { createVoucherTypeSchema } from "@/features/voucher-types/voucher-types.validation";
 
 const service = new VoucherTypesService();
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ orgSlug: string }> },
 ) {
   try {
@@ -18,9 +19,37 @@ export async function GET(
     const orgId = await requireOrgAccess(userId, orgSlug);
     await requireRole(userId, orgId, ["owner", "admin", "contador"]);
 
-    const types = await service.list(orgId);
+    const { searchParams } = new URL(request.url);
+    const activeParam = searchParams.get("active");
+    const options = {
+      ...(activeParam === "true" && { isActive: true }),
+      includeCounts: true,
+    };
+
+    const types = await service.list(orgId, options);
 
     return Response.json(types);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ orgSlug: string }> },
+) {
+  try {
+    const { userId } = await requireAuth();
+    const { orgSlug } = await params;
+    const orgId = await requireOrgAccess(userId, orgSlug);
+    await requireRole(userId, orgId, ["owner", "admin"]);
+
+    const body = await request.json();
+    const input = createVoucherTypeSchema.parse(body);
+
+    const created = await service.create(orgId, input);
+
+    return Response.json(created, { status: 201 });
   } catch (error) {
     return handleError(error);
   }

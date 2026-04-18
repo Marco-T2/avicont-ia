@@ -157,15 +157,9 @@ export class JournalService {
     // Validar requiresContact: si una cuenta requiere contacto, la línea debe tenerlo
     await this.validateContactsForLines(organizationId, lines, accountCache);
 
-    // Auto-asignar el siguiente número correlativo por [orgId, voucherTypeId, periodId]
-    const number = await this.repo.getNextNumber(
-      organizationId,
-      entryData.voucherTypeId,
-      entryData.periodId,
-    );
-
+    // Number is allocated atomically inside repo.create with retry-on-contention.
     try {
-      return await this.repo.create(organizationId, entryData, lines, number);
+      return await this.repo.create(organizationId, entryData, lines);
     } catch (error) {
       if (
         error instanceof Error &&
@@ -259,51 +253,17 @@ export class JournalService {
       );
     }
 
-    // Auto-asignar el siguiente número correlativo
-    const number = await this.repo.getNextNumber(
-      organizationId,
-      entryData.voucherTypeId,
-      entryData.periodId,
-    );
-
-    // Transacción atómica única: crear como DRAFT y luego contabilizar
+    // Transacción atómica única: crear DRAFT (número asignado con retry) y contabilizar
     return this.repo.transaction(async (tx) => {
       await setAuditContext(tx, userId);
 
-      const created = await tx.journalEntry.create({
-        data: {
-          number,
-          date: entryData.date,
-          description: entryData.description,
-          status: "DRAFT",
-          periodId: entryData.periodId,
-          voucherTypeId: entryData.voucherTypeId,
-          contactId: entryData.contactId ?? null,
-          sourceType: entryData.sourceType ?? null,
-          sourceId: entryData.sourceId ?? null,
-          referenceNumber: entryData.referenceNumber ?? null,
-          createdById: entryData.createdById,
-          organizationId,
-          lines: {
-            create: lines.map((line) => ({
-              accountId: line.accountId,
-              debit: line.debit,
-              credit: line.credit,
-              description: line.description ?? null,
-              contactId: line.contactId ?? null,
-              order: line.order,
-            })),
-          },
-        },
-        include: {
-          lines: {
-            include: { account: true, contact: true },
-            orderBy: { order: "asc" as const },
-          },
-          contact: true,
-          voucherType: true,
-        },
-      }) as unknown as JournalEntryWithLines;
+      const created = await this.repo.createWithRetryTx(
+        tx,
+        organizationId,
+        entryData,
+        lines,
+        "DRAFT",
+      );
 
       // Transicionar a POSTED
       const posted = await this.repo.updateStatusTx(

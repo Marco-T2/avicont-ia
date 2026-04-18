@@ -1,39 +1,18 @@
-import { NotFoundError, ValidationError, VOUCHER_TYPE_NOT_IN_ORG } from "@/features/shared/errors";
+import {
+  ConflictError,
+  NotFoundError,
+  ValidationError,
+  VOUCHER_TYPE_CODE_DUPLICATE,
+  VOUCHER_TYPE_NOT_IN_ORG,
+} from "@/features/shared/errors";
+import { DEFAULT_VOUCHER_TYPES } from "@/prisma/seeds/voucher-types";
 import { VoucherTypesRepository } from "./voucher-types.repository";
-import type { VoucherTypeCfg, VoucherTypeCode } from "@/generated/prisma/client";
-import type { UpdateVoucherTypeInput } from "./voucher-types.types";
-
-const DEFAULT_VOUCHER_TYPES: Array<{
-  code: VoucherTypeCode;
-  name: string;
-  description: string;
-}> = [
-  {
-    code: "CI",
-    name: "Comprobante de Ingreso",
-    description: "Registra entrada de dinero (cobros, ventas)",
-  },
-  {
-    code: "CE",
-    name: "Comprobante de Egreso",
-    description: "Registra salida de dinero (pagos, compras)",
-  },
-  {
-    code: "CD",
-    name: "Comprobante de Diario",
-    description: "Registra ajustes, depreciaciones, provisiones",
-  },
-  {
-    code: "CT",
-    name: "Comprobante de Traspaso",
-    description: "Registra movimientos entre cuentas propias",
-  },
-  {
-    code: "CA",
-    name: "Comprobante de Apertura",
-    description: "Registra asiento de apertura del periodo",
-  },
-];
+import type { VoucherTypeCfg } from "@/generated/prisma/client";
+import type {
+  CreateVoucherTypeInput,
+  ListVoucherTypesOptions,
+  UpdateVoucherTypeInput,
+} from "./voucher-types.types";
 
 export class VoucherTypesService {
   private readonly repo: VoucherTypesRepository;
@@ -42,13 +21,14 @@ export class VoucherTypesService {
     this.repo = repo ?? new VoucherTypesRepository();
   }
 
-  // ── List all voucher types for an org ──
-
-  async list(organizationId: string): Promise<VoucherTypeCfg[]> {
-    return this.repo.findAll(organizationId);
+  async list(
+    organizationId: string,
+    options?: ListVoucherTypesOptions,
+  ): Promise<VoucherTypeCfg[]> {
+    return options === undefined
+      ? this.repo.findAll(organizationId)
+      : this.repo.findAll(organizationId, options);
   }
-
-  // ── Get a single voucher type ──
 
   async getById(organizationId: string, id: string): Promise<VoucherTypeCfg> {
     const type = await this.repo.findById(organizationId, id);
@@ -56,9 +36,7 @@ export class VoucherTypesService {
     return type;
   }
 
-  // ── Get a voucher type by code ──
-
-  async getByCode(organizationId: string, code: VoucherTypeCode): Promise<VoucherTypeCfg> {
+  async getByCode(organizationId: string, code: string): Promise<VoucherTypeCfg> {
     const type = await this.repo.findByCode(organizationId, code);
     if (!type) {
       throw new ValidationError(
@@ -69,13 +47,23 @@ export class VoucherTypesService {
     return type;
   }
 
-  // ── Seed default voucher types for a new org (idempotent) ──
-
   async seedForOrg(organizationId: string): Promise<VoucherTypeCfg[]> {
-    return this.repo.createMany(organizationId, DEFAULT_VOUCHER_TYPES);
+    return this.repo.createMany(organizationId, [...DEFAULT_VOUCHER_TYPES]);
   }
 
-  // ── Update a voucher type ──
+  async create(
+    organizationId: string,
+    input: CreateVoucherTypeInput,
+  ): Promise<VoucherTypeCfg> {
+    const existing = await this.repo.findByCode(organizationId, input.code);
+    if (existing) {
+      throw new ConflictError(
+        `Tipo de comprobante con código ${input.code}`,
+        VOUCHER_TYPE_CODE_DUPLICATE,
+      );
+    }
+    return this.repo.create(organizationId, input);
+  }
 
   async update(
     organizationId: string,

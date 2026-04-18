@@ -1,13 +1,27 @@
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { VoucherTypeCfg } from "@/generated/prisma/client";
-import type { CreateVoucherTypeInput, UpdateVoucherTypeInput } from "./voucher-types.types";
+import type {
+  CreateVoucherTypeInput,
+  ListVoucherTypesOptions,
+  UpdateVoucherTypeInput,
+} from "./voucher-types.types";
 
 export class VoucherTypesRepository extends BaseRepository {
-  async findAll(organizationId: string): Promise<VoucherTypeCfg[]> {
+  async findAll(
+    organizationId: string,
+    options: ListVoucherTypesOptions = {},
+  ): Promise<VoucherTypeCfg[]> {
     const scope = this.requireOrg(organizationId);
+    const where = {
+      ...scope,
+      ...(options.isActive !== undefined && { isActive: options.isActive }),
+    };
     return this.db.voucherTypeCfg.findMany({
-      where: scope,
+      where,
       orderBy: { code: "asc" },
+      ...(options.includeCounts && {
+        include: { _count: { select: { journalEntries: true } } },
+      }),
     });
   }
 
@@ -24,7 +38,23 @@ export class VoucherTypesRepository extends BaseRepository {
   ): Promise<VoucherTypeCfg | null> {
     const scope = this.requireOrg(organizationId);
     return this.db.voucherTypeCfg.findFirst({
-      where: { code: code as never, ...scope },
+      where: { code, ...scope },
+    });
+  }
+
+  async create(
+    organizationId: string,
+    input: CreateVoucherTypeInput,
+  ): Promise<VoucherTypeCfg> {
+    const scope = this.requireOrg(organizationId);
+    return this.db.voucherTypeCfg.create({
+      data: {
+        ...scope,
+        code: input.code,
+        prefix: input.prefix,
+        name: input.name,
+        description: input.description ?? null,
+      },
     });
   }
 
@@ -46,6 +76,7 @@ export class VoucherTypesRepository extends BaseRepository {
         create: {
           ...scope,
           code: type.code,
+          prefix: type.prefix,
           name: type.name,
           description: type.description ?? null,
         },
@@ -67,6 +98,7 @@ export class VoucherTypesRepository extends BaseRepository {
       where: { id, ...scope },
       data: {
         ...(data.name !== undefined && { name: data.name }),
+        ...(data.prefix !== undefined && { prefix: data.prefix }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
       },
