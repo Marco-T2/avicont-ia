@@ -1,6 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { MembersService, updateRoleSchema } from "@/features/organizations";
+import { MembersService } from "@/features/organizations";
+import { buildUpdateMemberRoleSchema } from "@/features/organizations/members.validation";
 
 const service = new MembersService();
 
@@ -18,7 +19,12 @@ export async function PATCH(
     const userId = session.userId;
 
     const body = await request.json();
-    const input = updateRoleSchema.parse(body);
+    // PR6.2 / D.9 — factory-based async validation: role slug is resolved
+    // against the org's CustomRole table via rolesService.exists. parseAsync
+    // is MANDATORY because the schema contains async refinements.
+    const input = await buildUpdateMemberRoleSchema(organizationId).parseAsync(
+      body,
+    );
 
     const member = await service.updateRole(
       organizationId,

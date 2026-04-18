@@ -251,7 +251,7 @@ bridge from a bridge that always rejects or always passes.
 
 ---
 
-### PR6.2 — Thread `orgId` through `members.service.ts`
+### PR6.2 — ✅ Thread `orgId` through `members.service.ts`
 
 **RED**: `features/organizations/__tests__/members.service.test.ts` (extend) — assert: (a) `addMember` calls `buildAddMemberSchema(orgId).parseAsync(body)`; (b) `updateMemberRole` calls `buildAddMemberSchema(orgId).parseAsync({ role })`.
 
@@ -259,7 +259,7 @@ bridge from a bridge that always rejects or always passes.
 
 **Satisfies**: CR.8, R.3mod-S3, D.9
 
-**Done when**: members service tests green; existing member-change scenarios pass.
+**Done when**: members service tests green; existing member-change scenarios pass. ✅ (Design D.9 places validation at the handler layer — service signatures stayed stable. Route handlers converted to `await buildAddMemberSchema(orgId).parseAsync(body)`. Contract grep test confirms ZERO sync `.parse(` remains on members schemas outside `__tests__/`. Added 7 route tests + 3 contract tests.)
 
 ---
 
