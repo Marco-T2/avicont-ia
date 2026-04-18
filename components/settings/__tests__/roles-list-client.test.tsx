@@ -13,6 +13,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import RolesListClient from "../roles-list-client";
 import type { CustomRoleShape } from "../role-edit-drawer";
 
+// W-1 RED: import rerender helper
+// (rerender is returned from render() — no extra import needed)
+
 afterEach(() => cleanup());
 
 beforeEach(() => {
@@ -97,5 +100,34 @@ describe("RolesListClient (PR7.5)", () => {
     render(<RolesListClient orgSlug="test-org" initialRoles={MOCK_ROLES} />);
 
     expect(screen.getByRole("button", { name: /crear rol/i })).toBeInTheDocument();
+  });
+
+  it("T7.5-8 — W-1: list updates when initialRoles prop changes (simulates router.refresh())", () => {
+    const { rerender } = render(
+      <RolesListClient orgSlug="test-org" initialRoles={MOCK_ROLES} />,
+    );
+
+    // Initially Facturador is present
+    expect(screen.getByText("Facturador")).toBeInTheDocument();
+
+    // Simulate router.refresh() causing server to pass a new roles list
+    const updatedRoles: CustomRoleShape[] = [
+      ...MOCK_ROLES.filter((r) => r.slug !== "facturador"),
+      {
+        id: "4",
+        slug: "contador",
+        name: "Contador",
+        isSystem: false,
+        permissionsRead: ["sales", "journal"],
+        permissionsWrite: [],
+        canPost: [],
+      },
+    ];
+
+    rerender(<RolesListClient orgSlug="test-org" initialRoles={updatedRoles} />);
+
+    // Old role should be gone; new role should be visible
+    expect(screen.queryByText("Facturador")).not.toBeInTheDocument();
+    expect(screen.getByText("Contador")).toBeInTheDocument();
   });
 });

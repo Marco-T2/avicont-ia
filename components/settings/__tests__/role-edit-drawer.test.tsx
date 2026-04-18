@@ -142,4 +142,35 @@ describe("RoleEditDrawer (PR7.4)", () => {
       expect(cb).toBeDisabled();
     });
   });
+
+  it("T7.4-5 — W-2: drawer reflects new role matrix when role prop changes (key remount)", () => {
+    setupFetch();
+    const { rerender } = render(
+      <RoleEditDrawer orgSlug="test-org" role={CUSTOM_ROLE} onUpdated={vi.fn()} />,
+    );
+
+    // Simulate role prop changing (new role passed after router.refresh())
+    // key={role.id} causes full remount — drawer resets to closed state with new role data
+    const newRole: CustomRoleShape = {
+      id: "r2",
+      slug: "contador",
+      name: "Contador",
+      isSystem: false,
+      permissionsRead: ["members"],
+      permissionsWrite: [],
+      canPost: [],
+    };
+
+    rerender(
+      <RoleEditDrawer orgSlug="test-org" role={newRole} onUpdated={vi.fn()} />,
+    );
+
+    // Open the drawer for the new role — it should initialize from newRole's data
+    openDrawer();
+
+    // 'sales' read should NOT be checked (newRole doesn't have sales in permissionsRead)
+    expect(screen.getByTestId("toggle-read-sales")).not.toBeChecked();
+    // 'members' read SHOULD be checked (newRole has members in permissionsRead)
+    expect(screen.getByTestId("toggle-read-members")).toBeChecked();
+  });
 });
