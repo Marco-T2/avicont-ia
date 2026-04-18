@@ -15,6 +15,25 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: '/:orgSlug/accounting/periods/:path*',
+        destination: '/:orgSlug/settings/periods/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:orgSlug/accounting/voucher-types/:path*',
+        destination: '/:orgSlug/settings/voucher-types/:path*',
+        permanent: true,
+      },
+      {
+        source: '/:orgSlug/settings/monthly-close/:path*',
+        destination: '/:orgSlug/accounting/monthly-close/:path*',
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
