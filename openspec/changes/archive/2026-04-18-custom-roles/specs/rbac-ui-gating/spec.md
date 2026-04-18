@@ -1,10 +1,6 @@
-# rbac-ui-gating Specification
+# Delta for rbac-ui-gating
 
-## Purpose
-
-Componente y hook para gatear UI (botones de acción, nav items) según la matriz de permisos. El gating de UI es **defensivo** (mejora UX ocultando lo no permitido); la autorización real siempre ocurre server-side.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: `<Gated>` Component
 
@@ -64,36 +60,6 @@ The system MUST provide `useCanAccess(resource, action): boolean`. The hook MUST
 
 ---
 
-### Requirement: Action Buttons Gated in Critical Views
-
-The following action buttons MUST be wrapped in `<Gated>` or equivalent:
-
-| View | Action | Resource | Action |
-|------|--------|----------|--------|
-| `journal-entry-detail` | Editar | journal | write |
-| `journal-entry-detail` | Contabilizar | journal | write |
-| `journal-entry-detail` | Anular | journal | write |
-| `sale-detail` | Editar | sales | write |
-| `sale-detail` | Anular | sales | write |
-| `purchase-detail` | Editar | purchases | write |
-| `payment-form` | Registrar pago | payments | write |
-| `dispatch-form` | Crear despacho | dispatches | write |
-| `voucher-types-manager` | Crear/Editar/Toggle | accounting-config | write |
-
-#### Scenario: U.3-S1 — cobrador en JE detail
-
-- GIVEN `cobrador` navigating to JE detail
-- WHEN the page renders
-- THEN no Editar/Contabilizar/Anular buttons are visible
-
-#### Scenario: U.3-S2 — auxiliar en sale detail
-
-- GIVEN `auxiliar` navigating to sale detail
-- WHEN the page renders
-- THEN Editar is hidden for POSTED sales (status gate) AND for all sales created by others (ownership gate out of scope here)
-
----
-
 ### Requirement: Members Admin Role Picker
 
 The members admin `<select>` for role assignment MUST list all assignable roles for the org: the 5 assignable system roles (`admin`, `contador`, `cobrador`, `auxiliar`, `member`) plus any custom roles defined in the org. `owner` MUST NOT appear. The picker MUST load options dynamically from the org's role list.
@@ -111,8 +77,6 @@ The members admin `<select>` for role assignment MUST list all assignable roles 
 - GIVEN org `alpha`
 - WHEN the role picker renders
 - THEN `owner` is NOT in the options list
-
----
 
 ## ADDED Requirements
 
