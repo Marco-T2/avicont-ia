@@ -102,7 +102,7 @@
 
 > Only 2 service files; journal gates via `requirePermission` (no canPost needed).
 
-### PR3.1 — `sale.service.ts` async `canPost`
+### PR3.1 — ✅ `sale.service.ts` async `canPost`
 
 **RED**: `features/sale/__tests__/sale-canpost.test.ts` (extend) — add: (a) custom role `facturador` with `canPost=true` in mock matrix → posting allowed; (b) `auxiliar` with `canPost=false` → 403; (c) mock `getMatrix` called once per request (no extra DB calls).
 
@@ -114,7 +114,7 @@
 
 ---
 
-### PR3.2 — `purchase.service.ts` async `canPost`
+### PR3.2 — ✅ `purchase.service.ts` async `canPost`
 
 **RED**: `features/purchase/__tests__/purchase-canpost.test.ts` — mirror sale tests: (a) `canPost=true` allows; (b) `canPost=false` → 403.
 
