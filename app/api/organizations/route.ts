@@ -25,6 +25,7 @@ export async function POST(request: Request) {
     return Response.json({
       success: true,
       organization,
+      created,
       message: created
         ? "Organización creada exitosamente"
         : "La organización ya existe",
