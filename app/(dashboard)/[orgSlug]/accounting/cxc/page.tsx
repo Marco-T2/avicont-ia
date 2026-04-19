@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesService } from "@/features/receivables";
+import { ReceivablesService } from "@/features/receivables/server";
 import ReceivableList from "@/components/accounting/receivable-list";
 
 interface CxCPageProps {
