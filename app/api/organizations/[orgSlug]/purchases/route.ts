@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { PurchaseService } from "@/features/purchase";
+import { PurchaseService } from "@/features/purchase/server";
 import {
   createPurchaseSchema,
   purchaseFiltersSchema,
