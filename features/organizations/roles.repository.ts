@@ -7,6 +7,7 @@
  * Matches the existing `OrganizationsRepository` class pattern so consumers get
  * the same shape across the `features/organizations/` module.
  */
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { CustomRole, Prisma } from "@/generated/prisma/client";
 

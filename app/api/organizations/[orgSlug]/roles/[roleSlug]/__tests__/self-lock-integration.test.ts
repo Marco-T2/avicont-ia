@@ -98,7 +98,7 @@ const fakeRepoState: {
 
 // CRITICAL: mock ONLY the repository. Leave `RolesService` as the REAL class so
 // the route module constructs the REAL service with the REAL closure.
-vi.mock("@/features/organizations", async (importOriginal) => {
+vi.mock("@/features/organizations/server", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/features/organizations")>();
   return {

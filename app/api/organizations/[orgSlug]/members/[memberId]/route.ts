@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { MembersService } from "@/features/organizations";
+import { MembersService } from "@/features/organizations/server";
 import { buildUpdateMemberRoleSchema } from "@/features/organizations/members.validation";
 
 const service = new MembersService();

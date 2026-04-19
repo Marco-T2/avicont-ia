@@ -2,7 +2,7 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardShell } from "@/components/sidebar/dashboard-shell";
 import { RolesMatrixProvider } from "@/components/common/roles-matrix-provider";
 import { buildClientMatrixSnapshot } from "@/features/shared/client-matrix";
-import { OrganizationsService } from "@/features/organizations";
+import { OrganizationsService } from "@/features/organizations/server";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 

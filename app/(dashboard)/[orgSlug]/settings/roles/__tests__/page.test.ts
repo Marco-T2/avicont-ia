@@ -21,7 +21,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
 }));
 
 // Mock RolesService — inject mockListRoles so we control what the page receives
-vi.mock("@/features/organizations", () => {
+vi.mock("@/features/organizations/server", () => {
   class RolesRepository {}
   class RolesService {
     listRoles = mockListRoles;

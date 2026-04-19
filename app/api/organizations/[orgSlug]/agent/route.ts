@@ -3,7 +3,7 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
-import { OrganizationsService } from "@/features/organizations";
+import { OrganizationsService } from "@/features/organizations/server";
 import { AgentService } from "@/features/ai-agent/server";
 import { ExpensesService } from "@/features/expenses/server";
 import { MortalityService } from "@/features/mortality/server";
