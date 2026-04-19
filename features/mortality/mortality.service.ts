@@ -1,3 +1,4 @@
+import "server-only";
 import { ValidationError } from "@/features/shared/errors";
 import { MortalityRepository } from "./mortality.repository";
 import { LotsService } from "@/features/lots/lots.service";
