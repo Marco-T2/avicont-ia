@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import { PaymentStatus } from "@/generated/prisma/client";
 import type { OperationalDocType } from "@/generated/prisma/client";

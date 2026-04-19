@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { OperationalDocTypesService } from "@/features/operational-doc-types";
+import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
 import OperationalDocTypesManager from "@/components/settings/operational-doc-types-manager";
 
 interface OperationalDocTypesPageProps {
