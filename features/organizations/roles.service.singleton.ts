@@ -13,6 +13,7 @@
  * wired from the API route (see roles/[roleSlug]/route.ts). The validation
  * layer only ever calls `exists`.
  */
+import "server-only";
 import { RolesRepository } from "./roles.repository";
 import { RolesService } from "./roles.service";
 

@@ -30,7 +30,7 @@
  */
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { RolesRepository, RolesService } from "@/features/organizations";
+import { RolesRepository, RolesService } from "@/features/organizations/server";
 import { z } from "zod";
 
 // ─── Caller-role cache for the service's DI hook ────────────────────────────

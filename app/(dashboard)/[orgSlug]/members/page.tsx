@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { MembersService } from "@/features/organizations";
+import { MembersService } from "@/features/organizations/server";
 import MembersPageClient from "@/components/members/members-page-client";
 
 interface MembersPageProps {

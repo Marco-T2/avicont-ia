@@ -16,6 +16,7 @@
  * easy to unit-test. The caller resolver lets the API layer pass Clerk-user
  * identity in without this module importing Clerk or Prisma directly.
  */
+import "server-only";
 import {
   ForbiddenError,
   ConflictError,

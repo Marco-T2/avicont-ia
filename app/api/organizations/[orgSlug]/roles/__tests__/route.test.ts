@@ -49,7 +49,7 @@ const mockRolesServiceInstance = {
   exists: vi.fn(),
 };
 
-vi.mock("@/features/organizations", async (importOriginal) => {
+vi.mock("@/features/organizations/server", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("@/features/organizations")>();
   return {

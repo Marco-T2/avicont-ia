@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { FileText, Users, Brain, ArrowRight, Upload } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
-import { OrganizationsService } from "@/features/organizations";
+import { OrganizationsService } from "@/features/organizations/server";
 
 const orgService = new OrganizationsService();
 
