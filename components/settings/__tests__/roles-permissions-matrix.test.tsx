@@ -26,7 +26,7 @@ describe("<RolesPermissionsMatrix />", () => {
   describe("resource rows (all 12 resources)", () => {
     const resources = [
       "Miembros",
-      "Configuración contable",
+      "Config. contable",
       "Ventas",
       "Compras",
       "Cobros y Pagos",

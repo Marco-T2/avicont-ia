@@ -8,6 +8,7 @@
  */
 import type { Resource, PostableResource } from "@/features/shared/permissions";
 import type { Module } from "@/components/sidebar/modules/registry";
+import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 
 // ─── Warning types ───────────────────────────────────────────────────────────
 
@@ -27,24 +28,6 @@ export type Warning =
       resource: PostableResource;
       message: string;
     };
-
-// ─── Spanish resource labels ─────────────────────────────────────────────────
-// Must NOT be imported from features/shared/permissions (custom-roles CLOSED)
-
-export const RESOURCE_LABELS: Record<Resource, string> = {
-  members: "Miembros",
-  "accounting-config": "Config. contable",
-  sales: "Ventas",
-  purchases: "Compras",
-  payments: "Cobros y Pagos",
-  journal: "Libro Diario",
-  dispatches: "Despachos",
-  reports: "Informes",
-  contacts: "Contactos",
-  farms: "Granjas",
-  documents: "Documentos",
-  agent: "Agente IA",
-};
 
 // ─── Core function ────────────────────────────────────────────────────────────
 
