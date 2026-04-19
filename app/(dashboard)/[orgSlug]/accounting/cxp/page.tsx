@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts/server";
-import { PayablesService } from "@/features/payables";
+import { PayablesService } from "@/features/payables/server";
 import PayableList from "@/components/accounting/payable-list";
 
 interface CxPPageProps {

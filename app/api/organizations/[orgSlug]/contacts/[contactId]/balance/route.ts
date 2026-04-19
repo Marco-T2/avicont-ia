@@ -1,8 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts";
-import { ReceivablesService } from "@/features/receivables";
-import { PayablesService } from "@/features/payables";
+import { ReceivablesService } from "@/features/receivables/server";
+import { PayablesService } from "@/features/payables/server";
 
 export async function GET(
   _request: Request,

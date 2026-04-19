@@ -37,12 +37,12 @@ vi.mock("@/features/contacts/server", () => {
   return { ContactsService };
 });
 
-vi.mock("@/features/receivables", () => {
+vi.mock("@/features/receivables/server", () => {
   class ReceivablesService {}
   return { ReceivablesService };
 });
 
-vi.mock("@/features/payables", () => {
+vi.mock("@/features/payables/server", () => {
   class PayablesService {}
   return { PayablesService };
 });
