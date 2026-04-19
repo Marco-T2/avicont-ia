@@ -23,7 +23,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/dispatch", () => {
+vi.mock("@/features/dispatch/server", () => {
   class HubService {
     listHub = mockListHub;
   }
@@ -31,7 +31,7 @@ vi.mock("@/features/dispatch", () => {
   return { HubService, DispatchService };
 });
 
-vi.mock("@/features/sale", () => {
+vi.mock("@/features/sale/server", () => {
   class SaleService {}
   return { SaleService };
 });

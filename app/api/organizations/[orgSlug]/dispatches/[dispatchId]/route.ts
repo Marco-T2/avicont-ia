@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { DispatchService } from "@/features/dispatch";
+import { DispatchService } from "@/features/dispatch/server";
 import { updateDispatchSchema } from "@/features/dispatch";
 
 const dispatchService = new DispatchService();

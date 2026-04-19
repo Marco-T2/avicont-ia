@@ -1,3 +1,4 @@
+import "server-only";
 import type { HubItem, HubItemSale, HubItemDispatch, HubFilters } from "./hub.types";
 
 // ── Monetary amount accepted from either service ──────────────────────────
