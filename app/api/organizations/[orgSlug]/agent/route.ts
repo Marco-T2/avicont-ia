@@ -4,9 +4,9 @@ import {
   handleError,
 } from "@/features/shared/middleware";
 import { OrganizationsService } from "@/features/organizations";
-import { AgentService } from "@/features/ai-agent";
-import { ExpensesService } from "@/features/expenses";
-import { MortalityService } from "@/features/mortality";
+import { AgentService } from "@/features/ai-agent/server";
+import { ExpensesService } from "@/features/expenses/server";
+import { MortalityService } from "@/features/mortality/server";
 import { createExpenseSchema } from "@/features/expenses/expenses.validation";
 import { logMortalitySchema } from "@/features/mortality/mortality.validation";
 import { agentQuerySchema, confirmActionSchema } from "@/features/ai-agent/agent.validation";

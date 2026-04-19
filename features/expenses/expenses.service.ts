@@ -1,3 +1,4 @@
+import "server-only";
 import { NotFoundError } from "@/features/shared/errors";
 import { ExpensesRepository } from "./expenses.repository";
 import type {
