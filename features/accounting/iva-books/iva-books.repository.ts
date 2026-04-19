@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import { ConflictError, NotFoundError } from "@/features/shared/errors";
 import { Prisma } from "@/generated/prisma/client";

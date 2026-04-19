@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { Prisma, Account, AccountType, AccountNature, AccountSubtype } from "@/generated/prisma/client";
 import type { ResolvedCreateAccountData, UpdateAccountInput, AccountWithChildren } from "./accounts.types";

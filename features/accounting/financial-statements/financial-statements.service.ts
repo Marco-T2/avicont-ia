@@ -1,3 +1,4 @@
+import "server-only";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
 import type { Role } from "@/features/shared/permissions";
 import { resolveBalances } from "./balance-source.resolver";

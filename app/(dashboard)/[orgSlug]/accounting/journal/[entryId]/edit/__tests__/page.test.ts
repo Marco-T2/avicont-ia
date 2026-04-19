@@ -35,7 +35,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
     .mockResolvedValue({ orgId: "org-db-id", session: { userId: "clerk-user-1" }, role: "owner" }),
 }));
 
-vi.mock("@/features/accounting", () => ({
+vi.mock("@/features/accounting/server", () => ({
   JournalService: vi.fn().mockImplementation(function () {
     return { getById: mockGetById };
   }),

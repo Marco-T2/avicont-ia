@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { JournalService, AccountsService } from "@/features/accounting";
+import { JournalService, AccountsService } from "@/features/accounting/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { VoucherTypesService } from "@/features/voucher-types/server";
 import JournalEntryForm from "@/components/accounting/journal-entry-form";

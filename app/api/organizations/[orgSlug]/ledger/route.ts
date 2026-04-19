@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { LedgerService } from "@/features/accounting";
+import { LedgerService } from "@/features/accounting/server";
 import { dateRangeSchema } from "@/features/accounting/accounting.validation";
 import { ValidationError } from "@/features/shared/errors";
 

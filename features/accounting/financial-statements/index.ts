@@ -7,8 +7,6 @@ export { buildIncomeStatement } from "./income-statement.builder";
 export { calculateRetainedEarnings } from "./retained-earnings.calculator";
 export { resolveBalances } from "./balance-source.resolver";
 export { roundHalfUp, sumDecimals, eq, serializeStatement } from "./money.utils";
-export { FinancialStatementsService } from "./financial-statements.service";
-export { FinancialStatementsRepository } from "./financial-statements.repository";
 export {
   resolveDatePreset,
   applyFilterPrecedence,
@@ -36,11 +34,6 @@ export type {
   StatementColumn,
   SemanticRowClass,
 } from "./financial-statements.types";
-export type {
-  GenerateBalanceSheetInput,
-  GenerateIncomeStatementInput,
-} from "./financial-statements.service";
-export { buildComparativeColumns } from "./financial-statements.service";
 export {
   buildBalanceSheetTableRows,
   buildIncomeStatementTableRows,

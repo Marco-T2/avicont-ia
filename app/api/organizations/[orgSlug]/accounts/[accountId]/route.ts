@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { AccountsService } from "@/features/accounting";
+import { AccountsService } from "@/features/accounting/server";
 import { updateAccountSchema } from "@/features/accounting/accounting.validation";
 
 const service = new AccountsService();

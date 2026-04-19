@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { requireAuth, requireOrgAccess } from "@/features/shared";
-import { JournalService } from "@/features/accounting";
+import { JournalService } from "@/features/accounting/server";
 
 interface AccountingPageProps {
   params: Promise<{ orgSlug: string }>;
