@@ -30,7 +30,7 @@ vi.mock("@/features/payment", () => {
   return { PaymentService };
 });
 
-vi.mock("@/features/contacts", () => {
+vi.mock("@/features/contacts/server", () => {
   class ContactsService {
     list = mockContactsList;
   }

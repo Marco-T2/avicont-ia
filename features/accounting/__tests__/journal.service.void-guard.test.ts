@@ -12,7 +12,7 @@ import { JournalService } from "@/features/accounting/journal.service";
 import { AUTO_ENTRY_VOID_FORBIDDEN, ENTRY_VOIDED_IMMUTABLE } from "@/features/shared/errors";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 import type { JournalRepository } from "@/features/accounting/journal.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods";
+import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { AccountBalancesService } from "@/features/account-balances";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

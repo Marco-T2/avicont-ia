@@ -27,7 +27,7 @@ import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
 import { AccountBalancesService } from "@/features/account-balances";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type {
   PaymentWithRelations,
   CreatePaymentInput,

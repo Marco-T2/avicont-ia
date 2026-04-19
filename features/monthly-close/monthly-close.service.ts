@@ -4,7 +4,7 @@ import {
   PERIOD_ALREADY_CLOSED,
 } from "@/features/shared/errors";
 import { setAuditContext } from "@/features/shared/audit-context";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { MonthlyCloseRepository } from "./monthly-close.repository";
 import type { MonthlyCloseSummary, CloseResult } from "./monthly-close.types";
 
