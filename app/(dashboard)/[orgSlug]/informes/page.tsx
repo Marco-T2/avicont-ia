@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { CatalogPage } from "@/components/reports/catalog-page";
 
 interface InformesPageProps {
@@ -14,18 +14,10 @@ export const metadata: Metadata = {
 export default async function InformesPage({ params }: InformesPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
   try {
-    const session = await requireAuth();
-    userId = session.userId;
+    await requirePermission("reports", "read", orgSlug);
   } catch {
-    redirect("/sign-in");
-  }
-
-  try {
-    await requireOrgAccess(userId, orgSlug);
-  } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   return (

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PaymentService } from "@/features/payment";
 import { ContactsService } from "@/features/contacts";
 import PaymentList from "@/components/payments/payment-list";
@@ -14,19 +14,12 @@ interface PaymentsPageProps {
 export default async function PaymentsPage({ params }: PaymentsPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("payments", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const [payments, contacts] = await Promise.all([

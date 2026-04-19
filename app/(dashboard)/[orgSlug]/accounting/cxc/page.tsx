@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts";
 import { ReceivablesService } from "@/features/receivables";
 import ReceivableList from "@/components/accounting/receivable-list";
@@ -11,19 +11,12 @@ interface CxCPageProps {
 export default async function CxCPage({ params }: CxCPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("sales", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const contactsService = new ContactsService();

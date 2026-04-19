@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { PurchaseService } from "@/features/purchase";
 import PurchaseList from "@/components/purchases/purchase-list";
 
@@ -10,19 +10,12 @@ interface PurchasesPageProps {
 export default async function PurchasesPage({ params }: PurchasesPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("purchases", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const purchaseService = new PurchaseService();

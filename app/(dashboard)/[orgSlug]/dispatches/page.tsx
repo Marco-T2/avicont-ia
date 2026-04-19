@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { HubService, DispatchService } from "@/features/dispatch";
 import { SaleService } from "@/features/sale";
 import DispatchList from "@/components/dispatches/dispatch-list";
@@ -17,19 +17,12 @@ export default async function DispatchesPage({
   const { orgSlug } = await params;
   const sp = await searchParams;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("sales", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   // SSR: call HubService directly — no network round-trip (D5 of design)
