@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { PurchaseService } from "@/features/purchase";
+import { PurchaseService } from "@/features/purchase/server";
 import PurchaseList from "@/components/purchases/purchase-list";
 
 interface PurchasesPageProps {

@@ -46,7 +46,7 @@ vi.mock("@/features/product-types", () => {
   return { ProductTypesService };
 });
 
-vi.mock("@/features/purchase", () => ({}));
+vi.mock("@/features/purchase/server", () => ({}));
 
 vi.mock("@/components/purchases/purchase-form", () => ({
   default: vi.fn().mockReturnValue(null),
