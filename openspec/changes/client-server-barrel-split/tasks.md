@@ -71,10 +71,10 @@
 **Blast radius**: 1 server consumer
 **Files affected**: `features/auth/index.ts`, `features/auth/server.ts` (new), `auth.repository.ts`, `auth.service.ts` (if present), 1 consumer
 
-- [ ] T4.1 RED: Confirm boundary test flags `features/auth/index.ts`
-- [ ] T4.2 GREEN: Create `features/auth/server.ts`; strip server exports from `index.ts`; stamp `server-only` on repo/service files
-- [ ] T4.3 GREEN: Rewrite 1 server consumer import to `@/features/auth/server`; update mocks
-- [ ] T4.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(auth): split barrel into client-safe index + server-only server.ts`
+- [x] T4.1 RED: Confirm boundary test flags `features/auth/index.ts`
+- [x] T4.2 GREEN: Create `features/auth/server.ts`; strip server exports from `index.ts`; stamp `server-only` on repo/service files
+- [x] T4.3 GREEN: Rewrite 1 server consumer import to `@/features/auth/server`; update mocks
+- [x] T4.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -83,10 +83,10 @@
 **Blast radius**: 1 server consumer
 **Files affected**: `features/documents/index.ts`, `features/documents/server.ts` (new), repo/service files, 1 consumer
 
-- [ ] T5.1 RED: Confirm boundary test flags `features/documents/index.ts`
-- [ ] T5.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only` on repo/service
-- [ ] T5.3 GREEN: Rewrite 1 server consumer; update mocks
-- [ ] T5.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(documents): split barrel into client-safe index + server-only server.ts`
+- [x] T5.1 RED: Confirm boundary test flags `features/documents/index.ts`
+- [x] T5.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only` on repo/service
+- [x] T5.3 GREEN: Rewrite 1 server consumer; update mocks
+- [x] T5.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -95,10 +95,10 @@
 **Blast radius**: 1 server consumer
 **Files affected**: `features/expenses/index.ts`, `features/expenses/server.ts` (new), repo/service files, 1 consumer
 
-- [ ] T6.1 RED: Confirm boundary test flags `features/expenses/index.ts`
-- [ ] T6.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T6.3 GREEN: Rewrite 1 server consumer; update mocks
-- [ ] T6.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(expenses): split barrel into client-safe index + server-only server.ts`
+- [x] T6.1 RED: Confirm boundary test flags `features/expenses/index.ts`
+- [x] T6.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T6.3 GREEN: Rewrite 1 server consumer; update mocks
+- [x] T6.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -107,10 +107,10 @@
 **Blast radius**: 1 server consumer
 **Files affected**: `features/pricing/index.ts`, `features/pricing/server.ts` (new), repo/service files, 1 consumer
 
-- [ ] T7.1 RED: Confirm boundary test flags `features/pricing/index.ts`
-- [ ] T7.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T7.3 GREEN: Rewrite 1 server consumer; update mocks
-- [ ] T7.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(pricing): split barrel into client-safe index + server-only server.ts`
+- [x] T7.1 RED: Confirm boundary test flags `features/pricing/index.ts`
+- [x] T7.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T7.3 GREEN: Rewrite 1 server consumer; update mocks
+- [x] T7.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -119,10 +119,10 @@
 **Blast radius**: 2 server consumers
 **Files affected**: `features/ai-agent/index.ts`, `features/ai-agent/server.ts` (new), repo/service files, 2 consumers
 
-- [ ] T8.1 RED: Confirm boundary test flags `features/ai-agent/index.ts`
-- [ ] T8.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T8.3 GREEN: Rewrite 2 server consumers; update mocks
-- [ ] T8.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(ai-agent): split barrel into client-safe index + server-only server.ts`
+- [x] T8.1 RED: Confirm boundary test flags `features/ai-agent/index.ts`
+- [x] T8.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T8.3 GREEN: Rewrite 2 server consumers; update mocks
+- [x] T8.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -131,10 +131,10 @@
 **Blast radius**: 2 server consumers
 **Files affected**: `features/monthly-close/index.ts`, `features/monthly-close/server.ts` (new), repo/service files, 2 consumers
 
-- [ ] T9.1 RED: Confirm boundary test flags `features/monthly-close/index.ts`
-- [ ] T9.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T9.3 GREEN: Rewrite 2 server consumers; update mocks
-- [ ] T9.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(monthly-close): split barrel into client-safe index + server-only server.ts`
+- [x] T9.1 RED: Confirm boundary test flags `features/monthly-close/index.ts`
+- [x] T9.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T9.3 GREEN: Rewrite 2 server consumers; update mocks
+- [x] T9.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -143,10 +143,10 @@
 **Blast radius**: 2 server consumers
 **Files affected**: `features/mortality/index.ts`, `features/mortality/server.ts` (new), repo/service files, 2 consumers
 
-- [ ] T10.1 RED: Confirm boundary test flags `features/mortality/index.ts`
-- [ ] T10.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T10.3 GREEN: Rewrite 2 server consumers; update mocks
-- [ ] T10.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(mortality): split barrel into client-safe index + server-only server.ts`
+- [x] T10.1 RED: Confirm boundary test flags `features/mortality/index.ts`
+- [x] T10.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T10.3 GREEN: Rewrite 2 server consumers; update mocks
+- [x] T10.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -155,10 +155,10 @@
 **Blast radius**: 2 server consumers
 **Files affected**: `features/rag/index.ts`, `features/rag/server.ts` (new), repo/service files, 2 consumers
 
-- [ ] T11.1 RED: Confirm boundary test flags `features/rag/index.ts`
-- [ ] T11.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T11.3 GREEN: Rewrite 2 server consumers; update mocks
-- [ ] T11.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(rag): split barrel into client-safe index + server-only server.ts`
+- [x] T11.1 RED: Confirm boundary test flags `features/rag/index.ts`
+- [x] T11.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T11.3 GREEN: Rewrite 2 server consumers; update mocks
+- [x] T11.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -167,10 +167,10 @@
 **Blast radius**: 5 server consumers
 **Files affected**: `features/farms/index.ts`, `features/farms/server.ts` (new), repo/service files, 5 consumers
 
-- [ ] T12.1 RED: Confirm boundary test flags `features/farms/index.ts`
-- [ ] T12.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T12.3 GREEN: Rewrite 5 server consumers; update mocks
-- [ ] T12.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(farms): split barrel into client-safe index + server-only server.ts`
+- [x] T12.1 RED: Confirm boundary test flags `features/farms/index.ts`
+- [x] T12.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T12.3 GREEN: Rewrite 5 server consumers; update mocks
+- [x] T12.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -179,10 +179,10 @@
 **Blast radius**: 5 server consumers
 **Files affected**: `features/lots/index.ts`, `features/lots/server.ts` (new), repo/service files, 5 consumers
 
-- [ ] T13.1 RED: Confirm boundary test flags `features/lots/index.ts`
-- [ ] T13.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T13.3 GREEN: Rewrite 5 server consumers; update mocks
-- [ ] T13.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(lots): split barrel into client-safe index + server-only server.ts`
+- [x] T13.1 RED: Confirm boundary test flags `features/lots/index.ts`
+- [x] T13.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T13.3 GREEN: Rewrite 5 server consumers; update mocks
+- [x] T13.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -191,10 +191,10 @@
 **Blast radius**: 5 server consumers
 **Files affected**: `features/operational-doc-types/index.ts`, `features/operational-doc-types/server.ts` (new), repo/service files, 5 consumers
 
-- [ ] T14.1 RED: Confirm boundary test flags `features/operational-doc-types/index.ts`
-- [ ] T14.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T14.3 GREEN: Rewrite 5 server consumers; update mocks
-- [ ] T14.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(operational-doc-types): split barrel into client-safe index + server-only server.ts`
+- [x] T14.1 RED: Confirm boundary test flags `features/operational-doc-types/index.ts`
+- [x] T14.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T14.3 GREEN: Rewrite 5 server consumers; update mocks
+- [x] T14.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -203,10 +203,10 @@
 **Blast radius**: 6 server consumers
 **Files affected**: `features/dispatch/index.ts`, `features/dispatch/server.ts` (new), repo/service files, 6 consumers
 
-- [ ] T15.1 RED: Confirm boundary test flags `features/dispatch/index.ts`
-- [ ] T15.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T15.3 GREEN: Rewrite 6 server consumers; update mocks
-- [ ] T15.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(dispatch): split barrel into client-safe index + server-only server.ts`
+- [x] T15.1 RED: Confirm boundary test flags `features/dispatch/index.ts`
+- [x] T15.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T15.3 GREEN: Rewrite 6 server consumers; update mocks
+- [x] T15.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -215,10 +215,10 @@
 **Blast radius**: 6 server consumers
 **Files affected**: `features/purchase/index.ts`, `features/purchase/server.ts` (new), repo/service files, 6 consumers
 
-- [ ] T16.1 RED: Confirm boundary test flags `features/purchase/index.ts`
-- [ ] T16.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T16.3 GREEN: Rewrite 6 server consumers; update mocks
-- [ ] T16.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(purchase): split barrel into client-safe index + server-only server.ts`
+- [x] T16.1 RED: Confirm boundary test flags `features/purchase/index.ts`
+- [x] T16.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T16.3 GREEN: Rewrite 6 server consumers; update mocks
+- [x] T16.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -227,10 +227,10 @@
 **Blast radius**: 6 server consumers
 **Files affected**: `features/sale/index.ts`, `features/sale/server.ts` (new), repo/service files, 6 consumers
 
-- [ ] T17.1 RED: Confirm boundary test flags `features/sale/index.ts`
-- [ ] T17.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T17.3 GREEN: Rewrite 6 server consumers; update mocks
-- [ ] T17.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(sale): split barrel into client-safe index + server-only server.ts`
+- [x] T17.1 RED: Confirm boundary test flags `features/sale/index.ts`
+- [x] T17.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T17.3 GREEN: Rewrite 6 server consumers; update mocks
+- [x] T17.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -239,10 +239,10 @@
 **Blast radius**: 7 server consumers
 **Files affected**: `features/payables/index.ts`, `features/payables/server.ts` (new), repo/service files, 7 consumers
 
-- [ ] T18.1 RED: Confirm boundary test flags `features/payables/index.ts`
-- [ ] T18.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T18.3 GREEN: Rewrite 7 server consumers; update mocks
-- [ ] T18.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(payables): split barrel into client-safe index + server-only server.ts`
+- [x] T18.1 RED: Confirm boundary test flags `features/payables/index.ts`
+- [x] T18.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T18.3 GREEN: Rewrite 7 server consumers; update mocks
+- [x] T18.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -251,10 +251,10 @@
 **Blast radius**: 7 server consumers
 **Files affected**: `features/product-types/index.ts`, `features/product-types/server.ts` (new), repo/service files, 7 consumers
 
-- [ ] T19.1 RED: Confirm boundary test flags `features/product-types/index.ts`
-- [ ] T19.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T19.3 GREEN: Rewrite 7 server consumers; update mocks
-- [ ] T19.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(product-types): split barrel into client-safe index + server-only server.ts`
+- [x] T19.1 RED: Confirm boundary test flags `features/product-types/index.ts`
+- [x] T19.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T19.3 GREEN: Rewrite 7 server consumers; update mocks
+- [x] T19.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -263,10 +263,10 @@
 **Blast radius**: 7 server consumers
 **Files affected**: `features/receivables/index.ts`, `features/receivables/server.ts` (new), repo/service files, 7 consumers
 
-- [ ] T20.1 RED: Confirm boundary test flags `features/receivables/index.ts`
-- [ ] T20.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T20.3 GREEN: Rewrite 7 server consumers; update mocks
-- [ ] T20.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(receivables): split barrel into client-safe index + server-only server.ts`
+- [x] T20.1 RED: Confirm boundary test flags `features/receivables/index.ts`
+- [x] T20.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T20.3 GREEN: Rewrite 7 server consumers; update mocks
+- [x] T20.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -275,10 +275,10 @@
 **Blast radius**: 8 server consumers
 **Files affected**: `features/payment/index.ts`, `features/payment/server.ts` (new), repo/service files, 8 consumers
 
-- [ ] T21.1 RED: Confirm boundary test flags `features/payment/index.ts`
-- [ ] T21.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T21.3 GREEN: Rewrite 8 server consumers (note: cross-feature server-to-server imports from `sale` must use `@/features/sale/server`); update mocks
-- [ ] T21.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(payment): split barrel into client-safe index + server-only server.ts`
+- [x] T21.1 RED: Confirm boundary test flags `features/payment/index.ts`
+- [x] T21.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T21.3 GREEN: Rewrite 8 server consumers (note: cross-feature server-to-server imports from `sale` must use `@/features/sale/server`); update mocks
+- [x] T21.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -287,10 +287,10 @@
 **Blast radius**: 10 server consumers
 **Files affected**: `features/voucher-types/index.ts`, `features/voucher-types/server.ts` (new), repo/service files, 10 consumers
 
-- [ ] T22.1 RED: Confirm boundary test flags `features/voucher-types/index.ts`
-- [ ] T22.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T22.3 GREEN: Rewrite 10 server consumers; update mocks
-- [ ] T22.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(voucher-types): split barrel into client-safe index + server-only server.ts`
+- [x] T22.1 RED: Confirm boundary test flags `features/voucher-types/index.ts`
+- [x] T22.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T22.3 GREEN: Rewrite 10 server consumers; update mocks
+- [x] T22.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; committed
 
 ---
 
@@ -299,12 +299,12 @@
 **Blast radius**: 11 server consumers
 **Files affected**: `features/organizations/index.ts`, `features/organizations/server.ts` (new), `organizations.repository.ts`, `organizations.service.ts`, `members.service.ts`, `roles.repository.ts`, `roles.service.ts`, 11 consumers
 
-- [ ] T23.1 RED: Confirm boundary test flags `features/organizations/index.ts`
-- [ ] T23.2 GREEN: Create `features/organizations/server.ts` with `import "server-only"` + re-exports of `OrganizationsRepository`, `OrganizationsService`, `MembersService`, `RolesRepository`, `RolesService`
-- [ ] T23.3 GREEN: Strip server exports from `features/organizations/index.ts`; keep types, validation exports
-- [ ] T23.4 GREEN: Add `import "server-only"` to `organizations.repository.ts`, `organizations.service.ts`, `members.service.ts`, `roles.repository.ts`, `roles.service.ts`
-- [ ] T23.5 GREEN: Rewrite 11 server consumers; update mocks (note: `roles.service.singleton.ts` — confirm if it is a server file and needs stamp)
-- [ ] T23.6 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(organizations): split barrel into client-safe index + server-only server.ts`
+- [x] T23.1 RED: Confirm boundary test flags `features/organizations/index.ts`
+- [x] T23.2 GREEN: Create `features/organizations/server.ts` with `import "server-only"` + re-exports of `OrganizationsRepository`, `OrganizationsService`, `MembersService`, `RolesRepository`, `RolesService`
+- [x] T23.3 GREEN: Strip server exports from `features/organizations/index.ts`; keep types, validation exports
+- [x] T23.4 GREEN: Add `import "server-only"` to all 5 repo/service files + `roles.service.singleton.ts` (6 total — singleton confirmed server-only via Prisma transitive import)
+- [x] T23.5 GREEN: Rewrite 11 server consumers (5 pages + 6 API routes); update 5 test vi.mock paths
+- [x] T23.6 REFACTOR: vitest 1864/1867 pass; committed
 
 ---
 
@@ -313,10 +313,10 @@
 **Blast radius**: 13 server consumers
 **Files affected**: `features/account-balances/index.ts`, `features/account-balances/server.ts` (new), repo/service files, 13 consumers
 
-- [ ] T24.1 RED: Confirm boundary test flags `features/account-balances/index.ts`
-- [ ] T24.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only` on repo/service files
-- [ ] T24.3 GREEN: Rewrite 13 server consumers; update mocks
-- [ ] T24.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(account-balances): split barrel into client-safe index + server-only server.ts`
+- [x] T24.1 RED: Confirm boundary test flags `features/account-balances/index.ts`
+- [x] T24.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only` on repo/service files
+- [x] T24.3 GREEN: Rewrite 13 server consumers (pages, API routes, cross-feature services/tests); update vi.mock in balances page test
+- [x] T24.4 REFACTOR: vitest 1866/1867 pass; committed (combined with T25)
 
 ---
 
@@ -325,10 +325,10 @@
 **Blast radius**: 15 server consumers
 **Files affected**: `features/org-settings/index.ts`, `features/org-settings/server.ts` (new), repo/service files, 15 consumers
 
-- [ ] T25.1 RED: Confirm boundary test flags `features/org-settings/index.ts`
-- [ ] T25.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
-- [ ] T25.3 GREEN: Rewrite 15 server consumers; update mocks
-- [ ] T25.4 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(org-settings): split barrel into client-safe index + server-only server.ts`
+- [x] T25.1 RED: Confirm boundary test flags `features/org-settings/index.ts`
+- [x] T25.2 GREEN: Create `server.ts`; strip from `index.ts`; stamp `server-only`
+- [x] T25.3 GREEN: Rewrite 16 consumers (15+1 extra: settings/route.ts splits OrgSettingsService→/server, updateOrgSettingsSchema→/index); update 4 test vi.mock paths
+- [x] T25.4 REFACTOR: vitest 1866/1867 pass (1 remaining = accounting/T26); committed
 
 ---
 
