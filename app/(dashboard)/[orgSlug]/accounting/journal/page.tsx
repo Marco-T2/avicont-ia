@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { JournalService } from "@/features/accounting";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { VoucherTypesService } from "@/features/voucher-types";
+import { VoucherTypesService } from "@/features/voucher-types/server";
 import JournalEntryList from "@/components/accounting/journal-entry-list";
 
 interface JournalPageProps {

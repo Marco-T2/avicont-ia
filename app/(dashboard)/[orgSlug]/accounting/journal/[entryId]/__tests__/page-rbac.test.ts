@@ -44,7 +44,7 @@ vi.mock("@/features/fiscal-periods/server", () => {
   return { FiscalPeriodsService };
 });
 
-vi.mock("@/features/voucher-types", () => {
+vi.mock("@/features/voucher-types/server", () => {
   class VoucherTypesService {
     list = mockVoucherTypesList;
   }

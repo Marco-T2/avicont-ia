@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { VoucherTypesService } from "@/features/voucher-types";
+import { VoucherTypesService } from "@/features/voucher-types/server";
 import CorrelationAuditView from "@/components/accounting/correlation-audit-view";
 
 interface CorrelationAuditPageProps {
