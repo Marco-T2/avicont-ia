@@ -36,17 +36,11 @@ const mockServiceInstance = {
   listAll: vi.fn(),
 };
 
-vi.mock("@/features/document-signature-config", async () => {
-  const actual = await vi.importActual<
-    typeof import("@/features/document-signature-config")
-  >("@/features/document-signature-config");
-  return {
-    ...actual,
-    DocumentSignatureConfigService: vi.fn().mockImplementation(function () {
-      return mockServiceInstance;
-    }),
-  };
-});
+vi.mock("@/features/document-signature-config/server", () => ({
+  DocumentSignatureConfigService: vi.fn().mockImplementation(function () {
+    return mockServiceInstance;
+  }),
+}));
 
 import {
   requireAuth,
