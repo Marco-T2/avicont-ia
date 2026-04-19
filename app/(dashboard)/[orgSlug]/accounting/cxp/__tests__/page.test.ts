@@ -22,7 +22,7 @@ vi.mock("@/features/contacts/server", () => {
   return { ContactsService };
 });
 
-vi.mock("@/features/payables", () => {
+vi.mock("@/features/payables/server", () => {
   class PayablesService {
     list = mockList;
   }
