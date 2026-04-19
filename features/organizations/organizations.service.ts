@@ -4,7 +4,7 @@ import {
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/shared/users.service";
-import { VoucherTypesService } from "@/features/voucher-types";
+import { VoucherTypesService } from "@/features/voucher-types/server";
 import { prisma } from "@/lib/prisma";
 import { buildSystemRolePayloads } from "@/prisma/seed-system-roles";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";

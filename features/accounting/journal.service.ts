@@ -31,7 +31,7 @@ import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { VoucherTypesService } from "@/features/voucher-types";
+import { VoucherTypesService } from "@/features/voucher-types/server";
 import { ContactsService } from "@/features/contacts/server";
 import type { JournalEntryStatus, Account } from "@/generated/prisma/client";
 import type {

@@ -54,7 +54,7 @@ vi.mock("@/features/fiscal-periods/server", () => ({
   }),
 }));
 
-vi.mock("@/features/voucher-types", () => ({
+vi.mock("@/features/voucher-types/server", () => ({
   VoucherTypesService: vi.fn().mockImplementation(function () {
     return { list: vi.fn().mockResolvedValue([]) };
   }),

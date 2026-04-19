@@ -18,7 +18,7 @@ vi.mock("@/features/shared/middleware", () => ({
 }));
 
 // Mock VoucherTypesService to avoid unrelated DB calls
-vi.mock("@/features/voucher-types", () => {
+vi.mock("@/features/voucher-types/server", () => {
   class VoucherTypesService {
     seedForOrg = vi.fn().mockResolvedValue([]);
   }
