@@ -1,3 +1,4 @@
+import "server-only";
 import type { DocumentScope } from "@/features/shared/permissions";
 import { EmbeddingService } from "./embedding.service";
 import { VectorRepository } from "./vector.repository";
