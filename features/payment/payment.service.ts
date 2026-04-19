@@ -22,12 +22,12 @@ import {
 import { computeReceivableStatus, computePayableStatus } from "@/features/shared/accounting-helpers";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { PaymentRepository } from "./payment.repository";
-import { OrgSettingsService } from "@/features/org-settings";
+import { OrgSettingsService } from "@/features/org-settings/server";
 import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
-import { AccountBalancesService } from "@/features/account-balances";
+import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type {
   PaymentWithRelations,

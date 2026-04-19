@@ -24,13 +24,13 @@ import { setAuditContext } from "@/features/shared/audit-context";
 import { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
 import type { ComputedDetail, BcSummary } from "./dispatch.repository";
-import { OrgSettingsService } from "@/features/org-settings";
+import { OrgSettingsService } from "@/features/org-settings/server";
 import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
 import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "@/features/receivables/receivables.repository";
-import { AccountBalancesService } from "@/features/account-balances";
+import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { DispatchType } from "@/generated/prisma/client";
 import type {

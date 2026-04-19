@@ -1,3 +1,4 @@
+import "server-only";
 import { OrgSettingsRepository } from "./org-settings.repository";
 import type { OrgSettings, UpdateOrgSettingsInput } from "./org-settings.types";
 

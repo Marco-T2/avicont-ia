@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { OrgSettingsService } from "@/features/org-settings";
+import { OrgSettingsService } from "@/features/org-settings/server";
 import { OrgSettingsForm } from "@/components/settings/org-settings-form";
 
 const settingsService = new OrgSettingsService();
