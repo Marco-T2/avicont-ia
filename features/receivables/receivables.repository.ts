@@ -1,3 +1,4 @@
+import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { ReceivableStatus } from "@/generated/prisma/client";
