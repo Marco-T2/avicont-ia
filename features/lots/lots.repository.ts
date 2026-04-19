@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { ChickenLot } from "@/generated/prisma/client";
 import type { CreateLotInput, LotWithRelations } from "./lots.types";
