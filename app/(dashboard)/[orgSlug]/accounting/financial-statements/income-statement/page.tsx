@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess, requireRole } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { IncomeStatementPageClient } from "@/components/financial-statements/income-statement-page-client";
 
 interface IncomeStatementPageProps {
@@ -11,24 +11,8 @@ export default async function IncomeStatementPage({
 }: IncomeStatementPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
   try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
-  let orgId: string;
-  try {
-    orgId = await requireOrgAccess(userId, orgSlug);
-  } catch {
-    redirect("/select-org");
-  }
-
-  // Solo owner, admin y contador pueden ver el Estado de Resultados (REQ-13)
-  try {
-    await requireRole(userId, orgId, ["owner", "admin", "contador"]);
+    await requirePermission("reports", "read", orgSlug);
   } catch {
     redirect(`/${orgSlug}`);
   }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { JournalService } from "@/features/accounting";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import { VoucherTypesService } from "@/features/voucher-types";
@@ -17,19 +17,12 @@ export default async function JournalPage({
   const { orgSlug } = await params;
   const sp = await searchParams;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("journal", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const journalService = new JournalService();

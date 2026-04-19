@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess, requireRole } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import { MonthlyClosePanel } from "@/components/settings/monthly-close-panel";
 
@@ -14,15 +14,13 @@ export default async function MonthlyClosePage({ params }: MonthlyClosePageProps
 
   let orgId: string;
   try {
-    const session = await requireAuth();
-    const userId = session.userId;
-    orgId = await requireOrgAccess(userId, orgSlug);
-    await requireRole(userId, orgId, ["owner", "admin"]);
+    const result = await requirePermission("journal", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/sign-in");
+    redirect(`/${orgSlug}`);
   }
 
-  const periods = await periodsService.list(orgId!);
+  const periods = await periodsService.list(orgId);
 
   return (
     <div className="space-y-6">
