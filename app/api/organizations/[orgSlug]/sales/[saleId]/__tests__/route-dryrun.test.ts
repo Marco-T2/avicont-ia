@@ -37,7 +37,7 @@ const mockSaleServiceInstance = {
   getEditPreview: vi.fn(),
 };
 
-vi.mock("@/features/sale", async (importOriginal) => {
+vi.mock("@/features/sale/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/sale")>();
   return {
     ...actual,
