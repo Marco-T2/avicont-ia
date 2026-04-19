@@ -14,6 +14,7 @@ interface FarmsPageProps {
 export default async function FarmsPage({ params }: FarmsPageProps) {
   const { orgSlug } = await params;
 
+  // RBAC-EXCEPTION: Cross-module auth-only; no farms resource in frozen Resource union. Decision: rbac-legacy-auth-chain-migration 2026-04-19.
   let userId: string;
   try {
     const session = await requireAuth();

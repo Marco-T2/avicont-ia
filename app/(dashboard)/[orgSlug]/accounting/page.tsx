@@ -23,6 +23,7 @@ interface AccountingPageProps {
 export default async function AccountingPage({ params }: AccountingPageProps) {
   const { orgSlug } = await params;
 
+  // RBAC-EXCEPTION: Dashboard hub with summary cards only; sub-sections each gated. Hub gate redundant. Decision: rbac-legacy-auth-chain-migration 2026-04-19.
   let userId: string;
   try {
     const session = await requireAuth();

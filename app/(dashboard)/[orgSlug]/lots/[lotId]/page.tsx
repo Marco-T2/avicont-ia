@@ -12,6 +12,7 @@ interface LotDetailPageProps {
 export default async function LotDetailPage({ params }: LotDetailPageProps) {
   const { orgSlug, lotId } = await params;
 
+  // RBAC-EXCEPTION: Cross-module auth-only; no lots resource in frozen Resource union. Decision: rbac-legacy-auth-chain-migration 2026-04-19.
   let userId: string;
   try {
     const session = await requireAuth();
