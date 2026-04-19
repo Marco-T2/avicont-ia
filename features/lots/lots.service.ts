@@ -1,3 +1,4 @@
+import "server-only";
 import { NotFoundError, ValidationError } from "@/features/shared/errors";
 import { LotsRepository } from "./lots.repository";
 import type {

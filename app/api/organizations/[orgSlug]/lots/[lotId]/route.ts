@@ -3,7 +3,8 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
-import { LotsService, closeLotSchema } from "@/features/lots";
+import { LotsService } from "@/features/lots/server";
+import { closeLotSchema } from "@/features/lots";
 
 const service = new LotsService();
 
