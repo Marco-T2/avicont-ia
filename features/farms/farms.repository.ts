@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { Farm } from "@/generated/prisma/client";
 import type { CreateFarmInput, UpdateFarmInput, FarmWithLots } from "./farms.types";

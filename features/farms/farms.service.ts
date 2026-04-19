@@ -1,3 +1,4 @@
+import "server-only";
 import { NotFoundError, ConflictError } from "@/features/shared/errors";
 import { FarmsRepository } from "./farms.repository";
 import { OrganizationsService } from "@/features/organizations/organizations.service";
