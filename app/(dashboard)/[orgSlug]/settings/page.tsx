@@ -1,16 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  Settings,
-  Calendar,
-  Receipt,
-  Package,
-  FileText,
-  Users,
-  ShieldCheck,
-  type LucideIcon,
-} from "lucide-react";
 import { requirePermission } from "@/features/shared/permissions.server";
 import {
   Card,
@@ -19,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { SETTINGS_CARDS } from "@/lib/settings/settings-cards";
 
 interface SettingsHubPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -27,66 +18,6 @@ interface SettingsHubPageProps {
 export const metadata: Metadata = {
   title: "Configuración",
 };
-
-interface SettingsCard {
-  id: string;
-  title: string;
-  description: string;
-  href: (orgSlug: string) => string;
-  Icon: LucideIcon;
-}
-
-const SETTINGS_CARDS: SettingsCard[] = [
-  {
-    id: "general",
-    title: "Configuración General",
-    description: "Cuentas contables y parámetros de la organización",
-    href: (orgSlug) => `/${orgSlug}/settings/general`,
-    Icon: Settings,
-  },
-  {
-    id: "periods",
-    title: "Períodos Fiscales",
-    description: "Apertura y cierre de períodos contables",
-    href: (orgSlug) => `/${orgSlug}/settings/periods`,
-    Icon: Calendar,
-  },
-  {
-    id: "voucher-types",
-    title: "Tipos de Comprobante",
-    description: "Prefijos y correlativos de comprobantes",
-    href: (orgSlug) => `/${orgSlug}/settings/voucher-types`,
-    Icon: Receipt,
-  },
-  {
-    id: "product-types",
-    title: "Tipos de Producto",
-    description: "Catálogo de productos y sus cuentas asociadas",
-    href: (orgSlug) => `/${orgSlug}/settings/product-types`,
-    Icon: Package,
-  },
-  {
-    id: "operational-doc-types",
-    title: "Tipos de Documento",
-    description: "Documentos operativos (remitos, órdenes, etc.)",
-    href: (orgSlug) => `/${orgSlug}/settings/operational-doc-types`,
-    Icon: FileText,
-  },
-  {
-    id: "members",
-    title: "Miembros",
-    description: "Invitaciones y asignación de roles por usuario",
-    href: (orgSlug) => `/${orgSlug}/members`,
-    Icon: Users,
-  },
-  {
-    id: "roles",
-    title: "Roles y Permisos",
-    description: "Matriz de qué puede hacer cada rol en cada módulo",
-    href: (orgSlug) => `/${orgSlug}/settings/roles`,
-    Icon: ShieldCheck,
-  },
-];
 
 export default async function SettingsHubPage({ params }: SettingsHubPageProps) {
   const { orgSlug } = await params;

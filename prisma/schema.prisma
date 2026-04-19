@@ -41,6 +41,8 @@ model Organization {
   ivaPurchaseBooks      IvaPurchaseBook[]
   ivaSalesBooks         IvaSalesBook[]
   customRoles           CustomRole[]
+  profile                  OrgProfile?
+  documentSignatureConfigs DocumentSignatureConfig[]
 
   @@map("organizations")
 }
@@ -1020,4 +1022,59 @@ model IvaSalesBook {
   @@unique([organizationId, numeroFactura, codigoAutorizacion])
   @@index([organizationId, fiscalPeriodId])
   @@map("iva_sales_books")
+}
+
+// ── Organization Profile & Document Signature Configs ────────────────────────
+
+enum SignatureLabel {
+  ELABORADO
+  APROBADO
+  VISTO_BUENO
+  PROPIETARIO
+  REVISADO
+  REGISTRADO
+  CONTABILIZADO
+}
+
+enum DocumentPrintType {
+  BALANCE_GENERAL
+  ESTADO_RESULTADOS
+  COMPROBANTE
+  DESPACHO
+  VENTA
+  COMPRA
+  COBRO
+  PAGO
+}
+
+model OrgProfile {
+  id             String   @id @default(cuid())
+  organizationId String   @unique
+  razonSocial    String   @default("")
+  nit            String   @default("")
+  direccion      String   @default("")
+  ciudad         String   @default("")
+  telefono       String   @default("")
+  nroPatronal    String?
+  logoUrl        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@map("org_profile")
+}
+
+model DocumentSignatureConfig {
+  id              String            @id @default(cuid())
+  organizationId  String
+  documentType    DocumentPrintType
+  labels          SignatureLabel[]
+  showReceiverRow Boolean           @default(false)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+  organization    Organization      @relation(fields: [organizationId], references: [id])
+
+  @@unique([organizationId, documentType])
+  @@index([organizationId])
+  @@map("document_signature_config")
 }
