@@ -4,7 +4,7 @@ import { ContactsService } from "@/features/contacts/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
 import { AccountsRepository } from "@/features/accounting";
-import { OrgSettingsService } from "@/features/org-settings";
+import { OrgSettingsService } from "@/features/org-settings/server";
 import PaymentForm from "@/components/payments/payment-form";
 
 interface NewPaymentPageProps {

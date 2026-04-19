@@ -1,3 +1,4 @@
+import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { AccountBalancesRepository } from "./account-balances.repository";
 import type { AccountBalanceWithRelations } from "./account-balances.types";

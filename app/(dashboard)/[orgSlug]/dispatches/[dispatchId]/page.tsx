@@ -4,7 +4,7 @@ import { DispatchService } from "@/features/dispatch/server";
 import { ContactsService } from "@/features/contacts/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { ProductTypesService } from "@/features/product-types/server";
-import { OrgSettingsService } from "@/features/org-settings";
+import { OrgSettingsService } from "@/features/org-settings/server";
 import DispatchForm from "@/components/dispatches/dispatch-form";
 
 interface DispatchDetailPageProps {

@@ -41,14 +41,14 @@ vi.mock("@/features/fiscal-periods/server", () => {
   return { FiscalPeriodsService };
 });
 
-vi.mock("@/features/product-types", () => {
+vi.mock("@/features/product-types/server", () => {
   class ProductTypesService {
     list = mockProductTypesList;
   }
   return { ProductTypesService };
 });
 
-vi.mock("@/features/org-settings", () => {
+vi.mock("@/features/org-settings/server", () => {
   class OrgSettingsService {
     getOrCreate = mockOrgSettingsGetOrCreate;
   }

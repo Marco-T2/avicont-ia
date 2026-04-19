@@ -57,7 +57,7 @@ vi.mock("@/features/accounting", () => {
   return { AccountsRepository };
 });
 
-vi.mock("@/features/org-settings", () => {
+vi.mock("@/features/org-settings/server", () => {
   class OrgSettingsService {
     getOrCreate = mockOrgSettingsGetOrCreate;
   }
