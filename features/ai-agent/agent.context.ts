@@ -1,6 +1,6 @@
 import type { Role } from "@/features/shared/permissions";
 import { getRagScopes } from "@/features/shared/permissions";
-import { RagService } from "@/features/rag";
+import { RagService } from "@/features/rag/server";
 import { AgentContextRepository } from "./agent-context.repository";
 
 const ragService = new RagService();

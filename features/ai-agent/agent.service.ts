@@ -1,3 +1,4 @@
+import "server-only";
 import { queryWithTools } from "./gemini.client";
 import { getToolsForRole, isWriteAction } from "./agent.tools";
 import { buildAgentContext, buildRagContext } from "./agent.context";
@@ -24,7 +25,7 @@ const AGENT_ROLE_LABELS: Record<Role, AgentLabel> = {
 
 import { FarmsService } from "@/features/farms";
 import { LotsService } from "@/features/lots";
-import { PricingService } from "@/features/pricing";
+import { PricingService } from "@/features/pricing/server";
 
 const farmsService = new FarmsService();
 const lotsService = new LotsService();

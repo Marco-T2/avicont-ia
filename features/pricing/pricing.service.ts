@@ -1,3 +1,4 @@
+import "server-only";
 import { LotsService } from "@/features/lots/lots.service";
 import { ExpensesService } from "@/features/expenses/expenses.service";
 import { MortalityService } from "@/features/mortality/mortality.service";
