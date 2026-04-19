@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
+import { ContactsService } from "@/features/contacts/server";
 import {
-  ContactsService,
   createContactSchema,
   contactFiltersSchema,
 } from "@/features/contacts";

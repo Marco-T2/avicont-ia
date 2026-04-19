@@ -4,7 +4,8 @@ import {
   handleError,
 } from "@/features/shared/middleware";
 import { UsersService } from "@/features/shared/users.service";
-import { MortalityService, logMortalitySchema } from "@/features/mortality";
+import { MortalityService } from "@/features/mortality/server";
+import { logMortalitySchema } from "@/features/mortality";
 
 const usersService = new UsersService();
 const service = new MortalityService();
