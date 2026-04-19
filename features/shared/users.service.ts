@@ -1,3 +1,4 @@
+import "server-only";
 import { NotFoundError } from "./errors";
 import { UsersRepository, type CreateUserInput } from "./users.repository";
 import type { User } from "@/generated/prisma/client";

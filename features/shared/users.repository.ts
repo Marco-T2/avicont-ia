@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "./base.repository";
 import type { User } from "@/generated/prisma/client";
 
