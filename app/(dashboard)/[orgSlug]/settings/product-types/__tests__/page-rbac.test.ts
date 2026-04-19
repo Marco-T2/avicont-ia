@@ -17,7 +17,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/product-types", () => {
+vi.mock("@/features/product-types/server", () => {
   class ProductTypesService {
     list = mockList;
   }
