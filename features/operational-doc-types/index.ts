@@ -1,5 +1,3 @@
-export { OperationalDocTypesService } from "./operational-doc-types.service";
-export { OperationalDocTypesRepository } from "./operational-doc-types.repository";
 export type {
   OperationalDocType,
   OperationalDocDirection,

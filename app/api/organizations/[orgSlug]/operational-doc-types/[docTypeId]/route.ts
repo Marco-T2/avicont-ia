@@ -1,9 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import {
-  OperationalDocTypesService,
-  updateOperationalDocTypeSchema,
-} from "@/features/operational-doc-types";
+import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
+import { updateOperationalDocTypeSchema } from "@/features/operational-doc-types";
 import { ConflictError } from "@/features/shared/errors";
 
 const service = new OperationalDocTypesService();
