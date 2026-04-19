@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth, requireOrgAccess } from "@/features/shared";
-import { FarmsService } from "@/features/farms";
-import { LotsService } from "@/features/lots";
+import { FarmsService } from "@/features/farms/server";
+import { LotsService } from "@/features/lots/server";
 import FarmDetailClient from "./farm-detail-client";
 
 interface FarmDetailPageProps {

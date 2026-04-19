@@ -3,7 +3,7 @@ import {
   requireOrgAccess,
   handleError,
 } from "@/features/shared/middleware";
-import { FarmsService } from "@/features/farms";
+import { FarmsService } from "@/features/farms/server";
 import { createFarmSchema } from "@/features/farms";
 
 const service = new FarmsService();

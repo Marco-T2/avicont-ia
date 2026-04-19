@@ -23,8 +23,8 @@ const AGENT_ROLE_LABELS: Record<Role, AgentLabel> = {
 
 // ── Ejecutores de herramientas de solo lectura ──
 
-import { FarmsService } from "@/features/farms";
-import { LotsService } from "@/features/lots";
+import { FarmsService } from "@/features/farms/server";
+import { LotsService } from "@/features/lots/server";
 import { PricingService } from "@/features/pricing/server";
 
 const farmsService = new FarmsService();
