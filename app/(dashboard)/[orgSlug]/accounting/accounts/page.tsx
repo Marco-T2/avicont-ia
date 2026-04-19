@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { AccountsService } from "@/features/accounting";
+import { AccountsService } from "@/features/accounting/server";
 import AccountsPageClient from "@/components/accounting/accounts-page-client";
 
 interface AccountsPageProps {

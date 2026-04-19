@@ -106,8 +106,9 @@ function parseExports(indexPath: string, featureDir: string): ParseResult {
 
 /**
  * Collect all "server features": features that have at least one
- * *.repository.ts or *.service.ts at their root (direct children only,
- * not sub-directories — accounting sub-barrels are separate features).
+ * *.repository.ts or *.service.ts at their root (direct children only).
+ * Also recurses one level into accounting sub-barrels
+ * (iva-books, financial-statements) which each have their own index.ts.
  */
 function getServerFeatures(): Array<{ name: string; indexPath: string }> {
   const features: Array<{ name: string; indexPath: string }> = [];
@@ -122,6 +123,18 @@ function getServerFeatures(): Array<{ name: string; indexPath: string }> {
     if (!hasServerCode(featureDir)) continue;
 
     features.push({ name: entry.name, indexPath });
+
+    // Recurse one level into sub-directories that also have their own
+    // index.ts and server code (e.g. accounting/iva-books, accounting/financial-statements)
+    const subEntries = fs.readdirSync(featureDir, { withFileTypes: true });
+    for (const sub of subEntries) {
+      if (!sub.isDirectory()) continue;
+      const subDir = path.join(featureDir, sub.name);
+      const subIndex = path.join(subDir, "index.ts");
+      if (!fs.existsSync(subIndex)) continue;
+      if (!hasServerCode(subDir)) continue;
+      features.push({ name: `${entry.name}/${sub.name}`, indexPath: subIndex });
+    }
   }
 
   return features;

@@ -36,7 +36,7 @@ vi.mock("@/features/shared/users.service", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting", () => ({
+vi.mock("@/features/accounting/server", () => ({
   JournalService: vi.fn().mockImplementation(function () {
     return { transitionStatus: mockTransitionStatus };
   }),

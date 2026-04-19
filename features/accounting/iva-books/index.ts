@@ -1,10 +1,3 @@
-// ── Repository ────────────────────────────────────────────────────────────────
-export { IvaBooksRepository } from "./iva-books.repository";
-export type { ListIvaBooksFilter } from "./iva-books.repository";
-
-// ── Service ───────────────────────────────────────────────────────────────────
-export { IvaBooksService } from "./iva-books.service";
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 export type {
   IvaBookStatus,

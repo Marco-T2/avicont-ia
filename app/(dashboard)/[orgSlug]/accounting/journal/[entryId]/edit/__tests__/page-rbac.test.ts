@@ -34,7 +34,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/accounting", () => {
+vi.mock("@/features/accounting/server", () => {
   class JournalService {
     getById = mockGetById;
   }

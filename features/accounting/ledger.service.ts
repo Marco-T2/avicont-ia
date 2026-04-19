@@ -1,3 +1,4 @@
+import "server-only";
 import { NotFoundError } from "@/features/shared/errors";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";

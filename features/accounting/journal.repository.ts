@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { JournalEntryStatus, Prisma } from "@/generated/prisma/client";
 import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";

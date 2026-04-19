@@ -64,7 +64,7 @@ vi.mock("@/features/operational-doc-types/server", () => {
   return { OperationalDocTypesService };
 });
 
-vi.mock("@/features/accounting", () => {
+vi.mock("@/features/accounting/server", () => {
   class AccountsRepository {
     findDetailChildrenByParentCodes = mockAccountsFindChildren;
   }

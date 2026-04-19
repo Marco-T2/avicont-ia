@@ -1,3 +1,4 @@
+import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { ValidationError, FISCAL_PERIOD_CLOSED } from "@/features/shared/errors";
 import { calcTotales } from "./iva-calc.utils";
