@@ -3,7 +3,7 @@
  *
  * REQ-ui-gating (resource=payments, action=write):
  * - matrix: payments write = [owner, admin, contador, cobrador]
- * - auxiliar/member → acciones OCULTAS (Guardar Borrador, Contabilizar)
+ * - member → acciones OCULTAS (Guardar Borrador, Contabilizar)
  * - cobrador/contador/admin/owner → VISIBLES
  */
 
@@ -78,8 +78,8 @@ function renderNewForm() {
 }
 
 describe("PaymentForm — RBAC gating (payments/write)", () => {
-  it("T6.1-pa-1 — role=auxiliar: Guardar Borrador + Contabilizar OCULTOS", () => {
-    mockRole.current = "auxiliar";
+  it("T6.1-pa-1 — role=member: Guardar Borrador + Contabilizar OCULTOS", () => {
+    mockRole.current = "member";
     renderNewForm();
 
     expect(screen.queryByRole("button", { name: /guardar borrador/i })).not.toBeInTheDocument();

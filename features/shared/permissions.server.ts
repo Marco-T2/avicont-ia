@@ -14,7 +14,7 @@ import type { Action, Resource, PostableResource } from "./permissions";
  * Internal implementation is now DB-backed via permissions.cache (D.3 / P.3mod).
  *
  * Seed fallback (D.6 / CR.1-S3): if the org has 0 custom_roles rows, seeds the
- * 6 system roles inline before re-evaluating. Prevents a 500 on newly created
+ * 5 system roles inline before re-evaluating. Prevents a 500 on newly created
  * orgs or orgs that missed the migration.
  */
 export async function requirePermission(
@@ -25,7 +25,7 @@ export async function requirePermission(
   const session = await requireAuth();
   const orgId = await requireOrgAccess(session.userId, orgSlug);
 
-  // Load permission matrix from cache, seeding 6 system roles if the org has none.
+  // Load permission matrix from cache, seeding 5 system roles if the org has none.
   // ensureOrgSeeded handles the D.6 / CR.1-S3 fallback: if roles.size === 0, seeds
   // the org, revalidates the cache, and reloads. Seed failures are swallowed silently
   // so test environments without a DB don't crash.

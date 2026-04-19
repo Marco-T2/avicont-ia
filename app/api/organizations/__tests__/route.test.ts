@@ -1,8 +1,8 @@
 /**
- * PR8.1 RED — syncOrganization webhook seeds 6 system roles on new org creation
+ * PR8.1 RED — syncOrganization webhook seeds 5 system roles on new org creation
  *
  * Tests:
- * (a) NEW org created → prisma.customRole.createMany called with 6 system role payloads + skipDuplicates:true
+ * (a) NEW org created → prisma.customRole.createMany called with 5 system role payloads + skipDuplicates:true
  * (b) EXISTING org returned (no create) → createMany NOT called
  * (c) createMany receives correct orgId (the DB-assigned id, not the Clerk id)
  * (d) Missing required fields → 400, createMany NOT called
@@ -42,7 +42,7 @@ vi.mock("@/lib/prisma", () => ({
       upsert: vi.fn(),
     },
     customRole: {
-      createMany: vi.fn().mockResolvedValue({ count: 6 }),
+      createMany: vi.fn().mockResolvedValue({ count: 5 }),
     },
     voucherType: {
       createMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -105,8 +105,8 @@ beforeEach(() => {
   mockedRequireAuth.mockResolvedValue({ userId: CLERK_USER_ID } as never);
 });
 
-describe("PR8.1 — POST /api/organizations seeds 6 system roles on new org", () => {
-  it("(a) new org created → createMany called with 6 system roles + skipDuplicates:true", async () => {
+describe("PR8.1 — POST /api/organizations seeds 5 system roles on new org", () => {
+  it("(a) new org created → createMany called with 5 system roles + skipDuplicates:true", async () => {
     // Org does not exist yet → findUnique returns null
     mockedOrgFindUnique.mockResolvedValue(null);
     mockedOrgCreate.mockResolvedValue(makeOrg());
@@ -135,9 +135,9 @@ describe("PR8.1 — POST /api/organizations seeds 6 system roles on new org", ()
     expect(call).toBeDefined();
     expect(call!.skipDuplicates).toBe(true);
 
-    // Must produce exactly 6 rows
+    // Must produce exactly 5 rows
     const data = call!.data as Array<{ slug: string; organizationId: string; isSystem: boolean }>;
-    expect(data).toHaveLength(6);
+    expect(data).toHaveLength(5);
 
     // Each row has the correct orgId and isSystem:true
     for (const row of data) {
@@ -145,7 +145,7 @@ describe("PR8.1 — POST /api/organizations seeds 6 system roles on new org", ()
       expect(row.isSystem).toBe(true);
     }
 
-    // All 6 system role slugs present
+    // All 5 system role slugs present
     const slugs = data.map((r) => r.slug).sort();
     expect(slugs).toEqual([...SYSTEM_ROLES].sort());
   });

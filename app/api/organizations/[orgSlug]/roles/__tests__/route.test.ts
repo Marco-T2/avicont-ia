@@ -136,7 +136,6 @@ const SYSTEM_ROLES_ROWS = [
   makeSystemRole("admin"),
   makeSystemRole("contador"),
   makeSystemRole("cobrador"),
-  makeSystemRole("auxiliar"),
   makeSystemRole("member"),
 ];
 
@@ -163,7 +162,7 @@ beforeEach(() => {
 // ─── GET ─────────────────────────────────────────────────────────────────────
 
 describe("GET /api/organizations/[orgSlug]/roles", () => {
-  it("(a) returns 200 with { roles: [...] } containing 6 system rows for admin caller", async () => {
+  it("(a) returns 200 with { roles: [...] } containing 5 system rows for admin caller", async () => {
     mockRolesServiceInstance.listRoles.mockResolvedValue(SYSTEM_ROLES_ROWS);
 
     const { GET } = await import("../route");
@@ -176,13 +175,12 @@ describe("GET /api/organizations/[orgSlug]/roles", () => {
 
     expect(res.status).toBe(200);
     const body = (await res.json()) as { roles: Array<{ slug: string }> };
-    expect(body.roles).toHaveLength(6);
+    expect(body.roles).toHaveLength(5);
     expect(body.roles.map((r) => r.slug)).toEqual([
       "owner",
       "admin",
       "contador",
       "cobrador",
-      "auxiliar",
       "member",
     ]);
     expect(mockRolesServiceInstance.listRoles).toHaveBeenCalledWith(ORG_ID);

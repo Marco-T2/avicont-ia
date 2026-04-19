@@ -11,7 +11,7 @@
  * Test hook: _setLoader(fn) allows tests to inject a custom loader.
  * Default loader: prisma.customRole.findMany — wired up as identity per D.6 fallback.
  *
- * ensureOrgSeeded: D.6 / CR.1-S3 shared fallback — seeds the 6 system roles when an
+ * ensureOrgSeeded: D.6 / CR.1-S3 shared fallback — seeds the 5 system roles when an
  * org has none. Shared by requirePermission (server auth gate) and buildClientMatrixSnapshot
  * (layout snapshot path) to keep the fallback behavior consistent.
  */
@@ -158,7 +158,7 @@ function _evictOldest(): void {
 }
 
 /**
- * Ensures an org's permission matrix has at least the 6 system roles.
+ * Ensures an org's permission matrix has at least the 5 system roles.
  * If the cached matrix is empty, seeds the org and returns the fresh matrix.
  * If seeding fails (e.g. test env without DB), returns the empty matrix
  * silently — callers that hard-depend on non-empty matrices handle that case.

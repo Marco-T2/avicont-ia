@@ -3,7 +3,7 @@
  *
  * REQ-ui-gating (resource=journal, action=write):
  * - matrix: journal write = [owner, admin, contador]
- * - cobrador/auxiliar/member → acciones OCULTAS (Editar, Contabilizar, Anular)
+ * - cobrador/member → acciones OCULTAS (Editar, Contabilizar, Anular)
  * - contador/admin/owner → acciones VISIBLES
  */
 
@@ -75,8 +75,8 @@ describe("JournalEntryDetail — RBAC gating (journal/write)", () => {
     expect(screen.queryByRole("button", { name: /contabilizar/i })).not.toBeInTheDocument();
   });
 
-  it("T6.1-je-2 — role=auxiliar: acciones OCULTAS", () => {
-    mockRole.current = "auxiliar";
+  it("T6.1-je-2 — role=cobrador: acciones OCULTAS", () => {
+    mockRole.current = "cobrador";
     renderDetail();
 
     expect(screen.queryByRole("link", { name: /editar/i })).not.toBeInTheDocument();

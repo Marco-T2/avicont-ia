@@ -3,7 +3,7 @@
  *
  * Tests:
  * (a) type Role = string (any string assignable to Role)
- * (b) SYSTEM_ROLES tuple === exactly ['owner','admin','contador','cobrador','auxiliar','member']
+ * (b) SYSTEM_ROLES tuple === exactly ['owner','admin','contador','cobrador','member']
  * (c) SystemRole narrows correctly via isSystemRole
  */
 import { describe, it, expect, expectTypeOf } from "vitest";
@@ -22,16 +22,15 @@ describe("PR1.2 — Role type widening", () => {
     expect(typeof customRole).toBe("string");
   });
 
-  it("(b) SYSTEM_ROLES tuple contains exactly the 6 system roles in order", () => {
+  it("(b) SYSTEM_ROLES tuple contains exactly the 5 system roles in order", () => {
     expect(SYSTEM_ROLES).toEqual([
       "owner",
       "admin",
       "contador",
       "cobrador",
-      "auxiliar",
       "member",
     ]);
-    expect(SYSTEM_ROLES).toHaveLength(6);
+    expect(SYSTEM_ROLES).toHaveLength(5);
   });
 
   it("(b) SYSTEM_ROLES is a readonly tuple (as const)", () => {
@@ -40,12 +39,12 @@ describe("PR1.2 — Role type widening", () => {
     expect(Array.isArray(SYSTEM_ROLES)).toBe(true);
   });
 
-  it("(c) isSystemRole returns true for all 6 system slugs", () => {
+  it("(c) isSystemRole returns true for all 5 system slugs", () => {
     expect(isSystemRole("owner")).toBe(true);
     expect(isSystemRole("admin")).toBe(true);
     expect(isSystemRole("contador")).toBe(true);
     expect(isSystemRole("cobrador")).toBe(true);
-    expect(isSystemRole("auxiliar")).toBe(true);
+    expect(isSystemRole("auxiliar")).toBe(false);
     expect(isSystemRole("member")).toBe(true);
   });
 
@@ -55,15 +54,14 @@ describe("PR1.2 — Role type widening", () => {
     expect(isSystemRole("")).toBe(false);
   });
 
-  it("(c) SystemRole type covers only the 6 known system slugs", () => {
+  it("(c) SystemRole type covers only the 5 known system slugs", () => {
     // Type-level check: SystemRole must be assignable from each system slug
     const owner: SystemRole = "owner";
     const admin: SystemRole = "admin";
     const contador: SystemRole = "contador";
     const cobrador: SystemRole = "cobrador";
-    const auxiliar: SystemRole = "auxiliar";
     const member: SystemRole = "member";
     // These are 'const' and exist only for the type check above
-    expect([owner, admin, contador, cobrador, auxiliar, member]).toHaveLength(6);
+    expect([owner, admin, contador, cobrador, member]).toHaveLength(5);
   });
 });

@@ -29,14 +29,13 @@ interface MembersTableProps {
   onUpdated?: () => void;
 }
 
-// Built-in labels for the 6 system roles. Custom roles fall back to the name
+// Built-in labels for the 5 system roles. Custom roles fall back to the name
 // fetched from /api/organizations/[orgSlug]/roles.
 const SYSTEM_ROLE_LABELS: Record<string, string> = {
   owner: "Propietario",
   admin: "Administrador",
   contador: "Contador",
   cobrador: "Cobrador",
-  auxiliar: "Auxiliar",
   member: "Socio",
 };
 
@@ -46,7 +45,6 @@ const ROLE_COLORS: Record<string, string> = {
   admin: "bg-blue-100 text-blue-800 border-blue-200",
   contador: "bg-green-100 text-green-800 border-green-200",
   cobrador: "bg-amber-100 text-amber-800 border-amber-200",
-  auxiliar: "bg-teal-100 text-teal-800 border-teal-200",
   member: "bg-gray-100 text-gray-800 border-gray-200",
 };
 

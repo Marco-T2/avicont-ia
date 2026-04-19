@@ -1,6 +1,6 @@
 /**
  * Role is widened to string to support custom roles per organization (PR1.2 / D.8).
- * Use SystemRole for guards that apply only to the 6 built-in slugs.
+ * Use SystemRole for guards that apply only to the 5 built-in slugs.
  */
 export type Role = string;
 
@@ -9,7 +9,6 @@ export const SYSTEM_ROLES = [
   "admin",
   "contador",
   "cobrador",
-  "auxiliar",
   "member",
 ] as const;
 
@@ -44,27 +43,27 @@ export const PERMISSIONS_READ: Record<Resource, Role[]> = {
   purchases: ["owner", "admin", "contador"],
   payments: ["owner", "admin", "contador", "cobrador"],
   journal: ["owner", "admin", "contador"],
-  dispatches: ["owner", "admin", "contador", "auxiliar"],
+  dispatches: ["owner", "admin", "contador"],
   reports: ["owner", "admin", "contador", "cobrador"],
-  contacts: ["owner", "admin", "contador", "cobrador", "auxiliar"],
-  farms: ["owner", "admin", "contador", "auxiliar", "member"],
-  documents: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
-  agent: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+  contacts: ["owner", "admin", "contador", "cobrador"],
+  farms: ["owner", "admin", "contador", "member"],
+  documents: ["owner", "admin", "contador", "cobrador", "member"],
+  agent: ["owner", "admin", "contador", "cobrador", "member"],
 };
 
 export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
   members: ["owner", "admin"],
   "accounting-config": ["owner", "admin"],
-  sales: ["owner", "admin", "contador", "auxiliar"],
-  purchases: ["owner", "admin", "contador", "auxiliar"],
+  sales: ["owner", "admin", "contador"],
+  purchases: ["owner", "admin", "contador"],
   payments: ["owner", "admin", "contador", "cobrador"],
   journal: ["owner", "admin", "contador"],
-  dispatches: ["owner", "admin", "auxiliar"],
+  dispatches: ["owner", "admin"],
   reports: ["owner", "admin"],
   contacts: ["owner", "admin", "contador", "cobrador"],
-  farms: ["owner", "admin", "contador", "auxiliar", "member"],
+  farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador"],
-  agent: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+  agent: ["owner", "admin", "contador", "cobrador", "member"],
 };
 
 export type PostableResource = "sales" | "purchases" | "journal";
@@ -98,7 +97,6 @@ const RAG_SCOPES: Record<string, DocumentScope[]> = {
   admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   contador: ["ORGANIZATION", "ACCOUNTING"],
   cobrador: ["ORGANIZATION"],
-  auxiliar: ["ORGANIZATION", "FARM"],
   member: ["ORGANIZATION", "FARM"],
 };
 
@@ -107,7 +105,6 @@ const UPLOAD_SCOPES: Record<string, DocumentScope[]> = {
   owner: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   contador: ["ACCOUNTING"],
-  auxiliar: ["FARM"],
   member: ["FARM"],
 };
 

@@ -131,3 +131,20 @@ describe("PR4.9 — Configuración duplicate removed from Contabilidad navItems"
     expect(configItem).toBeUndefined();
   });
 });
+
+// ---------------------------------------------------------------------------
+// PR2.1 [RED] — REQ-RNM.1: "Ventas y Despachos" nav item must gate on "sales"
+// (not "dispatches"). dispatches remains in the Resource union and in the
+// Contabilidad module's resources[] array, but NO nav item points to it.
+// ---------------------------------------------------------------------------
+
+describe("REQ-RNM.1 — Ventas y Despachos nav-resource mapping", () => {
+  it("Ventas y Despachos nav item has resource: 'sales'", () => {
+    const contabilidad = MODULES.find((m) => m.id === "contabilidad")!;
+    const ventasDespachos = contabilidad.navItems.find(
+      (item) => !item.isSeparator && item.label === "Ventas y Despachos",
+    );
+    expect(ventasDespachos).toBeDefined();
+    expect(ventasDespachos!.resource).toBe("sales");
+  });
+});

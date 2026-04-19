@@ -37,7 +37,6 @@ describe("<RoleBadge />", () => {
       { role: "admin", label: "Admin" },
       { role: "contador", label: "Contador" },
       { role: "cobrador", label: "Cobrador" },
-      { role: "auxiliar", label: "Auxiliar" },
       { role: "member", label: "Miembro" },
     ];
 

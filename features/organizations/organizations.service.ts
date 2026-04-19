@@ -60,7 +60,7 @@ export class OrganizationsService {
     // Inicializar los tipos de comprobante por defecto para la nueva organización
     await this.voucherTypesService.seedForOrg(organization.id);
 
-    // Seed the 6 system roles for the new organization (idempotent via skipDuplicates)
+    // Seed the 5 system roles for the new organization (idempotent via skipDuplicates)
     // This is preventive: on-demand fallback in permissions.server.ts handles the
     // last-resort case. Both use skipDuplicates so they cannot conflict.
     await prisma.customRole.createMany({

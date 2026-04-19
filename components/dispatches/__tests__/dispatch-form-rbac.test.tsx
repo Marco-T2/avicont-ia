@@ -2,9 +2,9 @@
  * T6.1 RED — accounting-rbac PR6
  *
  * REQ-ui-gating (resource=dispatches, action=write):
- * - matrix: dispatches write = [owner, admin, auxiliar]
+ * - matrix: dispatches write = [owner, admin]
  * - contador/cobrador/member → acciones OCULTAS (Guardar Borrador/Contabilizar)
- * - auxiliar/admin/owner → VISIBLES
+ * - admin/owner → VISIBLES
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -91,14 +91,6 @@ describe("DispatchForm — RBAC gating (dispatches/write)", () => {
 
     expect(screen.queryByRole("button", { name: /guardar borrador/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /contabilizar/i })).not.toBeInTheDocument();
-  });
-
-  it("T6.1-di-3 — role=auxiliar: Guardar Borrador + Contabilizar VISIBLES (submit habilitado)", () => {
-    mockRole.current = "auxiliar";
-    renderCreateMode();
-
-    expect(screen.getByRole("button", { name: /guardar borrador/i })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /contabilizar/i })).toBeInTheDocument();
   });
 
   it("T6.1-di-4 — role=admin: acciones VISIBLES", () => {

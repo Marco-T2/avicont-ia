@@ -257,25 +257,7 @@ describe("PR1.5 — REQ-MS.6: getRoleDefaultModule()", () => {
     expect(getRoleDefaultModule(memberMatrix as any)).toBe("granjas");
   });
 
-  it("returns 'granjas' for auxiliar-without-accounting", () => {
-    const m = {
-      orgId: "o",
-      role: "auxiliar",
-      canAccess: (r: string, a: string) =>
-        a === "read" && ["farms", "documents", "agent", "dispatches"].includes(r),
-      canPost: () => false,
-    };
-    // auxiliar with dispatches DOES have accounting access → contabilidad
-    // but auxiliar without dispatches/journal etc → granjas
-    const mNoAccounting = {
-      orgId: "o",
-      role: "auxiliar",
-      canAccess: (r: string, a: string) =>
-        a === "read" && ["farms", "documents", "agent"].includes(r),
-      canPost: () => false,
-    };
-    expect(getRoleDefaultModule(mNoAccounting as any)).toBe("granjas");
-  });
+
 
   it("returns null when matrix is null", () => {
     expect(getRoleDefaultModule(null)).toBeNull();

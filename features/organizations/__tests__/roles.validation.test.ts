@@ -8,7 +8,7 @@
  * Pure functions — NO DB access in this module.
  *
  * Notes:
- *   - Reserved list = SYSTEM_ROLES (owner/admin/contador/cobrador/auxiliar/member).
+ *   - Reserved list = SYSTEM_ROLES (owner/admin/contador/cobrador/member).
  *     Reserved check matters on CREATE only; slug is IMMUTABLE on UPDATE (D.5).
  *   - Spec error code for collision is SLUG_TAKEN (design used SLUG_COLLISION —
  *     SPEC name wins per errors.ts naming note).
@@ -81,7 +81,6 @@ describe("assertNotReserved (D.5)", () => {
     "admin",
     "contador",
     "cobrador",
-    "auxiliar",
     "member",
   ];
 

@@ -2,9 +2,9 @@
  * T6.1 RED — accounting-rbac PR6
  *
  * REQ-ui-gating (resource=sales, action=write):
- * - matrix: sales write = [owner, admin, contador, auxiliar]
+ * - matrix: sales write = [owner, admin, contador]
  * - cobrador/member → acciones de escritura OCULTAS (Guardar, Contabilizar, Anular)
- * - auxiliar/contador/admin/owner → VISIBLES
+ * - contador/admin/owner → VISIBLES
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -124,8 +124,8 @@ describe("SaleForm — RBAC gating (sales/write)", () => {
     expect(screen.queryByRole("button", { name: /anular/i })).not.toBeInTheDocument();
   });
 
-  it("T6.1-sa-3 — role=auxiliar, DRAFT: Guardar + Contabilizar VISIBLES", () => {
-    mockRole.current = "auxiliar";
+  it("T6.1-sa-3 — role=contador, DRAFT: Guardar + Contabilizar VISIBLES", () => {
+    mockRole.current = "contador";
     renderForm({ status: "DRAFT" });
 
     expect(screen.getByRole("button", { name: /^guardar$/i })).toBeInTheDocument();

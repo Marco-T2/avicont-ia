@@ -103,7 +103,7 @@ const CONTAB_MODULE: Module = {
     {
       label: "Ventas y Despachos",
       href: (slug) => `/${slug}/dispatches`,
-      resource: "dispatches",
+      resource: "sales",
     },
     {
       label: "Compras y Servicios",
@@ -214,6 +214,7 @@ describe("ActiveModuleNav — empty-parent rule (REQ-MS.7 edge)", () => {
   it("renders null when every navItem is filtered out by RBAC", () => {
     // CONTAB_MODULE has resources journal, dispatches, purchases. Snapshot
     // with NONE of those → every child filtered → render null.
+    // Note: 'Ventas y Despachos' now gates on sales, not dispatches (post resource-nav-mapping-fix).
     const deniedSnapshot: ClientMatrixSnapshot = {
       orgId: "org-1",
       role: "member",
@@ -294,17 +295,17 @@ describe("ActiveModuleNav — separator-hiding (REQ-MS.7 separator logic)", () =
   });
 
   it("(c) hides the Contabilidad separator when only Operaciones-group children survive", () => {
-    // User has ONLY dispatches → Ventas y Despachos survives; all
-    // Contabilidad-group items (journal) filtered.
-    const dispatchesOnly: ClientMatrixSnapshot = {
+    // User has ONLY sales → Ventas y Despachos survives (gates on sales post
+    // resource-nav-mapping-fix); all Contabilidad-group items (journal) filtered.
+    const salesOnly: ClientMatrixSnapshot = {
       orgId: "org-1",
-      role: "auxiliar",
-      permissionsRead: ["dispatches"],
+      role: "cobrador",
+      permissionsRead: ["sales"],
       permissionsWrite: [],
       canPost: [],
     };
     render(
-      <RolesMatrixProvider snapshot={dispatchesOnly}>
+      <RolesMatrixProvider snapshot={salesOnly}>
         <ActiveModuleNav module={CONTAB_MODULE} orgSlug="test-org" />
       </RolesMatrixProvider>,
     );
@@ -357,9 +358,10 @@ describe("ActiveModuleNav — separator-hiding (REQ-MS.7 separator logic)", () =
 // ---------------------------------------------------------------------------
 
 describe("ActiveModuleNav — per-child RBAC filter (REQ-MS.7)", () => {
-  it("contador with journal but NOT sales/dispatches/purchases sees Libro Diario but not Ventas or Compras", () => {
+  it("contador with journal but NOT sales/purchases sees Libro Diario but not Ventas or Compras", () => {
     // Contador can read journal + reports + contacts + payments, but NOT
-    // sales (Ventas maps to dispatches in registry), dispatches, or purchases.
+    // sales, dispatches, or purchases.
+    // Ventas y Despachos maps to sales in registry (post resource-nav-mapping-fix).
     const contadorJournalOnly: ClientMatrixSnapshot = {
       orgId: "org-1",
       role: "contador",
@@ -376,7 +378,8 @@ describe("ActiveModuleNav — per-child RBAC filter (REQ-MS.7)", () => {
 
     // Libro Diario (resource=journal) IS visible
     expect(screen.getByRole("link", { name: /Libro Diario/i })).toBeTruthy();
-    // Ventas y Despachos (resource=dispatches) is NOT visible
+    // Ventas y Despachos (resource=sales) is NOT visible [sales not in readSet;
+    // dispatches resource has no nav items after the swap]
     expect(screen.queryByRole("link", { name: /Ventas y Despachos/i })).toBeNull();
     // Compras y Servicios (resource=purchases) is NOT visible
     expect(screen.queryByRole("link", { name: /Compras y Servicios/i })).toBeNull();

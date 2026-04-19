@@ -55,7 +55,7 @@ export function slugify(name: string): string {
 }
 
 /**
- * Guard: reject the 6 system slugs on CREATE.
+ * Guard: reject the 5 system slugs on CREATE.
  * System slugs belong to isSystem=true rows only — admins may not create a
  * custom role that collides with them.
  *

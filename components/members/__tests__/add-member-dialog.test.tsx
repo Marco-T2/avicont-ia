@@ -41,7 +41,6 @@ beforeEach(() => {
         { slug: "admin", name: "Administrador", isSystem: true },
         { slug: "contador", name: "Contador", isSystem: true },
         { slug: "cobrador", name: "Cobrador", isSystem: true },
-        { slug: "auxiliar", name: "Auxiliar", isSystem: true },
         { slug: "member", name: "Socio", isSystem: true },
       ],
     }),
@@ -65,15 +64,14 @@ async function openDialogAndSelect() {
 }
 
 describe("AddMemberDialog — role picker options (rbac-roles REQ)", () => {
-  it("T6.3-1 — el Select muestra exactamente los 5 roles asignables: admin, contador, cobrador, auxiliar, member", async () => {
+  it("T6.3-1 — el Select muestra exactamente los 4 roles asignables: admin, contador, cobrador, member", async () => {
     render(<AddMemberDialog orgSlug="test-org" />);
     await openDialogAndSelect();
 
-    // Deben aparecer los 5 roles asignables (por etiqueta)
+    // Deben aparecer los 4 roles asignables (por etiqueta)
     expect(await screen.findByRole("option", { name: /administrador/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /contador/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /cobrador/i })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: /auxiliar/i })).toBeInTheDocument();
     expect(screen.getByRole("option", { name: /socio/i })).toBeInTheDocument();
   });
 

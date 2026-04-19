@@ -74,20 +74,24 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.getAllByText("Documentos").length).toBeGreaterThan(0);
   });
 
-  // (b) Chofer-like — readSet={dispatches, farms} → Contabilidad shows only Despachos nav item;
+  // (b) Chofer-like — readSet={sales, farms} → Contabilidad shows Ventas y Despachos
+  // AND Cuentas por Cobrar (both gated by 'sales' post resource-nav-mapping-fix);
   // Granjas present; no Organización strip items
-  it("(b) chofer (dispatches+farms) → Contabilidad with only Ventas y Despachos + Granjas; no Org strip", () => {
+  it("(b) chofer (sales+farms) → Contabilidad with Ventas y Despachos + Cuentas por Cobrar + Granjas; no Org strip", () => {
     render(
       <RoleSidebarPreview
-        readSet={rs("dispatches", "farms")}
+        readSet={rs("sales", "farms")}
         writeSet={rs()}
       />,
     );
 
     // Contabilidad module section header visible (dual-mount → multiple)
     expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
-    // Only the dispatches nav item visible in Contabilidad (dual-mount → multiple)
+    // Both nav items gated by 'sales' now visible (dual-mount → multiple)
     expect(screen.getAllByText("Ventas y Despachos").length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText(/Cuentas por Cobrar/i).length,
+    ).toBeGreaterThan(0);
     // These items require resources the chofer does NOT have
     expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
     expect(screen.queryByText("Compras y Servicios")).not.toBeInTheDocument();
@@ -97,10 +101,23 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.getAllByText("Granjas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
 
-    // No Organización strip items (dispatches/farms are not agent/members/documents)
+    // No Organización strip items (sales/farms are not agent/members/documents)
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
     expect(screen.queryByText("Miembros")).not.toBeInTheDocument();
     expect(screen.queryByText("Documentos")).not.toBeInTheDocument();
+  });
+
+  // (b-variant) REQ-RNM.3 — dispatches-only readSet has zero nav items
+  // (dispatches is an API-only resource after the swap; no registry nav item gates on it)
+  it("(b-variant) dispatches-only readSet → no Ventas y Despachos in preview (no nav items gate on dispatches)", () => {
+    render(
+      <RoleSidebarPreview readSet={rs("dispatches")} writeSet={rs()} />,
+    );
+
+    // No nav item references dispatches — Ventas y Despachos should NOT appear
+    expect(screen.queryAllByText(/Ventas y Despachos/i)).toHaveLength(0);
+    // And no Cuentas por Cobrar (gated by 'sales', not present)
+    expect(screen.queryAllByText(/Cuentas por Cobrar/i)).toHaveLength(0);
   });
 
   // (c) Viewer-only — empty sets → no modules, empty-state copy shown

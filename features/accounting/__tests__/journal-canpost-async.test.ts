@@ -8,7 +8,7 @@
  * Tests:
  * (a) Custom role `custom_asentador` with `canPost` including 'journal' → allowed
  *     This case REQUIRES the async path — the slug is NOT in POST_ALLOWED_ROLES.
- * (b) `auxiliar` (no 'journal' in canPost) → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)
+ * (b) `cobrador` (no 'journal' in canPost) → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)
  * (c) `getMatrix` called exactly once per createAndPost invocation
  * (d) Loader injection via _setLoader (no real DB dependency)
  */
@@ -42,9 +42,9 @@ function makeMatrix(orgId: string, rolesWithJournalCanPost: string[]): OrgMatrix
     });
   }
 
-  // auxiliar is always present but WITHOUT canPost for journal
-  if (!rolesWithJournalCanPost.includes("auxiliar")) {
-    roles.set("auxiliar", {
+  // cobrador is always present but WITHOUT canPost for journal
+  if (!rolesWithJournalCanPost.includes("cobrador")) {
+    roles.set("cobrador", {
       permissionsRead: new Set(),
       permissionsWrite: new Set(),
       canPost: new Set(),
@@ -119,9 +119,9 @@ describe("JournalService.createAndPost — async canPost (PR3.3 / P.6-S1 / P.6-S
     });
   });
 
-  describe("(b) P.6-S2 — auxiliar with no journal in canPost → 403 ForbiddenError", () => {
-    it("throws ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE) for auxiliar", async () => {
-      // Matrix has custom_asentador allowed, auxiliar present but no canPost.
+  describe("(b) P.6-S2 — cobrador with no journal in canPost → 403 ForbiddenError", () => {
+    it("throws ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE) for cobrador", async () => {
+      // Matrix has custom_asentador allowed, cobrador present but no canPost.
       _setLoader(
         vi.fn().mockResolvedValue(makeMatrix(ORG, ["custom_asentador"])),
       );
@@ -134,7 +134,7 @@ describe("JournalService.createAndPost — async canPost (PR3.3 / P.6-S1 / P.6-S
       await expect(
         service.createAndPost(ORG, {} as never, {
           userId: "u1",
-          role: "auxiliar",
+          role: "cobrador",
         }),
       ).rejects.toMatchObject({
         code: POST_NOT_ALLOWED_FOR_ROLE,
@@ -191,7 +191,7 @@ describe("JournalService.createAndPost — async canPost (PR3.3 / P.6-S1 / P.6-S
       expect(loader).toHaveBeenCalledWith(ORG);
     });
 
-    it("calls loader once for auxiliar (throws at guard, no second DB call)", async () => {
+    it("calls loader once for cobrador (throws at guard, no second DB call)", async () => {
       const loader = vi.fn().mockResolvedValue(makeMatrix(ORG, []));
       _setLoader(loader);
 
@@ -203,7 +203,7 @@ describe("JournalService.createAndPost — async canPost (PR3.3 / P.6-S1 / P.6-S
       await service
         .createAndPost(ORG, {} as never, {
           userId: "u1",
-          role: "auxiliar",
+          role: "cobrador",
         })
         .catch(() => {
           // Expected ForbiddenError

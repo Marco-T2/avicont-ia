@@ -3,8 +3,8 @@
  * PR2.2 RED (extended) — canAccess async facade reads from cache
  *
  * Table-driven coverage:
- *   canAccess: 6 roles × 12 resources × 2 actions = 144 cases (sync, 3-param)
- *   canPost:   6 roles × 3  resources            =  18 cases
+ *   canAccess: 5 roles × 12 resources × 2 actions = 120 cases (sync, 3-param)
+ *   canPost:   5 roles × 3  resources            =  15 cases
  *
  * PR2.2 additions:
  *   (a) await canAccess("contador","reports","read",orgId) === true from seeded system snapshot
@@ -45,7 +45,6 @@ const ALL_ROLES: Role[] = [
   "admin",
   "contador",
   "cobrador",
-  "auxiliar",
   "member",
 ];
 
@@ -74,27 +73,27 @@ const EXPECTED_READ: Record<Resource, Role[]> = {
   purchases: ["owner", "admin", "contador"],
   payments: ["owner", "admin", "contador", "cobrador"],
   journal: ["owner", "admin", "contador"],
-  dispatches: ["owner", "admin", "contador", "auxiliar"],
+  dispatches: ["owner", "admin", "contador"],
   reports: ["owner", "admin", "contador", "cobrador"],
-  contacts: ["owner", "admin", "contador", "cobrador", "auxiliar"],
-  farms: ["owner", "admin", "contador", "auxiliar", "member"],
-  documents: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
-  agent: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+  contacts: ["owner", "admin", "contador", "cobrador"],
+  farms: ["owner", "admin", "contador", "member"],
+  documents: ["owner", "admin", "contador", "cobrador", "member"],
+  agent: ["owner", "admin", "contador", "cobrador", "member"],
 };
 
 const EXPECTED_WRITE: Record<Resource, Role[]> = {
   members: ["owner", "admin"],
   "accounting-config": ["owner", "admin"],
-  sales: ["owner", "admin", "contador", "auxiliar"],
-  purchases: ["owner", "admin", "contador", "auxiliar"],
+  sales: ["owner", "admin", "contador"],
+  purchases: ["owner", "admin", "contador"],
   payments: ["owner", "admin", "contador", "cobrador"],
   journal: ["owner", "admin", "contador"],
-  dispatches: ["owner", "admin", "auxiliar"],
+  dispatches: ["owner", "admin"],
   reports: ["owner", "admin"],
   contacts: ["owner", "admin", "contador", "cobrador"],
-  farms: ["owner", "admin", "contador", "auxiliar", "member"],
+  farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador"],
-  agent: ["owner", "admin", "contador", "cobrador", "auxiliar", "member"],
+  agent: ["owner", "admin", "contador", "cobrador", "member"],
 };
 
 const POST_RESOURCES = ["sales", "purchases", "journal"] as const;
@@ -170,13 +169,6 @@ describe("getPostAllowedRoles() map", () => {
       [...POST_RESOURCES].sort(),
     );
   });
-
-  it("excludes auxiliar from every postable resource", () => {
-    const map = getPostAllowedRoles();
-    for (const r of POST_RESOURCES) {
-      expect(map[r]).not.toContain("auxiliar");
-    }
-  });
 });
 
 describe("Spec scenarios verbatim (via static maps)", () => {
@@ -188,17 +180,6 @@ describe("Spec scenarios verbatim (via static maps)", () => {
   it("P.2-S2 — cobrador cannot touch journal (read or write)", () => {
     expect(PERMISSIONS_READ["journal"].includes("cobrador")).toBe(false);
     expect(PERMISSIONS_WRITE["journal"].includes("cobrador")).toBe(false);
-  });
-
-  it("P.2-S3 — auxiliar writes dispatches", () => {
-    expect(PERMISSIONS_WRITE["dispatches"].includes("auxiliar")).toBe(true);
-  });
-
-  it("P.3-S3 — auxiliar cannot post sales (W-draft)", () => {
-    // auxiliar can write-draft (PERMISSIONS_WRITE) but cannot post (seed canPost map)
-    // PR8.3: sync 2-param canPost removed — check the seed map directly.
-    expect(PERMISSIONS_WRITE["sales"].includes("auxiliar")).toBe(true);
-    expect(getPostAllowedRoles()["sales"].includes("auxiliar")).toBe(false);
   });
 });
 
@@ -218,7 +199,7 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
   }>();
 
   const postAllowedRoles = getPostAllowedRoles();
-  const ALL_SYS_ROLES = ["owner", "admin", "contador", "cobrador", "auxiliar", "member"] as const;
+  const ALL_SYS_ROLES = ["owner", "admin", "contador", "cobrador", "member"] as const;
   for (const slug of ALL_SYS_ROLES) {
     const permissionsRead = new Set<Resource>(
       (Object.keys(PERMISSIONS_READ) as Resource[]).filter((r) =>

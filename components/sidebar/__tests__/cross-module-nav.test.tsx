@@ -68,7 +68,7 @@ const NO_MEMBERS: ClientMatrixSnapshot = {
 /** No agent access */
 const NO_AGENT: ClientMatrixSnapshot = {
   orgId: "org-1",
-  role: "auxiliar",
+  role: "cobrador",
   permissionsRead: ["members", "documents", "farms"],
   permissionsWrite: [],
   canPost: [],
@@ -77,7 +77,7 @@ const NO_AGENT: ClientMatrixSnapshot = {
 /** No documents access */
 const NO_DOCS: ClientMatrixSnapshot = {
   orgId: "org-1",
-  role: "auxiliar",
+  role: "cobrador",
   permissionsRead: ["members", "agent", "farms"],
   permissionsWrite: [],
   canPost: [],

@@ -8,7 +8,6 @@ type MemberRole =
   | "admin"
   | "contador"
   | "cobrador"
-  | "auxiliar"
   | "member"
   | null;
 

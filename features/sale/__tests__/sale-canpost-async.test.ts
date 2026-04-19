@@ -3,7 +3,7 @@
  *
  * Tests:
  * (a) Custom role `facturador` with `canPost` including 'sales' → posting allowed
- * (b) `auxiliar` with no 'sales' in canPost → ForbiddenError (403)
+ * (b) `cobrador` with no 'sales' in canPost → ForbiddenError (403)
  * (c) `getMatrix` called exactly once per post operation (no extra DB calls)
  * (d) Loader injection via _setLoader test hook (no real DB)
  */
@@ -43,9 +43,9 @@ function makeMatrix(
     });
   }
 
-  // auxiliar is always present but WITHOUT canPost for sales
-  if (!rolesWithCanPost.includes("auxiliar")) {
-    roles.set("auxiliar", {
+  // cobrador is always present but WITHOUT canPost for sales
+  if (!rolesWithCanPost.includes("cobrador")) {
+    roles.set("cobrador", {
       permissionsRead: new Set(),
       permissionsWrite: new Set(),
       canPost: new Set(),
@@ -117,9 +117,9 @@ describe("SaleService.createAndPost — async canPost (PR3.1 / P.6-S1 / P.6-S2)"
     });
   });
 
-  describe("(b) P.6-S2 — auxiliar with no sales in canPost → 403 ForbiddenError", () => {
-    it("throws ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE) for auxiliar", async () => {
-      // auxiliar present in matrix but NOT in canPost for sales
+  describe("(b) P.6-S2 — cobrador with no sales in canPost → 403 ForbiddenError", () => {
+    it("throws ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE) for cobrador", async () => {
+      // cobrador present in matrix but NOT in canPost for sales
       _setLoader(
         vi.fn().mockResolvedValue(makeMatrix(ORG, ["facturador"])),
       );
@@ -130,7 +130,7 @@ describe("SaleService.createAndPost — async canPost (PR3.1 / P.6-S1 / P.6-S2)"
       await expect(
         service.createAndPost(ORG, {} as never, {
           userId: "u1",
-          role: "auxiliar",
+          role: "cobrador",
         }),
       ).rejects.toMatchObject({
         code: POST_NOT_ALLOWED_FOR_ROLE,
@@ -182,7 +182,7 @@ describe("SaleService.createAndPost — async canPost (PR3.1 / P.6-S1 / P.6-S2)"
       expect(loader).toHaveBeenCalledWith(ORG);
     });
 
-    it("calls loader once for auxiliar (throws at guard, no second DB call)", async () => {
+    it("calls loader once for cobrador (throws at guard, no second DB call)", async () => {
       const loader = vi.fn().mockResolvedValue(makeMatrix(ORG, []));
       _setLoader(loader);
 
@@ -192,7 +192,7 @@ describe("SaleService.createAndPost — async canPost (PR3.1 / P.6-S1 / P.6-S2)"
       await service
         .createAndPost(ORG, {} as never, {
           userId: "u1",
-          role: "auxiliar",
+          role: "cobrador",
         })
         .catch(() => {
           // Expected ForbiddenError
