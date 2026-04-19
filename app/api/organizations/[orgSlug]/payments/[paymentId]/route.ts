@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { PaymentService } from "@/features/payment";
+import { PaymentService } from "@/features/payment/server";
 import { updatePaymentSchema } from "@/features/payment";
 
 const paymentService = new PaymentService();

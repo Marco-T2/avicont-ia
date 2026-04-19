@@ -23,7 +23,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/payment", () => {
+vi.mock("@/features/payment/server", () => {
   class PaymentService {
     list = mockPaymentList;
   }

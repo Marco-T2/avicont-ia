@@ -1,3 +1,4 @@
+import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import {
   NotFoundError,
