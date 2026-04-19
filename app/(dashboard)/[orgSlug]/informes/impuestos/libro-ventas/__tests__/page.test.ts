@@ -17,7 +17,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/fiscal-periods", () => {
+vi.mock("@/features/fiscal-periods/server", () => {
   class FiscalPeriodsService {
     list = mockList;
   }

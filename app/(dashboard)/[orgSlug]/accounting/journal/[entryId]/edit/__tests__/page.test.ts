@@ -48,7 +48,7 @@ const { mockPeriodsList } = vi.hoisted(() => ({
   mockPeriodsList: vi.fn(),
 }));
 
-vi.mock("@/features/fiscal-periods", () => ({
+vi.mock("@/features/fiscal-periods/server", () => ({
   FiscalPeriodsService: vi.fn().mockImplementation(function () {
     return { list: mockPeriodsList };
   }),

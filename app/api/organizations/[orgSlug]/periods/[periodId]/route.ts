@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { closeFiscalPeriodSchema } from "@/features/fiscal-periods";
 
 const service = new FiscalPeriodsService();

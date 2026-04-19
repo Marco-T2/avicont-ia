@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { PurchaseService } from "@/features/purchase";
 import { ContactsService } from "@/features/contacts";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { ProductTypesService } from "@/features/product-types";
 import PurchaseForm from "@/components/purchases/purchase-form";
 import type { PurchaseType } from "@/features/purchase";

@@ -43,7 +43,7 @@ vi.mock("@/features/contacts", () => {
   return { ContactsService };
 });
 
-vi.mock("@/features/fiscal-periods", () => {
+vi.mock("@/features/fiscal-periods/server", () => {
   class FiscalPeriodsService {
     list = mockPeriodsList;
   }

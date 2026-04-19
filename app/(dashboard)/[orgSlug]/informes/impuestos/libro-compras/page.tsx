@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { IvaBooksPageClient } from "@/components/iva-books/iva-books-page-client";
 
 interface LibroComprasPageProps {

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { ContactsService } from "@/features/contacts";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { AccountsService } from "@/features/accounting";
 import SaleForm from "@/components/sales/sale-form";
 
