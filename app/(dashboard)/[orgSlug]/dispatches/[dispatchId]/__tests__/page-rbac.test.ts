@@ -29,7 +29,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/dispatch", () => {
+vi.mock("@/features/dispatch/server", () => {
   class DispatchService {
     getById = mockDispatchGetById;
   }
