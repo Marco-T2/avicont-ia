@@ -1,3 +1,4 @@
+import "server-only";
 import { DocumentSignatureConfigRepository } from "./document-signature-config.repository";
 import {
   ALL_DOCUMENT_PRINT_TYPES,

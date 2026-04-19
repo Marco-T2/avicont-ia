@@ -31,7 +31,7 @@ vi.mock("@/features/org-profile/server", () => {
   return { OrgProfileService };
 });
 
-vi.mock("@/features/document-signature-config", () => {
+vi.mock("@/features/document-signature-config/server", () => {
   class DocumentSignatureConfigService {
     listAll = mockListAll;
   }

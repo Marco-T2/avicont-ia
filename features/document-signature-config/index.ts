@@ -1,5 +1,3 @@
-export { DocumentSignatureConfigService } from "./document-signature-config.service";
-export { DocumentSignatureConfigRepository } from "./document-signature-config.repository";
 export type {
   DocumentSignatureConfig,
   DocumentPrintType,

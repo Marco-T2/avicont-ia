@@ -41,13 +41,13 @@
 **Blast radius**: 4 server consumers | 0 client consumers
 **Files affected**: `features/document-signature-config/index.ts`, `features/document-signature-config/server.ts` (new), `*.repository.ts`, `*.service.ts`, 4 consumer files
 
-- [ ] T2.1 RED: Confirm boundary test still flags `document-signature-config`
-- [ ] T2.2 GREEN: Create `features/document-signature-config/server.ts` with `import "server-only"` + Service/Repo re-exports
-- [ ] T2.3 GREEN: Strip server exports from `features/document-signature-config/index.ts`
-- [ ] T2.4 GREEN: Add `import "server-only"` to `document-signature-config.repository.ts` and `document-signature-config.service.ts`
-- [ ] T2.5 GREEN: Grep + rewrite 4 server consumer imports to `@/features/document-signature-config/server`
-- [ ] T2.6 GREEN: Update test mocks if any
-- [ ] T2.7 REFACTOR: `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test; commit: `refactor(document-signature-config): split barrel into client-safe index + server-only server.ts`
+- [x] T2.1 RED: Confirmed boundary test flags `document-signature-config`
+- [x] T2.2 GREEN: Created `features/document-signature-config/server.ts` with `import "server-only"` + re-exports
+- [x] T2.3 GREEN: Stripped server exports from `features/document-signature-config/index.ts`
+- [x] T2.4 GREEN: Added `import "server-only"` to repo and service files
+- [x] T2.5 GREEN: Rewrote 3 server consumer imports to `/server` (note: 4th consumer is a test that imports ALL_DOCUMENT_PRINT_TYPES only — not a Service consumer)
+- [x] T2.6 GREEN: Updated vi.mock paths in 3 test files
+- [x] T2.7 REFACTOR: pnpm tsc clean, 1842/1867 passing; committed
 
 ---
 
