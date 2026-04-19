@@ -339,17 +339,17 @@
 
 > Per ADR (flat `server.ts` layout): sub-features get their OWN `server.ts` at their own directory root.
 
-- [ ] T26.1 RED: Confirm boundary test flags parent `features/accounting/index.ts` AND `iva-books/index.ts` AND `financial-statements/index.ts`
-- [ ] T26.2 GREEN: Create `features/accounting/server.ts` with `import "server-only"` + re-exports of `AccountsRepository`, `AccountsService`, `JournalRepository`, `JournalService`, `LedgerService` (and correlative/account-code utils if server-only)
-- [ ] T26.3 GREEN: Create `features/accounting/iva-books/server.ts` with `import "server-only"` + re-exports of `IvaBooksRepository`, `IvaBooksService`
-- [ ] T26.4 GREEN: Create `features/accounting/financial-statements/server.ts` with `import "server-only"` + re-exports of `FinancialStatementsRepository`, `FinancialStatementsService`
-- [ ] T26.5 GREEN: Strip server exports from `features/accounting/index.ts`; keep `accounting.validation.ts`, `*.types.ts`, `account-code.utils.ts`, `account-subtype.utils.ts`, `account-subtype.resolve.ts` exports
-- [ ] T26.6 GREEN: Strip server exports from `features/accounting/iva-books/index.ts`; keep types + validation + utils
-- [ ] T26.7 GREEN: Strip server exports from `features/accounting/financial-statements/index.ts`; keep types + validation + utils + exporters (non-server)
-- [ ] T26.8 GREEN: Add `import "server-only"` to: `accounts.repository.ts`, `accounts.service.ts`, `journal.repository.ts`, `journal.service.ts`, `ledger.service.ts`, `iva-books/iva-books.repository.ts`, `iva-books/iva-books.service.ts`, `financial-statements/financial-statements.repository.ts`, `financial-statements/financial-statements.service.ts`
-- [ ] T26.9 GREEN: Rewrite 19+ server consumers in `app/**` and `features/**`; distinguish parent vs sub-barrel import targets (`/server` vs `/iva-books/server` vs `/financial-statements/server`)
-- [ ] T26.10 GREEN: Update all `vi.mock("@/features/accounting...")` test mocks to correct split paths
-- [ ] T26.11 REFACTOR: Full `pnpm tsc --noEmit` + `pnpm vitest run` (full suite, including accounting sub-tests) + boundary test — ALL 26 features must now pass; commit: `refactor(accounting): split barrel into client-safe index + server-only server.ts`
+- [x] T26.1 RED: Confirmed boundary test flagged parent `features/accounting/index.ts` (iva-books/financial-statements not yet scanned — boundary test extended in T26.11 to cover sub-barrels)
+- [x] T26.2 GREEN: Created `features/accounting/server.ts` with `import "server-only"` + re-exports of `AccountsRepository`, `AccountsService`, `JournalRepository`, `JournalService`, `LedgerService`
+- [x] T26.3 GREEN: Created `features/accounting/iva-books/server.ts` with `import "server-only"` + re-exports of `IvaBooksRepository`, `IvaBooksService`
+- [x] T26.4 GREEN: Created `features/accounting/financial-statements/server.ts` with `import "server-only"` + re-exports of `FinancialStatementsRepository`, `FinancialStatementsService`, `GenerateBalanceSheetInput`, `GenerateIncomeStatementInput`, `buildComparativeColumns`
+- [x] T26.5 GREEN: Stripped server exports from `features/accounting/index.ts`; kept types + validation + `formatCorrelativeNumber`
+- [x] T26.6 GREEN: Stripped server exports from `features/accounting/iva-books/index.ts`; kept types + validation + iva-calc utils + exporters
+- [x] T26.7 GREEN: Stripped server exports from `features/accounting/financial-statements/index.ts`; kept builders, calculators, pure utils, types
+- [x] T26.8 GREEN: Added `import "server-only"` to all 9 repo/service leaf files
+- [x] T26.9 GREEN: Migrated 19 parent-barrel consumers to `/server`; 2 financial-statements API routes to `/financial-statements/server` for Service only (serializeStatement stays on barrel); iva-books consumers already used leaf paths — no migration needed
+- [x] T26.10 GREEN: Updated 12 `vi.mock("@/features/accounting")` test mocks to `@/features/accounting/server`
+- [x] T26.11 REFACTOR: Extended boundary test to recurse into sub-barrels (28→31 tests); full vitest 1869/1869 pass; no new TS errors; committed `a8902f8`
 
 > RISK FLAG: Design lists 19 consumers for `accounting` but does not break down how many import from `iva-books/` vs `financial-statements/` vs the parent barrel. The grep sweep in T26.9 must count these separately and reconcile against the design's total. If the count differs, flag as a discrepancy before committing.
 
