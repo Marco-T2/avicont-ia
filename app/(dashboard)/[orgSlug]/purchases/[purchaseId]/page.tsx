@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/shared/permissions.server";
 import { PurchaseService } from "@/features/purchase/server";
 import { ContactsService } from "@/features/contacts/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { ProductTypesService } from "@/features/product-types";
+import { ProductTypesService } from "@/features/product-types/server";
 import PurchaseForm from "@/components/purchases/purchase-form";
 import type { PurchaseType } from "@/features/purchase";
 

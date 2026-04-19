@@ -1,9 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import {
-  ProductTypesService,
-  createProductTypeSchema,
-} from "@/features/product-types";
+import { ProductTypesService } from "@/features/product-types/server";
+import { createProductTypeSchema } from "@/features/product-types";
 
 const service = new ProductTypesService();
 
