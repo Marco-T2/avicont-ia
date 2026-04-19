@@ -72,7 +72,7 @@ function mockSessionAndOrg(userId = CLERK_USER, orgId = ORG_ID) {
 // ── PR2.1 — requirePermission reads from cache + fallback seed ──────────────
 
 /**
- * Helper: build a minimal OrgMatrix with 6 system roles from static maps.
+ * Helper: build a minimal OrgMatrix with 5 system roles from static maps.
  * Used to simulate what the real DB loader returns.
  */
 function makeSystemMatrix(orgId: string): OrgMatrix {
@@ -196,42 +196,6 @@ describe("requirePermission (REQ-P.3 / REQ-P.4 / D.2)", () => {
         expect.arrayContaining(["owner", "admin", "contador", "cobrador"]),
       );
       expect(roles).not.toContain("auxiliar");
-    });
-  });
-
-  describe("S-P3-S3 — auxiliar → sales/write → pass (W-draft at route level)", () => {
-    it("returns role=auxiliar when matrix allows sales.write", async () => {
-      mockSessionAndOrg();
-      mockedRequireRole.mockResolvedValue({
-        id: "m1",
-        role: "auxiliar",
-      } as never);
-
-      const result = await requirePermission("sales", "write", ORG_SLUG);
-
-      expect(result.role).toBe("auxiliar");
-    });
-
-    it("passes write allowedRoles (includes auxiliar for sales.write — W-draft)", async () => {
-      mockSessionAndOrg();
-      mockedRequireRole.mockResolvedValue({
-        id: "m1",
-        role: "auxiliar",
-      } as never);
-
-      await requirePermission("sales", "write", ORG_SLUG);
-
-      const [, , roles] = mockedRequireRole.mock.calls.at(-1)!;
-      // sales write (W-draft): owner | admin | contador | auxiliar
-      expect(roles).toEqual(
-        expect.arrayContaining([
-          "owner",
-          "admin",
-          "contador",
-          "auxiliar",
-        ]),
-      );
-      expect(roles).not.toContain("cobrador");
     });
   });
 
@@ -374,7 +338,7 @@ describe("PR2.1 — requirePermission reads from cache + fallback seed", () => {
   });
 
   describe("(c) unauthorized role → throws ForbiddenError", () => {
-    it("throws ForbiddenError when auxiliar tries accounting-config/write", async () => {
+    it("throws ForbiddenError when cobrador tries accounting-config/write", async () => {
       mockSessionAndOrg();
       const matrix = makeSystemMatrix(ORG_ID);
       mockedGetMatrix.mockResolvedValue(matrix);
@@ -384,9 +348,9 @@ describe("PR2.1 — requirePermission reads from cache + fallback seed", () => {
         requirePermission("accounting-config", "write", ORG_SLUG),
       ).rejects.toBeInstanceOf(ForbiddenError);
 
-      // auxiliar must NOT be in allowed roles for accounting-config/write
+      // non-admin roles must NOT be in allowed roles for accounting-config/write
       const [, , roles] = mockedRequireRole.mock.calls.at(-1)!;
-      expect(roles).not.toContain("auxiliar");
+      expect(roles).not.toContain("cobrador");
       expect(roles).not.toContain("member");
     });
   });

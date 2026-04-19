@@ -17,7 +17,6 @@ const AGENT_ROLE_LABELS: Record<Role, AgentLabel> = {
   admin: "admin",
   contador: "contador",
   cobrador: "socio",
-  auxiliar: "socio",
   member: "socio",
 };
 

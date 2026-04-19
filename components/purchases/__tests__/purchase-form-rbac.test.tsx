@@ -2,9 +2,9 @@
  * T6.1 RED — accounting-rbac PR6
  *
  * REQ-ui-gating (resource=purchases, action=write):
- * - matrix: purchases write = [owner, admin, contador, auxiliar]
+ * - matrix: purchases write = [owner, admin, contador]
  * - cobrador/member → acciones OCULTAS
- * - auxiliar/contador/admin/owner → VISIBLES
+ * - contador/admin/owner → VISIBLES
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -120,8 +120,8 @@ describe("PurchaseForm — RBAC gating (purchases/write)", () => {
     expect(screen.queryByRole("button", { name: /anular/i })).not.toBeInTheDocument();
   });
 
-  it("T6.1-pu-3 — role=auxiliar, DRAFT: Guardar + Contabilizar VISIBLES", () => {
-    mockRole.current = "auxiliar";
+  it("T6.1-pu-3 — role=contador, DRAFT: Guardar + Contabilizar VISIBLES", () => {
+    mockRole.current = "contador";
     renderForm({ status: "DRAFT" });
 
     expect(screen.getByRole("button", { name: /^guardar$/i })).toBeInTheDocument();

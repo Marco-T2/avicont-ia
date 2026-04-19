@@ -136,33 +136,10 @@ describe("<Gated> (REQ-U.1mod)", () => {
     });
   });
 
-  describe("auxiliar W-draft — sales.write allowed at UI level", () => {
-    it("renders children for auxiliar + sales/write (service-layer canPost blocks POST, not UI)", () => {
-      render(
-        <RolesMatrixProvider
-          snapshot={snap("auxiliar", ["sales"], ["sales"], [])}
-        >
-          <Gated resource="sales" action="write">
-            <button>Crear borrador</button>
-          </Gated>
-        </RolesMatrixProvider>,
-      );
-      expect(
-        screen.getByRole("button", { name: /crear borrador/i }),
-      ).toBeInTheDocument();
-    });
-  });
 });
 
 describe("useCanAccess (REQ-U.2mod) — shim re-exported from gated", () => {
   describe("U.2-S1 — hook retorna bool segun matriz", () => {
-    it("returns true for auxiliar + sales/write (W-draft in matrix)", () => {
-      const { result } = renderHook(() => useCanAccess("sales", "write"), {
-        wrapper: withSnapshot(snap("auxiliar", ["sales"], ["sales"])),
-      });
-      expect(result.current).toBe(true);
-    });
-
     it("returns false for cobrador + journal/write", () => {
       const { result } = renderHook(() => useCanAccess("journal", "write"), {
         wrapper: withSnapshot(snap("cobrador", [], [])),

@@ -29,7 +29,6 @@ const ROLES: Role[] = [
   "admin",
   "contador",
   "cobrador",
-  "auxiliar",
   "member",
 ];
 
@@ -38,7 +37,6 @@ const ROLE_LABELS: Record<Role, string> = {
   admin: "Admin",
   contador: "Contador",
   cobrador: "Cobrador",
-  auxiliar: "Auxiliar",
   member: "Miembro",
 };
 

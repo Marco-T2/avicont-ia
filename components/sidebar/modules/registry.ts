@@ -58,7 +58,7 @@ export const MODULES: Module[] = [
       {
         label: "Ventas y Despachos",
         href: (orgSlug) => `/${orgSlug}/dispatches`,
-        resource: "dispatches",
+        resource: "sales",
       },
       {
         label: "Compras y Servicios",

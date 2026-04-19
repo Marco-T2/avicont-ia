@@ -1,5 +1,5 @@
 /**
- * RolesPermissionsMatrix — read-only view of the 6 roles × 12 resources × (read/write/post) matrix.
+ * RolesPermissionsMatrix — read-only view of the 5 roles × 12 resources × (read/write/post) matrix.
  *
  * Pure presentational: derives data from features/shared/permissions.ts at render time.
  * No props, no side effects — snapshot of the canonical authorization matrix.
@@ -14,7 +14,7 @@ afterEach(cleanup);
 
 describe("<RolesPermissionsMatrix />", () => {
   describe("role columns", () => {
-    const roles = ["Owner", "Admin", "Contador", "Cobrador", "Auxiliar", "Miembro"];
+    const roles = ["Owner", "Admin", "Contador", "Cobrador", "Miembro"];
 
     it.each(roles)("renders column header for '%s'", (label) => {
       render(<RolesPermissionsMatrix />);
@@ -59,23 +59,12 @@ describe("<RolesPermissionsMatrix />", () => {
       expect(cell).toHaveAttribute("data-allowed", "false");
     });
 
-    it("auxiliar + dispatches/read → allowed", () => {
-      render(<RolesPermissionsMatrix />);
-      const cell = screen.getByTestId("cell-dispatches-auxiliar-read");
-      expect(cell).toHaveAttribute("data-allowed", "true");
-    });
   });
 
   describe("cell states — write matrix (REQ-P.2)", () => {
     it("contador + sales/write → allowed", () => {
       render(<RolesPermissionsMatrix />);
       const cell = screen.getByTestId("cell-sales-contador-write");
-      expect(cell).toHaveAttribute("data-allowed", "true");
-    });
-
-    it("auxiliar + sales/write → allowed (W-draft)", () => {
-      render(<RolesPermissionsMatrix />);
-      const cell = screen.getByTestId("cell-sales-auxiliar-write");
       expect(cell).toHaveAttribute("data-allowed", "true");
     });
 
@@ -97,12 +86,6 @@ describe("<RolesPermissionsMatrix />", () => {
       render(<RolesPermissionsMatrix />);
       // Post cells are present — verified via testId (shape unchanged)
       expect(screen.getByTestId("cell-sales-contador-post")).toBeInTheDocument();
-    });
-
-    it("auxiliar + sales/post → denied (W-draft excludes post)", () => {
-      render(<RolesPermissionsMatrix />);
-      const cell = screen.getByTestId("cell-sales-auxiliar-post");
-      expect(cell).toHaveAttribute("data-allowed", "false");
     });
 
     it("contador + sales/post → allowed", () => {

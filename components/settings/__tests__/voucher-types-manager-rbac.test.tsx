@@ -3,7 +3,7 @@
  *
  * REQ-ui-gating (resource=accounting-config, action=write):
  * - Matrix: accounting-config write = [owner, admin]
- * - contador/cobrador/auxiliar/member NO ven acciones de admin (Crear/Editar/Toggle)
+ * - contador/cobrador/member NO ven acciones de admin (Crear/Editar/Toggle)
  * - admin/owner SÍ ven acciones
  *
  * RED antes de que VoucherTypesManager envuelva las acciones con <Gated>.

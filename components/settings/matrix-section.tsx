@@ -33,6 +33,8 @@ const RESOURCE_LABELS: Record<Resource, string> = {
 const SHARED_RESOURCE_NOTES: Partial<Record<Resource, string>> = {
   journal: "(Afecta Libro Diario y Libro Mayor)",
   purchases: "(Afecta Compras y CxP)",
+  sales: "(Afecta Ventas y CxC)",
+  "accounting-config": "(Afecta Plan de Cuentas)",
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────

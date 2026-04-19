@@ -45,7 +45,7 @@ export async function GET(
 ) {
   try {
     const { orgSlug } = await params;
-    const { orgId } = await requirePermission("dispatches", "read", orgSlug);
+    const { orgId } = await requirePermission("sales", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
 

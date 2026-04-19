@@ -105,4 +105,43 @@ describe("<MatrixSection />", () => {
     fireEvent.click(screen.getByTestId("toggle-read-sales"));
     expect(noopToggle).toHaveBeenCalledWith("sales", "read", true);
   });
+
+  // PR1.1 [RED] — SHARED_RESOURCE_NOTES additions (REQ-RNM.11, REQ-RNM.12)
+  it("renders SHARED_RESOURCE_NOTES note for sales row — '(Afecta Ventas y CxC)'", () => {
+    render(
+      <table>
+        <tbody>
+          <MatrixSection
+            label="Contabilidad"
+            resources={["sales"]}
+            readSet={new Set<Resource>()}
+            writeSet={new Set<Resource>()}
+            postSet={new Set<PostableResource>()}
+            disabled={false}
+            onToggle={noopToggle}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText(/Afecta Ventas y CxC/)).toBeInTheDocument();
+  });
+
+  it("renders SHARED_RESOURCE_NOTES note for accounting-config row — '(Afecta Plan de Cuentas)'", () => {
+    render(
+      <table>
+        <tbody>
+          <MatrixSection
+            label="Configuración"
+            resources={["accounting-config"]}
+            readSet={new Set<Resource>()}
+            writeSet={new Set<Resource>()}
+            postSet={new Set<PostableResource>()}
+            disabled={false}
+            onToggle={noopToggle}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(screen.getByText(/Afecta Plan de Cuentas/)).toBeInTheDocument();
+  });
 });

@@ -9,7 +9,7 @@
  *
  * Example:
  *   render(
- *     <SystemRoleProvider role="auxiliar">
+ *     <SystemRoleProvider role="cobrador">
  *       <SaleForm ... />
  *     </SystemRoleProvider>,
  *   );

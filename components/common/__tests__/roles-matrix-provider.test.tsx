@@ -141,7 +141,7 @@ describe("RolesMatrixProvider", () => {
     });
 
     it("returns false when resource is NOT in canPost set", () => {
-      const snapshot = mkSnapshot({ role: "auxiliar", canPost: [] });
+      const snapshot = mkSnapshot({ role: "cobrador", canPost: [] });
 
       function CanPostProbe() {
         const m = useRolesMatrix();

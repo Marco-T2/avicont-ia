@@ -39,6 +39,14 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
+// ── permissions.server mock (PR3.1 — resource-nav-mapping-fix) ───────────────
+// The route calls requirePermission(resource, action, orgSlug) directly.
+// We mock it so tests can assert the exact resource string passed to the gate.
+
+vi.mock("@/features/shared/permissions.server", () => ({
+  requirePermission: vi.fn(),
+}));
+
 // ── HubService mock ───────────────────────────────────────────────────────────
 
 const mockListHub = vi.fn();
@@ -73,6 +81,7 @@ import {
   requireOrgAccess,
   requireRole,
 } from "@/features/shared/middleware";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -112,6 +121,11 @@ beforeEach(() => {
   vi.mocked(requireRole).mockResolvedValue(
     { role: "admin" } as Awaited<ReturnType<typeof requireRole>>,
   );
+  vi.mocked(requirePermission).mockResolvedValue({
+    session: { userId: USER_ID },
+    orgId: ORG_ID,
+    role: "admin",
+  } as Awaited<ReturnType<typeof requirePermission>>);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -152,7 +166,9 @@ describe("GET /api/organizations/[orgSlug]/dispatches-hub", () => {
 
   // Task 2.2 — REQ-9: role viewer → 403
   it("retorna 403 cuando el rol es viewer (sin permiso)", async () => {
-    vi.mocked(requireRole).mockRejectedValue(new ForbiddenError("Rol insuficiente"));
+    vi.mocked(requirePermission).mockRejectedValue(
+      new ForbiddenError("Rol insuficiente"),
+    );
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -228,7 +244,7 @@ describe("GET /api/organizations/[orgSlug]/dispatches-hub", () => {
 
   // 401 — no auth
   it("retorna 401 cuando no hay sesión autenticada", async () => {
-    vi.mocked(requireAuth).mockRejectedValue(new UnauthorizedError());
+    vi.mocked(requirePermission).mockRejectedValue(new UnauthorizedError());
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -241,7 +257,7 @@ describe("GET /api/organizations/[orgSlug]/dispatches-hub", () => {
 
   // 403 — no org access
   it("retorna 403 cuando el usuario no tiene acceso a la org", async () => {
-    vi.mocked(requireOrgAccess).mockRejectedValue(new ForbiddenError());
+    vi.mocked(requirePermission).mockRejectedValue(new ForbiddenError());
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -250,5 +266,42 @@ describe("GET /api/organizations/[orgSlug]/dispatches-hub", () => {
     const res = await GET(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
 
     expect(res.status).toBe(403);
+  });
+
+  // PR3.1 [RED] — REQ-RNM.4: dispatches-hub gate requires "sales", not "dispatches"
+  it("retorna 403 cuando el rol tiene dispatches:read pero NO sales:read — gate ahora requiere sales", async () => {
+    // Mock requirePermission so it passes for ("sales","read",...) but throws
+    // ForbiddenError for ("dispatches","read",...). The route must call it
+    // with "sales" (post resource-nav-mapping-fix) to reach 200.
+    vi.mocked(requirePermission).mockImplementation(async (resource, _action, _orgSlug) => {
+      if (resource === "sales") {
+        return {
+          session: { userId: USER_ID },
+          orgId: ORG_ID,
+          role: "cobrador",
+        } as Awaited<ReturnType<typeof requirePermission>>;
+      }
+      throw new ForbiddenError("Rol insuficiente");
+    });
+
+    const { GET } = await import("../route");
+    const request = new Request(
+      `http://localhost/api/organizations/${ORG_SLUG}/dispatches-hub`,
+    );
+    const res = await GET(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
+
+    // Route must call requirePermission with "sales" → 200
+    expect(res.status).toBe(200);
+    expect(vi.mocked(requirePermission)).toHaveBeenCalledWith(
+      "sales",
+      "read",
+      ORG_SLUG,
+    );
+    // And it must NOT have tried "dispatches"
+    expect(vi.mocked(requirePermission)).not.toHaveBeenCalledWith(
+      "dispatches",
+      "read",
+      ORG_SLUG,
+    );
   });
 });

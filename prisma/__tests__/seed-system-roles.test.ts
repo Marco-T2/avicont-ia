@@ -3,7 +3,7 @@
  *
  * Mocks prisma.organization.findMany to return 2 orgs.
  * Asserts prisma.customRole.createMany is called once per org
- * with 6 system role payloads derived from current static maps.
+ * with 5 system role payloads derived from current static maps.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -50,18 +50,18 @@ describe("PR1.5 — seedSystemRoles", () => {
     }
   });
 
-  it("each createMany call contains exactly 6 system role payloads", async () => {
+  it("each createMany call contains exactly 5 system role payloads", async () => {
     await seedSystemRoles();
     for (const call of mockCreateMany.mock.calls) {
       const { data } = call[0] as { data: unknown[] };
-      expect(data).toHaveLength(6);
+      expect(data).toHaveLength(5);
     }
   });
 
   it("each payload has isSystem=true, correct slug, and correct organizationId", async () => {
     await seedSystemRoles();
 
-    const SYSTEM_SLUGS = ["owner", "admin", "contador", "cobrador", "auxiliar", "member"];
+    const SYSTEM_SLUGS = ["owner", "admin", "contador", "cobrador", "member"];
 
     for (let orgIdx = 0; orgIdx < MOCK_ORGS.length; orgIdx++) {
       const org = MOCK_ORGS[orgIdx];

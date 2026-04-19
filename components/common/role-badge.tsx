@@ -9,7 +9,6 @@ const ROLE_LABELS: Record<Role, string> = {
   admin: "Admin",
   contador: "Contador",
   cobrador: "Cobrador",
-  auxiliar: "Auxiliar",
   member: "Miembro",
 };
 
@@ -18,7 +17,6 @@ const ROLE_CLASSES: Record<Role, string> = {
   admin: "bg-blue-100 text-blue-800 border-blue-200",
   contador: "bg-emerald-100 text-emerald-800 border-emerald-200",
   cobrador: "bg-amber-100 text-amber-800 border-amber-200",
-  auxiliar: "bg-orange-100 text-orange-800 border-orange-200",
   member: "bg-gray-100 text-gray-700 border-gray-200",
 };
 

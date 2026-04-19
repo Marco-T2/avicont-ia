@@ -1,7 +1,7 @@
 /**
- * seed-system-roles.ts — Idempotent seed for 6 system CustomRole rows per org.
+ * seed-system-roles.ts — Idempotent seed for 5 system CustomRole rows per org.
  *
- * Reads all existing Organization rows and creates 6 system role rows per org
+ * Reads all existing Organization rows and creates 5 system role rows per org
  * using the current static permission maps as source of truth.
  * Uses skipDuplicates=true for idempotency (safe to re-run).
  *
@@ -19,7 +19,7 @@ import {
 } from "@/features/shared/permissions";
 
 /**
- * Build the 6 system role payloads for a given orgId.
+ * Build the 5 system role payloads for a given orgId.
  * Derived directly from the current static maps so behavior is 1:1 on day one.
  */
 export function buildSystemRolePayloads(orgId: string) {
@@ -48,7 +48,7 @@ export function buildSystemRolePayloads(orgId: string) {
 }
 
 /**
- * Idempotent seed: creates 6 system roles per org, skipping duplicates.
+ * Idempotent seed: creates 5 system roles per org, skipping duplicates.
  * Exported for testability and for use as a runtime fallback (D.6).
  */
 export async function seedSystemRoles(): Promise<void> {

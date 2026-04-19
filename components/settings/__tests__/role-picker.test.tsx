@@ -31,13 +31,12 @@ beforeEach(() => {
   }
 });
 
-// 5 system roles (owner excluded) + 1 custom role
+// 4 system roles (owner excluded) + 1 custom role
 const MOCK_ROLES = [
   { slug: "owner", name: "Owner", isSystem: true },
   { slug: "admin", name: "Admin", isSystem: true },
   { slug: "contador", name: "Contador", isSystem: true },
   { slug: "cobrador", name: "Cobrador", isSystem: true },
-  { slug: "auxiliar", name: "Auxiliar", isSystem: true },
   { slug: "member", name: "Member", isSystem: true },
   { slug: "facturador", name: "Facturador", isSystem: false },
 ];
@@ -58,7 +57,7 @@ async function openSelect() {
 }
 
 describe("RolePicker — dynamic fetch (PR7.2)", () => {
-  it("T7.2-1 — contains exactly 6 options after fetch (owner excluded)", async () => {
+  it("T7.2-1 — contains exactly 5 options after fetch (owner excluded)", async () => {
     setup();
     render(<RolePicker orgSlug="test-org" value="member" onChange={vi.fn()} />);
 
@@ -71,7 +70,7 @@ describe("RolePicker — dynamic fetch (PR7.2)", () => {
     await openSelect();
 
     const options = await screen.findAllByRole("option");
-    expect(options).toHaveLength(6); // 5 system (no owner) + 1 custom
+    expect(options).toHaveLength(5); // 4 system (no owner) + 1 custom
   });
 
   it("T7.2-2 — owner is NOT in the options", async () => {

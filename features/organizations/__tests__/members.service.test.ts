@@ -6,7 +6,7 @@
  *   REQ-R.3 — Role mutability (self-role-change forbidden)
  *
  * Scenarios:
- *   S-R1-S1 — admin POSTs member with role=cobrador/auxiliar → Zod valid
+ *   S-R1-S1 — admin POSTs member with role=cobrador → Zod valid
  *   S-R1-S2 — admin POSTs role=owner → Zod error
  *   S-R3-S2 — actor self-PATCH role → ForbiddenError(CANNOT_CHANGE_OWN_ROLE)
  *

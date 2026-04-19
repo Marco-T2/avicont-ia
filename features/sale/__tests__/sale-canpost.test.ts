@@ -19,12 +19,12 @@ import {
 const ORG = "org_canpost";
 
 describe("SaleService.createAndPost — canPost guard (REQ-P.3-S3)", () => {
-  it("auxiliar → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)", async () => {
+  it("cobrador → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)", async () => {
     const service = new SaleService();
     await expect(
       service.createAndPost(ORG, {} as never, {
         userId: "u1",
-        role: "auxiliar",
+        role: "cobrador",
       }),
     ).rejects.toMatchObject({
       code: POST_NOT_ALLOWED_FOR_ROLE,
@@ -54,12 +54,12 @@ describe("SaleService.createAndPost — canPost guard (REQ-P.3-S3)", () => {
 });
 
 describe("PurchaseService.createAndPost — canPost guard (REQ-P.3-S3)", () => {
-  it("auxiliar → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)", async () => {
+  it("cobrador → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)", async () => {
     const service = new PurchaseService();
     await expect(
       service.createAndPost(ORG, {} as never, {
         userId: "u1",
-        role: "auxiliar",
+        role: "cobrador",
       }),
     ).rejects.toMatchObject({
       code: POST_NOT_ALLOWED_FOR_ROLE,
@@ -79,12 +79,12 @@ describe("PurchaseService.createAndPost — canPost guard (REQ-P.3-S3)", () => {
 });
 
 describe("JournalService.createAndPost — canPost guard (REQ-P.3)", () => {
-  it("auxiliar → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)", async () => {
+  it("cobrador → ForbiddenError(POST_NOT_ALLOWED_FOR_ROLE)", async () => {
     const service = new JournalService();
     await expect(
       service.createAndPost(ORG, {} as never, {
         userId: "u1",
-        role: "auxiliar",
+        role: "cobrador",
       }),
     ).rejects.toMatchObject({
       code: POST_NOT_ALLOWED_FOR_ROLE,
