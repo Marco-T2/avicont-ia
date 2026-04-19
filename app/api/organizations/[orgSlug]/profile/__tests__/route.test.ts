@@ -56,17 +56,11 @@ const mockServiceInstance = {
   deleteLogoBlob: vi.fn(),
 };
 
-vi.mock("@/features/org-profile", async () => {
-  const actual = await vi.importActual<typeof import("@/features/org-profile")>(
-    "@/features/org-profile",
-  );
-  return {
-    ...actual,
-    OrgProfileService: vi.fn().mockImplementation(function () {
-      return mockServiceInstance;
-    }),
-  };
-});
+vi.mock("@/features/org-profile/server", () => ({
+  OrgProfileService: vi.fn().mockImplementation(function () {
+    return mockServiceInstance;
+  }),
+}));
 
 import {
   requireAuth,

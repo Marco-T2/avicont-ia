@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { OrgProfile } from "@/generated/prisma/client";
 import type { UpdateOrgProfileInput } from "./org-profile.types";

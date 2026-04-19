@@ -2,10 +2,8 @@ import { put } from "@vercel/blob";
 import { handleError } from "@/features/shared/middleware";
 import { AppError } from "@/features/shared/errors";
 import { requirePermission } from "@/features/shared/permissions.server";
-import {
-  OrgProfileService,
-  logoUploadConstraints,
-} from "@/features/org-profile";
+import { OrgProfileService } from "@/features/org-profile/server";
+import { logoUploadConstraints } from "@/features/org-profile";
 
 /** 400 Bad Request — local helper used only by this route. */
 class LogoUploadError extends AppError {

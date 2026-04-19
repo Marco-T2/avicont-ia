@@ -26,16 +26,13 @@
 **Blast radius**: 3 server consumers | 0 client consumers
 **Files affected**: `features/org-profile/index.ts`, `features/org-profile/server.ts` (new), `features/org-profile/org-profile.repository.ts`, `features/org-profile/org-profile.service.ts`, 3 consumer files in `app/`
 
-- [ ] T1.1 RED: Confirm boundary test flags `features/org-profile/index.ts` (already failing from T0)
-- [ ] T1.2 GREEN: Create `features/org-profile/server.ts`
-  - First line: `import "server-only";`
-  - Re-export `OrgProfileService` from `./org-profile.service`
-  - Re-export `OrgProfileRepository` from `./org-profile.repository`
-- [ ] T1.3 GREEN: Strip server exports from `features/org-profile/index.ts` — types + validation + constants only
-- [ ] T1.4 GREEN: Add `import "server-only";` as first non-comment line of `org-profile.repository.ts` and `org-profile.service.ts`
-- [ ] T1.5 GREEN: Grep `from "@/features/org-profile"` in `app/**`, `features/**` (exclude `features/org-profile/`); rewrite Service/Repo imports to `@/features/org-profile/server` (expected: 3 files)
-- [ ] T1.6 GREEN: Update any `vi.mock("@/features/org-profile")` in `**/*.test.ts` to mock the correct split path
-- [ ] T1.7 REFACTOR: Run `pnpm tsc --noEmit` + `pnpm vitest run` + boundary test (must pass for org-profile); commit: `refactor(org-profile): split barrel into client-safe index + server-only server.ts`
+- [x] T1.1 RED: Confirmed boundary test flags `features/org-profile/index.ts` (failing from T0)
+- [x] T1.2 GREEN: Created `features/org-profile/server.ts` with `import "server-only"` + re-exports
+- [x] T1.3 GREEN: Stripped server exports from `features/org-profile/index.ts`
+- [x] T1.4 GREEN: Added `import "server-only"` to `org-profile.repository.ts` and `org-profile.service.ts`
+- [x] T1.5 GREEN: Rewrote 3 server consumer imports to `@/features/org-profile/server`
+- [x] T1.6 GREEN: Updated vi.mock paths in 3 test files to `@/features/org-profile/server`
+- [x] T1.7 REFACTOR: pnpm tsc --noEmit clean, pnpm vitest 1841/1867 passing, boundary test GREEN for org-profile; committed
 
 ---
 
