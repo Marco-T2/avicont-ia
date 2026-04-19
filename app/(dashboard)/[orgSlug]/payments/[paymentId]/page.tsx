@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { PaymentService } from "@/features/payment";
 import { ContactsService } from "@/features/contacts";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types";
 import { AccountsRepository } from "@/features/accounting";
 import { OrgSettingsService } from "@/features/org-settings";

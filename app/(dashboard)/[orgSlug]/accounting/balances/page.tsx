@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { AccountBalancesService } from "@/features/account-balances";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import BalanceTable from "@/components/accounting/balance-table";
 
 interface BalancesPageProps {

@@ -1,3 +1,4 @@
+import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { FiscalPeriodStatus } from "@/generated/prisma/client";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
