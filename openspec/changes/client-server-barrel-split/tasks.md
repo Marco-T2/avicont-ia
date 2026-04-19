@@ -359,24 +359,10 @@
 
 **Files affected**: `eslint.config.mjs` (modified), optional test fixture
 
-- [ ] T27.1 RED: Add a deliberate violation fixture file (e.g., `__tests__/fixtures/bad-client-import.tsx`) with `"use client"` + `import { AccountsService } from "@/features/accounting/server"` — confirm ESLint reports it before the rule exists
-- [ ] T27.2 GREEN: Add rule to `eslint.config.mjs`:
-  ```js
-  {
-    files: ["**/*.{ts,tsx}"],
-    rules: {
-      "no-restricted-imports": ["error", {
-        patterns: [{
-          group: ["@/features/*/server", "@/features/*/iva-books/server", "@/features/*/financial-statements/server"],
-          message: "Server-only imports forbidden in Client Components. Use @/features/X instead.",
-        }],
-      }],
-    },
-  }
-  ```
-  Scope to files with `"use client"` via ESLint 9 flat config processor or global pattern — investigate and document the approach in the commit body.
-- [ ] T27.3 GREEN: Run `pnpm lint` — fix any stragglers the grep sweeps missed in T1–T26; remove the fixture file after lint passes
-- [ ] T27.4 REFACTOR: Confirm `import type` from `@/features/*/server` is also blocked (the rule must apply regardless of the `type` modifier); run `pnpm tsc --noEmit` + `pnpm vitest run`; commit: `chore(eslint): ban @/features/*/server imports from Client Components`
+- [x] T27.1 RED: Added fixture `components/_bad-client-import-test.tsx` with `"use client"` + imports from `@/features/accounting/server` and `@/features/accounting/iva-books/server` — confirmed 0 errors before rule existed; deleted after
+- [x] T27.2 GREEN: Added rule to `eslint.config.mjs` scoped to `components/**` and `app/**/*-client.{ts,tsx}` — ESLint 9 flat config cannot detect the `"use client"` directive in file content so path-glob scoping used per design ADR-5 fallback; all 3 patterns covered (`/server`, `/iva-books/server`, `/financial-statements/server`)
+- [x] T27.3 GREEN: `pnpm lint` → 233 problems (121 errors, 112 warnings) — identical to baseline; zero new errors from rule; all violations are pre-existing `@typescript-eslint/no-explicit-any`
+- [x] T27.4 REFACTOR: `import type` blocking confirmed (ESLint caught line 4 in fixture); `pnpm tsc --noEmit` pre-existing errors unchanged; `pnpm vitest run` → 1869/1869 pass; committed `e0a441c`
 
 ---
 
