@@ -30,10 +30,10 @@ import { OrgSettingsService } from "@/features/org-settings";
 import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
-import { ContactsService } from "@/features/contacts";
+import { ContactsService } from "@/features/contacts/server";
 import { PayablesRepository } from "@/features/payables/payables.repository";
 import { AccountBalancesService } from "@/features/account-balances";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { PurchaseType } from "@/generated/prisma/client";
 import type {
   PurchaseWithDetails,

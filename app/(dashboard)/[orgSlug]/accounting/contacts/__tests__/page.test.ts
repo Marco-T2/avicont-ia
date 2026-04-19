@@ -21,7 +21,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/contacts", () => {
+vi.mock("@/features/contacts/server", () => {
   class ContactsService {
     listWithBalances = mockListWithBalances;
     setReceivablesService = vi.fn();

@@ -34,7 +34,7 @@ vi.mock("@/features/purchase", () => {
   return { PurchaseService };
 });
 
-vi.mock("@/features/contacts", () => {
+vi.mock("@/features/contacts/server", () => {
   class ContactsService {
     list = mockContactsList;
   }

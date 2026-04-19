@@ -4,7 +4,7 @@ import {
   INVALID_STATUS_TRANSITION,
   RECEIVABLE_AMOUNT_IMMUTABLE,
 } from "@/features/shared/errors";
-import type { ContactsService } from "@/features/contacts";
+import type { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "./receivables.repository";
 import type {
   AccountsReceivable,

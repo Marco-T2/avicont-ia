@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { ContactsService } from "@/features/contacts";
+import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesService } from "@/features/receivables";
 import { PayablesService } from "@/features/payables";
 import ContactDetail from "@/components/contacts/contact-detail";

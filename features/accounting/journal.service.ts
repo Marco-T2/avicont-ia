@@ -30,9 +30,9 @@ import { setAuditContext } from "@/features/shared/audit-context";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances";
-import { FiscalPeriodsService } from "@/features/fiscal-periods";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { VoucherTypesService } from "@/features/voucher-types";
-import { ContactsService } from "@/features/contacts";
+import { ContactsService } from "@/features/contacts/server";
 import type { JournalEntryStatus, Account } from "@/generated/prisma/client";
 import type {
   CreateJournalEntryInput,
