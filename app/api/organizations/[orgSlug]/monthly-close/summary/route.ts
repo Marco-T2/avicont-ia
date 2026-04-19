@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { MonthlyCloseService } from "@/features/monthly-close";
+import { MonthlyCloseService } from "@/features/monthly-close/server";
 
 const service = new MonthlyCloseService();
 
