@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { AccountsService } from "@/features/accounting";
 import AccountsPageClient from "@/components/accounting/accounts-page-client";
 
@@ -10,19 +10,12 @@ interface AccountsPageProps {
 export default async function AccountsPage({ params }: AccountsPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("accounting-config", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const service = new AccountsService();

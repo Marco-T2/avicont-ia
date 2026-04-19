@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
 import PeriodList from "@/components/accounting/period-list";
 
@@ -10,19 +10,12 @@ interface PeriodsPageProps {
 export default async function PeriodsPage({ params }: PeriodsPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("accounting-config", "write", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const service = new FiscalPeriodsService();

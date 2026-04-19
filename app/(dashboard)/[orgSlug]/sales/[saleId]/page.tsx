@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { SaleService } from "@/features/sale";
 import { ContactsService } from "@/features/contacts";
 import { FiscalPeriodsService } from "@/features/fiscal-periods";
@@ -13,19 +13,12 @@ interface SaleDetailPageProps {
 export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
   const { orgSlug, saleId } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("sales", "write", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const saleService = new SaleService();

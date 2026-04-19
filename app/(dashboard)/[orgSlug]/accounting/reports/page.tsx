@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import ReportsPageClient from "@/components/accounting/reports-page-client";
 
 interface ReportsPageProps {
@@ -9,19 +9,10 @@ interface ReportsPageProps {
 export default async function ReportsPage({ params }: ReportsPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
   try {
-    const session = await requireAuth();
-    userId = session.userId;
+    await requirePermission("reports", "read", orgSlug);
   } catch {
-    redirect("/sign-in");
-  }
-
-  let orgId: string;
-  try {
-    orgId = await requireOrgAccess(userId, orgSlug);
-  } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   return (

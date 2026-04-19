@@ -29,9 +29,10 @@ const { mockGetById } = vi.hoisted(() => ({
   mockGetById: vi.fn(),
 }));
 
-vi.mock("@/features/shared", () => ({
-  requireAuth: vi.fn().mockResolvedValue({ userId: "clerk-user-1" }),
-  requireOrgAccess: vi.fn().mockResolvedValue("org-db-id"),
+vi.mock("@/features/shared/permissions.server", () => ({
+  requirePermission: vi
+    .fn()
+    .mockResolvedValue({ orgId: "org-db-id", session: { userId: "clerk-user-1" }, role: "owner" }),
 }));
 
 vi.mock("@/features/accounting", () => ({

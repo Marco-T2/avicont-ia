@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requirePermission } from "@/features/shared/permissions.server";
 import { VoucherTypesService } from "@/features/voucher-types";
 import VoucherTypesManager from "@/components/settings/voucher-types-manager";
 
@@ -10,19 +10,12 @@ interface VoucherTypesPageProps {
 export default async function VoucherTypesPage({ params }: VoucherTypesPageProps) {
   const { orgSlug } = await params;
 
-  let userId: string;
-  try {
-    const session = await requireAuth();
-    userId = session.userId;
-  } catch {
-    redirect("/sign-in");
-  }
-
   let orgId: string;
   try {
-    orgId = await requireOrgAccess(userId, orgSlug);
+    const result = await requirePermission("accounting-config", "write", orgSlug);
+    orgId = result.orgId;
   } catch {
-    redirect("/select-org");
+    redirect(`/${orgSlug}`);
   }
 
   const service = new VoucherTypesService();
