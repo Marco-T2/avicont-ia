@@ -1,9 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import {
-  ContactsService,
-  updateContactSchema,
-} from "@/features/contacts";
+import { ContactsService } from "@/features/contacts/server";
+import { updateContactSchema } from "@/features/contacts";
 
 const service = new ContactsService();
 
