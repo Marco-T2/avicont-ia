@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { logoUploadConstraints } from "@/features/org-profile";
+import { logoUploadConstraints } from "@/features/org-profile/org-profile.validation";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Upload } from "lucide-react";
