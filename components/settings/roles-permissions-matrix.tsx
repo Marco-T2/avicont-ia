@@ -20,6 +20,7 @@ import {
 } from "@/features/shared/permissions";
 import { MODULES } from "@/components/sidebar/modules/registry";
 import { groupResources } from "@/lib/settings/group-resources";
+import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 import { cn } from "@/lib/utils";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -54,21 +55,6 @@ const RESOURCE_ORDER: Resource[] = [
   "documents",
   "agent",
 ];
-
-const RESOURCE_LABELS: Record<Resource, string> = {
-  members: "Miembros",
-  "accounting-config": "Configuración contable",
-  sales: "Ventas",
-  purchases: "Compras",
-  payments: "Cobros y Pagos",
-  journal: "Libro Diario",
-  dispatches: "Despachos",
-  reports: "Informes",
-  contacts: "Contactos",
-  farms: "Granjas",
-  documents: "Documentos",
-  agent: "Agente IA",
-};
 
 const POSTABLE_RESOURCES = new Set<Resource>(["sales", "purchases", "journal"] as PostableResource[]);
 const POST_ALLOWED = getPostAllowedRoles();

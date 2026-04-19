@@ -7,23 +7,7 @@
  */
 import type { Resource, PostableResource } from "@/features/shared/permissions";
 import { MatrixRow } from "@/components/settings/matrix-row";
-
-// ─── Resource labels ──────────────────────────────────────────────────────────
-
-const RESOURCE_LABELS: Record<Resource, string> = {
-  members: "Miembros",
-  "accounting-config": "Config. contable",
-  sales: "Ventas",
-  purchases: "Compras",
-  payments: "Cobros y Pagos",
-  journal: "Libro Diario",
-  dispatches: "Despachos",
-  reports: "Informes",
-  contacts: "Contactos",
-  farms: "Granjas",
-  documents: "Documentos",
-  agent: "Agente IA",
-};
+import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 
 /**
  * Contextual notes for shared resources.
