@@ -1,7 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
-import { SaleService, saleStatusSchema } from "@/features/sale";
+import { SaleService } from "@/features/sale/server";
+import { saleStatusSchema } from "@/features/sale";
 
 const usersService = new UsersService();
 const saleService = new SaleService();

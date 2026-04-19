@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { SaleService } from "@/features/sale";
+import { SaleService } from "@/features/sale/server";
 import {
   createSaleSchema,
   saleFiltersSchema,
