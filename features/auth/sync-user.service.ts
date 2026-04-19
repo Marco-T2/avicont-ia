@@ -1,3 +1,4 @@
+import "server-only";
 import { currentUser } from "@clerk/nextjs/server";
 import { UsersService } from "@/features/shared/users.service";
 import { AppError } from "@/features/shared/errors";
