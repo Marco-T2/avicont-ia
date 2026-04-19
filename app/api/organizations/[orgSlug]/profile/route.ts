@@ -1,9 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import {
-  OrgProfileService,
-  updateOrgProfileSchema,
-} from "@/features/org-profile";
+import { OrgProfileService } from "@/features/org-profile/server";
+import { updateOrgProfileSchema } from "@/features/org-profile";
 
 const orgProfileService = new OrgProfileService();
 

@@ -1,3 +1,4 @@
+import "server-only";
 import { del } from "@vercel/blob";
 import { OrgProfileRepository } from "./org-profile.repository";
 import type { OrgProfile, UpdateOrgProfileInput } from "./org-profile.types";

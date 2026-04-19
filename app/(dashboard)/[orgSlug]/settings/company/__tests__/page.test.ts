@@ -24,7 +24,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/org-profile", () => {
+vi.mock("@/features/org-profile/server", () => {
   class OrgProfileService {
     getOrCreate = mockGetOrCreate;
   }
