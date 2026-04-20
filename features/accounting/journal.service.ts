@@ -34,6 +34,12 @@ import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { VoucherTypesService } from "@/features/voucher-types/server";
 import { ContactsService } from "@/features/contacts/server";
+import { OrgProfileService } from "@/features/org-profile/server";
+import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
+import { buildVoucherPdfInput } from "./exporters/voucher-pdf.composer";
+import { exportVoucherPdf as renderVoucherPdf } from "./exporters/voucher-pdf.exporter";
+import { fetchLogoAsDataUrl } from "./exporters/logo-fetcher";
+import type { ExportVoucherOpts } from "./exporters/voucher-pdf.types";
 import type { JournalEntryStatus, Account } from "@/generated/prisma/client";
 import type {
   CreateJournalEntryInput,
@@ -60,6 +66,8 @@ export class JournalService {
   private readonly periodsService: FiscalPeriodsService;
   private readonly voucherTypesService: VoucherTypesService;
   private readonly contactsService: ContactsService;
+  private readonly orgProfileService: OrgProfileService;
+  private readonly sigConfigService: DocumentSignatureConfigService;
 
   constructor(
     repo?: JournalRepository,
@@ -68,6 +76,8 @@ export class JournalService {
     periodsService?: FiscalPeriodsService,
     voucherTypesService?: VoucherTypesService,
     contactsService?: ContactsService,
+    orgProfileService?: OrgProfileService,
+    sigConfigService?: DocumentSignatureConfigService,
   ) {
     this.repo = repo ?? new JournalRepository();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
@@ -75,6 +85,8 @@ export class JournalService {
     this.periodsService = periodsService ?? new FiscalPeriodsService();
     this.voucherTypesService = voucherTypesService ?? new VoucherTypesService();
     this.contactsService = contactsService ?? new ContactsService();
+    this.orgProfileService = orgProfileService ?? new OrgProfileService();
+    this.sigConfigService = sigConfigService ?? new DocumentSignatureConfigService();
   }
 
   // ── Listar asientos contables ──
@@ -597,5 +609,28 @@ export class JournalService {
 
       return updated;
     });
+  }
+
+  // ── Exportar a PDF ──
+
+  async exportVoucherPdf(
+    organizationId: string,
+    entryId: string,
+    opts: ExportVoucherOpts,
+  ): Promise<Buffer> {
+    const entry = await this.getById(organizationId, entryId);
+    const profile = await this.orgProfileService.getOrCreate(organizationId);
+    const sigConfig = await this.sigConfigService.getOrDefault(organizationId, "COMPROBANTE");
+    const logoDataUrl = await fetchLogoAsDataUrl(profile.logoUrl);
+    const period = await this.periodsService.getById(organizationId, entry.periodId);
+
+    const input = buildVoucherPdfInput(entry, profile, sigConfig, logoDataUrl, {
+      exchangeRate: opts.exchangeRate,
+      ufvRate: opts.ufvRate,
+      gestion: period.name,
+      locality: profile.ciudad ?? "",
+    });
+
+    return renderVoucherPdf(input);
   }
 }
