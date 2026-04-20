@@ -119,8 +119,18 @@ export const correlationAuditQuerySchema = z.object({
   dateTo: z.coerce.date({ message: "Fecha hasta inválida" }).optional(),
 });
 
+export const exportVoucherQuerySchema = z.object({
+  format: z.enum(["json", "pdf"]).optional().default("json"),
+  exchangeRate: z.coerce
+    .number({ message: "Tipo de cambio inválido" })
+    .min(0, "Tipo de cambio no puede ser negativo")
+    .optional(),
+  ufvRate: z.string().optional(),
+});
+
 export type LastReferenceQueryDto = z.infer<typeof lastReferenceQuerySchema>;
 export type CorrelationAuditQueryDto = z.infer<typeof correlationAuditQuerySchema>;
+export type ExportVoucherQueryDto = z.infer<typeof exportVoucherQuerySchema>;
 
 export type CreateAccountDto = z.infer<typeof createAccountSchema>;
 export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;

@@ -18,7 +18,7 @@ import {
   DialogFooter,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, Pencil, CheckCircle, XCircle } from "lucide-react";
+import { ArrowLeft, Loader2, Pencil, CheckCircle, XCircle, FileDown } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -155,6 +155,16 @@ export default function JournalEntryDetail({
 
             {/* Action buttons */}
             <div className="flex gap-2 shrink-0">
+              <a
+                href={`/api/organizations/${orgSlug}/journal/${entry.id}?format=pdf`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button variant="outline" size="sm">
+                  <FileDown className="h-4 w-4 mr-1" />
+                  Descargar PDF
+                </Button>
+              </a>
               <Gated resource="journal" action="write">
                 {canEdit && (
                   <Link href={`/${orgSlug}/accounting/journal/${entry.id}/edit`}>
