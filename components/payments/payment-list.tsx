@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -11,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -21,11 +21,33 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   ArrowDownCircle,
   ArrowUpCircle,
   FileText,
   Plus,
   Search,
+  MoreHorizontal,
+  Eye,
+  Pencil,
+  CheckCircle,
+  XCircle,
+  Trash2,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -88,12 +110,163 @@ interface PaymentListProps {
   contacts: ContactOption[];
 }
 
+// ── Row sub-component with actions dropdown ──
+
+interface PaymentRowProps {
+  orgSlug: string;
+  payment: PaymentWithRelations;
+  direction: PaymentDirection;
+  isLoading: boolean;
+  onPost: (payment: PaymentWithRelations) => void;
+  onVoid: (payment: PaymentWithRelations) => void;
+  onDelete: (payment: PaymentWithRelations) => void;
+}
+
+function PaymentRow({
+  orgSlug,
+  payment,
+  direction,
+  isLoading,
+  onPost,
+  onVoid,
+  onDelete,
+}: PaymentRowProps) {
+  const router = useRouter();
+  const statusBadge = STATUS_BADGE[payment.status] ?? {
+    label: payment.status,
+    className: "bg-gray-100 text-gray-800",
+  };
+  const totalAllocated = payment.allocations.reduce(
+    (sum, a) => sum + a.amount,
+    0,
+  );
+  const unapplied = payment.amount - totalAllocated;
+  const hasUnapplied =
+    unapplied > 0.01 &&
+    (payment.status === "POSTED" || payment.status === "LOCKED");
+
+  const viewPath = `/${orgSlug}/payments/${payment.id}`;
+
+  return (
+    <tr
+      className="border-b hover:bg-gray-50 cursor-pointer"
+      onClick={() => router.push(viewPath)}
+    >
+      <td className="py-3 px-4 whitespace-nowrap">{formatDate(payment.date)}</td>
+      <td className="py-3 px-4">
+        <Badge
+          className={
+            direction === "COBRO"
+              ? "bg-blue-100 text-blue-800"
+              : "bg-green-100 text-green-800"
+          }
+        >
+          {direction === "COBRO" ? "Cobro" : "Pago"}
+        </Badge>
+      </td>
+      <td className="py-3 px-4 text-gray-600">
+        {payment.contact?.name ?? "---"}
+      </td>
+      <td className="py-3 px-4 text-gray-500">
+        {METHOD_LABEL[payment.method] ?? payment.method}
+      </td>
+      <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+        {payment.operationalDocType && payment.referenceNumber
+          ? `${payment.operationalDocType.code}-${payment.referenceNumber}`
+          : payment.referenceNumber
+            ? String(payment.referenceNumber)
+            : "—"}
+      </td>
+      <td className="py-3 px-4 text-gray-500 max-w-48 truncate">
+        {payment.description}
+      </td>
+      <td className="py-3 px-4 text-center">
+        <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
+      </td>
+      <td className="py-3 px-4 text-right font-mono">
+        <div className="flex flex-col items-end gap-1">
+          <span>{formatCurrency(payment.amount)}</span>
+          {hasUnapplied && (
+            <Badge className="bg-sky-100 text-sky-700 text-xs font-normal">
+              Crédito: Bs
+              {unapplied.toLocaleString("es-BO", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}
+            </Badge>
+          )}
+        </div>
+      </td>
+      <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+        ) : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                className="h-8 w-8"
+                aria-label="Acciones"
+              >
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => router.push(viewPath)}>
+                <Eye className="h-4 w-4 mr-2" />
+                Ver
+              </DropdownMenuItem>
+              {payment.status === "DRAFT" && (
+                <>
+                  <DropdownMenuItem onClick={() => router.push(viewPath)}>
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => onPost(payment)}>
+                    <CheckCircle className="h-4 w-4 mr-2" />
+                    Contabilizar
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onDelete(payment)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Eliminar
+                  </DropdownMenuItem>
+                </>
+              )}
+              {payment.status === "POSTED" && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => onVoid(payment)}
+                    className="text-red-600 focus:text-red-600"
+                  >
+                    <XCircle className="h-4 w-4 mr-2" />
+                    Anular
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </td>
+    </tr>
+  );
+}
+
 export default function PaymentList({
   orgSlug,
   payments,
   contacts,
 }: PaymentListProps) {
   const router = useRouter();
+  const [actioningId, setActioningId] = useState<string | null>(null);
+  const [postPayment, setPostPayment] = useState<PaymentWithRelations | null>(null);
+  const [voidPayment, setVoidPayment] = useState<PaymentWithRelations | null>(null);
+  const [deletePayment, setDeletePayment] = useState<PaymentWithRelations | null>(null);
 
   // ── Client-side filters ──
   const params =
@@ -140,44 +313,53 @@ export default function PaymentList({
   const cobrosTotal = cobros.reduce((s, p) => s + p.amount, 0);
   const pagosTotal = pagos.reduce((s, p) => s + p.amount, 0);
 
-  // ── Inline actions ──
+  // ── Action handlers ──
 
-  async function handlePost(paymentId: string) {
-    if (
-      !confirm(
-        "¿Está seguro de contabilizar este pago?",
-      )
-    )
-      return;
-
+  async function executeStatusTransition(
+    payment: PaymentWithRelations,
+    targetStatus: "POSTED" | "VOIDED",
+  ) {
+    setActioningId(payment.id);
     try {
       const res = await fetch(
-        `/api/organizations/${orgSlug}/payments/${paymentId}/status`,
+        `/api/organizations/${orgSlug}/payments/${payment.id}/status`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "POSTED" }),
+          body: JSON.stringify({ status: targetStatus }),
         },
       );
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error ?? "Error al contabilizar");
+        throw new Error(
+          data.error ??
+            (targetStatus === "POSTED"
+              ? "Error al contabilizar"
+              : "Error al anular"),
+        );
       }
-      toast.success("Pago contabilizado correctamente");
+      toast.success(
+        targetStatus === "POSTED"
+          ? "Pago contabilizado correctamente"
+          : "Pago anulado correctamente",
+      );
+      setPostPayment(null);
+      setVoidPayment(null);
       router.refresh();
     } catch (err) {
       toast.error(
-        err instanceof Error ? err.message : "Error al contabilizar el pago",
+        err instanceof Error ? err.message : "Error al cambiar el estado",
       );
+    } finally {
+      setActioningId(null);
     }
   }
 
-  async function handleDelete(paymentId: string) {
-    if (!confirm("¿Está seguro de eliminar este pago borrador?")) return;
-
+  async function executeDelete(payment: PaymentWithRelations) {
+    setActioningId(payment.id);
     try {
       const res = await fetch(
-        `/api/organizations/${orgSlug}/payments/${paymentId}`,
+        `/api/organizations/${orgSlug}/payments/${payment.id}`,
         { method: "DELETE" },
       );
       if (!res.ok) {
@@ -185,41 +367,14 @@ export default function PaymentList({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Pago eliminado correctamente");
+      setDeletePayment(null);
       router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Error al eliminar el pago",
       );
-    }
-  }
-
-  async function handleVoid(paymentId: string) {
-    if (
-      !confirm(
-        "¿Está seguro de anular este pago? Se revertirán los asientos y CxC/CxP.",
-      )
-    )
-      return;
-
-    try {
-      const res = await fetch(
-        `/api/organizations/${orgSlug}/payments/${paymentId}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "VOIDED" }),
-        },
-      );
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error ?? "Error al anular");
-      }
-      toast.success("Pago anulado correctamente");
-      router.refresh();
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Error al anular el pago",
-      );
+    } finally {
+      setActioningId(null);
     }
   }
 
@@ -404,172 +559,139 @@ export default function PaymentList({
                     </td>
                   </tr>
                 ) : (
-                  filteredPayments.map((payment) => {
-                    const direction = inferDirection(payment, contacts);
-                    const statusBadge = STATUS_BADGE[payment.status] ?? {
-                      label: payment.status,
-                      className: "bg-gray-100 text-gray-800",
-                    };
-                    const totalAllocated = payment.allocations.reduce(
-                      (sum, a) => sum + a.amount,
-                      0,
-                    );
-                    const unapplied = payment.amount - totalAllocated;
-                    const hasUnapplied =
-                      unapplied > 0.01 &&
-                      (payment.status === "POSTED" || payment.status === "LOCKED");
-
-                    return (
-                      <tr
-                        key={payment.id}
-                        className="border-b hover:bg-gray-50 cursor-pointer"
-                        onClick={() =>
-                          router.push(`/${orgSlug}/payments/${payment.id}`)
-                        }
-                      >
-                        <td className="py-3 px-4 whitespace-nowrap">
-                          {formatDate(payment.date)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <Badge
-                            className={
-                              direction === "COBRO"
-                                ? "bg-blue-100 text-blue-800"
-                                : "bg-green-100 text-green-800"
-                            }
-                          >
-                            {direction === "COBRO" ? "Cobro" : "Pago"}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-gray-600">
-                          {payment.contact?.name ?? "---"}
-                        </td>
-                        <td className="py-3 px-4 text-gray-500">
-                          {METHOD_LABEL[payment.method] ?? payment.method}
-                        </td>
-                        <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
-                          {payment.operationalDocType && payment.referenceNumber
-                            ? `${payment.operationalDocType.code}-${payment.referenceNumber}`
-                            : payment.referenceNumber
-                              ? String(payment.referenceNumber)
-                              : "—"}
-                        </td>
-                        <td className="py-3 px-4 text-gray-500 max-w-48 truncate">
-                          {payment.description}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <Badge className={statusBadge.className}>
-                            {statusBadge.label}
-                          </Badge>
-                        </td>
-                        <td className="py-3 px-4 text-right font-mono">
-                          <div className="flex flex-col items-end gap-1">
-                            <span>{formatCurrency(payment.amount)}</span>
-                            {hasUnapplied && (
-                              <Badge className="bg-sky-100 text-sky-700 text-xs font-normal">
-                                Crédito: Bs{unapplied.toLocaleString("es-BO", {
-                                  minimumFractionDigits: 2,
-                                  maximumFractionDigits: 2,
-                                })}
-                              </Badge>
-                            )}
-                          </div>
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          <div
-                            className="flex justify-end gap-1"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            {payment.status === "DRAFT" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    router.push(
-                                      `/${orgSlug}/payments/${payment.id}`,
-                                    )
-                                  }
-                                >
-                                  Editar
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => handlePost(payment.id)}
-                                >
-                                  Contabilizar
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-500 hover:text-red-700"
-                                  onClick={() => handleDelete(payment.id)}
-                                >
-                                  Eliminar
-                                </Button>
-                              </>
-                            )}
-                            {payment.status === "POSTED" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() =>
-                                    router.push(
-                                      `/${orgSlug}/payments/${payment.id}`,
-                                    )
-                                  }
-                                >
-                                  Ver
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="text-red-500 hover:text-red-700"
-                                  onClick={() => handleVoid(payment.id)}
-                                >
-                                  Anular
-                                </Button>
-                              </>
-                            )}
-                            {payment.status === "LOCKED" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  router.push(
-                                    `/${orgSlug}/payments/${payment.id}`,
-                                  )
-                                }
-                              >
-                                Ver
-                              </Button>
-                            )}
-                            {payment.status === "VOIDED" && (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  router.push(
-                                    `/${orgSlug}/payments/${payment.id}`,
-                                  )
-                                }
-                              >
-                                Ver
-                              </Button>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
+                  filteredPayments.map((payment) => (
+                    <PaymentRow
+                      key={payment.id}
+                      orgSlug={orgSlug}
+                      payment={payment}
+                      direction={inferDirection(payment, contacts)}
+                      isLoading={actioningId === payment.id}
+                      onPost={setPostPayment}
+                      onVoid={setVoidPayment}
+                      onDelete={setDeletePayment}
+                    />
+                  ))
                 )}
               </tbody>
             </table>
           </div>
         </CardContent>
       </Card>
+
+      {/* Dialog — CONTABILIZAR */}
+      <Dialog
+        open={postPayment !== null}
+        onOpenChange={(open) => !open && setPostPayment(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Contabilizar Pago</DialogTitle>
+            <DialogDescription>
+              Esta acción contabilizará el pago y generará los asientos
+              contables correspondientes.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={actioningId !== null}
+              onClick={() => setPostPayment(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              className="bg-green-600 hover:bg-green-700 text-white"
+              disabled={actioningId !== null}
+              onClick={() =>
+                postPayment && executeStatusTransition(postPayment, "POSTED")
+              }
+            >
+              {actioningId !== null ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <CheckCircle className="h-4 w-4 mr-2" />
+              )}
+              Contabilizar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog — ANULAR */}
+      <Dialog
+        open={voidPayment !== null}
+        onOpenChange={(open) => !open && setVoidPayment(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Anular Pago</DialogTitle>
+            <DialogDescription>
+              Esta acción anulará el pago y revertirá los asientos y CxC/CxP
+              asociados. Esta operación no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={actioningId !== null}
+              onClick={() => setVoidPayment(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={actioningId !== null}
+              onClick={() =>
+                voidPayment && executeStatusTransition(voidPayment, "VOIDED")
+              }
+            >
+              {actioningId !== null ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              Anular
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog — ELIMINAR */}
+      <Dialog
+        open={deletePayment !== null}
+        onOpenChange={(open) => !open && setDeletePayment(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Eliminar Pago Borrador</DialogTitle>
+            <DialogDescription>
+              Esta acción eliminará permanentemente el pago borrador. Esta
+              operación no se puede deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={actioningId !== null}
+              onClick={() => setDeletePayment(null)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={actioningId !== null}
+              onClick={() => deletePayment && executeDelete(deletePayment)}
+            >
+              {actioningId !== null ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 mr-2" />
+              )}
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
