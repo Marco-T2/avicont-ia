@@ -20,6 +20,7 @@ function makeAccount(
     level: 3,
     nature: "DEUDORA",
     isActive: true,
+    isContraAccount: false,
     ...partial,
   };
 }

@@ -84,6 +84,7 @@ export class FinancialStatementsRepository extends BaseRepository {
         subtype: true,
         nature: true,
         isActive: true,
+        isContraAccount: true,
       },
       orderBy: { code: "asc" },
     });
@@ -97,6 +98,7 @@ export class FinancialStatementsRepository extends BaseRepository {
       subtype: a.subtype as AccountSubtype | null,
       nature: a.nature as "DEUDORA" | "ACREEDORA",
       isActive: a.isActive,
+      isContraAccount: a.isContraAccount,
     }));
   }
 
