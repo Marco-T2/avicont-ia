@@ -135,7 +135,8 @@ describe("Excel exporter — contra accounts numeric-negative (T15, R2 fix)", ()
 
     // Parse the generated XLSX and inspect cell values
     const workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await workbook.xlsx.load(buffer as any);
     const ws = workbook.worksheets[0];
 
     // Find the Depreciación Acumulada row — scan all rows for the label
