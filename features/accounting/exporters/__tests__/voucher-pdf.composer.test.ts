@@ -30,6 +30,7 @@ function makeAccount(code: string, name: string): Account {
     requiresContact: false,
     description: null,
     isActive: true,
+    isContraAccount: false,
     organizationId: "org-1",
   } as Account;
 }

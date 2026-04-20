@@ -317,8 +317,9 @@ model Account {
   level           Int
   isDetail        Boolean        @default(false)
   requiresContact Boolean        @default(false)
-  description     String?
-  isActive        Boolean        @default(true)
+  description       String?
+  isActive          Boolean        @default(true)
+  isContraAccount   Boolean        @default(false)
   organizationId  String
   parent          Account?       @relation("AccountTree", fields: [parentId], references: [id])
   children        Account[]      @relation("AccountTree")
