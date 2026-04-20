@@ -13,18 +13,27 @@ export type ExportRow = {
   /**
    * Saldo formateado (columna única — backward compat).
    * Para multi-columna usar `balances`.
+   * For contra-account rows, this string is wrapped in parens: "(120,000.00)".
    */
   balance?: string;
   /**
    * Saldos por columna (multi-columna PR4).
    * Clave = ExportColumn.id → valor formateado con 2 decimales.
    * Siempre presente en sheets generadas por PR4 (incluso en columna única).
+   * For contra-account rows, each value is wrapped in parens.
    */
   balances?: Record<string, string>;
   /** Nivel de indentación (0 = sección, 1 = subtipo, 2 = cuenta) */
   indent: number;
   /** Si la fila debe ir en negrita */
   bold: boolean;
+  /**
+   * true if this row represents a contra-account (its balance reduces the section total).
+   * - PDF exporter: renders the pre-formatted parens string as-is.
+   * - Excel exporter: negates the parsed numeric value before writing the cell
+   *   so that NUMBER_FORMAT "#,##0.00;(#,##0.00)" renders "(120,000.00)" natively.
+   */
+  isContra?: boolean;
 };
 
 /** Metadato de columna de valor en el ExportSheet (PR4). */
