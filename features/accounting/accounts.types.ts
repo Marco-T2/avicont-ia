@@ -14,6 +14,13 @@ export interface CreateAccountInput {
   isDetail?: boolean;
   requiresContact?: boolean;
   description?: string;
+  /**
+   * Marca si esta cuenta es una cuenta reguladora (contra-cuenta).
+   * Cuando isContraAccount=true, la naturaleza ESPERADA es la OPUESTA al tipo por defecto.
+   * Ejemplo: ACTIVO + isContraAccount=true → nature=ACREEDORA (Depreciación Acumulada).
+   * Default: false (comportamiento existente preservado).
+   */
+  isContraAccount?: boolean;
 }
 
 /** Datos completamente resueltos tras la validación en el service. El repositorio los recibe sin ambigüedad. */
@@ -29,6 +36,8 @@ export interface ResolvedCreateAccountData {
   isDetail: boolean;
   requiresContact: boolean;
   description: string | null;
+  /** Resolved contra-account flag. Always boolean (defaults to false). */
+  isContraAccount: boolean;
 }
 
 export interface UpdateAccountInput {
@@ -39,6 +48,12 @@ export interface UpdateAccountInput {
   description?: string;
   /** Subtipo de cuenta. Permite corregir el subtipo de una cuenta existente. */
   subtype?: AccountSubtype;
+  /**
+   * Forward compatibility field for isContraAccount on update.
+   * TODO(v2): reject isContraAccount flip without simultaneous nature update.
+   * In v1 this field is accepted by the repo but no guard is enforced here.
+   */
+  isContraAccount?: boolean;
 }
 
 // ── Composite types ──

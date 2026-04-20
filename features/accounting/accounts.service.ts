@@ -21,8 +21,10 @@ import type {
 
 const MAX_DEPTH = 4;
 
-function deriveNature(type: AccountType): AccountNature {
-  return (type === "ACTIVO" || type === "GASTO") ? "DEUDORA" : "ACREEDORA";
+function deriveNature(type: AccountType, isContraAccount = false): AccountNature {
+  const defaultNature: AccountNature = (type === "ACTIVO" || type === "GASTO") ? "DEUDORA" : "ACREEDORA";
+  if (!isContraAccount) return defaultNature;
+  return defaultNature === "DEUDORA" ? "ACREEDORA" : "DEUDORA";
 }
 
 export class AccountsService {
@@ -89,8 +91,9 @@ export class AccountsService {
       );
     }
 
-    // 6. Derivar la naturaleza
-    const nature = deriveNature(type);
+    // 6. Derivar la naturaleza (respeta el flag de contra-cuenta si se indica)
+    const isContraAccount = input.isContraAccount ?? false;
+    const nature = deriveNature(type, isContraAccount);
     if (input.nature !== undefined && input.nature !== nature) {
       throw new ValidationError(
         `La naturaleza de la cuenta no coincide con el tipo '${type}'. Naturaleza esperada: ${nature}`,
@@ -144,6 +147,7 @@ export class AccountsService {
       isDetail,
       requiresContact: input.requiresContact ?? false,
       description: input.description ?? null,
+      isContraAccount,
     };
 
     // 10. Crear la cuenta + cambiar isDetail del padre si es necesario (atómico)
