@@ -61,16 +61,26 @@ export function buildBalanceSheet(input: BuildBalanceSheetInput): BalanceSheetCu
         code: a.code,
         name: a.name,
         balance: balanceMap.get(a.id) ?? zeroDecimal(),
+        isContra: a.isContraAccount, // carry the contra marker through
       }))
       .filter((a) => !a.balance.isZero()); // omitir cuentas con balance cero (REQ-1)
 
     if (accsForSubtype.length === 0) return null; // subtipo sin movimientos → omitido
 
+    // Partition into non-contra and contra accounts.
+    // NOTE: SubtypeGroup.accounts carries positive balances for both (no sign flip in the data).
+    //       The group total applies the contra subtraction: total = Σ(non-contras) − Σ(contras).
+    //       Exporters must NOT re-sum from accounts[].balance naively; use group.total.
+    const nonContras = accsForSubtype.filter((a) => !a.isContra);
+    const contras = accsForSubtype.filter((a) => a.isContra);
+    const total = sumDecimals(nonContras.map((a) => a.balance))
+      .minus(sumDecimals(contras.map((a) => a.balance)));
+
     return {
       subtype,
       label: formatSubtypeLabel(subtype),
       accounts: accsForSubtype,
-      total: sumDecimals(accsForSubtype.map((a) => a.balance)),
+      total,
     };
   };
 
@@ -92,6 +102,9 @@ export function buildBalanceSheet(input: BuildBalanceSheetInput): BalanceSheetCu
       code: "—",
       name: retainedEarningsOfPeriod.isNegative() ? "Pérdida del Ejercicio" : "Resultado del Ejercicio",
       balance: retainedEarningsOfPeriod,
+      // Explicit false: this synthetic line is NOT a contra-account.
+      // isContra must never be undefined here — exporters rely on strict boolean check.
+      isContra: false as const,
     };
 
     const resultsGroup = equityGroups.find((g) => g.subtype === AccountSubtype.PATRIMONIO_RESULTADOS);
