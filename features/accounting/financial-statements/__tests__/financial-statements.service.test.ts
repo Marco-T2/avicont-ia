@@ -32,6 +32,7 @@ const minimalAccounts: AccountMetadata[] = [
     subtype: AccountSubtype.INGRESO_OPERATIVO,
     nature: "ACREEDORA",
     isActive: true,
+    isContraAccount: false,
   },
 ];
 

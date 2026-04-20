@@ -19,6 +19,7 @@ function makeAccount(
     level: 3,
     nature: "ACREEDORA", // ingresos son acreedores por defecto
     isActive: true,
+    isContraAccount: false,
     ...partial,
   };
 }

@@ -61,6 +61,8 @@ export type StatementLine = {
   level: number;
   subtype: AccountSubtype | null;
   balance: Decimal;
+  /** Marker: true if this line represents a contra-account (reduces the group total). */
+  isContra?: boolean;
 };
 
 // ── Grupo de cuentas agrupadas por subtipo ──
@@ -72,6 +74,8 @@ export type SubtypeGroup = {
     code: string;
     name: string;
     balance: Decimal;
+    /** true if this is a contra-account (its balance reduces the group total) */
+    isContra?: boolean;
   }>;
   total: Decimal;
 };
@@ -121,6 +125,8 @@ export type AccountMetadata = {
   subtype: AccountSubtype | null;
   nature: "DEUDORA" | "ACREEDORA";
   isActive: boolean;
+  /** true if this account is a contra-account (reduces the balance of its section) */
+  isContraAccount: boolean;
 };
 
 export type ResolvedBalance = {
