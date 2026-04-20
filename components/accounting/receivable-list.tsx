@@ -12,7 +12,29 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, FileText } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Plus,
+  FileText,
+  MoreHorizontal,
+  RefreshCw,
+  XCircle,
+  Loader2,
+} from "lucide-react";
 import { toast } from "sonner";
 import StatusBadge from "./status-badge";
 import StatusUpdateDialog from "./status-update-dialog";
@@ -48,6 +70,9 @@ export default function ReceivableList({
   const [showCreate, setShowCreate] = useState(false);
   const [statusDialogFor, setStatusDialogFor] =
     useState<ReceivableWithContact | null>(null);
+  const [cancelDialogFor, setCancelDialogFor] =
+    useState<ReceivableWithContact | null>(null);
+  const [actioningId, setActioningId] = useState<string | null>(null);
 
   // Filters
   const [filterContactId, setFilterContactId] = useState<string | null>(null);
@@ -89,14 +114,8 @@ export default function ReceivableList({
     router.refresh();
   }
 
-  async function handleCancel(receivable: ReceivableWithContact) {
-    if (
-      !confirm(
-        `¿Cancelar la cuenta por cobrar de ${receivable.contact.name}?`,
-      )
-    )
-      return;
-
+  async function executeCancel(receivable: ReceivableWithContact) {
+    setActioningId(receivable.id);
     try {
       const res = await fetch(
         `/api/organizations/${orgSlug}/cxc/${receivable.id}/status`,
@@ -113,14 +132,21 @@ export default function ReceivableList({
       }
 
       toast.success("Cuenta por cobrar cancelada");
+      setCancelDialogFor(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al cancelar");
+    } finally {
+      setActioningId(null);
     }
   }
 
   const canUpdate = (status: string) =>
     status === "PENDING" || status === "PARTIAL";
+  const canCancel = (status: string) =>
+    status !== "CANCELLED" && status !== "PAID";
+  const hasAnyAction = (status: string) =>
+    canUpdate(status) || canCancel(status);
 
   return (
     <>
@@ -243,28 +269,44 @@ export default function ReceivableList({
                           <StatusBadge status={r.status} />
                         </td>
                         <td className="py-3 px-4 text-right">
-                          <div className="flex justify-end gap-2">
-                            {canUpdate(r.status) && (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setStatusDialogFor(r)}
-                              >
-                                Actualizar estado
-                              </Button>
-                            )}
-                            {r.status !== "CANCELLED" &&
-                              r.status !== "PAID" && (
+                          {actioningId === r.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin text-gray-400 ml-auto" />
+                          ) : hasAnyAction(r.status) ? (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
                                 <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-red-600 border-red-300 hover:bg-red-50"
-                                  onClick={() => handleCancel(r)}
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="h-8 w-8"
+                                  aria-label="Acciones"
                                 >
-                                  Cancelar
+                                  <MoreHorizontal className="h-4 w-4" />
                                 </Button>
-                              )}
-                          </div>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                {canUpdate(r.status) && (
+                                  <DropdownMenuItem
+                                    onClick={() => setStatusDialogFor(r)}
+                                  >
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Actualizar estado
+                                  </DropdownMenuItem>
+                                )}
+                                {canUpdate(r.status) && canCancel(r.status) && (
+                                  <DropdownMenuSeparator />
+                                )}
+                                {canCancel(r.status) && (
+                                  <DropdownMenuItem
+                                    onClick={() => setCancelDialogFor(r)}
+                                    className="text-red-600 focus:text-red-600"
+                                  >
+                                    <XCircle className="h-4 w-4 mr-2" />
+                                    Cancelar
+                                  </DropdownMenuItem>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          ) : null}
                         </td>
                       </tr>
                     );
@@ -297,6 +339,46 @@ export default function ReceivableList({
           }}
         />
       )}
+
+      {/* Cancel confirmation dialog */}
+      <Dialog
+        open={cancelDialogFor !== null}
+        onOpenChange={(open) => !open && setCancelDialogFor(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancelar Cuenta por Cobrar</DialogTitle>
+            <DialogDescription>
+              Esta acción cancelará la cuenta por cobrar de{" "}
+              {cancelDialogFor?.contact.name}. Esta operación no se puede
+              deshacer.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              disabled={actioningId !== null}
+              onClick={() => setCancelDialogFor(null)}
+            >
+              Volver
+            </Button>
+            <Button
+              variant="destructive"
+              disabled={actioningId !== null}
+              onClick={() =>
+                cancelDialogFor && executeCancel(cancelDialogFor)
+              }
+            >
+              {actioningId !== null ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <XCircle className="h-4 w-4 mr-2" />
+              )}
+              Cancelar CxC
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
