@@ -179,14 +179,31 @@ function writeDocumentHeader(
  * Escribe una celda numérica nativa.
  * Si el string es vacío o no parseable, escribe 0.
  * SIEMPRE usa cell.value = number — nunca string para valores monetarios.
+ *
+ * Para filas de contra-cuenta (isContra=true):
+ *   - El string de `valueStr` puede estar envuelto en paréntesis "(120,000.00)"
+ *     porque el sheet.builder lo pre-formatea para el path PDF.
+ *   - parseFloat("(120,000.00)") → NaN. La corrección R2: ignorar paréntesis y negar.
+ *   - El formato #,##0.00;(#,##0.00) ya renderiza números negativos con paréntesis en Excel.
+ *   - Resultado: cell.value = -120000 → Excel muestra (120,000.00). Columna sumable.
  */
 function writeNumericCell(
   cell: ExcelJS.Cell,
   valueStr: string | undefined,
   opts: { bold?: boolean; size?: number },
+  isContra = false,
 ): void {
-  const parsed = valueStr ? parseFloat(valueStr) : 0;
-  cell.value = isNaN(parsed) ? 0 : parsed;
+  let value: number;
+  if (isContra) {
+    // Strip parens if present (e.g. "(120000.00)" → "120000.00"), then negate.
+    const stripped = valueStr ? valueStr.replace(/^\((.+)\)$/, "$1") : "0";
+    const parsed = parseFloat(stripped);
+    value = isNaN(parsed) ? 0 : -Math.abs(parsed);
+  } else {
+    const parsed = valueStr ? parseFloat(valueStr) : 0;
+    value = isNaN(parsed) ? 0 : parsed;
+  }
+  cell.value = value;
   cell.numFmt = NUMBER_FORMAT;
   cell.font = arial({ bold: opts.bold, size: opts.size ?? 8 });
   cell.alignment = { horizontal: "right" };
@@ -228,10 +245,12 @@ function writeExportRow(
       labelCell.font = arial({ size: 8 });
       labelCell.alignment = { horizontal: "left", indent: row.indent };
 
+      const isContraRow = row.isContra === true;
+
       if (isMultiCol) {
         valueColumns.forEach((col, i) => {
           const val = row.balances?.[col.id] ?? row.balance ?? "";
-          writeNumericCell(excelRow.getCell(i + 2), val, {});
+          writeNumericCell(excelRow.getCell(i + 2), val, {}, isContraRow);
         });
       } else {
         const codeCell = excelRow.getCell(2);
@@ -239,7 +258,7 @@ function writeExportRow(
         codeCell.font = arial({ size: 8 });
         codeCell.alignment = { horizontal: "center" };
 
-        writeNumericCell(excelRow.getCell(3), row.balance, {});
+        writeNumericCell(excelRow.getCell(3), row.balance, {}, isContraRow);
       }
       break;
     }

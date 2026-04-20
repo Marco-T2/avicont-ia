@@ -123,7 +123,11 @@ function groupToRows(
 
   // Cuentas del grupo
   for (const account of group.accounts) {
-    const balStr = fmt(account.balance);
+    const rawBalStr = fmt(account.balance);
+    // Contra-accounts: wrap the formatted string in parens for the PDF/string path.
+    // The Excel exporter uses row.isContra to negate the numeric value independently.
+    const isContra = account.isContra === true;
+    const balStr = isContra ? `(${rawBalStr})` : rawBalStr;
     rows.push({
       type: "account",
       label: account.name,
@@ -132,6 +136,7 @@ function groupToRows(
       balances: buildBalances(balStr, columns),
       indent: indent + 1,
       bold: false,
+      isContra,
     });
   }
 
