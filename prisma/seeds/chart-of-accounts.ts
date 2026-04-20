@@ -12,15 +12,27 @@ interface AccountDef {
   requiresContact: boolean;
   /** Subtipo contable NIIF/PCGA. Null solo en cuentas raíz de nivel 1. */
   subtype: AccountSubtype | null;
+  /**
+   * Marca si esta cuenta es una cuenta reguladora (contra-cuenta).
+   * Cuando isContraAccount=true, la naturaleza es la OPUESTA al tipo por defecto.
+   * Ejemplo: ACTIVO + isContraAccount=true → nature=ACREEDORA (Depreciación Acumulada).
+   */
+  isContraAccount?: boolean;
 }
 
-function deriveNature(type: AccountType): AccountNature {
-  return type === AccountType.ACTIVO || type === AccountType.GASTO
+function deriveNature(type: AccountType, isContraAccount = false): AccountNature {
+  const defaultNature = type === AccountType.ACTIVO || type === AccountType.GASTO
     ? AccountNature.DEUDORA
     : AccountNature.ACREEDORA;
+  if (!isContraAccount) return defaultNature;
+  return defaultNature === AccountNature.DEUDORA ? AccountNature.ACREEDORA : AccountNature.DEUDORA;
 }
 
-const accounts: AccountDef[] = [
+/**
+ * Plan de cuentas boliviano (PCGA/NIIF).
+ * Exportado para testabilidad (los tests pueden inspeccionar el array directamente).
+ */
+export const ACCOUNTS: AccountDef[] = [
   // ── 1 ACTIVO ──────────────────────────────────────────────────────────────
   { code: "1", name: "ACTIVO", type: AccountType.ACTIVO, level: 1, parentCode: null, isDetail: false, requiresContact: false, subtype: null },
   // Nivel 2: Activo Corriente
@@ -40,8 +52,11 @@ const accounts: AccountDef[] = [
   { code: "1.2.3", name: "Muebles y Enseres", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE },
   { code: "1.2.4", name: "Equipos de Computación", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE },
   { code: "1.2.5", name: "Vehículos", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE },
-  { code: "1.2.6", name: "Depreciación Acumulada", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE },
+  // Contra-cuenta: reduce el Activo No Corriente (nature=ACREEDORA por ser contra ACTIVO)
+  { code: "1.2.6", name: "Depreciación Acumulada", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE, isContraAccount: true },
   { code: "1.2.7", name: "Activos Biológicos", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE },
+  // Contra-cuenta: reduce activos intangibles (amortización acumulada de intangibles)
+  { code: "1.2.8", name: "Amortización Acumulada", type: AccountType.ACTIVO, level: 3, parentCode: "1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_NO_CORRIENTE, isContraAccount: true },
 
   // ── 2 PASIVO ──────────────────────────────────────────────────────────────
   { code: "2", name: "PASIVO", type: AccountType.PASIVO, level: 1, parentCode: null, isDetail: false, requiresContact: false, subtype: null },
@@ -147,19 +162,20 @@ export async function seedChartOfAccounts(organizationId: string): Promise<void>
     }
 
     // Insertar cuentas en orden (padres antes que hijos, garantizado por el orden del array)
-    for (const acct of accounts) {
+    for (const acct of ACCOUNTS) {
       if (existingCodes.has(acct.code)) {
         continue;
       }
 
       const parentId = acct.parentCode ? codeToId.get(acct.parentCode) ?? null : null;
+      const isContraAccount = acct.isContraAccount ?? false;
 
       const created = await prisma.account.create({
         data: {
           code: acct.code,
           name: acct.name,
           type: acct.type,
-          nature: deriveNature(acct.type),
+          nature: deriveNature(acct.type, isContraAccount),
           subtype: acct.subtype,
           level: acct.level,
           isDetail: acct.isDetail,
@@ -167,13 +183,14 @@ export async function seedChartOfAccounts(organizationId: string): Promise<void>
           parentId,
           organizationId,
           isActive: true,
+          isContraAccount,
         },
       });
 
       codeToId.set(acct.code, created.id);
     }
 
-    const newCount = accounts.length - existingCodes.size;
+    const newCount = ACCOUNTS.length - existingCodes.size;
     console.log(
       `[seed] Plan de cuentas para org ${organizationId}: ${newCount} creadas, ${existingCodes.size} ya existían.`
     );
