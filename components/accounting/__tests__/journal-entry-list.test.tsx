@@ -204,6 +204,61 @@ describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
   });
 });
 
+// ── Actions dropdown (unified with dispatches) ──
+
+describe("JournalEntryList — actions dropdown", () => {
+  it("renderiza un botón de acciones por cada fila", () => {
+    const entries = [
+      makeEntry({ id: "e1", status: "DRAFT" }),
+      makeEntry({ id: "e2", status: "POSTED" }),
+      makeEntry({ id: "e3", status: "VOIDED" }),
+    ];
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={entries as any}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{}}
+      />,
+    );
+    const triggers = screen.getAllByRole("button", { name: /acciones/i });
+    expect(triggers.length).toBe(3);
+  });
+
+  it("renderiza header 'Acciones' en la tabla", () => {
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={[]}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{}}
+      />,
+    );
+    // "Acciones" aparece como th de la tabla (y Origen ya existía)
+    const accionesHeaders = screen.getAllByText(/^Acciones$/i);
+    expect(accionesHeaders.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("empty state usa colSpan=11 para incluir la columna de acciones", () => {
+    render(
+      <JournalEntryList
+        orgSlug="test-org"
+        entries={[]}
+        periods={[BASE_PERIOD] as any}
+        voucherTypes={[BASE_VOUCHER_TYPE] as any}
+        filters={{}}
+      />,
+    );
+    const emptyCell = screen
+      .getByText(/no hay asientos registrados/i)
+      .closest("td");
+    expect(emptyCell).not.toBeNull();
+    expect(emptyCell).toHaveAttribute("colspan", "11");
+  });
+});
+
 // ── T6.1 RED: list renders date via formatDateBO (TZ-safe) ──
 
 describe("JournalEntryList — display-date TZ-safe (REQ-D.1)", () => {
