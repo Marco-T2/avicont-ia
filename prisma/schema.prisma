@@ -426,6 +426,7 @@ model VoucherTypeCfg {
   name           String
   description    String?
   isActive       Boolean         @default(true)
+  isAdjustment   Boolean         @default(false)
   organization   Organization    @relation(fields: [organizationId], references: [id])
   journalEntries JournalEntry[]
 
