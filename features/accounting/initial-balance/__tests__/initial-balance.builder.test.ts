@@ -28,6 +28,7 @@ const ORG_HEADER: InitialBalanceOrgHeader = {
   nit: "1234567890",
   representanteLegal: "",
   direccion: "Av. Siempre Viva 742",
+  ciudad: "",
 };
 
 const DATE_AT = new Date("2024-01-01T00:00:00.000Z");

@@ -59,6 +59,7 @@ function makeStatement() {
       nit: "123456789",
       representanteLegal: "Juan Pérez García",
       direccion: "Av. Arce 123, La Paz",
+      ciudad: "La Paz",
     },
     dateAt: new Date("2018-01-02"),
     rows,
