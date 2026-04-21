@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { TrialBalanceService } from "@/features/accounting/trial-balance/server";
+import { TrialBalanceService, TrialBalanceRepository } from "@/features/accounting/trial-balance/server";
 import { serializeStatement } from "@/features/accounting/financial-statements/money.utils";
 import { trialBalanceQuerySchema } from "@/features/accounting/trial-balance/trial-balance.validation";
 import { exportTrialBalancePdf } from "@/features/accounting/trial-balance/exporters/trial-balance-pdf.exporter";
@@ -11,6 +11,7 @@ import type { Role } from "@/features/shared/permissions";
 export const runtime = "nodejs";
 
 const service = new TrialBalanceService();
+const repo = new TrialBalanceRepository();
 
 /**
  * GET /api/organizations/[orgSlug]/trial-balance
@@ -61,12 +62,13 @@ export async function GET(
 
     // 5. PDF response
     if (query.format === "pdf") {
-      // Use orgSlug as org display name fallback (org metadata doesn't have name separate from slug in v1)
+      const orgMeta = await repo.getOrgMetadata(orgId);
+      const orgDisplayName = orgMeta?.name ?? orgSlug;
       const { buffer } = await exportTrialBalancePdf(
         report,
-        orgSlug,
-        undefined,
-        undefined,
+        orgDisplayName,
+        orgMeta?.taxId ?? undefined,
+        orgMeta?.address ?? undefined,
       );
       return new Response(new Uint8Array(buffer), {
         headers: {
@@ -78,11 +80,13 @@ export async function GET(
 
     // 6. XLSX response
     if (query.format === "xlsx") {
+      const orgMeta = await repo.getOrgMetadata(orgId);
+      const orgDisplayName = orgMeta?.name ?? orgSlug;
       const buffer = await exportTrialBalanceXlsx(
         report,
-        orgSlug,
-        undefined,
-        undefined,
+        orgDisplayName,
+        orgMeta?.taxId ?? undefined,
+        orgMeta?.address ?? undefined,
       );
       return new Response(new Uint8Array(buffer), {
         headers: {
