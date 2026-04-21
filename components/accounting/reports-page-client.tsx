@@ -99,21 +99,6 @@ export default function ReportsPageClient({
         </Card>
       </Link>
 
-      {/* Navigation card — Estado de Evolución del Patrimonio Neto */}
-      <Link href={`/${orgSlug}/accounting/equity-statement`}>
-        <Card className="hover:bg-accent transition-colors cursor-pointer">
-          <CardHeader className="flex flex-row items-center gap-3 pb-2">
-            <FileSpreadsheet className="h-6 w-6 text-muted-foreground" />
-            <div>
-              <CardTitle className="text-base">Estado de Evolución del Patrimonio Neto</CardTitle>
-              <CardDescription>
-                Formulario F-605 · Patrimonio Neto
-              </CardDescription>
-            </div>
-          </CardHeader>
-        </Card>
-      </Link>
-
       {/* Filter */}
       <Card>
         <CardHeader>
