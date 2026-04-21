@@ -77,9 +77,9 @@
 **Spec**: wiring → REQ-1, REQ-5 end-to-end
 **Files**: `features/accounting/equity-statement/equity-statement.service.ts`, `__tests__/equity-statement.service.test.ts`
 
-- [ ] **T06-RED** — Test con mock repo que verifica que `service.build()` invoca `repo.getTypedPatrimonyMovements(orgId, dateFrom, dateTo)` y pasa el Map al builder. Run → FAIL.
-- [ ] **T06-GREEN** — Agregar la llamada en `build()` entre los fetchs de balances; pasar al `buildEquityStatement({ ..., typedMovements })`. Run → PASS.
-- [ ] **T06-COMMIT** — `test(eepn): cover service wiring for typed movements` + `feat(eepn): wire typed patrimony movements into service`.
+- [x] **T06-RED** — Test con mock repo que verifica que `service.build()` invoca `repo.getTypedPatrimonyMovements(orgId, dateFrom, dateTo)` y pasa el Map al builder. Run → FAIL.
+- [x] **T06-GREEN** — Agregar la llamada en `build()` entre los fetchs de balances; pasar al `buildEquityStatement({ ..., typedMovements })`. Run → PASS.
+- [x] **T06-COMMIT** — `test(eepn): cover service wiring for typed movements` + `feat(eepn): wire typed patrimony movements into service`.
 
 ## Batch 7 — Exporters: iterar por `row.key`, no por índice
 
