@@ -6,8 +6,9 @@ import { z } from "zod";
  * All fields are optional so partial updates are supported (REQ-OP.1).
  * Required-when-present rules (REQ-OP.2):
  *   razonSocial | nit | direccion | ciudad | telefono: non-empty after trim, max length
- *   nroPatronal: optional + nullable, max 50
- *   logoUrl:     optional + nullable, must be valid URL
+ *   nroPatronal:        optional + nullable, max 50
+ *   logoUrl:            optional + nullable, must be valid URL
+ *   representanteLegal: optional, trimmed, max 200
  */
 export const updateOrgProfileSchema = z.object({
   razonSocial: z.string().trim().min(1).max(200).optional(),
@@ -15,6 +16,7 @@ export const updateOrgProfileSchema = z.object({
   direccion: z.string().trim().min(1).max(300).optional(),
   ciudad: z.string().trim().min(1).max(100).optional(),
   telefono: z.string().trim().min(1).max(100).optional(),
+  representanteLegal: z.string().trim().max(200).optional(),
   nroPatronal: z.string().trim().max(50).optional().nullable(),
   logoUrl: z
     .string()
