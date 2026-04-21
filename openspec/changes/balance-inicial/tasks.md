@@ -9,19 +9,19 @@
 - [x] T02 Create domain types — touches `features/accounting/initial-balance/initial-balance.types.ts`. Acceptance: makes T01 pass; exports all five types with `Prisma.Decimal` for amounts and `AccountSubtype` from Prisma; strict TypeScript, no `any`.
 
 <!-- RED -->
-- [ ] T03 Write failing integration test for repository — touches `features/accounting/initial-balance/__tests__/initial-balance.repository.test.ts`. Acceptance: seeds two orgs each with a CA voucher via test-db fixture; asserts `getInitialBalanceFromCA(orgA)` returns only orgA lines with correct signed-net (debit−credit for DEUDORA, credit−debit for ACREEDORA) and excludes orgB rows — fails because file does not exist yet.
+- [x] T03 Write failing integration test for repository — touches `features/accounting/initial-balance/__tests__/initial-balance.repository.test.ts`. Acceptance: seeds two orgs each with a CA voucher via test-db fixture; asserts `getInitialBalanceFromCA(orgA)` returns only orgA lines with correct signed-net (debit−credit for DEUDORA, credit−debit for ACREEDORA) and excludes orgB rows — fails because file does not exist yet.
 
 <!-- RED -->
-- [ ] T03b Write failing test for `countCAVouchers` — touches `features/accounting/initial-balance/__tests__/initial-balance.repository.test.ts`. Acceptance: seeded org with 0 CAs returns `0`; seeded org with 2 CAs returns `2`; orgB CAs are not counted into orgA's result — fails because method does not exist yet.
+- [x] T03b Write failing test for `countCAVouchers` — touches `features/accounting/initial-balance/__tests__/initial-balance.repository.test.ts`. Acceptance: seeded org with 0 CAs returns `0`; seeded org with 2 CAs returns `2`; orgB CAs are not counted into orgA's result — fails because method does not exist yet.
 
 <!-- RED -->
-- [ ] T03c Write failing test for `getOrgMetadata` — touches same `initial-balance.repository.test.ts`. Acceptance: returns `{ razonSocial, nit, representanteLegal, direccion }` for a seeded org; asserts orgId isolation — fails because method does not exist yet.
+- [x] T03c Write failing test for `getOrgMetadata` — touches same `initial-balance.repository.test.ts`. Acceptance: returns `{ razonSocial, nit, representanteLegal, direccion }` for a seeded org; asserts orgId isolation — fails because method does not exist yet.
 
 <!-- GREEN -->
-- [ ] T04 Create repository — touches `features/accounting/initial-balance/initial-balance.repository.ts`. Acceptance: makes T03, T03b, T03c pass; `getInitialBalanceFromCA(orgId)` uses `$queryRaw`, JOINs journal-entry lines to voucher type `CA`, applies `je."organizationId" = ${orgId}`, casts results to `Prisma.Decimal`, returns `InitialBalanceRow[]`; also exports `countCAVouchers(orgId)` and `getOrgMetadata(orgId)`.
+- [x] T04 Create repository — touches `features/accounting/initial-balance/initial-balance.repository.ts`. Acceptance: makes T03, T03b, T03c pass; `getInitialBalanceFromCA(orgId)` uses `$queryRaw`, JOINs journal-entry lines to voucher type `CA`, applies `je."organizationId" = ${orgId}`, casts results to `Prisma.Decimal`, returns `InitialBalanceRow[]`; also exports `countCAVouchers(orgId)` and `getOrgMetadata(orgId)`.
 
 <!-- VERIFY -->
-- [ ] T05 Run Phase 1 suite — `pnpm vitest run features/accounting/initial-balance`. Acceptance: T01–T04 (incl. T03b, T03c) all green; multi-org isolation confirmed by T03's two-org fixture.
+- [x] T05 Run Phase 1 suite — `pnpm vitest run features/accounting/initial-balance`. Acceptance: T01–T04 (incl. T03b, T03c) all green; multi-org isolation confirmed by T03's two-org fixture.
 
 ## Phase 2 — Builder (invariant + grouping)
 
