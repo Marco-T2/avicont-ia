@@ -137,6 +137,147 @@ const fixtureReport: WorksheetReport = {
   imbalanceDelta: D("63848"),
 };
 
+// ── fmtDecimal locale tests (es-BO — thousands separator fix) ────────────────
+
+/**
+ * These tests drive the fix for the thousands-separator bug found in the T22
+ * PDF sample: "207000.00" should render as "207.000,00" (es-BO locale).
+ *
+ * We access fmtDecimal indirectly by asserting the docDef table body contains
+ * the formatted string — which is the only public-facing output we can verify
+ * without exporting the private function.
+ *
+ * We use a helper fixture with a single known value and scan the docDef body.
+ */
+describe("PDF number formatting — es-BO locale (thousands separator)", () => {
+  it("renders 207000 as '207.000,00' (not '207000.00') in docDef body", async () => {
+    const singleRowReport: WorksheetReport = {
+      orgId: "org-fmt",
+      dateFrom: new Date("2025-01-01"),
+      dateTo: new Date("2025-12-31"),
+      groups: [
+        {
+          accountType: "ACTIVO",
+          rows: [
+            {
+              accountId: "caja2",
+              code: "1.1.1",
+              name: "Caja",
+              isContraAccount: false,
+              accountType: "ACTIVO",
+              isCarryOver: false,
+              sumasDebe: D("207000"), sumasHaber: z(),
+              saldoDeudor: D("207000"), saldoAcreedor: z(),
+              ajustesDebe: z(), ajustesHaber: z(),
+              saldoAjDeudor: D("207000"), saldoAjAcreedor: z(),
+              resultadosPerdidas: z(), resultadosGanancias: z(),
+              bgActivo: D("207000"), bgPasPat: z(),
+            },
+          ],
+          subtotals: {
+            ...makeZeroTotals(),
+            sumasDebe: D("207000"), saldoDeudor: D("207000"),
+            saldoAjDeudor: D("207000"), bgActivo: D("207000"),
+          },
+        },
+      ],
+      carryOverRow: undefined,
+      grandTotals: {
+        ...makeZeroTotals(),
+        sumasDebe: D("207000"), saldoDeudor: D("207000"),
+        saldoAjDeudor: D("207000"), bgActivo: D("207000"),
+      },
+      imbalanced: false,
+      imbalanceDelta: D(0),
+    };
+
+    const { docDef } = await exportWorksheetPdf(singleRowReport, "Test Fmt Org");
+
+    // Collect all text values from the table body
+    type PdfContent = { text?: string; table?: { body: PdfContent[][] } };
+    const content = docDef.content as PdfContent[];
+    const tableItem = content.find((c) => c && "table" in c) as { table: { body: PdfContent[][] } } | undefined;
+    expect(tableItem).toBeDefined();
+
+    const allTexts: string[] = [];
+    for (const row of tableItem!.table.body) {
+      for (const cell of row) {
+        if (cell && typeof cell.text === "string" && cell.text.length > 0) {
+          allTexts.push(cell.text);
+        }
+      }
+    }
+
+    // Must contain es-BO formatted value (period thousands, comma decimal)
+    expect(allTexts, "expected es-BO formatted '207.000,00'").toContain("207.000,00");
+    // Must NOT contain raw unformatted value
+    expect(allTexts, "must NOT contain raw '207000.00'").not.toContain("207000.00");
+  });
+
+  it("renders contra-account −120000 as '(120.000,00)' with es-BO locale", async () => {
+    const contraReport: WorksheetReport = {
+      orgId: "org-contra-fmt",
+      dateFrom: new Date("2025-01-01"),
+      dateTo: new Date("2025-12-31"),
+      groups: [
+        {
+          accountType: "ACTIVO",
+          rows: [
+            {
+              accountId: "depr2",
+              code: "1.2.6",
+              name: "Depreciación",
+              isContraAccount: true,
+              accountType: "ACTIVO",
+              isCarryOver: false,
+              sumasDebe: z(), sumasHaber: D("120000"),
+              saldoDeudor: z(), saldoAcreedor: D("120000"),
+              ajustesDebe: z(), ajustesHaber: z(),
+              saldoAjDeudor: z(), saldoAjAcreedor: D("120000"),
+              resultadosPerdidas: z(), resultadosGanancias: z(),
+              bgActivo: D("-120000"), bgPasPat: z(),
+            },
+          ],
+          subtotals: {
+            ...makeZeroTotals(),
+            sumasHaber: D("120000"), saldoAcreedor: D("120000"),
+            saldoAjAcreedor: D("120000"), bgActivo: D("-120000"),
+          },
+        },
+      ],
+      carryOverRow: undefined,
+      grandTotals: {
+        ...makeZeroTotals(),
+        sumasHaber: D("120000"), saldoAcreedor: D("120000"),
+        saldoAjAcreedor: D("120000"), bgActivo: D("-120000"),
+      },
+      imbalanced: false,
+      imbalanceDelta: D(0),
+    };
+
+    const { docDef } = await exportWorksheetPdf(contraReport, "Test Contra Org");
+
+    type PdfContent = { text?: string; table?: { body: PdfContent[][] } };
+    const content = docDef.content as PdfContent[];
+    const tableItem = content.find((c) => c && "table" in c) as { table: { body: PdfContent[][] } } | undefined;
+    expect(tableItem).toBeDefined();
+
+    const allTexts: string[] = [];
+    for (const row of tableItem!.table.body) {
+      for (const cell of row) {
+        if (cell && typeof cell.text === "string" && cell.text.length > 0) {
+          allTexts.push(cell.text);
+        }
+      }
+    }
+
+    // Must contain es-BO formatted contra value in parens
+    expect(allTexts, "expected es-BO contra '(120.000,00)'").toContain("(120.000,00)");
+    // Must NOT contain raw unformatted value
+    expect(allTexts, "must NOT contain raw '(120000.00)'").not.toContain("(120000.00)");
+  });
+});
+
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("exportWorksheetPdf (REQ-12)", () => {
