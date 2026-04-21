@@ -3,8 +3,9 @@
  *
  * Covers REQ-OP.2 field rules:
  *   razonSocial | nit | direccion | ciudad | telefono — required non-empty, max lengths
- *   nroPatronal — optional, max 50
- *   logoUrl     — optional, valid URL
+ *   nroPatronal         — optional, max 50
+ *   logoUrl             — optional, valid URL
+ *   representanteLegal  — optional, trimmed, max 200
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -67,6 +68,31 @@ describe("updateOrgProfileSchema — valid inputs", () => {
     const result = updateOrgProfileSchema.safeParse({
       telefono: "78123456 / 77-654321, 2227777",
     });
+    expect(result.success).toBe(true);
+  });
+
+  it("accepts valid representanteLegal", () => {
+    const result = updateOrgProfileSchema.safeParse({
+      representanteLegal: "Juan Perez",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.representanteLegal).toBe("Juan Perez");
+    }
+  });
+
+  it("trims whitespace from representanteLegal", () => {
+    const result = updateOrgProfileSchema.safeParse({
+      representanteLegal: "  María García  ",
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.representanteLegal).toBe("María García");
+    }
+  });
+
+  it("accepts representanteLegal omitted (partial update)", () => {
+    const result = updateOrgProfileSchema.safeParse({ nit: "123" });
     expect(result.success).toBe(true);
   });
 });
@@ -156,6 +182,28 @@ describe("updateOrgProfileSchema — invalid inputs", () => {
         "http://abc123.public.blob.vercel-storage.com/logos/logo.png",
     });
     expect(result.success).toBe(false);
+  });
+
+  it("rejects representanteLegal longer than 200 chars", () => {
+    const result = updateOrgProfileSchema.safeParse({
+      representanteLegal: "r".repeat(201),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("representanteLegal");
+    }
+  });
+
+  it("rejects non-string representanteLegal", () => {
+    const result = updateOrgProfileSchema.safeParse({
+      representanteLegal: 42,
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      const paths = result.error.issues.map((i) => i.path.join("."));
+      expect(paths).toContain("representanteLegal");
+    }
   });
 });
 
