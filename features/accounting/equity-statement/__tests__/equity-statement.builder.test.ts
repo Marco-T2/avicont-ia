@@ -431,4 +431,37 @@ describe("buildEquityStatement", () => {
     // Sin CV: ledger 50000 + projected -551 = 49449. Con CV: bypass → 50000 pelado.
     expect(raCell?.amount.equals(D("50000"))).toBe(true);
   });
+
+  // ── Phase 3: aperturaBaseline merge pre-invariant ────────────────────────────
+
+  it("REQ-APERTURA-MERGE-S1 / REQ-3 — aperturaBaseline={CAPITAL_SOCIAL:200k} absorbed into SALDO_INICIAL, imbalanced=false, no extra row", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      typedMovements: new Map(),
+      aperturaBaseline: new Map([["acc-capital", D("200000")]]),
+      periodResult: D("0"),
+      preliminary: false,
+    }));
+
+    // SALDO_INICIAL row absorbs the apertura delta in CAPITAL_SOCIAL column
+    const saldoInicial = stmt.rows.find((r) => r.key === "SALDO_INICIAL")!;
+    const capitalCell = saldoInicial.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(capitalCell?.amount.equals(D("200000"))).toBe(true);
+
+    // Invariant holds: final[col] ≈ initial(+apertura)[col] + typed[col] + resultado[col]
+    expect(stmt.imbalanced).toBe(false);
+    expect(stmt.imbalanceDelta.equals(D("0"))).toBe(true);
+
+    // CA is state, not a row — no APORTE_CAPITAL (or any CA-typed row) emitted
+    expect(stmt.rows.find((r) => r.key === "APORTE_CAPITAL")).toBeUndefined();
+    expect(stmt.rows.map((r) => r.key)).toEqual([
+      "SALDO_INICIAL",
+      "RESULTADO_EJERCICIO",
+      "SALDO_FINAL",
+    ]);
+  });
+
 });
