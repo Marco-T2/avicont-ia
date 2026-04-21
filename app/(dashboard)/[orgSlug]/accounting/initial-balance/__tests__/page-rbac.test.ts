@@ -24,15 +24,6 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-// Mock client component so JSX rendering is not needed in the server test
-vi.mock(
-  "@/components/accounting/initial-balance-page-client",
-  () => ({
-    InitialBalancePageClient: vi.fn().mockReturnValue(null),
-  }),
-  { virtual: true },
-);
-
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import InitialBalancePage from "../page";
