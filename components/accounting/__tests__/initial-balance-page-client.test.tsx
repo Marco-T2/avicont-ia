@@ -129,7 +129,8 @@ describe("InitialBalancePageClient", () => {
       expect(screen.getByText("ACTIVO")).toBeInTheDocument();
     });
     expect(screen.getByText("PASIVO Y PATRIMONIO")).toBeInTheDocument();
-    expect(screen.getByText("Caja")).toBeInTheDocument();
+    // Detail rows now show "{code} — {name}" format
+    expect(screen.getByText("1.1.01 — Caja")).toBeInTheDocument();
   });
 
   it("(b) clicking Export PDF button fetches ?format=pdf and triggers blob download", async () => {
