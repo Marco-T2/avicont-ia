@@ -41,7 +41,7 @@ const DATE_AT = new Date("2024-01-01T00:00:00.000Z");
 const ORG_HEADER: InitialBalanceOrgHeader = {
   razonSocial: "Empresa de Prueba S.R.L.",
   nit: "9876543210",
-  representanteLegal: "",
+  representanteLegal: "Lic. Ana Representante",
   direccion: "Calle Sucre 123, La Paz",
 };
 
