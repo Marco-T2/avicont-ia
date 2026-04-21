@@ -214,4 +214,66 @@ describe("buildEquityStatement", () => {
     expect(stmtPreliminary.preliminary).toBe(true);
     expect(stmtFinal.preliminary).toBe(false);
   });
+
+  // ── Economic semantic: SALDO_FINAL projects periodResult for preliminary ─────
+
+  it("13. preliminary=true: SALDO_FINAL[RESULTADOS_ACUMULADOS] projects periodResult when ledger is zero", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [resultadosAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map(),
+      periodResult: D("-551"),
+      preliminary: true,
+    }));
+    const saldoFinal = stmt.rows.find((r) => r.key === "SALDO_FINAL")!;
+    const raCell = saldoFinal.cells.find((c) => c.column === "RESULTADOS_ACUMULADOS");
+    expect(raCell?.amount.equals(D("-551"))).toBe(true);
+    expect(stmt.imbalanced).toBe(false);
+  });
+
+  it("14. preliminary=true with direct CAPITAL_SOCIAL movement: RA projects P&L, imbalance captures ONLY the capital movement", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount, resultadosAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      periodResult: D("-551"),
+      preliminary: true,
+    }));
+    const saldoFinal = stmt.rows.find((r) => r.key === "SALDO_FINAL")!;
+    const raCell = saldoFinal.cells.find((c) => c.column === "RESULTADOS_ACUMULADOS");
+    const capitalCell = saldoFinal.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(raCell?.amount.equals(D("-551"))).toBe(true);
+    expect(capitalCell?.amount.equals(D("200000"))).toBe(true);
+    expect(stmt.imbalanced).toBe(true);
+    expect(stmt.imbalanceDelta.equals(D("200000"))).toBe(true);
+  });
+
+  it("15. preliminary=false: SALDO_FINAL[RESULTADOS_ACUMULADOS] uses ledger balance without projecting (no double-count)", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [resultadosAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-res", D("-551")]]),
+      periodResult: D("-551"),
+      preliminary: false,
+    }));
+    const saldoFinal = stmt.rows.find((r) => r.key === "SALDO_FINAL")!;
+    const raCell = saldoFinal.cells.find((c) => c.column === "RESULTADOS_ACUMULADOS");
+    expect(raCell?.amount.equals(D("-551"))).toBe(true);
+    expect(stmt.imbalanced).toBe(false);
+  });
+
+  it("16. preliminary=true: grandTotal includes periodResult (economic patrimony)", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map([["acc-capital", D("100000")]]),
+      finalBalances: new Map([["acc-capital", D("100000")]]),
+      periodResult: D("-551"),
+      preliminary: true,
+    }));
+    expect(stmt.grandTotal.equals(D("99449"))).toBe(true);
+  });
 });

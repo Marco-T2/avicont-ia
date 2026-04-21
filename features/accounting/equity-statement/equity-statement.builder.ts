@@ -118,6 +118,14 @@ export function buildEquityStatement(input: BuildEquityStatementInput): EquitySt
     OTROS_PATRIMONIO:      ZERO,
   };
 
+  // Economic semantic: for preliminary (open) periods the closing entry hasn't
+  // posted, so 3.4 ledger balance does not yet include the current-period P&L.
+  // Project periodResult into SALDO_FINAL[RESULTADOS_ACUMULADOS] so the equation
+  // holds. For CLOSED periods the cierre entry already moved it into 3.4.
+  if (preliminary) {
+    finalByColumn.RESULTADOS_ACUMULADOS = finalByColumn.RESULTADOS_ACUMULADOS.plus(periodResult);
+  }
+
   const rows: EquityRow[] = [
     buildRow("SALDO_INICIAL",       "Saldo al inicio del período",  initialByColumn),
     buildRow("RESULTADO_EJERCICIO", "Resultado del ejercicio",      resultByColumn),

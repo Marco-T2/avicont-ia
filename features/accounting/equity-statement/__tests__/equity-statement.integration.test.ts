@@ -319,14 +319,19 @@ describe("EquityStatement Integration — REQ-1 and REQ-5", () => {
       preliminary: true,
     });
 
-    // REQ-5a: grandTotal = Σ(finalBalances map values) — EEPN correctly sums patrimony balances
+    // REQ-5a: grandTotal represents the economic patrimony at period end.
+    // For preliminary (open) periods: grandTotal = Σ(finalBalances) + periodResult
+    // because the builder projects periodResult into RESULTADOS_ACUMULADOS
+    // (the cierre entry hasn't posted yet, so the 3.4 ledger balance does not
+    // yet include the current-period result).
     const sumFinalBalances = [...finalBalances.values()].reduce(
       (acc, v) => acc.plus(v),
       D(0),
     );
+    const expectedGrandTotal = sumFinalBalances.plus(periodResult);
     expect(
-      decimalEq(equityStatement.grandTotal, sumFinalBalances),
-      `REQ-5a: EEPN grandTotal (${equityStatement.grandTotal.toFixed(2)}) ≠ Σ(finalBalances) (${sumFinalBalances.toFixed(2)})`,
+      decimalEq(equityStatement.grandTotal, expectedGrandTotal),
+      `REQ-5a: EEPN grandTotal (${equityStatement.grandTotal.toFixed(2)}) ≠ Σ(finalBalances)+periodResult (${expectedGrandTotal.toFixed(2)})`,
     ).toBe(true);
 
     // REQ-5b: intra-state invariant — no imbalance flag

@@ -114,7 +114,13 @@ function buildDocDefinition(
   headerContent.push({ text: "(Expresado en Bolivianos)", fontSize: SUBTITLE_SIZE, italics: true, alignment: "center", margin: [0, 0, 0, 6] });
 
   const imbalanceBanner: Content[] = statement.imbalanced
-    ? [{ text: `Invariante intra-estado: delta ${fmtDecimal(statement.imbalanceDelta, true)}`, fontSize: BODY_SIZE, color: STYLE.danger, bold: true, margin: [0, 0, 0, 4] }]
+    ? [{
+        text: `Diferencia patrimonial sin clasificar: Bs. ${fmtDecimal(statement.imbalanceDelta, true)}. Probables causas: aportes de capital, distribuciones a socios o constitución de reservas durante el período.`,
+        fontSize: BODY_SIZE,
+        color: STYLE.danger,
+        bold: true,
+        margin: [0, 0, 0, 4],
+      }]
     : [];
 
   // Table header row

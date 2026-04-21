@@ -102,7 +102,13 @@ export async function exportEquityStatementXlsx(
   const r6 = ws.addRow([]);
   ws.mergeCells(`A6:${ws.getColumn(totalCols).letter}6`);
   if (statement.imbalanced) {
-    setCell(r6, 1, `ADVERTENCIA: Balance desbalanceado — delta ${statement.imbalanceDelta.toFixed(2)}`, arial({ bold: true, size: 9, color: STYLE.danger }));
+    const deltaFmt = Number(statement.imbalanceDelta.toString()).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    setCell(
+      r6,
+      1,
+      `ADVERTENCIA: Diferencia patrimonial sin clasificar Bs. ${deltaFmt} — probables aportes de capital, distribuciones o constitución de reservas`,
+      arial({ bold: true, size: 9, color: STYLE.danger }),
+    );
     r6.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: STYLE.dangerBg } };
   } else if (statement.preliminary) {
     setCell(r6, 1, "PRELIMINAR — Este reporte cubre un período no cerrado", arial({ bold: true, size: 9, color: "FF92400E" }));
