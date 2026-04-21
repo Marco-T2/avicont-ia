@@ -119,10 +119,10 @@
 
 ## Batch 10 — Smoke suite + type-check final
 
-- [ ] **T10-CHECK** — Run `npx tsc --noEmit` → 0 errores en `features/accounting/equity-statement/**` y `prisma/seeds/**`.
-- [ ] **T10-TESTS** — Run full `npx vitest run` → verde.
-- [ ] **T10-EXPORTER-SIGNATURE** — Smoke: generar PDF+XLSX de un EEPN con 5 filas, verificar file signatures (`%PDF-1.` y `PK\x03\x04`).
-- [ ] **T10-COMMIT** — Solo si hay correcciones: `fix(eepn): ...`; si todo estaba verde desde T09, no hay commit adicional.
+- [x] **T10-CHECK** — Run `npx tsc --noEmit` → 0 errores en `features/accounting/equity-statement/**` y `prisma/seeds/**`. ✅ Errores existentes en otros paths (voucher-pdf, worksheet) fuera de scope.
+- [x] **T10-TESTS** — Run full `npx vitest run` → verde. ✅ 270 test files / 2316 tests passed.
+- [x] **T10-EXPORTER-SIGNATURE** — Smoke: generar PDF+XLSX de un EEPN con 5 filas, verificar file signatures (`%PDF-1.` y `PK\x03\x04`). ✅ Cubierto por suites existentes (`equity-statement-pdf.exporter.test.ts:91` para `%PDF` y `equity-statement-xlsx.exporter.test.ts:97` para `PK`); ambas pasaron.
+- [x] **T10-COMMIT** — Solo si hay correcciones: `fix(eepn): ...`; si todo estaba verde desde T09, no hay commit adicional. ✅ Sin correcciones → sin commit extra.
 
 ---
 
@@ -135,11 +135,11 @@
 
 ## Definition of Done
 
-- [ ] Todos los batches T01-T10 completados con commits individuales.
-- [ ] `npx tsc --noEmit` 0 errors.
-- [ ] `npx vitest run` verde end-to-end.
-- [ ] Test de integración CP pasa contra Prisma test DB.
-- [ ] Backfill script probado con 2 fixtures de orgs (una con 8 types, una vacía).
+- [x] Todos los batches T01-T10 completados con commits individuales.
+- [x] `npx tsc --noEmit` 0 errors en scope (equity-statement/**, prisma/seeds/**).
+- [x] `npx vitest run` verde end-to-end (270 files / 2316 tests).
+- [x] Test de integración CP pasa contra Prisma test DB.
+- [x] Backfill script probado con 2 fixtures de orgs (una con 8 types, una vacía) — cubierto en T02.
 - [ ] Success criteria del proposal chequeados manualmente en dev server:
   - [ ] Asiento CP 200k → fila tipada, sin banner imbalanced.
   - [ ] EEPN sin typed entries → idéntico a v1 (3 filas).
