@@ -16,3 +16,6 @@ export type {
   WorksheetAccountMetadata,
   WorksheetDateRange,
 } from "./worksheet.repository";
+
+export { buildWorksheet } from "./worksheet.builder";
+export type { BuildWorksheetInput } from "./worksheet.builder";
