@@ -142,21 +142,27 @@ export async function exportInitialBalanceXlsx(
   setCell(r4, 1, `Dirección: ${org.direccion}`, arial({ size: 9 }));
   r4.getCell(1).alignment = { horizontal: "center" };
 
-  // Row 5 — Title
-  const r5 = ws.addRow([]);
+  // Row 5 — Ciudad
+  const r5a = ws.addRow([]);
   ws.mergeCells(`A5:${colBLetter}5`);
+  setCell(r5a, 1, org.ciudad, arial({ size: 9 }));
+  r5a.getCell(1).alignment = { horizontal: "center" };
+
+  // Row 6 — Title
+  const r5 = ws.addRow([]);
+  ws.mergeCells(`A6:${colBLetter}6`);
   setCell(r5, 1, `BALANCE INICIAL — Al ${fmtDateLong(dateAt)}`, arial({ bold: true, size: 11 }));
   r5.getCell(1).alignment = { horizontal: "center" };
 
-  // Row 6 — Subtitle
+  // Row 7 — Subtitle
   const r6 = ws.addRow([]);
-  ws.mergeCells(`A6:${colBLetter}6`);
+  ws.mergeCells(`A7:${colBLetter}7`);
   setCell(r6, 1, "(Expresado en Bolivianos)", arial({ size: 9, italic: true }));
   r6.getCell(1).alignment = { horizontal: "center" };
 
-  // Row 7 — Imbalance or multiple-CA banner (if applicable)
+  // Row 8 — Imbalance or multiple-CA banner (if applicable)
   const r7 = ws.addRow([]);
-  ws.mergeCells(`A7:${colBLetter}7`);
+  ws.mergeCells(`A8:${colBLetter}8`);
   if (imbalanced) {
     const deltaFmt = Number(imbalanceDelta.toString()).toLocaleString("es-BO", {
       minimumFractionDigits: 2,

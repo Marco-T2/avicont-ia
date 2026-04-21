@@ -47,6 +47,7 @@ export class InitialBalanceService {
         nit: "",
         representanteLegal: "",
         direccion: "",
+        ciudad: "",
       },
       dateAt,
       rows,

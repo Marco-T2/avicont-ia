@@ -52,6 +52,7 @@ export interface InitialBalanceOrgHeader {
   nit: string;
   representanteLegal: string;
   direccion: string;
+  ciudad: string;
 }
 
 /**
