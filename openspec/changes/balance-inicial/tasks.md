@@ -97,10 +97,10 @@
 ## Phase 8 — Full-suite regression
 
 <!-- VERIFY -->
-- [ ] T24 Run full test suite — `pnpm vitest run`. Acceptance: all tests green; no regressions in equity-statement, balance-sheet, or catalog suites.
+- [x] T24 Run full test suite — `pnpm vitest run`. Acceptance: all tests green; no regressions in equity-statement, balance-sheet, or catalog suites.
 
 <!-- VERIFY -->
-- [ ] T25 Type-check — `pnpm exec tsc --noEmit`. Acceptance: zero new type errors introduced by this change.
+- [x] T25 Type-check — `pnpm exec tsc --noEmit`. Acceptance: zero new type errors introduced by this change.
 
 ## Open Questions
 
