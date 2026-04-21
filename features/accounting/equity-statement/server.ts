@@ -5,5 +5,6 @@
  */
 import "server-only";
 
-// Will be filled by T04 (Repository) and T06 (Service)
-export {};
+export { EquityStatementRepository } from "./equity-statement.repository";
+export type { EquityOrgMetadata } from "./equity-statement.repository";
+// EquityStatementService will be added by T06
