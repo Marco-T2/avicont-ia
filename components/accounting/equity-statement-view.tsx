@@ -78,9 +78,14 @@ export const EquityStatementView: FC<EquityStatementViewProps> = ({ statement })
       {statement.imbalanced && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm font-medium"
+          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm"
         >
-          Invariante intra-estado: delta {statement.imbalanceDelta}
+          <div className="font-semibold">
+            Diferencia patrimonial sin clasificar: Bs. {fmtNum(statement.imbalanceDelta, true)}
+          </div>
+          <div className="mt-1 font-normal">
+            Probables causas: aportes de capital, distribuciones a socios o constitución de reservas durante el período. Revisar los movimientos de cuentas 3.x.
+          </div>
         </div>
       )}
 
