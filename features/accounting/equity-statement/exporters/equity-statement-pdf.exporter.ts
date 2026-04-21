@@ -130,9 +130,9 @@ function buildDocDefinition(
     headerCell("Total Patrimonio"),
   ];
 
-  // Body rows
-  const bodyRows: Content[][] = statement.rows.map((row, idx) => {
-    const isBold = idx === 2; // SALDO_FINAL row
+  // Body rows — bold-detection is keyed on row.key so N-row statements work
+  const bodyRows: Content[][] = statement.rows.map((row) => {
+    const isBold = row.key === "SALDO_FINAL";
     const cells: Content[] = [labelCell(row.label, isBold)];
     for (const col of visibleCols) {
       const cell = row.cells.find((c) => c.column === col);
