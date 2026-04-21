@@ -123,6 +123,7 @@ export function buildEquityStatement(input: BuildEquityStatementInput): EquitySt
     finalBalances,
     accounts,
     typedMovements,
+    aperturaBaseline,
     periodResult,
     dateFrom,
     dateTo,
@@ -137,6 +138,15 @@ export function buildEquityStatement(input: BuildEquityStatementInput): EquitySt
   const accountColumn = new Map<string, ColumnKey>();
   for (const acc of accounts) {
     accountColumn.set(acc.id, mapAccountCodeToColumn(acc.code));
+  }
+
+  // Merge CA-voucher apertura deltas into initial column state BEFORE invariant check — CA is opening balance (state), not a period movement (would contaminate F-605 rows).
+  if (aperturaBaseline && aperturaBaseline.size > 0) {
+    for (const [accId, delta] of aperturaBaseline) {
+      const col = accountColumn.get(accId);
+      if (!col) continue; // cuenta fuera del set patrimonio — ignorar
+      initialByColumn[col] = initialByColumn[col].plus(delta);
+    }
   }
 
   // Typed rows: for each (code, accountMap), aggregate deltas by column and

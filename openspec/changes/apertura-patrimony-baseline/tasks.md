@@ -28,7 +28,7 @@
 
 - [x] T09 RED: write failing builder test — `aperturaBaseline = { CAPITAL_SOCIAL: 200000 }`, empty `initialBalances`, `typedMovements=∅`, `periodResult=0` → `SALDO_INICIAL[CAPITAL_SOCIAL] = 200000` and `imbalanced === false` (REQ-3 MODIFIED scenario "CA en primer período no dispara imbalance")
 - [x] T10 RED: write failing builder test — `aperturaBaseline` omitted (field absent) → existing behavior unchanged, CA NOT absorbed, `imbalanced === true` if delta is unaccounted (REQ-3 MODIFIED scenario "CA sin aperturaBaseline mantiene comportamiento previo")
-- [ ] T11 GREEN: implement apertura merge in `equity-statement.builder.ts` — after computing `initialByColumn`, if `aperturaBaseline` is present, iterate each `accountId → delta` and add into its mapped column via the existing `accountColumn` lookup; runs BEFORE invariant check — makes T09 and T10 pass; all 34 existing builder tests remain green
+- [x] T11 GREEN: implement apertura merge in `equity-statement.builder.ts` — after computing `initialByColumn`, if `aperturaBaseline` is present, iterate each `accountId → delta` and add into its mapped column via the existing `accountColumn` lookup; runs BEFORE invariant check — makes T09 and T10 pass; all 34 existing builder tests remain green
 
 ---
 
