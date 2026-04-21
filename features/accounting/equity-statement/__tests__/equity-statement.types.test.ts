@@ -100,4 +100,61 @@ describe("equity-statement domain types", () => {
     expect(meta).toHaveProperty("nature");
     expect(typeof meta.nature).toBe("string");
   });
+
+  it("RowKey includes typed patrimony rows (APORTE_CAPITAL, CONSTITUCION_RESERVA, DISTRIBUCION_DIVIDENDO)", async () => {
+    const mod = await import("../equity-statement.types");
+    type R = import("../equity-statement.types").RowKey;
+
+    const keys: R[] = [
+      "SALDO_INICIAL",
+      "APORTE_CAPITAL",
+      "CONSTITUCION_RESERVA",
+      "DISTRIBUCION_DIVIDENDO",
+      "RESULTADO_EJERCICIO",
+      "SALDO_FINAL",
+    ];
+    expect(keys).toHaveLength(6);
+    // module import guarantees type-level constants compile at runtime
+    expect(mod).toBeDefined();
+  });
+
+  it("PatrimonyVoucherCode accepts CP, CL, CV", async () => {
+    await import("../equity-statement.types");
+    type V = import("../equity-statement.types").PatrimonyVoucherCode;
+
+    const codes: V[] = ["CP", "CL", "CV"];
+    expect(codes).toEqual(["CP", "CL", "CV"]);
+  });
+
+  it("TypedPatrimonyMovements is Map<PatrimonyVoucherCode, Map<accountId, Decimal>>", async () => {
+    await import("../equity-statement.types");
+    type T = import("../equity-statement.types").TypedPatrimonyMovements;
+
+    const movements: T = new Map([
+      ["CP", new Map([["acc-1", D("200000")]])],
+    ]);
+
+    const cp = movements.get("CP");
+    expect(cp).toBeDefined();
+    expect(cp!.get("acc-1")).toBeInstanceOf(Prisma.Decimal);
+    expect(cp!.get("acc-1")!.toString()).toBe("200000");
+  });
+
+  it("BuildEquityStatementInput accepts typedMovements field", async () => {
+    await import("../equity-statement.types");
+    type Input = import("../equity-statement.types").BuildEquityStatementInput;
+
+    const input: Input = {
+      initialBalances: new Map(),
+      finalBalances: new Map(),
+      accounts: [],
+      typedMovements: new Map(),
+      periodResult: D("0"),
+      dateFrom: new Date("2024-01-01"),
+      dateTo: new Date("2024-12-31"),
+      preliminary: false,
+    };
+    expect(input.typedMovements).toBeInstanceOf(Map);
+    expect(input.typedMovements.size).toBe(0);
+  });
 });

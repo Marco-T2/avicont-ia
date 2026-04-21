@@ -41,7 +41,7 @@ describe("backfillPatrimonyVoucherTypes (REQ-D.2)", () => {
     expect(mock.findMany).toHaveBeenCalledTimes(1);
     expect(mock.upsert).toHaveBeenCalledTimes(12);
     const codes = mock.upsert.mock.calls
-      .map((c) => (c[0] as { create: { code: string } }).create.code)
+      .map((c) => (c[0] as unknown as { create: { code: string } }).create.code)
       .sort();
     expect(codes).toEqual(
       ["CA", "CB", "CD", "CE", "CI", "CJ", "CL", "CM", "CN", "CP", "CT", "CV"].sort(),
@@ -57,7 +57,7 @@ describe("backfillPatrimonyVoucherTypes (REQ-D.2)", () => {
     expect(mock.upsert).toHaveBeenCalledTimes(24);
     const perOrg: Record<string, number> = {};
     for (const call of mock.upsert.mock.calls) {
-      const arg = call[0] as { create: { organizationId: string }; update: Record<string, unknown> };
+      const arg = call[0] as unknown as { create: { organizationId: string }; update: Record<string, unknown> };
       perOrg[arg.create.organizationId] = (perOrg[arg.create.organizationId] ?? 0) + 1;
       // update:{} proves backfill NEVER mutates existing rows — REQ-D.2 "8 originales intactos"
       expect(arg.update).toEqual({});

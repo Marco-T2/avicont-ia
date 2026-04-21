@@ -63,11 +63,12 @@ export class EquityStatementService {
     });
     const periodResult = calculateRetainedEarnings(incomeStatement);
 
-    // 5. Pure builder
+    // 5. Pure builder (Batch 6 wires typedMovements below)
     const statement = buildEquityStatement({
       initialBalances,
       finalBalances,
       accounts,
+      typedMovements: new Map(),
       periodResult,
       dateFrom: input.dateFrom,
       dateTo: input.dateTo,

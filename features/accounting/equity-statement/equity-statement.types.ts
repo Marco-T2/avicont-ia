@@ -11,8 +11,30 @@ export type ColumnKey =
   | "RESULTADOS_ACUMULADOS"
   | "OTROS_PATRIMONIO";
 
-/** Filas fijas del EEPN v1 (3 efectivas). RowKey es estable para ordenamiento. */
-export type RowKey = "SALDO_INICIAL" | "RESULTADO_EJERCICIO" | "SALDO_FINAL";
+/**
+ * Filas del EEPN. Las tres tipadas (APORTE_CAPITAL, CONSTITUCION_RESERVA,
+ * DISTRIBUCION_DIVIDENDO) se emiten sólo si hay movimiento ≠ 0 en el período.
+ * El orden canónico lo fija el builder, no este tipo.
+ */
+export type RowKey =
+  | "SALDO_INICIAL"
+  | "APORTE_CAPITAL"
+  | "CONSTITUCION_RESERVA"
+  | "DISTRIBUCION_DIVIDENDO"
+  | "RESULTADO_EJERCICIO"
+  | "SALDO_FINAL";
+
+/** Códigos de VoucherTypeCfg que clasifican movimientos directos al patrimonio. */
+export type PatrimonyVoucherCode = "CP" | "CL" | "CV";
+
+/**
+ * Movimientos tipados del período: agrupa JournalLines POSTED por
+ * (voucherType.code, account.id) → delta Decimal (credit − debit si nature=ACREEDORA).
+ */
+export type TypedPatrimonyMovements = Map<
+  PatrimonyVoucherCode,
+  Map<string /* accountId */, Decimal>
+>;
 
 /** Celda de una fila — un valor Decimal por columna F-605. */
 export type EquityCell = {
@@ -60,6 +82,8 @@ export type BuildEquityStatementInput = {
   initialBalances: Map<string, Decimal>;
   finalBalances: Map<string, Decimal>;
   accounts: EquityAccountMetadata[];
+  /** Mapa de movimientos tipados del período (puede ser Map vacío). */
+  typedMovements: TypedPatrimonyMovements;
   periodResult: Decimal;
   dateFrom: Date;
   dateTo: Date;
