@@ -186,8 +186,8 @@ export const WorksheetTable: FC<WorksheetTableProps> = ({ report }) => {
           </tr>
           <tr className="bg-gray-100 text-center">
             {["Debe", "Haber", "Deudor", "Acreedor", "Debe", "Haber", "Deudor", "Acreedor", "Pérdidas", "Ganancias", "Activo", "Pas-Pat"].map(
-              (h) => (
-                <th key={h} className="px-1 py-0.5 border-b border-gray-300 font-semibold">
+              (h, i) => (
+                <th key={`${i}-${h}`} className="px-1 py-0.5 border-b border-gray-300 font-semibold">
                   {h}
                 </th>
               ),
