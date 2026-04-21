@@ -78,13 +78,13 @@
 ## Phase 6 — UI
 
 <!-- RED -->
-- [ ] T20 Write failing view component test — touches `components/accounting/__tests__/initial-balance-view.test.tsx`. Acceptance: renders two sections with subtotals; shows imbalance alert banner when `imbalanced: true`; shows `multipleCA` warning when flag is set; also asserts amount formatting (es-BO locale): positive `1234.56` → `1.234,56`, negative `-1234.56` → `(1.234,56)` (parentheses, not minus sign), zero in detail cell → empty string, zero in total cell → `0,00` — fails because component does not exist yet.
+- [x] T20 Write failing view component test — touches `components/accounting/__tests__/initial-balance-view.test.tsx`. Acceptance: renders two sections with subtotals; shows imbalance alert banner when `imbalanced: true`; shows `multipleCA` warning when flag is set; also asserts amount formatting (es-BO locale): positive `1234.56` → `1.234,56`, negative `-1234.56` → `(1.234,56)` (parentheses, not minus sign), zero in detail cell → empty string, zero in total cell → `0,00` — fails because component does not exist yet.
 
 <!-- RED -->
-- [ ] T20b Write failing client orchestrator test — touches `components/accounting/__tests__/initial-balance-page-client.test.tsx`. Acceptance: mocks `fetch` for `/api/organizations/{orgSlug}/initial-balance?format=json` returning a fixture statement; asserts view renders with fetched data; asserts clicking "Export PDF" button fires a fetch to `?format=pdf` and triggers a blob download; asserts clicking "Export XLSX" button fires `?format=xlsx` — fails because client does not exist yet.
+- [x] T20b Write failing client orchestrator test — touches `components/accounting/__tests__/initial-balance-page-client.test.tsx`. Acceptance: mocks `fetch` for `/api/organizations/{orgSlug}/initial-balance?format=json` returning a fixture statement; asserts view renders with fetched data; asserts clicking "Export PDF" button fires a fetch to `?format=pdf` and triggers a blob download; asserts clicking "Export XLSX" button fires `?format=xlsx` — fails because client does not exist yet.
 
 <!-- GREEN -->
-- [ ] T21 Create view + client orchestrator — touches `components/accounting/initial-balance-view.tsx`, `components/accounting/initial-balance-page-client.tsx`. Acceptance: `InitialBalanceView` renders sections and all banners; `InitialBalancePageClient` fetches `?format=json` and wires Export PDF / Export XLSX buttons; makes T20 and T20b pass.
+- [x] T21 Create view + client orchestrator — touches `components/accounting/initial-balance-view.tsx`, `components/accounting/initial-balance-page-client.tsx`. Acceptance: `InitialBalanceView` renders sections and all banners; `InitialBalancePageClient` fetches `?format=json` and wires Export PDF / Export XLSX buttons; makes T20 and T20b pass.
 
 ## Phase 7 — Catalog + Barrels
 
