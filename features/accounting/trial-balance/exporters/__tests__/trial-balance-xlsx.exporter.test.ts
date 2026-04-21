@@ -54,8 +54,10 @@ function makeReport(overrides?: Partial<TrialBalanceReport>): TrialBalanceReport
   };
 }
 
-async function parseWorkbook(buffer: Buffer): Promise<ExcelJS.Workbook> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function parseWorkbook(buffer: any): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
   await wb.xlsx.load(buffer);
   return wb;
 }
@@ -119,7 +121,8 @@ describe("exportTrialBalanceXlsx — frozen pane (C7.S5)", () => {
     const buffer = await exportTrialBalanceXlsx(makeReport(), "Avicont SA");
     const wb = await parseWorkbook(buffer);
     const sheet = wb.getWorksheet("Sumas y Saldos")!;
-    const view = sheet.views[0] as ExcelJS.WorksheetView;
+    // Cast to unknown first to access xSplit/ySplit which ExcelJS types as a union
+    const view = sheet.views[0] as unknown as { state: string; xSplit: number; ySplit: number };
     expect(view.state).toBe("frozen");
     expect(view.xSplit).toBe(3);
     expect(view.ySplit).toBe(7);
