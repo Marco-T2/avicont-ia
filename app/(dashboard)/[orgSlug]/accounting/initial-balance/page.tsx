@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/shared/permissions.server";
+import { InitialBalancePageClient } from "@/components/accounting/initial-balance-page-client";
 
 interface InitialBalancePageProps {
   params: Promise<{ orgSlug: string }>;
@@ -14,18 +15,14 @@ export default async function InitialBalancePage({ params }: InitialBalancePageP
     redirect(`/${orgSlug}`);
   }
 
-  // InitialBalancePageClient will be wired in Batch 6 (T21).
-  // Using a placeholder so the page compiles and RBAC tests pass now.
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Balance Inicial</h1>
-        <p className="text-gray-500 mt-1">
-          Balance Inicial — Expresado en Bolivianos
-        </p>
+        <p className="text-gray-500 mt-1">Balance Inicial — Expresado en Bolivianos</p>
       </div>
 
-      <div>Balance Inicial</div>
+      <InitialBalancePageClient orgSlug={orgSlug} />
     </div>
   );
 }
