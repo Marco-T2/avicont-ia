@@ -40,7 +40,7 @@ export class EquityStatementService {
     const dayBefore = new Date(input.dateFrom);
     dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
 
-    // 3. Parallel data loads — 7 queries (REQ-3, REQ-8)
+    // 3. Parallel data loads — 8 queries (REQ-3, REQ-8)
     const [
       initialBalances,
       finalBalances,
@@ -49,6 +49,7 @@ export class EquityStatementService {
       incomeMovements,
       isClosedMatch,
       typedMovements,
+      aperturaBaseline,
     ] = await Promise.all([
       this.repo.getPatrimonioBalancesAt(orgId, dayBefore),
       this.repo.getPatrimonioBalancesAt(orgId, input.dateTo),
@@ -58,6 +59,7 @@ export class EquityStatementService {
       this.fsRepo.aggregateJournalLinesInRange(orgId, input.dateFrom, input.dateTo),
       this.repo.isClosedPeriodMatch(orgId, input.dateFrom, input.dateTo),
       this.repo.getTypedPatrimonyMovements(orgId, input.dateFrom, input.dateTo),
+      this.repo.getAperturaPatrimonyDelta(orgId, input.dateFrom, input.dateTo),
     ]);
 
     // 4. Build Income Statement and derive periodResult — shared source of truth (REQ-4)
@@ -77,6 +79,7 @@ export class EquityStatementService {
       finalBalances,
       accounts,
       typedMovements,
+      aperturaBaseline,
       periodResult,
       dateFrom: input.dateFrom,
       dateTo: input.dateTo,
