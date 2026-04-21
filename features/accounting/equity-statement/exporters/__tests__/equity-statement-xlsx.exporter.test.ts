@@ -182,6 +182,48 @@ describe("exportEquityStatementXlsx — smoke tests", () => {
     expect(cellValue).toContain("ADVERTENCIA");
   });
 
+  it("T07 — statement with 5 rows renders 5 data rows with SALDO_FINAL at row 12", async () => {
+    const stmt = makeStatement();
+    const typed = (key: "APORTE_CAPITAL" | "CONSTITUCION_RESERVA", label: string, cs: string) => ({
+      key,
+      label,
+      cells: [
+        { column: "CAPITAL_SOCIAL" as const,        amount: D(cs) },
+        { column: "APORTES_CAPITALIZAR" as const,   amount: D("0") },
+        { column: "AJUSTE_CAPITAL" as const,        amount: D("0") },
+        { column: "RESERVA_LEGAL" as const,         amount: D("0") },
+        { column: "RESULTADOS_ACUMULADOS" as const, amount: D("0") },
+        { column: "OTROS_PATRIMONIO" as const,      amount: D("0") },
+      ],
+      total: D(cs),
+    });
+    const fiveRow: EquityStatement = {
+      ...stmt,
+      rows: [
+        stmt.rows[0], // SALDO_INICIAL → r8
+        typed("APORTE_CAPITAL",       "Aportes de capital del período", "200000"), // r9
+        typed("CONSTITUCION_RESERVA", "Constitución de reservas",       "10000"),  // r10
+        stmt.rows[1], // RESULTADO_EJERCICIO → r11
+        stmt.rows[2], // SALDO_FINAL → r12
+      ],
+    };
+    const buf = await exportEquityStatementXlsx(fiveRow, "Cooperativa Test");
+    const wb = await loadWorkbook(buf);
+    const ws = wb.getWorksheet("EEPN")!;
+    // Row 12 should now be SALDO_FINAL — bold + top border
+    const finalLabel = String(ws.getRow(12).getCell(1).value);
+    expect(finalLabel).toContain("Saldo al cierre del período");
+    const finalNumCell = ws.getRow(12).getCell(2);
+    expect((finalNumCell.font as { bold?: boolean } | undefined)?.bold).toBe(true);
+    expect((finalNumCell.border as { top?: unknown } | undefined)?.top).toBeDefined();
+    // Row 10 is APORTE_CAPITAL or CONSTITUCION_RESERVA — must NOT be bold
+    // (ExcelJS drops explicit `bold: false` during round-trip; undefined == not bold)
+    const aporteNumCell = ws.getRow(10).getCell(2);
+    const aporteBold = (aporteNumCell.font as { bold?: boolean } | undefined)?.bold ?? false;
+    expect(aporteBold).toBe(false);
+    expect((aporteNumCell.border as { top?: unknown } | undefined)?.top).toBeUndefined();
+  });
+
   it("negative total stored as negative number (numFmt parentheses handled by Excel)", async () => {
     const stmt = makeStatement({
       rows: [
