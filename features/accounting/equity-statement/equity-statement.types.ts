@@ -84,6 +84,11 @@ export type BuildEquityStatementInput = {
   accounts: EquityAccountMetadata[];
   /** Mapa de movimientos tipados del período (puede ser Map vacío). */
   typedMovements: TypedPatrimonyMovements;
+  /**
+   * Delta neto firmado por accountId (PATRIMONIO) derivado de JournalLines de CA
+   * dentro de `[dateFrom, dateTo]`. Se fusiona en `initialByColumn` antes del invariant check.
+   */
+  aperturaBaseline?: Map<string, Decimal>;
   periodResult: Decimal;
   dateFrom: Date;
   dateTo: Date;
