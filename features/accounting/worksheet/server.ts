@@ -19,3 +19,5 @@ export type {
 
 export { buildWorksheet } from "./worksheet.builder";
 export type { BuildWorksheetInput } from "./worksheet.builder";
+
+export { WorksheetService } from "./worksheet.service";
