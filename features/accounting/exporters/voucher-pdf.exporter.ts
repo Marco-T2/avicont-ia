@@ -232,6 +232,10 @@ function sigMiniTable(label: string, name: string | undefined): Content {
     });
   }
 
+  // width is a valid ColumnProperties key when this item is used inside a
+  // pdfmake `columns` array (Column = Content & ColumnProperties). The TS
+  // types don't expose ColumnProperties on ContentTable directly, so we
+  // bridge through unknown to preserve the runtime-correct value.
   return {
     width: "*",
     table: {
@@ -242,7 +246,7 @@ function sigMiniTable(label: string, name: string | undefined): Content {
       ],
     },
     layout: {
-      hLineWidth: (i) => (i === 1 ? 0.7 : 0),
+      hLineWidth: (i: number) => (i === 1 ? 0.7 : 0),
       vLineWidth: () => 0,
       hLineColor: () => STYLE.text,
       paddingLeft: () => 0,
@@ -250,7 +254,7 @@ function sigMiniTable(label: string, name: string | undefined): Content {
       paddingTop: () => 0,
       paddingBottom: () => 0,
     },
-  };
+  } as unknown as Content;
 }
 
 function buildSignatures(input: VoucherPdfInput): Content {
@@ -296,7 +300,7 @@ function receiverMiniTable(label: string, value: string | undefined): Content {
       ],
     },
     layout: {
-      hLineWidth: (i) => (i === 1 ? 0.7 : 0),
+      hLineWidth: (i: number) => (i === 1 ? 0.7 : 0),
       vLineWidth: () => 0,
       hLineColor: () => STYLE.text,
       paddingLeft: () => 0,
@@ -304,7 +308,7 @@ function receiverMiniTable(label: string, value: string | undefined): Content {
       paddingTop: () => 0,
       paddingBottom: () => 0,
     },
-  };
+  } as unknown as Content;
 }
 
 function buildReceiverRow(input: VoucherPdfInput): Content {

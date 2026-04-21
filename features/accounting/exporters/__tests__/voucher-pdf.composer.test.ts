@@ -32,7 +32,7 @@ function makeAccount(code: string, name: string): Account {
     isActive: true,
     isContraAccount: false,
     organizationId: "org-1",
-  } as Account;
+  } as unknown as Account;
 }
 
 function makeLine(args: {
@@ -258,7 +258,7 @@ describe("buildVoucherPdfInput", () => {
   });
 
   it("payTo viene de entry.contact?.name", () => {
-    const contact = { id: "c-1", organizationId: "org-1", name: "Jhody Michael Gutierrez", type: "CUSTOMER" } as Contact;
+    const contact = { id: "c-1", organizationId: "org-1", name: "Jhody Michael Gutierrez", type: "CUSTOMER" } as unknown as Contact;
     const entry = { ...makeEntry(), contact, contactId: "c-1" };
 
     const input = buildVoucherPdfInput(entry, PROFILE, SIG_CONFIG, undefined, {});
