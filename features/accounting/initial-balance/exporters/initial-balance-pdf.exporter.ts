@@ -109,11 +109,11 @@ function buildGroupRows(group: InitialBalanceGroup): Content[][] {
     textCell("", { bold: true }),
   ]);
 
-  // Detail rows — only account NAME, no code; skip zero-amount rows
+  // Detail rows — code + name format; skip zero-amount rows
   for (const row of group.rows) {
     if (row.amount.isZero()) continue;
     rows.push([
-      textCell(`  ${row.name}`, { margin: [12, 1, 2, 1] }),
+      textCell(`  ${row.code} — ${row.name}`, { margin: [12, 1, 2, 1] }),
       numCell(fmtDecimal(row.amount, false), false),
     ]);
   }

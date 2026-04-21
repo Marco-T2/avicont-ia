@@ -6,7 +6,7 @@
  * - Org header with left-aligned Bolivian legal format:
  *   "De: {representanteLegal}" line, separate dirección + ciudad lines
  * - Section labels ACTIVO / PASIVO Y PATRIMONIO (centered)
- * - Detail rows show ONLY account name (no "code — name" format)
+ * - Detail rows show "{code} — {name}" format (em dash, Bolivian legal format)
  * - Footer mentions ciudad + fecha, single representante legal signature
  * - Zero-amount detail rows are skipped
  */
@@ -123,11 +123,12 @@ describe("exportInitialBalancePdf — smoke tests", () => {
     expect(json).toContain("PASIVO Y PATRIMONIO");
   });
 
-  it("detail rows do NOT contain ' — ' separator between code and name", async () => {
+  it("detail rows contain '{code} — {name}' format with em dash", async () => {
     const result = await exportInitialBalancePdf(makeStatement());
     const json = JSON.stringify(result.docDef);
-    // The old format was "1100 — Caja"; new format shows only "Caja"
-    expect(json).not.toContain(" — ");
+    // Detail rows now show "1100 — Caja" format (em dash, Bolivian legal format)
+    expect(json).toContain("1100 — Caja");
+    expect(json).toContain("1200 — Banco Nacional");
   });
 
   it("footer contains ciudad in the closing line", async () => {
