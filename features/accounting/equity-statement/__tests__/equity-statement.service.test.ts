@@ -1,0 +1,140 @@
+/**
+ * T06 — RED: EquityStatementService unit tests with mocked repositories.
+ *
+ * Covers: REQ-4 (shared periodResult), REQ-5 (cross-statement basis), REQ-8 (RBAC gate),
+ *         REQ-9 (role check), REQ-10 (date validation)
+ */
+
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+import { Prisma } from "@/generated/prisma/client";
+import { EquityStatementService } from "../equity-statement.service";
+import { EquityStatementRepository } from "../equity-statement.repository";
+import { FinancialStatementsRepository } from "@/features/accounting/financial-statements/financial-statements.repository";
+import { ForbiddenError, ValidationError } from "@/features/shared/errors";
+import type { EquityAccountMetadata } from "../equity-statement.types";
+
+const D = (v: string | number) => new Prisma.Decimal(String(v));
+
+// ── Minimal mock helpers ──────────────────────────────────────────────────────
+
+const minimalAccounts: EquityAccountMetadata[] = [
+  { id: "acc-capital", code: "3.1.1", name: "Capital Social", nature: "ACREEDORA" },
+];
+
+function createMockRepo(): EquityStatementRepository {
+  return {
+    getPatrimonioBalancesAt: vi.fn().mockResolvedValue(new Map()),
+    findPatrimonioAccounts: vi.fn().mockResolvedValue(minimalAccounts),
+    getOrgMetadata: vi.fn().mockResolvedValue({ name: "Test Org", taxId: null, address: null }),
+    isClosedPeriodMatch: vi.fn().mockResolvedValue(false),
+    requireOrg: vi.fn().mockReturnValue({ organizationId: "org-1" }),
+    transaction: vi.fn(),
+    db: {} as unknown,
+  } as unknown as EquityStatementRepository;
+}
+
+function createMockFsRepo(): FinancialStatementsRepository {
+  return {
+    findAccountsWithSubtype: vi.fn().mockResolvedValue([]),
+    aggregateJournalLinesInRange: vi.fn().mockResolvedValue([]),
+    requireOrg: vi.fn().mockReturnValue({ organizationId: "org-1" }),
+    transaction: vi.fn(),
+    db: {} as unknown,
+  } as unknown as FinancialStatementsRepository;
+}
+
+const INPUT_VALID = {
+  dateFrom: new Date("2024-01-01"),
+  dateTo:   new Date("2024-12-31"),
+};
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+describe("EquityStatementService — server-only boundary", () => {
+  it("service file starts with import 'server-only'", () => {
+    const svcPath = path.join(__dirname, "../equity-statement.service.ts");
+    const content = fs.readFileSync(svcPath, "utf8");
+    expect(content.startsWith(`import "server-only"`)).toBe(true);
+  });
+});
+
+describe("EquityStatementService — RBAC", () => {
+  it("role='member' → ForbiddenError BEFORE any DB call", async () => {
+    const repo = createMockRepo();
+    const fsRepo = createMockFsRepo();
+    const service = new EquityStatementService(repo, fsRepo);
+
+    await expect(service.generate("org-1", "member", INPUT_VALID)).rejects.toThrow(ForbiddenError);
+    expect(repo.getPatrimonioBalancesAt).not.toHaveBeenCalled();
+    expect(fsRepo.findAccountsWithSubtype).not.toHaveBeenCalled();
+  });
+
+  it("role='viewer' (non-existent) → ForbiddenError", async () => {
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    await expect(service.generate("org-1", "viewer", INPUT_VALID)).rejects.toThrow(ForbiddenError);
+  });
+
+  it("role='contador' → resolves without throwing", async () => {
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    const result = await service.generate("org-1", "contador", INPUT_VALID);
+    expect(result).toBeDefined();
+    expect(result.orgId).toBe("org-1");
+  });
+
+  it("role='admin' → resolves", async () => {
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    const result = await service.generate("org-1", "admin", INPUT_VALID);
+    expect(result.orgId).toBe("org-1");
+  });
+
+  it("role='owner' → resolves", async () => {
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    const result = await service.generate("org-1", "owner", INPUT_VALID);
+    expect(result.orgId).toBe("org-1");
+  });
+});
+
+describe("EquityStatementService — date validation", () => {
+  it("dateFrom > dateTo → ValidationError", async () => {
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    await expect(
+      service.generate("org-1", "contador", {
+        dateFrom: new Date("2024-12-31"),
+        dateTo:   new Date("2024-01-01"),
+      }),
+    ).rejects.toThrow(ValidationError);
+  });
+});
+
+describe("EquityStatementService — orchestration", () => {
+  it("orgId is injected into returned statement", async () => {
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    const result = await service.generate("org-test-999", "contador", INPUT_VALID);
+    expect(result.orgId).toBe("org-test-999");
+  });
+
+  it("preliminary=true when isClosedPeriodMatch returns false", async () => {
+    const repo = createMockRepo();
+    (repo.isClosedPeriodMatch as ReturnType<typeof vi.fn>).mockResolvedValue(false);
+    const service = new EquityStatementService(repo, createMockFsRepo());
+    const result = await service.generate("org-1", "contador", INPUT_VALID);
+    expect(result.preliminary).toBe(true);
+  });
+
+  it("preliminary=false when isClosedPeriodMatch returns true", async () => {
+    const repo = createMockRepo();
+    (repo.isClosedPeriodMatch as ReturnType<typeof vi.fn>).mockResolvedValue(true);
+    const service = new EquityStatementService(repo, createMockFsRepo());
+    const result = await service.generate("org-1", "contador", INPUT_VALID);
+    expect(result.preliminary).toBe(false);
+  });
+
+  it("periodResult is derived from calculateRetainedEarnings(buildIncomeStatement(...))", async () => {
+    // When fsRepo returns empty accounts and movements → net income = 0 → periodResult = 0
+    const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
+    const result = await service.generate("org-1", "contador", INPUT_VALID);
+    expect(result.periodResult.isZero()).toBe(true);
+  });
+});

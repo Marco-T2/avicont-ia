@@ -7,4 +7,4 @@ import "server-only";
 
 export { EquityStatementRepository } from "./equity-statement.repository";
 export type { EquityOrgMetadata } from "./equity-statement.repository";
-// EquityStatementService will be added by T06
+export { EquityStatementService } from "./equity-statement.service";
