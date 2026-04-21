@@ -187,4 +187,59 @@ describe("exportEquityStatementPdf — smoke tests", () => {
   it("MissingOrgNameError thrown when orgName is empty string", async () => {
     await expect(exportEquityStatementPdf(makeStatement(), "")).rejects.toThrow(MissingOrgNameError);
   });
+
+  // ── Batch 7: N-row rendering + key-based SALDO_FINAL detection ───────────────
+
+  function makeStatementWith5Rows(): EquityStatement {
+    const base = makeStatement();
+    const ZERO = D("0");
+    const typedRow = (
+      key: "APORTE_CAPITAL" | "CONSTITUCION_RESERVA",
+      label: string,
+      csAmount: string,
+    ) => ({
+      key,
+      label,
+      cells: [
+        { column: "CAPITAL_SOCIAL" as const,        amount: D(csAmount) },
+        { column: "APORTES_CAPITALIZAR" as const,   amount: ZERO },
+        { column: "AJUSTE_CAPITAL" as const,        amount: ZERO },
+        { column: "RESERVA_LEGAL" as const,         amount: ZERO },
+        { column: "RESULTADOS_ACUMULADOS" as const, amount: ZERO },
+        { column: "OTROS_PATRIMONIO" as const,      amount: ZERO },
+      ],
+      total: D(csAmount),
+    });
+    return {
+      ...base,
+      rows: [
+        base.rows[0], // SALDO_INICIAL
+        typedRow("APORTE_CAPITAL",       "Aportes de capital del período", "200000"),
+        typedRow("CONSTITUCION_RESERVA", "Constitución de reservas",       "10000"),
+        base.rows[1], // RESULTADO_EJERCICIO
+        base.rows[2], // SALDO_FINAL
+      ],
+    };
+  }
+
+  it("T07 — statement with 5 rows renders 5 data rows (+1 header)", async () => {
+    const result = await exportEquityStatementPdf(makeStatementWith5Rows(), "Cooperativa Test");
+    const content = result.docDef.content as unknown[];
+    const tableEntry = content.find(
+      (c) => typeof c === "object" && c !== null && "table" in c,
+    ) as { table: { body: unknown[][] } } | undefined;
+    expect(tableEntry?.table.body.length).toBe(6); // header + 5 data
+  });
+
+  it("T07 — only SALDO_FINAL row has bold cells (not row index 2)", async () => {
+    const result = await exportEquityStatementPdf(makeStatementWith5Rows(), "Cooperativa Test");
+    const content = result.docDef.content as unknown[];
+    const tableEntry = content.find(
+      (c) => typeof c === "object" && c !== null && "table" in c,
+    ) as { table: { body: Array<Array<{ bold?: boolean }>> } } | undefined;
+    const bodyRows = tableEntry!.table.body.slice(1); // drop header
+    const boldFlags = bodyRows.map((row) => row.every((cell) => cell.bold === true));
+    // Only last row (SALDO_FINAL, index 4) should be all-bold
+    expect(boldFlags).toEqual([false, false, false, false, true]);
+  });
 });
