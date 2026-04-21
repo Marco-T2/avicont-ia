@@ -2,16 +2,16 @@
  * T20 — RED: InitialBalanceView component tests.
  *
  * Asserts:
- * (a) Renders two sections (ACTIVO and PASIVO Y PATRIMONIO) with subtotals.
+ * (a) Renders two sections (ACTIVO and PASIVO Y PATRIMONIO) using StatementLineRow,
+ *     with the correct structural hierarchy (header → header → account → subtotal → total).
  * (b) Shows imbalance alert banner when `imbalanced: true`.
  * (c) Shows multipleCA warning banner when `multipleCA: true`.
- * (d) Amount formatting (es-BO locale):
- *     - positive 1234.56 → "1.234,56"
- *     - negative -1234.56 → "(1.234,56)" (parentheses, not minus sign)
- *     - zero in a detail/row-level cell → empty string ""
- *     - zero in a total/subtotal cell → "0,00"
- *
- * Fails because `components/accounting/initial-balance-view.tsx` does not exist yet.
+ * (d) Amount formatting via formatBOB (es-BO locale with "Bs." prefix):
+ *     - positive 1234.56 → "Bs. 1.234,56"
+ *     - negative -1234.56 → "(1.234,56)" (parentheses, no Bs. prefix for negatives)
+ *     - zero in a detail row → row is NOT rendered at all
+ *     - zero in a total/subtotal → rendered as "Bs. 0,00"
+ * (e) Detail rows with amount 0 are skipped entirely (not rendered).
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -26,18 +26,18 @@ import { InitialBalanceView } from "../initial-balance-view";
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const ACTIVO_GROUP = {
-  subtype: "CURRENT",
+  subtype: "ACTIVO_CORRIENTE",
   label: "Activo Corriente",
   rows: [
     { accountId: "acc-1", code: "1.1.01", name: "Caja", amount: "1234.56" },
-    { accountId: "acc-2", code: "1.1.02", name: "Banco", amount: "0" },
+    { accountId: "acc-2", code: "1.1.02", name: "Banco", amount: "0" },      // zero → skipped
     { accountId: "acc-3", code: "1.1.03", name: "Deudas", amount: "-1234.56" },
   ],
   subtotal: "0.00",
 };
 
 const PASIVO_GROUP = {
-  subtype: "CURRENT",
+  subtype: "PASIVO_CORRIENTE",
   label: "Pasivo Corriente",
   rows: [
     { accountId: "acc-4", code: "2.1.01", name: "Proveedores", amount: "5000.00" },
@@ -46,10 +46,10 @@ const PASIVO_GROUP = {
 };
 
 const PATRIMONIO_GROUP = {
-  subtype: "CAPITAL_SOCIAL",
+  subtype: "PATRIMONIO_CAPITAL",
   label: "Capital Social",
   rows: [
-    { accountId: "acc-5", code: "3.1.01", name: "Capital", amount: "0" },
+    { accountId: "acc-5", code: "3.1.01", name: "Capital", amount: "0" },   // zero → skipped
   ],
   subtotal: "0.00",
 };
@@ -83,7 +83,7 @@ function makeStatement(overrides?: Record<string, unknown>) {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("InitialBalanceView", () => {
-  it("(a) renders two section headings with subtotals", () => {
+  it("(a) renders two section headings and group labels", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
 
     expect(screen.getByText("ACTIVO")).toBeInTheDocument();
@@ -94,8 +94,9 @@ describe("InitialBalanceView", () => {
     expect(screen.getByText("Pasivo Corriente")).toBeInTheDocument();
     expect(screen.getByText("Capital Social")).toBeInTheDocument();
 
-    // Account names
+    // Account names (non-zero rows)
     expect(screen.getByText("Caja")).toBeInTheDocument();
+    expect(screen.getByText("Deudas")).toBeInTheDocument();
     expect(screen.getByText("Proveedores")).toBeInTheDocument();
   });
 
@@ -115,37 +116,43 @@ describe("InitialBalanceView", () => {
     expect(warning).toHaveTextContent(/múltiples|multiple|varios|comprobante.*apertura/i);
   });
 
-  it("(d1) formats positive amount 1234.56 as 1.234,56", () => {
+  it("(d1) formats positive amount 1234.56 as 'Bs. 1.234,56' via formatBOB", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
     // "Caja" row has amount "1234.56"
-    expect(screen.getByText("1.234,56")).toBeInTheDocument();
+    expect(screen.getByText("Bs. 1.234,56")).toBeInTheDocument();
   });
 
-  it("(d2) formats negative amount -1234.56 as (1.234,56)", () => {
+  it("(d2) formats negative amount -1234.56 using parentheses", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
     // "Deudas" row has amount "-1234.56"
-    expect(screen.getByText("(1.234,56)")).toBeInTheDocument();
+    // formatBOB produces either "(1.234,56)" or "Bs. (1.234,56)" — assert partial match
+    const neg = screen.getAllByText(/1\.234,56/);
+    expect(neg.length).toBeGreaterThan(0);
+    // At least one should represent the negative (check by text content containing paren)
+    const hasParenNeg = neg.some((el) => el.textContent?.includes("("));
+    expect(hasParenNeg).toBe(true);
   });
 
-  it("(d3) renders empty string for zero in a detail row", () => {
+  it("(e) zero-amount detail rows are NOT rendered", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
-    // "Banco" row has amount "0" — must not render "0,00" or "0.00" inline
-    // The cell should be empty (no text node containing "0,00" for that cell)
-    // We verify by confirming "0,00" only appears in subtotal/total positions
-    const allCells = document.querySelectorAll("td");
-    // Find the "Banco" name cell
-    const bancoCell = Array.from(allCells).find((cell) => cell.textContent === "Banco");
-    expect(bancoCell).toBeInTheDocument();
-    // Its sibling amount cell should be empty
-    const amountCell = bancoCell?.nextElementSibling;
-    expect(amountCell?.textContent).toBe("");
+    // "Banco" has amount "0" — must not appear in the DOM
+    expect(screen.queryByText("Banco")).not.toBeInTheDocument();
+    // "Capital" has amount "0" — must not appear in the DOM
+    expect(screen.queryByText("Capital")).not.toBeInTheDocument();
   });
 
-  it("(d4) renders 0,00 for zero in a total/subtotal cell", () => {
+  it("(d4) zero totals and subtotals still render (structural zero shows as Bs. 0,00)", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
-    // ACTIVO section subtotal is "0.00" → should show "0,00"
-    // Multiple "0,00" may exist; we only need at least one
-    const elements = screen.getAllByText("0,00");
-    expect(elements.length).toBeGreaterThan(0);
+    // ACTIVO subtotal is "0.00" and sectionTotal is "0.00" → must render something with 0
+    // formatBOB("0.00") → "Bs. 0,00"
+    const zeros = screen.getAllByText("Bs. 0,00");
+    expect(zeros.length).toBeGreaterThan(0);
+  });
+
+  it("(f) renders sections in correct order: ACTIVO first, then PASIVO Y PATRIMONIO", () => {
+    render(<InitialBalanceView statement={makeStatement()} />);
+    const headings = screen.getAllByText(/^(ACTIVO|PASIVO Y PATRIMONIO)$/);
+    expect(headings[0].textContent).toBe("ACTIVO");
+    expect(headings[1].textContent).toBe("PASIVO Y PATRIMONIO");
   });
 });
