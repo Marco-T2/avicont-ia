@@ -4,7 +4,10 @@
  * EquityStatementView — Renders a serialized EquityStatement as an HTML table.
  *
  * Columns: Descripción + visible equity columns + Total Patrimonio.
- * Rows: SALDO_INICIAL, RESULTADO_EJERCICIO, SALDO_FINAL (bold).
+ * Rows: SALDO_INICIAL, optional typed rows (APORTE_CAPITAL, CONSTITUCION_RESERVA,
+ *       DISTRIBUCION_DIVIDENDO), RESULTADO_EJERCICIO, SALDO_FINAL (bold).
+ *       Typed rows are emitted by the builder only when the period has a
+ *       non-zero net movement for that voucher code.
  * Imbalance and preliminary banners shown when applicable.
  *
  * Receives a serialized statement (Decimals as strings) — same shape as API JSON response.

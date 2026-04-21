@@ -100,8 +100,8 @@
 **Spec**: REQ-6 (UI parity)
 **Files**: `components/accounting/equity-statement-view.tsx`, tests existentes
 
-- [ ] **T08-VERIFY** — Confirmar que el componente ya usa `row.key === "SALDO_FINAL"` (ya estaba así en v1). Si algún test asume 3 filas, actualizarlo a fixtures con 5 filas tipadas. Run → PASS.
-- [ ] **T08-COMMIT** — `test(eepn-ui): cover typed rows render` (solo si hubo cambios — si no, skip commit).
+- [x] **T08-VERIFY** — Confirmar que el componente ya usa `row.key === "SALDO_FINAL"` (ya estaba así en v1). Si algún test asume 3 filas, actualizarlo a fixtures con 5 filas tipadas. Run → PASS.
+- [x] **T08-COMMIT** — `test(eepn-ui): cover typed rows render` (solo si hubo cambios — si no, skip commit).
 
 ## Batch 9 — Integration test: CP end-to-end
 
