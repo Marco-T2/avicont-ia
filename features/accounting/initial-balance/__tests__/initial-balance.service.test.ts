@@ -43,6 +43,7 @@ const ORG_HEADER: InitialBalanceOrgHeader = {
   nit: "9876543210",
   representanteLegal: "Lic. Ana Representante",
   direccion: "Calle Sucre 123, La Paz",
+  ciudad: "La Paz",
 };
 
 const VALID_ROWS: InitialBalanceRow[] = [

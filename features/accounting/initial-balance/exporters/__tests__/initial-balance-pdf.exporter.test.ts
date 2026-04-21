@@ -1,7 +1,14 @@
 /**
  * T13 — PDF exporter smoke tests.
  *
- * Covers: A4 portrait, org header, section labels ACTIVO / PASIVO Y PATRIMONIO.
+ * Covers:
+ * - A4 portrait page setup
+ * - Org header with left-aligned Bolivian legal format:
+ *   "De: {representanteLegal}" line, separate dirección + ciudad lines
+ * - Section labels ACTIVO / PASIVO Y PATRIMONIO (centered)
+ * - Detail rows show ONLY account name (no "code — name" format)
+ * - Footer mentions ciudad + fecha, single representante legal signature
+ * - Zero-amount detail rows are skipped
  */
 
 import { describe, it, expect } from "vitest";
@@ -49,6 +56,14 @@ function makeStatement() {
       subtype: "PATRIMONIO_CAPITAL",
       amount: D("120000"),
     },
+    // zero-amount row — must be excluded from PDF detail rows
+    {
+      accountId: "acc-6",
+      code: "1300",
+      name: "Cuenta Sin Saldo",
+      subtype: "ACTIVO_CORRIENTE",
+      amount: D("0"),
+    },
   ];
 
   return buildInitialBalance({
@@ -57,7 +72,8 @@ function makeStatement() {
       razonSocial: "Cooperativa Avicont S.A.",
       nit: "123456789",
       representanteLegal: "Juan Pérez García",
-      direccion: "Av. Arce 123, La Paz",
+      direccion: "Av. Arce 123",
+      ciudad: "Vinto-Cochabamba",
     },
     dateAt: new Date("2018-01-02"),
     rows,
@@ -71,23 +87,33 @@ describe("exportInitialBalancePdf — smoke tests", () => {
     expect(result.buffer.slice(0, 4).toString()).toBe("%PDF");
   });
 
-  it("page size is A4 portrait (595pt wide)", async () => {
+  it("page size is A4 portrait", async () => {
     const result = await exportInitialBalancePdf(makeStatement());
     const json = JSON.stringify(result.docDef);
-    // A4 portrait → pageSize A4, pageOrientation portrait
     expect(result.docDef.pageSize).toBe("A4");
     expect(result.docDef.pageOrientation).toBe("portrait");
-    // 595 pt is A4 portrait width — verify via stringified definition
     expect(json).toMatch(/A4/);
   });
 
-  it("docDef contains org header strings", async () => {
+  it("docDef contains org header strings (razonSocial, nit, representanteLegal)", async () => {
     const result = await exportInitialBalancePdf(makeStatement());
     const json = JSON.stringify(result.docDef);
     expect(json).toContain("Cooperativa Avicont S.A.");
     expect(json).toContain("123456789");
     expect(json).toContain("Juan Pérez García");
-    expect(json).toContain("Av. Arce 123, La Paz");
+  });
+
+  it("docDef contains 'De: ' prefix for representante legal line", async () => {
+    const result = await exportInitialBalancePdf(makeStatement());
+    const json = JSON.stringify(result.docDef);
+    expect(json).toContain("De: ");
+  });
+
+  it("docDef contains dirección and ciudad as separate fields", async () => {
+    const result = await exportInitialBalancePdf(makeStatement());
+    const json = JSON.stringify(result.docDef);
+    expect(json).toContain("Av. Arce 123");
+    expect(json).toContain("Vinto-Cochabamba");
   });
 
   it("docDef contains section labels ACTIVO and PASIVO Y PATRIMONIO", async () => {
@@ -95,5 +121,25 @@ describe("exportInitialBalancePdf — smoke tests", () => {
     const json = JSON.stringify(result.docDef);
     expect(json).toContain("ACTIVO");
     expect(json).toContain("PASIVO Y PATRIMONIO");
+  });
+
+  it("detail rows do NOT contain ' — ' separator between code and name", async () => {
+    const result = await exportInitialBalancePdf(makeStatement());
+    const json = JSON.stringify(result.docDef);
+    // The old format was "1100 — Caja"; new format shows only "Caja"
+    expect(json).not.toContain(" — ");
+  });
+
+  it("footer contains ciudad in the closing line", async () => {
+    const result = await exportInitialBalancePdf(makeStatement());
+    const json = JSON.stringify(result.docDef);
+    // Footer: "{ciudad}, {fechaLarga}"
+    expect(json).toContain("Vinto-Cochabamba");
+  });
+
+  it("zero-amount detail row (Cuenta Sin Saldo) is not rendered", async () => {
+    const result = await exportInitialBalancePdf(makeStatement());
+    const json = JSON.stringify(result.docDef);
+    expect(json).not.toContain("Cuenta Sin Saldo");
   });
 });

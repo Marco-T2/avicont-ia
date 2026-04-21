@@ -415,13 +415,14 @@ describe("InitialBalanceRepository — countCAVouchers", () => {
 
 // ── T03c — getOrgMetadata ────────────────────────────────────────────────────
 describe("InitialBalanceRepository — getOrgMetadata", () => {
-  it("T03c — returns { razonSocial, nit, representanteLegal, direccion } for orgA", async () => {
+  it("T03c — returns { razonSocial, nit, representanteLegal, direccion, ciudad } for orgA", async () => {
     const meta = await repo.getOrgMetadata(orgAId);
     expect(meta).not.toBeNull();
     expect(meta!.razonSocial).toBe("IB Org A S.R.L.");
     expect(meta!.nit).toBe("1234567890");
     expect(meta!.direccion).toBe("Av. Siempreviva 742, La Paz");
     expect(meta!.representanteLegal).toBe("Ing. Test Representante");
+    expect(meta!.ciudad).toBe("La Paz");
   });
 
   it("T03c — multi-tenant: orgA query never returns orgB data", async () => {
