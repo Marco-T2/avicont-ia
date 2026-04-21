@@ -5,6 +5,13 @@ import type { AccountType, AccountNature } from "@/generated/prisma/enums";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
+export type WorksheetFiscalPeriodRow = {
+  id: string;
+  status: string;
+  startDate: Date;
+  endDate: Date;
+};
+
 export type WorksheetDateRange = {
   dateFrom: Date;
   dateTo: Date;
@@ -50,12 +57,35 @@ type RawAggregationRow = {
  * WorksheetRepository — dual $queryRaw aggregation scoped by voucherTypeCfg.isAdjustment.
  *
  * Provides:
+ * - findFiscalPeriod: resolves a fiscal period by id for filter intersection (REQ-10)
+ * - aggregateByAdjustmentFlag: two parallel aggregations (Sumas vs Ajustes)
+ * - findAccountsWithDetail: all active accounts including isDetail + type fields
+ *
+ * Provides:
  * - aggregateByAdjustmentFlag: two parallel aggregations (Sumas vs Ajustes)
  * - findAccountsWithDetail: all active accounts including isDetail + type fields
  *
  * All queries are scoped by organizationId (multi-tenant, NFR-3).
  */
 export class WorksheetRepository extends BaseRepository {
+  /**
+   * Finds a fiscal period by ID, scoped to the organization.
+   * Returns null if not found. Used by service for filter intersection (REQ-10).
+   */
+  async findFiscalPeriod(
+    orgId: string,
+    periodId: string,
+  ): Promise<WorksheetFiscalPeriodRow | null> {
+    const scope = this.requireOrg(orgId);
+
+    const period = await this.db.fiscalPeriod.findFirst({
+      where: { id: periodId, ...scope },
+      select: { id: true, status: true, startDate: true, endDate: true },
+    });
+
+    return period;
+  }
+
   /**
    * Aggregates POSTED journal lines in the given date range, filtering vouchers
    * by their isAdjustment flag.
