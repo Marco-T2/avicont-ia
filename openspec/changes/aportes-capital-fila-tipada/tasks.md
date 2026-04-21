@@ -108,14 +108,14 @@
 **Spec**: REQ-1 + REQ-3 en contexto real
 **Files**: `features/accounting/equity-statement/__tests__/equity-statement.integration.test.ts`
 
-- [ ] **T09-RED** — Test con real Prisma test DB:
+- [x] **T09-RED** — Test con real Prisma test DB:
   1. Seed org + voucher types (incluido CP).
   2. Crear JournalEntry POSTED con voucherType=CP, line debe 1.1.1 200k / credit 3.1.1 200k.
   3. Llamar `equityStatementService.build()`.
   4. Assert: `response.rows` contiene fila `APORTE_CAPITAL` con 200k en `CAPITAL_SOCIAL`; `response.imbalanced === false`.
   Run → FAIL si falta cualquier pieza.
-- [ ] **T09-GREEN** — Asegurar que todos los batches previos están integrados. Run → PASS.
-- [ ] **T09-COMMIT** — `test(eepn-integration): cover CP entry end-to-end typed row`.
+- [x] **T09-GREEN** — Asegurar que todos los batches previos están integrados. Run → PASS.
+- [x] **T09-COMMIT** — `test(eepn-integration): cover CP entry end-to-end typed row`.
 
 ## Batch 10 — Smoke suite + type-check final
 
