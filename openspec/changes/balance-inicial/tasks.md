@@ -53,16 +53,16 @@
 ## Phase 4 — Exporters
 
 <!-- RED -->
-- [ ] T13 Write failing PDF exporter smoke test — touches `features/accounting/initial-balance/exporters/__tests__/initial-balance-pdf.exporter.test.ts`. Acceptance: asserts returned `Buffer` starts with `%PDF`, page size is A4 portrait (`595` pt wide), and stringified pdfmake definition contains org header strings and section labels `ACTIVO` / `PASIVO Y PATRIMONIO` — fails because file does not exist yet.
+- [x] T13 Write failing PDF exporter smoke test — touches `features/accounting/initial-balance/exporters/__tests__/initial-balance-pdf.exporter.test.ts`. Acceptance: asserts returned `Buffer` starts with `%PDF`, page size is A4 portrait (`595` pt wide), and stringified pdfmake definition contains org header strings and section labels `ACTIVO` / `PASIVO Y PATRIMONIO` — fails because file does not exist yet.
 
 <!-- GREEN -->
-- [ ] T14 Create PDF exporter — touches `features/accounting/initial-balance/exporters/initial-balance-pdf.exporter.ts`. Acceptance: pdfmake A4 portrait; includes org header (razón social, NIT, representante legal, dirección), title `BALANCE INICIAL — Al {fecha CA}`, subtitle `(Expresado en Bolivianos)`, both sections with subtotals, signature footer; makes T13 pass.
+- [x] T14 Create PDF exporter — touches `features/accounting/initial-balance/exporters/initial-balance-pdf.exporter.ts`. Acceptance: pdfmake A4 portrait; includes org header (razón social, NIT, representante legal, dirección), title `BALANCE INICIAL — Al {fecha CA}`, subtitle `(Expresado en Bolivianos)`, both sections with subtotals, signature footer; makes T13 pass.
 
 <!-- RED -->
-- [ ] T15 Write failing XLSX exporter smoke test — touches `features/accounting/initial-balance/exporters/__tests__/initial-balance-xlsx.exporter.test.ts`. Acceptance: asserts sheet name is `"Balance Inicial"`, numeric cells use `numFmt` with 2 decimal places, page setup is A4 portrait — fails because file does not exist yet.
+- [x] T15 Write failing XLSX exporter smoke test — touches `features/accounting/initial-balance/exporters/__tests__/initial-balance-xlsx.exporter.test.ts`. Acceptance: asserts sheet name is `"Balance Inicial"`, numeric cells use `numFmt` with 2 decimal places, page setup is A4 portrait — fails because file does not exist yet.
 
 <!-- GREEN -->
-- [ ] T16 Create XLSX exporter — touches `features/accounting/initial-balance/exporters/initial-balance-xlsx.exporter.ts`. Acceptance: ExcelJS workbook, single sheet `"Balance Inicial"`, A4 portrait page setup, `numFmt` applied to amount cells, mirrors PDF data (sections, subtotals, totals); makes T15 pass.
+- [x] T16 Create XLSX exporter — touches `features/accounting/initial-balance/exporters/initial-balance-xlsx.exporter.ts`. Acceptance: ExcelJS workbook, single sheet `"Balance Inicial"`, A4 portrait page setup, `numFmt` applied to amount cells, mirrors PDF data (sections, subtotals, totals); makes T15 pass.
 
 ## Phase 5 — API Route + RBAC
 
