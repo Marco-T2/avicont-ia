@@ -145,7 +145,7 @@ const fixtureReport: WorksheetReport = {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("exportWorksheetXlsx (REQ-13)", () => {
-  let buffer: Buffer;
+  let buffer: Buffer<ArrayBufferLike>;
   let workbook: ExcelJS.Workbook;
   let ws: ExcelJS.Worksheet;
 
@@ -157,7 +157,7 @@ describe("exportWorksheetXlsx (REQ-13)", () => {
 
   it("can be parsed by ExcelJS", async () => {
     workbook = new ExcelJS.Workbook();
-    await workbook.xlsx.load(buffer);
+    await workbook.xlsx.load(buffer as unknown as ArrayBuffer);
     ws = workbook.worksheets[0];
     expect(ws).toBeDefined();
   });

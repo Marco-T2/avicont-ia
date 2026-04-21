@@ -331,7 +331,7 @@ describe("exportWorksheetPdf (REQ-12)", () => {
       (c) =>
         typeof c === "object" &&
         c !== null &&
-        "pageBreak" in (c as Record<string, unknown>),
+        "pageBreak" in (c as unknown as Record<string, unknown>),
     );
     expect(hasPageBreak).toBe(false);
   });
