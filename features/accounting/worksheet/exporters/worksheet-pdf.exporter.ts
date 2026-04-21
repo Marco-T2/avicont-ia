@@ -83,7 +83,7 @@ function headerCell(text: string, colSpan?: number): Content {
     margin: [1, 2, 1, 2],
   };
   if (colSpan) cell.colSpan = colSpan;
-  return cell as Content;
+  return cell as unknown as Content;
 }
 
 function emptyCell(): Content {
