@@ -26,16 +26,16 @@
 ## Phase 2 — Builder (invariant + grouping)
 
 <!-- RED -->
-- [ ] T06 Write failing builder test — balanced CA — touches `features/accounting/initial-balance/__tests__/initial-balance.builder.test.ts`. Acceptance: pure fixture with matching ACTIVO = PASIVO+PATRIMONIO totals; asserts two sections, correct per-subtype subtotals, `imbalanced: false`, `imbalanceDelta: 0` — fails because builder does not exist yet.
+- [x] T06 Write failing builder test — balanced CA — touches `features/accounting/initial-balance/__tests__/initial-balance.builder.test.ts`. Acceptance: pure fixture with matching ACTIVO = PASIVO+PATRIMONIO totals; asserts two sections, correct per-subtype subtotals, `imbalanced: false`, `imbalanceDelta: 0` — fails because builder does not exist yet.
 
 <!-- RED -->
-- [ ] T07 Add failing builder test — imbalanced CA — touches same `initial-balance.builder.test.ts`. Acceptance: forged fixture where ACTIVO ≠ PASIVO+PATRIMONIO; asserts `imbalanced: true` and `imbalanceDelta` equals the Bs. difference — fails because builder does not exist yet.
+- [x] T07 Add failing builder test — imbalanced CA — touches same `initial-balance.builder.test.ts`. Acceptance: forged fixture where ACTIVO ≠ PASIVO+PATRIMONIO; asserts `imbalanced: true` and `imbalanceDelta` equals the Bs. difference — fails because builder does not exist yet.
 
 <!-- RED -->
-- [ ] T08 Add failing builder test — multiple CAs — touches same `initial-balance.builder.test.ts`. Acceptance: `caCount: 2` input → `multipleCA: true`, `caCount: 2` on the returned statement — fails because builder does not exist yet.
+- [x] T08 Add failing builder test — multiple CAs — touches same `initial-balance.builder.test.ts`. Acceptance: `caCount: 2` input → `multipleCA: true`, `caCount: 2` on the returned statement — fails because builder does not exist yet.
 
 <!-- GREEN -->
-- [ ] T09 Create builder — touches `features/accounting/initial-balance/initial-balance.builder.ts`. Acceptance: pure function, no I/O; groups `InitialBalanceRow[]` by `AccountSubtype` into ACTIVO and PASIVO_PATRIMONIO sections; computes subtotals per group and section totals with `Prisma.Decimal`; sets `imbalanced`, `imbalanceDelta`, `multipleCA`, `caCount`; makes T06–T08 pass.
+- [x] T09 Create builder — touches `features/accounting/initial-balance/initial-balance.builder.ts`. Acceptance: pure function, no I/O; groups `InitialBalanceRow[]` by `AccountSubtype` into ACTIVO and PASIVO_PATRIMONIO sections; computes subtotals per group and section totals with `Prisma.Decimal`; sets `imbalanced`, `imbalanceDelta`, `multipleCA`, `caCount`; makes T06–T08 pass.
 
 ## Phase 3 — Service (orchestration + errors)
 
