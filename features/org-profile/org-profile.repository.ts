@@ -34,6 +34,7 @@ export class OrgProfileRepository extends BaseRepository {
     if (data.direccion !== undefined) patch.direccion = data.direccion;
     if (data.ciudad !== undefined) patch.ciudad = data.ciudad;
     if (data.telefono !== undefined) patch.telefono = data.telefono;
+    if (data.representanteLegal !== undefined) patch.representanteLegal = data.representanteLegal;
     if (data.nroPatronal !== undefined) patch.nroPatronal = data.nroPatronal;
     if (data.logoUrl !== undefined) patch.logoUrl = data.logoUrl;
 

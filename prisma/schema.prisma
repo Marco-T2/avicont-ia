@@ -1056,8 +1056,9 @@ model OrgProfile {
   nit            String   @default("")
   direccion      String   @default("")
   ciudad         String   @default("")
-  telefono       String   @default("")
-  nroPatronal    String?
+  telefono           String   @default("")
+  representanteLegal String   @default("")
+  nroPatronal        String?
   logoUrl        String?
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
