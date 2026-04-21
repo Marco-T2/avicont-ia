@@ -464,4 +464,31 @@ describe("buildEquityStatement", () => {
     ]);
   });
 
+  it("REQ-3 retrocompat — aperturaBaseline omitido (campo ausente) NO altera comportamiento; imbalance legacy se mantiene", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    // Scenario: 200k sitting in CAPITAL_SOCIAL final balance without any typed movement
+    // or aperturaBaseline to account for it. Pre-change behavior = imbalanced=true.
+    // This test is a REGRESSION GUARD: it MUST NOT start failing after T11 lands.
+    // If it does, the implementation broke retrocompat (likely defaulted aperturaBaseline
+    // to a non-empty map). DO NOT edit this test — fix the implementation instead.
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      typedMovements: new Map(),
+      // aperturaBaseline omitted — field absent
+      periodResult: D("0"),
+      preliminary: false,
+    }));
+
+    // Legacy behavior preserved: unaccounted delta → imbalanced
+    expect(stmt.imbalanced).toBe(true);
+    expect(stmt.imbalanceDelta.equals(D("200000"))).toBe(true);
+
+    // SALDO_INICIAL must NOT have absorbed anything (no apertura to merge)
+    const saldoInicial = stmt.rows.find((r) => r.key === "SALDO_INICIAL")!;
+    const capitalCell = saldoInicial.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(capitalCell?.amount.equals(D("0"))).toBe(true);
+  });
+
 });
