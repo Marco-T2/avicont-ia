@@ -121,9 +121,9 @@ export const reportRegistry: readonly ReportEntry[] = [
     id: "initial-balance",
     title: "Balance Inicial",
     description: "Estado de apertura al inicio del ejercicio contable.",
-    category: "para-mi-contador",
-    status: "planned",
-    route: null,
+    category: "estados-financieros",
+    status: "available",
+    route: "/accounting/initial-balance",
     icon: "FlagTriangleRight",
   },
   {
