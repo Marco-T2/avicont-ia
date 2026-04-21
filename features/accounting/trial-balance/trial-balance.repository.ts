@@ -107,15 +107,14 @@ export class TrialBalanceRepository extends BaseRepository {
 
   /**
    * Fetches org metadata for exporter headers.
-   * Returns graceful undefineds for optional fields.
+   * The Organization model only has `name` (no taxId/address columns in schema v1).
+   * taxId and address are returned as null — graceful omission in exporter headers.
    */
   async getOrgMetadata(orgId: string): Promise<TrialBalanceOrgMetadata | null> {
     const org = await this.db.organization.findUnique({
       where: { id: orgId },
       select: {
         name: true,
-        taxId: true,
-        address: true,
       },
     });
 
@@ -123,8 +122,8 @@ export class TrialBalanceRepository extends BaseRepository {
 
     return {
       name: org.name,
-      taxId: (org as Record<string, unknown>).taxId as string | null ?? null,
-      address: (org as Record<string, unknown>).address as string | null ?? null,
+      taxId: null,
+      address: null,
     };
   }
 }
