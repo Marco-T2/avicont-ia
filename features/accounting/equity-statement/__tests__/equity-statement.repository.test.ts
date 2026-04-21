@@ -907,4 +907,18 @@ describe("EquityStatementRepository — getAperturaPatrimonyDelta", () => {
     await prisma.organization.delete({ where: { id: o2.id } }).catch(() => {});
     await prisma.user.delete({ where: { id: u2.id } }).catch(() => {});
   });
+
+  // T17 — REGRESSION GUARD for date-range lower bound
+  // REGRESSION GUARD: if someone relaxes "je.date >= dateFrom" in getAperturaPatrimonyDelta, this test will fail because period N+1 would re-include the prior-period CA, causing double-count when merged with initialBalances from getPatrimonioBalancesAt. DO NOT REMOVE.
+  it("T17 — CA dated strictly before dateFrom: returns empty map (regression guard)", async () => {
+    // The shared fixture has a POSTED CA dated 2026-04-20 in caOrgId.
+    // Querying with dateFrom=2026-05-01 puts that CA strictly before the range —
+    // the method must return an empty map (not include the April CA).
+    const result = await repo.getAperturaPatrimonyDelta(
+      caOrgId,
+      new Date("2026-05-01"),
+      new Date("2026-05-31"),
+    );
+    expect(result).toEqual(new Map());
+  });
 });
