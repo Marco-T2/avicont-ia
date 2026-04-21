@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -11,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Search, BarChart3, Loader2 } from "lucide-react";
+import { Search, BarChart3, Loader2, FileSpreadsheet } from "lucide-react";
 
 const ACCOUNT_TYPE_CONFIG: Record<
   string,
@@ -82,6 +84,21 @@ export default function ReportsPageClient({
 
   return (
     <>
+      {/* Navigation card — Sumas y Saldos (C9.S3) */}
+      <Link href={`/${orgSlug}/accounting/trial-balance`}>
+        <Card className="hover:bg-accent transition-colors cursor-pointer">
+          <CardHeader className="flex flex-row items-center gap-3 pb-2">
+            <FileSpreadsheet className="h-6 w-6 text-muted-foreground" />
+            <div>
+              <CardTitle className="text-base">Sumas y Saldos</CardTitle>
+              <CardDescription>
+                Formulario F-605 · Balance de Comprobación
+              </CardDescription>
+            </div>
+          </CardHeader>
+        </Card>
+      </Link>
+
       {/* Filter */}
       <Card>
         <CardHeader>
