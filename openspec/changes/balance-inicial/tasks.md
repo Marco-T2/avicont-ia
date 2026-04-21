@@ -67,13 +67,13 @@
 ## Phase 5 — API Route + RBAC
 
 <!-- RED -->
-- [ ] T17 Write failing RBAC page test — touches `app/(dashboard)/[orgSlug]/accounting/initial-balance/__tests__/page-rbac.test.ts`. Acceptance: mocked `requirePermission` throws for unauthorized role; asserts page redirects or rethrows — fails because page does not exist yet.
+- [x] T17 Write failing RBAC page test — touches `app/(dashboard)/[orgSlug]/accounting/initial-balance/__tests__/page-rbac.test.ts`. Acceptance: mocked `requirePermission` throws for unauthorized role; asserts page redirects or rethrows — fails because page does not exist yet.
 
 <!-- RED -->
-- [ ] T18 Write failing route handler test — touches `app/api/organizations/[orgSlug]/initial-balance/__tests__/route.test.ts`. Acceptance: mocked service returns statement; `?format=json` → `application/json` with serialized statement; `?format=pdf` → `application/pdf` buffer; `?format=xlsx` → `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`; 404 when service throws `NotFoundError`; 403 on wrong role; also asserts invalid `format` param (e.g., `?format=csv`) returns 400 with a zod validation error — this exercises `initial-balance.validation.ts` — fails because route does not exist yet.
+- [x] T18 Write failing route handler test — touches `app/api/organizations/[orgSlug]/initial-balance/__tests__/route.test.ts`. Acceptance: mocked service returns statement; `?format=json` → `application/json` with serialized statement; `?format=pdf` → `application/pdf` buffer; `?format=xlsx` → `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`; 404 when service throws `NotFoundError`; 403 on wrong role; also asserts invalid `format` param (e.g., `?format=csv`) returns 400 with a zod validation error — this exercises `initial-balance.validation.ts` — fails because route does not exist yet.
 
 <!-- GREEN -->
-- [ ] T19 Create page + route handler + RBAC wiring — touches `app/(dashboard)/[orgSlug]/accounting/initial-balance/page.tsx`, `app/api/organizations/[orgSlug]/initial-balance/route.ts`, `features/accounting/initial-balance/initial-balance.validation.ts`. Acceptance: server page calls `requirePermission`; route handler dispatches `format` param to service + exporters; `runtime = "nodejs"` on route; makes T17–T18 pass.
+- [x] T19 Create page + route handler + RBAC wiring — touches `app/(dashboard)/[orgSlug]/accounting/initial-balance/page.tsx`, `app/api/organizations/[orgSlug]/initial-balance/route.ts`, `features/accounting/initial-balance/initial-balance.validation.ts`. Acceptance: server page calls `requirePermission`; route handler dispatches `format` param to service + exporters; `runtime = "nodejs"` on route; makes T17–T18 pass.
 
 ## Phase 6 — UI
 
