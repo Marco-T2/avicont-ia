@@ -100,17 +100,6 @@ export const reportRegistry: readonly ReportEntry[] = [
 
   // ── Para mi contador — disponibles ─────────────────────────────────────────
   {
-    id: "trial-balance",
-    title: "Balance de Comprobación",
-    description: "Sumas y saldos de todas las cuentas del período.",
-    category: "para-mi-contador",
-    status: "available",
-    route: "/accounting/reports",
-    icon: "BookOpen",
-  },
-
-  // ── Para mi contador — planificados ────────────────────────────────────────
-  {
     id: "worksheet",
     title: "Hoja de Trabajo",
     description: "Herramienta auxiliar de ajustes y balance comprobación.",
@@ -121,7 +110,7 @@ export const reportRegistry: readonly ReportEntry[] = [
   },
   {
     id: "sumas-saldos",
-    title: "Sumas y Saldos",
+    title: "Balance de Comprobación de Sumas y Saldos",
     description: "Detalle de débitos, créditos y saldos por cuenta.",
     category: "para-mi-contador",
     status: "available",

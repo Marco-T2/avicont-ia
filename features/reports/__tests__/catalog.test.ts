@@ -215,12 +215,12 @@ describe("reportCategories — datos curados (PR3)", () => {
 });
 
 describe("reportRegistry — datos curados (PR3)", () => {
-  it("tiene al menos 7 entradas con status 'available'", () => {
+  it("tiene al menos 6 entradas con status 'available'", () => {
     const available = reportRegistry.filter((e) => e.status === "available");
-    expect(available.length).toBeGreaterThanOrEqual(7);
+    expect(available.length).toBeGreaterThanOrEqual(6);
   });
 
-  it("las 7 entradas available conocidas existen con routes correctos", () => {
+  it("las 6 entradas available conocidas existen con routes correctos", () => {
     const availableMap = new Map(
       reportRegistry
         .filter((e) => e.status === "available")
@@ -230,7 +230,6 @@ describe("reportRegistry — datos curados (PR3)", () => {
     const expected = [
       { id: "balance-sheet", route: "/accounting/financial-statements/balance-sheet" },
       { id: "income-statement", route: "/accounting/financial-statements/income-statement" },
-      { id: "trial-balance", route: "/accounting/reports" },
       { id: "correlation-audit", route: "/accounting/correlation-audit" },
       { id: "iva-book-purchases", route: "/informes/impuestos/libro-compras" },
       { id: "iva-book-sales", route: "/informes/impuestos/libro-ventas" },
@@ -271,11 +270,6 @@ describe("reportRegistry — datos curados (PR3)", () => {
   it("income-statement pertenece a la categoría 'estados-financieros'", () => {
     const entry = reportRegistry.find((e) => e.id === "income-statement");
     expect(entry?.category).toBe("estados-financieros");
-  });
-
-  it("trial-balance pertenece a la categoría 'para-mi-contador'", () => {
-    const entry = reportRegistry.find((e) => e.id === "trial-balance");
-    expect(entry?.category).toBe("para-mi-contador");
   });
 
   it("correlation-audit pertenece a la categoría 'empresa'", () => {
