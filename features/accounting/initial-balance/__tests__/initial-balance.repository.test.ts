@@ -90,6 +90,7 @@ beforeAll(async () => {
       direccion: "Av. Siempreviva 742, La Paz",
       ciudad: "La Paz",
       telefono: "22000000",
+      representanteLegal: "Ing. Test Representante",
     },
   });
   await prisma.orgProfile.create({
@@ -420,9 +421,7 @@ describe("InitialBalanceRepository — getOrgMetadata", () => {
     expect(meta!.razonSocial).toBe("IB Org A S.R.L.");
     expect(meta!.nit).toBe("1234567890");
     expect(meta!.direccion).toBe("Av. Siempreviva 742, La Paz");
-    // representanteLegal is not yet a DB column — repo returns an empty string
-    // (graceful degradation, same pattern as trial-balance.getOrgMetadata for taxId/address)
-    expect(typeof meta!.representanteLegal).toBe("string");
+    expect(meta!.representanteLegal).toBe("Ing. Test Representante");
   });
 
   it("T03c — multi-tenant: orgA query never returns orgB data", async () => {

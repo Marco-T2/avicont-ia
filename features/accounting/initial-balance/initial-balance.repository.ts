@@ -106,10 +106,7 @@ export class InitialBalanceRepository extends BaseRepository {
 
   /**
    * Fetches organization header metadata for the exporter banners. Pulls from
-   * `OrgProfile` (razón social, NIT, dirección). The schema does not yet
-   * expose a `representanteLegal` column, so the repo returns an empty string
-   * — same graceful-degradation pattern used by
-   * `TrialBalanceRepository.getOrgMetadata` for taxId/address.
+   * `OrgProfile` (razón social, NIT, representante legal, dirección).
    *
    * Returns `null` when the organization does not exist.
    */
@@ -122,6 +119,7 @@ export class InitialBalanceRepository extends BaseRepository {
           select: {
             razonSocial: true,
             nit: true,
+            representanteLegal: true,
             direccion: true,
           },
         },
@@ -132,7 +130,7 @@ export class InitialBalanceRepository extends BaseRepository {
     return {
       razonSocial: org.profile?.razonSocial ?? "",
       nit: org.profile?.nit ?? "",
-      representanteLegal: "",
+      representanteLegal: org.profile?.representanteLegal ?? "",
       direccion: org.profile?.direccion ?? "",
     };
   }
