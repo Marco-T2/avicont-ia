@@ -1,7 +1,21 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import { Prisma } from "@/generated/prisma/client";
-import type { EquityAccountMetadata } from "./equity-statement.types";
+import type {
+  EquityAccountMetadata,
+  PatrimonyVoucherCode,
+  TypedPatrimonyMovements,
+} from "./equity-statement.types";
+
+const PATRIMONY_VOUCHER_CODES: readonly PatrimonyVoucherCode[] = ["CP", "CL", "CV"] as const;
+
+type RawTypedMovementRow = {
+  voucher_code: PatrimonyVoucherCode;
+  account_id: string;
+  total_debit: string;
+  total_credit: string;
+  nature: "DEUDORA" | "ACREEDORA";
+};
 
 export type EquityOrgMetadata = {
   name: string;
@@ -59,6 +73,67 @@ export class EquityStatementRepository extends BaseRepository {
       if (!signed.isZero()) map.set(r.account_id, signed);
     }
     return map;
+  }
+
+  /**
+   * Aggregates POSTED JournalLines in [dateFrom, dateTo] filtered by
+   * voucherType.code IN ('CP','CL','CV') and account.type='PATRIMONIO'.
+   *
+   * Sign convention mirrors getPatrimonioBalancesAt:
+   *   DEUDORA:   delta = debit − credit
+   *   ACREEDORA: delta = credit − debit
+   *
+   * A positive CP delta on an ACREEDORA capital account means an aporte;
+   * a negative CV delta on RESULTADOS_ACUMULADOS means a distribución.
+   *
+   * Returns a nested Map keyed by PatrimonyVoucherCode; empty buckets and zero
+   * deltas are omitted.
+   */
+  async getTypedPatrimonyMovements(
+    orgId: string,
+    dateFrom: Date,
+    dateTo: Date,
+  ): Promise<TypedPatrimonyMovements> {
+    this.requireOrg(orgId);
+
+    const rows = await this.db.$queryRaw<RawTypedMovementRow[]>`
+      SELECT
+        vt.code         AS voucher_code,
+        jl."accountId"  AS account_id,
+        SUM(jl.debit)   AS total_debit,
+        SUM(jl.credit)  AS total_credit,
+        a.nature
+      FROM journal_lines   jl
+      JOIN journal_entries je ON je.id  = jl."journalEntryId"
+      JOIN accounts        a  ON a.id   = jl."accountId"
+      JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
+      WHERE
+        je."organizationId" = ${orgId}
+        AND je.status       = 'POSTED'
+        AND je.date        >= ${dateFrom}
+        AND je.date        <= ${dateTo}
+        AND a.type          = 'PATRIMONIO'
+        AND vt.code IN ('CP', 'CL', 'CV')
+      GROUP BY vt.code, jl."accountId", a.nature
+    `;
+
+    const out: TypedPatrimonyMovements = new Map();
+    for (const r of rows) {
+      const debit = new Prisma.Decimal(r.total_debit);
+      const credit = new Prisma.Decimal(r.total_credit);
+      const signed =
+        r.nature === "DEUDORA" ? debit.minus(credit) : credit.minus(debit);
+      if (signed.isZero()) continue;
+      if (!PATRIMONY_VOUCHER_CODES.includes(r.voucher_code)) continue;
+
+      let bucket = out.get(r.voucher_code);
+      if (!bucket) {
+        bucket = new Map();
+        out.set(r.voucher_code, bucket);
+      }
+      bucket.set(r.account_id, signed);
+    }
+    return out;
   }
 
   /** Active PATRIMONIO accounts ordered by code. */

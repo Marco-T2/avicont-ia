@@ -24,7 +24,13 @@ let periodBId: string;
 
 let capitalAccountId: string;
 let activoAccountId: string;
+let reservaAccountId: string;
+let resultadosAccountId: string;
 let orgBCapitalAccountId: string;
+let vtCP_A: string;
+let vtCL_A: string;
+let vtCV_A: string;
+let vtCP_B: string;
 
 const DATE_INITIAL = new Date("2024-01-01");
 const DATE_FINAL   = new Date("2024-12-31");
@@ -156,6 +162,57 @@ beforeAll(async () => {
   });
   orgBCapitalAccountId = orgBCapital.id;
 
+  // Reserva Legal + Resultados Acumulados accounts for Org A (for typed movement tests)
+  const reservaAcc = await prisma.account.create({
+    data: {
+      organizationId: orgAId,
+      code: "3.3.1",
+      name: "Reserva Legal",
+      type: "PATRIMONIO",
+      nature: "ACREEDORA",
+      level: 3,
+      isDetail: true,
+      isActive: true,
+      isContraAccount: false,
+    },
+  });
+  reservaAccountId = reservaAcc.id;
+
+  const resultadosAcc = await prisma.account.create({
+    data: {
+      organizationId: orgAId,
+      code: "3.4.1",
+      name: "Resultados Acumulados",
+      type: "PATRIMONIO",
+      nature: "ACREEDORA",
+      level: 3,
+      isDetail: true,
+      isActive: true,
+      isContraAccount: false,
+    },
+  });
+  resultadosAccountId = resultadosAcc.id;
+
+  // Patrimony voucher types (code=CP/CL/CV) for Org A
+  const vtCP = await prisma.voucherTypeCfg.create({
+    data: { organizationId: orgAId, code: "CP", prefix: "P", name: "Comprobante de Aporte de Capital", isAdjustment: false },
+  });
+  vtCP_A = vtCP.id;
+  const vtCL = await prisma.voucherTypeCfg.create({
+    data: { organizationId: orgAId, code: "CL", prefix: "L", name: "Comprobante de Constitución de Reserva", isAdjustment: false },
+  });
+  vtCL_A = vtCL.id;
+  const vtCV = await prisma.voucherTypeCfg.create({
+    data: { organizationId: orgAId, code: "CV", prefix: "V", name: "Comprobante de Distribución a Socios", isAdjustment: false },
+  });
+  vtCV_A = vtCV.id;
+
+  // Patrimony voucher type CP in Org B — used to verify multi-tenant scoping
+  const vtCPB = await prisma.voucherTypeCfg.create({
+    data: { organizationId: orgBId, code: "CP", prefix: "P", name: "CP OrgB", isAdjustment: false },
+  });
+  vtCP_B = vtCPB.id;
+
   // POSTED entry in org A (2024-06-15) — 5000 credit to Capital Social
   const postedEntry = await prisma.journalEntry.create({
     data: {
@@ -250,6 +307,111 @@ beforeAll(async () => {
       credit: D("9999"),
     },
   });
+
+  // ── Typed patrimony entries (voucherType CP/CL/CV) for getTypedPatrimonyMovements ──
+
+  // CP POSTED: aporte 200000 a capital (2024-06-01) — DEBIT activo / CREDIT capital
+  const cpEntry = await prisma.journalEntry.create({
+    data: {
+      organizationId: orgAId,
+      number: 10,
+      date: new Date("2024-06-01"),
+      description: "Aporte de Capital",
+      status: "POSTED",
+      periodId: periodAId,
+      voucherTypeId: vtCP_A,
+      createdById: userId,
+    },
+  });
+  await prisma.journalLine.createMany({
+    data: [
+      { journalEntryId: cpEntry.id, accountId: activoAccountId,  debit: D("200000"), credit: D("0") },
+      { journalEntryId: cpEntry.id, accountId: capitalAccountId, debit: D("0"),      credit: D("200000") },
+    ],
+  });
+
+  // CL POSTED: constitución de reserva legal 30000 (2024-06-02)
+  const clEntry = await prisma.journalEntry.create({
+    data: {
+      organizationId: orgAId,
+      number: 11,
+      date: new Date("2024-06-02"),
+      description: "Constitución Reserva Legal",
+      status: "POSTED",
+      periodId: periodAId,
+      voucherTypeId: vtCL_A,
+      createdById: userId,
+    },
+  });
+  await prisma.journalLine.createMany({
+    data: [
+      { journalEntryId: clEntry.id, accountId: resultadosAccountId, debit: D("30000"), credit: D("0") },
+      { journalEntryId: clEntry.id, accountId: reservaAccountId,    debit: D("0"),     credit: D("30000") },
+    ],
+  });
+
+  // CV POSTED: distribución de utilidades 50000 (2024-06-03) — DEBIT resultados / CREDIT activo
+  const cvEntry = await prisma.journalEntry.create({
+    data: {
+      organizationId: orgAId,
+      number: 12,
+      date: new Date("2024-06-03"),
+      description: "Distribución a Socios",
+      status: "POSTED",
+      periodId: periodAId,
+      voucherTypeId: vtCV_A,
+      createdById: userId,
+    },
+  });
+  await prisma.journalLine.createMany({
+    data: [
+      { journalEntryId: cvEntry.id, accountId: resultadosAccountId, debit: D("50000"), credit: D("0") },
+      { journalEntryId: cvEntry.id, accountId: activoAccountId,     debit: D("0"),     credit: D("50000") },
+    ],
+  });
+
+  // CP DRAFT: must be excluded
+  const cpDraft = await prisma.journalEntry.create({
+    data: {
+      organizationId: orgAId,
+      number: 13,
+      date: new Date("2024-06-04"),
+      description: "Aporte Capital (borrador)",
+      status: "DRAFT",
+      periodId: periodAId,
+      voucherTypeId: vtCP_A,
+      createdById: userId,
+    },
+  });
+  await prisma.journalLine.createMany({
+    data: [
+      { journalEntryId: cpDraft.id, accountId: activoAccountId,  debit: D("99999"), credit: D("0") },
+      { journalEntryId: cpDraft.id, accountId: capitalAccountId, debit: D("0"),     credit: D("99999") },
+    ],
+  });
+
+  // CP in Org B: must be excluded from Org A results
+  const cpOrgB = await prisma.journalEntry.create({
+    data: {
+      organizationId: orgBId,
+      number: 2,
+      date: new Date("2024-06-15"),
+      description: "OrgB aporte capital",
+      status: "POSTED",
+      periodId: periodBId,
+      voucherTypeId: vtCP_B,
+      createdById: userId,
+    },
+  });
+  await prisma.journalLine.create({
+    data: {
+      journalEntryId: cpOrgB.id,
+      accountId: orgBCapitalAccountId,
+      debit: D("0"),
+      credit: D("77777"),
+    },
+  });
+
 });
 
 afterAll(async () => {
@@ -274,12 +436,13 @@ describe("EquityStatementRepository — server-only boundary", () => {
 
 describe("EquityStatementRepository — getPatrimonioBalancesAt", () => {
   it("POSTED filter: DRAFT entries are excluded from balance", async () => {
-    // cutoff = DATE_FINAL — includes POSTED 5000 (2024-06-15) + POSTED 2000 (2023-12-31)
-    // excludes DRAFT 1000
+    // cutoff = DATE_FINAL — includes POSTED 5000 (CI 2024-06-15) + POSTED 2000 (2023-12-31)
+    //                     + POSTED 200000 (CP 2024-06-01); excludes DRAFT 1000 (CI 2024-07-01)
+    //                     and DRAFT 99999 (CP 2024-06-04).
     const balances = await repo.getPatrimonioBalancesAt(orgAId, DATE_FINAL);
     const capitalBalance = balances.get(capitalAccountId);
     expect(capitalBalance).toBeDefined();
-    expect(capitalBalance?.equals(D("7000"))).toBe(true);
+    expect(capitalBalance?.equals(D("207000"))).toBe(true);
   });
 
   it("PATRIMONIO type filter: ACTIVO accounts are excluded", async () => {
@@ -327,6 +490,75 @@ describe("EquityStatementRepository — findPatrimonioAccounts", () => {
       expect(acc).toHaveProperty("code");
       expect(acc).toHaveProperty("name");
       expect(acc).toHaveProperty("nature");
+    }
+  });
+});
+
+describe("EquityStatementRepository — getTypedPatrimonyMovements", () => {
+  it("REQ-1 — CP POSTED in range produces Map('CP' → {capitalAccountId: 200000})", async () => {
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    const cp = movements.get("CP");
+    expect(cp, "CP bucket must exist").toBeDefined();
+    const delta = cp!.get(capitalAccountId);
+    expect(delta, "capital account delta must exist for CP").toBeDefined();
+    expect(delta!.equals(D("200000"))).toBe(true);
+  });
+
+  it("REQ-1 — CL POSTED in range produces Map('CL' → {reservaAccountId: 30000})", async () => {
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    const cl = movements.get("CL");
+    expect(cl).toBeDefined();
+    expect(cl!.get(reservaAccountId)!.equals(D("30000"))).toBe(true);
+  });
+
+  it("REQ-4 — CV POSTED (debit to 3.4) produces Map('CV' → {resultadosAccountId: -50000})", async () => {
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    const cv = movements.get("CV");
+    expect(cv).toBeDefined();
+    // ACREEDORA sign convention: debit → negative delta
+    expect(cv!.get(resultadosAccountId)!.equals(D("-50000"))).toBe(true);
+  });
+
+  it("POSTED filter — DRAFT entries are excluded from typed movements", async () => {
+    // CP DRAFT for 99999 was seeded; the CP bucket must only contain 200000
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    const delta = movements.get("CP")!.get(capitalAccountId)!;
+    expect(delta.equals(D("200000"))).toBe(true);
+    expect(delta.equals(D("299999"))).toBe(false);
+  });
+
+  it("multi-tenant scoping — org B CP entry does not leak into org A results", async () => {
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    const cp = movements.get("CP")!;
+    expect(cp.has(orgBCapitalAccountId)).toBe(false);
+  });
+
+  it("date range — entries before dateFrom are excluded", async () => {
+    // CP out-of-range (2023-06-01) contributes 11111 to capitalAccountId; if range
+    // filter works, bucket contains 200000 (not 211111).
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    const delta = movements.get("CP")!.get(capitalAccountId)!;
+    expect(delta.equals(D("200000"))).toBe(true);
+  });
+
+  it("date range — narrowing to a sub-range excludes entries outside it", async () => {
+    // Only CL (2024-06-02) and CV (2024-06-03) fall inside [2024-06-02, 2024-06-03]
+    const movements = await repo.getTypedPatrimonyMovements(
+      orgAId,
+      new Date("2024-06-02"),
+      new Date("2024-06-03"),
+    );
+    expect(movements.has("CL")).toBe(true);
+    expect(movements.has("CV")).toBe(true);
+    expect(movements.has("CP")).toBe(false);
+  });
+
+  it("only patrimony account lines are aggregated (type=PATRIMONIO filter)", async () => {
+    // CP entry has an offsetting debit to activoAccountId (ACTIVO) — that line MUST NOT
+    // appear in the CP bucket, which should only track PATRIMONIO account movements.
+    const movements = await repo.getTypedPatrimonyMovements(orgAId, DATE_INITIAL, DATE_FINAL);
+    for (const [, accMap] of movements) {
+      expect(accMap.has(activoAccountId)).toBe(false);
     }
   });
 });
