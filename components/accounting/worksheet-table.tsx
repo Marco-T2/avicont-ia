@@ -195,45 +195,43 @@ export const WorksheetTable: FC<WorksheetTableProps> = ({ report }) => {
           </tr>
         </thead>
 
-        <tbody>
-          {report.groups.map((group) => (
-            <tbody key={group.accountType} role="rowgroup">
-              {/* Group header */}
-              <tr className="bg-gray-50">
-                <td className="px-1 py-1 text-xs" />
-                <td
-                  data-group-header
-                  colSpan={13}
-                  className="px-1 py-1 text-xs font-bold"
-                >
-                  {group.accountType}
-                </td>
-              </tr>
+        {report.groups.map((group) => (
+          <tbody key={group.accountType} role="rowgroup">
+            {/* Group header */}
+            <tr className="bg-gray-50">
+              <td className="px-1 py-1 text-xs" />
+              <td
+                data-group-header
+                colSpan={13}
+                className="px-1 py-1 text-xs font-bold"
+              >
+                {group.accountType}
+              </td>
+            </tr>
 
-              {/* Detail rows */}
-              {group.rows.map((row) => (
-                <DetailRow key={row.accountId} row={row} />
-              ))}
+            {/* Detail rows */}
+            {group.rows.map((row) => (
+              <DetailRow key={row.accountId} row={row} />
+            ))}
 
-              {/* Subtotal row */}
-              <SubtotalRow
-                label={`Total ${group.accountType}`}
-                totals={group.subtotals}
-              />
-            </tbody>
-          ))}
-
-          {/* Carry-over row */}
-          {report.carryOverRow && (
-            <tbody role="rowgroup">
-              <DetailRow row={report.carryOverRow} />
-            </tbody>
-          )}
-
-          {/* Grand totals */}
-          <tbody role="rowgroup">
-            <SubtotalRow label="TOTALES" totals={report.grandTotals} />
+            {/* Subtotal row */}
+            <SubtotalRow
+              label={`Total ${group.accountType}`}
+              totals={group.subtotals}
+            />
           </tbody>
+        ))}
+
+        {/* Carry-over row */}
+        {report.carryOverRow && (
+          <tbody role="rowgroup">
+            <DetailRow row={report.carryOverRow} />
+          </tbody>
+        )}
+
+        {/* Grand totals */}
+        <tbody role="rowgroup">
+          <SubtotalRow label="TOTALES" totals={report.grandTotals} />
         </tbody>
       </table>
 
