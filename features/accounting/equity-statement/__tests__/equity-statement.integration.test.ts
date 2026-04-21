@@ -19,6 +19,7 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { EquityStatementRepository } from "../equity-statement.repository";
 import { buildEquityStatement } from "../equity-statement.builder";
+import { EquityStatementService } from "../equity-statement.service";
 import { FinancialStatementsRepository } from "@/features/accounting/financial-statements/financial-statements.repository";
 import { buildIncomeStatement } from "@/features/accounting/financial-statements/income-statement.builder";
 import { calculateRetainedEarnings } from "@/features/accounting/financial-statements/retained-earnings.calculator";
@@ -360,5 +361,151 @@ describe("EquityStatement Integration — REQ-1 and REQ-5", () => {
       decimalEq(resultado.total, periodResult),
       `RESULTADO_EJERCICIO.total (${resultado.total.toFixed(2)}) ≠ periodResult (${periodResult.toFixed(2)})`,
     ).toBe(true);
+  });
+});
+
+// ── T09 — REQ-1 CP end-to-end (isolated fixture) ──────────────────────────────
+//
+// Fresh org with only a CP voucher + Capital account + Bank account, so that
+// the ONLY current-period patrimony movement is the typed aporte. This proves
+// the end-to-end path Service → Repo → Builder without interference from the
+// shared fixture above (which intentionally contains an untyped imbalance).
+
+describe("EquityStatement Integration — REQ-1 CP end-to-end (T09)", () => {
+  let orgIdCp: string;
+  let userIdCp: string;
+  const rangeCp = { dateFrom: new Date("2025-01-01"), dateTo: new Date("2025-12-31") };
+
+  beforeAll(async () => {
+    const now = Date.now();
+
+    const user = await prisma.user.create({
+      data: {
+        clerkUserId: `test-eepn-cp-${now}`,
+        email: `eepn-cp-${now}@test.com`,
+        name: "EEPN CP Integration Test",
+      },
+    });
+    userIdCp = user.id;
+
+    const org = await prisma.organization.create({
+      data: {
+        clerkOrgId: `test-org-eepn-cp-${now}`,
+        name: "Test Org EEPN CP",
+        slug: `test-org-eepn-cp-${now}`,
+      },
+    });
+    orgIdCp = org.id;
+
+    const period = await prisma.fiscalPeriod.create({
+      data: {
+        organizationId: orgIdCp,
+        name: "Gestión 2025 EEPN CP",
+        year: 2025,
+        startDate: new Date("2025-01-01"),
+        endDate: new Date("2025-12-31"),
+        createdById: userIdCp,
+      },
+    });
+
+    // CP voucher type — code must match the repo filter IN ('CP','CL','CV')
+    const cpVoucher = await prisma.voucherTypeCfg.create({
+      data: {
+        organizationId: orgIdCp,
+        code: "CP",
+        prefix: "CP",
+        name: "Comprobante de Aporte de Capital",
+        isAdjustment: false,
+      },
+    });
+
+    // Bank account — ACTIVO DEUDORA (debit side of the aporte)
+    const bank = await prisma.account.create({
+      data: {
+        organizationId: orgIdCp,
+        code: `1.1.1-EEPN-CP-${now}`,
+        name: "Caja y Bancos",
+        type: "ACTIVO",
+        nature: "DEUDORA",
+        subtype: "ACTIVO_CORRIENTE",
+        level: 3,
+        isDetail: true,
+        isContraAccount: false,
+      },
+    });
+
+    // Capital Social — PATRIMONIO ACREEDORA, maps to CAPITAL_SOCIAL via "3.1" prefix
+    const capital = await prisma.account.create({
+      data: {
+        organizationId: orgIdCp,
+        code: `3.1.1-EEPN-CP-${now}`,
+        name: "Capital Social",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        subtype: "PATRIMONIO_CAPITAL",
+        level: 3,
+        isDetail: true,
+        isContraAccount: false,
+      },
+    });
+
+    // Aporte: Bank 200k D / Capital 200k C  (POSTED, voucherType=CP)
+    const entry = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgIdCp,
+        number: 1,
+        date: new Date("2025-03-15"),
+        description: "Aporte de capital de socio Juan Pérez",
+        status: "POSTED",
+        periodId: period.id,
+        voucherTypeId: cpVoucher.id,
+        createdById: userIdCp,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: entry.id, accountId: bank.id, debit: 200000, credit: 0 },
+        { journalEntryId: entry.id, accountId: capital.id, debit: 0, credit: 200000 },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    if (orgIdCp) {
+      await prisma.organization.delete({ where: { id: orgIdCp } }).catch(() => {});
+    }
+    if (userIdCp) {
+      await prisma.user.delete({ where: { id: userIdCp } }).catch(() => {});
+    }
+  });
+
+  it("CP 200k aporte produces APORTE_CAPITAL row with 200k in CAPITAL_SOCIAL and imbalanced=false", async () => {
+    const service = new EquityStatementService();
+    const result = await service.generate(orgIdCp, "contador", rangeCp);
+
+    // REQ-1: typed row APORTE_CAPITAL must be present
+    const aporte = result.rows.find((r) => r.key === "APORTE_CAPITAL");
+    expect(aporte, "APORTE_CAPITAL row must exist when CP movements occur").toBeDefined();
+
+    // Amount must land in CAPITAL_SOCIAL column (3.1.x prefix)
+    const cs = aporte!.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(cs, "CAPITAL_SOCIAL cell must exist in APORTE_CAPITAL row").toBeDefined();
+    expect(
+      decimalEq(cs!.amount, D(200000)),
+      `APORTE_CAPITAL[CAPITAL_SOCIAL] expected 200000, got ${cs!.amount.toFixed(2)}`,
+    ).toBe(true);
+
+    // Row-level invariant: the aporte total equals the sum of its cells
+    expect(
+      decimalEq(aporte!.total, D(200000)),
+      `APORTE_CAPITAL.total expected 200000, got ${aporte!.total.toFixed(2)}`,
+    ).toBe(true);
+
+    // REQ-3: with the typed row absorbing the movement, the intra-state
+    // invariant (initial + typed + resultado = final) holds exactly.
+    expect(
+      result.imbalanced,
+      `imbalanced must be false when all patrimony movements are typed (delta=${result.imbalanceDelta.toFixed(2)})`,
+    ).toBe(false);
   });
 });
