@@ -89,10 +89,10 @@
 ## Phase 7 — Catalog + Barrels
 
 <!-- RED -->
-- [ ] T22 Write failing catalog test — touches `features/reports/__tests__/catalog.test.ts`. Acceptance: (a) bumps `expect(available.length).toBeGreaterThanOrEqual(6)` assertion up to `>= 7`; (b) adds `{ id: "initial-balance", route: "/accounting/initial-balance" }` entry to the `expected` array in "las entradas available conocidas existen con routes correctos" test; (c) adds `it("initial-balance pertenece a la categoría 'estados-financieros'")` assertion; (d) updates the test title string from "las 6 entradas available conocidas..." back to "las 7 entradas available conocidas..." to match the new count; all three new assertions fail because catalog still has `status: "planned"`, `route: null`.
+- [x] T22 Write failing catalog test — touches `features/reports/__tests__/catalog.test.ts`. Acceptance: (a) bumps `expect(available.length).toBeGreaterThanOrEqual(6)` assertion up to `>= 7`; (b) adds `{ id: "initial-balance", route: "/accounting/initial-balance" }` entry to the `expected` array in "las entradas available conocidas existen con routes correctos" test; (c) adds `it("initial-balance pertenece a la categoría 'estados-financieros'")` assertion; (d) updates the test title string from "las 6 entradas available conocidas..." back to "las 7 entradas available conocidas..." to match the new count; all three new assertions fail because catalog still has `status: "planned"`, `route: null`.
 
 <!-- GREEN -->
-- [ ] T23 Flip catalog entry + add barrels — touches `features/reports/catalog.ts`, `features/accounting/initial-balance/server.ts`, `features/accounting/initial-balance/index.ts`. Acceptance: entry reads `status: "available"`, `route: "/accounting/initial-balance"`; barrels export all public surface; makes T22 pass.
+- [x] T23 Flip catalog entry + add barrels — touches `features/reports/catalog.ts`, `features/accounting/initial-balance/server.ts`, `features/accounting/initial-balance/index.ts`. Acceptance: entry reads `status: "available"`, `route: "/accounting/initial-balance"`; barrels export all public surface; makes T22 pass.
 
 ## Phase 8 — Full-suite regression
 
