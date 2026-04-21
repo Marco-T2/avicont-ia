@@ -88,7 +88,8 @@ function makeStatement(overrides: Partial<EquityStatement> = {}): EquityStatemen
 
 async function loadWorkbook(buf: Buffer): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
-  await wb.xlsx.load(buf);
+  // Cast required: ExcelJS types expect the narrow Buffer without generic param
+  await wb.xlsx.load(buf as unknown as Parameters<typeof wb.xlsx.load>[0]);
   return wb;
 }
 
