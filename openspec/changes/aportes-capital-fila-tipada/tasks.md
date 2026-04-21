@@ -88,12 +88,12 @@
 - `features/accounting/equity-statement/exporters/equity-statement-pdf.exporter.ts` + tests
 - `features/accounting/equity-statement/exporters/equity-statement-xlsx.exporter.ts` + tests
 
-- [ ] **T07-RED** — Tests smoke:
+- [x] **T07-RED** — Tests smoke:
   - PDF: statement con 5 filas → 5 filas renderizadas; solo la fila `SALDO_FINAL` tiene `bold: true`.
   - XLSX: 5 filas en sheet; solo `SALDO_FINAL` tiene `font.bold=true` y `border.top`.
   Run → FAIL (actualmente `idx === 2` marca como fila final la del medio).
-- [ ] **T07-GREEN** — Reemplazar `idx === 2` por `row.key === "SALDO_FINAL"` en ambos exporters. Iterar `statement.rows.forEach(...)` sin asunción de cardinalidad. Run → PASS.
-- [ ] **T07-COMMIT** — `test(eepn-exporters): cover N-row rendering + SALDO_FINAL styling` + `refactor(eepn-exporters): key-based row detection`.
+- [x] **T07-GREEN** — Reemplazar `idx === 2` por `row.key === "SALDO_FINAL"` en ambos exporters. Iterar `statement.rows.forEach(...)` sin asunción de cardinalidad. Run → PASS.
+- [x] **T07-COMMIT** — `test(eepn-exporters): cover N-row rendering + SALDO_FINAL styling` + `refactor(eepn-exporters): key-based row detection`.
 
 ## Batch 8 — UI: verificar `equity-statement-view.tsx`
 

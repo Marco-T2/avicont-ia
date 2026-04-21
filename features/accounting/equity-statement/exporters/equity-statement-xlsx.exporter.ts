@@ -128,9 +128,9 @@ export async function exportEquityStatementXlsx(
   setCell(r7, colIdx, "Total Patrimonio", arial({ bold: true, size: 9 }), undefined, thinBottom());
   r7.getCell(colIdx).alignment = { horizontal: "center" };
 
-  // Rows 8–10 — Data rows
-  statement.rows.forEach((row, idx) => {
-    const isFinal = idx === 2; // SALDO_FINAL
+  // Rows 8+ — Data rows (N-row; bold/border on SALDO_FINAL via key, not index)
+  statement.rows.forEach((row) => {
+    const isFinal = row.key === "SALDO_FINAL";
     const dataRow = ws.addRow([]);
     setCell(dataRow, 1, row.label, arial({ bold: isFinal, size: 9 }), undefined, isFinal ? thinTop() : undefined);
 
