@@ -26,6 +26,7 @@ const minimalAccounts: EquityAccountMetadata[] = [
 function createMockRepo(): EquityStatementRepository {
   return {
     getPatrimonioBalancesAt: vi.fn().mockResolvedValue(new Map()),
+    getTypedPatrimonyMovements: vi.fn().mockResolvedValue(new Map()),
     findPatrimonioAccounts: vi.fn().mockResolvedValue(minimalAccounts),
     getOrgMetadata: vi.fn().mockResolvedValue({ name: "Test Org", taxId: null, address: null }),
     isClosedPeriodMatch: vi.fn().mockResolvedValue(false),
@@ -136,5 +137,38 @@ describe("EquityStatementService — orchestration", () => {
     const service = new EquityStatementService(createMockRepo(), createMockFsRepo());
     const result = await service.generate("org-1", "contador", INPUT_VALID);
     expect(result.periodResult.isZero()).toBe(true);
+  });
+
+  it("T06 — invokes repo.getTypedPatrimonyMovements(orgId, dateFrom, dateTo) exactly once", async () => {
+    const repo = createMockRepo();
+    const service = new EquityStatementService(repo, createMockFsRepo());
+    await service.generate("org-xyz", "contador", INPUT_VALID);
+    expect(repo.getTypedPatrimonyMovements).toHaveBeenCalledTimes(1);
+    expect(repo.getTypedPatrimonyMovements).toHaveBeenCalledWith(
+      "org-xyz",
+      INPUT_VALID.dateFrom,
+      INPUT_VALID.dateTo,
+    );
+  });
+
+  it("T06 — typedMovements from repo propagate into builder → emitted as typed rows", async () => {
+    const repo = createMockRepo();
+    // Return CP movement of 200k on acc-capital
+    (repo.getTypedPatrimonyMovements as ReturnType<typeof vi.fn>).mockResolvedValue(
+      new Map([["CP", new Map([["acc-capital", D("200000")]])]]),
+    );
+    // Final balance reflects the CP entry so the invariant holds
+    (repo.getPatrimonioBalancesAt as ReturnType<typeof vi.fn>)
+      .mockResolvedValueOnce(new Map())                                         // dayBefore
+      .mockResolvedValueOnce(new Map([["acc-capital", D("200000")]]));          // dateTo
+
+    const service = new EquityStatementService(repo, createMockFsRepo());
+    const result = await service.generate("org-1", "contador", INPUT_VALID);
+
+    const aporte = result.rows.find((r) => r.key === "APORTE_CAPITAL");
+    expect(aporte).toBeDefined();
+    const cs = aporte!.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(cs?.amount.equals(D("200000"))).toBe(true);
+    expect(result.imbalanced).toBe(false);
   });
 });
