@@ -23,9 +23,11 @@ import { ForbiddenError } from "@/features/shared/errors";
 const {
   mockRequirePermission,
   mockGenerate,
+  mockGetOrgMetadata,
 } = vi.hoisted(() => ({
   mockRequirePermission: vi.fn(),
   mockGenerate: vi.fn(),
+  mockGetOrgMetadata: vi.fn(),
 }));
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -58,6 +60,9 @@ vi.mock("@/features/shared/middleware", () => ({
 vi.mock("@/features/accounting/trial-balance/server", () => ({
   TrialBalanceService: vi.fn().mockImplementation(function () {
     return { generate: mockGenerate };
+  }),
+  TrialBalanceRepository: vi.fn().mockImplementation(function () {
+    return { getOrgMetadata: mockGetOrgMetadata };
   }),
 }));
 
@@ -102,6 +107,8 @@ const minimalReport = {
 // ── Import after mocks ────────────────────────────────────────────────────────
 
 import { GET, runtime } from "../route";
+import { exportTrialBalancePdf } from "@/features/accounting/trial-balance/exporters/trial-balance-pdf.exporter";
+import { exportTrialBalanceXlsx } from "@/features/accounting/trial-balance/exporters/trial-balance-xlsx.exporter";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -123,6 +130,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRequirePermission.mockResolvedValue({ orgId: "org-1", role: "contador" });
   mockGenerate.mockResolvedValue(minimalReport);
+  // Default: org metadata returns a real org name
+  mockGetOrgMetadata.mockResolvedValue({ name: "Avicont SA", taxId: "12345", address: "La Paz" });
 });
 
 describe("GET /api/.../trial-balance — input validation (C10)", () => {
@@ -198,5 +207,54 @@ describe("GET /api/.../trial-balance — orgId from session (C10.E1)", () => {
 describe("route module", () => {
   it("exports runtime = 'nodejs'", () => {
     expect(runtime).toBe("nodejs");
+  });
+});
+
+// ── C8 — Org metadata wired to exporters (WARNING-1 fix) ────────────────────
+
+describe("GET /api/.../trial-balance — org metadata passed to exporters (C8)", () => {
+  it("C8.W1a — PDF exporter receives real org name, not the slug", async () => {
+    mockGetOrgMetadata.mockResolvedValue({ name: "Avicont SA", taxId: "12345", address: "La Paz" });
+
+    await GET(makeRequest({ dateFrom: "2025-01-01", dateTo: "2025-12-31", format: "pdf" }), { params: makeParams("avicont-sa") });
+
+    expect(exportTrialBalancePdf).toHaveBeenCalledWith(
+      expect.anything(),
+      "Avicont SA",       // real name, NOT the slug "avicont-sa"
+      "12345",
+      "La Paz",
+    );
+  });
+
+  it("C8.W1b — PDF exporter falls back to slug when getOrgMetadata returns null", async () => {
+    mockGetOrgMetadata.mockResolvedValue(null);
+
+    await GET(makeRequest({ dateFrom: "2025-01-01", dateTo: "2025-12-31", format: "pdf" }), { params: makeParams("avicont-sa") });
+
+    expect(exportTrialBalancePdf).toHaveBeenCalledWith(
+      expect.anything(),
+      "avicont-sa",       // slug fallback
+      undefined,
+      undefined,
+    );
+  });
+
+  it("C8.W1c — XLSX exporter receives real org name, not the slug", async () => {
+    mockGetOrgMetadata.mockResolvedValue({ name: "Test Corp", taxId: null, address: null });
+
+    await GET(makeRequest({ dateFrom: "2025-01-01", dateTo: "2025-12-31", format: "xlsx" }), { params: makeParams("test-corp") });
+
+    expect(exportTrialBalanceXlsx).toHaveBeenCalledWith(
+      expect.anything(),
+      "Test Corp",        // real name, NOT the slug "test-corp"
+      undefined,
+      undefined,
+    );
+  });
+
+  it("C8.W1d — JSON path does NOT call getOrgMetadata (avoid extra DB query)", async () => {
+    await GET(makeRequest({ dateFrom: "2025-01-01", dateTo: "2025-12-31" }), { params: makeParams("acme") });
+
+    expect(mockGetOrgMetadata).not.toHaveBeenCalled();
   });
 });
