@@ -124,8 +124,8 @@ export const reportRegistry: readonly ReportEntry[] = [
     title: "Sumas y Saldos",
     description: "Detalle de débitos, créditos y saldos por cuenta.",
     category: "para-mi-contador",
-    status: "planned",
-    route: null,
+    status: "available",
+    route: "/accounting/trial-balance",
     icon: "ListOrdered",
   },
   {

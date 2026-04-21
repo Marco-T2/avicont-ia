@@ -251,6 +251,13 @@ describe("reportRegistry — datos curados (PR3)", () => {
     expect(entry?.route).toBe("/accounting/worksheet");
   });
 
+  it("sumas-saldos tiene status 'available' y route '/accounting/trial-balance' (B9)", () => {
+    const entry = reportRegistry.find((e) => e.id === "sumas-saldos");
+    expect(entry, "debe existir la entrada 'sumas-saldos'").toBeDefined();
+    expect(entry?.status).toBe("available");
+    expect(entry?.route).toBe("/accounting/trial-balance");
+  });
+
   it("tiene al menos 18 entradas con status 'planned'", () => {
     const planned = reportRegistry.filter((e) => e.status === "planned");
     expect(planned.length).toBeGreaterThanOrEqual(18);
