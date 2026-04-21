@@ -53,6 +53,7 @@ const defaultProfile = {
   direccion: "Calle 1",
   ciudad: "Sucre",
   telefono: "123",
+  representanteLegal: "",
   nroPatronal: null as string | null,
   logoUrl: null as string | null,
   createdAt: new Date(),
@@ -136,6 +137,77 @@ describe("CompanyProfileForm — Identity save", () => {
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalled();
       expect(mockRouter.refresh).toHaveBeenCalled();
+    });
+  });
+
+  it("renders identity-representanteLegal input", () => {
+    render(
+      <CompanyProfileForm
+        orgSlug={ORG_SLUG}
+        profile={defaultProfile}
+        views={makeViews()}
+      />,
+    );
+    expect(screen.getByTestId("identity-representanteLegal")).toBeInTheDocument();
+  });
+
+  it("includes representanteLegal in the onSave patch", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ ...defaultProfile }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <CompanyProfileForm
+        orgSlug={ORG_SLUG}
+        profile={{ ...defaultProfile, representanteLegal: "Ing. Juan Pérez" }}
+        views={makeViews()}
+      />,
+    );
+
+    const saveBtn = screen.getByTestId("identity-save");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled();
+    });
+
+    const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const body = JSON.parse(init.body as string) as Record<string, unknown>;
+    expect(body.representanteLegal).toBe("Ing. Juan Pérez");
+  });
+
+  it("renders field error for representanteLegal when returned in fieldErrors", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      json: async () => ({
+        error: "Datos inválidos",
+        details: {
+          fieldErrors: {
+            representanteLegal: ["El representante legal es requerido"],
+          },
+          formErrors: [],
+        },
+      }),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <CompanyProfileForm
+        orgSlug={ORG_SLUG}
+        profile={defaultProfile}
+        views={makeViews()}
+      />,
+    );
+
+    const saveBtn = screen.getByTestId("identity-save");
+    fireEvent.click(saveBtn);
+
+    await waitFor(() => {
+      const err = screen.getByTestId("identity-representanteLegal-error");
+      expect(err).toHaveTextContent("El representante legal es requerido");
     });
   });
 
