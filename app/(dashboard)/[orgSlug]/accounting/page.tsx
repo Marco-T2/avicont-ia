@@ -87,8 +87,8 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
     },
     {
       title: "Reportes",
-      description: "Balance de comprobacion y reportes contables",
-      href: `/${orgSlug}/accounting/reports`,
+      description: "Catálogo de informes contables y estados financieros",
+      href: `/${orgSlug}/informes`,
       icon: BarChart3,
       color: "text-orange-600",
       bgColor: "bg-orange-50",
