@@ -11,6 +11,7 @@
 
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
+import { fmtDecimal } from "../../financial-statements/exporters/pdf.helpers";
 import type { TrialBalanceReport, TrialBalanceTotals, TrialBalanceRow } from "../trial-balance.types";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -39,43 +40,6 @@ const BODY_SIZE = 7;
 const HEADER_SIZE = 7;
 const TITLE_SIZE = 11;
 const SUBTITLE_SIZE = 8;
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-
-type DecimalLike = {
-  isZero(): boolean;
-  isNegative(): boolean;
-  abs(): { toNumber(): number };
-  toNumber(): number;
-};
-
-/**
- * Formats a Decimal for display in es-BO locale.
- *
- * Zero convention:
- *   - isTotal=false (detail): zero → ""
- *   - isTotal=true  (totals): zero → "0,00"
- *
- * Negative: (abs formatted) with parentheses.
- * Positive: formatted with es-BO thousands (.) and decimal (,).
- */
-function fmtDecimal(decimal: DecimalLike, isTotal: boolean): string {
-  if (decimal.isZero()) {
-    return isTotal
-      ? (0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "";
-  }
-  if (decimal.isNegative()) {
-    const absStr = decimal
-      .abs()
-      .toNumber()
-      .toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return `(${absStr})`;
-  }
-  return decimal
-    .toNumber()
-    .toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────
 

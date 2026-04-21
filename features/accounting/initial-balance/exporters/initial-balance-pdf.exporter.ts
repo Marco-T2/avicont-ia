@@ -1,5 +1,6 @@
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
+import { fmtDecimal } from "../../financial-statements/exporters/pdf.helpers";
 import type { InitialBalanceStatement, InitialBalanceGroup } from "../initial-balance.types";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -24,34 +25,6 @@ const STYLE = {
   danger: "#b91c1c",
   muted: "#6b7280",
 } as const;
-
-// ── Decimal helpers ───────────────────────────────────────────────────────────
-
-type DecimalLike = {
-  isZero(): boolean;
-  isNegative(): boolean;
-  abs(): { toNumber(): number };
-  toNumber(): number;
-};
-
-function fmtDecimal(d: DecimalLike, isTotal: boolean): string {
-  if (d.isZero()) {
-    return isTotal
-      ? (0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "";
-  }
-  if (d.isNegative()) {
-    const abs = d.abs().toNumber().toLocaleString("es-BO", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `(${abs})`;
-  }
-  return d.toNumber().toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 function fmtDateLong(d: Date): string {
   return d.toLocaleDateString("es-BO", {
