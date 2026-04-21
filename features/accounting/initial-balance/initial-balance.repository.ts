@@ -121,6 +121,7 @@ export class InitialBalanceRepository extends BaseRepository {
             nit: true,
             representanteLegal: true,
             direccion: true,
+            ciudad: true,
           },
         },
       },
@@ -132,6 +133,7 @@ export class InitialBalanceRepository extends BaseRepository {
       nit: org.profile?.nit ?? "",
       representanteLegal: org.profile?.representanteLegal ?? "",
       direccion: org.profile?.direccion ?? "",
+      ciudad: org.profile?.ciudad ?? "",
     };
   }
 
