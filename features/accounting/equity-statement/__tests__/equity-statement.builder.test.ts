@@ -277,4 +277,158 @@ describe("buildEquityStatement", () => {
     }));
     expect(stmt.grandTotal.equals(D("99449"))).toBe(true);
   });
+
+  // ── Batch 5: typed rows + invariant + projection bypass ──────────────────────
+
+  it("REQ-1-S1 — CP 200k → fila APORTE_CAPITAL con 200k en CAPITAL_SOCIAL", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      typedMovements: new Map([
+        ["CP", new Map([["acc-capital", D("200000")]])],
+      ]),
+      periodResult: D("0"),
+    }));
+    const row = stmt.rows.find((r) => r.key === "APORTE_CAPITAL");
+    expect(row).toBeDefined();
+    expect(row!.label).toBe("Aportes de capital del período");
+    const cell = row!.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(cell?.amount.equals(D("200000"))).toBe(true);
+    // other cells in the typed row should be zero
+    for (const c of row!.cells) {
+      if (c.column !== "CAPITAL_SOCIAL") expect(c.amount.isZero()).toBe(true);
+    }
+  });
+
+  it("REQ-1-S2 — typedMovements vacío → 3 filas v1 (SALDO_INICIAL, RESULTADO_EJERCICIO, SALDO_FINAL)", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      typedMovements: new Map(),
+    }));
+    expect(stmt.rows).toHaveLength(3);
+    expect(stmt.rows.map((r) => r.key)).toEqual([
+      "SALDO_INICIAL",
+      "RESULTADO_EJERCICIO",
+      "SALDO_FINAL",
+    ]);
+  });
+
+  it("REQ-2-S1 — CP+CL+CV + resultado → 6 filas en orden canónico", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount, reservaAccount, resultadosAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([
+        ["acc-capital", D("200000")],
+        ["acc-reserva", D("30000")],
+        ["acc-res",     D("-50000")],
+      ]),
+      typedMovements: new Map<
+        "CP" | "CL" | "CV",
+        Map<string, Prisma.Decimal>
+      >([
+        ["CP", new Map([["acc-capital", D("200000")]])],
+        ["CL", new Map([["acc-reserva", D("30000")]])],
+        ["CV", new Map([["acc-res",     D("-50000")]])],
+      ]),
+      periodResult: D("0"),
+    }));
+    expect(stmt.rows.map((r) => r.key)).toEqual([
+      "SALDO_INICIAL",
+      "APORTE_CAPITAL",
+      "CONSTITUCION_RESERVA",
+      "DISTRIBUCION_DIVIDENDO",
+      "RESULTADO_EJERCICIO",
+      "SALDO_FINAL",
+    ]);
+  });
+
+  it("REQ-2-S2 — solo CP → 4 filas (SALDO_INICIAL, APORTE_CAPITAL, RESULTADO_EJERCICIO, SALDO_FINAL)", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      typedMovements: new Map([
+        ["CP", new Map([["acc-capital", D("200000")]])],
+      ]),
+      periodResult: D("0"),
+    }));
+    expect(stmt.rows.map((r) => r.key)).toEqual([
+      "SALDO_INICIAL",
+      "APORTE_CAPITAL",
+      "RESULTADO_EJERCICIO",
+      "SALDO_FINAL",
+    ]);
+  });
+
+  it("REQ-3-S1 — CP 200k tipado con finalBalance coherente → imbalanced=false", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      typedMovements: new Map([
+        ["CP", new Map([["acc-capital", D("200000")]])],
+      ]),
+      periodResult: D("0"),
+    }));
+    expect(stmt.imbalanced).toBe(false);
+    expect(stmt.imbalanceDelta.isZero()).toBe(true);
+  });
+
+  it("REQ-3-S2 — 200k sin voucher tipado (delta huérfano) → imbalanced=true, delta=200k", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [capitalAccount],
+      initialBalances: new Map(),
+      finalBalances: new Map([["acc-capital", D("200000")]]),
+      typedMovements: new Map(),
+      periodResult: D("0"),
+      preliminary: false,
+    }));
+    expect(stmt.imbalanced).toBe(true);
+    expect(stmt.imbalanceDelta.equals(D("200000"))).toBe(true);
+  });
+
+  it("REQ-4 — CV débito a 3.4 por 50k → fila DISTRIBUCION_DIVIDENDO con −50k en RESULTADOS_ACUMULADOS", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [resultadosAccount],
+      initialBalances: new Map([["acc-res", D("100000")]]),
+      finalBalances:   new Map([["acc-res", D("50000")]]),
+      typedMovements: new Map([
+        ["CV", new Map([["acc-res", D("-50000")]])],
+      ]),
+      periodResult: D("0"),
+      preliminary: false,
+    }));
+    const row = stmt.rows.find((r) => r.key === "DISTRIBUCION_DIVIDENDO");
+    expect(row).toBeDefined();
+    expect(row!.label).toBe("Distribuciones a socios");
+    const raCell = row!.cells.find((c) => c.column === "RESULTADOS_ACUMULADOS");
+    expect(raCell?.amount.equals(D("-50000"))).toBe(true);
+    expect(stmt.imbalanced).toBe(false);
+  });
+
+  it("REQ-5 — CV presente + preliminary=true → SALDO_FINAL[RA] NO proyecta periodResult (usa ledger)", async () => {
+    const { buildEquityStatement } = await import("../equity-statement.builder");
+    const stmt = buildEquityStatement(makeInput({
+      accounts: [resultadosAccount],
+      initialBalances: new Map([["acc-res", D("100000")]]),
+      finalBalances:   new Map([["acc-res", D("50000")]]),
+      typedMovements: new Map([
+        ["CV", new Map([["acc-res", D("-50000")]])],
+      ]),
+      periodResult: D("-551"),
+      preliminary: true,
+    }));
+    const saldoFinal = stmt.rows.find((r) => r.key === "SALDO_FINAL")!;
+    const raCell = saldoFinal.cells.find((c) => c.column === "RESULTADOS_ACUMULADOS");
+    // Sin CV: ledger 50000 + projected -551 = 49449. Con CV: bypass → 50000 pelado.
+    expect(raCell?.amount.equals(D("50000"))).toBe(true);
+  });
 });
