@@ -84,8 +84,8 @@ export const reportRegistry: readonly ReportEntry[] = [
     title: "Cambios en el Patrimonio",
     description: "Evolución del patrimonio neto durante el ejercicio.",
     category: "estados-financieros",
-    status: "planned",
-    route: null,
+    status: "available",
+    route: "/accounting/equity-statement",
     icon: "GitBranch",
   },
   {
