@@ -509,3 +509,206 @@ describe("EquityStatement Integration — REQ-1 CP end-to-end (T09)", () => {
     ).toBe(false);
   });
 });
+
+// ── T14 + T15 — REQ-APERTURA-MERGE newborn-company CA absorption ──────────────
+//
+// T14: newborn org, CA Bs. 200.000 POSTED April 2026, period [01/04/2026, 30/04/2026]
+//   → full stack returns imbalanced=false and SALDO_INICIAL.CAPITAL_SOCIAL === 200000
+//
+// T15: same org, period N+1 [01/05/2026, 31/05/2026]
+//   → getAperturaPatrimonyDelta returns empty (CA outside May range);
+//     prior-state via getPatrimonioBalancesAt(dayBefore=30/04/2026) absorbs the CA;
+//     no double-count (CAPITAL_SOCIAL appears exactly once as 200000, not 400000).
+
+describe("EquityStatement Integration — CA apertura absorption (T14, T15)", () => {
+  let orgIdCa: string;
+  let userIdCa: string;
+
+  const rangeApr = { dateFrom: new Date("2026-04-01"), dateTo: new Date("2026-04-30") };
+  const rangeMay = { dateFrom: new Date("2026-05-01"), dateTo: new Date("2026-05-31") };
+
+  beforeAll(async () => {
+    const now = Date.now();
+
+    const user = await prisma.user.create({
+      data: {
+        clerkUserId: `test-ca-integ-${now}`,
+        email: `ca-integ-${now}@test.com`,
+        name: "CA Apertura Integration Test",
+      },
+    });
+    userIdCa = user.id;
+
+    const org = await prisma.organization.create({
+      data: {
+        clerkOrgId: `test-org-ca-integ-${now}`,
+        name: "Test Org CA Apertura",
+        slug: `test-org-ca-integ-${now}`,
+      },
+    });
+    orgIdCa = org.id;
+
+    // April fiscal period
+    await prisma.fiscalPeriod.create({
+      data: {
+        organizationId: orgIdCa,
+        name: "Abr 2026 CA Integration",
+        year: 2026,
+        startDate: new Date("2026-04-01"),
+        endDate: new Date("2026-04-30"),
+        createdById: userIdCa,
+      },
+    });
+
+    // CA voucher type — code='CA' is the load-bearing filter in getAperturaPatrimonyDelta
+    const caVoucher = await prisma.voucherTypeCfg.create({
+      data: {
+        organizationId: orgIdCa,
+        code: "CA",
+        prefix: "A",
+        name: "Comprobante de Apertura",
+        isAdjustment: false,
+      },
+    });
+
+    // Caja (ACTIVO) — debit side of the apertura entry
+    const caja = await prisma.account.create({
+      data: {
+        organizationId: orgIdCa,
+        code: `1.1.1-CA-INT-${now}`,
+        name: "Caja",
+        type: "ACTIVO",
+        nature: "DEUDORA",
+        subtype: "ACTIVO_CORRIENTE",
+        level: 3,
+        isDetail: true,
+        isContraAccount: false,
+      },
+    });
+
+    // Capital Social (PATRIMONIO ACREEDORA) — maps to CAPITAL_SOCIAL via "3.1" prefix
+    const capital = await prisma.account.create({
+      data: {
+        organizationId: orgIdCa,
+        code: `3.1.1-CA-INT-${now}`,
+        name: "Capital Social",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        subtype: "PATRIMONIO_CAPITAL",
+        level: 3,
+        isDetail: true,
+        isContraAccount: false,
+      },
+    });
+
+    // April fiscal period ID captured via its create — need the ID for the entry
+    const aprPeriod = await prisma.fiscalPeriod.findFirst({
+      where: { organizationId: orgIdCa },
+      select: { id: true },
+    });
+
+    // CA POSTED 2026-04-20: Caja D 200000 / Capital Social C 200000
+    const caEntry = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgIdCa,
+        number: 1,
+        date: new Date("2026-04-20"),
+        description: "Apertura capital social newborn",
+        status: "POSTED",
+        periodId: aprPeriod!.id,
+        voucherTypeId: caVoucher.id,
+        createdById: userIdCa,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: caEntry.id, accountId: caja.id,    debit: 200000, credit: 0 },
+        { journalEntryId: caEntry.id, accountId: capital.id, debit: 0,      credit: 200000 },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    if (orgIdCa) {
+      await prisma.organization.delete({ where: { id: orgIdCa } }).catch(() => {});
+    }
+    if (userIdCa) {
+      await prisma.user.delete({ where: { id: userIdCa } }).catch(() => {});
+    }
+  });
+
+  // T14 — REQ-APERTURA-MERGE scenario 1: newborn company happy path
+  it("T14 — April period: CA is absorbed into SALDO_INICIAL, imbalanced=false", async () => {
+    const service = new EquityStatementService();
+    const result = await service.generate(orgIdCa, "contador", rangeApr);
+
+    // Invariant must hold — no imbalance
+    expect(
+      result.imbalanced,
+      `imbalanced must be false; CA apertura should be fully absorbed (delta=${result.imbalanceDelta.toFixed(2)})`,
+    ).toBe(false);
+
+    // SALDO_INICIAL must carry the CA 200000 into CAPITAL_SOCIAL
+    const saldoInicial = result.rows.find((r) => r.key === "SALDO_INICIAL");
+    expect(saldoInicial, "SALDO_INICIAL row must exist").toBeDefined();
+
+    const capitalCell = saldoInicial!.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(capitalCell, "CAPITAL_SOCIAL cell must exist in SALDO_INICIAL").toBeDefined();
+    expect(
+      decimalEq(capitalCell!.amount, D(200000)),
+      `SALDO_INICIAL[CAPITAL_SOCIAL] expected 200000, got ${capitalCell!.amount.toFixed(2)}`,
+    ).toBe(true);
+
+    // No APORTE_CAPITAL row — CA is state (opening balance), not a CP movement
+    const aporte = result.rows.find((r) => r.key === "APORTE_CAPITAL");
+    expect(aporte, "CA is opening state — APORTE_CAPITAL row must NOT exist for a CA entry").toBeUndefined();
+
+    // SALDO_FINAL must reflect the 200000 carried through
+    const saldoFinal = result.rows.find((r) => r.key === "SALDO_FINAL");
+    expect(saldoFinal, "SALDO_FINAL row must exist").toBeDefined();
+    expect(
+      saldoFinal!.total.gte(D(200000)),
+      `SALDO_FINAL.total must be >= 200000, got ${saldoFinal!.total.toFixed(2)}`,
+    ).toBe(true);
+  });
+
+  // T15 — REQ-APERTURA-MERGE scenario 2: period N+1 no double-count
+  it("T15 — May period N+1: prior-state carries 200k, aperturaBaseline is empty, no double-count", async () => {
+    const service = new EquityStatementService();
+    const result = await service.generate(orgIdCa, "contador", rangeMay);
+
+    // Invariant must hold — no imbalance even in N+1 period
+    expect(
+      result.imbalanced,
+      `imbalanced must be false in N+1 period; prior-state should absorb the CA (delta=${result.imbalanceDelta.toFixed(2)})`,
+    ).toBe(false);
+
+    // SALDO_INICIAL must still show 200000 (carried via getPatrimonioBalancesAt(dayBefore=30/04/2026))
+    const saldoInicial = result.rows.find((r) => r.key === "SALDO_INICIAL");
+    expect(saldoInicial, "SALDO_INICIAL row must exist in May period").toBeDefined();
+
+    const capitalCell = saldoInicial!.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(capitalCell, "CAPITAL_SOCIAL cell must exist in SALDO_INICIAL for May").toBeDefined();
+    expect(
+      decimalEq(capitalCell!.amount, D(200000)),
+      `SALDO_INICIAL[CAPITAL_SOCIAL] expected 200000 in N+1 (from prior-state), got ${capitalCell!.amount.toFixed(2)}`,
+    ).toBe(true);
+
+    // SALDO_FINAL must also show exactly 200000 (no May movements)
+    const saldoFinal = result.rows.find((r) => r.key === "SALDO_FINAL");
+    expect(saldoFinal, "SALDO_FINAL row must exist in May period").toBeDefined();
+
+    const saldoFinalCapital = saldoFinal!.cells.find((c) => c.column === "CAPITAL_SOCIAL");
+    expect(saldoFinalCapital, "CAPITAL_SOCIAL cell must exist in SALDO_FINAL for May").toBeDefined();
+    expect(
+      decimalEq(saldoFinalCapital!.amount, D(200000)),
+      `SALDO_FINAL[CAPITAL_SOCIAL] expected exactly 200000 (no double-count), got ${saldoFinalCapital!.amount.toFixed(2)}`,
+    ).toBe(true);
+
+    // Critical anti-double-count assertion: value must NOT be 400000
+    expect(
+      saldoFinalCapital!.amount.equals(D(400000)),
+      "CAPITAL_SOCIAL must NOT be 400000 — that would indicate double-count of the CA",
+    ).toBe(false);
+  });
+});
