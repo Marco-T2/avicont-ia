@@ -579,3 +579,332 @@ describe("EquityStatementRepository — isClosedPeriodMatch", () => {
     expect(result).toBe(false);
   });
 });
+
+// ─────────────────────────────────────────────────────────────────────────────
+// T01–T05: getAperturaPatrimonyDelta — RED tests (method does not exist yet)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("EquityStatementRepository — getAperturaPatrimonyDelta", () => {
+  // Isolated fixtures scoped to April 2026 (newborn-company scenario)
+  let caOrgId: string;
+  let caUserId: string;
+  let caPeriodId: string;
+  let caVtId: string;         // VoucherTypeCfg code='CA'
+  let caOtherVtId: string;    // Generic VoucherTypeCfg (non-CA) for DRAFT test
+  let caCapitalAccId: string; // PATRIMONIO ACREEDORA
+  let caCajaAccId: string;    // ACTIVO DEUDORA (non-PATRIMONIO, must be excluded)
+
+  const APR_FROM = new Date("2026-04-01");
+  const APR_TO   = new Date("2026-04-30");
+
+  beforeAll(async () => {
+    const now = Date.now();
+
+    const caUser = await prisma.user.create({
+      data: {
+        clerkUserId: `test-ca-repo-${now}`,
+        email: `ca-repo-${now}@test.com`,
+        name: "CA Repo Test",
+      },
+    });
+    caUserId = caUser.id;
+
+    const caOrg = await prisma.organization.create({
+      data: {
+        clerkOrgId: `clerk-ca-org-${now}`,
+        slug: `ca-org-${now}`,
+        name: "CA Org",
+      },
+    });
+    caOrgId = caOrg.id;
+
+    await prisma.organizationMember.create({
+      data: { organizationId: caOrgId, userId: caUserId, role: "owner" },
+    });
+
+    const caPeriod = await prisma.fiscalPeriod.create({
+      data: {
+        organizationId: caOrgId,
+        name: "Abr 2026",
+        year: 2026,
+        startDate: APR_FROM,
+        endDate: APR_TO,
+        createdById: caUserId,
+      },
+    });
+    caPeriodId = caPeriod.id;
+
+    // CA voucher type (code='CA') — Comprobante de Apertura
+    const caVt = await prisma.voucherTypeCfg.create({
+      data: {
+        organizationId: caOrgId,
+        code: "CA",
+        prefix: "A",
+        name: "Comprobante de Apertura",
+        isAdjustment: false,
+      },
+    });
+    caVtId = caVt.id;
+
+    // Generic voucher type for DRAFT entry
+    const otherVt = await prisma.voucherTypeCfg.create({
+      data: {
+        organizationId: caOrgId,
+        code: `CD-${now}`,
+        prefix: "D",
+        name: "Comprobante Generico",
+        isAdjustment: false,
+      },
+    });
+    caOtherVtId = otherVt.id;
+
+    // PATRIMONIO ACREEDORA account (3.1.1 Capital Social)
+    const capitalAcc = await prisma.account.create({
+      data: {
+        organizationId: caOrgId,
+        code: "3.1.1",
+        name: "Capital Social",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        level: 3,
+        isDetail: true,
+        isActive: true,
+        isContraAccount: false,
+      },
+    });
+    caCapitalAccId = capitalAcc.id;
+
+    // ACTIVO DEUDORA account (1.1.1 Caja) — offsets CA entries; must be excluded
+    const cajaAcc = await prisma.account.create({
+      data: {
+        organizationId: caOrgId,
+        code: "1.1.1",
+        name: "Caja",
+        type: "ACTIVO",
+        nature: "DEUDORA",
+        level: 3,
+        isDetail: true,
+        isActive: true,
+        isContraAccount: false,
+      },
+    });
+    caCajaAccId = cajaAcc.id;
+
+    // ── Fixture entries ───────────────────────────────────────────────────────
+
+    // T01 / T05 happy-path CA: POSTED 20/04/2026, Bs 200.000 credit to capital
+    const caPosted = await prisma.journalEntry.create({
+      data: {
+        organizationId: caOrgId,
+        number: 1,
+        date: new Date("2026-04-20"),
+        description: "Apertura capital social",
+        status: "POSTED",
+        periodId: caPeriodId,
+        voucherTypeId: caVtId,
+        createdById: caUserId,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: caPosted.id, accountId: caCajaAccId,    debit: D("200000"), credit: D("0") },
+        { journalEntryId: caPosted.id, accountId: caCapitalAccId, debit: D("0"),      credit: D("200000") },
+      ],
+    });
+
+    // T04 DRAFT CA: status DRAFT — must be excluded
+    const caDraft = await prisma.journalEntry.create({
+      data: {
+        organizationId: caOrgId,
+        number: 2,
+        date: new Date("2026-04-15"),
+        description: "Apertura borrador",
+        status: "DRAFT",
+        periodId: caPeriodId,
+        voucherTypeId: caVtId,
+        createdById: caUserId,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: caDraft.id, accountId: caCajaAccId,    debit: D("99999"), credit: D("0") },
+        { journalEntryId: caDraft.id, accountId: caCapitalAccId, debit: D("0"),     credit: D("99999") },
+      ],
+    });
+
+    // T05 second CA: POSTED 10/04/2026, Bs 0 (placeholder — full T05 uses two entries)
+    // We add a second POSTED CA for Bs. 0 to test SUM; actual T05 needs two entries.
+    // Use a second period-less entry for the aditional Bs 0 (not useful) — skip, covered below.
+
+    // T02 out-of-range CA: POSTED 15/03/2026 (before APR_FROM)
+    // Reuse caPeriodId — the period FK is just metadata; the date filter is on je.date
+    const caOutOfRange = await prisma.journalEntry.create({
+      data: {
+        organizationId: caOrgId,
+        number: 3,
+        date: new Date("2026-03-15"),
+        description: "Apertura fuera de rango",
+        status: "POSTED",
+        periodId: caPeriodId,
+        voucherTypeId: caVtId,
+        createdById: caUserId,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: caOutOfRange.id, accountId: caCajaAccId,    debit: D("50000"), credit: D("0") },
+        { journalEntryId: caOutOfRange.id, accountId: caCapitalAccId, debit: D("0"),     credit: D("50000") },
+      ],
+    });
+  });
+
+  afterAll(async () => {
+    if (caOrgId) {
+      await prisma.organization.delete({ where: { id: caOrgId } }).catch(() => {});
+    }
+    if (caUserId) {
+      await prisma.user.delete({ where: { id: caUserId } }).catch(() => {});
+    }
+  });
+
+  // T01 — REQ-APERTURA-MERGE scenario 1: happy-path, CA POSTED inside range
+  it("T01 — POSTED CA inside range: returns Map with capital account delta Bs. 200000", async () => {
+    const result = await repo.getAperturaPatrimonyDelta(caOrgId, APR_FROM, APR_TO);
+    const delta = result.get(caCapitalAccId);
+    expect(delta, "capital account delta must be present").toBeDefined();
+    expect(delta!.equals(D("200000"))).toBe(true);
+  });
+
+  // T02 — REQ-APERTURA-MERGE scenario 6: CA outside range returns empty map
+  it("T02 — CA dated before dateFrom: returns empty map", async () => {
+    // Query April only — the March CA (2026-03-15) is out of range
+    const result = await repo.getAperturaPatrimonyDelta(caOrgId, APR_FROM, APR_TO);
+    // The only POSTED CA inside April is the 200000 one; the March one must NOT be included.
+    // To isolate: query a range that excludes the April entry too.
+    const resultMarch = await repo.getAperturaPatrimonyDelta(
+      caOrgId,
+      new Date("2026-04-21"), // starts after the April-20 CA
+      APR_TO,
+    );
+    expect(resultMarch.size).toBe(0);
+  });
+
+  // T03 — REQ-APERTURA-MERGE scenario 4: CA on non-PATRIMONIO account excluded
+  it("T03 — CA line on ACTIVO account is excluded from map", async () => {
+    const result = await repo.getAperturaPatrimonyDelta(caOrgId, APR_FROM, APR_TO);
+    expect(result.has(caCajaAccId)).toBe(false);
+  });
+
+  // T04 — REQ-APERTURA-MERGE scenario 5: DRAFT CA excluded
+  it("T04 — DRAFT CA entry is excluded; method returns only POSTED deltas", async () => {
+    const result = await repo.getAperturaPatrimonyDelta(caOrgId, APR_FROM, APR_TO);
+    // DRAFT CA was Bs 99999; if included, capital delta would be 299999
+    const delta = result.get(caCapitalAccId);
+    expect(delta?.equals(D("299999"))).toBe(false);
+    // Only the POSTED 200000 must be present
+    expect(delta?.equals(D("200000"))).toBe(true);
+  });
+
+  // T05 — REQ-APERTURA-MERGE scenario 3: multiple CA in same period are summed
+  it("T05 — two POSTED CAs in same period: deltas are summed (150000 + 50000 = 200000)", async () => {
+    // We seed a fresh org with two explicit CAs to isolate the SUM behaviour
+    const now2 = Date.now() + 1;
+    const u2 = await prisma.user.create({
+      data: { clerkUserId: `test-ca-sum-${now2}`, email: `ca-sum-${now2}@test.com`, name: "CA Sum" },
+    });
+    const o2 = await prisma.organization.create({
+      data: { clerkOrgId: `clerk-ca-sum-${now2}`, slug: `ca-sum-${now2}`, name: "CA Sum Org" },
+    });
+    await prisma.organizationMember.create({
+      data: { organizationId: o2.id, userId: u2.id, role: "owner" },
+    });
+    const p2 = await prisma.fiscalPeriod.create({
+      data: {
+        organizationId: o2.id,
+        name: "Abr 2026",
+        year: 2026,
+        startDate: APR_FROM,
+        endDate: APR_TO,
+        createdById: u2.id,
+      },
+    });
+    const vt2 = await prisma.voucherTypeCfg.create({
+      data: { organizationId: o2.id, code: "CA", prefix: "A", name: "CA", isAdjustment: false },
+    });
+    const caAcc2 = await prisma.account.create({
+      data: {
+        organizationId: o2.id,
+        code: "3.1.1",
+        name: "Capital Social",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        level: 3,
+        isDetail: true,
+        isActive: true,
+        isContraAccount: false,
+      },
+    });
+    const cajaAcc2 = await prisma.account.create({
+      data: {
+        organizationId: o2.id,
+        code: "1.1.1",
+        name: "Caja",
+        type: "ACTIVO",
+        nature: "DEUDORA",
+        level: 3,
+        isDetail: true,
+        isActive: true,
+        isContraAccount: false,
+      },
+    });
+
+    // CA-1: Bs. 150000
+    const ca1 = await prisma.journalEntry.create({
+      data: {
+        organizationId: o2.id,
+        number: 1,
+        date: new Date("2026-04-10"),
+        description: "CA 1",
+        status: "POSTED",
+        periodId: p2.id,
+        voucherTypeId: vt2.id,
+        createdById: u2.id,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: ca1.id, accountId: cajaAcc2.id, debit: D("150000"), credit: D("0") },
+        { journalEntryId: ca1.id, accountId: caAcc2.id,   debit: D("0"),      credit: D("150000") },
+      ],
+    });
+
+    // CA-2: Bs. 50000
+    const ca2 = await prisma.journalEntry.create({
+      data: {
+        organizationId: o2.id,
+        number: 2,
+        date: new Date("2026-04-15"),
+        description: "CA 2",
+        status: "POSTED",
+        periodId: p2.id,
+        voucherTypeId: vt2.id,
+        createdById: u2.id,
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: ca2.id, accountId: cajaAcc2.id, debit: D("50000"), credit: D("0") },
+        { journalEntryId: ca2.id, accountId: caAcc2.id,   debit: D("0"),     credit: D("50000") },
+      ],
+    });
+
+    const result = await repo.getAperturaPatrimonyDelta(o2.id, APR_FROM, APR_TO);
+    const delta = result.get(caAcc2.id);
+    expect(delta, "summed delta must be present").toBeDefined();
+    expect(delta!.equals(D("200000"))).toBe(true);
+
+    // cleanup
+    await prisma.organization.delete({ where: { id: o2.id } }).catch(() => {});
+    await prisma.user.delete({ where: { id: u2.id } }).catch(() => {});
+  });
+});
