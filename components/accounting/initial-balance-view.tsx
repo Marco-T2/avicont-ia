@@ -2,20 +2,22 @@
 
 /**
  * InitialBalanceView — Renders a serialized InitialBalanceStatement as a
- * single-column list of two stacked sections (ACTIVO, then PASIVO Y PATRIMONIO).
+ * centered compact table with two stacked sections (ACTIVO, then PASIVO Y PATRIMONIO).
  *
- * Visual pattern: mirrors BalanceSheetView — StatementLineRow for every row
- * type, formatBOB for all amounts. Zero-amount detail rows are skipped.
+ * Visual pattern: mirrors BalanceSheetView — centered compact table (`mx-auto w-auto`)
+ * with fixed-width columns for name and amount. formatBOB for all amounts.
+ * Zero-amount detail rows are skipped.
+ *
+ * Detail rows show "{code} — {name}" format (em dash, Bolivian legal format).
  *
  * Banners: imbalance alert (red) when `imbalanced: true`; multipleCA warning
- * (amber) when `multipleCA: true`. Banners render above the sections.
+ * (amber) when `multipleCA: true`. Banners render above the table — full-width.
  *
  * Receives a serialized statement (Decimals as strings) — same shape as API
  * JSON response.
  */
 
-import { type FC } from "react";
-import { StatementLineRow } from "@/components/financial-statements/statement-line-row";
+import { type FC, type CSSProperties } from "react";
 import { formatBOB } from "@/components/financial-statements/format-money";
 
 // ── Serialized types (Decimals as strings) ─────────────────────────────────────
@@ -51,64 +53,88 @@ interface SerializedStatement {
   caCount: number;
 }
 
-// ── Section component ─────────────────────────────────────────────────────────
+// ── Row type definitions ───────────────────────────────────────────────────────
 
-interface SectionProps {
-  section: SerializedSection;
+type TableRow =
+  | { kind: "section-header"; label: string }
+  | { kind: "group-header"; label: string }
+  | { kind: "detail"; code: string; name: string; amount: string }
+  | { kind: "subtotal"; label: string; amount: string }
+  | { kind: "section-total"; label: string; amount: string };
+
+// ── Flatten statement into ordered rows ───────────────────────────────────────
+
+function flattenSection(section: SerializedSection): TableRow[] {
+  const rows: TableRow[] = [];
+
+  rows.push({ kind: "section-header", label: section.label });
+
+  for (const group of section.groups) {
+    rows.push({ kind: "group-header", label: group.label });
+
+    for (const row of group.rows) {
+      if (parseFloat(row.amount) === 0) continue;
+      rows.push({ kind: "detail", code: row.code, name: row.name, amount: row.amount });
+    }
+
+    rows.push({ kind: "subtotal", label: `Subtotal ${group.label}`, amount: group.subtotal });
+  }
+
+  rows.push({ kind: "section-total", label: `Total ${section.label}`, amount: section.sectionTotal });
+
+  return rows;
 }
 
-function Section({ section }: SectionProps) {
-  return (
-    <div className="mb-6">
-      {/* Section header: level 0 */}
-      <StatementLineRow type="header" label={section.label} level={0} />
+// ── Row class and indentation helpers ─────────────────────────────────────────
 
-      {section.groups.map((group) => {
-        // Filter out detail rows with zero amount
-        const visibleRows = group.rows.filter(
-          (row) => parseFloat(row.amount) !== 0,
-        );
+function rowClassName(kind: TableRow["kind"]): string {
+  switch (kind) {
+    case "section-header":
+      return "bg-gray-100 font-semibold border-t border-gray-300";
+    case "group-header":
+      return "bg-gray-50 font-medium border-t border-gray-200";
+    case "detail":
+      return "bg-white hover:bg-blue-50/30 transition-colors";
+    case "subtotal":
+      return "bg-gray-50 font-medium border-t border-gray-200";
+    case "section-total":
+      return "bg-white font-semibold border-t-2 border-gray-400";
+  }
+}
 
-        return (
-          <div key={group.subtype}>
-            {/* Subtype group header: level 1 */}
-            <StatementLineRow
-              type="header"
-              label={group.label}
-              level={1}
-            />
+function nameCellIndent(kind: TableRow["kind"]): CSSProperties {
+  switch (kind) {
+    case "section-header":
+      return { paddingLeft: "0px" };
+    case "group-header":
+      return { paddingLeft: "8px" };
+    case "detail":
+      return { paddingLeft: "24px" };
+    case "subtotal":
+      return { paddingLeft: "8px" };
+    case "section-total":
+      return { paddingLeft: "0px" };
+  }
+}
 
-            {/* Detail rows: level 2 (zero rows skipped) */}
-            {visibleRows.map((row) => (
-              <StatementLineRow
-                key={row.accountId}
-                type="account"
-                label={row.name}
-                balance={formatBOB(row.amount)}
-                level={2}
-              />
-            ))}
+function rowLabel(row: TableRow): string {
+  switch (row.kind) {
+    case "section-header":
+      return row.label;
+    case "group-header":
+      return row.label;
+    case "detail":
+      return `${row.code} — ${row.name}`;
+    case "subtotal":
+      return row.label;
+    case "section-total":
+      return row.label;
+  }
+}
 
-            {/* Subtotal: level 1 */}
-            <StatementLineRow
-              type="subtotal"
-              label={`Subtotal ${group.label}`}
-              balance={formatBOB(group.subtotal)}
-              level={1}
-            />
-          </div>
-        );
-      })}
-
-      {/* Section total: level 0 */}
-      <StatementLineRow
-        type="total"
-        label={`Total ${section.label}`}
-        balance={formatBOB(section.sectionTotal)}
-        level={0}
-      />
-    </div>
-  );
+function rowAmount(row: TableRow): string | null {
+  if (row.kind === "section-header" || row.kind === "group-header") return null;
+  return formatBOB(row.amount);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -119,6 +145,10 @@ interface InitialBalanceViewProps {
 
 export const InitialBalanceView: FC<InitialBalanceViewProps> = ({ statement }) => {
   const [activoSection, pasivoSection] = statement.sections;
+  const rows: TableRow[] = [
+    ...flattenSection(activoSection),
+    ...flattenSection(pasivoSection),
+  ];
 
   return (
     <div className="space-y-4">
@@ -150,10 +180,28 @@ export const InitialBalanceView: FC<InitialBalanceViewProps> = ({ statement }) =
         </div>
       )}
 
-      {/* Sections: single column, stacked vertically */}
-      <div className="space-y-6">
-        <Section section={activoSection} />
-        <Section section={pasivoSection} />
+      {/* Centered compact table */}
+      <div className="overflow-x-auto">
+        <table className="mx-auto w-auto border-collapse text-sm">
+          <tbody>
+            {rows.map((row, idx) => {
+              const amount = rowAmount(row);
+              return (
+                <tr key={idx} className={rowClassName(row.kind)}>
+                  <td
+                    className="px-3 py-1 text-left w-[320px] border-b border-gray-100"
+                    style={nameCellIndent(row.kind)}
+                  >
+                    {rowLabel(row)}
+                  </td>
+                  <td className="px-3 py-1 text-right w-[140px] font-mono tabular-nums border-b border-gray-100">
+                    {amount ?? ""}
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   );

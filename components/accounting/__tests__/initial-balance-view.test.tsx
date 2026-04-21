@@ -1,9 +1,10 @@
 /**
- * T20 — RED: InitialBalanceView component tests.
+ * T20 — InitialBalanceView component tests.
  *
  * Asserts:
- * (a) Renders two sections (ACTIVO and PASIVO Y PATRIMONIO) using StatementLineRow,
- *     with the correct structural hierarchy (header → header → account → subtotal → total).
+ * (a) Renders two sections (ACTIVO and PASIVO Y PATRIMONIO) using a centered compact
+ *     table, with the correct structural hierarchy (section header → group header →
+ *     detail row → subtotal → section total).
  * (b) Shows imbalance alert banner when `imbalanced: true`.
  * (c) Shows multipleCA warning banner when `multipleCA: true`.
  * (d) Amount formatting via formatBOB (es-BO locale with "Bs." prefix):
@@ -12,6 +13,7 @@
  *     - zero in a detail row → row is NOT rendered at all
  *     - zero in a total/subtotal → rendered as "Bs. 0,00"
  * (e) Detail rows with amount 0 are skipped entirely (not rendered).
+ * (f) Detail rows include account code in format "{code} — {name}".
  */
 
 import { render, screen, cleanup } from "@testing-library/react";
@@ -71,7 +73,7 @@ function makeStatement(overrides?: Record<string, unknown>) {
         groups: [PASIVO_GROUP, PATRIMONIO_GROUP],
         sectionTotal: "5000.00",
       },
-    ],
+    ] as unknown as Parameters<typeof InitialBalanceView>[0]["statement"]["sections"],
     imbalanced: false,
     imbalanceDelta: "0",
     multipleCA: false,
@@ -94,10 +96,10 @@ describe("InitialBalanceView", () => {
     expect(screen.getByText("Pasivo Corriente")).toBeInTheDocument();
     expect(screen.getByText("Capital Social")).toBeInTheDocument();
 
-    // Account names (non-zero rows)
-    expect(screen.getByText("Caja")).toBeInTheDocument();
-    expect(screen.getByText("Deudas")).toBeInTheDocument();
-    expect(screen.getByText("Proveedores")).toBeInTheDocument();
+    // Detail rows now show "{code} — {name}" format
+    expect(screen.getByText("1.1.01 — Caja")).toBeInTheDocument();
+    expect(screen.getByText("1.1.03 — Deudas")).toBeInTheDocument();
+    expect(screen.getByText("2.1.01 — Proveedores")).toBeInTheDocument();
   });
 
   it("(b) shows imbalance alert banner when imbalanced: true", () => {
@@ -131,10 +133,12 @@ describe("InitialBalanceView", () => {
 
   it("(e) zero-amount detail rows are NOT rendered", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
-    // "Banco" has amount "0" — must not appear in the DOM
+    // "Banco" has amount "0" — must not appear in the DOM (neither plain name nor coded format)
     expect(screen.queryByText("Banco")).not.toBeInTheDocument();
+    expect(screen.queryByText("1.1.02 — Banco")).not.toBeInTheDocument();
     // "Capital" has amount "0" — must not appear in the DOM
     expect(screen.queryByText("Capital")).not.toBeInTheDocument();
+    expect(screen.queryByText("3.1.01 — Capital")).not.toBeInTheDocument();
   });
 
   it("(d4) zero totals and subtotals still render (structural zero shows as Bs. 0,00)", () => {
@@ -150,5 +154,23 @@ describe("InitialBalanceView", () => {
     const headings = screen.getAllByText(/^(ACTIVO|PASIVO Y PATRIMONIO)$/);
     expect(headings[0].textContent).toBe("ACTIVO");
     expect(headings[1].textContent).toBe("PASIVO Y PATRIMONIO");
+  });
+
+  it("(g) detail rows display account code — name format", () => {
+    render(<InitialBalanceView statement={makeStatement()} />);
+    // Non-zero rows must include code prefix
+    expect(screen.getByText("1.1.01 — Caja")).toBeInTheDocument();
+    expect(screen.getByText("1.1.03 — Deudas")).toBeInTheDocument();
+    expect(screen.getByText("2.1.01 — Proveedores")).toBeInTheDocument();
+    // Plain account names must NOT appear standalone (confirms code is prepended)
+    expect(screen.queryByText("Caja")).not.toBeInTheDocument();
+    expect(screen.queryByText("Proveedores")).not.toBeInTheDocument();
+  });
+
+  it("(h) renders a centered table element (not a list of StatementLineRows)", () => {
+    const { container } = render(<InitialBalanceView statement={makeStatement()} />);
+    const table = container.querySelector("table");
+    expect(table).toBeInTheDocument();
+    expect(table).toHaveClass("mx-auto");
   });
 });

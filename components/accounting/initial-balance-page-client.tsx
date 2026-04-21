@@ -177,7 +177,7 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
 
           {/* View */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-4 overflow-auto">
+            <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
               <InitialBalanceView statement={statement} />
             </CardContent>
           </Card>
