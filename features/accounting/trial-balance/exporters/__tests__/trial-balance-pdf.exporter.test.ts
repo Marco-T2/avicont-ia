@@ -205,11 +205,15 @@ describe("exportTrialBalancePdf — header metadata (C8)", () => {
 describe("exportTrialBalancePdf — column widths", () => {
   it("column widths sum to 535pt", async () => {
     const { docDef } = await exportTrialBalancePdf(makeReport(), "Avicont SA");
-    const content = docDef.content as Array<Record<string, unknown>>;
+    const content = docDef.content as unknown as Array<Record<string, unknown>>;
     const tableBlock = content.find((c) => c.table)!;
     // pdfmake mutates widths entries into objects with a `width` property; plain numbers also accepted
-    const table = tableBlock.table as { widths: Array<number | { width: number }> };
-    const sum = table.widths.reduce((acc, w) => acc + (typeof w === "number" ? w : w.width), 0);
+    const table = tableBlock.table as { widths: Array<unknown> };
+    const sum = table.widths.reduce((acc: number, w: unknown) => {
+      if (typeof w === "number") return acc + w;
+      if (typeof w === "object" && w !== null && "width" in w) return acc + (w as { width: number }).width;
+      return acc;
+    }, 0);
     expect(sum).toBe(535);
   });
 });
