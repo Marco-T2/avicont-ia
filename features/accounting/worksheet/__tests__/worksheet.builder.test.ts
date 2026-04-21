@@ -339,7 +339,7 @@ describe("buildWorksheet — contra-account routing (REQ-6)", () => {
 // ── T11: Carry-over pérdida path + zero result (REQ-7.S2, REQ-7.S3) ──────────
 
 describe("buildWorksheet — carry-over pérdida + zero result (REQ-7)", () => {
-  it("REQ-7.S2: net pérdida → carryOver in resultadosGanancias and bgActivo", () => {
+  it("REQ-7.S2: net pérdida → carryOver in resultadosGanancias and bgPasPat (negated)", () => {
     const accounts: WorksheetAccountMetadata[] = [
       makeAccount({ id: "ing", code: "4.1.1", name: "Ingresos", type: "INGRESO", nature: "ACREEDORA" }),
       makeAccount({ id: "gst", code: "5.1.1", name: "Gastos", type: "GASTO", nature: "DEUDORA" }),
@@ -354,9 +354,10 @@ describe("buildWorksheet — carry-over pérdida + zero result (REQ-7)", () => {
     const co = result.carryOverRow!;
     expect(co.name).toContain("Pérdida");
     expect(co.resultadosGanancias.toFixed(2)).toBe("25000.00");
-    expect(co.bgActivo.toFixed(2)).toBe("25000.00");
+    // Pérdida reduces equity → Pas-Pat negative (displayed with parens), NOT Activo positive.
+    expect(co.bgPasPat.toFixed(2)).toBe("-25000.00");
+    expect(co.bgActivo.toFixed(2)).toBe("0.00");
     expect(co.resultadosPerdidas.toFixed(2)).toBe("0.00");
-    expect(co.bgPasPat.toFixed(2)).toBe("0.00");
 
     // ER invariant: both sides = 65000
     expect(result.grandTotals.resultadosPerdidas.toFixed(2)).toBe("65000.00");

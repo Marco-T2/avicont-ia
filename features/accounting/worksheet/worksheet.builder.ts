@@ -259,7 +259,8 @@ export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
         bgPasPat:            netResult,
       };
     } else {
-      // Pérdida: balance ER by adding abs to ganancias; balance BG by adding abs to Activo
+      // Pérdida: balance ER by adding abs to ganancias; balance BG by subtracting from Pas-Pat
+      // (a loss reduces equity — it belongs on the Pas-Pat side as a negative, not as a positive Activo).
       const abs = netResult.abs();
       carryOverRow = {
         accountId:           "__carry_over__",
@@ -278,8 +279,8 @@ export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
         saldoAjAcreedor:     z(),
         resultadosPerdidas:  z(),
         resultadosGanancias: abs,
-        bgActivo:            abs,
-        bgPasPat:            z(),
+        bgActivo:            z(),
+        bgPasPat:            abs.negated(),
       };
     }
   }
