@@ -1,5 +1,6 @@
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
+import { fmtDecimal } from "../../financial-statements/exporters/pdf.helpers";
 import type { EquityStatement } from "../equity-statement.types";
 import {
   COLUMNS_ORDER,
@@ -34,26 +35,6 @@ const STYLE = {
   text: "#000000",
   danger: "#b91c1c",
 } as const;
-
-type DecimalLike = {
-  isZero(): boolean;
-  isNegative(): boolean;
-  abs(): { toNumber(): number };
-  toNumber(): number;
-};
-
-function fmtDecimal(d: DecimalLike, isTotal: boolean): string {
-  if (d.isZero()) {
-    return isTotal
-      ? (0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-      : "";
-  }
-  if (d.isNegative()) {
-    const abs = d.abs().toNumber().toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return `(${abs})`;
-  }
-  return d.toNumber().toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
 
 function fmtDate(d: Date): string {
   return d.toLocaleDateString("es-BO", {

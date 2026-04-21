@@ -18,6 +18,7 @@
 
 import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
+import { fmtDecimal, type DecimalLike } from "../../financial-statements/exporters/pdf.helpers";
 import type { WorksheetReport, WorksheetRow, WorksheetTotals } from "../worksheet.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -43,41 +44,6 @@ const HEADER_SIZE = 7;
 const TITLE_SIZE = 12;
 const SUBTITLE_SIZE = 9;
 const FOOTER_SIZE = 7;
-
-// ── Formatters ────────────────────────────────────────────────────────────────
-
-/**
- * Formats a Decimal for display in a PDF cell using es-BO locale.
- *
- * es-BO format: period as thousands separator, comma as decimal.
- * Example: 207000 → "207.000,00"; -120000 → "(120.000,00)"
- *
- * Option A zero-value rule:
- *   - isTotal=false: zero → ""
- *   - isTotal=true:  zero → "0,00"
- *
- * Non-zero: format with es-BO thousands separator and 2 decimal places.
- * Negative (contra bgActivo): formatted as (abs formatted) with parens.
- */
-function fmtDecimal(
-  decimal: { isZero(): boolean; isNegative(): boolean; abs(): { toNumber(): number }; toNumber(): number },
-  isTotal: boolean,
-): string {
-  if (decimal.isZero()) {
-    return isTotal ? (0).toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "";
-  }
-  if (decimal.isNegative()) {
-    const absStr = decimal.abs().toNumber().toLocaleString("es-BO", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return `(${absStr})`;
-  }
-  return decimal.toNumber().toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-}
 
 // ── Column widths array ───────────────────────────────────────────────────────
 
@@ -131,7 +97,7 @@ function buildValueCells(
   isTotal: boolean,
   bold: boolean,
 ): Content[] {
-  const cols: Array<{ isZero(): boolean; isNegative(): boolean; abs(): { toNumber(): number }; toNumber(): number }> = [
+  const cols: Array<DecimalLike> = [
     row.sumasDebe,
     row.sumasHaber,
     row.saldoDeudor,
