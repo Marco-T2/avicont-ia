@@ -114,6 +114,7 @@ const PROFILE: OrgProfile = {
   direccion: "Avenida Arica Nro. 100",
   ciudad: "La Paz",
   telefono: "2-111111",
+  representanteLegal: "",
   nroPatronal: null,
   logoUrl: null,
   createdAt: new Date(),
