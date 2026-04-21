@@ -8,7 +8,7 @@
  * (c) Shows multipleCA warning banner when `multipleCA: true`.
  * (d) Amount formatting via formatBOB (es-BO locale with "Bs." prefix):
  *     - positive 1234.56 → "Bs. 1.234,56"
- *     - negative -1234.56 → "(1.234,56)" (parentheses, no Bs. prefix for negatives)
+ *     - negative -1234.56 → "Bs. -1.234,56" (formatBOB uses es-BO minus sign, not parens)
  *     - zero in a detail row → row is NOT rendered at all
  *     - zero in a total/subtotal → rendered as "Bs. 0,00"
  * (e) Detail rows with amount 0 are skipped entirely (not rendered).
@@ -122,15 +122,11 @@ describe("InitialBalanceView", () => {
     expect(screen.getByText("Bs. 1.234,56")).toBeInTheDocument();
   });
 
-  it("(d2) formats negative amount -1234.56 using parentheses", () => {
+  it("(d2) formats negative amount -1234.56 with Bs. prefix and minus sign", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
     // "Deudas" row has amount "-1234.56"
-    // formatBOB produces either "(1.234,56)" or "Bs. (1.234,56)" — assert partial match
-    const neg = screen.getAllByText(/1\.234,56/);
-    expect(neg.length).toBeGreaterThan(0);
-    // At least one should represent the negative (check by text content containing paren)
-    const hasParenNeg = neg.some((el) => el.textContent?.includes("("));
-    expect(hasParenNeg).toBe(true);
+    // formatBOB(-1234.56) → "Bs. -1.234,56"
+    expect(screen.getByText("Bs. -1.234,56")).toBeInTheDocument();
   });
 
   it("(e) zero-amount detail rows are NOT rendered", () => {
