@@ -74,6 +74,7 @@ describe("buildEquityStatement", () => {
       initialBalances: new Map<string, Prisma.Decimal>(),
       finalBalances: new Map<string, Prisma.Decimal>(),
       accounts: [capitalAccount],
+      typedMovements: new Map(),
       periodResult: D("0"),
       dateFrom: new Date("2024-01-01"),
       dateTo: new Date("2024-12-31"),
