@@ -40,17 +40,25 @@ export class EquityStatementService {
     const dayBefore = new Date(input.dateFrom);
     dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
 
-    // 3. Parallel data loads — 6 queries (REQ-3, REQ-8)
-    const [initialBalances, finalBalances, accounts, fsAccounts, incomeMovements, isClosedMatch] =
-      await Promise.all([
-        this.repo.getPatrimonioBalancesAt(orgId, dayBefore),
-        this.repo.getPatrimonioBalancesAt(orgId, input.dateTo),
-        this.repo.findPatrimonioAccounts(orgId),
-        // Pipeline ER — same pattern as FinancialStatementsService (lines 219-235)
-        this.fsRepo.findAccountsWithSubtype(orgId),
-        this.fsRepo.aggregateJournalLinesInRange(orgId, input.dateFrom, input.dateTo),
-        this.repo.isClosedPeriodMatch(orgId, input.dateFrom, input.dateTo),
-      ]);
+    // 3. Parallel data loads — 7 queries (REQ-3, REQ-8)
+    const [
+      initialBalances,
+      finalBalances,
+      accounts,
+      fsAccounts,
+      incomeMovements,
+      isClosedMatch,
+      typedMovements,
+    ] = await Promise.all([
+      this.repo.getPatrimonioBalancesAt(orgId, dayBefore),
+      this.repo.getPatrimonioBalancesAt(orgId, input.dateTo),
+      this.repo.findPatrimonioAccounts(orgId),
+      // Pipeline ER — same pattern as FinancialStatementsService (lines 219-235)
+      this.fsRepo.findAccountsWithSubtype(orgId),
+      this.fsRepo.aggregateJournalLinesInRange(orgId, input.dateFrom, input.dateTo),
+      this.repo.isClosedPeriodMatch(orgId, input.dateFrom, input.dateTo),
+      this.repo.getTypedPatrimonyMovements(orgId, input.dateFrom, input.dateTo),
+    ]);
 
     // 4. Build Income Statement and derive periodResult — shared source of truth (REQ-4)
     const incomeStatement = buildIncomeStatement({
@@ -63,12 +71,12 @@ export class EquityStatementService {
     });
     const periodResult = calculateRetainedEarnings(incomeStatement);
 
-    // 5. Pure builder (Batch 6 wires typedMovements below)
+    // 5. Pure builder
     const statement = buildEquityStatement({
       initialBalances,
       finalBalances,
       accounts,
-      typedMovements: new Map(),
+      typedMovements,
       periodResult,
       dateFrom: input.dateFrom,
       dateTo: input.dateTo,
