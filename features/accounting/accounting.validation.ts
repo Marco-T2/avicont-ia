@@ -16,6 +16,7 @@ export const createAccountSchema = z
     isDetail: z.boolean({ message: "El campo detalle debe ser verdadero o falso" }).optional(),
     requiresContact: z.boolean({ message: "El campo requiere contacto debe ser verdadero o falso" }).default(false),
     description: z.string().max(500, "La descripción no puede superar los 500 caracteres").optional(),
+    isContraAccount: z.boolean({ message: "El campo contra-cuenta debe ser verdadero o falso" }).optional(),
   })
   .superRefine((data, ctx) => {
     if (!data.parentId && !data.type) {
@@ -38,6 +39,7 @@ export const updateAccountSchema = z.object({
   requiresContact: z.boolean({ message: "El campo requiere contacto debe ser verdadero o falso" }).optional(),
   description: z.string().max(500, "La descripción no puede superar los 500 caracteres").optional(),
   subtype: z.nativeEnum(AccountSubtype, { message: "Subtipo de cuenta inválido" }).optional(),
+  isContraAccount: z.boolean({ message: "El campo contra-cuenta debe ser verdadero o falso" }).optional(),
 });
 
 export const journalLineSchema = z
