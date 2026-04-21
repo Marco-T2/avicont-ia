@@ -115,8 +115,8 @@ export const reportRegistry: readonly ReportEntry[] = [
     title: "Hoja de Trabajo",
     description: "Herramienta auxiliar de ajustes y balance comprobación.",
     category: "para-mi-contador",
-    status: "planned",
-    route: null,
+    status: "available",
+    route: "/accounting/worksheet",
     icon: "TableProperties",
   },
   {
