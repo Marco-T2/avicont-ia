@@ -136,4 +136,30 @@ export class InitialBalanceRepository extends BaseRepository {
       direccion: org.profile?.direccion ?? "",
     };
   }
+
+  /**
+   * Returns the earliest date among all POSTED CA voucher journal entries for
+   * the organization (`MIN(je.date)`). This is the opening-balance date shown
+   * in the report title and used as `dateAt` in the statement.
+   *
+   * Returns `null` when no POSTED CA entries exist (same guard as
+   * `countCAVouchers === 0`).
+   */
+  async getCADate(orgId: string): Promise<Date | null> {
+    this.requireOrg(orgId);
+
+    type RawDateRow = { date_at: Date | null };
+
+    const rows = await this.db.$queryRaw<RawDateRow[]>`
+      SELECT MIN(je.date) AS date_at
+      FROM journal_entries je
+      JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
+      WHERE
+        je."organizationId" = ${orgId}
+        AND je."status"     = 'POSTED'
+        AND vt.code         = 'CA'
+    `;
+
+    return rows[0]?.date_at ?? null;
+  }
 }
