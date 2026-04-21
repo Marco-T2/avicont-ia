@@ -1,7 +1,6 @@
 import "server-only";
 
-// Server-only barrel — re-exports server modules once they are created.
-// Currently: types only (safe for server import).
+// Server-only barrel — re-exports server modules.
 export type {
   WorksheetRow,
   WorksheetGroup,
@@ -10,3 +9,10 @@ export type {
   WorksheetReport,
   Decimal,
 } from "./worksheet.types";
+
+export { WorksheetRepository } from "./worksheet.repository";
+export type {
+  WorksheetMovementAggregation,
+  WorksheetAccountMetadata,
+  WorksheetDateRange,
+} from "./worksheet.repository";
