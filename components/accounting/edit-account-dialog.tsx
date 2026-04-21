@@ -40,6 +40,7 @@ export default function EditAccountDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [subtype, setSubtype] = useState<AccountSubtype | "">("");
+  const [isContraAccount, setIsContraAccount] = useState(false);
 
   useEffect(() => {
     if (account) {
@@ -47,6 +48,7 @@ export default function EditAccountDialog({
       setDescription(account.description ?? "");
       // Inicializar subtipo con el valor actual de la cuenta
       setSubtype((account.subtype as AccountSubtype | null) ?? "");
+      setIsContraAccount(account.isContraAccount);
     }
   }, [account]);
 
@@ -68,6 +70,10 @@ export default function EditAccountDialog({
       };
       if (account.level >= 2 && subtype) {
         patchBody.subtype = subtype;
+      }
+      // Contra-cuenta — solo aplica a ACTIVO; enviar si cambió respecto al valor actual
+      if (account.type === "ACTIVO" && isContraAccount !== account.isContraAccount) {
+        patchBody.isContraAccount = isContraAccount;
       }
 
       const res = await fetch(
@@ -124,6 +130,24 @@ export default function EditAccountDialog({
               placeholder="Descripcion de la cuenta"
             />
           </div>
+
+          {/* Contra-cuenta — solo aplica a ACTIVO */}
+          {account && account.type === "ACTIVO" && (
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isContraAccount}
+                  onChange={(e) => setIsContraAccount(e.target.checked)}
+                  className="h-4 w-4 cursor-pointer"
+                />
+                <span className="text-sm">Es contra-cuenta</span>
+              </label>
+              <p className="text-xs text-gray-500">
+                Contra-activo (naturaleza acreedora). Ej: Depreciación Acumulada, Amortización Acumulada.
+              </p>
+            </div>
+          )}
 
           {/* Subtipo — solo visible para cuentas de nivel >= 2 */}
           {account && account.level >= 2 && (

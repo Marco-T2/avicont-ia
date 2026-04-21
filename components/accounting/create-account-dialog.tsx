@@ -57,6 +57,7 @@ export default function CreateAccountDialog({
   const [subtype, setSubtype] = useState<AccountSubtype | "">("");
   const [useCustomCode, setUseCustomCode] = useState(false);
   const [customCode, setCustomCode] = useState("");
+  const [isContraAccount, setIsContraAccount] = useState(false);
 
   // Sync parentId when preselectedParentId changes (e.g., clicking "Agregar cuenta hija" on different rows)
   useEffect(() => {
@@ -67,6 +68,7 @@ export default function CreateAccountDialog({
       setName("");
       setType("");
       setSubtype("");
+      setIsContraAccount(false);
     }
   }, [open, preselectedParentId]);
 
@@ -111,6 +113,7 @@ export default function CreateAccountDialog({
     setSubtype("");
     setUseCustomCode(false);
     setCustomCode("");
+    setIsContraAccount(false);
   }
 
   function handleParentChange(val: string) {
@@ -127,6 +130,8 @@ export default function CreateAccountDialog({
       // El nuevo padre puede tener un subtipo diferente — limpiar la selección manual
       setSubtype("");
     }
+    // Contra-cuenta solo tiene sentido en ACTIVO — reset al cambiar padre
+    setIsContraAccount(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -151,6 +156,11 @@ export default function CreateAccountDialog({
       // Only send code if custom
       if (useCustomCode && customCode) {
         body.code = customCode;
+      }
+
+      // Contra-cuenta — solo aplicable a ACTIVO
+      if (effectiveType === "ACTIVO" && isContraAccount) {
+        body.isContraAccount = true;
       }
 
       const res = await fetch(`/api/organizations/${orgSlug}/accounts`, {
@@ -304,6 +314,24 @@ export default function CreateAccountDialog({
               </p>
             )}
           </div>
+
+          {/* Contra-cuenta — solo aplica a ACTIVO (ej. Depreciación Acumulada) */}
+          {effectiveType === "ACTIVO" && (
+            <div className="space-y-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isContraAccount}
+                  onChange={(e) => setIsContraAccount(e.target.checked)}
+                  className="h-4 w-4 cursor-pointer"
+                />
+                <span className="text-sm">Es contra-cuenta</span>
+              </label>
+              <p className="text-xs text-gray-500">
+                Marca la cuenta como contra-activo (naturaleza acreedora). Ej: Depreciación Acumulada, Amortización Acumulada.
+              </p>
+            </div>
+          )}
 
           {/* Level — informational only */}
           <p className="text-xs text-gray-500">
