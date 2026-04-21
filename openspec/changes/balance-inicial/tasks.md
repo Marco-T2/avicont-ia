@@ -42,13 +42,13 @@
 **Phase 3 prerequisite**: verify `NotFoundError` exists in `@/features/shared/errors` (it is used elsewhere in the codebase — `grep -r "NotFoundError" features/ app/` should find imports). If missing, add a minimal `export class NotFoundError extends Error {}` to that module BEFORE writing T10.
 
 <!-- RED -->
-- [ ] T10 Write failing service test — no CA → `NotFoundError` — touches `features/accounting/initial-balance/__tests__/initial-balance.service.test.ts`. Acceptance: mocked repo returns empty for `countCAVouchers`; asserts service throws `NotFoundError` — fails because service does not exist yet.
+- [x] T10 Write failing service test — no CA → `NotFoundError` — touches `features/accounting/initial-balance/__tests__/initial-balance.service.test.ts`. Acceptance: mocked repo returns empty for `countCAVouchers`; asserts service throws `NotFoundError` — fails because service does not exist yet.
 
 <!-- RED -->
-- [ ] T11 Add failing service test — valid CA → full statement — touches same `initial-balance.service.test.ts`. Acceptance: mocked repo returns rows; asserts service returns `InitialBalanceStatement` with orgId, dateAt, sections, builder called with correct `BuildInitialBalanceInput` — fails because service does not exist yet.
+- [x] T11 Add failing service test — valid CA → full statement — touches same `initial-balance.service.test.ts`. Acceptance: mocked repo returns rows; asserts service returns `InitialBalanceStatement` with orgId, dateAt, sections, builder called with correct `BuildInitialBalanceInput` — fails because service does not exist yet.
 
 <!-- GREEN -->
-- [ ] T12 Create service — touches `features/accounting/initial-balance/initial-balance.service.ts`. Acceptance: uses `Promise.all` to fetch CA balances, org metadata, chart-of-accounts with subtypes, and CA count; calls builder; raises `NotFoundError` if no CA exists; makes T10–T11 pass.
+- [x] T12 Create service — touches `features/accounting/initial-balance/initial-balance.service.ts`. Acceptance: uses `Promise.all` to fetch CA balances, org metadata, chart-of-accounts with subtypes, and CA count; calls builder; raises `NotFoundError` if no CA exists; makes T10–T11 pass.
 
 ## Phase 4 — Exporters
 
