@@ -30,6 +30,11 @@ type RawBalanceRow = {
   nature: "DEUDORA" | "ACREEDORA";
 };
 
+type RawAperturaDeltaRow = {
+  account_id: string;
+  net: string;
+};
+
 export class EquityStatementRepository extends BaseRepository {
   /**
    * Aggregates POSTED JournalLines up to (cutoff) and returns signed-net balance
@@ -134,6 +139,61 @@ export class EquityStatementRepository extends BaseRepository {
       bucket.set(r.account_id, signed);
     }
     return out;
+  }
+
+  /**
+   * Aggregates POSTED JournalLines in [dateFrom, dateTo] joined to VoucherTypeCfg
+   * on code='CA' and account.type='PATRIMONIO'. Returns signed-net balance per
+   * accountId. Zero-deltas are omitted.
+   *
+   * Sign convention mirrors getPatrimonioBalancesAt:
+   *   DEUDORA:   delta = debit − credit
+   *   ACREEDORA: delta = credit − debit  (CA credit to capital → positive)
+   *
+   * Used to absorb the opening CA entry into SALDO_INICIAL before the invariant
+   * check in the equity statement builder.
+   */
+  async getAperturaPatrimonyDelta(
+    orgId: string,
+    dateFrom: Date,
+    dateTo: Date,
+  ): Promise<Map<string, Prisma.Decimal>> {
+    this.requireOrg(orgId);
+
+    const rows = await this.db.$queryRaw<RawAperturaDeltaRow[]>`
+      SELECT
+        jl."accountId" AS account_id,
+        SUM(
+          CASE
+            WHEN a.nature = 'DEUDORA'   THEN jl.debit - jl.credit
+            WHEN a.nature = 'ACREEDORA' THEN jl.credit - jl.debit
+          END
+        )::text AS net
+      FROM journal_lines   jl
+      JOIN journal_entries je ON je.id  = jl."journalEntryId"
+      JOIN accounts        a  ON a.id   = jl."accountId"
+      JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
+      WHERE
+        je."organizationId" = ${orgId}
+        AND je.status       = 'POSTED'
+        AND je.date        >= ${dateFrom}
+        AND je.date        <= ${dateTo}
+        AND vt.code         = 'CA'
+        AND a.type          = 'PATRIMONIO'
+      GROUP BY jl."accountId"
+      HAVING SUM(
+               CASE
+                 WHEN a.nature = 'DEUDORA'   THEN jl.debit - jl.credit
+                 WHEN a.nature = 'ACREEDORA' THEN jl.credit - jl.debit
+               END
+             ) <> 0
+    `;
+
+    const map = new Map<string, Prisma.Decimal>();
+    for (const r of rows) {
+      map.set(r.account_id, new Prisma.Decimal(r.net));
+    }
+    return map;
   }
 
   /** Active PATRIMONIO accounts ordered by code. */
