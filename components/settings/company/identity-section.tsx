@@ -18,6 +18,7 @@ export interface IdentityValues {
   direccion: string;
   ciudad: string;
   telefono: string;
+  representanteLegal: string;
   nroPatronal: string;
 }
 
@@ -39,6 +40,7 @@ const FIELDS: {
   { key: "direccion", label: "Dirección" },
   { key: "ciudad", label: "Ciudad" },
   { key: "telefono", label: "Teléfono" },
+  { key: "representanteLegal", label: "Representante Legal" },
   { key: "nroPatronal", label: "Nº Patronal (opcional)" },
 ];
 
@@ -56,6 +58,7 @@ export function IdentitySection({
       direccion: values.direccion,
       ciudad: values.ciudad,
       telefono: values.telefono,
+      representanteLegal: values.representanteLegal,
       nroPatronal: values.nroPatronal || null,
     };
     void onSave(patch);

@@ -49,6 +49,7 @@ function profileToIdentity(profile: OrgProfile): IdentityValues {
     direccion: profile.direccion ?? "",
     ciudad: profile.ciudad ?? "",
     telefono: profile.telefono ?? "",
+    representanteLegal: profile.representanteLegal ?? "",
     nroPatronal: profile.nroPatronal ?? "",
   };
 }
