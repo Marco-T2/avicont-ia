@@ -29,6 +29,18 @@ export class FiscalPeriodsRepository extends BaseRepository {
     });
   }
 
+  async findByYearAndMonth(
+    organizationId: string,
+    year: number,
+    month: number,
+  ): Promise<FiscalPeriod | null> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.fiscalPeriod.findFirst({
+      where: { year, month, ...scope },
+    });
+  }
+
   async findOpenPeriod(organizationId: string): Promise<FiscalPeriod | null> {
     const scope = this.requireOrg(organizationId);
 
