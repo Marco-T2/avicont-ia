@@ -11,7 +11,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import {
+  ConflictError,
   NotFoundError,
+  PERIOD_ALREADY_CLOSED,
   PERIOD_NOT_FOUND,
 } from "@/features/shared/errors";
 import { MonthlyCloseService } from "../monthly-close.service";
@@ -82,5 +84,32 @@ describe("MonthlyCloseService.close — PERIOD_NOT_FOUND (T24)", () => {
     // destructured input.organizationId and input.periodId from the single-arg
     // object and passed them as two strings to periodsService.getById.
     expect(periodsService.getById).toHaveBeenCalledWith("org-1", "period-1");
+  });
+});
+
+// ── T25 — PERIOD_ALREADY_CLOSED (409) ────────────────────────────────────────
+
+describe("MonthlyCloseService.close — PERIOD_ALREADY_CLOSED (T25)", () => {
+  it("close throws PERIOD_ALREADY_CLOSED (409) when period.status = CLOSED", async () => {
+    const repo = buildRepoMock();
+    const periodsService = buildPeriodsServiceMock();
+
+    vi.mocked(periodsService.getById).mockResolvedValueOnce({
+      id: "period-1",
+      status: "CLOSED",
+    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+
+    const service = new MonthlyCloseService(
+      repo as unknown as MonthlyCloseRepository,
+      periodsService,
+    );
+
+    await expect(service.close(baseInput)).rejects.toSatisfy((err) => {
+      return (
+        err instanceof ConflictError &&
+        (err as ConflictError).code === PERIOD_ALREADY_CLOSED &&
+        (err as ConflictError).statusCode === 409
+      );
+    });
   });
 });
