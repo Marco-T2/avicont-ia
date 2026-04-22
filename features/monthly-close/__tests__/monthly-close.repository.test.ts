@@ -345,3 +345,144 @@ describe("MonthlyCloseRepository.sumDebitCredit (T12)", () => {
     expect(result.credit.eq(new Prisma.Decimal("50"))).toBe(true);
   });
 });
+
+// ── T14 — lockSales + lockPurchases ──────────────────────────────────────────
+
+describe("MonthlyCloseRepository lock methods — sales + purchases (T14)", () => {
+  afterEach(async () => {
+    await wipePerTestMutations();
+  });
+
+  it("lockSales transitions POSTED sales to LOCKED, returns count", async () => {
+    await prisma.sale.createMany({
+      data: [
+        {
+          organizationId: orgId,
+          status: "POSTED",
+          sequenceNumber: 101,
+          date: new Date("2026-01-10"),
+          contactId,
+          periodId: periodAId,
+          description: "Sale 1",
+          totalAmount: "100",
+          createdById: userId,
+        },
+        {
+          organizationId: orgId,
+          status: "POSTED",
+          sequenceNumber: 102,
+          date: new Date("2026-01-11"),
+          contactId,
+          periodId: periodAId,
+          description: "Sale 2",
+          totalAmount: "200",
+          createdById: userId,
+        },
+      ],
+    });
+
+    const count = await prisma.$transaction(async (tx) =>
+      repo.lockSales(tx, orgId, periodAId),
+    );
+    expect(count).toBe(2);
+
+    const rows = await prisma.sale.findMany({
+      where: { organizationId: orgId, periodId: periodAId },
+    });
+    expect(rows).toHaveLength(2);
+    for (const r of rows) {
+      expect(r.status).toBe("LOCKED");
+    }
+  });
+
+  it("lockPurchases transitions POSTED purchases to LOCKED, returns count", async () => {
+    await prisma.purchase.createMany({
+      data: [
+        {
+          organizationId: orgId,
+          purchaseType: "COMPRA_GENERAL",
+          status: "POSTED",
+          sequenceNumber: 201,
+          date: new Date("2026-01-12"),
+          contactId,
+          periodId: periodAId,
+          description: "Purchase 1",
+          totalAmount: "300",
+          createdById: userId,
+        },
+        {
+          organizationId: orgId,
+          purchaseType: "COMPRA_GENERAL",
+          status: "POSTED",
+          sequenceNumber: 202,
+          date: new Date("2026-01-13"),
+          contactId,
+          periodId: periodAId,
+          description: "Purchase 2",
+          totalAmount: "400",
+          createdById: userId,
+        },
+      ],
+    });
+
+    const count = await prisma.$transaction(async (tx) =>
+      repo.lockPurchases(tx, orgId, periodAId),
+    );
+    expect(count).toBe(2);
+
+    const rows = await prisma.purchase.findMany({
+      where: { organizationId: orgId, periodId: periodAId },
+    });
+    expect(rows).toHaveLength(2);
+    for (const r of rows) {
+      expect(r.status).toBe("LOCKED");
+    }
+  });
+
+  it("lock methods leave LOCKED documents unchanged", async () => {
+    await prisma.sale.create({
+      data: {
+        organizationId: orgId,
+        status: "LOCKED",
+        sequenceNumber: 301,
+        date: new Date("2026-01-14"),
+        contactId,
+        periodId: periodAId,
+        description: "Already locked sale",
+        totalAmount: "500",
+        createdById: userId,
+      },
+    });
+    await prisma.purchase.create({
+      data: {
+        organizationId: orgId,
+        purchaseType: "COMPRA_GENERAL",
+        status: "LOCKED",
+        sequenceNumber: 401,
+        date: new Date("2026-01-15"),
+        contactId,
+        periodId: periodAId,
+        description: "Already locked purchase",
+        totalAmount: "600",
+        createdById: userId,
+      },
+    });
+
+    const salesCount = await prisma.$transaction(async (tx) =>
+      repo.lockSales(tx, orgId, periodAId),
+    );
+    const purchasesCount = await prisma.$transaction(async (tx) =>
+      repo.lockPurchases(tx, orgId, periodAId),
+    );
+
+    // Already-LOCKED rows must be excluded from the count
+    expect(salesCount).toBe(0);
+    expect(purchasesCount).toBe(0);
+
+    // And they remain LOCKED (not corrupted)
+    const sales = await prisma.sale.findMany({ where: { organizationId: orgId } });
+    const purchases = await prisma.purchase.findMany({ where: { organizationId: orgId } });
+    expect(sales[0].status).toBe("LOCKED");
+    expect(purchases[0].status).toBe("LOCKED");
+  });
+});
