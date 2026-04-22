@@ -135,3 +135,14 @@ describe("MonthlyCloseService.close — F-03 unit multiplicity (T08)", () => {
     );
   });
 });
+
+// ── T09 — Payment DRAFT blocks close (F-03 item 4) ──────────────────────────
+
+describe("MonthlyCloseService.close — F-03 unit multiplicity (T09)", () => {
+  it("throws PERIOD_HAS_DRAFT_ENTRIES when one DRAFT Payment exists", async () => {
+    await assertDraftsBlock(
+      { dispatches: 0, payments: 1, journalEntries: 0, sales: 0, purchases: 0 },
+      { messageIncludes: "pago(s)", detailKey: "payments", detailValue: 1 },
+    );
+  });
+});
