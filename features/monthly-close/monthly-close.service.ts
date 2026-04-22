@@ -28,6 +28,57 @@ export class MonthlyCloseService {
     this.periodsService = periodsService ?? new FiscalPeriodsService();
   }
 
+  // ── Validación compartida: ¿puede cerrarse el período? ──
+  //
+  // Shared Single Source of Truth (REQ-5 / Design B3) for "does this period
+  // have any DRAFT documents that block close?". Consumed by both `close()`
+  // (as pre-TX guard) and `getSummary()` (to populate the `drafts` subobject
+  // and expose `canClose` to UI pre-flight consumers).
+  //
+  // PUBLIC on purpose: multiple legitimate call sites today, plus potential
+  // UI pre-flight hooks tomorrow (e.g. disable Close button when
+  // `canClose === false`). A private SOT would force cast-laden escape hatches
+  // in unit tests and future UI code — making it public is the honest shape.
+  public async validateCanClose(
+    organizationId: string,
+    periodId: string,
+  ): Promise<{
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+    sales: number;
+    purchases: number;
+    total: number;
+    canClose: boolean;
+  }> {
+    // At T20 `countDraftDocuments` still returns the pre-widening 3-key shape.
+    // T21 widens both the repo method and the return type in the same atomic
+    // commit; the local cast below is the bridge so T19b unit tests (which
+    // mock the 5-key shape) can run GREEN at this step. The cast collapses
+    // naturally once T21 lands.
+    const drafts = (await this.repo.countDraftDocuments(
+      organizationId,
+      periodId,
+    )) as {
+      dispatches: number;
+      payments: number;
+      journalEntries: number;
+      sales: number;
+      purchases: number;
+    };
+    const total =
+      drafts.dispatches +
+      drafts.payments +
+      drafts.journalEntries +
+      drafts.sales +
+      drafts.purchases;
+    return {
+      ...drafts,
+      total,
+      canClose: total === 0,
+    };
+  }
+
   // ── Resumen previo al cierre ──
 
   async getSummary(
