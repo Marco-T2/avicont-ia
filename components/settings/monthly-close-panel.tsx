@@ -33,7 +33,13 @@ interface Period {
 
 interface PeriodSummary {
   posted: { dispatches: number; payments: number; journalEntries: number };
-  drafts: { dispatches: number; payments: number; journalEntries: number };
+  drafts: {
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+    sales: number;
+    purchases: number;
+  };
   journalsByVoucherType: Array<{
     code: string;
     name: string;
@@ -62,7 +68,13 @@ function formatBs(amount: number): string {
 }
 
 function totalDrafts(drafts: PeriodSummary["drafts"]): number {
-  return drafts.dispatches + drafts.payments + drafts.journalEntries;
+  return (
+    drafts.dispatches +
+    drafts.payments +
+    drafts.journalEntries +
+    drafts.sales +
+    drafts.purchases
+  );
 }
 
 function totalPosted(posted: PeriodSummary["posted"]): number {
@@ -257,6 +269,18 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
                       {summary.drafts.journalEntries}
                     </p>
                     <p className="text-sm text-amber-600">Asientos en borrador</p>
+                  </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
+                    <p className="text-2xl font-bold text-amber-700">
+                      {summary.drafts.sales}
+                    </p>
+                    <p className="text-sm text-amber-600">Ventas en borrador</p>
+                  </div>
+                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
+                    <p className="text-2xl font-bold text-amber-700">
+                      {summary.drafts.purchases}
+                    </p>
+                    <p className="text-sm text-amber-600">Compras en borrador</p>
                   </div>
                 </div>
               )}

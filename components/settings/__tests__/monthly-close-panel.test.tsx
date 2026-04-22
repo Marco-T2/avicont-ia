@@ -60,7 +60,7 @@ function makeSummaryResponse(
       periodId: PERIOD_ID,
       periodStatus: "OPEN",
       posted: { dispatches: 1, payments: 1, journalEntries: 1 },
-      drafts: { dispatches: 0, payments: 0, journalEntries: 0 },
+      drafts: { dispatches: 0, payments: 0, journalEntries: 0, sales: 0, purchases: 0 },
       journalsByVoucherType: [],
       balance: { balanced, totalDebit, totalCredit, difference },
     }),
