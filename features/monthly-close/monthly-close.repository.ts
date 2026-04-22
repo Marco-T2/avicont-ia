@@ -140,6 +140,40 @@ export class MonthlyCloseRepository extends BaseRepository {
     return result.count;
   }
 
+  // ── Bloquear ventas POSTED en un período ──
+
+  async lockSales(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    periodId: string,
+  ): Promise<number> {
+    const scope = this.requireOrg(organizationId);
+
+    const result = await tx.sale.updateMany({
+      where: { periodId, status: "POSTED", ...scope },
+      data: { status: "LOCKED" },
+    });
+
+    return result.count;
+  }
+
+  // ── Bloquear compras POSTED en un período ──
+
+  async lockPurchases(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    periodId: string,
+  ): Promise<number> {
+    const scope = this.requireOrg(organizationId);
+
+    const result = await tx.purchase.updateMany({
+      where: { periodId, status: "POSTED", ...scope },
+      data: { status: "LOCKED" },
+    });
+
+    return result.count;
+  }
+
   // ── Resumen de asientos agrupados por tipo de comprobante ──
 
   async getJournalSummaryByVoucherType(
