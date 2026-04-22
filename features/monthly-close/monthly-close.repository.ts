@@ -64,6 +64,21 @@ export class MonthlyCloseRepository extends BaseRepository {
 
   // ── Sumar DEBE / HABER de asientos POSTED en un período ──
 
+  /**
+   * No-transaction variant: uses the shared PrismaClient directly.
+   * Called by getSummary, which runs outside a transaction.
+   */
+  sumDebitCreditNoTx(
+    organizationId: string,
+    periodId: string,
+  ): Promise<{ debit: Prisma.Decimal; credit: Prisma.Decimal }> {
+    return this.sumDebitCredit(
+      this.db as unknown as Prisma.TransactionClient,
+      organizationId,
+      periodId,
+    );
+  }
+
   async sumDebitCredit(
     tx: Prisma.TransactionClient,
     organizationId: string,

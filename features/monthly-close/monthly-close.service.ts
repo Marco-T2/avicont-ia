@@ -44,6 +44,7 @@ export class MonthlyCloseService {
       draftPayments,
       draftJournalEntries,
       journalsByVoucherType,
+      rawBalance,
     ] = await Promise.all([
       this.repo.countByStatus(organizationId, periodId, "dispatch", "POSTED"),
       this.repo.countByStatus(organizationId, periodId, "payment", "POSTED"),
@@ -52,6 +53,7 @@ export class MonthlyCloseService {
       this.repo.countByStatus(organizationId, periodId, "payment", "DRAFT"),
       this.repo.countByStatus(organizationId, periodId, "journalEntry", "DRAFT"),
       this.repo.getJournalSummaryByVoucherType(organizationId, periodId),
+      this.repo.sumDebitCreditNoTx(organizationId, periodId),
     ]);
 
     return {
@@ -68,7 +70,13 @@ export class MonthlyCloseService {
         journalEntries: draftJournalEntries,
       },
       journalsByVoucherType,
-    } as MonthlyCloseSummary;
+      balance: {
+        balanced: rawBalance.debit.eq(rawBalance.credit),
+        totalDebit: rawBalance.debit.toFixed(2),
+        totalCredit: rawBalance.credit.toFixed(2),
+        difference: rawBalance.debit.minus(rawBalance.credit).abs().toFixed(2),
+      },
+    };
   }
 
   // ── Ejecutar cierre mensual ──
