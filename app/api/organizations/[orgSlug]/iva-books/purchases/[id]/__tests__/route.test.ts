@@ -22,9 +22,9 @@ vi.mock("@/features/shared/middleware", () => ({
       );
     }
     if (err != null && typeof err === "object" && "statusCode" in err) {
-      const e = err as { message: string; code?: string; statusCode: number };
+      const e = err as { message: string; code?: string; statusCode: number; details?: Record<string, unknown> };
       return Response.json(
-        { error: e.message, code: e.code },
+        { error: e.message, code: e.code, ...(e.details ? { details: e.details } : {}) },
         { status: e.statusCode },
       );
     }
