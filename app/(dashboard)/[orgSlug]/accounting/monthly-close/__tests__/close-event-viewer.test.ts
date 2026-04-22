@@ -65,7 +65,7 @@ describe("/accounting/monthly-close/close-event — CloseEventPage RBAC", () => 
       searchParams: makeSearchParams(CORRELATION_ID),
     });
 
-    expect(mockRequirePermission).toHaveBeenCalledWith("journal", "read", ORG_SLUG);
+    expect(mockRequirePermission).toHaveBeenCalledWith("period", "read", ORG_SLUG);
     expect(mockRedirect).not.toHaveBeenCalled();
   });
 

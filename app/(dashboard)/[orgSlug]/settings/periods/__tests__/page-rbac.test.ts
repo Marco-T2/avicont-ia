@@ -48,8 +48,8 @@ describe("/settings/periods — rbac gate", () => {
     await PeriodsPage({ params: makeParams() });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
-      "accounting-config",
-      "write",
+      "period",
+      "read",
       ORG_SLUG,
     );
     expect(mockRedirect).not.toHaveBeenCalled();
