@@ -17,6 +17,7 @@ import {
   PERIOD_ALREADY_CLOSED,
   PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_NOT_FOUND,
+  PERIOD_UNBALANCED,
 } from "@/features/shared/errors";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
@@ -148,6 +149,56 @@ describe("MonthlyCloseService.close — PERIOD_HAS_DRAFT_ENTRIES (T26)", () => {
       }).details;
       if (!details) return false;
       return details.dispatches === 2 && details.journalEntries === 1;
+    });
+  });
+});
+
+// ── T27 — PERIOD_UNBALANCED with debit/credit/diff payload ──────────────────
+
+describe("MonthlyCloseService.close — PERIOD_UNBALANCED (T27)", () => {
+  it("close throws PERIOD_UNBALANCED with debit/credit/diff payload", async () => {
+    const repo = buildRepoMock();
+    const periodsService = buildPeriodsServiceMock();
+
+    vi.mocked(periodsService.getById).mockResolvedValueOnce({
+      id: "period-1",
+      status: "OPEN",
+    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+
+    vi.mocked(repo.countDraftDocuments).mockResolvedValueOnce({
+      dispatches: 0,
+      payments: 0,
+      journalEntries: 0,
+    });
+
+    vi.mocked(repo.sumDebitCredit).mockResolvedValueOnce({
+      debit: new Prisma.Decimal("100.00"),
+      credit: new Prisma.Decimal("95.00"),
+    });
+
+    const service = new MonthlyCloseService(
+      repo as unknown as MonthlyCloseRepository,
+      periodsService,
+    );
+
+    await expect(service.close(baseInput)).rejects.toSatisfy((err) => {
+      if (!(err instanceof ValidationError)) return false;
+      if ((err as ValidationError).code !== PERIOD_UNBALANCED) return false;
+      if ((err as ValidationError).statusCode !== 422) return false;
+      const details = (err as ValidationError & {
+        details?: {
+          debit?: Prisma.Decimal;
+          credit?: Prisma.Decimal;
+          diff?: Prisma.Decimal;
+        };
+      }).details;
+      if (!details) return false;
+      if (!details.debit || !details.credit || !details.diff) return false;
+      return (
+        details.debit.eq(new Prisma.Decimal("100.00")) &&
+        details.credit.eq(new Prisma.Decimal("95.00")) &&
+        details.diff.eq(new Prisma.Decimal("5.00"))
+      );
     });
   });
 });
