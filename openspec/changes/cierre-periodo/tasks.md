@@ -167,43 +167,43 @@ This sub-phase implements REQ-11: `GET /monthly-close/summary` exposes `{ balanc
 ## Phase 7 — LOCKED-Edit Enforcement (differentiated justification)
 
 <!-- RED -->
-- [ ] T39 Write failing unit tests for `validateLockedEdit` with period-status differentiation — touches `features/shared/__tests__/document-lifecycle.test.ts`. Acceptance: `it('validateLockedEdit: LOCKED doc in OPEN period, justification >= 10 chars → passes')`; `it('validateLockedEdit: LOCKED doc in OPEN period, justification < 10 chars → LOCKED_EDIT_REQUIRES_JUSTIFICATION with min=10')`; `it('validateLockedEdit: LOCKED doc in CLOSED period, justification >= 50 chars → passes')`; `it('validateLockedEdit: LOCKED doc in CLOSED period, justification < 50 chars → LOCKED_EDIT_REQUIRES_JUSTIFICATION with min=50')`; `it('validateLockedEdit: LOCKED doc, no period found → throws PERIOD_NOT_FOUND (fail-safe)')`; all fail because current `validateLockedEdit(status, role, justification)` does not accept `periodStatus`.
+- [x] T39 Write failing unit tests for `validateLockedEdit` with period-status differentiation — touches `features/shared/__tests__/document-lifecycle.test.ts`. Acceptance: `it('validateLockedEdit: LOCKED doc in OPEN period, justification >= 10 chars → passes')`; `it('validateLockedEdit: LOCKED doc in OPEN period, justification < 10 chars → LOCKED_EDIT_REQUIRES_JUSTIFICATION with min=10')`; `it('validateLockedEdit: LOCKED doc in CLOSED period, justification >= 50 chars → passes')`; `it('validateLockedEdit: LOCKED doc in CLOSED period, justification < 50 chars → LOCKED_EDIT_REQUIRES_JUSTIFICATION with min=50')`; `it('validateLockedEdit: LOCKED doc, no period found → throws PERIOD_NOT_FOUND (fail-safe)')`; all fail because current `validateLockedEdit(status, role, justification)` does not accept `periodStatus`.
 
 <!-- GREEN -->
-- [ ] T40 Update `validateLockedEdit` to accept `periodStatus` — touches `features/shared/document-lifecycle.service.ts`. Acceptance: new signature `validateLockedEdit(status, role, periodStatus: 'OPEN' | 'CLOSED' | undefined, justification?)`; minimum is 10 when `periodStatus = 'OPEN'`, 50 when `periodStatus = 'CLOSED'`; when `periodStatus` is `undefined` (fail-safe), throws `NotFoundError` with `PERIOD_NOT_FOUND`; error payload includes `{ requiredMin: number }` in the message or as a structured field; makes T39 pass.
+- [x] T40 Update `validateLockedEdit` to accept `periodStatus` — touches `features/shared/document-lifecycle.service.ts`. Acceptance: new signature `validateLockedEdit(status, role, periodStatus: 'OPEN' | 'CLOSED' | undefined, justification?)`; minimum is 10 when `periodStatus = 'OPEN'`, 50 when `periodStatus = 'CLOSED'`; when `periodStatus` is `undefined` (fail-safe), throws `NotFoundError` with `PERIOD_NOT_FOUND`; error payload includes `{ requiredMin: number }` in the message or as a structured field; makes T39 pass.
 
 <!-- RED -->
-- [ ] T41 Write failing test for locked-edit enforcement in `dispatch.service.ts` — touches `features/dispatch/__tests__/dispatch.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED dispatch in CLOSED period requires justification.length >= 50')` — mocked period returns `{ status: 'CLOSED' }`; call with `justification='too short'` throws `LOCKED_EDIT_REQUIRES_JUSTIFICATION`; call with 50-char justification passes; fails because `dispatch.service.update` still calls old `validateLockedEdit(status, role, justification)` without `periodStatus`.
+- [x] T41 Write failing test for locked-edit enforcement in `dispatch.service.ts` — touches `features/dispatch/__tests__/dispatch.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED dispatch in CLOSED period requires justification.length >= 50')` — mocked period returns `{ status: 'CLOSED' }`; call with `justification='too short'` throws `LOCKED_EDIT_REQUIRES_JUSTIFICATION`; call with 50-char justification passes; fails because `dispatch.service.update` still calls old `validateLockedEdit(status, role, justification)` without `periodStatus`.
 
 <!-- GREEN -->
-- [ ] T42 Update `dispatch.service.ts` to pass `periodStatus` — touches `features/dispatch/dispatch.service.ts`. Acceptance: `update()` loads the period and passes `period.status` as `periodStatus` to `validateLockedEdit`; same for the void path; makes T41 pass; no other behavior changed.
+- [x] T42 Update `dispatch.service.ts` to pass `periodStatus` — touches `features/dispatch/dispatch.service.ts`. Acceptance: `update()` loads the period and passes `period.status` as `periodStatus` to `validateLockedEdit`; same for the void path; makes T41 pass; no other behavior changed.
 
 <!-- RED -->
-- [ ] T43 Write failing test for locked-edit enforcement in `payment.service.ts` — touches `features/payment/__tests__/payment.service.locked-edit.test.ts`. Acceptance: same pattern as T41 but for Payment update — `it('update LOCKED payment in CLOSED period requires justification >= 50')` and open-period variant; fails because `payment.service.ts` calls old `validateLockedEdit`.
+- [x] T43 Write failing test for locked-edit enforcement in `payment.service.ts` — touches `features/payment/__tests__/payment.service.locked-edit.test.ts`. Acceptance: same pattern as T41 but for Payment update — `it('update LOCKED payment in CLOSED period requires justification >= 50')` and open-period variant; fails because `payment.service.ts` calls old `validateLockedEdit`.
 
 <!-- GREEN -->
-- [ ] T44 Update `payment.service.ts` to pass `periodStatus` — touches `features/payment/payment.service.ts`. Acceptance: loads period before calling `validateLockedEdit`; makes T43 pass.
+- [x] T44 Update `payment.service.ts` to pass `periodStatus` — touches `features/payment/payment.service.ts`. Acceptance: loads period before calling `validateLockedEdit`; makes T43 pass.
 
 <!-- RED -->
-- [ ] T45 Write failing test for locked-edit enforcement in `journal.service.ts` — touches `features/accounting/__tests__/journal.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED journal entry in CLOSED period requires justification >= 50')`; fails because `journal.service.ts` calls old `validateLockedEdit`.
+- [x] T45 Write failing test for locked-edit enforcement in `journal.service.ts` — touches `features/accounting/__tests__/journal.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED journal entry in CLOSED period requires justification >= 50')`; fails because `journal.service.ts` calls old `validateLockedEdit`.
 
 <!-- GREEN -->
-- [ ] T46 Update `journal.service.ts` to pass `periodStatus` — touches `features/accounting/journal.service.ts`. Acceptance: loads period; passes `period.status` to `validateLockedEdit`; makes T45 pass.
+- [x] T46 Update `journal.service.ts` to pass `periodStatus` — touches `features/accounting/journal.service.ts`. Acceptance: loads period; passes `period.status` to `validateLockedEdit`; makes T45 pass.
 
 <!-- RED -->
-- [ ] T47 Write failing test for locked-edit enforcement in `sale.service.ts` — touches `features/sale/__tests__/sale.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED sale in CLOSED period requires justification >= 50')`; fails because `sale.service.ts` does not call `validateLockedEdit` for LOCKED documents.
+- [x] T47 Write failing test for locked-edit enforcement in `sale.service.ts` — touches `features/sale/__tests__/sale.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED sale in CLOSED period requires justification >= 50')`; fails because `sale.service.ts` does not call `validateLockedEdit` for LOCKED documents.
 
 <!-- GREEN -->
-- [ ] T48 Update `sale.service.ts` to enforce locked-edit justification — touches `features/sale/sale.service.ts`. Acceptance: adds `validateLockedEdit` call in the update path for LOCKED sales; loads period and passes `period.status`; makes T47 pass.
+- [x] T48 Update `sale.service.ts` to enforce locked-edit justification — touches `features/sale/sale.service.ts`. Acceptance: adds `validateLockedEdit` call in the update path for LOCKED sales; loads period and passes `period.status`; makes T47 pass.
 
 <!-- RED -->
-- [ ] T49 Write failing test for locked-edit enforcement in `purchase.service.ts` — touches `features/purchase/__tests__/purchase.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED purchase in CLOSED period requires justification >= 50')`; fails because `purchase.service.ts` does not call `validateLockedEdit` for LOCKED documents.
+- [x] T49 Write failing test for locked-edit enforcement in `purchase.service.ts` — touches `features/purchase/__tests__/purchase.service.locked-edit.test.ts`. Acceptance: `it('update LOCKED purchase in CLOSED period requires justification >= 50')`; fails because `purchase.service.ts` does not call `validateLockedEdit` for LOCKED documents.
 
 <!-- GREEN -->
-- [ ] T50 Update `purchase.service.ts` to enforce locked-edit justification — touches `features/purchase/purchase.service.ts`. Acceptance: adds `validateLockedEdit` call in the update path for LOCKED purchases; makes T49 pass.
+- [x] T50 Update `purchase.service.ts` to enforce locked-edit justification — touches `features/purchase/purchase.service.ts`. Acceptance: adds `validateLockedEdit` call in the update path for LOCKED purchases; makes T49 pass.
 
 <!-- VERIFY -->
-- [ ] T51 Run Phase 7 suite — `pnpm vitest run features/shared/__tests__/document-lifecycle.test.ts features/dispatch/__tests__/dispatch.service.locked-edit.test.ts features/payment/__tests__/payment.service.locked-edit.test.ts features/accounting/__tests__/journal.service.locked-edit.test.ts features/sale/__tests__/sale.service.locked-edit.test.ts features/purchase/__tests__/purchase.service.locked-edit.test.ts`. Acceptance: all locked-edit tests (10 new it-blocks across 5 services) green.
+- [x] T51 Run Phase 7 suite — `pnpm vitest run features/shared/__tests__/document-lifecycle.test.ts features/dispatch/__tests__/dispatch.service.locked-edit.test.ts features/payment/__tests__/payment.service.locked-edit.test.ts features/accounting/__tests__/journal.service.locked-edit.test.ts features/sale/__tests__/sale.service.locked-edit.test.ts features/purchase/__tests__/purchase.service.locked-edit.test.ts`. Acceptance: all locked-edit tests (10 new it-blocks across 5 services) green.
 
 ---
 
