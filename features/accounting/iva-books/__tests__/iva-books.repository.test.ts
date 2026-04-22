@@ -65,6 +65,7 @@ beforeAll(async () => {
       organizationId: orgId,
       name: "Gestión 2025",
       year: 2025,
+      month: 1,
       startDate: new Date("2025-01-01"),
       endDate: new Date("2025-12-31"),
       createdById: userId,
@@ -78,6 +79,9 @@ afterAll(async () => {
   await prisma.ivaSalesBook.deleteMany({ where: { organizationId: orgId } });
   await prisma.ivaPurchaseBook.deleteMany({ where: { organizationId: orgId } });
   await prisma.fiscalPeriod.deleteMany({ where: { organizationId: orgId } });
+  // audit_logs entries are emitted by Phase-1 triggers (fiscal_periods DELETE, etc.)
+  // and reference organizations via RESTRICT; purge them before deleting the org.
+  await prisma.auditLog.deleteMany({ where: { organizationId: orgId } });
   await prisma.organization.delete({ where: { id: orgId } });
   await prisma.user.delete({ where: { id: userId } });
   await prisma.$disconnect();
@@ -266,6 +270,7 @@ describe("IvaBooksRepository", () => {
           organizationId: orgId,
           name: "Gestión 2026",
           year: 2026,
+          month: 1,
           startDate: new Date("2026-01-01"),
           endDate: new Date("2026-12-31"),
           createdById: userId,

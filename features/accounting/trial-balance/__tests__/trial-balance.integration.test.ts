@@ -70,6 +70,7 @@ beforeAll(async () => {
       organizationId: orgId,
       name: "Gestión 2025 TB Integration",
       year: 2025,
+      month: 1,
       startDate: new Date("2025-01-01"),
       endDate: new Date("2025-12-31"),
       createdById: userId,
