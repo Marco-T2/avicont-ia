@@ -9,6 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { LEGACY_CLOSE_REMOVED } from "@/features/shared/errors";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -90,7 +91,7 @@ describe("PATCH /periods/[periodId] — legacy deprecation", () => {
     expect(res.status).toBe(410);
     const body = await res.json();
     expect(body).toEqual({
-      code: "LEGACY_CLOSE_REMOVED",
+      code: LEGACY_CLOSE_REMOVED,
       newEndpoint: "POST /api/organizations/{orgSlug}/monthly-close",
     });
   });
