@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import { BaseRepository } from "@/features/shared/base.repository";
 
 type EntityType = "dispatch" | "payment" | "journalEntry";
@@ -60,6 +60,33 @@ export class MonthlyCloseRepository extends BaseRepository {
     ]);
 
     return { dispatches, payments, journalEntries };
+  }
+
+  // ── Sumar DEBE / HABER de asientos POSTED en un período ──
+
+  async sumDebitCredit(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    periodId: string,
+  ): Promise<{ debit: Prisma.Decimal; credit: Prisma.Decimal }> {
+    const rows = await tx.$queryRaw<
+      Array<{ debit_total: string; credit_total: string }>
+    >`
+      SELECT
+        COALESCE(SUM(jl.debit),  0)::numeric(18,2) AS debit_total,
+        COALESCE(SUM(jl.credit), 0)::numeric(18,2) AS credit_total
+      FROM journal_lines jl
+      JOIN journal_entries je ON je.id = jl."journalEntryId"
+      WHERE je."organizationId" = ${organizationId}
+        AND je."periodId"       = ${periodId}
+        AND je.status            = 'POSTED';
+    `;
+
+    const row = rows[0] ?? { debit_total: "0", credit_total: "0" };
+    return {
+      debit: new Prisma.Decimal(row.debit_total),
+      credit: new Prisma.Decimal(row.credit_total),
+    };
   }
 
   // ── Bloquear despachos POSTED en un período ──
