@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -40,6 +41,12 @@ interface PeriodSummary {
     totalDebit: number;
   }>;
   periodStatus: string;
+  balance: {
+    balanced: boolean;
+    totalDebit: string;
+    totalCredit: string;
+    difference: string;
+  };
 }
 
 interface MonthlyClosePanelProps {
@@ -70,6 +77,7 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
   const [closing, setClosing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [justification, setJustification] = useState("");
 
   const selectedPeriod = periods.find((p) => p.id === selectedPeriodId);
 
@@ -108,10 +116,14 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
     setClosing(true);
     setError(null);
     try {
+      const trimmed = justification.trim();
       const res = await fetch(`/api/organizations/${orgSlug}/monthly-close`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ periodId: selectedPeriodId }),
+        body: JSON.stringify({
+          periodId: selectedPeriodId,
+          ...(trimmed ? { justification: trimmed } : {}),
+        }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -119,6 +131,7 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
         return;
       }
       setConfirmOpen(false);
+      setJustification("");
       router.refresh();
       // Reload summary to reflect CLOSED state
       await fetchSummary(selectedPeriodId);
@@ -131,7 +144,8 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
 
   const isClosed = summary?.periodStatus === "CLOSED";
   const hasDrafts = summary ? totalDrafts(summary.drafts) > 0 : false;
-  const canClose = !isClosed && !hasDrafts && summary !== null;
+  const canClose =
+    !isClosed && !hasDrafts && summary !== null && summary.balance.balanced === true;
 
   return (
     <div className="space-y-6">
@@ -284,6 +298,24 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
             </Card>
           )}
 
+          {/* Balance warning */}
+          {summary && !summary.balance.balanced && (
+            <div
+              role="alert"
+              className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+            >
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <div>
+                <p className="font-semibold">DEBE ≠ HABER — No se puede cerrar este período</p>
+                <p>
+                  Debe total: Bs {summary.balance.totalDebit} · Haber total: Bs{" "}
+                  {summary.balance.totalCredit} · Diferencia: Bs{" "}
+                  {summary.balance.difference}
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Close button */}
           {!isClosed && (
             <div className="flex justify-end">
@@ -301,7 +333,15 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
       )}
 
       {/* Confirmation dialog */}
-      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+      <Dialog
+        open={confirmOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            setJustification("");
+          }
+          setConfirmOpen(open);
+        }}
+      >
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Cierre de Período</DialogTitle>
@@ -326,10 +366,28 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
               </div>
             </DialogDescription>
           </DialogHeader>
+          <div className="space-y-1 px-0">
+            <label
+              htmlFor="close-justification"
+              className="text-sm font-medium text-foreground"
+            >
+              Justificación (opcional)
+            </label>
+            <Textarea
+              id="close-justification"
+              placeholder="Justificación (opcional)"
+              value={justification}
+              onChange={(e) => setJustification(e.target.value)}
+              disabled={closing}
+            />
+          </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setConfirmOpen(false)}
+              onClick={() => {
+                setJustification("");
+                setConfirmOpen(false);
+              }}
               disabled={closing}
             >
               Cancelar
