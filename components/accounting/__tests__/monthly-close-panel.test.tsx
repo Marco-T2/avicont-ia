@@ -6,12 +6,15 @@
  * (b) Passes justification string in POST body.
  *
  * Fails until T58 adds balance field handling and justification textarea.
+ *
+ * Relocated from components/settings/__tests__/monthly-close-panel.test.tsx
+ * as part of REQ-6 panel move to components/accounting/ (INV-3 atomic).
  */
 
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { MonthlyClosePanel } from "@/components/settings/monthly-close-panel";
+import { MonthlyClosePanel } from "@/components/accounting/monthly-close-panel";
 
 afterEach(() => cleanup());
 
