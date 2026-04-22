@@ -109,7 +109,7 @@ export class MonthlyCloseService {
       const dispatches = await this.repo.lockDispatches(tx, organizationId, periodId);
       const payments = await this.repo.lockPayments(tx, organizationId, periodId);
       const journalEntries = await this.repo.lockJournalEntries(tx, organizationId, periodId);
-      await this.repo.closePeriod(tx, organizationId, periodId);
+      await this.repo.markPeriodClosed(tx, organizationId, periodId, userId);
 
       return { dispatches, payments, journalEntries, periodStatus: "CLOSED" };
     });

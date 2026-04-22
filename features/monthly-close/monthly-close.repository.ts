@@ -219,16 +219,21 @@ export class MonthlyCloseRepository extends BaseRepository {
 
   // ── Cerrar el período fiscal ──
 
-  async closePeriod(
+  async markPeriodClosed(
     tx: Prisma.TransactionClient,
     organizationId: string,
     periodId: string,
+    userId: string,
   ): Promise<void> {
     const scope = this.requireOrg(organizationId);
 
     await tx.fiscalPeriod.update({
       where: { id: periodId, ...scope },
-      data: { status: "CLOSED" },
+      data: {
+        status: "CLOSED",
+        closedAt: new Date(),
+        closedBy: userId,
+      },
     });
   }
 }
