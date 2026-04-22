@@ -46,19 +46,145 @@ Before transitioning a period to CLOSED, the system MUST verify that the sum of 
 
 ### REQ-4: Draft Documents Block Close
 
-The presence of any document in `DRAFT` status — across `Dispatch`, `Payment`, or `JournalEntry` within the period — MUST block the close. All three entity types are checked. If any drafts exist, the system rejects with error code `PERIOD_HAS_DRAFT_ENTRIES`, and the response MUST include the counts per entity type to guide the user.
+> **Historical note**: REQ-4 as shipped on 2026-04-21 (via the `cierre-periodo` change) listed only
+> three entity types in the draft-block check: `Dispatch`, `Payment`, and `JournalEntry`. The same
+> `cierre-periodo` change added `Sale` and `Purchase` to the lock cascade in REQ-5, and the
+> `fiscal-period-monthly-create` change extended `lockSales`/`lockPurchases` to cover both entities
+> as first-class locked documents. Despite this, REQ-4's entity list was never updated to match
+> REQ-5's scope. The omission meant that `MonthlyCloseRepository.countDraftDocuments` counted only
+> 3 entities, and `MonthlyCloseService.close()` checked only 3 entities for DRAFT status. A period
+> with DRAFT `Sale` or `Purchase` records would pass the draft check and proceed to close, leaving
+> those DRAFTs inside a CLOSED period — unlocked, unaudited, invisible. This defect was detected by
+> the residual debt audit (finding F-03) and corrected by the `fiscal-period-monthly-create` change.
+> Both the defect and its correction are governed together by that change.
 
-> **Decision**: Drafts block close. Rationale: a draft document represents unfinished intent. Allowing close over drafts would silently leave un-reviewed financial data in a sealed period, making the audit trail misleading. The counts-per-type in the error message give the user a concrete remediation path.
+The presence of any document in `DRAFT` status — across `Dispatch`, `Payment`, `JournalEntry`,
+`Sale`, or `Purchase` within the period — MUST block the close. All five entity types are checked
+without exception. If any drafts exist across any of these five types, the system rejects with error
+code `PERIOD_HAS_DRAFT_ENTRIES`, and the response MUST include the counts per entity type to guide
+the user.
 
-> **Note on naming (OQ-3 resolved)**: the error constant in `features/shared/errors.ts` is `PERIOD_HAS_DRAFT_ENTRIES` (already exported). This spec aligns with that name — there is no separate `PERIOD_HAS_DRAFTS` constant.
+> **Correction note**: The shipped REQ-4 (2026-04-21) listed only three entity types (`Dispatch`,
+> `Payment`, `JournalEntry`). The correction adds `Sale` and `Purchase` to bring REQ-4 into
+> alignment with REQ-5, which already requires that all five entity types be locked at close. The
+> omission from REQ-4 was an authoring bug that accompanied an implementation bug in
+> `countDraftDocuments`. Both are corrected together by the `fiscal-period-monthly-create` change.
 
-> **Note on user-facing message**: the error CODE is generic (`PERIOD_HAS_DRAFT_ENTRIES`), but the user-facing MESSAGE MUST discriminate by entity type — e.g., "Existen borradores pendientes: 3 despachos, 1 asiento de diario." The wording is flexible; the requirement is that the human message name each entity type with a non-zero count so the user can act. The machine payload (see scenarios) separately exposes per-entity counts as structured fields.
+> **Decision**: Drafts block close. Rationale: a draft document represents unfinished intent.
+> Allowing close over drafts would silently leave un-reviewed financial data in a sealed period,
+> making the audit trail misleading. The counts-per-type in the error message give the user a
+> concrete remediation path. This decision is unchanged from the original REQ-4.
+
+> **Note on naming (OQ-3 resolved)**: the error constant in `features/shared/errors.ts` is
+> `PERIOD_HAS_DRAFT_ENTRIES` (already exported). This spec aligns with that name — there is no
+> separate `PERIOD_HAS_DRAFTS` constant.
+
+> **Note on user-facing message**: the error CODE is generic (`PERIOD_HAS_DRAFT_ENTRIES`), but the
+> user-facing MESSAGE MUST discriminate by entity type — e.g., "Existen borradores pendientes:
+> 3 despachos, 2 ventas, 1 compra." Each entity type with a non-zero count MUST be named explicitly
+> so the user knows what to act on. The Spanish terms are: despacho(s), pago(s), asiento(s) de
+> diario, venta(s), compra(s).
+
+#### countDraftDocuments return type (corrected)
+
+The return type of `MonthlyCloseRepository.countDraftDocuments` MUST be:
+```ts
+{ dispatches: number; payments: number; journalEntries: number; sales: number; purchases: number }
+```
+
+The shipped return type `{ dispatches: number; payments: number; journalEntries: number }` is
+superseded by this correction. All 5 keys are required. Missing keys are a contract violation.
+
+#### PERIOD_HAS_DRAFT_ENTRIES.details payload (corrected)
+
+The `details` field of `ValidationError(PERIOD_HAS_DRAFT_ENTRIES)` MUST carry all 5 counts in every
+error response:
+```ts
+{ dispatches: number; payments: number; journalEntries: number; sales: number; purchases: number }
+```
+
+The shipped payload shape `{ dispatches, payments, journalEntries }` is superseded. All 5 keys MUST
+be present, including keys with value 0.
 
 #### Scenarios
 
-- **When** a period has one or more `Dispatch`, `Payment`, or `JournalEntry` in `DRAFT` status, **then** close is rejected with `PERIOD_HAS_DRAFT_ENTRIES` and a payload listing draft counts per entity type (`{ dispatches, payments, journalEntries }`), and the user-facing message names each non-zero entity type in words.
-- **When** all documents in the period are `POSTED` or `LOCKED` (no DRAFTs), **then** the draft check passes and close proceeds to the balance check.
-- **When** only `JournalEntry` drafts exist (but dispatches and payments are all POSTED), **then** close is still rejected — all three entity types must be draft-free.
+**Scenario REQ-4.1 — Any DRAFT across all 5 entities blocks close**
+
+```
+GIVEN a period with one or more of Dispatch, Payment, JournalEntry, Sale, or Purchase
+      in DRAFT status
+WHEN close() is called for that period
+THEN close is rejected with PERIOD_HAS_DRAFT_ENTRIES
+AND the error details payload contains:
+    { dispatches: <n>, payments: <n>, journalEntries: <n>, sales: <n>, purchases: <n> }
+    where all 5 keys are present and non-present-entity counts are 0
+AND the user-facing message names each entity type with a non-zero count in Spanish
+```
+
+**Scenario REQ-4.2 — All documents POSTED or LOCKED — draft check passes**
+
+```
+GIVEN all Dispatch, Payment, JournalEntry, Sale, and Purchase records in the period
+      are in POSTED or LOCKED status (no DRAFTs)
+WHEN close() is called
+THEN the draft check passes
+AND close proceeds to the balance check step
+```
+
+**Scenario REQ-4.3 — Only JournalEntry drafts exist**
+
+```
+GIVEN a period with one JournalEntry in DRAFT status
+AND all Dispatch, Payment, Sale, Purchase records are POSTED or absent
+WHEN close() is called
+THEN close is rejected with PERIOD_HAS_DRAFT_ENTRIES
+AND error.details.journalEntries >= 1
+AND error.details.dispatches = 0, error.details.payments = 0,
+    error.details.sales = 0, error.details.purchases = 0
+```
+
+**Scenario REQ-4.4 — Only Sale drafts exist (corrected from shipped)**
+
+```
+GIVEN a period with one Sale in DRAFT status
+AND all Dispatch, Payment, JournalEntry, Purchase records are POSTED or absent
+WHEN close() is called
+THEN close is rejected with PERIOD_HAS_DRAFT_ENTRIES
+AND error.details.sales = 1
+AND error.details.dispatches = 0, error.details.payments = 0,
+    error.details.journalEntries = 0, error.details.purchases = 0
+AND the user-facing message contains "venta(s)"
+```
+
+**Scenario REQ-4.5 — Only Purchase drafts exist (corrected from shipped)**
+
+```
+GIVEN a period with one Purchase in DRAFT status
+AND all Dispatch, Payment, JournalEntry, Sale records are POSTED or absent
+WHEN close() is called
+THEN close is rejected with PERIOD_HAS_DRAFT_ENTRIES
+AND error.details.purchases = 1
+AND error.details.dispatches = 0, error.details.payments = 0,
+    error.details.journalEntries = 0, error.details.sales = 0
+AND the user-facing message contains "compra(s)"
+```
+
+**Scenario REQ-4.6 — Draft check and summary report the same counts (coherence)**
+
+```
+GIVEN a period with DRAFT Sale and DRAFT Purchase records
+WHEN getSummary() is called AND close() is called independently on the same state
+THEN getSummary().drafts.sales = error.details.sales from close()
+AND getSummary().drafts.purchases = error.details.purchases from close()
+```
+
+#### Invariant: REQ-4 and REQ-5 entity lists must remain synchronized
+
+REQ-4 (draft check) and REQ-5 (lock cascade) MUST always enumerate the same set of entity types.
+A future change that adds a new entity type to REQ-5's lock cascade MUST also update REQ-4's draft
+check in the same spec revision. Updating one without the other is the authoring error that produced
+the original F-03 bug. This invariant is encoded here as an explicit constraint to prevent the same
+class of drift in future changes.
 
 ---
 
