@@ -65,6 +65,8 @@ let _loader: (orgId: string) => Promise<OrgMatrix> = async (orgId) => {
     permissionsRead: Set<Resource>;
     permissionsWrite: Set<Resource>;
     canPost: Set<PostableResource>;
+    canClose: Set<Resource>;
+    canReopen: Set<Resource>;
     isSystem: boolean;
   }>();
   for (const row of rows) {
