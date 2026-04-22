@@ -51,21 +51,7 @@ export class MonthlyCloseService {
     total: number;
     canClose: boolean;
   }> {
-    // At T20 `countDraftDocuments` still returns the pre-widening 3-key shape.
-    // T21 widens both the repo method and the return type in the same atomic
-    // commit; the local cast below is the bridge so T19b unit tests (which
-    // mock the 5-key shape) can run GREEN at this step. The cast collapses
-    // naturally once T21 lands.
-    const drafts = (await this.repo.countDraftDocuments(
-      organizationId,
-      periodId,
-    )) as {
-      dispatches: number;
-      payments: number;
-      journalEntries: number;
-      sales: number;
-      purchases: number;
-    };
+    const drafts = await this.repo.countDraftDocuments(organizationId, periodId);
     const total =
       drafts.dispatches +
       drafts.payments +
@@ -161,16 +147,25 @@ export class MonthlyCloseService {
       );
     }
 
-    // 4. No drafts allowed → 422 with per-entity counts.
+    // 4. No drafts allowed → 422 with per-entity counts. Source of truth is
+    //    `validateCanClose()` so `close()` and `getSummary()` surface the same
+    //    5-key shape (REQ-5 / Design B3).
     const drafts = await this.repo.countDraftDocuments(organizationId, periodId);
     const totalDrafts =
-      drafts.dispatches + drafts.payments + drafts.journalEntries;
+      drafts.dispatches +
+      drafts.payments +
+      drafts.journalEntries +
+      drafts.sales +
+      drafts.purchases;
 
     if (totalDrafts > 0) {
       const parts: string[] = [];
       if (drafts.dispatches > 0) parts.push(`${drafts.dispatches} despacho(s)`);
       if (drafts.payments > 0) parts.push(`${drafts.payments} pago(s)`);
-      if (drafts.journalEntries > 0) parts.push(`${drafts.journalEntries} asiento(s)`);
+      if (drafts.journalEntries > 0)
+        parts.push(`${drafts.journalEntries} asiento(s) de diario`);
+      if (drafts.sales > 0) parts.push(`${drafts.sales} venta(s)`);
+      if (drafts.purchases > 0) parts.push(`${drafts.purchases} compra(s)`);
 
       throw new ValidationError(
         `El periodo tiene registros en borrador: ${parts.join(", ")}. Debe publicarlos o eliminarlos antes de cerrar`,
@@ -179,6 +174,8 @@ export class MonthlyCloseService {
           dispatches: drafts.dispatches,
           payments: drafts.payments,
           journalEntries: drafts.journalEntries,
+          sales: drafts.sales,
+          purchases: drafts.purchases,
         },
       );
     }
