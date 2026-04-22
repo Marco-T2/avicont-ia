@@ -49,29 +49,6 @@ vi.mock("@/features/shared/users.service", () => ({
   }),
 }));
 
-vi.mock("@/features/shared/middleware", () => ({
-  handleError: vi.fn((err: unknown) => {
-    // ZodError detection: has .flatten method
-    if (
-      err != null &&
-      typeof err === "object" &&
-      "flatten" in err &&
-      typeof (err as Record<string, unknown>).flatten === "function"
-    ) {
-      return Response.json({ error: "Datos inválidos", details: (err as { flatten: () => unknown }).flatten() }, { status: 400 });
-    }
-    // AppError: has statusCode
-    if (err != null && typeof err === "object" && "statusCode" in err) {
-      const e = err as { message: string; code?: string; statusCode: number; details?: Record<string, unknown> };
-      return Response.json(
-        { error: e.message, code: e.code, ...(e.details ? { details: e.details } : {}) },
-        { status: e.statusCode },
-      );
-    }
-    return Response.json({ error: "Error interno" }, { status: 500 });
-  }),
-}));
-
 // ── Import after mocks ────────────────────────────────────────────────────────
 
 import { POST } from "../route";
