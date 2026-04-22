@@ -23,8 +23,7 @@ export type CloseErrorCode =
   | "PERIOD_NOT_FOUND"
   | "PERIOD_ALREADY_CLOSED"
   | "PERIOD_HAS_DRAFT_ENTRIES"
-  | "PERIOD_UNBALANCED"
-  | "INSUFFICIENT_PERMISSION";
+  | "PERIOD_UNBALANCED";
 
 export interface MonthlyCloseSummary {
   periodId: string;
