@@ -1,6 +1,5 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { FiscalPeriodStatus } from "@/generated/prisma/client";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
 
 export class FiscalPeriodsRepository extends BaseRepository {
@@ -61,19 +60,6 @@ export class FiscalPeriodsRepository extends BaseRepository {
         createdById: data.createdById,
         organizationId: scope.organizationId,
       },
-    });
-  }
-
-  async updateStatus(
-    organizationId: string,
-    id: string,
-    status: FiscalPeriodStatus,
-  ): Promise<FiscalPeriod> {
-    const scope = this.requireOrg(organizationId);
-
-    return this.db.fiscalPeriod.update({
-      where: { id, ...scope },
-      data: { status },
     });
   }
 

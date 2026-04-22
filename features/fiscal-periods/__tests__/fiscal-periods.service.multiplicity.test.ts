@@ -65,7 +65,7 @@ function baseInput(overrides: Partial<CreateFiscalPeriodInput> = {}): CreateFisc
 // runtime.
 type RepoMock = Pick<
   FiscalPeriodsRepository,
-  "findAll" | "findById" | "findByYear" | "create" | "updateStatus" | "countDraftEntries"
+  "findAll" | "findById" | "findByYear" | "create" | "countDraftEntries"
 > & {
   findByYearAndMonth: ReturnType<typeof vi.fn>;
 };
@@ -77,7 +77,6 @@ function buildRepoMock(): RepoMock {
     findByYear: vi.fn().mockResolvedValue(null),
     findByYearAndMonth: vi.fn().mockResolvedValue(null),
     create: vi.fn(),
-    updateStatus: vi.fn(),
     countDraftEntries: vi.fn(),
   };
 }
