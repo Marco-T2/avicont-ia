@@ -67,8 +67,9 @@ export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador"],
   agent: ["owner", "admin", "contador", "cobrador", "member"],
-  // period: not directly writable — use close/reopen actions instead
-  period: [],
+  // period: write gate for metadata CRUD (create fiscal year, edit OPEN period metadata).
+  // Close/reopen state transitions use PERMISSIONS_CLOSE and PERMISSIONS_REOPEN respectively.
+  period: ["owner", "admin"],
 };
 
 /**
