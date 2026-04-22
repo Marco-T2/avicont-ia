@@ -53,7 +53,7 @@ const fullSummary = {
   periodId: "period-1",
   periodStatus: "OPEN",
   posted: { dispatches: 5, payments: 3, journalEntries: 10 },
-  drafts: { dispatches: 0, payments: 0, journalEntries: 0 },
+  drafts: { dispatches: 0, payments: 0, journalEntries: 0, sales: 0, purchases: 0 },
   journalsByVoucherType: [],
   balance: {
     balanced: true,

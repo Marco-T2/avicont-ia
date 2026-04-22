@@ -38,6 +38,8 @@ export interface MonthlyCloseSummary {
     dispatches: number;
     payments: number;
     journalEntries: number;
+    sales: number;
+    purchases: number;
   };
   journalsByVoucherType: Array<{
     code: string;
