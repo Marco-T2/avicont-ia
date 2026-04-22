@@ -59,9 +59,10 @@ function baseInput(overrides: Partial<CreateFiscalPeriodInput> = {}): CreateFisc
   };
 }
 
-// The mock repository intentionally OMITS `findOpenPeriod`. Its absence is
-// the structural guarantee for REQ-2 — if the service still references it,
-// tests T02-T04 fail with "findOpenPeriod is not a function".
+// After REQ-2 retirement (User-Phase 4), `findOpenPeriod` no longer exists on
+// the repository. The mock type reflects the current surface — any attempt by
+// the service to call a removed method would fail at the type level, not at
+// runtime.
 type RepoMock = Pick<
   FiscalPeriodsRepository,
   "findAll" | "findById" | "findByYear" | "create" | "updateStatus" | "countDraftEntries"
@@ -121,9 +122,9 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
       repo as unknown as FiscalPeriodsRepository,
     );
 
-    // The repo mock deliberately does NOT expose `findOpenPeriod`. If the
-    // service still calls it, this test fails with "findOpenPeriod is not a
-    // function" — the structural guarantee for REQ-2 retirement.
+    // REQ-2 retirement landed in User-Phase 4: `findOpenPeriod` is gone from
+    // both the service and the repository. This test now simply asserts that
+    // a second OPEN period can be created when the month slot is free.
     const result = await service.create(
       ORG_ID,
       baseInput({
@@ -164,11 +165,6 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
 
   // ── T05 — REQ-3 Scenario 3.2 — P2002 trip-wire ───────────────────────────
   //
-  // This test reaches the `repo.create` call site, so its repo mock DOES
-  // expose `findOpenPeriod` (returning null) — the structural guarantee
-  // from T03 protects month/OPEN conflicts on the happy-path pre-checks and
-  // is intentionally set aside here to exercise the race-condition catch.
-  //
   // TRIP-WIRE: the literal string
   // "fiscal_periods_organizationId_year_month_key" MUST appear identically
   // in this test AND in the service try/catch. Any Prisma rename fails
@@ -176,7 +172,7 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
 
   it("catches P2002 on fiscal_periods_organizationId_year_month_key and throws FISCAL_PERIOD_MONTH_EXISTS", async () => {
     const repo = buildRepoMock();
-    // Pre-checks pass: no year-level, no month-level, no OPEN collision.
+    // Pre-checks pass: no year-level and no month-level collision.
     vi.mocked(repo.findByYear).mockResolvedValueOnce(null);
     repo.findByYearAndMonth.mockResolvedValueOnce(null);
     // `repo.create` races with a concurrent caller and loses to the
@@ -191,12 +187,9 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
     );
     vi.mocked(repo.create).mockRejectedValueOnce(p2002);
 
-    const service = new FiscalPeriodsService({
-      ...repo,
-      // Present on the surface so the still-existing OPEN guard in create()
-      // does not short-circuit before the service reaches repo.create.
-      findOpenPeriod: vi.fn().mockResolvedValue(null),
-    } as unknown as FiscalPeriodsRepository);
+    const service = new FiscalPeriodsService(
+      repo as unknown as FiscalPeriodsRepository,
+    );
 
     await expect(service.create(ORG_ID, baseInput())).rejects.toSatisfy(
       (err) =>

@@ -41,14 +41,6 @@ export class FiscalPeriodsRepository extends BaseRepository {
     });
   }
 
-  async findOpenPeriod(organizationId: string): Promise<FiscalPeriod | null> {
-    const scope = this.requireOrg(organizationId);
-
-    return this.db.fiscalPeriod.findFirst({
-      where: { status: "OPEN", ...scope },
-    });
-  }
-
   async create(
     organizationId: string,
     data: CreateFiscalPeriodInput,
