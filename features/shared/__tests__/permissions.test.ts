@@ -98,7 +98,7 @@ const EXPECTED_WRITE: Record<Resource, Role[]> = {
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador"],
   agent: ["owner", "admin", "contador", "cobrador", "member"],
-  period: [],
+  period: ["owner", "admin"],
 };
 
 const POST_RESOURCES = ["sales", "purchases", "journal"] as const;
