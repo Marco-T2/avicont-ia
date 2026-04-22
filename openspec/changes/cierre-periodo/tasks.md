@@ -30,13 +30,13 @@ Lock order inside the transaction: `Dispatch → Payment → JournalEntry → Sa
 ## Phase 2 — Extended Audit Context
 
 <!-- RED -->
-- [ ] T07 Write failing unit tests for extended `setAuditContext` — touches `features/shared/__tests__/audit-context.test.ts`. Acceptance: four `it` blocks: (a) `'sets only userId when called with no optional args'` — asserts only `app.current_user_id` SET LOCAL was issued; (b) `'sets userId and justification when justification provided'` — asserts two SET LOCAL calls; (c) `'sets userId and correlationId when correlationId provided, no justification'` — asserts two SET LOCAL calls including `app.correlation_id`; (d) `'sets all three session vars when all args provided'` — asserts three SET LOCAL calls; all fail because `setAuditContext` does not yet accept `correlationId`.
+- [x] T07 Write failing unit tests for extended `setAuditContext` — touches `features/shared/__tests__/audit-context.test.ts`. Acceptance: four `it` blocks: (a) `'sets only userId when called with no optional args'` — asserts only `app.current_user_id` SET LOCAL was issued; (b) `'sets userId and justification when justification provided'` — asserts two SET LOCAL calls; (c) `'sets userId and correlationId when correlationId provided, no justification'` — asserts two SET LOCAL calls including `app.correlation_id`; (d) `'sets all three session vars when all args provided'` — asserts three SET LOCAL calls; all fail because `setAuditContext` does not yet accept `correlationId`.
 
 <!-- GREEN -->
-- [ ] T08 Extend `setAuditContext` with optional `correlationId` — touches `features/shared/audit-context.ts`. Acceptance: signature becomes `setAuditContext(tx, userId, justification?, correlationId?)`; when `correlationId` is provided and non-empty, issues `SET LOCAL app.correlation_id = '${escaped}'`; existing call sites (2-arg and 3-arg) compile without change; makes T07 pass; TypeScript strict mode: no `any`.
+- [x] T08 Extend `setAuditContext` with optional `correlationId` — touches `features/shared/audit-context.ts`. Acceptance: signature becomes `setAuditContext(tx, userId, justification?, correlationId?)`; when `correlationId` is provided and non-empty, issues `SET LOCAL app.correlation_id = '${escaped}'`; existing call sites (2-arg and 3-arg) compile without change; makes T07 pass; TypeScript strict mode: no `any`.
 
 <!-- VERIFY -->
-- [ ] T09 Run Phase 2 suite — `pnpm vitest run features/shared/__tests__/audit-context.test.ts`. Acceptance: all four permutation tests green.
+- [x] T09 Run Phase 2 suite — `pnpm vitest run features/shared/__tests__/audit-context.test.ts`. Acceptance: all four permutation tests green.
 
 ---
 
