@@ -2,12 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, CalendarDays } from "lucide-react";
 import PeriodCreateDialog from "./period-create-dialog";
-import PeriodCloseDialog from "./period-close-dialog";
 import type { FiscalPeriod } from "@/features/fiscal-periods";
 
 function formatDate(date: Date | string): string {
@@ -26,7 +26,6 @@ interface PeriodListProps {
 export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
   const router = useRouter();
   const [showCreate, setShowCreate] = useState(false);
-  const [periodToClose, setPeriodToClose] = useState<FiscalPeriod | null>(null);
 
   return (
     <>
@@ -100,12 +99,12 @@ export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
                       </td>
                       <td className="py-3 px-4 text-right">
                         {period.status === "OPEN" && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setPeriodToClose(period)}
-                          >
-                            Cerrar
+                          <Button variant="outline" size="sm" asChild>
+                            <Link
+                              href={`/${orgSlug}/accounting/monthly-close?periodId=${period.id}`}
+                            >
+                              Cerrar
+                            </Link>
                           </Button>
                         )}
                       </td>
@@ -124,18 +123,6 @@ export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
         orgSlug={orgSlug}
         onCreated={() => {
           setShowCreate(false);
-          router.refresh();
-        }}
-      />
-
-      <PeriodCloseDialog
-        period={periodToClose}
-        orgSlug={orgSlug}
-        onOpenChange={(open) => {
-          if (!open) setPeriodToClose(null);
-        }}
-        onClosed={() => {
-          setPeriodToClose(null);
           router.refresh();
         }}
       />
