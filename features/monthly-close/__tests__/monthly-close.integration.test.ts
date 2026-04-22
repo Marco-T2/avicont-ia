@@ -331,3 +331,67 @@ describe("MonthlyCloseService.close — integration rollback (T31)", () => {
     }
   });
 });
+
+// ── User-Phase 3 — DRAFT-blocks-close side-effect tests (T13-T17) ────────────
+//
+// For each of the 5 entities, seed one DRAFT row (only that entity), call
+// close(), and assert the service REJECTS; then verify three invariants:
+//   (a) period.status remains OPEN (+ closedAt/closedBy null),
+//   (b) the DRAFT row is still DRAFT (no mutation),
+//   (c) no STATUS_CHANGE audit row was emitted for fiscal_periods on this period.
+//
+// T16 (Sale) and T17 (Purchase) are the F-03 resolution tests — before T21
+// they fail because Sale/Purchase DRAFT rows leak through the 3-key
+// countDraftDocuments → close() proceeds to the TX path and the period ends
+// up CLOSED (silent corruption). Any such failure still proves the invariant
+// is broken.
+
+describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
+  it("Dispatch DRAFT blocks close — period.status and DRAFT row unchanged, no AuditLog emitted", async () => {
+    const draft = await prisma.dispatch.create({
+      data: {
+        organizationId: orgId,
+        dispatchType: "NOTA_DESPACHO",
+        status: "DRAFT",
+        sequenceNumber: 9001,
+        date: new Date("2026-03-05"),
+        contactId,
+        periodId,
+        description: "Draft dispatch blocks close",
+        totalAmount: "100.00",
+        createdById: userId,
+      },
+    });
+
+    const service = new MonthlyCloseService(
+      new MonthlyCloseRepository(),
+      new FiscalPeriodsService(),
+    );
+
+    await expect(
+      service.close({ organizationId: orgId, periodId, userId }),
+    ).rejects.toThrow();
+
+    const period = await prisma.fiscalPeriod.findUniqueOrThrow({
+      where: { id: periodId },
+    });
+    expect(period.status).toBe("OPEN");
+    expect(period.closedAt).toBeNull();
+    expect(period.closedBy).toBeNull();
+
+    const freshDraft = await prisma.dispatch.findUniqueOrThrow({
+      where: { id: draft.id },
+    });
+    expect(freshDraft.status).toBe("DRAFT");
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: {
+        organizationId: orgId,
+        entityType: "fiscal_periods",
+        entityId: periodId,
+        action: "STATUS_CHANGE",
+      },
+    });
+    expect(auditRows).toHaveLength(0);
+  });
+});
