@@ -96,6 +96,7 @@ model User {
   payments       Payment[]       @relation("PaymentCreator")
   purchases      Purchase[]      @relation("PurchaseCreator")
   sales          Sale[]          @relation("SaleCreator")
+  closedPeriods  FiscalPeriod[]  @relation("FiscalPeriodCloser")
 
   @@map("users")
 }
@@ -397,13 +398,17 @@ model FiscalPeriod {
   organizationId String
   name           String
   year           Int
+  month          Int                // 1..12 — calendar month (CHECK constraint in migration)
   startDate      DateTime
   endDate        DateTime
   status         FiscalPeriodStatus @default(OPEN)
+  closedAt       DateTime?
+  closedBy       String?
   createdById    String
   createdAt      DateTime           @default(now())
   updatedAt      DateTime           @updatedAt
   organization   Organization       @relation(fields: [organizationId], references: [id])
+  closedByUser   User?              @relation("FiscalPeriodCloser", fields: [closedBy], references: [id])
   journalEntries JournalEntry[]
   balances       AccountBalance[]
   dispatches     Dispatch[]
@@ -413,7 +418,7 @@ model FiscalPeriod {
   ivaPurchaseBooks IvaPurchaseBook[]
   ivaSalesBooks    IvaSalesBook[]
 
-  @@unique([organizationId, year])
+  @@unique([organizationId, year, month])
   @@index([organizationId, status])
   @@map("fiscal_periods")
 }
@@ -929,18 +934,20 @@ model SaleDetail {
 model AuditLog {
   id              String   @id @default(cuid())
   organizationId  String
-  entityType      String   // "dispatch", "payment", "journal_entry"
+  entityType      String   // "dispatch", "payment", "journal_entry", "fiscal_periods", "purchases"
   entityId        String
   action          String   // "CREATE", "UPDATE", "DELETE", "STATUS_CHANGE"
   oldValues       Json?
   newValues       Json?
   changedById     String?
   justification   String?
+  correlationId   String?  // Groups all audit rows emitted by a single close/reopen operation
   createdAt       DateTime @default(now())
   organization    Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, createdAt])
+  @@index([correlationId])
   @@map("audit_logs")
 }
 
