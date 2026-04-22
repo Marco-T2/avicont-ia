@@ -280,7 +280,7 @@ export class MonthlyCloseService {
 ```
 1. Load period (throw PERIOD_NOT_FOUND / PERIOD_ALREADY_CLOSED)
 2. Count drafts across Dispatch + Payment + JournalEntry (pre-tx; cheap)
-   → throw PERIOD_HAS_DRAFTS with per-entity counts
+   → throw PERIOD_HAS_DRAFT_ENTRIES with per-entity counts
 3. correlationId = crypto.randomUUID()
 4. prisma.$transaction(async (tx) => {
      setAuditContext(tx, userId, justification, correlationId)
@@ -437,7 +437,7 @@ Repository is mocked. Each test exercises one branch:
 |------|----------|
 | close succeeds on balanced OPEN period with no drafts | REQ-1, REQ-5, REQ-9 |
 | close rejects with `PERIOD_ALREADY_CLOSED` on CLOSED period | REQ-7 |
-| close rejects with `PERIOD_HAS_DRAFTS`, payload has per-entity counts | REQ-4 |
+| close rejects with `PERIOD_HAS_DRAFT_ENTRIES`, payload has per-entity counts | REQ-4 |
 | close rejects with `PERIOD_UNBALANCED`, payload has debit/credit/diff | REQ-3 |
 | close rejects with `PERIOD_NOT_FOUND` if period does not exist or crosses orgs | — |
 | CloseResult contains generated correlationId | REQ-8 |
