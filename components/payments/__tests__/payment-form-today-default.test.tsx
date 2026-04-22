@@ -48,6 +48,9 @@ const BASE_PERIOD = {
   organizationId: "org-1",
   year: 2026,
   createdById: "user-1",
+  month: 4,
+  closedAt: null,
+  closedBy: null,
   createdAt: new Date(),
   updatedAt: new Date(),
 };

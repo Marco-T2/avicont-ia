@@ -97,7 +97,7 @@ describe("JournalService — LOCKED-edit enforcement (T45 RED)", () => {
       service.updateEntry(
         ORG_ID,
         ENTRY_ID,
-        { description: "edited" },
+        { description: "edited", updatedById: "user-1" },
         "admin",
         "too short justification",
       ),
@@ -114,7 +114,7 @@ describe("JournalService — LOCKED-edit enforcement (T45 RED)", () => {
       service.updateEntry(
         ORG_ID,
         ENTRY_ID,
-        { description: "edited" },
+        { description: "edited", updatedById: "user-1" },
         "admin",
         "short",
       ),
