@@ -1,11 +1,15 @@
 export class AppError extends Error {
+  public details?: Record<string, unknown>;
+
   constructor(
     message: string,
     public readonly statusCode: number = 500,
     public readonly code?: string,
+    details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = "AppError";
+    if (details) this.details = details;
   }
 }
 
@@ -22,14 +26,22 @@ export class ForbiddenError extends AppError {
 }
 
 export class ValidationError extends AppError {
-  constructor(message: string, code = "VALIDATION") {
-    super(message, 422, code);
+  constructor(
+    message: string,
+    code = "VALIDATION",
+    details?: Record<string, unknown>,
+  ) {
+    super(message, 422, code, details);
   }
 }
 
 export class ConflictError extends AppError {
-  constructor(resource: string, code = "CONFLICT") {
-    super(`${resource} ya existe`, 409, code);
+  constructor(
+    resource: string,
+    code = "CONFLICT",
+    details?: Record<string, unknown>,
+  ) {
+    super(`${resource} ya existe`, 409, code, details);
   }
 }
 

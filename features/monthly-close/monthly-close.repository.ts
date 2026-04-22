@@ -224,16 +224,19 @@ export class MonthlyCloseRepository extends BaseRepository {
     organizationId: string,
     periodId: string,
     userId: string,
-  ): Promise<void> {
+  ): Promise<{ closedAt: Date; closedBy: string }> {
     const scope = this.requireOrg(organizationId);
 
+    const closedAt = new Date();
     await tx.fiscalPeriod.update({
       where: { id: periodId, ...scope },
       data: {
         status: "CLOSED",
-        closedAt: new Date(),
+        closedAt,
         closedBy: userId,
       },
     });
+
+    return { closedAt, closedBy: userId };
   }
 }
