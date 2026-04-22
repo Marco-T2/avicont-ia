@@ -27,7 +27,7 @@ export async function PATCH(
 ) {
   try {
     const { orgSlug } = await params;
-    await requirePermission("accounting-config", "write", orgSlug);
+    await requirePermission("period", "write", orgSlug);
 
     const body = await request.json();
     if (body?.status === "CLOSED") {

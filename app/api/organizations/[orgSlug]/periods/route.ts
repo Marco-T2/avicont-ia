@@ -30,7 +30,7 @@ export async function POST(
   try {
     const { orgSlug } = await params;
     const { session, orgId } = await requirePermission(
-      "accounting-config",
+      "period",
       "write",
       orgSlug,
     );
