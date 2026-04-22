@@ -105,4 +105,35 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
     expect(result).toEqual(created);
     expect(repo.findByYearAndMonth).toHaveBeenCalledWith(ORG_ID, 2026, 2);
   });
+
+  // ── T03 — REQ-2 Scenario 2.1 / REQ-8 item 2 ─────────────────────────────
+
+  it("creates period with another OPEN existing", async () => {
+    const repo = buildRepoMock();
+    // findByYear returns null — no year-level collision to mask the test.
+    vi.mocked(repo.findByYear).mockResolvedValueOnce(null);
+    // March slot is free (month-aware check passes).
+    repo.findByYearAndMonth.mockResolvedValueOnce(null);
+    const created = buildFiscalPeriod({ id: "fp-mar", month: 3, name: "Marzo 2026" });
+    vi.mocked(repo.create).mockResolvedValueOnce(created);
+
+    const service = new FiscalPeriodsService(
+      repo as unknown as FiscalPeriodsRepository,
+    );
+
+    // The repo mock deliberately does NOT expose `findOpenPeriod`. If the
+    // service still calls it, this test fails with "findOpenPeriod is not a
+    // function" — the structural guarantee for REQ-2 retirement.
+    const result = await service.create(
+      ORG_ID,
+      baseInput({
+        name: "Marzo 2026",
+        startDate: new Date(Date.UTC(2026, 2, 1)),
+        endDate: new Date(Date.UTC(2026, 2, 31)),
+      }),
+    );
+
+    expect(result).toEqual(created);
+    expect(repo.findByYearAndMonth).toHaveBeenCalledWith(ORG_ID, 2026, 3);
+  });
 });
