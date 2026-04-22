@@ -487,4 +487,56 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
     });
     expect(auditRows).toHaveLength(0);
   });
+
+  it("Sale DRAFT blocks close — period.status and DRAFT row unchanged, no AuditLog emitted", async () => {
+    // F-03 silent-corruption test. Before T21 widens countDraftDocuments to 5
+    // entities, Sale DRAFTs leak through and close() proceeds to close the
+    // period (no POSTED rows → lock cascade sees nothing to lock, balance sum
+    // is 0/0 → CLOSED). The invariant under test: a DRAFT in a period MUST
+    // block close. Current code violates it for Sale.
+    const draft = await prisma.sale.create({
+      data: {
+        organizationId: orgId,
+        status: "DRAFT",
+        sequenceNumber: 9501,
+        date: new Date("2026-03-08"),
+        contactId,
+        periodId,
+        description: "Draft sale blocks close (F-03)",
+        totalAmount: "250.00",
+        createdById: userId,
+      },
+    });
+
+    const service = new MonthlyCloseService(
+      new MonthlyCloseRepository(),
+      new FiscalPeriodsService(),
+    );
+
+    await expect(
+      service.close({ organizationId: orgId, periodId, userId }),
+    ).rejects.toThrow();
+
+    const period = await prisma.fiscalPeriod.findUniqueOrThrow({
+      where: { id: periodId },
+    });
+    expect(period.status).toBe("OPEN");
+    expect(period.closedAt).toBeNull();
+    expect(period.closedBy).toBeNull();
+
+    const freshDraft = await prisma.sale.findUniqueOrThrow({
+      where: { id: draft.id },
+    });
+    expect(freshDraft.status).toBe("DRAFT");
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: {
+        organizationId: orgId,
+        entityType: "fiscal_periods",
+        entityId: periodId,
+        action: "STATUS_CHANGE",
+      },
+    });
+    expect(auditRows).toHaveLength(0);
+  });
 });
