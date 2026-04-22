@@ -30,6 +30,8 @@ function makeMatrix(
       permissionsRead: Set<Resource>;
       permissionsWrite: Set<Resource>;
       canPost: Set<PostableResource>;
+      canClose: Set<Resource>;
+      canReopen: Set<Resource>;
       isSystem: boolean;
     }
   >();
@@ -39,6 +41,8 @@ function makeMatrix(
       permissionsRead: new Set(),
       permissionsWrite: new Set(),
       canPost: new Set(["purchases"] as PostableResource[]),
+      canClose: new Set(),
+      canReopen: new Set(),
       isSystem: false,
     });
   }
@@ -49,6 +53,8 @@ function makeMatrix(
       permissionsRead: new Set(),
       permissionsWrite: new Set(),
       canPost: new Set(),
+      canClose: new Set(),
+      canReopen: new Set(),
       isSystem: true,
     });
   }

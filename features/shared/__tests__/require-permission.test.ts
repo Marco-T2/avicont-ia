@@ -47,6 +47,8 @@ import { ForbiddenError } from "../errors";
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
+  PERMISSIONS_CLOSE,
+  PERMISSIONS_REOPEN,
   getPostAllowedRoles,
   SYSTEM_ROLES,
   type Resource,
@@ -80,6 +82,8 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
     permissionsRead: Set<Resource>;
     permissionsWrite: Set<Resource>;
     canPost: Set<PostableResource>;
+    canClose: Set<Resource>;
+    canReopen: Set<Resource>;
     isSystem: boolean;
   }>();
 
@@ -100,7 +104,17 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
         postAllowedRoles[r].includes(slug),
       ),
     );
-    roles.set(slug, { permissionsRead, permissionsWrite, canPost, isSystem: true });
+    const canClose = new Set<Resource>(
+      (Object.keys(PERMISSIONS_CLOSE) as Resource[]).filter((r) =>
+        PERMISSIONS_CLOSE[r].includes(slug),
+      ),
+    );
+    const canReopen = new Set<Resource>(
+      (Object.keys(PERMISSIONS_REOPEN) as Resource[]).filter((r) =>
+        PERMISSIONS_REOPEN[r].includes(slug),
+      ),
+    );
+    roles.set(slug, { permissionsRead, permissionsWrite, canPost, canClose, canReopen, isSystem: true });
   }
 
   return { orgId, roles, loadedAt: Date.now() };
