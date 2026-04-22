@@ -419,7 +419,16 @@ export class DispatchService {
     const status = dispatch.status as DocumentStatus;
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, undefined, justification);
+      const period = await this.periodsService.getById(
+        organizationId,
+        dispatch.periodId,
+      );
+      validateLockedEdit(
+        status,
+        role!,
+        period.status as "OPEN" | "CLOSED",
+        justification,
+      );
     } else {
       validateEditable(status);
     }
@@ -901,7 +910,16 @@ export class DispatchService {
 
     // Si está LOCKED, requerir rol y justificación
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, undefined, justification);
+      const period = await this.periodsService.getById(
+        organizationId,
+        dispatch.periodId,
+      );
+      validateLockedEdit(
+        status,
+        role!,
+        period.status as "OPEN" | "CLOSED",
+        justification,
+      );
     }
 
     await this.repo.transaction(async (tx) => {
