@@ -181,3 +181,18 @@ describe("MonthlyCloseService.close — F-03 unit multiplicity (T11)", () => {
     );
   });
 });
+
+// ── T12 — Purchase DRAFT blocks close (F-03 item 7 — NEW entity) ────────────
+//
+// Same F-03 divergent failure mode as T11 — `purchases: 1` is ignored by the
+// current 3-key sum so the service does NOT throw ValidationError. The test
+// still proves purchases is not counted.
+
+describe("MonthlyCloseService.close — F-03 unit multiplicity (T12)", () => {
+  it("throws PERIOD_HAS_DRAFT_ENTRIES when one DRAFT Purchase exists", async () => {
+    await assertDraftsBlock(
+      { dispatches: 0, payments: 0, journalEntries: 0, sales: 0, purchases: 1 },
+      { messageIncludes: "compra(s)", detailKey: "purchases", detailValue: 1 },
+    );
+  });
+});
