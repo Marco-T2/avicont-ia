@@ -27,7 +27,15 @@ type RepoMock = {
 function buildRepoMock(): RepoMock {
   return {
     countByStatus: vi.fn().mockResolvedValue(0),
-    countDraftDocuments: vi.fn(),
+    // 5-key default so `validateCanClose()` (called from `getSummary`) can
+    // sum the fields without tripping on undefined.
+    countDraftDocuments: vi.fn().mockResolvedValue({
+      dispatches: 0,
+      payments: 0,
+      journalEntries: 0,
+      sales: 0,
+      purchases: 0,
+    }),
     sumDebitCredit: vi.fn(),
     sumDebitCreditNoTx: vi.fn(),
     getJournalSummaryByVoucherType: vi.fn().mockResolvedValue([]),
