@@ -7,6 +7,7 @@
  */
 import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { MonthlyCloseRepository } from "../monthly-close.repository";
 
 const repo = new MonthlyCloseRepository();
@@ -19,6 +20,8 @@ let periodAId: string; // primary period under test
 let periodBId: string; // isolation target
 let voucherTypeId: string;
 let contactId: string;
+let accountDebitId: string;
+let accountCreditId: string;
 
 beforeAll(async () => {
   const now = Date.now();
@@ -87,6 +90,32 @@ beforeAll(async () => {
     },
   });
   contactId = contact.id;
+
+  const accountDebit = await prisma.account.create({
+    data: {
+      organizationId: orgId,
+      code: `1.1.1-MC-${now}`,
+      name: "Cuenta Deudora MC",
+      type: "ACTIVO",
+      nature: "DEUDORA",
+      level: 3,
+      isDetail: true,
+    },
+  });
+  accountDebitId = accountDebit.id;
+
+  const accountCredit = await prisma.account.create({
+    data: {
+      organizationId: orgId,
+      code: `3.1.1-MC-${now}`,
+      name: "Cuenta Acreedora MC",
+      type: "PATRIMONIO",
+      nature: "ACREEDORA",
+      level: 3,
+      isDetail: true,
+    },
+  });
+  accountCreditId = accountCredit.id;
 });
 
 afterAll(async () => {
@@ -95,6 +124,7 @@ afterAll(async () => {
   await prisma.payment.deleteMany({ where: { organizationId: orgId } });
   await prisma.sale.deleteMany({ where: { organizationId: orgId } });
   await prisma.purchase.deleteMany({ where: { organizationId: orgId } });
+  await prisma.account.deleteMany({ where: { organizationId: orgId } });
   await prisma.voucherTypeCfg.deleteMany({ where: { organizationId: orgId } });
   await prisma.contact.deleteMany({ where: { organizationId: orgId } });
   await prisma.auditLog.deleteMany({ where: { organizationId: orgId } });
@@ -198,5 +228,120 @@ describe("MonthlyCloseRepository.countDraftDocuments (T10)", () => {
 
     const resultB = await repo.countDraftDocuments(orgId, periodBId);
     expect(resultB.dispatches).toBe(1);
+  });
+});
+
+// ── T12 — sumDebitCredit ──────────────────────────────────────────────────────
+
+describe("MonthlyCloseRepository.sumDebitCredit (T12)", () => {
+  afterEach(async () => {
+    await wipePerTestMutations();
+  });
+
+  it("sumDebitCredit returns equal Decimals for balanced POSTED entries", async () => {
+    const je1 = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgId,
+        voucherTypeId,
+        periodId: periodAId,
+        createdById: userId,
+        number: 10,
+        date: new Date("2026-01-05"),
+        description: "Balanced JE 1",
+        status: "POSTED",
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: je1.id, accountId: accountDebitId, debit: "100", credit: "0" },
+        { journalEntryId: je1.id, accountId: accountCreditId, debit: "0", credit: "100" },
+      ],
+    });
+
+    const je2 = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgId,
+        voucherTypeId,
+        periodId: periodAId,
+        createdById: userId,
+        number: 11,
+        date: new Date("2026-01-06"),
+        description: "Balanced JE 2",
+        status: "POSTED",
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: je2.id, accountId: accountDebitId, debit: "100", credit: "0" },
+        { journalEntryId: je2.id, accountId: accountCreditId, debit: "0", credit: "100" },
+      ],
+    });
+
+    const result = await prisma.$transaction(async (tx) =>
+      repo.sumDebitCredit(tx, orgId, periodAId),
+    );
+
+    expect(result.debit).toBeInstanceOf(Prisma.Decimal);
+    expect(result.credit).toBeInstanceOf(Prisma.Decimal);
+    expect(result.debit.eq(result.credit)).toBe(true);
+    expect(result.debit.eq(new Prisma.Decimal("200"))).toBe(true);
+  });
+
+  it("sumDebitCredit returns Decimal(0) for period with no POSTED entries", async () => {
+    const result = await prisma.$transaction(async (tx) =>
+      repo.sumDebitCredit(tx, orgId, periodAId),
+    );
+    expect(result.debit).toBeInstanceOf(Prisma.Decimal);
+    expect(result.credit).toBeInstanceOf(Prisma.Decimal);
+    expect(result.debit.eq(new Prisma.Decimal(0))).toBe(true);
+    expect(result.credit.eq(new Prisma.Decimal(0))).toBe(true);
+  });
+
+  it("sumDebitCredit excludes DRAFT entries from aggregation", async () => {
+    const postedJe = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgId,
+        voucherTypeId,
+        periodId: periodAId,
+        createdById: userId,
+        number: 20,
+        date: new Date("2026-01-05"),
+        description: "Posted JE",
+        status: "POSTED",
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: postedJe.id, accountId: accountDebitId, debit: "50", credit: "0" },
+        { journalEntryId: postedJe.id, accountId: accountCreditId, debit: "0", credit: "50" },
+      ],
+    });
+
+    const draftJe = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgId,
+        voucherTypeId,
+        periodId: periodAId,
+        createdById: userId,
+        number: 21,
+        date: new Date("2026-01-06"),
+        description: "Draft JE (must not count)",
+        status: "DRAFT",
+      },
+    });
+    await prisma.journalLine.createMany({
+      data: [
+        { journalEntryId: draftJe.id, accountId: accountDebitId, debit: "999", credit: "0" },
+        { journalEntryId: draftJe.id, accountId: accountCreditId, debit: "0", credit: "999" },
+      ],
+    });
+
+    const result = await prisma.$transaction(async (tx) =>
+      repo.sumDebitCredit(tx, orgId, periodAId),
+    );
+
+    // If DRAFT 999 leaked in, totals would be 1049 not 50
+    expect(result.debit.eq(new Prisma.Decimal("50"))).toBe(true);
+    expect(result.credit.eq(new Prisma.Decimal("50"))).toBe(true);
   });
 });
