@@ -9,6 +9,7 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { FiscalPeriod } from "@/features/fiscal-periods";
@@ -27,18 +28,24 @@ export default function PeriodCloseDialog({
   onClosed,
 }: PeriodCloseDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [justification, setJustification] = useState("");
 
   async function handleClose() {
     if (!period) return;
     setIsSubmitting(true);
 
     try {
+      const body: Record<string, unknown> = { periodId: period.id };
+      if (justification.trim()) {
+        body.justification = justification.trim();
+      }
+
       const res = await fetch(
-        `/api/organizations/${orgSlug}/periods/${period.id}`,
+        `/api/organizations/${orgSlug}/monthly-close`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "CLOSED" }),
+          body: JSON.stringify(body),
         },
       );
 
@@ -65,7 +72,7 @@ export default function PeriodCloseDialog({
           <DialogTitle>Cerrar Período Fiscal</DialogTitle>
         </DialogHeader>
 
-        <div className="py-2 space-y-2">
+        <div className="py-2 space-y-4">
           <p className="text-gray-700">
             ¿Estás seguro de cerrar el período{" "}
             <span className="font-semibold">{period?.name}</span>?
@@ -73,6 +80,13 @@ export default function PeriodCloseDialog({
           <p className="text-sm text-red-600 font-medium">
             Esta acción no se puede revertir.
           </p>
+          <Textarea
+            placeholder="Motivo (opcional)"
+            value={justification}
+            onChange={(e) => setJustification(e.target.value)}
+            disabled={isSubmitting}
+            rows={3}
+          />
         </div>
 
         <DialogFooter>
