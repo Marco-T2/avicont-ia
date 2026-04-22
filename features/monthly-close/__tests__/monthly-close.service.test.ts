@@ -41,7 +41,11 @@ function buildRepoMock(): RepoMock {
     lockPurchases: vi.fn(),
     markPeriodClosed: vi.fn(),
     transaction: vi.fn(async (fn: (tx: Prisma.TransactionClient) => Promise<unknown>) => {
-      return fn({} as Prisma.TransactionClient);
+      // Minimal fake tx — only implements what setAuditContext touches.
+      const fakeTx = {
+        $executeRawUnsafe: vi.fn(async () => 0),
+      } as unknown as Prisma.TransactionClient;
+      return fn(fakeTx);
     }),
     // unused in these tests but part of the public repo surface
     countByStatus: vi.fn(),

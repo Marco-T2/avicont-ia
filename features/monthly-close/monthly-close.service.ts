@@ -1,13 +1,20 @@
 import "server-only";
+import { Prisma } from "@/generated/prisma/client";
 import {
+  ConflictError,
   ValidationError,
-  PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_ALREADY_CLOSED,
+  PERIOD_HAS_DRAFT_ENTRIES,
+  PERIOD_UNBALANCED,
 } from "@/features/shared/errors";
 import { setAuditContext } from "@/features/shared/audit-context";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/fiscal-periods.service";
 import { MonthlyCloseRepository } from "./monthly-close.repository";
-import type { MonthlyCloseSummary, CloseResult } from "./monthly-close.types";
+import type {
+  CloseRequest,
+  CloseResult,
+  MonthlyCloseSummary,
+} from "./monthly-close.types";
 
 export class MonthlyCloseService {
   private readonly repo: MonthlyCloseRepository;
@@ -61,57 +68,116 @@ export class MonthlyCloseService {
         journalEntries: draftJournalEntries,
       },
       journalsByVoucherType,
-    };
+    } as MonthlyCloseSummary;
   }
 
   // ── Ejecutar cierre mensual ──
+  //
+  // Flow (see openspec/changes/cierre-periodo/design.md §"Flow"):
+  //   1. Generate correlationId (BEFORE entering the transaction) so it can
+  //      propagate to every audit_logs row emitted by this close.
+  //   2. Resolve the period; throw NotFoundError(PERIOD_NOT_FOUND) on miss.
+  //   3. Reject 409 ConflictError(PERIOD_ALREADY_CLOSED) if already closed.
+  //   4. Reject 422 ValidationError(PERIOD_HAS_DRAFT_ENTRIES) with per-entity
+  //      counts if any DRAFT documents remain.
+  //   5. Inside the TX (first statement: setAuditContext with correlationId so
+  //      the audit triggers persist it), verify DEBE = HABER via Decimal.eq.
+  //   6. Lock in a strict order — Dispatch → Payment → JournalEntry → Sale →
+  //      Purchase — then markPeriodClosed LAST. Any throw rolls back the whole
+  //      transaction atomically.
+  async close(input: CloseRequest): Promise<CloseResult> {
+    const { organizationId, periodId, userId, justification } = input;
 
-  async close(
-    organizationId: string,
-    periodId: string,
-    userId: string,
-  ): Promise<CloseResult> {
+    // 1. correlationId BEFORE the TX.
+    const correlationId = crypto.randomUUID();
+
+    // 2. Period must exist.
     const period = await this.periodsService.getById(organizationId, periodId);
 
+    // 3. Already closed → 409.
     if (period.status === "CLOSED") {
-      throw new ValidationError(
-        "El periodo ya esta cerrado",
+      throw new ConflictError(
+        "El período fiscal",
         PERIOD_ALREADY_CLOSED,
       );
     }
 
-    // Verificar registros en DRAFT antes de intentar el cierre
-    const [draftDispatches, draftPayments, draftJournalEntries] =
-      await Promise.all([
-        this.repo.countByStatus(organizationId, periodId, "dispatch", "DRAFT"),
-        this.repo.countByStatus(organizationId, periodId, "payment", "DRAFT"),
-        this.repo.countByStatus(organizationId, periodId, "journalEntry", "DRAFT"),
-      ]);
-
-    const totalDrafts = draftDispatches + draftPayments + draftJournalEntries;
+    // 4. No drafts allowed → 422 with per-entity counts.
+    const drafts = await this.repo.countDraftDocuments(organizationId, periodId);
+    const totalDrafts =
+      drafts.dispatches + drafts.payments + drafts.journalEntries;
 
     if (totalDrafts > 0) {
       const parts: string[] = [];
-      if (draftDispatches > 0) parts.push(`${draftDispatches} despacho(s)`);
-      if (draftPayments > 0) parts.push(`${draftPayments} pago(s)`);
-      if (draftJournalEntries > 0) parts.push(`${draftJournalEntries} asiento(s)`);
+      if (drafts.dispatches > 0) parts.push(`${drafts.dispatches} despacho(s)`);
+      if (drafts.payments > 0) parts.push(`${drafts.payments} pago(s)`);
+      if (drafts.journalEntries > 0) parts.push(`${drafts.journalEntries} asiento(s)`);
 
       throw new ValidationError(
         `El periodo tiene registros en borrador: ${parts.join(", ")}. Debe publicarlos o eliminarlos antes de cerrar`,
         PERIOD_HAS_DRAFT_ENTRIES,
+        {
+          dispatches: drafts.dispatches,
+          payments: drafts.payments,
+          journalEntries: drafts.journalEntries,
+        },
       );
     }
 
-    // Transacción atómica única: contexto de auditoría -> bloquear todo -> cerrar período
-    return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+    // 5 + 6. Atomic TX: audit context → balance check → lock cascade → close.
+    return this.repo.transaction(
+      async (tx) => {
+        // MUST be the first statement inside the TX so the trigger picks up
+        // the correlation_id on every mutation that follows.
+        await setAuditContext(tx, userId, justification, correlationId);
 
-      const dispatches = await this.repo.lockDispatches(tx, organizationId, periodId);
-      const payments = await this.repo.lockPayments(tx, organizationId, periodId);
-      const journalEntries = await this.repo.lockJournalEntries(tx, organizationId, periodId);
-      await this.repo.markPeriodClosed(tx, organizationId, periodId, userId);
+        const balance = await this.repo.sumDebitCredit(
+          tx,
+          organizationId,
+          periodId,
+        );
 
-      return { dispatches, payments, journalEntries, periodStatus: "CLOSED" };
-    });
+        if (!balance.debit.eq(balance.credit)) {
+          const diff = balance.debit.minus(balance.credit).abs();
+          throw new ValidationError(
+            `El período no balancea: DEBE = ${balance.debit.toFixed(2)} / HABER = ${balance.credit.toFixed(2)} (diferencia ${diff.toFixed(2)})`,
+            PERIOD_UNBALANCED,
+            {
+              debit: balance.debit,
+              credit: balance.credit,
+              diff,
+            },
+          );
+        }
+
+        // Lock cascade — STRICT ORDER (see design §"Lock order").
+        const dispatches = await this.repo.lockDispatches(tx, organizationId, periodId);
+        const payments = await this.repo.lockPayments(tx, organizationId, periodId);
+        const journalEntries = await this.repo.lockJournalEntries(tx, organizationId, periodId);
+        const sales = await this.repo.lockSales(tx, organizationId, periodId);
+        const purchases = await this.repo.lockPurchases(tx, organizationId, periodId);
+
+        // markPeriodClosed is LAST inside the TX.
+        const { closedAt } = await this.repo.markPeriodClosed(
+          tx,
+          organizationId,
+          periodId,
+          userId,
+        );
+
+        return {
+          periodId,
+          periodStatus: "CLOSED" as const,
+          closedAt,
+          correlationId,
+          locked: { dispatches, payments, journalEntries, sales, purchases },
+        };
+      },
+      { timeout: 30_000 },
+    );
   }
 }
+
+// Keep the Prisma import hooked even if unused here — future typings may
+// reference Prisma.Decimal directly in this module.
+void Prisma;

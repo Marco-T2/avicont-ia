@@ -8,6 +8,7 @@ import {
   ACTIVE_PERIOD_ALREADY_EXISTS,
   PERIOD_ALREADY_CLOSED,
   PERIOD_HAS_DRAFT_ENTRIES,
+  PERIOD_NOT_FOUND,
 } from "@/features/shared/errors";
 import { FiscalPeriodsRepository } from "./fiscal-periods.repository";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
@@ -29,7 +30,7 @@ export class FiscalPeriodsService {
 
   async getById(organizationId: string, id: string): Promise<FiscalPeriod> {
     const period = await this.repo.findById(organizationId, id);
-    if (!period) throw new NotFoundError("Período fiscal");
+    if (!period) throw new NotFoundError("Período fiscal", PERIOD_NOT_FOUND);
     return period;
   }
 

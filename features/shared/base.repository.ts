@@ -14,11 +14,18 @@ export abstract class BaseRepository {
 
   /**
    * Exposes Prisma's interactive transaction so the service layer can
-   * coordinate multiple repositories and services atomically.
+   * coordinate multiple repositories and services atomically. The optional
+   * `options` argument is passed straight through to Prisma's `$transaction`
+   * so long-running flows (e.g. monthly close) can widen the default timeout.
    */
   transaction<T>(
     fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    options?: {
+      maxWait?: number;
+      timeout?: number;
+      isolationLevel?: Prisma.TransactionIsolationLevel;
+    },
   ): Promise<T> {
-    return this.db.$transaction(fn);
+    return this.db.$transaction(fn, options);
   }
 }
