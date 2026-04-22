@@ -38,6 +38,8 @@ const makeMatrixWithRole = (orgId: string, role: string): OrgMatrix => ({
       permissionsRead: new Set<Resource>(["sales", "reports"]),
       permissionsWrite: new Set<Resource>(["sales"]),
       canPost: new Set<PostableResource>(["sales"]),
+      canClose: new Set<Resource>(),
+      canReopen: new Set<Resource>(),
       isSystem: true,
     }],
   ]),
