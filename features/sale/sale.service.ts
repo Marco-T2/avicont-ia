@@ -565,7 +565,7 @@ export class SaleService {
     const status = sale.status as DocumentStatus;
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, justification);
+      validateLockedEdit(status, role!, undefined, justification);
     } else {
       validateEditable(status);
     }
@@ -925,7 +925,7 @@ export class SaleService {
     validateTransition(status, "VOIDED");
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, justification);
+      validateLockedEdit(status, role!, undefined, justification);
     }
 
     await this.repo.transaction(async (tx) => {

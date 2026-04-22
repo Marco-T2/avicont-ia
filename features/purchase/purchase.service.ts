@@ -669,7 +669,7 @@ export class PurchaseService {
     const status = purchase.status as DocumentStatus;
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, justification);
+      validateLockedEdit(status, role!, undefined, justification);
     } else {
       validateEditable(status);
     }
@@ -1079,7 +1079,7 @@ export class PurchaseService {
     validateTransition(status, "VOIDED");
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, justification);
+      validateLockedEdit(status, role!, undefined, justification);
     }
 
     await this.repo.transaction(async (tx) => {

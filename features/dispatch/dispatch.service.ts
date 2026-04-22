@@ -419,7 +419,7 @@ export class DispatchService {
     const status = dispatch.status as DocumentStatus;
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, justification);
+      validateLockedEdit(status, role!, undefined, justification);
     } else {
       validateEditable(status);
     }
@@ -901,7 +901,7 @@ export class DispatchService {
 
     // Si está LOCKED, requerir rol y justificación
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, justification);
+      validateLockedEdit(status, role!, undefined, justification);
     }
 
     await this.repo.transaction(async (tx) => {
