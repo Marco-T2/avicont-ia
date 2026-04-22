@@ -13,7 +13,9 @@ import { Prisma } from "@/generated/prisma/client";
 import {
   ConflictError,
   NotFoundError,
+  ValidationError,
   PERIOD_ALREADY_CLOSED,
+  PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_NOT_FOUND,
 } from "@/features/shared/errors";
 import { MonthlyCloseService } from "../monthly-close.service";
@@ -110,6 +112,42 @@ describe("MonthlyCloseService.close — PERIOD_ALREADY_CLOSED (T25)", () => {
         (err as ConflictError).code === PERIOD_ALREADY_CLOSED &&
         (err as ConflictError).statusCode === 409
       );
+    });
+  });
+});
+
+// ── T26 — PERIOD_HAS_DRAFT_ENTRIES with per-entity counts ───────────────────
+
+describe("MonthlyCloseService.close — PERIOD_HAS_DRAFT_ENTRIES (T26)", () => {
+  it("close throws PERIOD_HAS_DRAFT_ENTRIES with per-entity counts", async () => {
+    const repo = buildRepoMock();
+    const periodsService = buildPeriodsServiceMock();
+
+    vi.mocked(periodsService.getById).mockResolvedValueOnce({
+      id: "period-1",
+      status: "OPEN",
+    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+
+    vi.mocked(repo.countDraftDocuments).mockResolvedValueOnce({
+      dispatches: 2,
+      payments: 0,
+      journalEntries: 1,
+    });
+
+    const service = new MonthlyCloseService(
+      repo as unknown as MonthlyCloseRepository,
+      periodsService,
+    );
+
+    await expect(service.close(baseInput)).rejects.toSatisfy((err) => {
+      if (!(err instanceof ValidationError)) return false;
+      if ((err as ValidationError).code !== PERIOD_HAS_DRAFT_ENTRIES) return false;
+      if ((err as ValidationError).statusCode !== 422) return false;
+      const details = (err as ValidationError & {
+        details?: { dispatches?: number; payments?: number; journalEntries?: number };
+      }).details;
+      if (!details) return false;
+      return details.dispatches === 2 && details.journalEntries === 1;
     });
   });
 });
