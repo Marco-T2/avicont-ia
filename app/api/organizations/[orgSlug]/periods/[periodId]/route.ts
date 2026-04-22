@@ -1,5 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
+import { LEGACY_CLOSE_REMOVED } from "@/features/shared/errors";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 
 const service = new FiscalPeriodsService();
@@ -32,7 +33,7 @@ export async function PATCH(
     if (body?.status === "CLOSED") {
       return Response.json(
         {
-          code: "LEGACY_CLOSE_REMOVED",
+          code: LEGACY_CLOSE_REMOVED,
           newEndpoint: "POST /api/organizations/{orgSlug}/monthly-close",
         },
         { status: 410 },
