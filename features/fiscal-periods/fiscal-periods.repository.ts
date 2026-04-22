@@ -47,6 +47,10 @@ export class FiscalPeriodsRepository extends BaseRepository {
       data: {
         name: data.name,
         year: data.year,
+        // Derive calendar month from startDate — FiscalPeriod schema mandates
+        // month ∈ [1,12] and @@unique([organizationId, year, month]) since
+        // Phase 1 of cierre-periodo. getUTCMonth() returns 0-indexed.
+        month: data.startDate.getUTCMonth() + 1,
         startDate: data.startDate,
         endDate: data.endDate,
         status: "OPEN",
