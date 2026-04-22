@@ -77,18 +77,18 @@ export class MonthlyCloseService {
       postedDispatches,
       postedPayments,
       postedJournalEntries,
-      draftDispatches,
-      draftPayments,
-      draftJournalEntries,
+      draftsResult,
       journalsByVoucherType,
       rawBalance,
     ] = await Promise.all([
       this.repo.countByStatus(organizationId, periodId, "dispatch", "POSTED"),
       this.repo.countByStatus(organizationId, periodId, "payment", "POSTED"),
       this.repo.countByStatus(organizationId, periodId, "journalEntry", "POSTED"),
-      this.repo.countByStatus(organizationId, periodId, "dispatch", "DRAFT"),
-      this.repo.countByStatus(organizationId, periodId, "payment", "DRAFT"),
-      this.repo.countByStatus(organizationId, periodId, "journalEntry", "DRAFT"),
+      // Shared merge point — same source as `close()` pre-TX guard (REQ-5).
+      // `draftsResult` also exposes `total` and `canClose` which are dropped
+      // here but available to future UI pre-flight consumers via
+      // `validateCanClose()` directly.
+      this.validateCanClose(organizationId, periodId),
       this.repo.getJournalSummaryByVoucherType(organizationId, periodId),
       this.repo.sumDebitCreditNoTx(organizationId, periodId),
     ]);
@@ -102,9 +102,11 @@ export class MonthlyCloseService {
         journalEntries: postedJournalEntries,
       },
       drafts: {
-        dispatches: draftDispatches,
-        payments: draftPayments,
-        journalEntries: draftJournalEntries,
+        dispatches: draftsResult.dispatches,
+        payments: draftsResult.payments,
+        journalEntries: draftsResult.journalEntries,
+        sales: draftsResult.sales,
+        purchases: draftsResult.purchases,
       },
       journalsByVoucherType,
       balance: {
