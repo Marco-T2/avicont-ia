@@ -11,12 +11,19 @@ export async function setAuditContext(
   tx: Prisma.TransactionClient,
   userId: string,
   justification?: string,
+  correlationId?: string,
 ): Promise<void> {
   await tx.$executeRawUnsafe(`SET LOCAL app.current_user_id = '${userId.replace(/'/g, "''")}'`);
 
   if (justification) {
     await tx.$executeRawUnsafe(
       `SET LOCAL app.audit_justification = '${justification.replace(/'/g, "''")}'`,
+    );
+  }
+
+  if (correlationId) {
+    await tx.$executeRawUnsafe(
+      `SET LOCAL app.correlation_id = '${correlationId.replace(/'/g, "''")}'`,
     );
   }
 }
