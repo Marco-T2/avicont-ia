@@ -7,10 +7,12 @@ const periodsService = new FiscalPeriodsService();
 
 interface MonthlyClosePageProps {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ periodId?: string }>;
 }
 
-export default async function MonthlyClosePage({ params }: MonthlyClosePageProps) {
+export default async function MonthlyClosePage({ params, searchParams }: MonthlyClosePageProps) {
   const { orgSlug } = await params;
+  const { periodId } = await searchParams;
 
   let orgId: string;
   try {
@@ -21,6 +23,13 @@ export default async function MonthlyClosePage({ params }: MonthlyClosePageProps
   }
 
   const periods = await periodsService.list(orgId);
+
+  // REQ-2: validate periodId against the server-side period list (org-scoped, no extra round-trip).
+  // Only OPEN periods can be pre-selected (a CLOSED period would have nothing to close).
+  const preselectedPeriodId =
+    periodId && periods.some((p) => p.id === periodId && p.status === "OPEN")
+      ? periodId
+      : undefined;
 
   return (
     <div className="space-y-6">
@@ -33,6 +42,7 @@ export default async function MonthlyClosePage({ params }: MonthlyClosePageProps
 
       <MonthlyClosePanel
         orgSlug={orgSlug}
+        preselectedPeriodId={preselectedPeriodId}
         periods={periods.map((p) => ({
           id: p.id,
           name: p.name,

@@ -108,9 +108,9 @@ describe("/accounting/monthly-close — REQ-2 ?periodId pre-selection", () => {
     // The page returns <div className="space-y-6">...<MonthlyClosePanel ...></div>
     // We inspect JSX props directly without rendering (Server Component test pattern)
     const children = (jsx as React.ReactElement<{ children: React.ReactNode[] }>).props.children;
-    const childrenArray = Array.isArray(children) ? children : [children];
+    const childrenArray = (Array.isArray(children) ? children : [children]) as React.ReactNode[];
     const panelElement = childrenArray.find(
-      (child: React.ReactElement) => child?.type === mockMonthlyClosePanel,
+      (child) => React.isValidElement(child) && (child as React.ReactElement).type === mockMonthlyClosePanel,
     ) as React.ReactElement<{ preselectedPeriodId?: string }> | undefined;
 
     expect(panelElement).toBeDefined();
@@ -128,9 +128,9 @@ describe("/accounting/monthly-close — REQ-2 ?periodId pre-selection", () => {
     });
 
     const children = (jsx as React.ReactElement<{ children: React.ReactNode[] }>).props.children;
-    const childrenArray = Array.isArray(children) ? children : [children];
+    const childrenArray = (Array.isArray(children) ? children : [children]) as React.ReactNode[];
     const panelElement = childrenArray.find(
-      (child: React.ReactElement) => child?.type === mockMonthlyClosePanel,
+      (child) => React.isValidElement(child) && (child as React.ReactElement).type === mockMonthlyClosePanel,
     ) as React.ReactElement<{ preselectedPeriodId?: string }> | undefined;
 
     expect(panelElement).toBeDefined();

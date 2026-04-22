@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,7 @@ interface PeriodSummary {
 interface MonthlyClosePanelProps {
   orgSlug: string;
   periods: Period[];
+  preselectedPeriodId?: string;
 }
 
 function formatBs(amount: number): string {
@@ -81,9 +83,9 @@ function totalPosted(posted: PeriodSummary["posted"]): number {
   return posted.dispatches + posted.payments + posted.journalEntries;
 }
 
-export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) {
+export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: MonthlyClosePanelProps) {
   const router = useRouter();
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>("");
+  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(preselectedPeriodId ?? "");
   const [summary, setSummary] = useState<PeriodSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -118,6 +120,14 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
     [orgSlug]
   );
 
+  // REQ-2: auto-fetch summary when a period is pre-selected via ?periodId
+  useEffect(() => {
+    if (preselectedPeriodId) {
+      fetchSummary(preselectedPeriodId);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handlePeriodChange = (periodId: string) => {
     setSelectedPeriodId(periodId);
     fetchSummary(periodId);
@@ -142,8 +152,23 @@ export function MonthlyClosePanel({ orgSlug, periods }: MonthlyClosePanelProps) 
         setError(data.error ?? "Error al cerrar el período.");
         return;
       }
+      const result = await res.json();
+      const correlationId = result?.correlationId as string | undefined;
       setConfirmOpen(false);
       setJustification("");
+      // REQ-3: surface correlationId entry point via toast action (sonner v2 action: { label, onClick })
+      if (correlationId) {
+        toast.success("Período cerrado", {
+          description: "El período fue cerrado exitosamente.",
+          action: {
+            label: "Ver registro",
+            onClick: () =>
+              router.push(
+                `/${orgSlug}/accounting/monthly-close/close-event?correlationId=${correlationId}`,
+              ),
+          },
+        });
+      }
       router.refresh();
       // Reload summary to reflect CLOSED state
       await fetchSummary(selectedPeriodId);
