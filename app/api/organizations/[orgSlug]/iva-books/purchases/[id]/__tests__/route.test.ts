@@ -49,7 +49,12 @@ import {
   requireOrgAccess,
   requireRole,
 } from "@/features/shared/middleware";
-import { UnauthorizedError, NotFoundError } from "@/features/shared/errors";
+import {
+  UnauthorizedError,
+  NotFoundError,
+  ValidationError,
+  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+} from "@/features/shared/errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 const ZERO = D("0");
@@ -216,6 +221,34 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
     });
 
     expect(res.status).toBe(404);
+  });
+
+  it("retorna 422 LOCKED_EDIT_REQUIRES_JUSTIFICATION con details.requiredMin cuando justificación es insuficiente", async () => {
+    mockServiceInstance.updatePurchase.mockRejectedValue(
+      new ValidationError(
+        "Se requiere una justificación de al menos 50 caracteres para modificar un documento bloqueado en un período cerrado",
+        LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+        { requiredMin: 50 },
+      ),
+    );
+
+    const { PATCH } = await import("../route");
+    const request = new Request(
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/purchases/${ENTRY_ID}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ razonSocial: "Actualización", justification: "corta" }),
+      },
+    );
+    const res = await PATCH(request, {
+      params: Promise.resolve({ orgSlug: ORG_SLUG, id: ENTRY_ID }),
+    });
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    expect(body.code).toBe(LOCKED_EDIT_REQUIRES_JUSTIFICATION);
+    expect(body.details.requiredMin).toBe(50);
   });
 });
 
