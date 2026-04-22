@@ -248,10 +248,10 @@ This sub-phase implements REQ-11: `GET /monthly-close/summary` exposes `{ balanc
 ## Phase 10 — Full-Suite Regression
 
 <!-- VERIFY -->
-- [ ] T62 Run full vitest suite — `pnpm vitest run`. Acceptance: all tests green; no regressions in existing dispatch, payment, journal, sale, purchase, or fiscal-period suites; `PERIOD_HAS_DRAFT_ENTRIES` constant (reused from `errors.ts`) drives all draft-block error paths without breaking prior tests.
+- [x] T62 Run full vitest suite — `pnpm vitest run`. Acceptance: all tests green; no regressions in existing dispatch, payment, journal, sale, purchase, or fiscal-period suites; `PERIOD_HAS_DRAFT_ENTRIES` constant (reused from `errors.ts`) drives all draft-block error paths without breaking prior tests.
 
 <!-- VERIFY -->
-- [ ] T63 Type-check — `pnpm exec tsc --noEmit`. Acceptance: count of TypeScript errors does not increase beyond the pre-existing baseline (check with `pnpm exec tsc --noEmit 2>&1 | grep -c error` before and after); no new errors introduced by this change; new `"period"` resource in `Resource` union compiles cleanly across all call sites.
+- [x] T63 Type-check — `pnpm exec tsc --noEmit`. Acceptance: count of TypeScript errors does not increase beyond the pre-existing baseline (check with `pnpm exec tsc --noEmit 2>&1 | grep -c error` before and after); no new errors introduced by this change; new `"period"` resource in `Resource` union compiles cleanly across all call sites.
 
 ---
 
