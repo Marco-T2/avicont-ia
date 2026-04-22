@@ -329,7 +329,13 @@ export class JournalService {
     }
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, entry.periodId);
+      validateLockedEdit(
+        status,
+        role!,
+        period.status as "OPEN" | "CLOSED",
+        justification,
+      );
     } else if (status === "POSTED") {
       if (entry.sourceType) {
         const sourceTypeLabel = entry.sourceType === "dispatch" ? "despacho" : "cobro/pago";
@@ -566,7 +572,13 @@ export class JournalService {
 
     // Si se transiciona desde LOCKED, requerir rol + justificación
     if (entry.status === "LOCKED" && targetStatus === "VOIDED") {
-      validateLockedEdit(entry.status as DocumentStatus, role!, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, entry.periodId);
+      validateLockedEdit(
+        entry.status as DocumentStatus,
+        role!,
+        period.status as "OPEN" | "CLOSED",
+        justification,
+      );
     }
 
     // Al contabilizar (POST): validar que el período siga OPEN y la partida doble
