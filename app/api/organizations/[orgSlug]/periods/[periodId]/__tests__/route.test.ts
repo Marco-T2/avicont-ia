@@ -106,3 +106,24 @@ describe("GET /periods/[periodId] — retained", () => {
     expect(body).toMatchObject({ id: PERIOD_ID });
   });
 });
+
+describe("PATCH /periods/[periodId] — RBAC gate (REQ-4f)", () => {
+  it("calls requirePermission with (\"period\",\"write\",orgSlug) on PATCH non-close branch", async () => {
+    // RED: currently gates on ("accounting-config","write","test-org")
+    // A non-close body hits the write gate before returning 400
+    await PATCH(makePatchRequest({ name: "Enero 2026" }), { params: makeParams() });
+
+    expect(mockRequirePermission).toHaveBeenCalledWith("period", "write", ORG_SLUG);
+  });
+
+  it("REQ-4g — contador receives 403 on PATCH (not in PERMISSIONS_WRITE[\"period\"])", async () => {
+    const { ForbiddenError } = await import("@/features/shared/errors");
+    mockRequirePermission.mockRejectedValue(
+      new ForbiddenError("No tenés acceso a este recurso", "FORBIDDEN"),
+    );
+
+    const res = await PATCH(makePatchRequest({ name: "Enero 2026" }), { params: makeParams() });
+
+    expect(res.status).toBe(403);
+  });
+});
