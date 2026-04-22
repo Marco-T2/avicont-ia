@@ -394,4 +394,51 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
     });
     expect(auditRows).toHaveLength(0);
   });
+
+  it("Payment DRAFT blocks close — period.status and DRAFT row unchanged, no AuditLog emitted", async () => {
+    const draft = await prisma.payment.create({
+      data: {
+        organizationId: orgId,
+        status: "DRAFT",
+        method: "EFECTIVO",
+        date: new Date("2026-03-06"),
+        amount: "75.00",
+        description: "Draft payment blocks close",
+        periodId,
+        contactId,
+        createdById: userId,
+      },
+    });
+
+    const service = new MonthlyCloseService(
+      new MonthlyCloseRepository(),
+      new FiscalPeriodsService(),
+    );
+
+    await expect(
+      service.close({ organizationId: orgId, periodId, userId }),
+    ).rejects.toThrow();
+
+    const period = await prisma.fiscalPeriod.findUniqueOrThrow({
+      where: { id: periodId },
+    });
+    expect(period.status).toBe("OPEN");
+    expect(period.closedAt).toBeNull();
+    expect(period.closedBy).toBeNull();
+
+    const freshDraft = await prisma.payment.findUniqueOrThrow({
+      where: { id: draft.id },
+    });
+    expect(freshDraft.status).toBe("DRAFT");
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: {
+        organizationId: orgId,
+        entityType: "fiscal_periods",
+        entityId: periodId,
+        action: "STATUS_CHANGE",
+      },
+    });
+    expect(auditRows).toHaveLength(0);
+  });
 });
