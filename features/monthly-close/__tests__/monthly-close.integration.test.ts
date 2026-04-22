@@ -539,4 +539,55 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
     });
     expect(auditRows).toHaveLength(0);
   });
+
+  it("Purchase DRAFT blocks close — period.status and DRAFT row unchanged, no AuditLog emitted", async () => {
+    // F-03 mirror of the Sale test — Purchase DRAFTs leak through the 3-key
+    // countDraftDocuments and let close() mark the period CLOSED. The test
+    // asserts the fix: close() MUST reject and the period MUST stay OPEN.
+    const draft = await prisma.purchase.create({
+      data: {
+        organizationId: orgId,
+        purchaseType: "COMPRA_GENERAL",
+        status: "DRAFT",
+        sequenceNumber: 9601,
+        date: new Date("2026-03-09"),
+        contactId,
+        periodId,
+        description: "Draft purchase blocks close (F-03)",
+        totalAmount: "350.00",
+        createdById: userId,
+      },
+    });
+
+    const service = new MonthlyCloseService(
+      new MonthlyCloseRepository(),
+      new FiscalPeriodsService(),
+    );
+
+    await expect(
+      service.close({ organizationId: orgId, periodId, userId }),
+    ).rejects.toThrow();
+
+    const period = await prisma.fiscalPeriod.findUniqueOrThrow({
+      where: { id: periodId },
+    });
+    expect(period.status).toBe("OPEN");
+    expect(period.closedAt).toBeNull();
+    expect(period.closedBy).toBeNull();
+
+    const freshDraft = await prisma.purchase.findUniqueOrThrow({
+      where: { id: draft.id },
+    });
+    expect(freshDraft.status).toBe("DRAFT");
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: {
+        organizationId: orgId,
+        entityType: "fiscal_periods",
+        entityId: periodId,
+        action: "STATUS_CHANGE",
+      },
+    });
+    expect(auditRows).toHaveLength(0);
+  });
 });
