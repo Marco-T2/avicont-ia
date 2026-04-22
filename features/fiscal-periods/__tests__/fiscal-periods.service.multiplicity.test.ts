@@ -161,4 +161,48 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
 
     expect(repo.create).not.toHaveBeenCalled();
   });
+
+  // ── T05 — REQ-3 Scenario 3.2 — P2002 trip-wire ───────────────────────────
+  //
+  // This test reaches the `repo.create` call site, so its repo mock DOES
+  // expose `findOpenPeriod` (returning null) — the structural guarantee
+  // from T03 protects month/OPEN conflicts on the happy-path pre-checks and
+  // is intentionally set aside here to exercise the race-condition catch.
+  //
+  // TRIP-WIRE: the literal string
+  // "fiscal_periods_organizationId_year_month_key" MUST appear identically
+  // in this test AND in the service try/catch. Any Prisma rename fails
+  // BOTH visibly.
+
+  it("catches P2002 on fiscal_periods_organizationId_year_month_key and throws FISCAL_PERIOD_MONTH_EXISTS", async () => {
+    const repo = buildRepoMock();
+    // Pre-checks pass: no year-level, no month-level, no OPEN collision.
+    vi.mocked(repo.findByYear).mockResolvedValueOnce(null);
+    repo.findByYearAndMonth.mockResolvedValueOnce(null);
+    // `repo.create` races with a concurrent caller and loses to the
+    // composite unique index (organizationId, year, month).
+    const p2002 = new Prisma.PrismaClientKnownRequestError(
+      "Unique constraint failed",
+      {
+        code: "P2002",
+        clientVersion: "test",
+        meta: { target: ["fiscal_periods_organizationId_year_month_key"] },
+      },
+    );
+    vi.mocked(repo.create).mockRejectedValueOnce(p2002);
+
+    const service = new FiscalPeriodsService({
+      ...repo,
+      // Present on the surface so the still-existing OPEN guard in create()
+      // does not short-circuit before the service reaches repo.create.
+      findOpenPeriod: vi.fn().mockResolvedValue(null),
+    } as unknown as FiscalPeriodsRepository);
+
+    await expect(service.create(ORG_ID, baseInput())).rejects.toSatisfy(
+      (err) =>
+        err instanceof ConflictError &&
+        (err as ConflictError).code === FISCAL_PERIOD_MONTH_EXISTS &&
+        (err as ConflictError).statusCode === 409,
+    );
+  });
 });
