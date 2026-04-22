@@ -110,7 +110,7 @@ export const MODULES: Module[] = [
       {
         label: "Cierre Mensual",
         href: (orgSlug) => `/${orgSlug}/accounting/monthly-close`,
-        resource: "journal",
+        resource: "period",
       },
       // PR4.9: "Configuración" intentionally NOT in Contabilidad's navItems.
       // SidebarFooter is the canonical, org-level home for this link.
