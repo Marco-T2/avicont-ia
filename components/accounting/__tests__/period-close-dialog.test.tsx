@@ -32,7 +32,7 @@ describe("PeriodCloseDialog — canonical endpoint", () => {
       ok: true,
       json: async () => ({}),
     });
-    global.fetch = fetchMock;
+    global.fetch = fetchMock as unknown as typeof fetch;
   });
 
   it("close button calls POST /monthly-close with periodId", async () => {
