@@ -1,3 +1,31 @@
+export interface CloseRequest {
+  organizationId: string;
+  periodId: string;
+  userId: string;
+  justification?: string;
+}
+
+export interface CloseResult {
+  periodId: string;
+  periodStatus: "CLOSED";
+  closedAt: Date;
+  correlationId: string;
+  locked: {
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+    sales: number;
+    purchases: number;
+  };
+}
+
+export type CloseErrorCode =
+  | "PERIOD_NOT_FOUND"
+  | "PERIOD_ALREADY_CLOSED"
+  | "PERIOD_HAS_DRAFT_ENTRIES"
+  | "PERIOD_UNBALANCED"
+  | "INSUFFICIENT_PERMISSION";
+
 export interface MonthlyCloseSummary {
   periodId: string;
   periodStatus: string;
@@ -17,11 +45,10 @@ export interface MonthlyCloseSummary {
     count: number;
     totalDebit: number;
   }>;
-}
-
-export interface CloseResult {
-  dispatches: number;
-  payments: number;
-  journalEntries: number;
-  periodStatus: string;
+  balance: {
+    balanced: boolean;
+    totalDebit: string;
+    totalCredit: string;
+    difference: string;
+  };
 }
