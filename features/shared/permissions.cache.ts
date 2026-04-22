@@ -18,6 +18,7 @@
 
 import "server-only";
 import type { Resource, PostableResource } from "@/features/shared/permissions";
+import { PERMISSIONS_CLOSE, PERMISSIONS_REOPEN } from "@/features/shared/permissions";
 
 export type OrgMatrix = {
   orgId: string;
@@ -27,6 +28,8 @@ export type OrgMatrix = {
       permissionsRead: Set<Resource>;
       permissionsWrite: Set<Resource>;
       canPost: Set<PostableResource>;
+      canClose: Set<Resource>;
+      canReopen: Set<Resource>;
       isSystem: boolean;
     }
   >;
@@ -65,10 +68,24 @@ let _loader: (orgId: string) => Promise<OrgMatrix> = async (orgId) => {
     isSystem: boolean;
   }>();
   for (const row of rows) {
+    // canClose / canReopen are derived from static matrices (not stored in DB yet).
+    // We intersect: a role can close a resource iff PERMISSIONS_CLOSE grants it.
+    const canClose = new Set<Resource>(
+      (Object.keys(PERMISSIONS_CLOSE) as Resource[]).filter((r) =>
+        PERMISSIONS_CLOSE[r].includes(row.slug),
+      ),
+    );
+    const canReopen = new Set<Resource>(
+      (Object.keys(PERMISSIONS_REOPEN) as Resource[]).filter((r) =>
+        PERMISSIONS_REOPEN[r].includes(row.slug),
+      ),
+    );
     roles.set(row.slug, {
       permissionsRead: new Set(row.permissionsRead as Resource[]),
       permissionsWrite: new Set(row.permissionsWrite as Resource[]),
       canPost: new Set(row.canPost as PostableResource[]),
+      canClose,
+      canReopen,
       isSystem: row.isSystem,
     });
   }

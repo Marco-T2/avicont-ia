@@ -13,8 +13,8 @@ export async function POST(
   try {
     const { orgSlug } = await params;
     const { session, orgId } = await requirePermission(
-      "reports",
-      "write",
+      "period",
+      "close",
       orgSlug,
     );
     const userId = session.userId;
