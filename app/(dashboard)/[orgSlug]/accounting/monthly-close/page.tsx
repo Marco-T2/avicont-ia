@@ -14,7 +14,7 @@ export default async function MonthlyClosePage({ params }: MonthlyClosePageProps
 
   let orgId: string;
   try {
-    const result = await requirePermission("journal", "read", orgSlug);
+    const result = await requirePermission("period", "read", orgSlug);
     orgId = result.orgId;
   } catch {
     redirect(`/${orgSlug}`);
