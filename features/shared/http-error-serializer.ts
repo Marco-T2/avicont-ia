@@ -10,7 +10,11 @@ export function handleError(error: unknown): Response {
   }
   if (error instanceof AppError) {
     return Response.json(
-      { error: error.message, code: error.code },
+      {
+        error: error.message,
+        code: error.code,
+        ...(error.details ? { details: error.details } : {}),
+      },
       { status: error.statusCode },
     );
   }
