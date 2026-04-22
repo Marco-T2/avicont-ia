@@ -283,7 +283,8 @@ export class PaymentService {
 
     if (status === "LOCKED") {
       if (!role) throw new ValidationError("Se requiere el rol del usuario para editar documentos bloqueados");
-      validateLockedEdit(status, role, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, payment.periodId);
+      validateLockedEdit(status, role, period.status as "OPEN" | "CLOSED", justification);
     } else if (status === "POSTED") {
       // Las ediciones POSTED se manejan mediante el camino atómico reversar-modificar-reaplicar
       validateEditable(status);
@@ -503,7 +504,8 @@ export class PaymentService {
     // Si está LOCKED, requerir rol + justificación
     if (status === "LOCKED") {
       if (!role) throw new ValidationError("Se requiere el rol del usuario para anular documentos bloqueados");
-      validateLockedEdit(status, role, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, payment.periodId);
+      validateLockedEdit(status, role, period.status as "OPEN" | "CLOSED", justification);
     }
 
     await this.repo.transaction(async (tx) => {
@@ -603,7 +605,8 @@ export class PaymentService {
     // LOCKED requiere rol + justificación
     if (status === "LOCKED") {
       if (!role) throw new ValidationError("Se requiere el rol del usuario para reasignar documentos bloqueados");
-      validateLockedEdit(status, role, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, payment.periodId);
+      validateLockedEdit(status, role, period.status as "OPEN" | "CLOSED", justification);
     }
 
     // Validar nuevas asignaciones contra el monto del pago
