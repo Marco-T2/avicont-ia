@@ -25,7 +25,7 @@ vi.mock("@/features/fiscal-periods/server", () => {
   return { FiscalPeriodsService };
 });
 
-vi.mock("@/components/settings/monthly-close-panel", () => ({
+vi.mock("@/components/accounting/monthly-close-panel", () => ({
   MonthlyClosePanel: vi.fn().mockReturnValue(null),
 }));
 
