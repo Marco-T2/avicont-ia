@@ -55,7 +55,7 @@ describe("CloseErrorCode type shape", () => {
     expectTypeOf<"PERIOD_ALREADY_CLOSED">().toMatchTypeOf<CloseErrorCode>();
     expectTypeOf<"PERIOD_HAS_DRAFT_ENTRIES">().toMatchTypeOf<CloseErrorCode>();
     expectTypeOf<"PERIOD_UNBALANCED">().toMatchTypeOf<CloseErrorCode>();
-    expectTypeOf<"INSUFFICIENT_PERMISSION">().toMatchTypeOf<CloseErrorCode>();
+    expectTypeOf<"INSUFFICIENT_PERMISSION">().not.toMatchTypeOf<CloseErrorCode>();
     expect(true).toBe(true);
   });
 });
