@@ -486,3 +486,25 @@ describe("MonthlyCloseRepository lock methods — sales + purchases (T14)", () =
     expect(purchases[0].status).toBe("LOCKED");
   });
 });
+
+// ── T16 — markPeriodClosed ────────────────────────────────────────────────────
+
+describe("MonthlyCloseRepository.markPeriodClosed (T16)", () => {
+  afterEach(async () => {
+    await wipePerTestMutations();
+  });
+
+  it("markPeriodClosed sets status=CLOSED, closedAt, closedBy", async () => {
+    await prisma.$transaction(async (tx) => {
+      await repo.markPeriodClosed(tx, orgId, periodAId, userId);
+    });
+
+    const period = await prisma.fiscalPeriod.findUniqueOrThrow({
+      where: { id: periodAId },
+    });
+    expect(period.status).toBe("CLOSED");
+    expect(period.closedAt).toBeInstanceOf(Date);
+    expect(period.closedAt).not.toBeNull();
+    expect(period.closedBy).toBe(userId);
+  });
+});
