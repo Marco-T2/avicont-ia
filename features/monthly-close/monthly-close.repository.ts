@@ -2,7 +2,12 @@ import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { BaseRepository } from "@/features/shared/base.repository";
 
-type EntityType = "dispatch" | "payment" | "journalEntry";
+type EntityType =
+  | "dispatch"
+  | "payment"
+  | "journalEntry"
+  | "sale"
+  | "purchase";
 type EntityStatus = "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
 
 interface VoucherTypeSummary {
@@ -36,6 +41,14 @@ export class MonthlyCloseRepository extends BaseRepository {
         return this.db.journalEntry.count({
           where: { periodId, status, ...scope },
         });
+      case "sale":
+        return this.db.sale.count({
+          where: { periodId, status, ...scope },
+        });
+      case "purchase":
+        return this.db.purchase.count({
+          where: { periodId, status, ...scope },
+        });
     }
   }
 
@@ -44,22 +57,35 @@ export class MonthlyCloseRepository extends BaseRepository {
   async countDraftDocuments(
     organizationId: string,
     periodId: string,
-  ): Promise<{ dispatches: number; payments: number; journalEntries: number }> {
+  ): Promise<{
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+    sales: number;
+    purchases: number;
+  }> {
     const scope = this.requireOrg(organizationId);
 
-    const [dispatches, payments, journalEntries] = await Promise.all([
-      this.db.dispatch.count({
-        where: { periodId, status: "DRAFT", ...scope },
-      }),
-      this.db.payment.count({
-        where: { periodId, status: "DRAFT", ...scope },
-      }),
-      this.db.journalEntry.count({
-        where: { periodId, status: "DRAFT", ...scope },
-      }),
-    ]);
+    const [dispatches, payments, journalEntries, sales, purchases] =
+      await Promise.all([
+        this.db.dispatch.count({
+          where: { periodId, status: "DRAFT", ...scope },
+        }),
+        this.db.payment.count({
+          where: { periodId, status: "DRAFT", ...scope },
+        }),
+        this.db.journalEntry.count({
+          where: { periodId, status: "DRAFT", ...scope },
+        }),
+        this.db.sale.count({
+          where: { periodId, status: "DRAFT", ...scope },
+        }),
+        this.db.purchase.count({
+          where: { periodId, status: "DRAFT", ...scope },
+        }),
+      ]);
 
-    return { dispatches, payments, journalEntries };
+    return { dispatches, payments, journalEntries, sales, purchases };
   }
 
   // ── Sumar DEBE / HABER de asientos POSTED en un período ──

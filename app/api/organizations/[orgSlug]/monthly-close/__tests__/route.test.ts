@@ -190,6 +190,8 @@ describe("POST /api/.../monthly-close — error cases", () => {
         dispatches: 2,
         payments: 1,
         journalEntries: 0,
+        sales: 0,
+        purchases: 0,
       }),
     );
 

@@ -199,12 +199,24 @@ describe("MonthlyCloseRepository.countDraftDocuments (T10)", () => {
     });
 
     const result = await repo.countDraftDocuments(orgId, periodAId);
-    expect(result).toEqual({ dispatches: 1, payments: 1, journalEntries: 1 });
+    expect(result).toEqual({
+      dispatches: 1,
+      payments: 1,
+      journalEntries: 1,
+      sales: 0,
+      purchases: 0,
+    });
   });
 
   it("countDraftDocuments returns zeros for period with no drafts", async () => {
     const result = await repo.countDraftDocuments(orgId, periodAId);
-    expect(result).toEqual({ dispatches: 0, payments: 0, journalEntries: 0 });
+    expect(result).toEqual({
+      dispatches: 0,
+      payments: 0,
+      journalEntries: 0,
+      sales: 0,
+      purchases: 0,
+    });
   });
 
   it("countDraftDocuments is isolated to periodId", async () => {
@@ -224,7 +236,13 @@ describe("MonthlyCloseRepository.countDraftDocuments (T10)", () => {
     });
 
     const resultA = await repo.countDraftDocuments(orgId, periodAId);
-    expect(resultA).toEqual({ dispatches: 0, payments: 0, journalEntries: 0 });
+    expect(resultA).toEqual({
+      dispatches: 0,
+      payments: 0,
+      journalEntries: 0,
+      sales: 0,
+      purchases: 0,
+    });
 
     const resultB = await repo.countDraftDocuments(orgId, periodBId);
     expect(resultB.dispatches).toBe(1);

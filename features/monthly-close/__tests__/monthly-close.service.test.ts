@@ -137,6 +137,8 @@ describe("MonthlyCloseService.close — PERIOD_HAS_DRAFT_ENTRIES (T26)", () => {
       dispatches: 2,
       payments: 0,
       journalEntries: 1,
+      sales: 0,
+      purchases: 0,
     });
 
     const service = new MonthlyCloseService(
@@ -149,10 +151,21 @@ describe("MonthlyCloseService.close — PERIOD_HAS_DRAFT_ENTRIES (T26)", () => {
       if ((err as ValidationError).code !== PERIOD_HAS_DRAFT_ENTRIES) return false;
       if ((err as ValidationError).statusCode !== 422) return false;
       const details = (err as ValidationError & {
-        details?: { dispatches?: number; payments?: number; journalEntries?: number };
+        details?: {
+          dispatches?: number;
+          payments?: number;
+          journalEntries?: number;
+          sales?: number;
+          purchases?: number;
+        };
       }).details;
       if (!details) return false;
-      return details.dispatches === 2 && details.journalEntries === 1;
+      return (
+        details.dispatches === 2 &&
+        details.journalEntries === 1 &&
+        details.sales === 0 &&
+        details.purchases === 0
+      );
     });
   });
 });
@@ -173,6 +186,8 @@ describe("MonthlyCloseService.close — PERIOD_UNBALANCED (T27)", () => {
       dispatches: 0,
       payments: 0,
       journalEntries: 0,
+      sales: 0,
+      purchases: 0,
     });
 
     vi.mocked(repo.sumDebitCredit).mockResolvedValueOnce({
@@ -223,6 +238,8 @@ describe("MonthlyCloseService.close — happy path (T28)", () => {
       dispatches: 0,
       payments: 0,
       journalEntries: 0,
+      sales: 0,
+      purchases: 0,
     });
 
     vi.mocked(repo.sumDebitCredit).mockResolvedValueOnce({
