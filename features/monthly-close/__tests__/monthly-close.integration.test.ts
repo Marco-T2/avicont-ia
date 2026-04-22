@@ -441,4 +441,50 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
     });
     expect(auditRows).toHaveLength(0);
   });
+
+  it("JournalEntry DRAFT blocks close — period.status and DRAFT row unchanged, no AuditLog emitted", async () => {
+    const draft = await prisma.journalEntry.create({
+      data: {
+        organizationId: orgId,
+        voucherTypeId,
+        periodId,
+        createdById: userId,
+        number: 42,
+        date: new Date("2026-03-07"),
+        description: "Draft JE blocks close",
+        status: "DRAFT",
+      },
+    });
+
+    const service = new MonthlyCloseService(
+      new MonthlyCloseRepository(),
+      new FiscalPeriodsService(),
+    );
+
+    await expect(
+      service.close({ organizationId: orgId, periodId, userId }),
+    ).rejects.toThrow();
+
+    const period = await prisma.fiscalPeriod.findUniqueOrThrow({
+      where: { id: periodId },
+    });
+    expect(period.status).toBe("OPEN");
+    expect(period.closedAt).toBeNull();
+    expect(period.closedBy).toBeNull();
+
+    const freshDraft = await prisma.journalEntry.findUniqueOrThrow({
+      where: { id: draft.id },
+    });
+    expect(freshDraft.status).toBe("DRAFT");
+
+    const auditRows = await prisma.auditLog.findMany({
+      where: {
+        organizationId: orgId,
+        entityType: "fiscal_periods",
+        entityId: periodId,
+        action: "STATUS_CHANGE",
+      },
+    });
+    expect(auditRows).toHaveLength(0);
+  });
 });
