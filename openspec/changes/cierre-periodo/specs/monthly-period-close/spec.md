@@ -46,13 +46,17 @@ Before transitioning a period to CLOSED, the system MUST verify that the sum of 
 
 ### REQ-4: Draft Documents Block Close
 
-The presence of any document in `DRAFT` status — across `Dispatch`, `Payment`, or `JournalEntry` within the period — MUST block the close. All three entity types are checked. If any drafts exist, the system rejects with error code `PERIOD_HAS_DRAFTS`, and the response MUST include the counts per entity type to guide the user.
+The presence of any document in `DRAFT` status — across `Dispatch`, `Payment`, or `JournalEntry` within the period — MUST block the close. All three entity types are checked. If any drafts exist, the system rejects with error code `PERIOD_HAS_DRAFT_ENTRIES`, and the response MUST include the counts per entity type to guide the user.
 
 > **Decision**: Drafts block close. Rationale: a draft document represents unfinished intent. Allowing close over drafts would silently leave un-reviewed financial data in a sealed period, making the audit trail misleading. The counts-per-type in the error message give the user a concrete remediation path.
 
+> **Note on naming (OQ-3 resolved)**: the error constant in `features/shared/errors.ts` is `PERIOD_HAS_DRAFT_ENTRIES` (already exported). This spec aligns with that name — there is no separate `PERIOD_HAS_DRAFTS` constant.
+
+> **Note on user-facing message**: the error CODE is generic (`PERIOD_HAS_DRAFT_ENTRIES`), but the user-facing MESSAGE MUST discriminate by entity type — e.g., "Existen borradores pendientes: 3 despachos, 1 asiento de diario." The wording is flexible; the requirement is that the human message name each entity type with a non-zero count so the user can act. The machine payload (see scenarios) separately exposes per-entity counts as structured fields.
+
 #### Scenarios
 
-- **When** a period has one or more `Dispatch`, `Payment`, or `JournalEntry` in `DRAFT` status, **then** close is rejected with `PERIOD_HAS_DRAFTS` and a payload listing draft counts per entity type.
+- **When** a period has one or more `Dispatch`, `Payment`, or `JournalEntry` in `DRAFT` status, **then** close is rejected with `PERIOD_HAS_DRAFT_ENTRIES` and a payload listing draft counts per entity type (`{ dispatches, payments, journalEntries }`), and the user-facing message names each non-zero entity type in words.
 - **When** all documents in the period are `POSTED` or `LOCKED` (no DRAFTs), **then** the draft check passes and close proceeds to the balance check.
 - **When** only `JournalEntry` drafts exist (but dispatches and payments are all POSTED), **then** close is still rejected — all three entity types must be draft-free.
 
@@ -77,7 +81,9 @@ Closing a period transitions all `POSTED` documents to `LOCKED` in a single data
 
 The close operation requires the `period:close` permission. This is a **new, dedicated permission**, not the existing `reports:write`.
 
-> **Decision**: `period:close` (new) over `reports:write`. Justification: `reports:write` signals write access to report-like outputs (PDFs, exports, summaries). Closing a period is a fundamentally different class of action — it is an **irreversible write to domain state** that locks financial documents and transitions the period's lifecycle. Bundling it under `reports:write` would violate the principle of least privilege: a user authorized to regenerate reports would also gain the power to seal accounting periods. Separation of concerns demands a dedicated permission. This also enables future RBAC policies to grant period-close access only to senior accountants or administrators without widening the reports scope.
+> **Decision (OQ-1 resolved)**: the `Action` enum is extended with BOTH `'close'` AND `'reopen'` preemptively. A new `period` resource is added to the `Resource` union. The close route calls `requirePermission('period', 'close', orgSlug)`. The `'reopen'` value is not consumed by this change, but a future reopening SDD will need it and adding both actions in a single schema change is cheaper than two sequential migrations to the enum. The `PERMISSIONS_*` matrices gate `period:close` and `period:reopen` to `['owner', 'admin']` by default.
+
+> **Justification for a dedicated `period:close`**: `reports:write` signals write access to report-like outputs (PDFs, exports, summaries). Closing a period is a fundamentally different class of action — it is an **irreversible write to domain state** that locks financial documents and transitions the period's lifecycle. Bundling it under `reports:write` would violate the principle of least privilege: a user authorized to regenerate reports would also gain the power to seal accounting periods. Separation of concerns demands a dedicated permission.
 
 The legacy `FiscalPeriodsService.close` path uses `accounting-config:write` — that path is eliminated by this change. All close traffic routes through the canonical endpoint guarded by `period:close`.
 
@@ -86,6 +92,7 @@ The legacy `FiscalPeriodsService.close` path uses `accounting-config:write` — 
 - **When** a user with `period:close` permission sends a close request for a valid OPEN period in their organization, **then** the request proceeds to business rule validation.
 - **When** a user without `period:close` permission sends a close request, **then** the system rejects with error code `INSUFFICIENT_PERMISSION` and HTTP 403 before any business logic runs.
 - **When** a user with `reports:write` but NOT `period:close` sends a close request, **then** the system rejects with `INSUFFICIENT_PERMISSION` — `reports:write` does not grant close access.
+- **When** the `Action` enum is introspected, **then** it contains `'read' | 'write' | 'close' | 'reopen'` — the `'reopen'` value is reserved for a future reopening capability and is not consumed by this change.
 
 ---
 
@@ -139,12 +146,40 @@ No event bus infrastructure (`BullMQ`, `Kafka`, `NATS`, `EventEmitter`-based dom
 
 ---
 
+### REQ-11: `/summary` Endpoint Exposes Balance State
+
+The `GET /api/organizations/{orgSlug}/monthly-close/summary?periodId=<id>` endpoint MUST return the period's balance state so the UI can pre-emptively warn about imbalances before the user attempts to close. The response body MUST include the following fields in addition to the existing posted/draft counts and voucher-type breakdown:
+
+```ts
+{
+  balance: {
+    balanced: boolean,          // true iff totalDebit.eq(totalCredit)
+    totalDebit: string,         // Prisma.Decimal serialized as string
+    totalCredit: string,
+    difference: string          // |totalDebit - totalCredit|
+  }
+}
+```
+
+> **Decision (OQ-2 resolved — `unbalancedEntries` OMITTED)**: the response MUST NOT include a per-entry `unbalancedEntries[]` field. The `JournalEntry` model enforces the DEBE=HABER invariant at create/post time (`features/accounting/journal.service.ts` throws `JOURNAL_NOT_BALANCED` on any attempt to create or post a JE whose lines do not balance). Therefore individually-unbalanced POSTED entries CANNOT exist in the database; emitting an empty array on every call would be dead weight that wastes bytes and invites future code to search for a case the schema forbids. If a future change ever relaxes the per-JE invariant, this spec must be updated first.
+
+> **Decision on backing index**: the summary query sums `JournalLine.debit` and `JournalLine.credit` joined through `JournalEntry` for a given `periodId`. The existing `@@index([organizationId, periodId])` on `journal_entries` covers the drive side of the join — no new index is required by this change. If migration inspection reveals the index is missing or incomplete, the migration MUST add it in Phase 1 (not deferred).
+
+#### Scenarios
+
+- **When** a summary is requested for a period whose POSTED entries sum to equal debit and credit, **then** the response has `balance.balanced = true` and `balance.difference = "0"`.
+- **When** a summary is requested for a period whose POSTED entries sum to unequal debit and credit (an edge case that implies external data corruption, since the per-JE invariant forbids it normally), **then** the response has `balance.balanced = false`, and `totalDebit`, `totalCredit`, `difference` are all non-zero Decimal strings.
+- **When** a summary is requested for an empty period, **then** `balance.totalDebit = balance.totalCredit = "0"` and `balance.balanced = true`.
+- **When** any caller inspects the response shape, **then** no `unbalancedEntries` field is present — it is intentionally omitted.
+
+---
+
 ## Error Code Registry
 
 | Code | HTTP | Meaning |
 |---|---|---|
 | `PERIOD_ALREADY_CLOSED` | 409 | Period is already in CLOSED state |
 | `PERIOD_UNBALANCED` | 422 | SUM(debit) ≠ SUM(credit) for POSTED journal entries |
-| `PERIOD_HAS_DRAFTS` | 422 | One or more documents exist in DRAFT state |
+| `PERIOD_HAS_DRAFT_ENTRIES` | 422 | One or more documents exist in DRAFT state (per-entity counts in payload) |
 | `PERIOD_NOT_FOUND` | 404 | No period found for given ID in this organization |
 | `INSUFFICIENT_PERMISSION` | 403 | Caller does not have `period:close` permission |
