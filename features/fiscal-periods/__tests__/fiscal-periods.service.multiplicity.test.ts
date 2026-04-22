@@ -136,4 +136,29 @@ describe("FiscalPeriodsService.create — multiplicity (F-01)", () => {
     expect(result).toEqual(created);
     expect(repo.findByYearAndMonth).toHaveBeenCalledWith(ORG_ID, 2026, 3);
   });
+
+  // ── T04 — REQ-3 Scenario 3.1 ─────────────────────────────────────────────
+
+  it("throws ConflictError FISCAL_PERIOD_MONTH_EXISTS for duplicate (year, month)", async () => {
+    const repo = buildRepoMock();
+    // No year-level collision; the duplicate is detected at the month level.
+    vi.mocked(repo.findByYear).mockResolvedValueOnce(null);
+    // A February period already exists → month-aware pre-check fires.
+    repo.findByYearAndMonth.mockResolvedValueOnce(
+      buildFiscalPeriod({ id: "fp-feb-existing", month: 2, name: "Febrero 2026" }),
+    );
+
+    const service = new FiscalPeriodsService(
+      repo as unknown as FiscalPeriodsRepository,
+    );
+
+    await expect(service.create(ORG_ID, baseInput())).rejects.toSatisfy(
+      (err) =>
+        err instanceof ConflictError &&
+        (err as ConflictError).code === FISCAL_PERIOD_MONTH_EXISTS &&
+        (err as ConflictError).statusCode === 409,
+    );
+
+    expect(repo.create).not.toHaveBeenCalled();
+  });
 });
