@@ -39,6 +39,29 @@ export class MonthlyCloseRepository extends BaseRepository {
     }
   }
 
+  // ── Contar borradores por entidad en un período ──
+
+  async countDraftDocuments(
+    organizationId: string,
+    periodId: string,
+  ): Promise<{ dispatches: number; payments: number; journalEntries: number }> {
+    const scope = this.requireOrg(organizationId);
+
+    const [dispatches, payments, journalEntries] = await Promise.all([
+      this.db.dispatch.count({
+        where: { periodId, status: "DRAFT", ...scope },
+      }),
+      this.db.payment.count({
+        where: { periodId, status: "DRAFT", ...scope },
+      }),
+      this.db.journalEntry.count({
+        where: { periodId, status: "DRAFT", ...scope },
+      }),
+    ]);
+
+    return { dispatches, payments, journalEntries };
+  }
+
   // ── Bloquear despachos POSTED en un período ──
 
   async lockDispatches(
