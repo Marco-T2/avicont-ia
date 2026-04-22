@@ -148,3 +148,20 @@ describe("REQ-RNM.1 — Ventas y Despachos nav-resource mapping", () => {
     expect(ventasDespachos!.resource).toBe("sales");
   });
 });
+
+// ---------------------------------------------------------------------------
+// REQ-5 [RED] — "Cierre Mensual" nav entry resource must be "period"
+// (REQ-5: sidebar visibility via PERMISSIONS_READ["period"], not "journal").
+// RED: registry.ts:113 still has resource: "journal" — asserts "period".
+// ---------------------------------------------------------------------------
+
+describe("REQ-5 — Cierre Mensual nav entry resource gating", () => {
+  it("\"Cierre Mensual\" nav item has resource: 'period'", () => {
+    const contabilidad = MODULES.find((m) => m.id === "contabilidad")!;
+    const cierreMensual = contabilidad.navItems.find(
+      (item) => !item.isSeparator && item.label === "Cierre Mensual",
+    );
+    expect(cierreMensual).toBeDefined();
+    expect(cierreMensual!.resource).toBe("period");
+  });
+});
