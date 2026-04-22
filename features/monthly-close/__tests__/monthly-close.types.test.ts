@@ -80,4 +80,16 @@ describe("MonthlyCloseSummary type shape", () => {
     >().toEqualTypeOf<false>();
     expect(true).toBe(true);
   });
+
+  // ── T19 — drafts has exactly 5 keys (REQ-6 / Design D4) ────────────────────
+  it("drafts field has exactly 5 keys: dispatches, payments, journalEntries, sales, purchases", () => {
+    expectTypeOf<MonthlyCloseSummary["drafts"]>().toEqualTypeOf<{
+      dispatches: number;
+      payments: number;
+      journalEntries: number;
+      sales: number;
+      purchases: number;
+    }>();
+    expect(true).toBe(true);
+  });
 });
