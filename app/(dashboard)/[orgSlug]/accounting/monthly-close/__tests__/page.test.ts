@@ -49,7 +49,7 @@ describe("/accounting/monthly-close — rbac gate", () => {
     await MonthlyClosePage({ params: makeParams() });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
-      "journal",
+      "period",
       "read",
       ORG_SLUG,
     );
