@@ -141,4 +141,10 @@ describe("GET /api/.../monthly-close/audit-trail", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("(d) gates on resource=period action=read", async () => {
+    await GET(makeRequest(CORRELATION_ID), { params: makeParams() });
+
+    expect(mockRequirePermission).toHaveBeenCalledWith("period", "read", ORG_SLUG);
+  });
 });
