@@ -111,4 +111,10 @@ describe("GET /api/.../monthly-close/summary — balance field", () => {
     expect(body.unbalancedEntries).toBeUndefined();
     expect("unbalancedEntries" in body).toBe(false);
   });
+
+  it("(c) gates on resource=period action=read", async () => {
+    await GET(makeRequest(), { params: makeParams() });
+
+    expect(mockRequirePermission).toHaveBeenCalledWith("period", "read", ORG_SLUG);
+  });
 });
