@@ -89,8 +89,11 @@ describe("MonthlyClosePanel — T57 RED tests", () => {
     await selectPeriod();
 
     // Should render a warning banner mentioning the imbalance
-    const banner = await screen.findByText(/5\.00|diferencia|desbalance|DEBE.*HABER|no coincide/i);
-    expect(banner).toBeInTheDocument();
+    const alert = await screen.findByRole("alert");
+    expect(alert).toBeInTheDocument();
+    // Banner must contain the difference value
+    expect(alert).toHaveTextContent(/5\.00/);
+    expect(alert).toHaveTextContent(/DEBE.*HABER/i);
   });
 
   it("MonthlyClosePanel passes justification to POST payload", async () => {
