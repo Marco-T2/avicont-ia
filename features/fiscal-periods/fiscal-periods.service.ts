@@ -3,15 +3,32 @@ import {
   NotFoundError,
   ConflictError,
   INVALID_DATE_RANGE,
-  FISCAL_PERIOD_YEAR_EXISTS,
   FISCAL_PERIOD_MONTH_EXISTS,
-  ACTIVE_PERIOD_ALREADY_EXISTS,
   PERIOD_NOT_FOUND,
   ValidationError,
 } from "@/features/shared/errors";
 import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
 import { FiscalPeriodsRepository } from "./fiscal-periods.repository";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
+
+// REQ-3 — Spanish (es-BO) month names for user-facing conflict messages.
+// Indexed 0-11 (January=0) to align with Date.getUTCMonth(); the service
+// subtracts 1 from the 1-indexed `month` derived from `startDate` when
+// indexing into this array.
+const MONTH_NAMES_ES = [
+  "Enero",
+  "Febrero",
+  "Marzo",
+  "Abril",
+  "Mayo",
+  "Junio",
+  "Julio",
+  "Agosto",
+  "Septiembre",
+  "Octubre",
+  "Noviembre",
+  "Diciembre",
+] as const;
 
 export class FiscalPeriodsService {
   private readonly repo: FiscalPeriodsRepository;
@@ -47,19 +64,20 @@ export class FiscalPeriodsService {
       );
     }
 
-    const existing = await this.repo.findByYear(organizationId, input.year);
-    if (existing) {
-      throw new ConflictError(
-        `Un período fiscal para el año ${input.year}`,
-        FISCAL_PERIOD_YEAR_EXISTS,
-      );
-    }
+    // REQ-1 / REQ-3 — month-scoped uniqueness pre-check. `month` is derived
+    // from `startDate` in UTC to stay consistent with `repo.create`, which
+    // persists `startDate.getUTCMonth() + 1` to the `month` column.
+    const month = input.startDate.getUTCMonth() + 1;
 
-    const openPeriod = await this.repo.findOpenPeriod(organizationId);
-    if (openPeriod) {
+    const duplicate = await this.repo.findByYearAndMonth(
+      organizationId,
+      input.year,
+      month,
+    );
+    if (duplicate) {
       throw new ConflictError(
-        `Un período fiscal abierto (${openPeriod.name})`,
-        ACTIVE_PERIOD_ALREADY_EXISTS,
+        `Ya existe un período fiscal para ${MONTH_NAMES_ES[month - 1]} de ${input.year}`,
+        FISCAL_PERIOD_MONTH_EXISTS,
       );
     }
 
@@ -82,7 +100,7 @@ export class FiscalPeriodsService {
         )
       ) {
         throw new ConflictError(
-          `Un período fiscal para el año ${input.year}`,
+          `Ya existe un período fiscal para ${MONTH_NAMES_ES[month - 1]} de ${input.year}`,
           FISCAL_PERIOD_MONTH_EXISTS,
         );
       }
