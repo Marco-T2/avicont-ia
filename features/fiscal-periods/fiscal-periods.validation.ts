@@ -14,9 +14,4 @@ export const createFiscalPeriodSchema = z.object({
   endDate: z.coerce.date({ message: "Fecha de cierre inválida" }),
 });
 
-export const closeFiscalPeriodSchema = z.object({
-  status: z.literal("CLOSED"),
-});
-
 export type CreateFiscalPeriodDto = z.infer<typeof createFiscalPeriodSchema>;
-export type CloseFiscalPeriodDto = z.infer<typeof closeFiscalPeriodSchema>;

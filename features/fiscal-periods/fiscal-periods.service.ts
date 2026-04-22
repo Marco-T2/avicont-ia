@@ -1,14 +1,12 @@
 import "server-only";
 import {
   NotFoundError,
-  ValidationError,
   ConflictError,
   INVALID_DATE_RANGE,
   FISCAL_PERIOD_YEAR_EXISTS,
   ACTIVE_PERIOD_ALREADY_EXISTS,
-  PERIOD_ALREADY_CLOSED,
-  PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_NOT_FOUND,
+  ValidationError,
 } from "@/features/shared/errors";
 import { FiscalPeriodsRepository } from "./fiscal-periods.repository";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
@@ -66,27 +64,4 @@ export class FiscalPeriodsService {
     return this.repo.create(organizationId, input);
   }
 
-  // ── Close a fiscal period ──
-
-  async close(organizationId: string, id: string): Promise<FiscalPeriod> {
-    const period = await this.repo.findById(organizationId, id);
-    if (!period) throw new NotFoundError("Período fiscal");
-
-    if (period.status === "CLOSED") {
-      throw new ValidationError(
-        "El período fiscal ya está cerrado",
-        PERIOD_ALREADY_CLOSED,
-      );
-    }
-
-    const draftCount = await this.repo.countDraftEntries(organizationId, id);
-    if (draftCount > 0) {
-      throw new ValidationError(
-        `El período tiene ${draftCount} asiento(s) en borrador. Debe publicarlos o eliminarlos antes de cerrar el período`,
-        PERIOD_HAS_DRAFT_ENTRIES,
-      );
-    }
-
-    return this.repo.updateStatus(organizationId, id, "CLOSED");
-  }
 }

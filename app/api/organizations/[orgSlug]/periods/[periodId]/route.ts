@@ -1,7 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { closeFiscalPeriodSchema } from "@/features/fiscal-periods";
 
 const service = new FiscalPeriodsService();
 
@@ -26,15 +25,24 @@ export async function PATCH(
   { params }: { params: Promise<{ orgSlug: string; periodId: string }> },
 ) {
   try {
-    const { orgSlug, periodId } = await params;
-    const { orgId } = await requirePermission("accounting-config", "write", orgSlug);
+    const { orgSlug } = await params;
+    await requirePermission("accounting-config", "write", orgSlug);
 
     const body = await request.json();
-    closeFiscalPeriodSchema.parse(body);
+    if (body?.status === "CLOSED") {
+      return Response.json(
+        {
+          code: "LEGACY_CLOSE_REMOVED",
+          newEndpoint: "POST /api/organizations/{orgSlug}/monthly-close",
+        },
+        { status: 410 },
+      );
+    }
 
-    const period = await service.close(orgId, periodId);
-
-    return Response.json(period);
+    return Response.json(
+      { code: "VALIDATION", error: "Operación no soportada en este endpoint" },
+      { status: 400 },
+    );
   } catch (error) {
     return handleError(error);
   }
