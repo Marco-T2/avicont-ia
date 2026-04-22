@@ -47,7 +47,7 @@ Reconciled the monthly-close UI around a single canonical surface (`/accounting/
 - `openspec/changes/monthly-close-ui-reconciliation/proposal.md` §3.2 F-12
 - `openspec/changes/monthly-close-ui-reconciliation/design.md` §4.5 (F-12 ordering)
 - `openspec/changes/monthly-close-ui-reconciliation/design.md` §7.2 (commit body template)
-- `openspec/changes/monthly-close-ui-reconciliation/rule-7-draft.md` (origin event that triggered Rule 7 draft)
+- `openspec/changes/archive/2026-04-22-monthly-close-ui-reconciliation/rule-7-draft.md` (origin event that triggered Rule 7 draft)
 - Commit `5c73d55` — the retired invariant's origin
 
 **Why now:** The sdd-spec phase detected a collision between proposal AC4 (prescribing `period:write` gates for handler mutations) and the `PERMISSIONS_WRITE["period"] = []` matrix with no architectural justification. Silent resolution would have landed a cosmetic inconsistency. Operator escalation + git-log investigation confirmed the invariant was pragmatic, not canonical. Option A (extend the matrix) was ratified. This commit lands the ratification; without it, the downstream handler-gate changes would deny all roles.
@@ -135,7 +135,7 @@ The low-cost checks (spec diffs, absence-detection, grep inventories) consistent
 
 ## Rule 7 (draft) — Escalation protocol for architectural invariant collisions
 
-Rule 7 draft is captured at `openspec/changes/monthly-close-ui-reconciliation/rule-7-draft.md`. It covers "architectural invariant collision elevation" — when a proposal decision collides with an existing restrictive enum, schema constraint, or convention, the sub-agent must escalate rather than resolve silently. The draft will be formally codified into `~/.claude/projects/-home-marko2570-workspace-projects-avicont-ia-avicont-ia/memory/` AFTER archive, applying the three standard refinements established by Rule 5's codification (broader trigger, optional "why now", dual enforcement points at sdd-spec + sdd-verify).
+Rule 7 draft is captured at `openspec/changes/archive/2026-04-22-monthly-close-ui-reconciliation/rule-7-draft.md`. It covers "architectural invariant collision elevation" — when a proposal decision collides with an existing restrictive enum, schema constraint, or convention, the sub-agent must escalate rather than resolve silently. The draft will be formally codified into `~/.claude/projects/-home-marko2570-workspace-projects-avicont-ia-avicont-ia/memory/` AFTER archive, applying the three standard refinements established by Rule 5's codification (broader trigger, optional "why now", dual enforcement points at sdd-spec + sdd-verify).
 
 The collision that triggered Rule 7 draft: sdd-spec sub-agent detected proposal AC4 (`period:write` gates for handlers) conflicting with `PERMISSIONS_WRITE["period"] = []`. The sub-agent silently resolved to a different gate instead of escalating. Operator investigation afterwards revealed the invariant had no architectural justification — Option A (extend the matrix, now F-12) was correct. Silent resolution cost one round-trip of verify-and-reconsider. Rule 7 codification will prevent this pattern.
 
@@ -143,10 +143,11 @@ The collision that triggered Rule 7 draft: sdd-spec sub-agent detected proposal 
 
 ## Post-archive deliverables (not included in this archive, scheduled for follow-up session)
 
-1. **Codify Rule 7** into `memory/` following the three-refinement pattern (trigger scope, optional why-now field, dual enforcement at sdd-spec + sdd-verify).
-2. **Refine Rule 3** to distinguish `vi.mock` declaration retirement from import-statement retirement as separate inventory obligations.
-3. **Establish Option 2 convention** for mandatory Phase 0 checklist report in sdd-apply result contracts.
-4. **OBS-01 backlog entry** — future-limited-role scenario planning: reconcile sidebar `resources[]` arrays with all page-level resource gates for consistency.
+1. **Codify Rule 7** into `memory/` following the three-refinement pattern (trigger scope, optional why-now field, dual enforcement at sdd-spec + sdd-verify). Source: `rule-7-draft.md` in this archive folder.
+2. **Refine Rule 3** (`memory/feedback_retirement_reinventory_gate.md`) to distinguish `vi.mock("<path>")` declaration retirement from bare import-statement retirement as separate inventory obligations. Evidence: W-02 in this archive.
+3. **Establish Option 2 convention** for mandatory Phase 0 checklist report in sdd-apply result contracts. Evidence: sdd-apply of this change skipped the checklist report; retroactive reconstruction was low-cost only by luck.
+4. **Update Rule 5** (`memory/feedback_low_cost_verification_asymmetry.md`) with three accumulated empirical cases: (a) W-01 apperror-details-passthrough bundled REQ detection, (b) W-02 this change stale mock detection, (c) sdd-verify Emphasis 6 absence-detection on apply self-report. Pattern now well-supported — strengthens the "always run low-cost verification before irreversible steps" framing.
+5. **OBS-01 backlog entry** — future limited-role scenario planning: reconcile sidebar `resources[]` arrays (e.g., `contabilidad.resources` in `components/sidebar/modules/registry.ts`) with all page-level resource gates for consistency. Not a runtime bug today but a modeling gap that will surface if a new role with selective resource access is added.
 
 ---
 
