@@ -55,6 +55,8 @@ const makePopulatedMatrix = (orgId: string): OrgMatrix => ({
       permissionsRead: new Set<Resource>(),
       permissionsWrite: new Set<Resource>(),
       canPost: new Set<PostableResource>(),
+      canClose: new Set<Resource>(),
+      canReopen: new Set<Resource>(),
       isSystem: true,
     }],
   ]),

@@ -33,6 +33,8 @@ import type { OrgMatrix } from "../permissions.cache";
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
+  PERMISSIONS_CLOSE,
+  PERMISSIONS_REOPEN,
   getPostAllowedRoles,
   type Role,
   type Resource,
@@ -61,9 +63,10 @@ const ALL_RESOURCES: Resource[] = [
   "farms",
   "documents",
   "agent",
+  "period",
 ];
 
-const ALL_ACTIONS: Action[] = ["read", "write"];
+const ALL_ACTIONS: Action[] = ["read", "write", "close", "reopen"];
 
 // Expected matrix encoded as role lists per (resource, action). W-draft → write=true.
 const EXPECTED_READ: Record<Resource, Role[]> = {
@@ -79,6 +82,7 @@ const EXPECTED_READ: Record<Resource, Role[]> = {
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador", "cobrador", "member"],
   agent: ["owner", "admin", "contador", "cobrador", "member"],
+  period: ["owner", "admin"],
 };
 
 const EXPECTED_WRITE: Record<Resource, Role[]> = {
@@ -94,6 +98,7 @@ const EXPECTED_WRITE: Record<Resource, Role[]> = {
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador"],
   agent: ["owner", "admin", "contador", "cobrador", "member"],
+  period: [],
 };
 
 const POST_RESOURCES = ["sales", "purchases", "journal"] as const;
@@ -105,8 +110,8 @@ const EXPECTED_POST: Record<(typeof POST_RESOURCES)[number], Role[]> = {
 };
 
 describe("REQ-P.1 — Resource catalog", () => {
-  it("exposes exactly 12 resources", () => {
-    expect(ALL_RESOURCES).toHaveLength(12);
+  it("exposes exactly 13 resources (12 original + period)", () => {
+    expect(ALL_RESOURCES).toHaveLength(13);
   });
 
   it("does not include deprecated `accounting` literal", () => {
@@ -126,17 +131,66 @@ describe("REQ-P.1 — Resource catalog", () => {
       expect(PERMISSIONS_WRITE[r]).toBeDefined();
     }
   });
+
+  it("PERMISSIONS_CLOSE has an entry for every Resource", () => {
+    for (const r of ALL_RESOURCES) {
+      expect(PERMISSIONS_CLOSE[r]).toBeDefined();
+    }
+  });
+
+  it("PERMISSIONS_REOPEN has an entry for every Resource", () => {
+    for (const r of ALL_RESOURCES) {
+      expect(PERMISSIONS_REOPEN[r]).toBeDefined();
+    }
+  });
 });
 
-describe("REQ-P.2 — PERMISSIONS_READ/WRITE matrix (144 cases, static maps)", () => {
+const EXPECTED_CLOSE: Record<Resource, Role[]> = {
+  members: [],
+  "accounting-config": [],
+  sales: [],
+  purchases: [],
+  payments: [],
+  journal: [],
+  dispatches: [],
+  reports: [],
+  contacts: [],
+  farms: [],
+  documents: [],
+  agent: [],
+  period: ["owner", "admin"],
+};
+
+const EXPECTED_REOPEN: Record<Resource, Role[]> = {
+  members: [],
+  "accounting-config": [],
+  sales: [],
+  purchases: [],
+  payments: [],
+  journal: [],
+  dispatches: [],
+  reports: [],
+  contacts: [],
+  farms: [],
+  documents: [],
+  agent: [],
+  period: ["owner", "admin"],
+};
+
+describe("REQ-P.2 — PERMISSIONS_READ/WRITE/CLOSE/REOPEN matrix (static maps)", () => {
   // PR8.2: sync 3-param canAccess removed. The static matrix is tested directly
-  // against PERMISSIONS_READ / PERMISSIONS_WRITE as source of truth.
+  // against the permission maps as source of truth.
   // The async canAccess(role, resource, action, orgId) is tested in PR2.2 block below.
   for (const resource of ALL_RESOURCES) {
     for (const action of ALL_ACTIONS) {
-      const allowed =
-        action === "read" ? EXPECTED_READ[resource] : EXPECTED_WRITE[resource];
-      const map = action === "read" ? PERMISSIONS_READ : PERMISSIONS_WRITE;
+      const { allowed, map } = (() => {
+        switch (action) {
+          case "read":   return { allowed: EXPECTED_READ[resource],   map: PERMISSIONS_READ };
+          case "write":  return { allowed: EXPECTED_WRITE[resource],  map: PERMISSIONS_WRITE };
+          case "close":  return { allowed: EXPECTED_CLOSE[resource],  map: PERMISSIONS_CLOSE };
+          case "reopen": return { allowed: EXPECTED_REOPEN[resource], map: PERMISSIONS_REOPEN };
+        }
+      })();
       for (const role of ALL_ROLES) {
         const expected = allowed.includes(role);
         it(`${role} × ${resource} × ${action} → ${expected}`, () => {
@@ -195,6 +249,8 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
     permissionsRead: Set<Resource>;
     permissionsWrite: Set<Resource>;
     canPost: Set<"sales" | "purchases" | "journal">;
+    canClose: Set<Resource>;
+    canReopen: Set<Resource>;
     isSystem: boolean;
   }>();
 
@@ -216,7 +272,24 @@ function makeSystemMatrix(orgId: string): OrgMatrix {
         postAllowedRoles[r].includes(slug),
       ),
     );
-    roles.set(slug, { permissionsRead, permissionsWrite, canPost: canPostSet, isSystem: true });
+    const canClose = new Set<Resource>(
+      (Object.keys(PERMISSIONS_CLOSE) as Resource[]).filter((r) =>
+        PERMISSIONS_CLOSE[r].includes(slug),
+      ),
+    );
+    const canReopen = new Set<Resource>(
+      (Object.keys(PERMISSIONS_REOPEN) as Resource[]).filter((r) =>
+        PERMISSIONS_REOPEN[r].includes(slug),
+      ),
+    );
+    roles.set(slug, {
+      permissionsRead,
+      permissionsWrite,
+      canPost: canPostSet,
+      canClose,
+      canReopen,
+      isSystem: true,
+    });
   }
 
   return { orgId, roles, loadedAt: Date.now() };
@@ -254,6 +327,8 @@ describe("PR2.2 — canAccess async (4-param) reads from cache", () => {
       permissionsRead: new Set(["sales", "reports"]),
       permissionsWrite: new Set(["journal"]),
       canPost: new Set(),
+      canClose: new Set(),
+      canReopen: new Set(),
       isSystem: false,
     });
     mockedGetMatrix.mockResolvedValue(matrix);

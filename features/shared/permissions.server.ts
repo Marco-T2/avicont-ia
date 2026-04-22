@@ -2,6 +2,21 @@ import "server-only";
 import { requireAuth, requireOrgAccess, requireRole } from "./middleware";
 import { ensureOrgSeeded, getMatrix } from "./permissions.cache";
 import type { Action, Resource, PostableResource } from "./permissions";
+import type { OrgMatrix } from "./permissions.cache";
+
+/** Internal helper: picks the correct permission Set based on the action. */
+function _permitted(
+  action: Action,
+  roleEntry: OrgMatrix["roles"] extends Map<string, infer V> ? V : never,
+  resource: Resource,
+): boolean {
+  switch (action) {
+    case "read":   return roleEntry.permissionsRead.has(resource);
+    case "write":  return roleEntry.permissionsWrite.has(resource);
+    case "close":  return roleEntry.canClose.has(resource);
+    case "reopen": return roleEntry.canReopen.has(resource);
+  }
+}
 
 /**
  * Single server-side authorization gate used by all org route handlers.
@@ -34,10 +49,7 @@ export async function requirePermission(
   // Derive the allowed roles for this (resource, action) from the matrix
   const allowedRoles: string[] = [];
   for (const [slug, roleEntry] of matrix.roles) {
-    const permitted =
-      action === "read"
-        ? roleEntry.permissionsRead.has(resource)
-        : roleEntry.permissionsWrite.has(resource);
+    const permitted = _permitted(action, roleEntry, resource);
     if (permitted) {
       allowedRoles.push(slug);
     }
@@ -66,9 +78,7 @@ export async function canAccess(
   const matrix = await getMatrix(orgId);
   const roleEntry = matrix.roles.get(role);
   if (!roleEntry) return false;
-  return action === "read"
-    ? roleEntry.permissionsRead.has(resource)
-    : roleEntry.permissionsWrite.has(resource);
+  return _permitted(action, roleEntry, resource);
 }
 
 /**

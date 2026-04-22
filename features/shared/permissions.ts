@@ -30,9 +30,10 @@ export type Resource =
   | "contacts"
   | "farms"
   | "documents"
-  | "agent";
+  | "agent"
+  | "period";
 
-export type Action = "read" | "write";
+export type Action = "read" | "write" | "close" | "reopen";
 
 export type DocumentScope = "ORGANIZATION" | "ACCOUNTING" | "FARM";
 
@@ -49,6 +50,8 @@ export const PERMISSIONS_READ: Record<Resource, Role[]> = {
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador", "cobrador", "member"],
   agent: ["owner", "admin", "contador", "cobrador", "member"],
+  // period: anyone with RBAC access can read period state
+  period: ["owner", "admin"],
 };
 
 export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
@@ -64,6 +67,48 @@ export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
   farms: ["owner", "admin", "contador", "member"],
   documents: ["owner", "admin", "contador"],
   agent: ["owner", "admin", "contador", "cobrador", "member"],
+  // period: not directly writable — use close/reopen actions instead
+  period: [],
+};
+
+/**
+ * Roles allowed to CLOSE a period (action: 'close').
+ * All resources default to [] except 'period'.
+ */
+export const PERMISSIONS_CLOSE: Record<Resource, Role[]> = {
+  members: [],
+  "accounting-config": [],
+  sales: [],
+  purchases: [],
+  payments: [],
+  journal: [],
+  dispatches: [],
+  reports: [],
+  contacts: [],
+  farms: [],
+  documents: [],
+  agent: [],
+  period: ["owner", "admin"],
+};
+
+/**
+ * Roles allowed to REOPEN a period (action: 'reopen').
+ * All resources default to [] except 'period'.
+ */
+export const PERMISSIONS_REOPEN: Record<Resource, Role[]> = {
+  members: [],
+  "accounting-config": [],
+  sales: [],
+  purchases: [],
+  payments: [],
+  journal: [],
+  dispatches: [],
+  reports: [],
+  contacts: [],
+  farms: [],
+  documents: [],
+  agent: [],
+  period: ["owner", "admin"],
 };
 
 export type PostableResource = "sales" | "purchases" | "journal";
