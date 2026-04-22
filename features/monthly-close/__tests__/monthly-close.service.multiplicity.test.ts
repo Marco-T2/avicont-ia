@@ -146,3 +146,19 @@ describe("MonthlyCloseService.close — F-03 unit multiplicity (T09)", () => {
     );
   });
 });
+
+// ── T10 — JournalEntry DRAFT blocks close (F-03 item 5) ─────────────────────
+
+describe("MonthlyCloseService.close — F-03 unit multiplicity (T10)", () => {
+  it("throws PERIOD_HAS_DRAFT_ENTRIES when one DRAFT JournalEntry exists", async () => {
+    // Spec B REQ-4 terminology: "asiento(s) de diario" (not bare "asiento(s)").
+    await assertDraftsBlock(
+      { dispatches: 0, payments: 0, journalEntries: 1, sales: 0, purchases: 0 },
+      {
+        messageIncludes: "asiento(s) de diario",
+        detailKey: "journalEntries",
+        detailValue: 1,
+      },
+    );
+  });
+});
