@@ -48,12 +48,6 @@ vi.mock("../period-create-dialog", () => ({
   default: vi.fn(() => null),
 }));
 
-// period-close-dialog may or may not exist at test time (it will be deleted in T-F08-GREEN)
-// Use a safe mock that silently handles both cases
-vi.mock("../period-close-dialog", () => ({
-  default: vi.fn(() => null),
-}));
-
 import PeriodList from "../period-list";
 
 const ORG_SLUG = "acme";
