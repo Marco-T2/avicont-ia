@@ -162,3 +162,22 @@ describe("MonthlyCloseService.close — F-03 unit multiplicity (T10)", () => {
     );
   });
 });
+
+// ── T11 — Sale DRAFT blocks close (F-03 item 6 — NEW entity) ────────────────
+//
+// F-03 silent corruption: today the service only sums dispatches + payments +
+// journalEntries so sales:1 leaks through as totalDrafts=0. The RED assertion
+// is that `close()` REJECTS with PERIOD_HAS_DRAFT_ENTRIES — under the current
+// 3-entity code it won't; the exact failure mode depends on what happens when
+// the service enters the TX path with our minimal fake tx (likely the balance
+// check or setAuditContext throws), but EITHER failure path (no error at all,
+// or a different error) still proves sales is not being counted.
+
+describe("MonthlyCloseService.close — F-03 unit multiplicity (T11)", () => {
+  it("throws PERIOD_HAS_DRAFT_ENTRIES when one DRAFT Sale exists", async () => {
+    await assertDraftsBlock(
+      { dispatches: 0, payments: 0, journalEntries: 0, sales: 1, purchases: 0 },
+      { messageIncludes: "venta(s)", detailKey: "sales", detailValue: 1 },
+    );
+  });
+});
