@@ -150,15 +150,9 @@ export class MonthlyCloseService {
     // 4. No drafts allowed → 422 with per-entity counts. Source of truth is
     //    `validateCanClose()` so `close()` and `getSummary()` surface the same
     //    5-key shape (REQ-5 / Design B3).
-    const drafts = await this.repo.countDraftDocuments(organizationId, periodId);
-    const totalDrafts =
-      drafts.dispatches +
-      drafts.payments +
-      drafts.journalEntries +
-      drafts.sales +
-      drafts.purchases;
+    const drafts = await this.validateCanClose(organizationId, periodId);
 
-    if (totalDrafts > 0) {
+    if (!drafts.canClose) {
       const parts: string[] = [];
       if (drafts.dispatches > 0) parts.push(`${drafts.dispatches} despacho(s)`);
       if (drafts.payments > 0) parts.push(`${drafts.payments} pago(s)`);
