@@ -12,7 +12,7 @@ export default async function PeriodsPage({ params }: PeriodsPageProps) {
 
   let orgId: string;
   try {
-    const result = await requirePermission("accounting-config", "write", orgSlug);
+    const result = await requirePermission("period", "read", orgSlug);
     orgId = result.orgId;
   } catch {
     redirect(`/${orgSlug}`);
