@@ -669,7 +669,13 @@ export class PurchaseService {
     const status = purchase.status as DocumentStatus;
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, purchase.periodId);
+      validateLockedEdit(
+        status,
+        role!,
+        period.status as "OPEN" | "CLOSED",
+        justification,
+      );
     } else {
       validateEditable(status);
     }
@@ -1079,7 +1085,13 @@ export class PurchaseService {
     validateTransition(status, "VOIDED");
 
     if (status === "LOCKED") {
-      validateLockedEdit(status, role!, undefined, justification);
+      const period = await this.periodsService.getById(organizationId, purchase.periodId);
+      validateLockedEdit(
+        status,
+        role!,
+        period.status as "OPEN" | "CLOSED",
+        justification,
+      );
     }
 
     await this.repo.transaction(async (tx) => {
