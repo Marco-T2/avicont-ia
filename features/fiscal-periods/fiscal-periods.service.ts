@@ -4,10 +4,12 @@ import {
   ConflictError,
   INVALID_DATE_RANGE,
   FISCAL_PERIOD_YEAR_EXISTS,
+  FISCAL_PERIOD_MONTH_EXISTS,
   ACTIVE_PERIOD_ALREADY_EXISTS,
   PERIOD_NOT_FOUND,
   ValidationError,
 } from "@/features/shared/errors";
+import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
 import { FiscalPeriodsRepository } from "./fiscal-periods.repository";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
 
@@ -61,7 +63,31 @@ export class FiscalPeriodsService {
       );
     }
 
-    return this.repo.create(organizationId, input);
+    // REQ-3 Scenario 3.2 — P2002 trip-wire. A concurrent caller may win the
+    // race against the pre-check and land a row for the same (year, month).
+    // The composite unique index "fiscal_periods_organizationId_year_month_key"
+    // rejects the duplicate with P2002. We MUST map it to
+    // FISCAL_PERIOD_MONTH_EXISTS so callers never see a raw
+    // PrismaClientKnownRequestError.
+    //
+    // TRIP-WIRE: the literal index string below MUST match the test
+    // assertion verbatim. Any Prisma rename will fail both visibly.
+    try {
+      return await this.repo.create(organizationId, input);
+    } catch (err) {
+      if (
+        isPrismaUniqueViolation(
+          err,
+          "fiscal_periods_organizationId_year_month_key",
+        )
+      ) {
+        throw new ConflictError(
+          `Un período fiscal para el año ${input.year}`,
+          FISCAL_PERIOD_MONTH_EXISTS,
+        );
+      }
+      throw err;
+    }
   }
 
 }
