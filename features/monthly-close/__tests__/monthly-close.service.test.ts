@@ -202,3 +202,59 @@ describe("MonthlyCloseService.close — PERIOD_UNBALANCED (T27)", () => {
     });
   });
 });
+
+// ── T28 — Happy path: CloseResult with correlationId ────────────────────────
+
+describe("MonthlyCloseService.close — happy path (T28)", () => {
+  it("close returns CloseResult with correlationId on success", async () => {
+    const repo = buildRepoMock();
+    const periodsService = buildPeriodsServiceMock();
+
+    vi.mocked(periodsService.getById).mockResolvedValueOnce({
+      id: "period-1",
+      status: "OPEN",
+    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+
+    vi.mocked(repo.countDraftDocuments).mockResolvedValueOnce({
+      dispatches: 0,
+      payments: 0,
+      journalEntries: 0,
+    });
+
+    vi.mocked(repo.sumDebitCredit).mockResolvedValueOnce({
+      debit: new Prisma.Decimal("200.00"),
+      credit: new Prisma.Decimal("200.00"),
+    });
+
+    vi.mocked(repo.lockDispatches).mockResolvedValueOnce(3);
+    vi.mocked(repo.lockPayments).mockResolvedValueOnce(1);
+    vi.mocked(repo.lockJournalEntries).mockResolvedValueOnce(4);
+    vi.mocked(repo.lockSales).mockResolvedValueOnce(2);
+    vi.mocked(repo.lockPurchases).mockResolvedValueOnce(5);
+
+    const closedAt = new Date("2026-04-21T12:00:00.000Z");
+    vi.mocked(repo.markPeriodClosed).mockResolvedValueOnce({
+      closedAt,
+      closedBy: "user-1",
+    } as unknown as Awaited<ReturnType<MonthlyCloseRepository["markPeriodClosed"]>>);
+
+    const service = new MonthlyCloseService(
+      repo as unknown as MonthlyCloseRepository,
+      periodsService,
+    );
+
+    const result = await service.close(baseInput);
+
+    expect(result.periodId).toBe("period-1");
+    expect(result.periodStatus).toBe("CLOSED");
+    expect(result.closedAt).toBeInstanceOf(Date);
+    expect(result.correlationId).toMatch(/^[0-9a-f-]{36}$/);
+    expect(typeof result.locked.sales).toBe("number");
+    expect(typeof result.locked.purchases).toBe("number");
+    expect(result.locked.dispatches).toBe(3);
+    expect(result.locked.payments).toBe(1);
+    expect(result.locked.journalEntries).toBe(4);
+    expect(result.locked.sales).toBe(2);
+    expect(result.locked.purchases).toBe(5);
+  });
+});
