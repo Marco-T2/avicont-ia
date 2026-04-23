@@ -3,7 +3,7 @@ import type {
   SaleDetail,
   SaleStatus,
 } from "@/generated/prisma/client";
-import type { IvaSalesBookDTO } from "@/features/accounting/iva-books/iva-books.types";
+import type { IvaSalesBookDTO } from "@/features/accounting/iva-books";
 
 // ── Re-exportar tipos de Prisma para mayor comodidad ──
 

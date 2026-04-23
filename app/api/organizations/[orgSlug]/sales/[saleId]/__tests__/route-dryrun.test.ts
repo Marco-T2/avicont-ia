@@ -47,7 +47,7 @@ vi.mock("@/features/sale/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/accounting/iva-books/iva-books.service", () => ({
+vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
     return {};
   }),

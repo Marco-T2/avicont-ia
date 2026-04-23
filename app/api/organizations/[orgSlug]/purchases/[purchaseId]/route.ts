@@ -2,7 +2,7 @@ import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { PurchaseService } from "@/features/purchase/server";
 import { updatePurchaseSchema } from "@/features/purchase";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
+import { IvaBooksService } from "@/features/accounting/iva-books/server";
 import { UsersService } from "@/features/shared/users.service";
 
 const ivaBooksService = new IvaBooksService();

@@ -1,14 +1,13 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
-import { IvaBooksRepository } from "@/features/accounting/iva-books/iva-books.repository";
+import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
 import { SaleService } from "@/features/sale/sale.service";
 import { PurchaseService } from "@/features/purchase/purchase.service";
 import {
   updatePurchaseInputSchema,
   type UpdatePurchaseInputDto,
-} from "@/features/accounting/iva-books/iva-books.validation";
-import type { UpdatePurchaseInput } from "@/features/accounting/iva-books/iva-books.types";
+  type UpdatePurchaseInput,
+} from "@/features/accounting/iva-books";
 import { NotFoundError } from "@/features/shared/errors";
 import { Prisma } from "@/generated/prisma/client";
 

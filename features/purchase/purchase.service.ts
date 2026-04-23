@@ -47,7 +47,7 @@ import {
   type PurchaseOrgSettings,
   type IvaBookForEntry,
 } from "./purchase.utils";
-import { calcTotales } from "@/features/accounting/iva-books/iva-calc.utils";
+import { calcTotales } from "@/features/accounting/iva-books";
 
 // ── Bridge interface: IvaBooksService (evitar importación circular) ──────────
 

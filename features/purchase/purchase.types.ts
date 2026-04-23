@@ -4,7 +4,7 @@ import type {
   PurchaseType,
   PurchaseStatus,
 } from "@/generated/prisma/client";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books/iva-books.types";
+import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
 
 // ── Re-exportar tipos de Prisma para mayor comodidad ──
 

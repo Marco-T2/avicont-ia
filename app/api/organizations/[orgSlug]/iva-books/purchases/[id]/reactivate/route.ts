@@ -1,7 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
-import { IvaBooksRepository } from "@/features/accounting/iva-books/iva-books.repository";
+import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
 import { SaleService } from "@/features/sale/sale.service";
 import { PurchaseService } from "@/features/purchase/purchase.service";
 
