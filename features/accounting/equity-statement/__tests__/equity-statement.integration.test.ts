@@ -16,6 +16,7 @@
 
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
+import { addUTCDays } from "@/lib/date-utils";
 import { Prisma } from "@/generated/prisma/client";
 import { EquityStatementRepository } from "../equity-statement.repository";
 import { buildEquityStatement } from "../equity-statement.builder";
@@ -238,8 +239,7 @@ afterAll(async () => {
 
 describe("EquityStatement Integration — REQ-1 and REQ-5", () => {
   it("(a) REQ-1 — SALDO_INICIAL row reflects prior-period posted capital balance", async () => {
-    const dayBefore = new Date(range.dateFrom);
-    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+    const dayBefore = addUTCDays(range.dateFrom, -1);
 
     const [initialBalances, finalBalances, accounts, fsAccounts, incomeMovements] =
       await Promise.all([
@@ -289,8 +289,7 @@ describe("EquityStatement Integration — REQ-1 and REQ-5", () => {
   });
 
   it("(b) REQ-5 — EEPN grandTotal = Σ finalBalances; intra-state invariant holds (SALDO_FINAL = SALDO_INICIAL + RESULTADO)", async () => {
-    const dayBefore = new Date(range.dateFrom);
-    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+    const dayBefore = addUTCDays(range.dateFrom, -1);
 
     const [initialBalances, finalBalances, eqAccounts, fsAccounts, incomeMovements] =
       await Promise.all([
