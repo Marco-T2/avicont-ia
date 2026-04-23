@@ -83,10 +83,9 @@ export default function PeriodCreateDialog({
 
   function handleMonthSelect(value: string) {
     const month = parseInt(value, 10);
-    // Clear dirty flags so autocomplete applies to all fields again
-    setManualStartDate(false);
-    setManualEndDate(false);
-    setManualName(false);
+    // NOTE: dirty flags are intentionally NOT cleared here.
+    // Per REQ-2 / UX-T04: a manual edit must survive all subsequent month
+    // and year changes. Flags are only reset on full form reset.
     setSelectedMonth(month);
   }
 
