@@ -85,6 +85,23 @@ export function formatDateBO(value: string | Date | null | undefined): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+// ── lastDayOfUTCMonth ─────────────────────────────────────────────────────────
+
+/**
+ * Returns a Date representing the last day of the UTC month for the given date.
+ *
+ * Uses `Date.UTC(year, month + 1, 0)` — day=0 wraps to the last day of the
+ * previous month. Works correctly for:
+ * - January (31 days), April (30 days), February leap (29), February non-leap (28)
+ * - December: `Date.UTC(year, 12, 0)` wraps to Dec 31 of the same year.
+ *
+ * @param date  Any Date; UTC getters are used — local timezone is irrelevant.
+ * @returns A Date at UTC midnight of the last day of that month.
+ */
+export function lastDayOfUTCMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
+}
+
 // ── toNoonUtc ─────────────────────────────────────────────────────────────────
 
 /**
