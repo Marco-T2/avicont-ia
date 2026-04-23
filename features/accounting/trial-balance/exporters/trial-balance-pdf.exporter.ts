@@ -272,7 +272,7 @@ function buildDocDefinition(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export interface TrialBalancePdfResult {
+interface TrialBalancePdfResult {
   buffer: Buffer;
   docDef: TDocumentDefinitions;
 }

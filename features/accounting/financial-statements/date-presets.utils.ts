@@ -12,19 +12,19 @@ export type DateRange = {
   dateTo: Date;
 };
 
-export type ResolveDatePresetOptions = {
+type ResolveDatePresetOptions = {
   tz: string;
   customFrom?: Date;
   customTo?: Date;
 };
 
-export type FilterPrecedenceInput = {
+type FilterPrecedenceInput = {
   fiscalRange?: DateRange;
   presetRange?: DateRange;
   customRange?: DateRange;
 };
 
-export type ResolvedFilterRange = DateRange & {
+type ResolvedFilterRange = DateRange & {
   preliminary: boolean;
 };
 

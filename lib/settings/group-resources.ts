@@ -9,7 +9,7 @@
 import type { Module } from "@/components/sidebar/modules/registry";
 import type { Resource } from "@/features/shared/permissions";
 
-export type MatrixGroup = {
+type MatrixGroup = {
   label: string;
   resources: Resource[];
 };

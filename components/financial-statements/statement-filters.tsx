@@ -79,9 +79,6 @@ export type QuickBooksFilterParams = {
   compareDateTo?: string;    // IS comparative custom
 };
 
-// Tipo legado para backward compat con consumidores existentes
-export type StatementFilterParams = QuickBooksFilterParams;
-
 interface FiscalPeriod {
   id: string;
   name: string;

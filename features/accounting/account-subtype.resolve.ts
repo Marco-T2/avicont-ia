@@ -5,7 +5,7 @@ import { isValidSubtypeForType } from "./account-subtype.utils";
 /**
  * Parámetros para resolver el subtipo de una cuenta.
  */
-export interface ResolveAccountSubtypeParams {
+interface ResolveAccountSubtypeParams {
   /** Subtipo enviado por el caller (puede ser undefined si no se provee). */
   inputSubtype: AccountSubtype | undefined;
   /** Subtipo del padre resuelto (null si la cuenta es raíz o si el padre no tiene subtipo). */

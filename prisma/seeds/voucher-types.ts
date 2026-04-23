@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../generated/prisma/client";
 
-export interface VoucherTypeSeed {
+interface VoucherTypeSeed {
   code: string;
   prefix: string;
   name: string;

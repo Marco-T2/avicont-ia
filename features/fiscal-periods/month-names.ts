@@ -17,4 +17,3 @@ export const MONTH_NAMES_ES = [
   "Diciembre",
 ] as const;
 
-export type MonthNameEs = (typeof MONTH_NAMES_ES)[number];

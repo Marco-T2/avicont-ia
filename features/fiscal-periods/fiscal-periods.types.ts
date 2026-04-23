@@ -1,4 +1,4 @@
-import type { FiscalPeriod, FiscalPeriodStatus } from "@/generated/prisma/client";
+import type { FiscalPeriod } from "@/generated/prisma/client";
 
 // ── Input types ──
 
@@ -12,4 +12,4 @@ export interface CreateFiscalPeriodInput {
 
 // ── Re-export Prisma types for convenience ──
 
-export type { FiscalPeriod, FiscalPeriodStatus };
+export type { FiscalPeriod };

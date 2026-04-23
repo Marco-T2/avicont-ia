@@ -44,27 +44,6 @@ export type SemanticRowClass =
 // Alias local para Decimal — se usa en todo el pipeline sin conversión a number
 export type Decimal = Prisma.Decimal;
 
-// ── Período del estado financiero ──
-// Preparado para comparativos en v2 (campo comparative opcional)
-export type StatementPeriod = {
-  fiscalPeriodId?: string;
-  dateFrom?: Date;
-  dateTo?: Date;
-  asOfDate: Date;
-};
-
-// ── Línea de detalle dentro de un grupo de subtipo ──
-export type StatementLine = {
-  accountId: string;
-  accountCode: string;
-  accountName: string;
-  level: number;
-  subtype: AccountSubtype | null;
-  balance: Decimal;
-  /** Marker: true if this line represents a contra-account (reduces the group total). */
-  isContra?: boolean;
-};
-
 // ── Grupo de cuentas agrupadas por subtipo ──
 export type SubtypeGroup = {
   subtype: AccountSubtype;

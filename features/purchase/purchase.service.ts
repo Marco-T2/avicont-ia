@@ -19,7 +19,6 @@ import {
   type DocumentStatus,
   type TrimPreviewItem,
 } from "@/features/shared/document-lifecycle.service";
-export type { TrimPreviewItem };
 import { computePayableStatus } from "@/features/shared/accounting-helpers";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { setAuditContext } from "@/features/shared/audit-context";
@@ -57,7 +56,7 @@ import { calcTotales } from "@/features/accounting/iva-books/iva-calc.utils";
  * Usar la interfaz en vez del tipo concreto para evitar acoplamiento circular
  * (IvaBooksService ya tiene un bridge hacia PurchaseService en el sentido inverso).
  */
-export interface IvaBooksServiceForPurchaseCascade {
+interface IvaBooksServiceForPurchaseCascade {
   recomputeFromPurchaseCascade(
     tx: Prisma.TransactionClient,
     orgId: string,

@@ -365,7 +365,7 @@ function buildDocDefinition(
 
 // ── Public API ────────────────────────────────────────────────────────────────
 
-export interface WorksheetPdfResult {
+interface WorksheetPdfResult {
   buffer: Buffer;
   docDef: TDocumentDefinitions;
 }

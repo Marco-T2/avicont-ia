@@ -25,7 +25,7 @@ import type {
 import { amountToWordsEs } from "./amount-to-words";
 import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 
-export type ComposeOpts = {
+type ComposeOpts = {
   exchangeRate?: number;
   ufvRate?: string;
   locality?: string;

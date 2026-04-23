@@ -43,7 +43,7 @@ export async function analyzeDocument(
 
 // ── Agent query with function calling ──
 
-export interface QueryWithToolsResult {
+interface QueryWithToolsResult {
   text: string;
   functionCalls: FunctionCall[] | undefined;
 }

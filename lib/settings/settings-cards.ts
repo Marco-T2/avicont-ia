@@ -16,7 +16,7 @@ import {
  * REQ-OP.8 adds the "Perfil de Empresa" card (Building2 icon) in canonical
  * position — 8th (after "Roles y Permisos").
  */
-export interface SettingsCard {
+interface SettingsCard {
   id: string;
   title: string;
   description: string;

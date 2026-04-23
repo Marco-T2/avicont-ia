@@ -22,7 +22,7 @@ function roundHalfUp(d: Decimal): Decimal {
 
 // ── Parámetros para calcSubtotal ──────────────────────────────────────────────
 
-export type CalcSubtotalParams = {
+type CalcSubtotalParams = {
   importeTotal: Decimal;
   importeIce: Decimal;
   importeIehd: Decimal;
@@ -111,12 +111,12 @@ export function calcDebitoFiscal(baseImponible: Decimal): Decimal {
 
 // ── Parámetros para calcTotales ───────────────────────────────────────────────
 
-export type CalcTotalesParams = CalcSubtotalParams & {
+type CalcTotalesParams = CalcSubtotalParams & {
   codigoDescuentoAdicional: Decimal;
   importeGiftCard: Decimal;
 };
 
-export type CalcTotalesResult = {
+type CalcTotalesResult = {
   subtotal: Decimal;
   baseImponible: Decimal;
   ivaAmount: Decimal;

@@ -5,7 +5,7 @@ import type { InitialBalanceStatement, InitialBalanceGroup } from "../initial-ba
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
-export interface InitialBalancePdfResult {
+interface InitialBalancePdfResult {
   buffer: Buffer;
   docDef: TDocumentDefinitions;
 }

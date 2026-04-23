@@ -10,9 +10,9 @@
  * Type: "text" | "number" | "date" — determina formato de celda Excel
  */
 
-export type ColumnType = "text" | "number" | "date";
+type ColumnType = "text" | "number" | "date";
 
-export interface IvaBookColumn {
+interface IvaBookColumn {
   header: string;
   field: string;
   type: ColumnType;

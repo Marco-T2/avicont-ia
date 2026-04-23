@@ -50,7 +50,7 @@ export function getDisplayCode(type: PurchaseType, seq: number): string {
 
 // ── Plantilla de línea de asiento para la generación de comprobantes ──
 
-export interface EntryLineTemplate {
+interface EntryLineTemplate {
   accountCode: string;
   debit: number;
   credit: number;

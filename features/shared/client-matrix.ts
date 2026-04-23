@@ -12,7 +12,7 @@
  */
 import { ensureOrgSeeded } from "./permissions.cache";
 
-export type ClientMatrixSnapshot = {
+type ClientMatrixSnapshot = {
   orgId: string;
   role: string;
   permissionsRead: string[];
