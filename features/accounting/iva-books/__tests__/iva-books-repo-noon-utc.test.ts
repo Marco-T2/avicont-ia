@@ -180,7 +180,7 @@ describe("IvaBooksRepository — noon-UTC normalization (REQ-E.1)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     repo = new IvaBooksRepository(mockDb as any);
     mockIvaPurchaseCreate.mockResolvedValue(makePurchaseRow());
     mockIvaPurchaseFindFirst.mockResolvedValue(makePurchaseRow());

@@ -135,7 +135,7 @@ describe("Excel exporter — contra accounts numeric-negative (T15, R2 fix)", ()
 
     // Parse the generated XLSX and inspect cell values
     const workbook = new ExcelJS.Workbook();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await workbook.xlsx.load(buffer as any);
     const ws = workbook.worksheets[0];
 

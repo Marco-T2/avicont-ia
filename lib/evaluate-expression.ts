@@ -11,7 +11,7 @@ export function evaluateExpression(input: string): number | null {
   if (!SAFE_EXPR.test(trimmed)) return null;
 
   try {
-    // eslint-disable-next-line no-eval
+     
     const result = eval(trimmed) as unknown;
     if (typeof result !== "number" || !isFinite(result)) return null;
     return Math.round(result * 100) / 100;

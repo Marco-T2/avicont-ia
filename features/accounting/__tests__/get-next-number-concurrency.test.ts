@@ -99,7 +99,7 @@ function buildTx(opts: {
 
   const tx = {
     journalEntry: { findFirst, create },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   } as any;
   return { tx, findFirst, create, getCreateCallCount: () => callIndex };
 }
@@ -110,7 +110,7 @@ describe("JournalRepository.createWithRetryTx (REQ-B.2)", () => {
       currentMax: 7,
       createBehavior: ["success"],
     });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
     const repo = new JournalRepository({} as any);
 
     const result = await repo.createWithRetryTx(
@@ -129,7 +129,7 @@ describe("JournalRepository.createWithRetryTx (REQ-B.2)", () => {
       currentMax: 0,
       createBehavior: ["p2002", "p2002", "success"],
     });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
     const repo = new JournalRepository({} as any);
 
     const result = await repo.createWithRetryTx(
@@ -149,7 +149,7 @@ describe("JournalRepository.createWithRetryTx (REQ-B.2)", () => {
       currentMax: 0,
       createBehavior: ["p2002", "p2002", "p2002", "p2002", "p2002"],
     });
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
     const repo = new JournalRepository({} as any);
 
     await expect(
@@ -166,9 +166,9 @@ describe("JournalRepository.createWithRetryTx (REQ-B.2)", () => {
     const findFirst = vi.fn().mockResolvedValue(null);
     const tx = {
       journalEntry: { findFirst, create },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
     } as any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
     const repo = new JournalRepository({} as any);
 
     await expect(
@@ -196,11 +196,11 @@ describe("JournalRepository.createWithRetryTx (REQ-B.2)", () => {
       });
       return {
         journalEntry: { findFirst, create },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
       } as any;
     }
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
     const repo = new JournalRepository({} as any);
 
     const N = 5;

@@ -34,7 +34,7 @@ vi.mock("@/components/accounting/journal-line-row", () => ({
 
 // ── Fixtures ──
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const BASE_PERIOD = {
   id: "period-1",
   name: "Abril 2026",
@@ -48,7 +48,7 @@ const BASE_PERIOD = {
   updatedAt: new Date(),
 } as any;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const BASE_VOUCHER_TYPE = {
   id: "vt-1",
   code: "CE" as const,
@@ -58,7 +58,7 @@ const BASE_VOUCHER_TYPE = {
   organizationId: "org-1",
 } as any;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const BASE_ACCOUNT = {
   id: "acc-1",
   code: "1.1.1",

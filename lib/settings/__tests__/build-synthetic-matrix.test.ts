@@ -53,7 +53,7 @@ describe("buildSyntheticMatrix()", () => {
   // At runtime we verify the returned object has no canPost property.
   it("(d) returned object does NOT have a canPost property", () => {
     const matrix = buildSyntheticMatrix(rs("journal"), rs("journal"));
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     expect((matrix as any).canPost).toBeUndefined();
     // Only canAccess should be present
     expect(typeof matrix.canAccess).toBe("function");

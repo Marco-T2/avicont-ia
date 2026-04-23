@@ -48,6 +48,18 @@ const eslintConfig = defineConfig([
       "no-restricted-imports": ["error", banServerBarrels],
     },
   },
+  // Test files: `any` is acceptable for mocks and fixture shortcuts.
+  // Prevents stylistic noise from drowning out real issues.
+  {
+    files: [
+      "**/__tests__/**/*.{ts,tsx}",
+      "**/*.test.{ts,tsx}",
+      "**/*.spec.{ts,tsx}",
+    ],
+    rules: {
+      "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;

@@ -100,7 +100,7 @@ describe("DispatchRepository — noon-UTC normalization (REQ-E.1, D.6)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     repo = new DispatchRepository(mockDb as any);
     mockDispatchCreate.mockResolvedValue(makePrismaRow());
     mockDispatchUpdate.mockResolvedValue(makePrismaRow());
@@ -148,7 +148,7 @@ describe("DispatchRepository — noon-UTC normalization (REQ-E.1, D.6)", () => {
     };
     mockTxDispatchCreate.mockResolvedValue(makePrismaRow());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await repo.createPostedTx(mockTx as any, "org-1", BASE_INPUT, 1, [], 0);
 
     expect(mockTxDispatchCreate).toHaveBeenCalledOnce();
@@ -169,7 +169,7 @@ describe("DispatchRepository — noon-UTC normalization (REQ-E.1, D.6)", () => {
     };
     mockTxDispatchUpdate.mockResolvedValue(makePrismaRow());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await repo.updateTx(mockTx as any, "org-1", "dispatch-id-1", { date: new Date("2026-04-17T00:00:00.000Z") });
 
     expect(mockTxDispatchUpdate).toHaveBeenCalledOnce();

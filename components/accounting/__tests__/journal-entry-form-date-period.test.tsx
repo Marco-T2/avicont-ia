@@ -63,7 +63,7 @@ import JournalEntryForm from "../journal-entry-form";
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function makePeriod(overrides: Record<string, unknown> = {}): any {
   return {
     id: "period-april",
@@ -80,7 +80,7 @@ function makePeriod(overrides: Record<string, unknown> = {}): any {
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const BASE_VOUCHER_TYPE: any = {
   id: "vt-1",
   code: "CE",
@@ -90,7 +90,7 @@ const BASE_VOUCHER_TYPE: any = {
   organizationId: "org-1",
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const BASE_ACCOUNT: any = {
   id: "acc-1",
   code: "1.1.1",

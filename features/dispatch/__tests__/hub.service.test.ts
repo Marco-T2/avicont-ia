@@ -195,7 +195,7 @@ describe("HubService.listHub", () => {
     it("normalises Prisma.Decimal totalAmount from sale to a 2-decimal string", async () => {
       const decimalAmount = makeDecimal(1234.5);
       vi.mocked(saleService.list).mockResolvedValue([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         { ...makeSale({ id: "s-decimal" }), totalAmount: decimalAmount as any },
       ]);
 
@@ -207,7 +207,7 @@ describe("HubService.listHub", () => {
     it("normalises Prisma.Decimal totalAmount from dispatch to a 2-decimal string", async () => {
       const decimalAmount = makeDecimal(999.9);
       vi.mocked(dispatchService.list).mockResolvedValue([
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         { ...makeDispatch({ id: "d-decimal" }), totalAmount: decimalAmount as any },
       ]);
 

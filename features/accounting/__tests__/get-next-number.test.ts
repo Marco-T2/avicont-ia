@@ -17,7 +17,7 @@ function buildRepo(prior: { number: number } | null) {
   const mockFindFirst = vi.fn().mockResolvedValue(prior);
   const mockDb = {
     journalEntry: { findFirst: mockFindFirst },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
   } as any;
   return {
     repo: new JournalRepository(mockDb),

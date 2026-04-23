@@ -509,7 +509,7 @@ describe("SaleService — IVA journal integration", () => {
       await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);
 
       expect(vi.mocked(mocks.journalRepo.updateTx)).toHaveBeenCalled();
-      // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+       
       const resolvedLines = vi.mocked(mocks.journalRepo.updateTx).mock.calls[0]![4] as Array<{
         debit: number;
         credit: number;

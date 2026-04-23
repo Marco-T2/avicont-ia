@@ -124,7 +124,7 @@ async function readXlsxHeaders(filePath: string): Promise<string[]> {
  * Lee los headers de la fila 2 de un Buffer XLSX generado por el exporter
  * (fila 1 = título, fila 2 = encabezados de columna).
  */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function readGeneratedHeaders(buffer: any): Promise<string[]> {
   const wb = new ExcelJS.Workbook();
   // @ts-expect-error — Buffer<ArrayBuffer> vs Buffer: discrepancia entre @types/node y exceljs
