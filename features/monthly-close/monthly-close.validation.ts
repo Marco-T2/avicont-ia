@@ -5,4 +5,3 @@ export const closeRequestSchema = z.object({
   justification: z.string().optional(),
 });
 
-export type CloseRequestInput = z.infer<typeof closeRequestSchema>;

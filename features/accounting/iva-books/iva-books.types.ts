@@ -81,10 +81,3 @@ export type IvaSalesBookDTO = CreateSaleInput & {
   createdAt: Date;
   updatedAt: Date;
 };
-
-// ── Parámetros de listado ─────────────────────────────────────────────────────
-
-export type ListIvaBooksQuery = {
-  fiscalPeriodId?: string;
-  status?: IvaBookStatus;
-};

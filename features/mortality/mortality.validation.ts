@@ -10,11 +10,3 @@ export const logMortalitySchema = z.object({
   lotId: z.string().cuid("ID de lote inválido"),
 });
 
-export const mortalityFiltersSchema = z.object({
-  lotId: z.string().cuid("ID de lote inválido").optional(),
-  dateFrom: z.coerce.date().optional(),
-  dateTo: z.coerce.date().optional(),
-});
-
-export type LogMortalityDto = z.infer<typeof logMortalitySchema>;
-export type MortalityFiltersDto = z.infer<typeof mortalityFiltersSchema>;

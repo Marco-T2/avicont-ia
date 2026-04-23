@@ -13,5 +13,3 @@ export const listDocumentsSchema = z.object({
   organizationId: z.string().min(1, "El ID de organización es requerido"),
 });
 
-export type CreateDocumentDto = z.infer<typeof createDocumentSchema>;
-export type ListDocumentsDto = z.infer<typeof listDocumentsSchema>;

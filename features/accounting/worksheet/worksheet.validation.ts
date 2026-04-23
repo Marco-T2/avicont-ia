@@ -48,4 +48,3 @@ export const worksheetQuerySchema = z
     },
   );
 
-export type WorksheetQueryDto = z.infer<typeof worksheetQuerySchema>;

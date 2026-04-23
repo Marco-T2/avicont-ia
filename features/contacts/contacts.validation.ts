@@ -97,8 +97,3 @@ export const contactFiltersSchema = z.object({
   search: z.string().max(100, "El término de búsqueda es demasiado largo").optional(),
 });
 
-// ── Inferred DTO types ──
-
-export type CreateContactDto = z.infer<typeof createContactSchema>;
-export type UpdateContactDto = z.infer<typeof updateContactSchema>;
-export type ContactFiltersDto = z.infer<typeof contactFiltersSchema>;

@@ -26,4 +26,3 @@ export const trialBalanceQuerySchema = z
     },
   );
 
-export type TrialBalanceQueryDto = z.infer<typeof trialBalanceQuerySchema>;

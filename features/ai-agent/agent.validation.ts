@@ -12,5 +12,3 @@ export const confirmActionSchema = z.object({
   }),
 });
 
-export type AgentQueryDto = z.infer<typeof agentQuerySchema>;
-export type ConfirmActionDto = z.infer<typeof confirmActionSchema>;

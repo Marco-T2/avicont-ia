@@ -11,4 +11,3 @@ export const updateOrgSettingsSchema = z.object({
   bankParentCode: z.string().min(1).optional(),
 });
 
-export type UpdateOrgSettingsDto = z.infer<typeof updateOrgSettingsSchema>;

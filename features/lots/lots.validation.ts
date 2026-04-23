@@ -19,5 +19,3 @@ export const closeLotSchema = z.object({
   endDate: z.coerce.date({ message: "La fecha de cierre es requerida" }),
 });
 
-export type CreateLotDto = z.infer<typeof createLotSchema>;
-export type CloseLotDto = z.infer<typeof closeLotSchema>;

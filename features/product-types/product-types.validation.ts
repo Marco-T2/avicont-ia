@@ -12,6 +12,3 @@ export const updateProductTypeSchema = z.object({
   isActive: z.boolean().optional(),
   sortOrder: z.number().int().min(0).optional(),
 });
-
-export type CreateProductTypeDto = z.infer<typeof createProductTypeSchema>;
-export type UpdateProductTypeDto = z.infer<typeof updateProductTypeSchema>;

@@ -64,6 +64,3 @@ export const purchaseFiltersSchema = z.object({
   dateTo: z.coerce.date().optional(),
 });
 
-export type CreatePurchaseDto = z.infer<typeof createPurchaseSchema>;
-export type UpdatePurchaseDto = z.infer<typeof updatePurchaseSchema>;
-export type PurchaseFiltersDto = z.infer<typeof purchaseFiltersSchema>;

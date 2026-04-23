@@ -44,7 +44,3 @@ export const receivableFiltersSchema = z.object({
   dueDateTo: z.coerce.date().optional(),
 });
 
-export type CreateReceivableDto = z.infer<typeof createReceivableSchema>;
-export type UpdateReceivableDto = z.infer<typeof updateReceivableSchema>;
-export type ReceivableStatusDto = z.infer<typeof receivableStatusSchema>;
-export type ReceivableFiltersDto = z.infer<typeof receivableFiltersSchema>;

@@ -39,5 +39,3 @@ export const updateVoucherTypeSchema = z
   })
   .strict();
 
-export type CreateVoucherTypeDto = z.infer<typeof createVoucherTypeSchema>;
-export type UpdateVoucherTypeDto = z.infer<typeof updateVoucherTypeSchema>;
