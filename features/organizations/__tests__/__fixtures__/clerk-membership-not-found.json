@@ -1,0 +1,14 @@
+{
+  "_note": "Synthesized from @clerk/shared ClerkAPIResponseError + ClerkAPIErrorJSON type shape. NOT captured from a live Clerk dev call (no sandbox creds in this env). See test file header (clerk-error-contract.test.ts) for re-capture procedure.",
+  "status": 404,
+  "clerkTraceId": "fixture_notfound_trace",
+  "retryAfter": null,
+  "data": [
+    {
+      "code": "resource_not_found",
+      "message": "Organization membership not found",
+      "long_message": "The membership you are trying to access does not exist or has already been removed.",
+      "meta": {}
+    }
+  ]
+}

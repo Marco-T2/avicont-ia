@@ -1,0 +1,14 @@
+{
+  "_note": "Synthesized from @clerk/shared ClerkAPIResponseError + ClerkAPIErrorJSON type shape. NOT captured from a live Clerk dev call (no sandbox creds in this env). See test file header (clerk-error-contract.test.ts) for re-capture procedure.",
+  "status": 422,
+  "clerkTraceId": "fixture_duplicate_trace",
+  "retryAfter": null,
+  "data": [
+    {
+      "code": "already_a_member_in_organization",
+      "message": "This user is already a member of the organization",
+      "long_message": "The user you are trying to add is already a member of this organization.",
+      "meta": {}
+    }
+  ]
+}

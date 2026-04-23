@@ -1,0 +1,14 @@
+{
+  "_note": "Synthesized from @clerk/shared ClerkAPIResponseError + ClerkAPIErrorJSON type shape. NOT captured from a live Clerk dev call (no sandbox creds in this env). See test file header (clerk-error-contract.test.ts) for re-capture procedure.",
+  "status": 429,
+  "clerkTraceId": "fixture_ratelimit_trace",
+  "retryAfter": 30,
+  "data": [
+    {
+      "code": "rate_limit_exceeded",
+      "message": "Too many requests",
+      "long_message": "Rate limit exceeded. Please retry after the indicated interval.",
+      "meta": {}
+    }
+  ]
+}
