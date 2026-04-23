@@ -44,7 +44,3 @@ export const payableFiltersSchema = z.object({
   dueDateTo: z.coerce.date().optional(),
 });
 
-export type CreatePayableDto = z.infer<typeof createPayableSchema>;
-export type UpdatePayableDto = z.infer<typeof updatePayableSchema>;
-export type PayableStatusDto = z.infer<typeof payableStatusSchema>;
-export type PayableFiltersDto = z.infer<typeof payableFiltersSchema>;

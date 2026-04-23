@@ -84,12 +84,3 @@ export function buildUpdateMemberRoleSchema(orgId: string) {
     role: buildRoleSlugSchema(orgId),
   });
 }
-
-export type AddMemberPayload = {
-  email: string;
-  role: string;
-};
-
-export type UpdateMemberRolePayload = {
-  role: string;
-};

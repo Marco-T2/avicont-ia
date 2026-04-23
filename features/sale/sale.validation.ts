@@ -41,6 +41,3 @@ export const saleStatusSchema = z.object({
   justification: z.string().min(10).optional(),
 });
 
-export type CreateSaleDto = z.infer<typeof createSaleSchema>;
-export type UpdateSaleDto = z.infer<typeof updateSaleSchema>;
-export type SaleFiltersDto = z.infer<typeof saleFiltersSchema>;

@@ -11,4 +11,3 @@ export const equityStatementQuerySchema = z
     path: ["dateFrom"],
   });
 
-export type EquityStatementQueryDto = z.infer<typeof equityStatementQuerySchema>;

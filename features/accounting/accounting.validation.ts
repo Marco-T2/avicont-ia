@@ -128,14 +128,3 @@ export const exportVoucherQuerySchema = z.object({
   ufvRate: z.string().optional(),
 });
 
-export type LastReferenceQueryDto = z.infer<typeof lastReferenceQuerySchema>;
-export type CorrelationAuditQueryDto = z.infer<typeof correlationAuditQuerySchema>;
-export type ExportVoucherQueryDto = z.infer<typeof exportVoucherQuerySchema>;
-
-export type CreateAccountDto = z.infer<typeof createAccountSchema>;
-export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;
-export type CreateJournalEntryDto = z.infer<typeof createJournalEntrySchema>;
-export type UpdateJournalEntryDto = z.infer<typeof updateJournalEntrySchema>;
-export type StatusTransitionDto = z.infer<typeof statusTransitionSchema>;
-export type JournalFiltersDto = z.infer<typeof journalFiltersSchema>;
-export type DateRangeDto = z.infer<typeof dateRangeSchema>;

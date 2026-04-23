@@ -103,4 +103,3 @@ export const listQuerySchema = z.object({
   status: ivaBookStatusEnum.optional(),
 });
 
-export type ListQueryDto = z.infer<typeof listQuerySchema>;

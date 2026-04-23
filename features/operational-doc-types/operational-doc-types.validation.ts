@@ -18,9 +18,3 @@ export const updateOperationalDocTypeSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
-export type CreateOperationalDocTypeDto = z.infer<
-  typeof createOperationalDocTypeSchema
->;
-export type UpdateOperationalDocTypeDto = z.infer<
-  typeof updateOperationalDocTypeSchema
->;

@@ -25,4 +25,3 @@ export const hubQuerySchema = z.object({
   offset: z.coerce.number().int().min(0).optional().default(0),
 });
 
-export type HubQueryDto = z.infer<typeof hubQuerySchema>;

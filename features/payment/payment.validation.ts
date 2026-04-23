@@ -43,10 +43,6 @@ export const updatePaymentSchema = z.object({
   notes: z.string().optional(),
 });
 
-export const paymentStatusSchema = z.object({
-  status: z.enum(["POSTED", "VOIDED"]),
-});
-
 export const paymentFiltersSchema = z.object({
   status: z.enum(["DRAFT", "POSTED", "VOIDED"]).optional(),
   method: z.enum(["EFECTIVO", "TRANSFERENCIA", "CHEQUE", "DEPOSITO"]).optional(),
@@ -61,8 +57,3 @@ export const updateAllocationsSchema = z.object({
   justification: z.string().min(1).optional(),
 });
 
-export type CreatePaymentDto = z.infer<typeof createPaymentSchema>;
-export type UpdatePaymentDto = z.infer<typeof updatePaymentSchema>;
-export type PaymentStatusDto = z.infer<typeof paymentStatusSchema>;
-export type PaymentFiltersDto = z.infer<typeof paymentFiltersSchema>;
-export type UpdateAllocationsDto = z.infer<typeof updateAllocationsSchema>;

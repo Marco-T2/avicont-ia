@@ -9,13 +9,6 @@ export const createExpenseSchema = z.object({
   lotId: z.string().cuid("ID de lote inválido"),
 });
 
-export const updateExpenseSchema = z.object({
-  amount: z.number().positive("El monto debe ser mayor a 0").optional(),
-  category: z.nativeEnum(ExpenseCategory, { message: "Categoría de gasto inválida" }).optional(),
-  description: z.string().optional(),
-  date: z.coerce.date({ message: "Fecha inválida" }).optional(),
-});
-
 export const expenseFiltersSchema = z.object({
   lotId: z.string().cuid("ID de lote inválido").optional(),
   category: z.nativeEnum(ExpenseCategory, { message: "Categoría de gasto inválida" }).optional(),
@@ -25,6 +18,3 @@ export const expenseFiltersSchema = z.object({
 
 export const expenseIdSchema = z.string().cuid("ID de gasto inválido");
 
-export type CreateExpenseDto = z.infer<typeof createExpenseSchema>;
-export type UpdateExpenseDto = z.infer<typeof updateExpenseSchema>;
-export type ExpenseFiltersDto = z.infer<typeof expenseFiltersSchema>;

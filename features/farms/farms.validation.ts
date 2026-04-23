@@ -11,5 +11,3 @@ export const updateFarmSchema = z.object({
   location: z.string().optional(),
 });
 
-export type CreateFarmDto = z.infer<typeof createFarmSchema>;
-export type UpdateFarmDto = z.infer<typeof updateFarmSchema>;

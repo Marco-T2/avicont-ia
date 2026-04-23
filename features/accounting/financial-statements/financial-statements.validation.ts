@@ -2,7 +2,7 @@ import { z } from "zod";
 
 // ── Constantes de preset ──────────────────────────────────────────────────────
 
-export const ALL_DATE_PRESET_IDS = [
+const ALL_DATE_PRESET_IDS = [
   "all_dates",
   "custom_date",
   "today",
@@ -64,8 +64,6 @@ export const balanceSheetQuerySchema = z
       path: ["compareAsOfDate"],
     },
   );
-
-export type BalanceSheetQueryDto = z.infer<typeof balanceSheetQuerySchema>;
 
 // ── Estado de Resultados ──────────────────────────────────────────────────────
 
@@ -140,5 +138,3 @@ export const incomeStatementQuerySchema = z
       path: ["compareDateFrom"],
     },
   );
-
-export type IncomeStatementQueryDto = z.infer<typeof incomeStatementQuerySchema>;

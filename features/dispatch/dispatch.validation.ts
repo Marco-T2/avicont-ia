@@ -37,10 +37,6 @@ export const updateDispatchSchema = z.object({
   details: z.array(dispatchDetailSchema).optional(),
 });
 
-export const dispatchStatusSchema = z.object({
-  status: z.enum(["POSTED", "VOIDED"]),
-});
-
 export const dispatchFiltersSchema = z.object({
   dispatchType: z.enum(["NOTA_DESPACHO", "BOLETA_CERRADA"]).optional(),
   status: z.enum(["DRAFT", "POSTED", "VOIDED"]).optional(),
@@ -50,7 +46,3 @@ export const dispatchFiltersSchema = z.object({
   periodId: z.string().optional(),
 });
 
-export type CreateDispatchDto = z.infer<typeof createDispatchSchema>;
-export type UpdateDispatchDto = z.infer<typeof updateDispatchSchema>;
-export type DispatchStatusDto = z.infer<typeof dispatchStatusSchema>;
-export type DispatchFiltersDto = z.infer<typeof dispatchFiltersSchema>;
