@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ChevronDown } from "lucide-react";
@@ -58,13 +58,10 @@ export function NavItem({ icon, label, href, onClick, children }: NavItemProps) 
       )
     : false;
 
-  const [isExpanded, setIsExpanded] = useState(childActive);
+  const [manuallyExpanded, setManuallyExpanded] = useState(false);
 
-  useEffect(() => {
-    if (childActive) {
-      setIsExpanded(true);
-    }
-  }, [childActive]);
+  // Auto-expand when a child route is active; user can still collapse via toggle
+  const isExpanded = childActive || manuallyExpanded;
 
   const itemClasses = cn(
     "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
@@ -79,7 +76,7 @@ export function NavItem({ icon, label, href, onClick, children }: NavItemProps) 
       return;
     }
     if (hasChildren) {
-      setIsExpanded((prev) => !prev);
+      setManuallyExpanded((prev) => !prev);
     }
   };
 

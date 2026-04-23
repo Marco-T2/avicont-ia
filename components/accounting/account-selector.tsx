@@ -35,7 +35,8 @@ export default function AccountSelector({
     if (open) {
       setTimeout(() => searchRef.current?.focus(), 50);
     } else {
-      setSearch("");
+      // Defer reset so setState is not synchronous in the effect body
+      setTimeout(() => setSearch(""), 0);
     }
   }, [open]);
 
