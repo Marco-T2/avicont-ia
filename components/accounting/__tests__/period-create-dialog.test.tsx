@@ -345,6 +345,40 @@ describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () =>
   });
 });
 
+// ── Year validation ───────────────────────────────────────────────────────────
+
+describe("Year validation — batch button disabled when year is out of range", () => {
+  it("batch button is enabled when year=2026 (valid)", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses/i });
+    expect(batchBtn).not.toBeDisabled();
+  });
+
+  it("batch button is disabled when year=1999 (below 2000)", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "1999" } });
+
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses/i });
+    expect(batchBtn).toBeDisabled();
+  });
+
+  it("batch button is disabled when year=2101 (above 2100)", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2101" } });
+
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses/i });
+    expect(batchBtn).toBeDisabled();
+  });
+});
+
 // ── UX-T01 — Placeholder + Microcopia ────────────────────────────────────────
 
 describe("UX-T01 — Placeholder y microcopia presentes en el DOM (REQ-1)", () => {
