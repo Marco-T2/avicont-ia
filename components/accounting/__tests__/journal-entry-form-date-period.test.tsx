@@ -146,7 +146,6 @@ describe("JF-T01 — Auto-select on mount: new entry with date inside OPEN perio
     // The period Select combobox should display "Abril 2026"
     // We locate the period Select by its label
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     // The combobox in the period container should show the period name
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
@@ -173,7 +172,6 @@ describe("JF-T02 — Date change re-selects period (no manual override)", () => 
     fireEvent.change(dateInput, { target: { value: "2026-05-15" } });
 
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Mayo 2026");
   });
@@ -202,7 +200,6 @@ describe("JF-T03 — Manual period override is NOT overwritten by subsequent dat
 
     // periodId MUST remain May (manual override wins)
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Mayo 2026");
   });
@@ -286,7 +283,6 @@ describe("JF-T05 — Covered date after uncovered: warning hidden, periodId set"
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
 
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
   });
@@ -321,7 +317,6 @@ describe("JF-T06 — Edit mode mount preserves editEntry.periodId", () => {
     );
 
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
   });
@@ -359,7 +354,6 @@ describe("JF-T07 — Edit mode: date change re-selects period (no manual overrid
     fireEvent.change(dateInput, { target: { value: "2026-05-10" } });
 
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Mayo 2026");
   });
@@ -383,7 +377,6 @@ describe("JF-T08 — Inclusive startDate boundary (REQ-4)", () => {
     fireEvent.change(dateInput, { target: { value: "2026-04-01" } });
 
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
@@ -408,7 +401,6 @@ describe("JF-T09 — Inclusive endDate boundary (REQ-4)", () => {
     fireEvent.change(dateInput, { target: { value: "2026-04-30" } });
 
     const periodLabel = screen.getByText(/período/i);
-    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
     const periodContainer = periodLabel.closest("div")!;
     expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
