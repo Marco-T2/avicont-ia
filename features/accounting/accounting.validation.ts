@@ -1,8 +1,6 @@
 import { z } from "zod";
 import { AccountType, AccountSubtype, JournalEntryStatus } from "@/generated/prisma/client";
 
-export const accountIdSchema = z.string().cuid("ID de cuenta inválido");
-
 export const createAccountSchema = z
   .object({
     code: z.string().min(1, "El código no puede estar vacío").optional(),
@@ -42,7 +40,7 @@ export const updateAccountSchema = z.object({
   isContraAccount: z.boolean({ message: "El campo contra-cuenta debe ser verdadero o falso" }).optional(),
 });
 
-export const journalLineSchema = z
+const journalLineSchema = z
   .object({
     accountId: z.string().cuid("ID de cuenta inválido"),
     debit: z.number().min(0, "El débito no puede ser negativo"),
@@ -136,7 +134,6 @@ export type ExportVoucherQueryDto = z.infer<typeof exportVoucherQuerySchema>;
 
 export type CreateAccountDto = z.infer<typeof createAccountSchema>;
 export type UpdateAccountDto = z.infer<typeof updateAccountSchema>;
-export type JournalLineDto = z.infer<typeof journalLineSchema>;
 export type CreateJournalEntryDto = z.infer<typeof createJournalEntrySchema>;
 export type UpdateJournalEntryDto = z.infer<typeof updateJournalEntrySchema>;
 export type StatusTransitionDto = z.infer<typeof statusTransitionSchema>;

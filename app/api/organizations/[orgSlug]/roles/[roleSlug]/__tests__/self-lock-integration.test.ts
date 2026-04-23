@@ -100,7 +100,7 @@ const fakeRepoState: {
 // the route module constructs the REAL service with the REAL closure.
 vi.mock("@/features/organizations/server", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/features/organizations")>();
+    await importOriginal<typeof import("@/features/organizations/server")>();
   return {
     ...actual,
     // Keep RolesService = the REAL class

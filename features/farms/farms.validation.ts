@@ -11,7 +11,5 @@ export const updateFarmSchema = z.object({
   location: z.string().optional(),
 });
 
-export const farmIdSchema = z.string().cuid("ID de granja inválido");
-
 export type CreateFarmDto = z.infer<typeof createFarmSchema>;
 export type UpdateFarmDto = z.infer<typeof updateFarmSchema>;
