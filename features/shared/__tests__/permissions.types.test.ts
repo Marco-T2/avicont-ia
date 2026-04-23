@@ -6,7 +6,7 @@
  * (b) SYSTEM_ROLES tuple === exactly ['owner','admin','contador','cobrador','member']
  * (c) SystemRole narrows correctly via isSystemRole
  */
-import { describe, it, expect, expectTypeOf } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   SYSTEM_ROLES,
   isSystemRole,

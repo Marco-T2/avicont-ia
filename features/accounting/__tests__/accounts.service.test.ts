@@ -8,7 +8,7 @@
  * Uses a mock AccountsRepository — no real DB.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { AccountsService } from "@/features/accounting/accounts.service";
 import type { AccountsRepository } from "@/features/accounting/accounts.repository";
 import type { Account } from "@/generated/prisma/client";

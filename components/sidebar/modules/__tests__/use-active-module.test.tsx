@@ -88,14 +88,6 @@ const ACCOUNTING_ONLY: ClientMatrixSnapshot = {
   canPost: [],
 };
 
-const NO_RESOURCES: ClientMatrixSnapshot = {
-  orgId: "org-1",
-  role: "custom-no-access",
-  permissionsRead: [],
-  permissionsWrite: [],
-  canPost: [],
-};
-
 function wrapper(snapshot: ClientMatrixSnapshot | null) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return (

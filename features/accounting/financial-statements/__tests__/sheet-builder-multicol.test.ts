@@ -91,8 +91,6 @@ const col1: StatementColumn = { id: "col-current", label: "Total", role: "curren
 const col2: StatementColumn = { id: "col-jan", label: "Ene 2026", role: "current", asOfDate: new Date("2026-01-31") };
 const col3: StatementColumn = { id: "col-feb", label: "Feb 2026", role: "current", asOfDate: new Date("2026-02-28") };
 const col4: StatementColumn = { id: "col-mar", label: "Mar 2026", role: "current", asOfDate: new Date("2026-03-31") };
-// 4 columnas → landscape
-const col5: StatementColumn = { id: "col-apr", label: "Abr 2026", role: "current" };
 
 // ── Tests: columna única (backward compat) ──
 

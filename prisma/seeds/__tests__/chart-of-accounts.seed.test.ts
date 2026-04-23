@@ -6,9 +6,7 @@
  * Uses a mock PrismaClient — does not touch the real DB.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
-import { readFileSync } from "node:fs";
-import path from "node:path";
+import { describe, it, expect } from "vitest";
 
 // ── Inspect the exported accounts array (static analysis) ──
 // We import the ACCOUNTS constant directly — no DB call needed.

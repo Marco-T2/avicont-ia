@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FileText, Users, Brain, ArrowRight, Upload } from "lucide-react";
+import { FileText, Brain, ArrowRight, Upload } from "lucide-react";
 import Link from "next/link";
 import { auth } from "@clerk/nextjs/server";
 import { OrganizationsService } from "@/features/organizations/server";

@@ -10,7 +10,7 @@
  * RED: fails until JournalFilters.origin and the repo query branch are added (T5.5 + T5.6).
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 

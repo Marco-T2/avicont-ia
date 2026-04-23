@@ -593,7 +593,6 @@ describe("EquityStatementRepository — getAperturaPatrimonyDelta", () => {
   let caUserId: string;
   let caPeriodId: string;
   let caVtId: string;         // VoucherTypeCfg code='CA'
-  let caOtherVtId: string;    // Generic VoucherTypeCfg (non-CA) for DRAFT test
   let caCapitalAccId: string; // PATRIMONIO ACREEDORA
   let caCajaAccId: string;    // ACTIVO DEUDORA (non-PATRIMONIO, must be excluded)
 
@@ -651,7 +650,7 @@ describe("EquityStatementRepository — getAperturaPatrimonyDelta", () => {
     caVtId = caVt.id;
 
     // Generic voucher type for DRAFT entry
-    const otherVt = await prisma.voucherTypeCfg.create({
+    await prisma.voucherTypeCfg.create({
       data: {
         organizationId: caOrgId,
         code: `CD-${now}`,
@@ -660,8 +659,6 @@ describe("EquityStatementRepository — getAperturaPatrimonyDelta", () => {
         isAdjustment: false,
       },
     });
-    caOtherVtId = otherVt.id;
-
     // PATRIMONIO ACREEDORA account (3.1.1 Capital Social)
     const capitalAcc = await prisma.account.create({
       data: {
@@ -782,7 +779,7 @@ describe("EquityStatementRepository — getAperturaPatrimonyDelta", () => {
   // T02 — REQ-APERTURA-MERGE scenario 6: CA outside range returns empty map
   it("T02 — CA dated before dateFrom: returns empty map", async () => {
     // Query April only — the March CA (2026-03-15) is out of range
-    const result = await repo.getAperturaPatrimonyDelta(caOrgId, APR_FROM, APR_TO);
+    await repo.getAperturaPatrimonyDelta(caOrgId, APR_FROM, APR_TO);
     // The only POSTED CA inside April is the 200000 one; the March one must NOT be included.
     // To isolate: query a range that excludes the April entry too.
     const resultMarch = await repo.getAperturaPatrimonyDelta(

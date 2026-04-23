@@ -3,8 +3,6 @@ import { Prisma } from "@/generated/prisma/client";
 import { sumDecimals, eq } from "./money.utils";
 import { formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
 import type {
-  AccountMetadata,
-  ResolvedBalance,
   BuildBalanceSheetInput,
   BalanceSheetCurrent,
   SubtypeGroup,

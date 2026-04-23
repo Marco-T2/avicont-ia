@@ -14,7 +14,7 @@
  */
 
 import ExcelJS from "exceljs";
-import type { TrialBalanceReport, TrialBalanceTotals, TrialBalanceRow } from "../trial-balance.types";
+import type { TrialBalanceReport } from "../trial-balance.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

@@ -15,7 +15,7 @@
 import ExcelJS from "exceljs";
 import type { Prisma } from "@/generated/prisma/client";
 import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../iva-books.types";
-import { getColumns, type IvaBookColumn } from "./sheet.builder";
+import { getColumns } from "./sheet.builder";
 
 // ── Formato numérico Bolivia (2 decimales, negativo entre paréntesis) ─────────
 
@@ -44,28 +44,6 @@ function toNumber(v: Prisma.Decimal | number | string | null | undefined): numbe
   if (v === null || v === undefined) return 0;
   const n = typeof v === "number" ? v : parseFloat(String(v));
   return isNaN(n) ? 0 : n;
-}
-
-// ── Escritura de una celda según tipo ────────────────────────────────────────
-
-function writeCellValue(
-  cell: ExcelJS.Cell,
-  value: unknown,
-  col: IvaBookColumn,
-): void {
-  if (col.type === "number") {
-    cell.value = toNumber(value as Prisma.Decimal | number | string | null | undefined);
-    cell.numFmt = NUMBER_FORMAT;
-    cell.alignment = { horizontal: "right", vertical: "middle" };
-  } else if (col.type === "date") {
-    // Almacenamos la fecha como string ISO "YYYY-MM-DD"
-    cell.value = value != null ? String(value) : "";
-    cell.alignment = { horizontal: "center", vertical: "middle" };
-  } else {
-    cell.value = value != null ? String(value) : "";
-    cell.alignment = { horizontal: "left", vertical: "middle" };
-  }
-  cell.font = arialFont({ size: 9 });
 }
 
 // ── Extracción de valor de campo ──────────────────────────────────────────────

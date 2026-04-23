@@ -35,7 +35,7 @@ import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/features/purchase";
 import { IvaBookPurchaseModal } from "@/components/iva-books/iva-book-purchase-modal";
-import { isFiscalPeriodOpen, FISCAL_PERIOD_CLOSED_MESSAGE } from "@/lib/fiscal-period.utils";
+import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { LcvIndicator } from "@/components/common/lcv-indicator";
 import type { LcvState } from "@/components/common/lcv-indicator";
 import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lcv-confirm-dialog-purchase";
@@ -206,7 +206,6 @@ export default function PurchaseForm({
   const isPosted = status === "POSTED";
   const isVoided = status === "VOIDED";
   const isReadOnly = isVoided || (isLocked && !isAdminOrOwner);
-  const canEdit = !isReadOnly && (status === "DRAFT" || isPosted || (isLocked && isAdminOrOwner));
 
   // ── Header state ──
   const [contactId, setContactId] = useState(purchase?.contactId ?? "");

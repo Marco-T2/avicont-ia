@@ -1,7 +1,6 @@
 import "server-only";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
 import type { Role } from "@/features/shared/permissions";
-import { resolveBalances } from "./balance-source.resolver";
 import { buildBalanceSheet } from "./balance-sheet.builder";
 import { buildIncomeStatement } from "./income-statement.builder";
 import { calculateRetainedEarnings } from "./retained-earnings.calculator";
@@ -15,15 +14,12 @@ import type {
   DatePresetId,
   BreakdownBy,
   CompareWith,
-  AccountMetadata,
-  MovementAggregation,
 } from "./financial-statements.types";
 import {
   resolveDatePreset,
   applyFilterPrecedence,
   generateBreakdownBuckets,
   resolveComparativePeriod,
-  computeDiffPercent,
 } from "./date-presets.utils";
 import type { DateRange } from "./date-presets.utils";
 import {

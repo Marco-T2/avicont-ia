@@ -7,9 +7,9 @@
  *
  * All external dependencies mocked — no DB access.
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { JournalService } from "@/features/accounting/journal.service";
-import { AUTO_ENTRY_VOID_FORBIDDEN, ENTRY_VOIDED_IMMUTABLE } from "@/features/shared/errors";
+import { AUTO_ENTRY_VOID_FORBIDDEN } from "@/features/shared/errors";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 import type { JournalRepository } from "@/features/accounting/journal.repository";
 import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
@@ -52,10 +52,6 @@ function makeEntry(
     },
     ...overrides,
   } as unknown as JournalEntryWithLines;
-}
-
-function makeVoidedEntry(overrides: Partial<JournalEntryWithLines> = {}) {
-  return makeEntry({ status: "VOIDED", ...overrides });
 }
 
 // ── Mock builder ──────────────────────────────────────────────────────────────
@@ -177,7 +173,6 @@ describe("internal cascade — bypasses void guard (REQ-E.2 S-E2.1)", () => {
     //
     // We confirm this by checking that calling repo.update (which maps to the tx path)
     // with an auto-entry succeeds without throwing AUTO_ENTRY_VOID_FORBIDDEN.
-    const autoEntry = makeEntry({ sourceType: "sale", status: "POSTED" });
     const voidedEntry = makeEntry({ sourceType: "sale", status: "VOIDED" });
 
     const mockRepoUpdate = vi.fn().mockResolvedValue(voidedEntry);

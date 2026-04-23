@@ -53,7 +53,7 @@ interface RoleSidebarPreviewProps {
 function PreviewContent({
   readSet,
   writeSet,
-  orgSlug,
+  orgSlug: _orgSlug,
 }: {
   readSet: Set<Resource>;
   writeSet: Set<Resource>;

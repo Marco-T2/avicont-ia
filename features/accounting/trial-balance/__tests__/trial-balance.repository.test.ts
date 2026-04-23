@@ -15,10 +15,6 @@ import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { TrialBalanceRepository } from "../trial-balance.repository";
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-const D = (v: string | number) => new Prisma.Decimal(String(v));
-
 // ── Shared fixture state ──────────────────────────────────────────────────────
 
 let orgId: string;

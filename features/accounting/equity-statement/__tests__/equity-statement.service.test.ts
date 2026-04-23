@@ -5,7 +5,7 @@
  *         REQ-9 (role check), REQ-10 (date validation)
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { Prisma } from "@/generated/prisma/client";

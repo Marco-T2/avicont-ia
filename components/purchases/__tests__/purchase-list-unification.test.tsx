@@ -5,7 +5,7 @@
  * REQ-C.1, REQ-C.2
  */
 
-import { render, screen, cleanup, within, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import PurchaseList from "../purchase-list";
@@ -71,14 +71,6 @@ const SERVICIO_PURCHASE = {
   purchaseType: "SERVICIO",
   displayCode: "SV-001",
   description: "Servicio contratado",
-};
-
-const FLETE_PURCHASE = {
-  ...BASE_PURCHASE,
-  id: "purchase-3",
-  purchaseType: "FLETE",
-  displayCode: "FL-001",
-  description: "Flete de entrega",
 };
 
 // ── T7.1/T7.2: Entry button unification ──

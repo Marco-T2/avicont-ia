@@ -8,8 +8,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
-
 describe("mapAccountCodeToColumn — longest-prefix-wins", () => {
   it("'3.1.4' → CAPITAL_SOCIAL", async () => {
     const { mapAccountCodeToColumn } = await import("../equity-statement.builder");

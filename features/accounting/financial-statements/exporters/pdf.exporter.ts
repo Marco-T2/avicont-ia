@@ -236,8 +236,6 @@ function buildPageSection(
   isFirstPage: boolean,
   rowTypes: ExportRowType[],
 ): Content[] {
-  const totalCols = totalPdfCols(valueColumns);
-
   // Fila de encabezado de columnas
   const headerRow: Content[] = [
     {

@@ -107,58 +107,6 @@ const listLotsTool: FunctionDeclaration = {
   },
 };
 
-// ── Contador tools (accounting operations) ──
-
-const getTrialBalanceTool: FunctionDeclaration = {
-  name: "getTrialBalance",
-  description:
-    "Obtener el balance de comprobación (balance de sumas y saldos) de la organización.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      date: {
-        type: SchemaType.STRING,
-        description:
-          "Fecha de corte en formato YYYY-MM-DD (opcional, por defecto fecha actual)",
-      },
-    },
-  },
-};
-
-const getAccountLedgerTool: FunctionDeclaration = {
-  name: "getAccountLedger",
-  description:
-    "Obtener el libro mayor (movimientos) de una cuenta contable específica.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      accountId: {
-        type: SchemaType.STRING,
-        description: "ID de la cuenta contable",
-      },
-      dateFrom: {
-        type: SchemaType.STRING,
-        description: "Fecha inicial del rango en formato YYYY-MM-DD (opcional)",
-      },
-      dateTo: {
-        type: SchemaType.STRING,
-        description: "Fecha final del rango en formato YYYY-MM-DD (opcional)",
-      },
-    },
-    required: ["accountId"],
-  },
-};
-
-const listAccountsTool: FunctionDeclaration = {
-  name: "listAccounts",
-  description:
-    "Listar el plan de cuentas (todas las cuentas contables) de la organización.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {},
-  },
-};
-
 // ── Shared tools (RAG search) ──
 
 const searchDocumentsTool: FunctionDeclaration = {

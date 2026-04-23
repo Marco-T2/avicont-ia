@@ -86,9 +86,6 @@ export default function CreateAccountDialog({
     return getNextCode(parent?.code ?? null, siblingCodes);
   }, [parent, allAccounts]);
 
-  // The effective code: custom if toggled, otherwise auto-generated
-  const effectiveCode = useCustomCode ? customCode : suggestedCode;
-
   // Inherited type from parent (read-only when parent is selected)
   const effectiveType = parent ? parent.type : type;
 

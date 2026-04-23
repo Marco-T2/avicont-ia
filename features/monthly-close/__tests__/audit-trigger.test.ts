@@ -18,7 +18,6 @@ import { prisma } from "@/lib/prisma";
 let orgId: string;
 let userId: string;
 let periodId: string;
-let voucherTypeId: string;
 let contactId: string;
 let purchaseId: string;
 
@@ -57,7 +56,7 @@ beforeEach(async () => {
   });
   periodId = period.id;
 
-  const vt = await prisma.voucherTypeCfg.create({
+  await prisma.voucherTypeCfg.create({
     data: {
       organizationId: orgId,
       code: "CP",
@@ -65,8 +64,6 @@ beforeEach(async () => {
       name: "Comprobante Pago",
     },
   });
-  voucherTypeId = vt.id;
-
   const contact = await prisma.contact.create({
     data: {
       organizationId: orgId,

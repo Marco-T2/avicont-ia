@@ -8,7 +8,6 @@ import {
 import type { ContactsService } from "@/features/contacts/server";
 import { PayablesRepository } from "./payables.repository";
 import type {
-  AccountsPayable,
   PayableWithContact,
   PayableStatus,
   CreatePayableInput,
