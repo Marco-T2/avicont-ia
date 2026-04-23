@@ -345,6 +345,58 @@ describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () =>
   });
 });
 
+// ── UX-T08b — Batch counts non-FISCAL_PERIOD_MONTH_EXISTS 409 as FAILED ──────
+
+describe("UX-T08b — 409 con código distinto a FISCAL_PERIOD_MONTH_EXISTS cuenta como fallido (S-01)", () => {
+  it("409 con body { error: { code: 'SOME_OTHER_ERROR' } } cuenta como fallido, no como ya existía", async () => {
+    const onOpenChange = vi.fn();
+
+    // month 1 returns 409 with a different error code; rest return 201
+    const fetchMock = vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      const body = JSON.parse((opts?.body as string) ?? "{}") as { startDate?: string };
+      const month = body.startDate ? parseInt(body.startDate.split("-")[1], 10) : 0;
+      if (month === 1) {
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          json: async () => ({ error: { code: "SOME_OTHER_ERROR" } }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 201,
+        json: async () => ({}),
+      });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <PeriodCreateDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        orgSlug="test-org"
+        onCreated={vi.fn()}
+      />,
+    );
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses de 2026/i });
+    fireEvent.click(batchBtn);
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalled();
+    });
+
+    const toastArg = mockToastSuccess.mock.calls[0][0] as string;
+    // month 1 must be FAILED (not skipped)
+    expect(toastArg).toMatch(/11 períodos creados/);
+    expect(toastArg).toMatch(/1 fallidos/);
+    expect(toastArg).not.toMatch(/ya existían/);
+  });
+});
+
 // ── Year validation ───────────────────────────────────────────────────────────
 
 describe("Year validation — batch button disabled when year is out of range", () => {
