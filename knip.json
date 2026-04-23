@@ -3,5 +3,9 @@
   "ignore": [
     "prisma/migrations/**",
     "generated/**"
+  ],
+  "ignoreDependencies": [
+    "@prisma/client",
+    "pg"
   ]
 }
