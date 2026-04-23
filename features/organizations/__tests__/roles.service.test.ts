@@ -482,10 +482,12 @@ describe("RolesService.updateRole — normalize + revalidate + immutable slug (D
       CALLER,
     );
 
-    const [updatedId, patch] = repo.update.mock.calls[0] as [
+    const [orgIdArg, updatedId, patch] = repo.update.mock.calls[0] as [
+      string,
       string,
       Record<string, unknown>,
     ];
+    expect(orgIdArg).toBe("org_1");
     expect(updatedId).toBe("r-f");
     expect(patch.permissionsWrite).toEqual(["reports", "sales"]);
     expect(patch.permissionsRead).toEqual(["contacts", "sales"]);
@@ -523,7 +525,7 @@ describe("RolesService.updateRole — normalize + revalidate + immutable slug (D
       CALLER,
     );
 
-    const patch = repo.update.mock.calls[0][1] as Record<string, unknown>;
+    const patch = repo.update.mock.calls[0][2] as Record<string, unknown>;
     expect(patch.slug).toBeUndefined();
     expect(patch.name).toBe("F");
   });
@@ -603,7 +605,7 @@ describe("RolesService.deleteRole (CR.7)", () => {
 
     await service.deleteRole("org_1", "facturador", CALLER);
 
-    expect(repo.delete).toHaveBeenCalledWith("r-f");
+    expect(repo.delete).toHaveBeenCalledWith("org_1", "r-f");
     expect(revalidateOrgMatrix).toHaveBeenCalledWith("org_1");
   });
 

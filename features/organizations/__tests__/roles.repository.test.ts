@@ -102,23 +102,25 @@ describe("RolesRepository — update", () => {
     };
 
     const repo = new RolesRepository();
-    await repo.update("r1", patch);
+    await repo.update("org_1", "r1", patch);
 
     expect(mockUpdate).toHaveBeenCalledWith({
-      where: { id: "r1" },
+      where: { id: "r1", organizationId: "org_1" },
       data: patch,
     });
   });
 });
 
 describe("RolesRepository — delete", () => {
-  it("calls customRole.delete with where.id", async () => {
+  it("calls customRole.delete scoped by org + id", async () => {
     mockDelete.mockResolvedValue({ id: "r1" } as never);
 
     const repo = new RolesRepository();
-    await repo.delete("r1");
+    await repo.delete("org_1", "r1");
 
-    expect(mockDelete).toHaveBeenCalledWith({ where: { id: "r1" } });
+    expect(mockDelete).toHaveBeenCalledWith({
+      where: { id: "r1", organizationId: "org_1" },
+    });
   });
 });
 

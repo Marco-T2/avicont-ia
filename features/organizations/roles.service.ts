@@ -241,7 +241,7 @@ export class RolesService {
     }
 
     // 6. Update
-    const updated = await this.repo.update(target.id, normalized);
+    const updated = await this.repo.update(orgId, target.id, normalized);
 
     // 7. Revalidate cache
     this.revalidateOrgMatrix(orgId);
@@ -280,7 +280,7 @@ export class RolesService {
     }
 
     // 4. Delete
-    await this.repo.delete(target.id);
+    await this.repo.delete(orgId, target.id);
 
     // 5. Revalidate cache
     this.revalidateOrgMatrix(orgId);
