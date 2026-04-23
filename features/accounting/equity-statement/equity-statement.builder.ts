@@ -30,7 +30,7 @@ const TYPED_ROW_CONFIG: Record<
  * Column map ordered longest-prefix-first so "3.2.1" wins over "3.2".
  * Accounts without a match fall through to OTROS_PATRIMONIO.
  */
-export const COLUMN_MAP: ReadonlyArray<readonly [prefix: string, column: ColumnKey]> = [
+const COLUMN_MAP: ReadonlyArray<readonly [prefix: string, column: ColumnKey]> = [
   ["3.2.1", "APORTES_CAPITALIZAR"],
   ["3.1",   "CAPITAL_SOCIAL"],
   ["3.2",   "AJUSTE_CAPITAL"],

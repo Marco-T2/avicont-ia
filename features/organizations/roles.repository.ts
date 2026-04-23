@@ -11,7 +11,7 @@ import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { CustomRole, Prisma } from "@/generated/prisma/client";
 
-export type CreateCustomRoleInput = {
+type CreateCustomRoleInput = {
   organizationId: string;
   slug: string;
   name: string;

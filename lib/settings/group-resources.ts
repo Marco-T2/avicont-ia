@@ -14,7 +14,7 @@ export type MatrixGroup = {
   resources: Resource[];
 };
 
-export const ORG_LABEL = "Organización";
+const ORG_LABEL = "Organización";
 
 /**
  * Groups `allResources` into sections derived dynamically from `modules`.

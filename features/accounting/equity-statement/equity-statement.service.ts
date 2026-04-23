@@ -11,7 +11,7 @@ import { calculateRetainedEarnings } from "@/features/accounting/financial-state
 
 const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
 
-export type GenerateEquityStatementInput = { dateFrom: Date; dateTo: Date };
+type GenerateEquityStatementInput = { dateFrom: Date; dateTo: Date };
 
 export class EquityStatementService {
   constructor(
