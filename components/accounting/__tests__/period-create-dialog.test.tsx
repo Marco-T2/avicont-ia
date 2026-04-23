@@ -134,6 +134,56 @@ describe("UX-T03 — Selección de mes autocompleta nombre (REQ-2)", () => {
   });
 });
 
+// ── UX-T04 — Manual edit wins over autocomplete ──────────────────────────────
+
+describe("UX-T04 — Edición manual posterior no es sobreescrita (REQ-2)", () => {
+  it("manual startDate edit after autocomplete retains manual value", async () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    // First: autocomplete via month select
+    await selectMonth("Abril");
+
+    const startDateInput = screen.getByLabelText(/fecha de inicio/i);
+
+    // Confirm autocomplete applied
+    expect(startDateInput).toHaveValue("2026-04-01");
+
+    // Now manually edit startDate
+    fireEvent.change(startDateInput, { target: { value: "2026-04-05" } });
+
+    // Confirm manual value is retained
+    expect(startDateInput).toHaveValue("2026-04-05");
+  });
+
+  it("selecting a new month after manual edit does NOT overwrite manual startDate", async () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    // Autocomplete Abril
+    await selectMonth("Abril");
+
+    const startDateInput = screen.getByLabelText(/fecha de inicio/i);
+
+    // Manual edit
+    fireEvent.change(startDateInput, { target: { value: "2026-04-05" } });
+
+    // Select a different month (Mayo) — should NOT overwrite manual startDate
+    await selectMonth("Mayo");
+
+    // Manual value must be preserved
+    expect(startDateInput).toHaveValue("2026-04-05");
+
+    // endDate SHOULD be updated (not manually edited)
+    const endDateInput = screen.getByLabelText(/fecha de cierre/i);
+    expect(endDateInput).toHaveValue("2026-05-31");
+  });
+});
+
 // ── UX-T01 — Placeholder + Microcopia ────────────────────────────────────────
 
 describe("UX-T01 — Placeholder y microcopia presentes en el DOM (REQ-1)", () => {
