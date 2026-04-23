@@ -273,12 +273,13 @@ export class SaleRepository extends BaseRepository {
 
   async linkJournalAndReceivable(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     id: string,
     journalEntryId: string,
     receivableId: string,
   ): Promise<void> {
     await tx.sale.update({
-      where: { id },
+      where: { id, organizationId },
       data: { journalEntryId, receivableId },
     });
   }

@@ -398,12 +398,13 @@ export class PurchaseRepository extends BaseRepository {
 
   async linkJournalAndPayable(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     id: string,
     journalEntryId: string,
     payableId: string,
   ): Promise<void> {
     await tx.purchase.update({
-      where: { id },
+      where: { id, organizationId },
       data: { journalEntryId, payableId },
     });
   }

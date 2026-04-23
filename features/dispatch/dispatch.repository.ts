@@ -322,12 +322,13 @@ export class DispatchRepository extends BaseRepository {
 
   async linkJournalAndReceivable(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     id: string,
     journalEntryId: string,
     receivableId: string,
   ): Promise<void> {
     await tx.dispatch.update({
-      where: { id },
+      where: { id, organizationId },
       data: { journalEntryId, receivableId },
     });
   }

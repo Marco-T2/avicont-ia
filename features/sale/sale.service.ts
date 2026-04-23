@@ -358,7 +358,7 @@ export class SaleService {
         journalEntryId: entry.id,
       });
 
-      await this.repo.linkJournalAndReceivable(tx, sale.id, entry.id, receivable.id);
+      await this.repo.linkJournalAndReceivable(tx, organizationId, sale.id, entry.id, receivable.id);
     });
 
     const result = await this.repo.findById(organizationId, saleId);
@@ -498,7 +498,7 @@ export class SaleService {
         journalEntryId: entry.id,
       });
 
-      await this.repo.linkJournalAndReceivable(tx, sale.id, entry.id, receivable.id);
+      await this.repo.linkJournalAndReceivable(tx, organizationId, sale.id, entry.id, receivable.id);
     });
 
     const result = await this.repo.findById(organizationId, saleId);
@@ -1174,7 +1174,7 @@ export class SaleService {
 
     // 4. Anular la CxC vinculada
     if (sale.receivableId) {
-      await this.receivablesRepo.voidTx(tx, sale.receivableId);
+      await this.receivablesRepo.voidTx(tx, organizationId, sale.receivableId);
     }
   }
 

@@ -394,6 +394,7 @@ export class DispatchService {
 
       await this.repo.linkJournalAndReceivable(
         tx,
+        organizationId,
         dispatch.id,
         entry.id,
         receivable.id,
@@ -881,6 +882,7 @@ export class DispatchService {
       // 7. Vincular journalEntryId y receivableId de vuelta al despacho
       await this.repo.linkJournalAndReceivable(
         tx,
+        organizationId,
         id,
         entry.id,
         receivable.id,
@@ -1059,7 +1061,7 @@ export class DispatchService {
 
     // 4. Anular el AccountsReceivable vinculado
     if (dispatch.receivableId) {
-      await this.receivablesRepo.voidTx(tx, dispatch.receivableId);
+      await this.receivablesRepo.voidTx(tx, organizationId, dispatch.receivableId);
     }
   }
 }

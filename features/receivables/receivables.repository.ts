@@ -145,10 +145,11 @@ export class ReceivablesRepository extends BaseRepository {
 
   async voidTx(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     id: string,
   ): Promise<void> {
     await tx.accountsReceivable.update({
-      where: { id },
+      where: { id, organizationId },
       data: {
         status: "VOIDED",
         balance: new Prisma.Decimal(0),
@@ -158,13 +159,14 @@ export class ReceivablesRepository extends BaseRepository {
 
   async updatePaymentTx(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     id: string,
     paid: number,
     balance: number,
     status: string,
   ): Promise<void> {
     await tx.accountsReceivable.update({
-      where: { id },
+      where: { id, organizationId },
       data: {
         paid: new Prisma.Decimal(paid),
         balance: new Prisma.Decimal(balance),
