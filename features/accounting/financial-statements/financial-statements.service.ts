@@ -77,9 +77,8 @@ const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
  * Genera una columna comparative y una diff_percent por cada columna current del main.
  *
  * Pura: recibe data ya calculada, retorna columnas extendidas.
- * Exportada para TDD en tests de integración del service.
  */
-export function buildComparativeColumns(
+function buildComparativeColumns(
   currentColumns: StatementColumn[],
   comparativeRange: DateRange,
 ): StatementColumn[] {

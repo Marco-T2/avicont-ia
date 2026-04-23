@@ -16,6 +16,4 @@ export function isFiscalPeriodOpen(
 ): boolean {
   return period?.status === "OPEN";
 }
-
-/** Mensaje estándar para período cerrado — compartido entre sale-form y purchase-form. */
 export const FISCAL_PERIOD_CLOSED_MESSAGE = "El período fiscal está cerrado.";

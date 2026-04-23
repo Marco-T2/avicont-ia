@@ -9,8 +9,6 @@ export const createDocumentSchema = z.object({
   scope: documentScopeEnum.optional().default("ORGANIZATION"),
 });
 
-export const documentIdSchema = z.string().cuid("ID de documento inválido");
-
 export const listDocumentsSchema = z.object({
   organizationId: z.string().min(1, "El ID de organización es requerido"),
 });

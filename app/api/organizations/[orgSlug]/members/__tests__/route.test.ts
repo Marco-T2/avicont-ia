@@ -56,7 +56,7 @@ const mockMembersServiceInstance = {
 
 vi.mock("@/features/organizations/server", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/features/organizations")>();
+    await importOriginal<typeof import("@/features/organizations/server")>();
   return {
     ...actual,
     MembersService: vi.fn().mockImplementation(function () {
