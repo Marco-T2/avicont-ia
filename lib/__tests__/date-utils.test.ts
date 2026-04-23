@@ -11,7 +11,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
-import { todayLocal, formatDateBO, toNoonUtc, lastDayOfUTCMonth } from "@/lib/date-utils";
+import { todayLocal, formatDateBO, toNoonUtc, lastDayOfUTCMonth, addUTCDays } from "@/lib/date-utils";
 
 // ── todayLocal() ──────────────────────────────────────────────────────────────
 
@@ -166,5 +166,43 @@ describe("lastDayOfUTCMonth", () => {
     // Date.UTC(2026, 12, 0) wraps: month 12 = Jan 2027, day 0 = last day of Dec 2026
     const result = lastDayOfUTCMonth(new Date(Date.UTC(2026, 11, 1)));
     expect(result.toISOString()).toBe("2026-12-31T00:00:00.000Z");
+  });
+});
+
+// ── addUTCDays() ──────────────────────────────────────────────────────────────
+
+describe("addUTCDays", () => {
+  it("(a) delta=-1 returns previous UTC day preserving time-of-day", () => {
+    const result = addUTCDays(new Date("2026-04-17T12:00:00.000Z"), -1);
+    expect(result.toISOString()).toBe("2026-04-16T12:00:00.000Z");
+  });
+
+  it("(b) delta=+1 advances one UTC day", () => {
+    const result = addUTCDays(new Date("2026-04-17T00:00:00.000Z"), 1);
+    expect(result.toISOString()).toBe("2026-04-18T00:00:00.000Z");
+  });
+
+  it("(c) delta crosses month boundary (Mar 1 - 1 = Feb 28 in 2026 non-leap)", () => {
+    const result = addUTCDays(new Date("2026-03-01T00:00:00.000Z"), -1);
+    expect(result.toISOString()).toBe("2026-02-28T00:00:00.000Z");
+  });
+
+  it("(d) delta crosses year boundary (Jan 1 - 1 = Dec 31 prior year)", () => {
+    const result = addUTCDays(new Date("2026-01-01T00:00:00.000Z"), -1);
+    expect(result.toISOString()).toBe("2025-12-31T00:00:00.000Z");
+  });
+
+  it("(e) delta=0 returns a clone (same instant, different reference)", () => {
+    const src = new Date("2026-04-17T12:00:00.000Z");
+    const result = addUTCDays(src, 0);
+    expect(result.toISOString()).toBe(src.toISOString());
+    expect(result).not.toBe(src);
+  });
+
+  it("(f) does not mutate the source date", () => {
+    const src = new Date("2026-04-17T00:00:00.000Z");
+    const iso = src.toISOString();
+    addUTCDays(src, -5);
+    expect(src.toISOString()).toBe(iso);
   });
 });

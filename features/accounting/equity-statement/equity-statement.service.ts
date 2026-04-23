@@ -1,6 +1,7 @@
 import "server-only";
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
 import type { Role } from "@/features/shared/permissions";
+import { addUTCDays } from "@/lib/date-utils";
 import { EquityStatementRepository } from "./equity-statement.repository";
 import { buildEquityStatement } from "./equity-statement.builder";
 import type { EquityStatement } from "./equity-statement.types";
@@ -37,8 +38,7 @@ export class EquityStatementService {
       throw new ValidationError("dateFrom no puede ser posterior a dateTo");
     }
 
-    const dayBefore = new Date(input.dateFrom);
-    dayBefore.setUTCDate(dayBefore.getUTCDate() - 1);
+    const dayBefore = addUTCDays(input.dateFrom, -1);
 
     // 3. Parallel data loads — 8 queries (REQ-3, REQ-8)
     const [

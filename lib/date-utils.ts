@@ -102,6 +102,33 @@ export function lastDayOfUTCMonth(date: Date): Date {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0));
 }
 
+// ── addUTCDays ────────────────────────────────────────────────────────────────
+
+/**
+ * Returns a new Date offset by `delta` whole UTC days from `date`.
+ *
+ * Positive delta advances, negative delta goes back. Preserves the original
+ * time-of-day in UTC and handles month/year wrap via native setUTCDate
+ * overflow semantics.
+ *
+ * Examples:
+ *   addUTCDays(new Date("2026-04-17T00:00:00Z"), -1) → 2026-04-16T00:00:00.000Z
+ *   addUTCDays(new Date("2026-03-01T12:00:00Z"),  1) → 2026-03-02T12:00:00.000Z
+ *
+ * Use this instead of inline `new Date(d); d.setUTCDate(d.getUTCDate() - 1)`
+ * chains — callers of that pattern tend to miss the "clone first" step and
+ * mutate the source date accidentally.
+ *
+ * @param date  Any Date; UTC getters/setters are used — local TZ is ignored.
+ * @param delta Signed integer number of days (fractions are truncated by native setUTCDate).
+ * @returns A new Date `delta` days offset from the input.
+ */
+export function addUTCDays(date: Date, delta: number): Date {
+  const next = new Date(date);
+  next.setUTCDate(next.getUTCDate() + delta);
+  return next;
+}
+
 // ── toNoonUtc ─────────────────────────────────────────────────────────────────
 
 /**
