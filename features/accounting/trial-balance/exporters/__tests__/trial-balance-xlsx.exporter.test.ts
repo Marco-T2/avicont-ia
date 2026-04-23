@@ -54,10 +54,10 @@ function makeReport(overrides?: Partial<TrialBalanceReport>): TrialBalanceReport
   };
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 async function parseWorkbook(buffer: any): Promise<ExcelJS.Workbook> {
   const wb = new ExcelJS.Workbook();
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+   
   await wb.xlsx.load(buffer);
   return wb;
 }

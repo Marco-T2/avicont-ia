@@ -6,6 +6,7 @@ import {
   MessageCircle,
   MessageSquare,
   Sparkles,
+  type LucideIcon,
 } from "lucide-react";
 
 export const allowedTypes = [
@@ -20,7 +21,7 @@ export const analysisTypes: {
   value: AnalysisType;
   label: string;
   description: string;
-  icon: React.ComponentType<any>;
+  icon: LucideIcon;
 }[] = [
   {
     value: "summary",

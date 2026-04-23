@@ -194,7 +194,7 @@ export function useActiveModule(): UseActiveModuleReturn {
         `[use-active-module] Segment "${segment}" not in ROUTE_MODULE_MAP. Update the map or add it to CROSS_MODULE_SEGMENTS.`
       );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, [segment]);
 
   // PR5.2 [GREEN] — REQ-MS.14: onboarding toast — fires once per browser
@@ -209,7 +209,7 @@ export function useActiveModule(): UseActiveModuleReturn {
       );
     }
     // Run once on mount — no deps needed
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // PR5.6 [GREEN] — REQ-MS.10 sign-out: clear localStorage on Clerk sign-out

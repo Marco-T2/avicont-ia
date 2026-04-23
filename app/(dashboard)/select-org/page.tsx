@@ -101,15 +101,16 @@ export default function SelectOrgPage() {
       await new Promise((resolve) => setTimeout(resolve, 500));
       refreshOrganizations();
       router.refresh();
-    } catch (error: any) {
+    } catch (error) {
       console.error("Failed to create organization:", error);
-      toast.error(error.message || "Error al crear la organización");
+      const message = error instanceof Error ? error.message : "Error al crear la organización";
+      toast.error(message);
     } finally {
       setIsCreating(false);
     }
   };
 
-  const handleSelectOrg = async (organization: any) => {
+  const handleSelectOrg = async (organization: { id: string; slug: string | null }) => {
     try {
       if (setActive) {
         await setActive({

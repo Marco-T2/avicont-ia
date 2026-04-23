@@ -78,7 +78,7 @@ describe("SaleRepository — noon-UTC normalization (REQ-B.4)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     // Instanciar con el mock inyectado vía constructor (BaseRepository acepta db opcional)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     repo = new SaleRepository(mockDb as any);
     mockSaleCreate.mockResolvedValue(makePrismaRow());
   });
@@ -102,7 +102,7 @@ describe("SaleRepository — noon-UTC normalization (REQ-B.4)", () => {
     };
     mockTxSaleCreate.mockResolvedValue(makePrismaRow());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await repo.createPostedTx(mockTx as any, "org-1", BASE_INPUT, "user-1", 1, [], 0);
 
     expect(mockTxSaleCreate).toHaveBeenCalledOnce();

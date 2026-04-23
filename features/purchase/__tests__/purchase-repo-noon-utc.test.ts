@@ -87,7 +87,7 @@ describe("PurchaseRepository — noon-UTC normalization (REQ-D.3)", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     repo = new PurchaseRepository(mockDb as any);
     mockPurchaseCreate.mockResolvedValue(makePrismaRow());
   });
@@ -110,7 +110,7 @@ describe("PurchaseRepository — noon-UTC normalization (REQ-D.3)", () => {
     };
     mockTxPurchaseCreate.mockResolvedValue(makePrismaRow());
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+     
     await repo.createPostedTx(mockTx as any, "org-1", BASE_INPUT, "user-1", 1, [], 0);
 
     expect(mockTxPurchaseCreate).toHaveBeenCalledOnce();
