@@ -1,6 +1,7 @@
 import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { DocumentsService } from "@/features/documents/server";
+import { analyzeDocumentSchema } from "@/features/documents/documents.validation";
 
 const docsService = new DocumentsService();
 
@@ -8,13 +9,8 @@ export async function POST(request: Request) {
   try {
     const { userId } = await requireAuth();
 
-    const { documentId, organizationId, analysisType } = await request.json();
-    if (!documentId || !organizationId) {
-      return Response.json(
-        { error: "Falta el ID del documento o de la organización" },
-        { status: 400 },
-      );
-    }
+    const body = await request.json();
+    const { documentId, analysisType } = analyzeDocumentSchema.parse(body);
 
     const document = await docsService.findForAnalysis(documentId, userId);
 
