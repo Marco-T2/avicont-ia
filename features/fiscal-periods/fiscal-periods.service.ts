@@ -4,13 +4,39 @@ import {
   ConflictError,
   INVALID_DATE_RANGE,
   FISCAL_PERIOD_MONTH_EXISTS,
+  FISCAL_PERIOD_NOT_MONTHLY,
   PERIOD_NOT_FOUND,
   ValidationError,
 } from "@/features/shared/errors";
 import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
+import { lastDayOfUTCMonth } from "@/lib/date-utils";
 import { FiscalPeriodsRepository } from "./fiscal-periods.repository";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
 import { MONTH_NAMES_ES } from "./month-names";
+
+// ── Guard ─────────────────────────────────────────────────────────────────────
+
+/**
+ * Asserts that (startDate, endDate) covers exactly one UTC calendar month.
+ *
+ * Conditions (both must hold):
+ * - startDate is the 1st of its UTC month
+ * - endDate is the last day of startDate's UTC month
+ *
+ * On violation: throws ValidationError with FISCAL_PERIOD_NOT_MONTHLY (422).
+ *
+ * @throws {ValidationError} if the pair does not form a complete calendar month.
+ */
+function assertMonthlyShape(startDate: Date, endDate: Date): void {
+  const isFirstDay = startDate.getUTCDate() === 1;
+  const isLastDay = endDate.getTime() === lastDayOfUTCMonth(startDate).getTime();
+  if (!isFirstDay || !isLastDay) {
+    throw new ValidationError(
+      "El período debe corresponder a exactamente un mes calendario.",
+      FISCAL_PERIOD_NOT_MONTHLY,
+    );
+  }
+}
 
 export class FiscalPeriodsService {
   private readonly repo: FiscalPeriodsRepository;
@@ -45,6 +71,11 @@ export class FiscalPeriodsService {
         INVALID_DATE_RANGE,
       );
     }
+
+    // REQ-5 — monthly-shape invariant. Must run after INVALID_DATE_RANGE so
+    // nonsensical ranges don't reach lastDayOfUTCMonth, and before the DB
+    // round-trip so we never waste a query on an invalid period.
+    assertMonthlyShape(input.startDate, input.endDate);
 
     // REQ-1 / REQ-3 — month-scoped uniqueness pre-check. `month` is derived
     // from `startDate` in UTC to stay consistent with `repo.create`, which
