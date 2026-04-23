@@ -10,25 +10,7 @@ import {
 import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
 import { FiscalPeriodsRepository } from "./fiscal-periods.repository";
 import type { CreateFiscalPeriodInput, FiscalPeriod } from "./fiscal-periods.types";
-
-// REQ-3 — Spanish (es-BO) month names for user-facing conflict messages.
-// Indexed 0-11 (January=0) to align with Date.getUTCMonth(); the service
-// subtracts 1 from the 1-indexed `month` derived from `startDate` when
-// indexing into this array.
-const MONTH_NAMES_ES = [
-  "Enero",
-  "Febrero",
-  "Marzo",
-  "Abril",
-  "Mayo",
-  "Junio",
-  "Julio",
-  "Agosto",
-  "Septiembre",
-  "Octubre",
-  "Noviembre",
-  "Diciembre",
-] as const;
+import { MONTH_NAMES_ES } from "./month-names";
 
 export class FiscalPeriodsService {
   private readonly repo: FiscalPeriodsRepository;
