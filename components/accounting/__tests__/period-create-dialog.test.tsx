@@ -216,6 +216,13 @@ describe("UX-T05 — Warning visible con rango cross-month (REQ-4)", () => {
   });
 });
 
+describe("UX-T05b — Warning ausente cuando los campos están vacíos (S-02)", () => {
+  it("NO muestra el warning cuando startDate y endDate están vacíos (estado inicial)", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
 describe("UX-T06 — Warning no bloquea el submit (REQ-4)", () => {
   it("el botón 'Crear Período' está habilitado cuando el warning está visible y los campos requeridos completos", () => {
     render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
