@@ -101,8 +101,12 @@ export class MembersService {
         }
       }
 
-      // Reactivar en BD local
-      const reactivated = await this.repo.reactivateMember(existing.id, role);
+      // Reactivar en BD local (scoped by organizationId per I-8 / SF-2)
+      const reactivated = await this.repo.reactivateMember(
+        organizationId,
+        existing.id,
+        role,
+      );
 
       return {
         id: reactivated.id,

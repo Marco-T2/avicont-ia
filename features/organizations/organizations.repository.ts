@@ -197,12 +197,37 @@ export class OrganizationsRepository extends BaseRepository {
   }
 
   async reactivateMember(
+    organizationId: string,
     memberId: string,
     role: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<OrganizationMember> {
-    return this.db.organizationMember.update({
-      where: { id: memberId },
+    const scope = this.requireOrg(organizationId);
+    const db = tx ?? this.db;
+    return db.organizationMember.update({
+      where: { id: memberId, ...scope },
       data: { deactivatedAt: null, role },
+    });
+  }
+
+  /**
+   * Hard-delete a member row. Used as saga compensation when a Clerk call
+   * failed AFTER the DB insert in `addMember` (members-clerk-sync-saga,
+   * REQ-MCS.1-3). Uses `deleteMany` (not `delete`) so the call is
+   * idempotent if the row has already been removed by a concurrent path.
+   *
+   * I-8: scoped by `{ id, organizationId }` — cross-org invocation cannot
+   * delete someone else's row.
+   */
+  async hardDelete(
+    organizationId: string,
+    memberId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{ count: number }> {
+    const scope = this.requireOrg(organizationId);
+    const db = tx ?? this.db;
+    return db.organizationMember.deleteMany({
+      where: { id: memberId, ...scope },
     });
   }
 }
