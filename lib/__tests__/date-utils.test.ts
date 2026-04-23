@@ -11,7 +11,7 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
-import { todayLocal, formatDateBO, toNoonUtc } from "@/lib/date-utils";
+import { todayLocal, formatDateBO, toNoonUtc, lastDayOfUTCMonth } from "@/lib/date-utils";
 
 // ── todayLocal() ──────────────────────────────────────────────────────────────
 
@@ -136,5 +136,35 @@ describe("toNoonUtc", () => {
 
   it("(f) garbage string → throws RangeError", () => {
     expect(() => toNoonUtc("abcd")).toThrow(RangeError);
+  });
+});
+
+// ── lastDayOfUTCMonth() ───────────────────────────────────────────────────────
+
+describe("lastDayOfUTCMonth", () => {
+  it("(a) January 2026 → January 31", () => {
+    const result = lastDayOfUTCMonth(new Date(Date.UTC(2026, 0, 1)));
+    expect(result.toISOString()).toBe("2026-01-31T00:00:00.000Z");
+  });
+
+  it("(b) February 2024 (leap year) → February 29", () => {
+    const result = lastDayOfUTCMonth(new Date(Date.UTC(2024, 1, 1)));
+    expect(result.toISOString()).toBe("2024-02-29T00:00:00.000Z");
+  });
+
+  it("(c) February 2026 (non-leap year) → February 28", () => {
+    const result = lastDayOfUTCMonth(new Date(Date.UTC(2026, 1, 1)));
+    expect(result.toISOString()).toBe("2026-02-28T00:00:00.000Z");
+  });
+
+  it("(d) April 2026 (30-day month) → April 30", () => {
+    const result = lastDayOfUTCMonth(new Date(Date.UTC(2026, 3, 1)));
+    expect(result.toISOString()).toBe("2026-04-30T00:00:00.000Z");
+  });
+
+  it("(e) December 2026 (year rollover) → December 31", () => {
+    // Date.UTC(2026, 12, 0) wraps: month 12 = Jan 2027, day 0 = last day of Dec 2026
+    const result = lastDayOfUTCMonth(new Date(Date.UTC(2026, 11, 1)));
+    expect(result.toISOString()).toBe("2026-12-31T00:00:00.000Z");
   });
 });
