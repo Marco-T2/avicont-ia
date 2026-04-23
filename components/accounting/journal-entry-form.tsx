@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import JournalLineRow, { type JournalLineData } from "./journal-line-row";
 import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
+import { findPeriodCoveringDate } from "@/features/fiscal-periods";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
 import { todayLocal } from "@/lib/date-utils";
 
@@ -86,6 +87,7 @@ export default function JournalEntryForm({
   const [periodId, setPeriodId] = useState(
     editEntry?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
   );
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [voucherTypeId, setVoucherTypeId] = useState(editEntry?.voucherTypeId ?? "");
   const [referenceNumber, setReferenceNumber] = useState<string>(
     editEntry?.referenceNumber?.toString() ?? "",
@@ -106,6 +108,12 @@ export default function JournalEntryForm({
     }
     return [emptyLine(), emptyLine()];
   });
+
+  useEffect(() => {
+    if (periodManuallySelected || !date) return;
+    const match = findPeriodCoveringDate(date, periods);
+    setPeriodId(match?.id ?? "");
+  }, [date, periods, periodManuallySelected]);
 
   useEffect(() => {
     if (!voucherTypeId) {
@@ -336,7 +344,13 @@ export default function JournalEntryForm({
 
             <div className="space-y-2">
               <Label htmlFor="period">Período</Label>
-              <Select value={periodId} onValueChange={setPeriodId}>
+              <Select
+                value={periodId}
+                onValueChange={(value) => {
+                  setPeriodManuallySelected(true);
+                  setPeriodId(value);
+                }}
+              >
                 <SelectTrigger id="period">
                   <SelectValue placeholder="Seleccione período" />
                 </SelectTrigger>
@@ -406,6 +420,16 @@ export default function JournalEntryForm({
               />
             </div>
           </div>
+
+          {date && !periodId && periods.length > 0 && (
+            <div
+              role="alert"
+              className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-300"
+            >
+              No hay un período abierto que cubra esta fecha. Abrí el período
+              correspondiente o elegí otra fecha.
+            </div>
+          )}
         </CardContent>
       </Card>
 
