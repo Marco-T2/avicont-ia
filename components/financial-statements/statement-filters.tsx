@@ -109,12 +109,19 @@ export function StatementFilters({
   const [loadingPeriods, setLoadingPeriods] = useState(true);
 
   useEffect(() => {
-    setLoadingPeriods(true);
-    fetch(`/api/organizations/${orgSlug}/periods`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data: FiscalPeriod[]) => setPeriods(data))
-      .catch(() => setPeriods([]))
-      .finally(() => setLoadingPeriods(false));
+    const load = async () => {
+      setLoadingPeriods(true);
+      try {
+        const res = await fetch(`/api/organizations/${orgSlug}/periods`);
+        const data: FiscalPeriod[] = res.ok ? await res.json() : [];
+        setPeriods(data);
+      } catch {
+        setPeriods([]);
+      } finally {
+        setLoadingPeriods(false);
+      }
+    };
+    load();
   }, [orgSlug]);
 
   // ── Estado del formulario ──

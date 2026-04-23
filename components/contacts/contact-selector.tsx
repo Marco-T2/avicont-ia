@@ -37,25 +37,27 @@ export default function ContactSelector({
   useEffect(() => {
     if (!open) return;
 
-    setLoading(true);
-    fetch(`/api/organizations/${orgSlug}/contacts?isActive=true`)
-      .then((res) => res.json())
-      .then((data: { contacts: Contact[] }) => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/organizations/${orgSlug}/contacts?isActive=true`);
+        const data: { contacts: Contact[] } = await res.json();
         setContacts(data.contacts ?? []);
-      })
-      .catch(() => {
+      } catch {
         setContacts([]);
-      })
-      .finally(() => {
+      } finally {
         setLoading(false);
-      });
+      }
+    };
+    load();
   }, [open, orgSlug]);
 
   useEffect(() => {
     if (open) {
       setTimeout(() => searchRef.current?.focus(), 50);
     } else {
-      setSearch("");
+      // Defer reset so setState is not synchronous in the effect body
+      setTimeout(() => setSearch(""), 0);
     }
   }, [open]);
 

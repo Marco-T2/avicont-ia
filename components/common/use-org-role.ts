@@ -15,21 +15,28 @@ export function useOrgRole() {
   const params = useParams();
   const orgSlug = params?.orgSlug as string | undefined;
   const [role, setRole] = useState<MemberRole>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // Start as false when no slug is available — nothing to load
+  const [isLoading, setIsLoading] = useState(() => !!orgSlug);
 
   useEffect(() => {
     if (!orgSlug) {
-      setRole(null);
-      setIsLoading(false);
+      // No slug: nothing to fetch; state is already at the correct initial values
       return;
     }
 
-    setIsLoading(true);
-    fetch(`/api/organizations/${orgSlug}/members/me`)
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data) => setRole(data?.role ?? null))
-      .catch(() => setRole(null))
-      .finally(() => setIsLoading(false));
+    const run = async () => {
+      setIsLoading(true);
+      try {
+        const res = await fetch(`/api/organizations/${orgSlug}/members/me`);
+        const data = res.ok ? await res.json() : null;
+        setRole(data?.role ?? null);
+      } catch {
+        setRole(null);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    run();
   }, [orgSlug]);
 
   return { role, isLoading, orgSlug };
