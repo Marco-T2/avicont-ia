@@ -78,6 +78,9 @@ export default function PeriodCreateDialog({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Nuevo Período Fiscal</DialogTitle>
+          <p className="text-sm text-muted-foreground">
+            Un período fiscal representa un mes contable. Cerrás uno por mes.
+          </p>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -85,7 +88,7 @@ export default function PeriodCreateDialog({
             <Label htmlFor="name">Nombre</Label>
             <Input
               id="name"
-              placeholder="Ej: Gestión 2026"
+              placeholder="Ej: Abril 2026"
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
