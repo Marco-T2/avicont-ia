@@ -26,8 +26,8 @@ vi.mock("@/features/voucher-types/server", () => {
 });
 
 // Mock prisma
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
+vi.mock("@/lib/prisma", () => {
+  const prismaMock: Record<string, unknown> = {
     organization: {
       findUnique: vi.fn(),
       create: vi.fn(),
@@ -50,8 +50,14 @@ vi.mock("@/lib/prisma", () => ({
     voucherTypeTemplate: {
       findMany: vi.fn().mockResolvedValue([]),
     },
-  },
-}));
+  };
+  // $transaction invokes the callback with the same client so mocked methods
+  // work identically whether called on `prisma` or on the tx client.
+  prismaMock.$transaction = vi
+    .fn()
+    .mockImplementation(async (cb: (tx: unknown) => unknown) => cb(prismaMock));
+  return { prisma: prismaMock };
+});
 
 import { POST } from "../route";
 import { requireAuth } from "@/features/shared/middleware";

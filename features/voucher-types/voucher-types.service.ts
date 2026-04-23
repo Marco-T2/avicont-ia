@@ -8,7 +8,7 @@ import {
 } from "@/features/shared/errors";
 import { DEFAULT_VOUCHER_TYPES } from "@/prisma/seeds/voucher-types";
 import { VoucherTypesRepository } from "./voucher-types.repository";
-import type { VoucherTypeCfg } from "@/generated/prisma/client";
+import type { VoucherTypeCfg, Prisma } from "@/generated/prisma/client";
 import type {
   CreateVoucherTypeInput,
   ListVoucherTypesOptions,
@@ -48,8 +48,15 @@ export class VoucherTypesService {
     return type;
   }
 
-  async seedForOrg(organizationId: string): Promise<VoucherTypeCfg[]> {
-    return this.repo.createMany(organizationId, [...DEFAULT_VOUCHER_TYPES]);
+  async seedForOrg(
+    organizationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<VoucherTypeCfg[]> {
+    return this.repo.createMany(
+      organizationId,
+      [...DEFAULT_VOUCHER_TYPES],
+      tx,
+    );
   }
 
   async create(
