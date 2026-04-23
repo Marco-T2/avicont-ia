@@ -19,9 +19,9 @@ import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { JournalRepository } from "@/features/accounting/journal.repository";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
+import { IvaBooksService } from "@/features/accounting/iva-books/server";
 import type { PurchaseWithDetails } from "../purchase.types";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books/iva-books.types";
+import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

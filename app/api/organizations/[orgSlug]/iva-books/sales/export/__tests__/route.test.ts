@@ -29,21 +29,17 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-// Mock del exporter
+// Mock del exporter + service (mismo barrel /server)
 const FAKE_BUFFER = Buffer.from("FAKE_XLSX_CONTENT");
-vi.mock("@/features/accounting/iva-books/exporters/excel.exporter", () => ({
-  exportIvaBookExcel: vi.fn().mockResolvedValue(FAKE_BUFFER),
-}));
-
-// Mock del service
 const mockServiceInstance = {
   listSalesByPeriod: vi.fn().mockResolvedValue([]),
 };
 
-vi.mock("@/features/accounting/iva-books/iva-books.service", () => ({
+vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
     return mockServiceInstance;
   }),
+  exportIvaBookExcel: vi.fn().mockResolvedValue(FAKE_BUFFER),
 }));
 
 // ── Imports después de los mocks ─────────────────────────────────────────────

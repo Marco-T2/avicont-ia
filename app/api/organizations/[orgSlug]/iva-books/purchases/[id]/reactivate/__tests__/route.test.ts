@@ -34,9 +34,12 @@ const mockServiceInstance = {
   reactivatePurchase: vi.fn(),
 };
 
-vi.mock("@/features/accounting/iva-books/iva-books.service", () => ({
+vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
     return mockServiceInstance;
+  }),
+  IvaBooksRepository: vi.fn().mockImplementation(function () {
+    return {};
   }),
 }));
 

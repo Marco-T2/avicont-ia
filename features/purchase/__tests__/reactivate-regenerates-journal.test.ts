@@ -12,10 +12,9 @@
 import { describe, it, expect, vi } from "vitest";
 import { buildPurchaseEntryLines, IVA_CREDITO_FISCAL } from "@/features/purchase/purchase.utils";
 import type { PurchaseDetailForEntry, PurchaseOrgSettings } from "@/features/purchase/purchase.utils";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
-import { IvaBooksRepository } from "@/features/accounting/iva-books/iva-books.repository";
+import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
 import { PurchaseService } from "@/features/purchase/purchase.service";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books/iva-books.types";
+import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
 import { Prisma } from "@/generated/prisma/client";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
