@@ -9,12 +9,11 @@ import {
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/shared/users.service";
-
-function isClerkDuplicateError(error: unknown): boolean {
-  if (error === null || typeof error !== 'object' || !('errors' in error)) return false;
-  const clerkError = error as { errors?: Array<{ code?: string }> };
-  return clerkError.errors?.[0]?.code?.includes('duplicate') ?? false;
-}
+import { runMemberClerkSaga } from "./member-clerk-saga";
+import {
+  isClerkDuplicateMembershipError,
+  isClerkMembershipNotFoundError,
+} from "./clerk-error-classifiers";
 
 export class MembersService {
   private readonly usersService: UsersService;
@@ -117,37 +116,73 @@ export class MembersService {
       };
     }
 
-    // No existe miembro previo — continuar con el flujo normal de alta
+    // No existe miembro previo — continuar con el flujo normal de alta.
+    //
+    // REQ-MCS.1: DB-first saga with compensation. The old Clerk-first +
+    // swallow block (I-6 / REQ-MCS.6) is eliminated here in favour of
+    // runMemberClerkSaga. Non-duplicate Clerk errors now surface as 503
+    // and trigger hardDelete compensation — no silent inconsistency.
     const org = await this.repo.findById(organizationId);
     if (!org) throw new NotFoundError("Organización");
 
-    try {
-      const client = await clerkClient();
-      await client.organizations.createOrganizationMembership({
-        organizationId: org.clerkOrgId,
-        userId: user.clerkUserId,
-        role: "org:member",
-      });
-    } catch (error: unknown) {
-      // Si ya es miembro en Clerk, ignorar el error
-      if (!isClerkDuplicateError(error)) {
-        console.error("Error adding member to Clerk org:", error);
-      }
-    }
+    const correlationId = crypto.randomUUID();
+    // Captured by dbWrite for the compensate closure to read. Plain local
+    // variable — `runMemberClerkSaga` executes dbWrite BEFORE compensate,
+    // so this is guaranteed set when compensate runs.
+    let insertedMemberId = "";
 
-    const member = await this.repo.addMember({
-      organizationId,
-      userId: user.id,
-      role,
+    const memberDto = await runMemberClerkSaga<{
+      id: string;
+      role: string;
+      userId: string;
+      name: string;
+      email: string;
+    }>({
+      ctx: {
+        operation: "add",
+        organizationId,
+        memberId: "", // filled by dbWrite return value (threaded via saga ctx)
+        clerkUserId: user.clerkUserId,
+        correlationId,
+      },
+      dbWrite: async () => {
+        const member = await this.repo.addMember({
+          organizationId,
+          userId: user.id,
+          role,
+        });
+        insertedMemberId = member.id;
+        return {
+          memberId: member.id,
+          result: {
+            id: member.id,
+            role: member.role,
+            userId: member.userId,
+            name: user.name ?? user.email,
+            email: user.email,
+          },
+        };
+      },
+      clerkCall: async () => {
+        const client = await clerkClient();
+        await client.organizations.createOrganizationMembership({
+          organizationId: org.clerkOrgId,
+          userId: user.clerkUserId,
+          role: "org:member",
+        });
+      },
+      compensate: async () => {
+        // hardDelete is idempotent (deleteMany); safe if the row is gone.
+        await this.repo.hardDelete(organizationId, insertedMemberId);
+      },
+      isIdempotentSuccess: isClerkDuplicateMembershipError,
+      divergentState: {
+        dbState: "member_inserted",
+        clerkState: "membership_absent",
+      },
     });
 
-    return {
-      id: member.id,
-      role: member.role,
-      userId: member.userId,
-      name: user.name ?? user.email,
-      email: user.email,
-    };
+    return memberDto;
   }
 
   async updateRole(
