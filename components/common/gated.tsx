@@ -4,10 +4,6 @@ import type { ReactNode } from "react";
 import type { Action, Resource } from "@/features/shared/permissions";
 import { useCanAccess } from "./use-can-access";
 
-// Re-export so legacy imports like `import { useCanAccess } from "./gated"`
-// keep working during the PR7.1 transition.
-export { useCanAccess };
-
 /**
  * Defensive UI gate. Returns false while the client matrix is loading (no
  * provider yet, or snapshot=null). Once resolved, delegates to the dynamic

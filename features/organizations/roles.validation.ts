@@ -8,10 +8,7 @@
  *   - RESERVED_SLUG (422 ValidationError) — reserved slug on CREATE
  *   - SLUG_TAKEN (409 ConflictError) — collision could not be resolved with -2..-99
  */
-import {
-  SYSTEM_ROLES,
-  isSystemRole,
-} from "@/features/shared/permissions";
+import { isSystemRole } from "@/features/shared/permissions";
 import {
   ValidationError,
   ConflictError,
@@ -96,5 +93,3 @@ export function resolveUniqueSlug(
   );
 }
 
-// Re-export for convenience in consumers that might want the reserved list.
-export const RESERVED_SLUGS = SYSTEM_ROLES;

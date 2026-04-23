@@ -16,4 +16,3 @@ export function isFiscalPeriodOpen(
 ): boolean {
   return period?.status === "OPEN";
 }
-export const FISCAL_PERIOD_CLOSED_MESSAGE = "El período fiscal está cerrado.";
