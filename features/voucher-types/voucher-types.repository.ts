@@ -1,6 +1,6 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { VoucherTypeCfg } from "@/generated/prisma/client";
+import type { VoucherTypeCfg, Prisma } from "@/generated/prisma/client";
 import type {
   CreateVoucherTypeInput,
   ListVoucherTypesOptions,
@@ -62,12 +62,14 @@ export class VoucherTypesRepository extends BaseRepository {
   async createMany(
     organizationId: string,
     types: CreateVoucherTypeInput[],
+    tx?: Prisma.TransactionClient,
   ): Promise<VoucherTypeCfg[]> {
     const scope = this.requireOrg(organizationId);
+    const db = tx ?? this.db;
     const results: VoucherTypeCfg[] = [];
 
     for (const type of types) {
-      const result = await this.db.voucherTypeCfg.upsert({
+      const result = await db.voucherTypeCfg.upsert({
         where: {
           organizationId_code: {
             organizationId: scope.organizationId,

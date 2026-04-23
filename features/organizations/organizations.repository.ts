@@ -1,6 +1,6 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { Organization, OrganizationMember } from "@/generated/prisma/client";
+import type { Organization, OrganizationMember, Prisma } from "@/generated/prisma/client";
 import type {
   AddMemberInput,
   CreateOrganizationInput,
@@ -28,8 +28,12 @@ export class OrganizationsRepository extends BaseRepository {
   // Mutaciones de organización
   // -----------------------------------------------------------------------
 
-  async create(data: CreateOrganizationInput): Promise<Organization> {
-    return this.db.organization.create({
+  async create(
+    data: CreateOrganizationInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<Organization> {
+    const db = tx ?? this.db;
+    return db.organization.create({
       data: {
         clerkOrgId: data.clerkOrgId,
         name: data.name,
@@ -126,9 +130,13 @@ export class OrganizationsRepository extends BaseRepository {
     });
   }
 
-  async addMember(data: AddMemberInput): Promise<OrganizationMember> {
+  async addMember(
+    data: AddMemberInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<OrganizationMember> {
     const scope = this.requireOrg(data.organizationId);
-    return this.db.organizationMember.create({
+    const db = tx ?? this.db;
+    return db.organizationMember.create({
       data: {
         organizationId: scope.organizationId,
         userId: data.userId,

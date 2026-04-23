@@ -6,7 +6,6 @@ import {
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/shared/users.service";
 import { VoucherTypesService } from "@/features/voucher-types/server";
-import { prisma } from "@/lib/prisma";
 import { buildSystemRolePayloads } from "@/prisma/seed-system-roles";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";
 import type {
@@ -41,32 +40,38 @@ export class OrganizationsService {
       return { organization: existing, created: false };
     }
 
-    // Asegurar que el usuario que realiza la llamada exista en nuestra BD
+    // Asegurar que el usuario que realiza la llamada exista en nuestra BD.
+    // User es entidad shared cross-org (el user puede persistir aunque falle
+    // la org), por eso queda fuera de la transacción de inicialización.
     const user = await this.usersService.findOrCreate({
       clerkUserId,
       email: `${clerkUserId}@temp.com`,
       name: "User",
     });
 
-    // Crear la organización
-    const organization = await this.repo.create(input);
+    // Inicialización atómica: org + owner member + voucher types + system roles.
+    // Si cualquiera falla, rollback completo — no quedan orgs huérfanas con
+    // seeds parciales que romperían la creación de comprobantes después.
+    const organization = await this.repo.transaction(async (tx) => {
+      const org = await this.repo.create(input, tx);
 
-    // Agregar al creador como propietario
-    await this.repo.addMember({
-      userId: user.id,
-      organizationId: organization.id,
-      role: "owner",
-    });
+      await this.repo.addMember(
+        {
+          userId: user.id,
+          organizationId: org.id,
+          role: "owner",
+        },
+        tx,
+      );
 
-    // Inicializar los tipos de comprobante por defecto para la nueva organización
-    await this.voucherTypesService.seedForOrg(organization.id);
+      await this.voucherTypesService.seedForOrg(org.id, tx);
 
-    // Seed the 5 system roles for the new organization (idempotent via skipDuplicates)
-    // This is preventive: on-demand fallback in permissions.server.ts handles the
-    // last-resort case. Both use skipDuplicates so they cannot conflict.
-    await prisma.customRole.createMany({
-      data: buildSystemRolePayloads(organization.id),
-      skipDuplicates: true,
+      await tx.customRole.createMany({
+        data: buildSystemRolePayloads(org.id),
+        skipDuplicates: true,
+      });
+
+      return org;
     });
 
     return { organization, created: true };
