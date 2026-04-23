@@ -112,6 +112,37 @@ describe("FiscalPeriodsService.create — monthly-shape guard", () => {
     expect(repo.create).not.toHaveBeenCalled();
   });
 
+  // ── ME-T01b: AC-5.6 — details populated so UI can display the violation ───────
+
+  it("ME-T01b: annual period rejection populates AppError.details with startDate and endDate (AC-5.6)", async () => {
+    const repo = buildRepoMock();
+    const service = new FiscalPeriodsService(
+      repo as unknown as FiscalPeriodsRepository,
+    );
+
+    const startDate = new Date(Date.UTC(2026, 0, 1));
+    const endDate = new Date(Date.UTC(2026, 11, 31));
+
+    await expect(
+      service.create(
+        ORG_ID,
+        baseInput({
+          name: "Año 2026",
+          year: 2026,
+          startDate,
+          endDate,
+        }),
+      ),
+    ).rejects.toSatisfy(
+      (err) =>
+        err instanceof ValidationError &&
+        typeof (err as ValidationError).details === "object" &&
+        (err as ValidationError).details !== null &&
+        (err as ValidationError).details!["startDate"] === startDate.toISOString() &&
+        (err as ValidationError).details!["endDate"] === endDate.toISOString(),
+    );
+  });
+
   // ── ME-T02: start not 1st → 422 ─────────────────────────────────────────────
 
   it("ME-T02: startDate not the 1st of the month throws FISCAL_PERIOD_NOT_MONTHLY", async () => {
