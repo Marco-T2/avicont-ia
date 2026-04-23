@@ -57,6 +57,7 @@ export class UnauthorizedError extends AppError {
 // Reserved for future FiscalYear duplicate scenario — do not reuse for month-level conflicts.
 export const FISCAL_PERIOD_YEAR_EXISTS = "FISCAL_PERIOD_YEAR_EXISTS";
 export const FISCAL_PERIOD_MONTH_EXISTS = "FISCAL_PERIOD_MONTH_EXISTS";
+export const FISCAL_PERIOD_NOT_MONTHLY = "FISCAL_PERIOD_NOT_MONTHLY";
 export const INVALID_DATE_RANGE = "INVALID_DATE_RANGE";
 export const PERIOD_HAS_DRAFT_ENTRIES = "PERIOD_HAS_DRAFT_ENTRIES";
 export const PERIOD_ALREADY_CLOSED = "PERIOD_ALREADY_CLOSED";
