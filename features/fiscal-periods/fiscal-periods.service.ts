@@ -34,6 +34,7 @@ function assertMonthlyShape(startDate: Date, endDate: Date): void {
     throw new ValidationError(
       "El período debe corresponder a exactamente un mes calendario.",
       FISCAL_PERIOD_NOT_MONTHLY,
+      { startDate: startDate.toISOString(), endDate: endDate.toISOString() },
     );
   }
 }
