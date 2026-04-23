@@ -33,7 +33,7 @@ import {
 
 // ── Tipos de entrada públicos ──
 
-export type GenerateBalanceSheetInput = {
+type GenerateBalanceSheetInput = {
   /** Fecha de corte del Balance General */
   asOfDate: Date;
   /** Si se provee, se intenta usar snapshot del período cerrado */
@@ -48,7 +48,7 @@ export type GenerateBalanceSheetInput = {
   compareAsOfDate?: Date;
 };
 
-export type GenerateIncomeStatementInput = {
+type GenerateIncomeStatementInput = {
   /** Si se provee, se deriva el rango desde el período fiscal */
   fiscalPeriodId?: string;
   /** Fecha de inicio del rango (requerido si no hay fiscalPeriodId ni preset) */

@@ -12,7 +12,7 @@ import type { Resource, PostableResource } from "@/features/shared/permissions";
 
 // Postable resources — must NOT be imported from features/shared/permissions
 // (getPostAllowedRoles / POST_ALLOWED_ROLES are internal); use local constant.
-export const POSTABLE_RESOURCES = new Set<Resource>(["sales", "purchases", "journal"] as PostableResource[]);
+const POSTABLE_RESOURCES = new Set<Resource>(["sales", "purchases", "journal"] as PostableResource[]);
 
 export interface MatrixRowProps {
   resource: Resource;

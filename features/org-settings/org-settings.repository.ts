@@ -4,7 +4,7 @@ import { BaseRepository } from "@/features/shared/base.repository";
 import type { OrgSettings } from "@/generated/prisma/client";
 import type { UpdateOrgSettingsInput } from "./org-settings.types";
 
-export const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS = {
   cajaGeneralAccountCode: "1.1.1.1",
   bancoAccountCode: "1.1.2.1",
   cxcAccountCode: "1.1.4.1",

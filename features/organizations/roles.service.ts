@@ -41,11 +41,11 @@ import { revalidateOrgMatrix as defaultRevalidate } from "@/features/shared/perm
 // Public types
 // ────────────────────────────────────────────────────────────
 
-export type CallerContext = {
+type CallerContext = {
   clerkUserId: string;
 };
 
-export type CreateRoleInput = {
+type CreateRoleInput = {
   name: string;
   templateSlug: string;
   description?: string | null;
@@ -56,7 +56,7 @@ export type CreateRoleInput = {
   slug?: string; // optional override; still validated + collision-resolved
 };
 
-export type UpdateRolePatch = {
+type UpdateRolePatch = {
   name?: string;
   description?: string | null;
   permissionsRead?: string[];
@@ -64,7 +64,7 @@ export type UpdateRolePatch = {
   canPost?: string[];
 };
 
-export type RolesServiceDeps = {
+type RolesServiceDeps = {
   repo: RolesRepository;
   revalidateOrgMatrix?: (orgId: string) => void;
   /**

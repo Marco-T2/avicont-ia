@@ -27,7 +27,7 @@ import {
   type PostableResource,
 } from "@/features/shared/permissions";
 
-export function buildSystemRoleSnapshot(
+function buildSystemRoleSnapshot(
   role: string,
   orgId = "test-org-id",
 ): ClientMatrixSnapshot {

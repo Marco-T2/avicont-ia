@@ -10,14 +10,14 @@ import type { SemanticRowClass } from "./financial-statements.types";
 
 // ── Tipos serializados que vienen de la API ──
 
-export type SerializedAccount = {
+type SerializedAccount = {
   accountId: string;
   code: string;
   name: string;
   balance: string;
 };
 
-export type SerializedSubtypeGroup = {
+type SerializedSubtypeGroup = {
   subtype: string;
   label: string;
   accounts: SerializedAccount[];
