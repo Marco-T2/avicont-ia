@@ -13,7 +13,6 @@ import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
 import { fmtDecimal } from "../../financial-statements/exporters/pdf.helpers";
 import type { TrialBalanceReport, TrialBalanceTotals, TrialBalanceRow } from "../trial-balance.types";
-import { Prisma } from "@/generated/prisma/client";
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 

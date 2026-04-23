@@ -13,7 +13,6 @@ import {
 import { canPost } from "@/features/shared/permissions.server";
 import {
   validateTransition,
-  validateDraftOnly,
   validateEditable,
   validateLockedEdit,
   validatePeriodOpen,

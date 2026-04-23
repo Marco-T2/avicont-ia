@@ -1,7 +1,7 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import { Prisma } from "@/generated/prisma/client";
-import type { AccountType, AccountNature } from "@/generated/prisma/enums";
+import type { AccountType } from "@/generated/prisma/enums";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

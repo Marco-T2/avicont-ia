@@ -6,12 +6,7 @@
  * Pure imports — no React rendering needed (node environment).
  */
 import { describe, it, expect } from "vitest";
-import {
-  MODULES,
-  type Module,
-  type ModuleId,
-  type ModuleNavItem,
-} from "../registry";
+import { MODULES } from "../registry";
 
 describe("REQ-MS.1 — Module registry shape", () => {
   it("exports MODULES as a non-empty array", () => {
@@ -41,12 +36,9 @@ describe("REQ-MS.1 — Module registry shape", () => {
 });
 
 describe("REQ-MS.1 — Contabilidad entry", () => {
-  let contabilidad: Module;
-
   it("has an entry with id 'contabilidad'", () => {
     const entry = MODULES.find((m) => m.id === "contabilidad");
     expect(entry).toBeDefined();
-    contabilidad = entry!;
   });
 
   it("has exactly 8 resources", () => {

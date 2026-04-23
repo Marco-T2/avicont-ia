@@ -10,10 +10,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import type { OrgMatrix } from "@/features/shared/permissions.cache";
 import { _setLoader, _resetCache } from "@/features/shared/permissions.cache";
-import {
-  ForbiddenError,
-  POST_NOT_ALLOWED_FOR_ROLE,
-} from "@/features/shared/errors";
+import { POST_NOT_ALLOWED_FOR_ROLE } from "@/features/shared/errors";
 import type { Resource, PostableResource } from "@/features/shared/permissions";
 
 // ──────────────────────────────────────────────────────────────────────────────

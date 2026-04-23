@@ -325,43 +325,6 @@ describe("RolesService.updateRole — system immutability (CR.2)", () => {
 });
 
 describe("RolesService.updateRole — self-lock guard (CR.6 / D.4)", () => {
-  function buildAdminEditingCustom(opts: {
-    callerSlug: string;
-    targetSlug: string;
-    targetRoleWrite: string[];
-    targetRoleRead?: string[];
-    targetRolePost?: string[];
-    targetIsSystem?: boolean;
-  }) {
-    // Caller's role row lives in the org list so repo.findBySlug returns it
-    // when the algorithm resolves the CALLER's role (not just the target role).
-    const callerRole = makeRole({
-      id: "r-" + opts.callerSlug,
-      slug: opts.callerSlug,
-      isSystem: opts.callerSlug === "admin",
-      permissionsWrite:
-        opts.callerSlug === opts.targetSlug ? opts.targetRoleWrite : ["members"],
-    });
-    const targetRole =
-      opts.callerSlug === opts.targetSlug
-        ? callerRole
-        : makeRole({
-            id: "r-" + opts.targetSlug,
-            slug: opts.targetSlug,
-            isSystem: opts.targetIsSystem ?? false,
-            permissionsWrite: opts.targetRoleWrite,
-            permissionsRead: opts.targetRoleRead ?? [],
-            canPost: opts.targetRolePost ?? [],
-          });
-
-    return buildService({
-      rolesByOrg: [callerRole, targetRole].filter((v, i, a) =>
-        a.findIndex((x) => x.slug === v.slug) === i,
-      ),
-      callerRoleSlug: opts.callerSlug,
-    });
-  }
-
   // A — Admin with role "admin" edits role "admin", removes "members" → THROWS
   it("(A) same-role + strips members.write → throws SELF_LOCK_GUARD (403)", async () => {
     // For case A we need admin to NOT be system so it's editable in the first

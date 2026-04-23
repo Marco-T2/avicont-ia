@@ -33,7 +33,7 @@ export function StatementTable({
   columns,
   rows,
   compact = false,
-  onRefresh,
+  onRefresh: _onRefresh,
   title,
   orgName,
   subtitle,

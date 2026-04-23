@@ -25,12 +25,6 @@ import type { Resource, PostableResource } from "@/features/shared/permissions";
 
 const mockedEnsureOrgSeeded = vi.mocked(ensureOrgSeeded);
 
-const makeEmptyMatrix = (orgId: string): OrgMatrix => ({
-  orgId,
-  roles: new Map(),
-  loadedAt: Date.now(),
-});
-
 const makeMatrixWithRole = (orgId: string, role: string): OrgMatrix => ({
   orgId,
   roles: new Map([
@@ -52,7 +46,6 @@ beforeEach(() => {
 
 describe("buildClientMatrixSnapshot (D.6 completeness)", () => {
   it("(a) calls ensureOrgSeeded so empty orgs auto-seed on layout render", async () => {
-    const emptyMatrix = makeEmptyMatrix("org-a");
     const populatedMatrix = makeMatrixWithRole("org-a", "admin");
 
     // First call returns empty (simulating trigger), ensureOrgSeeded returns populated

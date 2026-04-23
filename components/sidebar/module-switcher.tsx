@@ -35,7 +35,6 @@ import {
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
 import { Calculator, Tractor } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 // ---------------------------------------------------------------------------

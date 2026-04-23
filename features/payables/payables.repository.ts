@@ -8,7 +8,6 @@ import type {
   UpdatePayableInput,
   PayableFilters,
   OpenAggregate,
-  AccountsPayable,
 } from "./payables.types";
 
 export class PayablesRepository extends BaseRepository {

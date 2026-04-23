@@ -2,7 +2,6 @@ import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
 import { fmtDecimal } from "../../financial-statements/exporters/pdf.helpers";
 import type { InitialBalanceStatement, InitialBalanceGroup } from "../initial-balance.types";
-import { Prisma } from "@/generated/prisma/client";
 
 // ── Public types ──────────────────────────────────────────────────────────────
 

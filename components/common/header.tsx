@@ -1,5 +1,5 @@
 "use client"
-import { Brain, FileText, Home, LogIn, UserPlus, Users } from "lucide-react";
+import { Brain, Home, LogIn, UserPlus, Users } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";

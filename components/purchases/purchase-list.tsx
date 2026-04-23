@@ -31,7 +31,6 @@ import {
   ShoppingCart,
   Truck,
   Package,
-  Wrench,
   FileText,
   Plus,
   MoreHorizontal,

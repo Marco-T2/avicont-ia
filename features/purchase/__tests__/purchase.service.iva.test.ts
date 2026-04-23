@@ -332,7 +332,7 @@ describe("PurchaseService — IVA journal integration", () => {
             findFirst: vi.fn().mockResolvedValue({
               id: ENTRY_ID, lines: [], contact: null, voucherType: { code: "CE" },
             }),
-            update: async (...args: unknown[]) => {
+            update: async (..._args: unknown[]) => {
               order.push("journalEntry.update");
               return {};
             },

@@ -14,7 +14,6 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen, cleanup, fireEvent, within } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { RolesMatrixProvider } from "@/components/common/roles-matrix-provider";
 import type { ClientMatrixSnapshot } from "@/components/common/roles-matrix-provider";
 
@@ -51,7 +50,7 @@ vi.mock("sonner", () => ({
 // NOTE: This mock is file-scoped — it affects all tests in this file, but existing collapsed-mode
 // tests (PR2.5) don't query tooltip text so they are unaffected.
 vi.mock("@/components/ui/tooltip", async () => {
-  const { Children, cloneElement, isValidElement, createElement } = await import("react");
+  const { cloneElement, isValidElement, createElement } = await import("react");
   return {
     TooltipProvider: ({ children }: { children: unknown }) => createElement(
       "span",

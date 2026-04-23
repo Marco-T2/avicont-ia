@@ -25,7 +25,6 @@ export type StatementMode = "balance-sheet" | "income-statement";
 // Sentinel para la opción "Sin selección" en Select (Radix no admite value="")
 const NO_PERIOD = "__none__";
 const NO_PRESET = "__none__";
-const NO_COMPARE = "none";
 
 // ── Labels en español para los 17 macros de período ──
 

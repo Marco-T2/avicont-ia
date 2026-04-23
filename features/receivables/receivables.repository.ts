@@ -8,7 +8,6 @@ import type {
   UpdateReceivableInput,
   ReceivableFilters,
   OpenAggregate,
-  AccountsReceivable,
 } from "./receivables.types";
 
 export class ReceivablesRepository extends BaseRepository {

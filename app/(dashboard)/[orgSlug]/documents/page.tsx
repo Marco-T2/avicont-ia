@@ -1,9 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useOrganization, useUser } from "@clerk/nextjs";
-import { Button } from "@/components/ui/button";
-import ReactMarkdown from "react-markdown";
+import { useOrganization } from "@clerk/nextjs";
 import {
   Card,
   CardContent,
@@ -89,7 +87,7 @@ export default function DocumentsPage() {
       });
 
       if (response.ok) {
-        const data = await response.json();
+        await response.json();
         const analysisTypeLabel = analysisTypes.find(
           (type) => type.value === selectedAnalysisType,
         )?.label;

@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import type { EquityStatement, ColumnKey } from "../equity-statement.types";
+import type { EquityStatement } from "../equity-statement.types";
 import { COLUMNS_ORDER, COLUMN_LABELS } from "../equity-statement.builder";
 
 // ── Constants ─────────────────────────────────────────────────────────────────

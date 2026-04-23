@@ -23,7 +23,7 @@ import { toast } from "sonner";
 
 export default function SelectOrgPage() {
   const { user } = useUser();
-  const { isLoaded, userMemberships, setActive, createOrganization } =
+  const { userMemberships, setActive, createOrganization } =
     useOrganizationList({
       userMemberships: {
         infinite: true,

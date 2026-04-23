@@ -40,7 +40,7 @@ import {
   type Resource,
   type Action,
 } from "@/features/shared/permissions";
-import { canAccess, canPost } from "@/features/shared/permissions.server";
+import { canAccess } from "@/features/shared/permissions.server";
 
 const ALL_ROLES: Role[] = [
   "owner",

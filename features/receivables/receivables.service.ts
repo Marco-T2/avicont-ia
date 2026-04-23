@@ -8,7 +8,6 @@ import {
 import type { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "./receivables.repository";
 import type {
-  AccountsReceivable,
   ReceivableWithContact,
   ReceivableStatus,
   CreateReceivableInput,

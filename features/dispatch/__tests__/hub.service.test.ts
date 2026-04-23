@@ -10,7 +10,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HubService } from "../hub.service";
 import type { SaleServiceForHub, DispatchServiceForHub } from "../hub.service";
-import type { HubItem } from "../hub.types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 

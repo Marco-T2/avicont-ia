@@ -6,12 +6,6 @@ import {
   resolveComparativePeriod,
   computeDiffPercent,
 } from "@/features/accounting/financial-statements/date-presets.utils";
-import type {
-  DatePresetId,
-  BreakdownBy,
-  CompareWith,
-  StatementColumn,
-} from "@/features/accounting/financial-statements/financial-statements.types";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

@@ -15,7 +15,6 @@ import type { WorksheetAccountMetadata } from "../worksheet.repository";
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
-const zero = D(0);
 
 function makeAccount(
   overrides: Partial<WorksheetAccountMetadata> & Pick<WorksheetAccountMetadata, "id" | "type">,

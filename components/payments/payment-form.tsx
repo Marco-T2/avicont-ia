@@ -168,8 +168,8 @@ export default function PaymentForm({
   operationalDocTypes = [],
   cashAccounts = [],
   bankAccounts = [],
-  defaultCashCode,
-  defaultBankCode,
+  defaultCashCode: _defaultCashCode,
+  defaultBankCode: _defaultBankCode,
 }: PaymentFormProps) {
   const router = useRouter();
 
@@ -195,7 +195,7 @@ export default function PaymentForm({
   }
 
   // ── Header state ──
-  const [paymentType, setPaymentType] = useState<PaymentDirection>(
+  const [paymentType, _setPaymentType] = useState<PaymentDirection>(
     existingPayment ? inferDirection(existingPayment) : (defaultType ?? "COBRO"),
   );
   const [contactId, setContactId] = useState(existingPayment?.contactId ?? "");
@@ -559,9 +559,6 @@ export default function PaymentForm({
     amountOverride && parseFloat(amountOverride) > 0
       ? parseFloat(amountOverride)
       : 0;
-
-  // Total funding available = cash + credits
-  const totalFunding = paymentAmount + creditApplied;
 
   const creditFromPayment =
     paymentAmount > totalAllocated ? paymentAmount - totalAllocated : 0;

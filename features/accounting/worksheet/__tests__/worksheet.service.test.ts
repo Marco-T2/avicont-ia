@@ -5,7 +5,7 @@
  * Repository is mocked — no DB access.
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { WorksheetService } from "../worksheet.service";
 import { WorksheetRepository } from "../worksheet.repository";
@@ -156,7 +156,7 @@ describe("WorksheetService — filter resolution (REQ-10)", () => {
     });
     const service = new WorksheetService(mockRepo);
 
-    const result = await service.generateWorksheet("org-1", "contador", {
+    await service.generateWorksheet("org-1", "contador", {
       dateFrom: new Date("2025-01-01"),
       dateTo: new Date("2025-12-31"),
       fiscalPeriodId: "period-1",
