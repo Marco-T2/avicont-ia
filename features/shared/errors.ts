@@ -165,3 +165,36 @@ export const SELF_LOCK_GUARD = "SELF_LOCK_GUARD";
 export const SLUG_TAKEN = "SLUG_TAKEN";
 export const RESERVED_SLUG = "RESERVED_SLUG";
 export const ROLE_HAS_MEMBERS = "ROLE_HAS_MEMBERS";
+
+// External Sync — DB/Clerk divergence (members-clerk-sync-saga, REQ-MCS.4)
+// Thrown when a saga's compensation completes (single failure) OR fails
+// (double failure, divergent). `handleError` serializes this as 503 via the
+// generic AppError branch — no route-level mapping (I-5).
+export const EXTERNAL_SYNC_ERROR = "EXTERNAL_SYNC_ERROR";
+
+export type DivergentState = {
+  dbState: string;
+  clerkState: string;
+};
+
+export type ExternalSyncErrorDetails = {
+  divergentState: DivergentState;
+  operation: "add" | "reactivate" | "remove";
+  correlationId: string;
+  /**
+   * Retry hint in seconds. Travels in the JSON body `details` — NOT as an
+   * HTTP `Retry-After` header. The existing error serializer does not set
+   * response headers beyond content-type; adding a header path is
+   * out-of-scope for this change (design §4, SF-3).
+   */
+  retryAfterSeconds?: number;
+  clerkErrorCode?: string;
+  clerkTraceId?: string;
+};
+
+export class ExternalSyncError extends AppError {
+  constructor(message: string, details: ExternalSyncErrorDetails) {
+    super(message, 503, EXTERNAL_SYNC_ERROR, details as unknown as Record<string, unknown>);
+    this.name = "ExternalSyncError";
+  }
+}
