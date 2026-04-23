@@ -57,7 +57,7 @@ export class AgentService {
     const [context, ragContext, history] = await Promise.all([
       buildAgentContext(orgId, userId, normalizedRole),
       buildRagContext(orgId, prompt, normalizedRole),
-      sessionId ? memoryRepo.getRecentMessages(sessionId) : Promise.resolve([]),
+      sessionId ? memoryRepo.getRecentMessages(orgId, sessionId) : Promise.resolve([]),
     ]);
 
     const fullContext = ragContext ? `${ragContext}\n\n${context}` : context;
