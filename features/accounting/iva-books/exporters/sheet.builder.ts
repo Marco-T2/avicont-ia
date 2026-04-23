@@ -84,7 +84,3 @@ export function getColumns(kind: "purchases" | "sales"): readonly IvaBookColumn[
   return kind === "purchases" ? PURCHASES_COLUMNS : SALES_COLUMNS;
 }
 
-/** Número de columnas de datos (sin contar la columna Nº autogenerada). */
-export function dataColumnCount(kind: "purchases" | "sales"): number {
-  return getColumns(kind).length - 1;
-}

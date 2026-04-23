@@ -7,7 +7,6 @@ export type {
 } from "./document-signature-config.types";
 export { ALL_DOCUMENT_PRINT_TYPES } from "./document-signature-config.types";
 export {
-  signatureLabelEnum,
   documentPrintTypeEnum,
   updateSignatureConfigSchema,
 } from "./document-signature-config.validation";
