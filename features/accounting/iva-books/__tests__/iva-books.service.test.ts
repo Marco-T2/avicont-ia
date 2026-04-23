@@ -98,7 +98,14 @@ function createMockRepo(): IvaBooksRepository {
     updateSale: vi.fn(),
     voidPurchase: vi.fn(),
     voidSale: vi.fn(),
+    reactivatePurchase: vi.fn(),
     reactivateSale: vi.fn(),
+    // Audit F #4/#5: IvaBooks methods now wrap writes in repo.transaction.
+    // Mock passes a sentinel tx through to the callback so assertions
+    // observing the tx arg continue to work.
+    transaction: vi
+      .fn()
+      .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
   } as unknown as IvaBooksRepository;
 }
 
@@ -273,7 +280,7 @@ describe("IvaBooksService", () => {
 
       const result = await service.voidPurchase(orgId, "purchase-book-id");
 
-      expect(repo.voidPurchase).toHaveBeenCalledWith(orgId, "purchase-book-id");
+      expect(repo.voidPurchase).toHaveBeenCalledWith(orgId, "purchase-book-id", expect.anything());
       expect(result.status).toBe("VOIDED");
     });
   });
@@ -290,7 +297,7 @@ describe("IvaBooksService", () => {
       expect(result.estadoSIN).toBe("A");
 
       // El repo no recibió ningún cambio en estadoSIN
-      expect(repo.voidSale).toHaveBeenCalledWith(orgId, "sale-book-id");
+      expect(repo.voidSale).toHaveBeenCalledWith(orgId, "sale-book-id", expect.anything());
       expect(repo.updateSale).not.toHaveBeenCalled();
     });
   });
@@ -302,7 +309,7 @@ describe("IvaBooksService", () => {
 
       const result = await service.reactivateSale(orgId, "user-id", "iva-sale-book-id");
 
-      expect(repo.reactivateSale).toHaveBeenCalledWith(orgId, "iva-sale-book-id");
+      expect(repo.reactivateSale).toHaveBeenCalledWith(orgId, "iva-sale-book-id", expect.anything());
       expect(result.status).toBe("ACTIVE");
     });
 

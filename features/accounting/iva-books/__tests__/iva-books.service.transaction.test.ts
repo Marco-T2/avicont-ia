@@ -316,7 +316,7 @@ describe("IvaBooksService — transaction boundary (Audit F #4/#5)", () => {
     const h = buildHarness();
 
     const boom = new Error("journal regen failed");
-    h.purchaseService.regenerateJournalForIvaChange.mockRejectedValueOnce(boom);
+    h.purchaseService.regenerateJournalForIvaChange.mockRejectedValue(boom);
 
     // If the regen is NOT inside the tx, the tx callback won't throw — it will
     // never even be invoked (current code doesn't call repo.transaction at all).

@@ -141,6 +141,10 @@ describe("Regression T8.4 — reactivatePurchase service bridge triggers journal
   it("T8.4 — reactivatePurchase calls purchaseService.regenerateJournalForIvaChange once", async () => {
     const repo = {
       reactivatePurchase: vi.fn().mockResolvedValue(makePurchaseDTO({ status: "ACTIVE" })),
+      // Audit F #4/#5: reactivatePurchase now wraps in repo.transaction.
+      transaction: vi
+        .fn()
+        .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
     } as unknown as IvaBooksRepository;
 
     const purchaseService = {
@@ -162,6 +166,7 @@ describe("Regression T8.4 — reactivatePurchase service bridge triggers journal
       ORG_ID,
       PURCHASE_ID,
       USER_ID,
+      expect.anything(),
     );
   });
 });

@@ -71,7 +71,11 @@ function computeIvaFields(input: {
  * Usar la interfaz en vez del tipo concreto para evitar acoplamiento circular.
  */
 interface SaleServiceForBridge {
-  getById(organizationId: string, id: string): Promise<{
+  getById(
+    organizationId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{
     id: string;
     status: string;
     periodId: string;
@@ -81,6 +85,7 @@ interface SaleServiceForBridge {
     organizationId: string,
     saleId: string,
     userId: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<unknown>;
 }
 
@@ -88,7 +93,11 @@ interface SaleServiceForBridge {
  * Contrato mínimo de PurchaseService necesario para el bridge de regeneración.
  */
 interface PurchaseServiceForBridge {
-  getById(organizationId: string, id: string): Promise<{
+  getById(
+    organizationId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<{
     id: string;
     status: string;
     periodId: string;
@@ -98,6 +107,7 @@ interface PurchaseServiceForBridge {
     organizationId: string,
     purchaseId: string,
     userId: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<unknown>;
 }
 
@@ -148,9 +158,10 @@ export class IvaBooksService {
     entityId: string,
     orgId: string,
     userId: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<void> {
     if (entityType === "sale" && this.saleService) {
-      const sale = await this.saleService.getById(orgId, entityId);
+      const sale = await this.saleService.getById(orgId, entityId, tx);
       const periodStatus = sale.period?.status ?? "OPEN";
 
       if (sale.status === "POSTED") {
@@ -160,10 +171,10 @@ export class IvaBooksService {
             FISCAL_PERIOD_CLOSED,
           );
         }
-        await this.saleService.regenerateJournalForIvaChange(orgId, entityId, userId);
+        await this.saleService.regenerateJournalForIvaChange(orgId, entityId, userId, tx);
       }
     } else if (entityType === "purchase" && this.purchaseService) {
-      const purchase = await this.purchaseService.getById(orgId, entityId);
+      const purchase = await this.purchaseService.getById(orgId, entityId, tx);
       const periodStatus = purchase.period?.status ?? "OPEN";
 
       if (purchase.status === "POSTED") {
@@ -173,7 +184,7 @@ export class IvaBooksService {
             FISCAL_PERIOD_CLOSED,
           );
         }
-        await this.purchaseService.regenerateJournalForIvaChange(orgId, entityId, userId);
+        await this.purchaseService.regenerateJournalForIvaChange(orgId, entityId, userId, tx);
       }
     }
   }
@@ -207,6 +218,8 @@ export class IvaBooksService {
     // SPEC-6: Si hay purchaseId y período CERRADO → lanzar antes de persistir.
     // Si POSTED + OPEN → regenerar después de crear. Todo el chequeo ocurre en maybeRegenerateJournal.
     // Pre-check de período cerrado: evita persistir el IvaBook si el período ya está CERRADO.
+    // NOTA (Audit F #4/#5): el pre-check es READ-ONLY y se mantiene FUERA de la tx
+    // para fallar rápido antes de tomar locks. El write + regen van adentro.
     if (input.purchaseId && userId && this.purchaseService) {
       const purchase = await this.purchaseService.getById(orgId, input.purchaseId);
       const periodStatus = purchase.period?.status ?? "OPEN";
@@ -219,17 +232,29 @@ export class IvaBooksService {
 
       const computed = computeIvaFields(input);
 
-      const result = await this.repo.createPurchase(orgId, {
-        ...input,
-        ...computed,
+      // Audit F #4/#5: write IVA + regen journal bajo la misma tx. Si el regen
+      // falla, la escritura IVA se revierte — audit trail consistente.
+      const purchaseId = input.purchaseId;
+      const purchaseServiceRef = this.purchaseService;
+      return await this.repo.transaction(async (tx) => {
+        const result = await this.repo.createPurchase(
+          orgId,
+          { ...input, ...computed },
+          tx,
+        );
+
+        // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
+        if (purchase.status === "POSTED" && periodStatus === "OPEN") {
+          await purchaseServiceRef.regenerateJournalForIvaChange(
+            orgId,
+            purchaseId,
+            userId,
+            tx,
+          );
+        }
+
+        return result;
       });
-
-      // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
-      if (purchase.status === "POSTED" && periodStatus === "OPEN") {
-        await this.purchaseService.regenerateJournalForIvaChange(orgId, input.purchaseId, userId);
-      }
-
-      return result;
     }
 
     const computed = computeIvaFields(input);
@@ -298,42 +323,45 @@ export class IvaBooksService {
       input.codigoDescuentoAdicional !== undefined ||
       input.importeGiftCard !== undefined;
 
-    let result: IvaPurchaseBookDTO;
+    // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
+    return await this.repo.transaction(async (tx) => {
+      let result: IvaPurchaseBookDTO;
 
-    if (hasMonetaryChange) {
-      // Obtener los valores actuales para combinar con el patch
-      const current = await this.repo.findPurchaseById(orgId, id);
+      if (hasMonetaryChange) {
+        // Obtener los valores actuales para combinar con el patch
+        const current = await this.repo.findPurchaseById(orgId, id);
 
-      const D = (v: string | number) => new Prisma.Decimal(String(v));
-      const ZERO = D("0");
+        const D = (v: string | number) => new Prisma.Decimal(String(v));
+        const ZERO = D("0");
 
-      const merged = {
-        importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
-        importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
-        importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
-        importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
-        tasas: input.tasas ?? current?.tasas ?? ZERO,
-        otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
-        exentos: input.exentos ?? current?.exentos ?? ZERO,
-        tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
-        codigoDescuentoAdicional:
-          input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
-        importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
-      };
+        const merged = {
+          importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
+          importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
+          importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
+          importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
+          tasas: input.tasas ?? current?.tasas ?? ZERO,
+          otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
+          exentos: input.exentos ?? current?.exentos ?? ZERO,
+          tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
+          codigoDescuentoAdicional:
+            input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
+          importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
+        };
 
-      const computed = computeIvaFields(merged);
-      result = await this.repo.updatePurchase(orgId, id, { ...input, ...computed });
-    } else {
-      result = await this.repo.updatePurchase(orgId, id, input);
-    }
+        const computed = computeIvaFields(merged);
+        result = await this.repo.updatePurchase(orgId, id, { ...input, ...computed }, tx);
+      } else {
+        result = await this.repo.updatePurchase(orgId, id, input, tx);
+      }
 
-    // SPEC-6: bridge regeneración si hay purchaseId y userId
-    const purchaseId = result.purchaseId;
-    if (purchaseId && userId) {
-      await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId);
-    }
+      // SPEC-6: bridge regeneración si hay purchaseId y userId
+      const purchaseId = result.purchaseId;
+      if (purchaseId && userId) {
+        await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx);
+      }
 
-    return result;
+      return result;
+    });
   }
 
   async voidPurchase(
@@ -359,15 +387,18 @@ export class IvaBooksService {
       id = arg2;
     }
 
-    const result = await this.repo.voidPurchase(orgId, id);
+    // Audit F #4/#5: void IVA + regen journal bajo la misma tx.
+    return await this.repo.transaction(async (tx) => {
+      const result = await this.repo.voidPurchase(orgId, id, tx);
 
-    // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
-    const purchaseId = result.purchaseId;
-    if (purchaseId && userId) {
-      await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId);
-    }
+      // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
+      const purchaseId = result.purchaseId;
+      if (purchaseId && userId) {
+        await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx);
+      }
 
-    return result;
+      return result;
+    });
   }
 
   // ── Ventas ─────────────────────────────────────────────────────────────────
@@ -396,6 +427,8 @@ export class IvaBooksService {
     }
 
     // SPEC-6: Pre-check de período cerrado + regeneración post-create (un solo getById).
+    // NOTA (Audit F #4/#5): el pre-check es READ-ONLY y se mantiene FUERA de la tx
+    // para fallar rápido antes de tomar locks. El write + regen van adentro.
     if (input.saleId && userId && this.saleService) {
       const sale = await this.saleService.getById(orgId, input.saleId);
       const periodStatus = sale.period?.status ?? "OPEN";
@@ -408,17 +441,28 @@ export class IvaBooksService {
 
       const computed = computeIvaFields(input);
 
-      const result = await this.repo.createSale(orgId, {
-        ...input,
-        ...computed,
+      // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
+      const saleId = input.saleId;
+      const saleServiceRef = this.saleService;
+      return await this.repo.transaction(async (tx) => {
+        const result = await this.repo.createSale(
+          orgId,
+          { ...input, ...computed },
+          tx,
+        );
+
+        // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
+        if (sale.status === "POSTED" && periodStatus === "OPEN") {
+          await saleServiceRef.regenerateJournalForIvaChange(
+            orgId,
+            saleId,
+            userId,
+            tx,
+          );
+        }
+
+        return result;
       });
-
-      // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
-      if (sale.status === "POSTED" && periodStatus === "OPEN") {
-        await this.saleService.regenerateJournalForIvaChange(orgId, input.saleId, userId);
-      }
-
-      return result;
     }
 
     const computed = computeIvaFields(input);
@@ -479,41 +523,44 @@ export class IvaBooksService {
       input.codigoDescuentoAdicional !== undefined ||
       input.importeGiftCard !== undefined;
 
-    let result: IvaSalesBookDTO;
+    // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
+    return await this.repo.transaction(async (tx) => {
+      let result: IvaSalesBookDTO;
 
-    if (hasMonetaryChange) {
-      const current = await this.repo.findSaleById(orgId, id);
+      if (hasMonetaryChange) {
+        const current = await this.repo.findSaleById(orgId, id);
 
-      const D = (v: string | number) => new Prisma.Decimal(String(v));
-      const ZERO = D("0");
+        const D = (v: string | number) => new Prisma.Decimal(String(v));
+        const ZERO = D("0");
 
-      const merged = {
-        importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
-        importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
-        importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
-        importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
-        tasas: input.tasas ?? current?.tasas ?? ZERO,
-        otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
-        exentos: input.exentos ?? current?.exentos ?? ZERO,
-        tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
-        codigoDescuentoAdicional:
-          input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
-        importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
-      };
+        const merged = {
+          importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
+          importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
+          importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
+          importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
+          tasas: input.tasas ?? current?.tasas ?? ZERO,
+          otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
+          exentos: input.exentos ?? current?.exentos ?? ZERO,
+          tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
+          codigoDescuentoAdicional:
+            input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
+          importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
+        };
 
-      const computed = computeIvaFields(merged);
-      result = await this.repo.updateSale(orgId, id, { ...input, ...computed });
-    } else {
-      result = await this.repo.updateSale(orgId, id, input);
-    }
+        const computed = computeIvaFields(merged);
+        result = await this.repo.updateSale(orgId, id, { ...input, ...computed }, tx);
+      } else {
+        result = await this.repo.updateSale(orgId, id, input, tx);
+      }
 
-    // SPEC-6: bridge regeneración si hay saleId y userId
-    const saleId = result.saleId;
-    if (saleId && userId) {
-      await this.maybeRegenerateJournal("sale", saleId, orgId, userId);
-    }
+      // SPEC-6: bridge regeneración si hay saleId y userId
+      const saleId = result.saleId;
+      if (saleId && userId) {
+        await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx);
+      }
 
-    return result;
+      return result;
+    });
   }
 
   // ── Cascade desde SaleService.editPosted ─────────────────────────────────
@@ -656,15 +703,18 @@ export class IvaBooksService {
     }
 
     // SOLO status = VOIDED — estadoSIN NO se toca (eje ortogonal, design decision)
-    const result = await this.repo.voidSale(orgId, id);
+    // Audit F #4/#5: void IVA + regen journal bajo la misma tx.
+    return await this.repo.transaction(async (tx) => {
+      const result = await this.repo.voidSale(orgId, id, tx);
 
-    // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
-    const saleId = result.saleId;
-    if (saleId && userId) {
-      await this.maybeRegenerateJournal("sale", saleId, orgId, userId);
-    }
+      // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
+      const saleId = result.saleId;
+      if (saleId && userId) {
+        await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx);
+      }
 
-    return result;
+      return result;
+    });
   }
 
   async reactivateSale(
@@ -673,15 +723,18 @@ export class IvaBooksService {
     id: string,
   ): Promise<IvaSalesBookDTO> {
     // status = ACTIVE — estadoSIN NO se toca (eje ortogonal, design decision)
-    const result = await this.repo.reactivateSale(orgId, id);
+    // Audit F #4/#5: reactivate IVA + regen journal bajo la misma tx.
+    return await this.repo.transaction(async (tx) => {
+      const result = await this.repo.reactivateSale(orgId, id, tx);
 
-    // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
-    const saleId = result.saleId;
-    if (saleId && userId) {
-      await this.maybeRegenerateJournal("sale", saleId, orgId, userId);
-    }
+      // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
+      const saleId = result.saleId;
+      if (saleId && userId) {
+        await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx);
+      }
 
-    return result;
+      return result;
+    });
   }
 
   async reactivatePurchase(
@@ -690,14 +743,17 @@ export class IvaBooksService {
     id: string,
   ): Promise<IvaPurchaseBookDTO> {
     // status = ACTIVE — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
-    const result = await this.repo.reactivatePurchase(orgId, id);
+    // Audit F #4/#5: reactivate IVA + regen journal bajo la misma tx.
+    return await this.repo.transaction(async (tx) => {
+      const result = await this.repo.reactivatePurchase(orgId, id, tx);
 
-    // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
-    const purchaseId = result.purchaseId;
-    if (purchaseId && userId) {
-      await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId);
-    }
+      // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
+      const purchaseId = result.purchaseId;
+      if (purchaseId && userId) {
+        await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx);
+      }
 
-    return result;
+      return result;
+    });
   }
 }

@@ -144,10 +144,12 @@ export class PurchaseRepository extends BaseRepository {
   async findById(
     organizationId: string,
     id: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<PurchaseWithDetails | null> {
     const scope = this.requireOrg(organizationId);
+    const db = tx ?? this.db;
 
-    const row = await this.db.purchase.findFirst({
+    const row = await db.purchase.findFirst({
       where: { id, ...scope },
       include: purchaseDetailInclude,
     });

@@ -300,8 +300,12 @@ export class PurchaseService {
 
   // ── Obtener una compra individual ──
 
-  async getById(organizationId: string, id: string): Promise<PurchaseWithDetails> {
-    const row = await this.repo.findById(organizationId, id);
+  async getById(
+    organizationId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<PurchaseWithDetails> {
+    const row = await this.repo.findById(organizationId, id, tx);
     if (!row) throw new NotFoundError("Compra");
     return withDisplayCode(row);
   }
@@ -1129,9 +1133,13 @@ export class PurchaseService {
     organizationId: string,
     purchaseId: string,
     userId: string,
+    externalTx?: Prisma.TransactionClient,
   ): Promise<PurchaseWithDetails> {
-    // 1. Cargar la compra actualizada (incluye ivaPurchaseBook fresco)
-    const purchase = await this.getById(organizationId, purchaseId);
+    // 1. Cargar la compra actualizada (incluye ivaPurchaseBook fresco).
+    //    Si hay externalTx, la lectura DEBE ir por esa tx para ver datos
+    //    recién escritos en el mismo callback (Audit F #4/#5 — IvaBooks
+    //    escribió ivaPurchaseBook dentro de la misma tx antes de llamarnos).
+    const purchase = await this.getById(organizationId, purchaseId, externalTx);
 
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
@@ -1185,8 +1193,9 @@ export class PurchaseService {
       });
     }
 
-    // 5. Ejecutar transacción atómica con re-chequeo de período (D3 / D5 race guard)
-    await this.repo.transaction(async (tx) => {
+    // 5. Ejecutar el body atómico. Si hay externalTx, usarla directamente
+    //    (Prisma NO soporta tx interactivas anidadas). Si no, abrir una propia.
+    const body = async (tx: Prisma.TransactionClient) => {
       await setAuditContext(tx, userId);
 
       // Re-chequear que el período sigue ABIERTO dentro de la tx
@@ -1233,9 +1242,15 @@ export class PurchaseService {
 
       // c. Aplicar los nuevos saldos
       await this.balancesService.applyPost(tx, updatedEntry);
-    });
+    };
 
-    const updated = await this.repo.findById(organizationId, purchaseId);
+    if (externalTx) {
+      await body(externalTx);
+    } else {
+      await this.repo.transaction(body);
+    }
+
+    const updated = await this.repo.findById(organizationId, purchaseId, externalTx);
     return withDisplayCode(updated!);
   }
 

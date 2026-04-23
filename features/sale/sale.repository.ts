@@ -117,10 +117,12 @@ export class SaleRepository extends BaseRepository {
   async findById(
     organizationId: string,
     id: string,
+    tx?: Prisma.TransactionClient,
   ): Promise<SaleWithDetails | null> {
     const scope = this.requireOrg(organizationId);
+    const db = tx ?? this.db;
 
-    const row = await this.db.sale.findFirst({
+    const row = await db.sale.findFirst({
       where: { id, ...scope },
       include: saleDetailInclude,
     });
