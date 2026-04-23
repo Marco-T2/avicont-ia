@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
@@ -32,7 +32,7 @@ export default function DocumentsPage() {
   const [userRole, setUserRole] = useState<string | undefined>();
 
   // Fetch documents
-  const fetchDocuments = async () => {
+  const fetchDocuments = useCallback(async () => {
     if (!organization) return;
     setIsLoading(true);
     try {
@@ -52,14 +52,14 @@ export default function DocumentsPage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [organization]);
 
   // Initial fetch
   useEffect(() => {
     if (organization?.id) {
       fetchDocuments();
     }
-  }, [organization?.id]);
+  }, [organization?.id, fetchDocuments]);
 
   // Toggle summary expansion
   const toggleSummary = (documentId: string) => {
