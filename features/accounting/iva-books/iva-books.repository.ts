@@ -254,7 +254,7 @@ export class IvaBooksRepository extends BaseRepository {
     if (!existing) throw new NotFoundError("Entrada de Libro de Compras");
 
     const row = await this.db.ivaPurchaseBook.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: {
         ...(input.fechaFactura !== undefined
           ? { fechaFactura: toNoonUtc(input.fechaFactura) }
@@ -298,7 +298,7 @@ export class IvaBooksRepository extends BaseRepository {
     if (!existing) throw new NotFoundError("Entrada de Libro de Compras");
 
     const row = await this.db.ivaPurchaseBook.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       // SOLO status — estadoSIN no existe en compras; la semántica de void
       // es exclusivamente interna (lifecycle Avicont).
       data: { status: "VOIDED" },
@@ -374,7 +374,7 @@ export class IvaBooksRepository extends BaseRepository {
     if (!existing) throw new NotFoundError("Entrada de Libro de Ventas");
 
     const row = await this.db.ivaSalesBook.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: {
         ...(input.fechaFactura !== undefined
           ? { fechaFactura: toNoonUtc(input.fechaFactura) }
@@ -419,7 +419,7 @@ export class IvaBooksRepository extends BaseRepository {
 
     // SOLO status — estadoSIN NO se toca (orthogonal axes per design decision)
     const row = await this.db.ivaSalesBook.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: { status: "VOIDED" },
     });
 
@@ -439,7 +439,7 @@ export class IvaBooksRepository extends BaseRepository {
 
     // SOLO status — estadoSIN NO se toca (orthogonal axes per design decision)
     const row = await this.db.ivaSalesBook.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: { status: "ACTIVE" },
     });
 
@@ -459,7 +459,7 @@ export class IvaBooksRepository extends BaseRepository {
 
     // SOLO status — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
     const row = await this.db.ivaPurchaseBook.update({
-      where: { id },
+      where: { id, organizationId: orgId },
       data: { status: "ACTIVE" },
     });
 

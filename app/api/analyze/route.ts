@@ -31,11 +31,15 @@ export async function POST(request: Request) {
 
     const summary = await analyzeWithGemini(content, analysisType);
 
-    const updatedDocument = await docsService.updateAnalysis(documentId, {
-      aiSummary: summary,
-      aiKeywords: ["analyzed"],
-      sentiment: "analyzed",
-    });
+    const updatedDocument = await docsService.updateAnalysis(
+      document.organizationId,
+      documentId,
+      {
+        aiSummary: summary,
+        aiKeywords: ["analyzed"],
+        sentiment: "analyzed",
+      },
+    );
 
     return Response.json({
       success: true,

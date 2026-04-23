@@ -81,10 +81,10 @@ type FakeRoleRow = {
 const fakeRepoState: {
   rolesByOrg: FakeRoleRow[];
   findBySlug: Mock<(orgId: string, slug: string) => Promise<FakeRoleRow | null>>;
-  update: Mock<(id: string, patch: Partial<FakeRoleRow>) => Promise<FakeRoleRow>>;
+  update: Mock<(orgId: string, id: string, patch: Partial<FakeRoleRow>) => Promise<FakeRoleRow>>;
   findAllByOrg: Mock<(orgId: string) => Promise<FakeRoleRow[]>>;
   create: Mock<(data: Partial<FakeRoleRow>) => Promise<FakeRoleRow>>;
-  delete: Mock<(id: string) => Promise<FakeRoleRow>>;
+  delete: Mock<(orgId: string, id: string) => Promise<FakeRoleRow>>;
   countMembers: Mock<(slug: string, orgId: string) => Promise<number>>;
 } = {
   rolesByOrg: [],
@@ -110,9 +110,9 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
         findBySlug: (orgId: string, slug: string) =>
           fakeRepoState.findBySlug(orgId, slug),
         create: (data: Partial<FakeRoleRow>) => fakeRepoState.create(data),
-        update: (id: string, patch: Partial<FakeRoleRow>) =>
-          fakeRepoState.update(id, patch),
-        delete: (id: string) => fakeRepoState.delete(id),
+        update: (orgId: string, id: string, patch: Partial<FakeRoleRow>) =>
+          fakeRepoState.update(orgId, id, patch),
+        delete: (orgId: string, id: string) => fakeRepoState.delete(orgId, id),
         countMembers: (slug: string, orgId: string) =>
           fakeRepoState.countMembers(slug, orgId),
       };
@@ -186,7 +186,7 @@ beforeEach(() => {
     fakeRepoState.rolesByOrg,
   );
   fakeRepoState.update.mockImplementation(
-    async (id: string, patch: Partial<FakeRoleRow>) => {
+    async (_orgId: string, id: string, patch: Partial<FakeRoleRow>) => {
       const existing = fakeRepoState.rolesByOrg.find((r) => r.id === id);
       if (!existing) throw new Error("fake repo: role not found " + id);
       return { ...existing, ...patch };
@@ -196,7 +196,7 @@ beforeEach(() => {
   fakeRepoState.create.mockImplementation(async (data: Partial<FakeRoleRow>) =>
     makeFakeRole({ slug: data.slug ?? "new", ...data }),
   );
-  fakeRepoState.delete.mockImplementation(async (id: string) =>
+  fakeRepoState.delete.mockImplementation(async (_orgId: string, id: string) =>
     makeFakeRole({ id, slug: "deleted" }),
   );
 
@@ -279,7 +279,8 @@ describe("PR5.3 — PATCH roles/[roleSlug] self-lock E2E (real service + route c
       expect(fakeRepoState.update).toHaveBeenCalledTimes(1);
 
       // And specifically with the post-normalized members-preserving payload.
-      const [, patch] = fakeRepoState.update.mock.calls[0] as [
+      const [, , patch] = fakeRepoState.update.mock.calls[0] as [
+        string,
         string,
         { permissionsWrite: string[] },
       ];

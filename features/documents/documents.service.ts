@@ -172,10 +172,11 @@ export class DocumentsService {
   }
 
   async updateAnalysis(
+    organizationId: string,
     documentId: string,
     data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
   ) {
-    return this.repo.updateAnalysis(documentId, data);
+    return this.repo.updateAnalysis(organizationId, documentId, data);
   }
 
   // ── Auxiliares privados ──

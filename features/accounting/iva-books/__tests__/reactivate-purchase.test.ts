@@ -136,7 +136,7 @@ describe("IvaBooksRepository.reactivatePurchase — T2.1", () => {
       where: { id: ENTRY_ID, organizationId: ORG_ID },
     });
     expect(mockDb.ivaPurchaseBook.update).toHaveBeenCalledWith({
-      where: { id: ENTRY_ID },
+      where: { id: ENTRY_ID, organizationId: ORG_ID },
       data: { status: "ACTIVE" },
     });
     expect(result.status).toBe("ACTIVE");

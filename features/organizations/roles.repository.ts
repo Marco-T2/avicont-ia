@@ -52,17 +52,18 @@ export class RolesRepository extends BaseRepository {
   }
 
   async update(
+    organizationId: string,
     id: string,
     patch: UpdateCustomRolePatch,
   ): Promise<CustomRole> {
     return this.db.customRole.update({
-      where: { id },
+      where: { id, organizationId },
       data: patch,
     });
   }
 
-  async delete(id: string): Promise<CustomRole> {
-    return this.db.customRole.delete({ where: { id } });
+  async delete(organizationId: string, id: string): Promise<CustomRole> {
+    return this.db.customRole.delete({ where: { id, organizationId } });
   }
 
   /**

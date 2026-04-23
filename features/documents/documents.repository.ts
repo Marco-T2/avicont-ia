@@ -76,11 +76,12 @@ export class DocumentsRepository extends BaseRepository {
   }
 
   async updateAnalysis(
+    organizationId: string,
     documentId: string,
     data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
   ) {
     return this.db.document.update({
-      where: { id: documentId },
+      where: { id: documentId, organizationId },
       data,
     });
   }
