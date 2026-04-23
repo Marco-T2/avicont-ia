@@ -119,13 +119,12 @@ function getServerFeatures(): Array<{ name: string; indexPath: string }> {
     const featureDir = path.join(FEATURES_DIR, entry.name);
     const indexPath = path.join(featureDir, "index.ts");
 
-    if (!fs.existsSync(indexPath)) continue;
-    if (!hasServerCode(featureDir)) continue;
+    if (fs.existsSync(indexPath) && hasServerCode(featureDir)) {
+      features.push({ name: entry.name, indexPath });
+    }
 
-    features.push({ name: entry.name, indexPath });
-
-    // Recurse one level into sub-directories that also have their own
-    // index.ts and server code (e.g. accounting/iva-books, accounting/financial-statements)
+    // Always recurse one level — a parent without its own index.ts
+    // (e.g. accounting/) can still contain sub-features that must be guarded.
     const subEntries = fs.readdirSync(featureDir, { withFileTypes: true });
     for (const sub of subEntries) {
       if (!sub.isDirectory()) continue;
