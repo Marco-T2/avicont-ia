@@ -348,7 +348,7 @@ describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () =>
 // ── UX-T08b — Batch counts non-FISCAL_PERIOD_MONTH_EXISTS 409 as FAILED ──────
 
 describe("UX-T08b — 409 con código distinto a FISCAL_PERIOD_MONTH_EXISTS cuenta como fallido (S-01)", () => {
-  it("409 con body { error: { code: 'SOME_OTHER_ERROR' } } cuenta como fallido, no como ya existía", async () => {
+  it("409 con body { error: '...', code: 'SOME_OTHER_ERROR' } cuenta como fallido, no como ya existía", async () => {
     const onOpenChange = vi.fn();
 
     // month 1 returns 409 with a different error code; rest return 201
@@ -359,7 +359,7 @@ describe("UX-T08b — 409 con código distinto a FISCAL_PERIOD_MONTH_EXISTS cuen
         return Promise.resolve({
           ok: false,
           status: 409,
-          json: async () => ({ error: { code: "SOME_OTHER_ERROR" } }),
+          json: async () => ({ error: "Conflict", code: "SOME_OTHER_ERROR" }),
         });
       }
       return Promise.resolve({
