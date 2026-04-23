@@ -105,6 +105,8 @@ The warning MUST NOT disable the submit button or prevent form submission.
 
 **OQ-3 resolution**: Microcopia uses "período mensual" framing (`"Un período fiscal representa un mes contable."`) — preserves openness for non-monthly edge cases while guiding toward the monthly default.
 
+This warning is the **first line of defense**. The server-side guard (REQ-5) is the second line. If the user dismisses the warning and submits, the server returns 400 with `FISCAL_PERIOD_NOT_MONTHLY`; the client MUST display the resulting error message from `AppError.details`.
+
 #### Scenario UX-T05 — Warning visible con rango cross-month
 
 - GIVEN `startDate="2026-01-01"` y `endDate="2026-12-31"` están ingresados
@@ -119,6 +121,85 @@ The warning MUST NOT disable the submit button or prevent form submission.
 - THEN el botón `"Crear Período"` está habilitado
 - AND el form puede ser enviado
 
+#### Scenario UX-T10 — Server rejection surfaces Spanish-voseo message
+
+- GIVEN el usuario ignoró el warning y envió un rango cross-month
+- WHEN el servidor responde 400 con código `FISCAL_PERIOD_NOT_MONTHLY`
+- THEN el cliente muestra el mensaje `"El período debe corresponder a exactamente un mes calendario."`
+- AND no se muestra stack trace ni mensaje técnico
+
+---
+
+### REQ-5 — Server-side monthly-shape invariant
+
+`FiscalPeriodsService.create()` MUST reject any request where the computed `(startDate, endDate)` pair does not cover exactly one UTC calendar month.
+
+This check MUST run after the existing `INVALID_DATE_RANGE` guard and before the month uniqueness pre-check.
+
+On violation, the service MUST throw a `ValidationError` with code `FISCAL_PERIOD_NOT_MONTHLY` and message `"El período debe corresponder a exactamente un mes calendario."` This error MUST surface as HTTP 400 at `POST /api/organizations/[orgSlug]/periods`, with `AppError.details` populated so the UI can display the specific validation failure.
+
+Acceptance criteria:
+- AC-5.1: `startDate.getUTCDate() === 1`
+- AC-5.2: `endDate` equals last UTC day of `startDate`'s month
+- AC-5.3: On violation, throw `ValidationError(FISCAL_PERIOD_NOT_MONTHLY)`
+- AC-5.4: Spanish voseo message: `"El período debe corresponder a exactamente un mes calendario."`
+- AC-5.5: HTTP 400 at `POST /api/organizations/[orgSlug]/periods`
+- AC-5.6: `AppError.details` populated for UI display (shape: `{ startDate: ISO, endDate: ISO }`)
+
+#### Scenario ME-T01 — Annual period rejected
+
+- GIVEN a POST body with `startDate=2026-01-01` and `endDate=2026-12-31`
+- WHEN `FiscalPeriodsService.create()` processes the request
+- THEN the response is 400 with code `FISCAL_PERIOD_NOT_MONTHLY`
+
+#### Scenario ME-T02 — Start not on first of month rejected
+
+- GIVEN a POST body with `startDate=2026-01-15` and `endDate=2026-01-31`
+- WHEN the service processes the request
+- THEN the response is 400 with code `FISCAL_PERIOD_NOT_MONTHLY`
+
+#### Scenario ME-T03 — End not last day of month rejected
+
+- GIVEN a POST body with `startDate=2026-01-01` and `endDate=2026-01-30`
+- WHEN the service processes the request
+- THEN the response is 400 with code `FISCAL_PERIOD_NOT_MONTHLY`
+
+#### Scenario ME-T04 — Leap year February accepted
+
+- GIVEN a POST body with `startDate=2024-02-01` and `endDate=2024-02-29`
+- WHEN the service processes the request (2024 is a leap year)
+- THEN the response is 201 OK
+
+#### Scenario ME-T05 — Non-leap February 2026 accepted
+
+- GIVEN a POST body with `startDate=2026-02-01` and `endDate=2026-02-28`
+- WHEN the service processes the request (2026 is not a leap year)
+- THEN the response is 201 OK
+
+#### Scenario ME-T06 — Non-leap February 2025 accepted
+
+- GIVEN a POST body with `startDate=2025-02-01` and `endDate=2025-02-28`
+- WHEN the service processes the request (2025 is not a leap year)
+- THEN the response is 201 OK
+
+#### Scenario ME-T07 — Invalid date Feb 29 in non-leap year
+
+- GIVEN a POST body with `startDate=2025-02-01` and `endDate=2025-02-29`
+- WHEN the service processes the request
+- THEN the response is 400 — `new Date('2025-02-29')` silently rolls to 2025-03-01; guard catches the mismatch and throws `FISCAL_PERIOD_NOT_MONTHLY`
+
+#### Scenario ME-T08 — Valid monthly shape accepted (regression)
+
+- GIVEN a POST body with `startDate=2026-04-01` and `endDate=2026-04-30`
+- WHEN the service processes the request
+- THEN the response is 201 OK
+
+#### Scenario ME-T09 — Existing test suites pass (no regression)
+
+- GIVEN the existing test suite in `fiscal-periods.service.multiplicity.test.ts`
+- WHEN the full test suite runs after implementing REQ-5
+- THEN all prior scenarios continue to pass
+
 ---
 
 ## Open Questions Forwarded to Design
@@ -132,7 +213,10 @@ The warning MUST NOT disable the submit button or prevent form submission.
 
 ## Constraints
 
-- Backend (`FiscalPeriodsService`, validation schema, Prisma schema) MUST NOT be modified.
+- The backend is a partner to the UX enforcement: a server-side guard layer exists at `FiscalPeriodsService.create()` (REQ-5). The earlier "Backend MUST NOT be modified" constraint was a scoping decision for the original Option A (UI-only) and was superseded by the `fiscal-period-monthly-enforcement` change.
 - The `@@unique([organizationId, year, month])` constraint on `FiscalPeriod` is the source of truth for duplicate detection.
 - `PERMISSIONS_WRITE["period"] = ["owner", "admin"]` — the create action is already gated correctly at the API layer; no permission changes in scope.
 - User-facing strings follow voseo Rioplatense Spanish.
+- `FISCAL_PERIOD_NOT_MONTHLY` MUST be the sole error code for REQ-5 violations. No shadow codes.
+- Error-code precedence: `INVALID_DATE_RANGE` fires before `FISCAL_PERIOD_NOT_MONTHLY` (existing guard runs first).
+- `lastDayOfUTCMonth` helper MUST use `new Date(Date.UTC(year, month, 0))` pattern or equivalent that correctly returns Feb 29 in leap years.
