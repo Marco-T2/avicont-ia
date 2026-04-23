@@ -106,6 +106,34 @@ describe("UX-T02 — Selección de mes autocompleta fechas (REQ-2)", () => {
   });
 });
 
+// ── UX-T03 — Month Select autocompletes name ─────────────────────────────────
+
+describe("UX-T03 — Selección de mes autocompleta nombre (REQ-2)", () => {
+  it("seleccionar Abril con year=2026 autocompleta name='Abril 2026'", async () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    await selectMonth("Abril");
+
+    const nameInput = screen.getByLabelText(/nombre/i);
+    expect(nameInput).toHaveValue("Abril 2026");
+  });
+
+  it("seleccionar Enero con year=2025 autocompleta name='Enero 2025'", async () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2025" } });
+
+    await selectMonth("Enero");
+
+    const nameInput = screen.getByLabelText(/nombre/i);
+    expect(nameInput).toHaveValue("Enero 2025");
+  });
+});
+
 // ── UX-T01 — Placeholder + Microcopia ────────────────────────────────────────
 
 describe("UX-T01 — Placeholder y microcopia presentes en el DOM (REQ-1)", () => {
