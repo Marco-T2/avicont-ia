@@ -181,9 +181,14 @@ function handlePrismaError(err: unknown, resource: string): never {
 export class IvaBooksRepository extends BaseRepository {
   // ── Compras ────────────────────────────────────────────────────────────────
 
-  async createPurchase(orgId: string, input: CreatePurchaseInput): Promise<IvaPurchaseBookDTO> {
+  async createPurchase(
+    orgId: string,
+    input: CreatePurchaseInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaPurchaseBookDTO> {
+    const db = tx ?? this.db;
     try {
-      const row = await this.db.ivaPurchaseBook.create({
+      const row = await db.ivaPurchaseBook.create({
         data: {
           organizationId: orgId,
           fiscalPeriodId: input.fiscalPeriodId,
@@ -246,14 +251,16 @@ export class IvaBooksRepository extends BaseRepository {
     orgId: string,
     id: string,
     input: UpdatePurchaseInput,
+    tx?: Prisma.TransactionClient,
   ): Promise<IvaPurchaseBookDTO> {
+    const db = tx ?? this.db;
     // Verificar existencia y scope antes de actualizar
-    const existing = await this.db.ivaPurchaseBook.findFirst({
+    const existing = await db.ivaPurchaseBook.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundError("Entrada de Libro de Compras");
 
-    const row = await this.db.ivaPurchaseBook.update({
+    const row = await db.ivaPurchaseBook.update({
       where: { id, organizationId: orgId },
       data: {
         ...(input.fechaFactura !== undefined
@@ -291,13 +298,18 @@ export class IvaBooksRepository extends BaseRepository {
     return toPurchaseDTO(row);
   }
 
-  async voidPurchase(orgId: string, id: string): Promise<IvaPurchaseBookDTO> {
-    const existing = await this.db.ivaPurchaseBook.findFirst({
+  async voidPurchase(
+    orgId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaPurchaseBookDTO> {
+    const db = tx ?? this.db;
+    const existing = await db.ivaPurchaseBook.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundError("Entrada de Libro de Compras");
 
-    const row = await this.db.ivaPurchaseBook.update({
+    const row = await db.ivaPurchaseBook.update({
       where: { id, organizationId: orgId },
       // SOLO status — estadoSIN no existe en compras; la semántica de void
       // es exclusivamente interna (lifecycle Avicont).
@@ -309,9 +321,14 @@ export class IvaBooksRepository extends BaseRepository {
 
   // ── Ventas ─────────────────────────────────────────────────────────────────
 
-  async createSale(orgId: string, input: CreateSaleInput): Promise<IvaSalesBookDTO> {
+  async createSale(
+    orgId: string,
+    input: CreateSaleInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaSalesBookDTO> {
+    const db = tx ?? this.db;
     try {
-      const row = await this.db.ivaSalesBook.create({
+      const row = await db.ivaSalesBook.create({
         data: {
           organizationId: orgId,
           fiscalPeriodId: input.fiscalPeriodId,
@@ -367,13 +384,19 @@ export class IvaBooksRepository extends BaseRepository {
     return rows.map(toSaleDTO);
   }
 
-  async updateSale(orgId: string, id: string, input: UpdateSaleInput): Promise<IvaSalesBookDTO> {
-    const existing = await this.db.ivaSalesBook.findFirst({
+  async updateSale(
+    orgId: string,
+    id: string,
+    input: UpdateSaleInput,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaSalesBookDTO> {
+    const db = tx ?? this.db;
+    const existing = await db.ivaSalesBook.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundError("Entrada de Libro de Ventas");
 
-    const row = await this.db.ivaSalesBook.update({
+    const row = await db.ivaSalesBook.update({
       where: { id, organizationId: orgId },
       data: {
         ...(input.fechaFactura !== undefined
@@ -411,14 +434,19 @@ export class IvaBooksRepository extends BaseRepository {
     return toSaleDTO(row);
   }
 
-  async voidSale(orgId: string, id: string): Promise<IvaSalesBookDTO> {
-    const existing = await this.db.ivaSalesBook.findFirst({
+  async voidSale(
+    orgId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaSalesBookDTO> {
+    const db = tx ?? this.db;
+    const existing = await db.ivaSalesBook.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundError("Entrada de Libro de Ventas");
 
     // SOLO status — estadoSIN NO se toca (orthogonal axes per design decision)
-    const row = await this.db.ivaSalesBook.update({
+    const row = await db.ivaSalesBook.update({
       where: { id, organizationId: orgId },
       data: { status: "VOIDED" },
     });
@@ -426,8 +454,13 @@ export class IvaBooksRepository extends BaseRepository {
     return toSaleDTO(row);
   }
 
-  async reactivateSale(orgId: string, id: string): Promise<IvaSalesBookDTO> {
-    const existing = await this.db.ivaSalesBook.findFirst({
+  async reactivateSale(
+    orgId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaSalesBookDTO> {
+    const db = tx ?? this.db;
+    const existing = await db.ivaSalesBook.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundError("Entrada de Libro de Ventas");
@@ -438,7 +471,7 @@ export class IvaBooksRepository extends BaseRepository {
     }
 
     // SOLO status — estadoSIN NO se toca (orthogonal axes per design decision)
-    const row = await this.db.ivaSalesBook.update({
+    const row = await db.ivaSalesBook.update({
       where: { id, organizationId: orgId },
       data: { status: "ACTIVE" },
     });
@@ -446,8 +479,13 @@ export class IvaBooksRepository extends BaseRepository {
     return toSaleDTO(row);
   }
 
-  async reactivatePurchase(orgId: string, id: string): Promise<IvaPurchaseBookDTO> {
-    const existing = await this.db.ivaPurchaseBook.findFirst({
+  async reactivatePurchase(
+    orgId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<IvaPurchaseBookDTO> {
+    const db = tx ?? this.db;
+    const existing = await db.ivaPurchaseBook.findFirst({
       where: { id, organizationId: orgId },
     });
     if (!existing) throw new NotFoundError("Entrada de Libro de Compras");
@@ -458,7 +496,7 @@ export class IvaBooksRepository extends BaseRepository {
     }
 
     // SOLO status — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
-    const row = await this.db.ivaPurchaseBook.update({
+    const row = await db.ivaPurchaseBook.update({
       where: { id, organizationId: orgId },
       data: { status: "ACTIVE" },
     });

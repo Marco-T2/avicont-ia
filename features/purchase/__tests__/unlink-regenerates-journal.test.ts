@@ -123,6 +123,10 @@ describe("Regression T8.2 — voidPurchase service bridge triggers journal regen
     const repo = {
       voidPurchase: vi.fn().mockResolvedValue(makePurchaseDTO({ status: "VOIDED" })),
       findPurchaseById: vi.fn().mockResolvedValue(makePurchaseDTO()),
+      // Audit F #4/#5: voidPurchase now wraps in repo.transaction.
+      transaction: vi
+        .fn()
+        .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
     } as unknown as IvaBooksRepository;
 
     const purchaseService = {
@@ -144,6 +148,7 @@ describe("Regression T8.2 — voidPurchase service bridge triggers journal regen
       ORG_ID,
       PURCHASE_ID,
       USER_ID,
+      expect.anything(),
     );
   });
 });

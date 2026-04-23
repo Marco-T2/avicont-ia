@@ -196,8 +196,12 @@ export class SaleService {
 
   // ── Obtener una venta individual ──
 
-  async getById(organizationId: string, id: string): Promise<SaleWithDetails> {
-    const row = await this.repo.findById(organizationId, id);
+  async getById(
+    organizationId: string,
+    id: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<SaleWithDetails> {
+    const row = await this.repo.findById(organizationId, id, tx);
     if (!row) throw new NotFoundError("Venta");
     return withDisplayCode(row);
   }
@@ -976,9 +980,13 @@ export class SaleService {
     organizationId: string,
     saleId: string,
     userId: string,
+    externalTx?: Prisma.TransactionClient,
   ): Promise<SaleWithDetails> {
-    // 1. Cargar la venta actualizada (incluye ivaSalesBook fresco)
-    const sale = await this.getById(organizationId, saleId);
+    // 1. Cargar la venta actualizada (incluye ivaSalesBook fresco).
+    //    Si hay externalTx, la lectura DEBE ir por esa tx para ver datos
+    //    recién escritos en el mismo callback (Audit F #4/#5 — IvaBooks
+    //    escribió ivaSalesBook dentro de la misma tx antes de llamarnos).
+    const sale = await this.getById(organizationId, saleId, externalTx);
 
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
@@ -1030,8 +1038,9 @@ export class SaleService {
       });
     }
 
-    // 5. Ejecutar transacción atómica con re-chequeo de período (D3 / D5 race guard)
-    await this.repo.transaction(async (tx) => {
+    // 5. Ejecutar el body atómico. Si hay externalTx, usarla directamente
+    //    (Prisma NO soporta tx interactivas anidadas). Si no, abrir una propia.
+    const body = async (tx: Prisma.TransactionClient) => {
       await setAuditContext(tx, userId);
 
       // Re-chequear que el período sigue ABIERTO dentro de la tx (cierra race condition)
@@ -1075,9 +1084,15 @@ export class SaleService {
 
       // c. Aplicar los nuevos saldos
       await this.balancesService.applyPost(tx, updatedEntry);
-    });
+    };
 
-    const updated = await this.repo.findById(organizationId, saleId);
+    if (externalTx) {
+      await body(externalTx);
+    } else {
+      await this.repo.transaction(body);
+    }
+
+    const updated = await this.repo.findById(organizationId, saleId, externalTx);
     return withDisplayCode(updated!);
   }
 

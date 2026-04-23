@@ -227,6 +227,10 @@ function createMockRepo(): IvaBooksRepository {
     voidSale: vi.fn(),
     reactivateSale: vi.fn(),
     reactivatePurchase: vi.fn(),
+    // Audit F #4/#5: reactivatePurchase now wraps writes in repo.transaction.
+    transaction: vi
+      .fn()
+      .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
   } as unknown as IvaBooksRepository;
 }
 
@@ -245,7 +249,7 @@ describe("IvaBooksService.reactivatePurchase — T2.3", () => {
 
     const result = await service.reactivatePurchase(ORG_ID, "user-test-id", ENTRY_ID);
 
-    expect(repo.reactivatePurchase).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
+    expect(repo.reactivatePurchase).toHaveBeenCalledWith(ORG_ID, ENTRY_ID, expect.anything());
     expect(result.status).toBe("ACTIVE");
   });
 
@@ -291,7 +295,9 @@ describe("IvaBooksService.reactivatePurchase — T2.3", () => {
 
     await serviceWithPurchase.reactivatePurchase(ORG_ID, "user-test-id", ENTRY_ID);
 
-    expect(mockPurchaseService.getById).toHaveBeenCalledWith(ORG_ID, PURCHASE_ID);
+    expect(mockPurchaseService.getById).toHaveBeenCalledWith(
+      ORG_ID, PURCHASE_ID, expect.anything(),
+    );
     expect(mockPurchaseService.regenerateJournalForIvaChange).toHaveBeenCalledTimes(1);
   });
 });
