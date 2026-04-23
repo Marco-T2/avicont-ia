@@ -93,15 +93,18 @@ export default function RoleEditDrawer({
   ) {
     if (column === "read") {
       const s = new Set(readSet);
-      next ? s.add(resource) : s.delete(resource);
+      if (next) s.add(resource);
+      else s.delete(resource);
       setReadSet(s);
     } else if (column === "write") {
       const s = new Set(writeSet);
-      next ? s.add(resource) : s.delete(resource);
+      if (next) s.add(resource);
+      else s.delete(resource);
       setWriteSet(s);
     } else {
       const s = new Set(postSet);
-      next ? s.add(resource as PostableResource) : s.delete(resource as PostableResource);
+      if (next) s.add(resource as PostableResource);
+      else s.delete(resource as PostableResource);
       setPostSet(s);
     }
   }
