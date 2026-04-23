@@ -74,6 +74,38 @@ async function selectMonth(monthName: string) {
   fireEvent.click(option);
 }
 
+// ── UX-T02 — Month Select autocompletes startDate/endDate ────────────────────
+
+describe("UX-T02 — Selección de mes autocompleta fechas (REQ-2)", () => {
+  it("seleccionar Abril con year=2026 autocompleta startDate='2026-04-01' y endDate='2026-04-30'", async () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    // Set year to 2026 (it defaults to current year)
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    await selectMonth("Abril");
+
+    const startDateInput = screen.getByLabelText(/fecha de inicio/i);
+    const endDateInput = screen.getByLabelText(/fecha de cierre/i);
+
+    expect(startDateInput).toHaveValue("2026-04-01");
+    expect(endDateInput).toHaveValue("2026-04-30");
+  });
+
+  it("seleccionar Febrero con year=2024 (bisiesto) autocompleta endDate='2024-02-29'", async () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2024" } });
+
+    await selectMonth("Febrero");
+
+    const endDateInput = screen.getByLabelText(/fecha de cierre/i);
+    expect(endDateInput).toHaveValue("2024-02-29");
+  });
+});
+
 // ── UX-T01 — Placeholder + Microcopia ────────────────────────────────────────
 
 describe("UX-T01 — Placeholder y microcopia presentes en el DOM (REQ-1)", () => {
