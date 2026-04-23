@@ -186,8 +186,12 @@ export default function PeriodCreateDialog({
         });
 
         if (res.status === 409) {
-          // Parse body to confirm it's FISCAL_PERIOD_MONTH_EXISTS; treat all 409s as "ya existía"
-          result.skipped++;
+          const data = await res.json() as { code?: string };
+          if (data.code === "FISCAL_PERIOD_MONTH_EXISTS") {
+            result.skipped++;
+          } else {
+            result.failed++;
+          }
           continue;
         }
 
