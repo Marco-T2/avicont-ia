@@ -111,7 +111,7 @@ function isModuleAccessible(id: ModuleId, matrix: ClientMatrix | null): boolean 
 // Hook
 // ---------------------------------------------------------------------------
 
-export interface UseActiveModuleReturn {
+interface UseActiveModuleReturn {
   activeModule: Module | null;
   setActiveModule: (id: ModuleId) => void;
   isCrossModuleRoute: boolean;

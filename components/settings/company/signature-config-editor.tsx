@@ -21,7 +21,7 @@ export interface SignatureConfigView {
   showReceiverRow: boolean;
 }
 
-export interface SignatureConfigEditorProps {
+interface SignatureConfigEditorProps {
   docType: DocumentPrintType;
   view: SignatureConfigView;
   onChange: (next: SignatureConfigView) => void;
