@@ -238,6 +238,113 @@ describe("UX-T06 — Warning no bloquea el submit (REQ-4)", () => {
   });
 });
 
+// ── UX-T07 — Batch button fires 12 POST requests ─────────────────────────────
+
+describe("UX-T07 — Botón batch emite 12 requests (REQ-3)", () => {
+  it("'Crear los 12 meses de {year}' renderiza y al hacer click emite exactamente 12 fetch calls", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({}),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    // Set year
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    // The batch button should be present
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses de 2026/i });
+    expect(batchBtn).toBeInTheDocument();
+
+    // Click batch button
+    fireEvent.click(batchBtn);
+
+    // Wait for all 12 calls to complete
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(12);
+    });
+
+    // Verify each call has the correct method and URL pattern
+    const calls = fetchMock.mock.calls as [string, RequestInit][];
+    calls.forEach(([url, opts]) => {
+      expect(url).toMatch(/\/api\/organizations\/test-org\/periods/);
+      expect(opts.method).toBe("POST");
+    });
+
+    // Verify month 4 (Abril) has correct dates
+    const abrilBody = JSON.parse(calls[3][1].body as string) as {
+      name: string;
+      startDate: string;
+      endDate: string;
+      year: number;
+    };
+    expect(abrilBody.name).toBe("Abril 2026");
+    expect(abrilBody.startDate).toBe("2026-04-01");
+    expect(abrilBody.endDate).toBe("2026-04-30");
+
+    // Verify Febrero has correct last day
+    const febreroBody = JSON.parse(calls[1][1].body as string) as {
+      endDate: string;
+    };
+    expect(febreroBody.endDate).toBe("2026-02-28");
+  });
+});
+
+// ── UX-T08 — Batch tolerates 409 duplicates ──────────────────────────────────
+
+describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () => {
+  it("3 respuestas 409 → toast muestra '9 períodos creados, 3 ya existían' y dialog cierra", async () => {
+    const onOpenChange = vi.fn();
+
+    // months 1, 3, 5 return 409; rest return 201
+    const fetchMock = vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
+      const body = JSON.parse((opts?.body as string) ?? "{}") as { startDate?: string };
+      const month = body.startDate ? parseInt(body.startDate.split("-")[1], 10) : 0;
+      if (month === 1 || month === 3 || month === 5) {
+        return Promise.resolve({
+          ok: false,
+          status: 409,
+          json: async () => ({ code: "FISCAL_PERIOD_MONTH_EXISTS" }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        status: 201,
+        json: async () => ({}),
+      });
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <PeriodCreateDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        orgSlug="test-org"
+        onCreated={vi.fn()}
+      />,
+    );
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2026" } });
+
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses de 2026/i });
+    fireEvent.click(batchBtn);
+
+    await waitFor(() => {
+      expect(mockToastSuccess).toHaveBeenCalled();
+    });
+
+    const toastArg = mockToastSuccess.mock.calls[0][0] as string;
+    expect(toastArg).toMatch(/9 períodos creados/);
+    expect(toastArg).toMatch(/3 ya existían/);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+});
+
 // ── UX-T01 — Placeholder + Microcopia ────────────────────────────────────────
 
 describe("UX-T01 — Placeholder y microcopia presentes en el DOM (REQ-1)", () => {
