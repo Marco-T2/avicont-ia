@@ -22,7 +22,7 @@ export interface IdentityValues {
   nroPatronal: string;
 }
 
-export interface IdentitySectionProps {
+interface IdentitySectionProps {
   values: IdentityValues;
   onChange: (next: IdentityValues) => void;
   onSave: (patch: UpdateOrgProfileInput) => void | Promise<void>;

@@ -13,7 +13,7 @@ import { Upload } from "lucide-react";
  * component hands it back to the parent via `onLogoChange` so the parent can
  * update its in-memory profile snapshot.
  */
-export interface LogoUploaderProps {
+interface LogoUploaderProps {
   orgSlug: string;
   currentLogoUrl: string | null;
   onLogoChange: (url: string) => void;

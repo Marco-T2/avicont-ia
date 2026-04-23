@@ -11,7 +11,7 @@ import type { Warning } from "@/lib/settings/compute-warnings";
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-export interface MatrixWarningsProps {
+interface MatrixWarningsProps {
   warnings: Warning[];
 }
 

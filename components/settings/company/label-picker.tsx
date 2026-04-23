@@ -13,7 +13,7 @@ import { ArrowDown, ArrowUp, X } from "lucide-react";
  * this component fires `onChange` on every mutation. No internal state for
  * the picker values themselves.
  */
-export interface LabelPickerProps {
+interface LabelPickerProps {
   labels: SignatureLabel[];
   showReceiverRow: boolean;
   onChange: (next: {

@@ -14,7 +14,7 @@ import type { Resource, PostableResource } from "@/features/shared/permissions";
 // (getPostAllowedRoles / POST_ALLOWED_ROLES are internal); use local constant.
 const POSTABLE_RESOURCES = new Set<Resource>(["sales", "purchases", "journal"] as PostableResource[]);
 
-export interface MatrixRowProps {
+interface MatrixRowProps {
   resource: Resource;
   /** Display label for the resource — passed by MatrixSection */
   label: string;

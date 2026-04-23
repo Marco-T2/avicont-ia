@@ -32,7 +32,7 @@ const RESOURCE_ORDER: Resource[] = [
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-export interface RolesMatrixGroupedProps {
+interface RolesMatrixGroupedProps {
   readSet: Set<Resource>;
   writeSet: Set<Resource>;
   postSet: Set<PostableResource>;

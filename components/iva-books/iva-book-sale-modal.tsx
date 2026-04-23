@@ -61,9 +61,9 @@ function calcClientTotales(params: {
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
-export type EstadoSIN = "A" | "V" | "C" | "L" | "";
+type EstadoSIN = "A" | "V" | "C" | "L" | "";
 
-export interface SourceSale {
+interface SourceSale {
   id: string;
   date: string;
   totalAmount: number;
@@ -73,7 +73,7 @@ export interface SourceSale {
   };
 }
 
-export interface FiscalPeriodOption {
+interface FiscalPeriodOption {
   id: string;
   name: string;
   startDate: string;

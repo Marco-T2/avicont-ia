@@ -20,7 +20,7 @@ import {
 import { Loader2 } from "lucide-react";
 import type { DatePresetId, BreakdownBy, CompareWith } from "@/features/accounting/financial-statements/financial-statements.types";
 
-export type StatementMode = "balance-sheet" | "income-statement";
+type StatementMode = "balance-sheet" | "income-statement";
 
 // Sentinel para la opción "Sin selección" en Select (Radix no admite value="")
 const NO_PERIOD = "__none__";

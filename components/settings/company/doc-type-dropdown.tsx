@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
  * REQ-OP.10. Human-readable labels come from
  * `lib/document-print-type-labels.ts`.
  */
-export interface DocTypeDropdownProps {
+interface DocTypeDropdownProps {
   value: DocumentPrintType;
   onChange: (value: DocumentPrintType) => void;
   id?: string;

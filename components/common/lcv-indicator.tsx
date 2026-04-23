@@ -13,7 +13,7 @@ import {
 
 export type LcvState = "S1" | "S2" | "S3";
 
-export interface LcvIndicatorProps {
+interface LcvIndicatorProps {
   /** Estado explícito de la máquina: S1 borrador, S2 guardado sin LCV, S3 vinculado */
   state: LcvState;
   /** Si el período fiscal está abierto (S2/S3 se deshabilitan cuando false) */

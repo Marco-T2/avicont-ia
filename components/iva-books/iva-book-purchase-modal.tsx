@@ -64,7 +64,7 @@ function calcClientTotales(params: {
 
 // ── Tipos ────────────────────────────────────────────────────────────────────
 
-export interface SourcePurchase {
+interface SourcePurchase {
   id: string;
   date: string;
   totalAmount: number;
@@ -74,7 +74,7 @@ export interface SourcePurchase {
   };
 }
 
-export interface FiscalPeriodOption {
+interface FiscalPeriodOption {
   id: string;
   name: string;
   startDate: string;

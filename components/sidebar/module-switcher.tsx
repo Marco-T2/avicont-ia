@@ -51,7 +51,7 @@ const MODULE_ICONS: Record<ModuleId, ReactNode> = {
 // Props
 // ---------------------------------------------------------------------------
 
-export interface ModuleSwitcherProps {
+interface ModuleSwitcherProps {
   /** Collapsed (desktop narrow) mode: show icon + tooltip only */
   isCollapsed?: boolean;
   /** Mobile mode: render native <select> instead of DropdownMenu */

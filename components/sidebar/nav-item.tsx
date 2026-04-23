@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/tooltip";
 import type { Resource } from "@/features/shared/permissions";
 
-export interface NavSubItem {
+interface NavSubItem {
   label: string;
   href?: string;
   isSeparator?: boolean;
@@ -31,7 +31,7 @@ export interface NavSubItem {
   resource?: Resource;
 }
 
-export interface NavItemProps {
+interface NavItemProps {
   icon: React.ReactNode;
   label: string;
   href?: string;

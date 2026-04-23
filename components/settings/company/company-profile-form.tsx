@@ -36,7 +36,7 @@ import {
  *                 then PATCH /profile happens server-side via service.updateLogo
  *   - Signature → PATCH /api/organizations/[orgSlug]/signature-configs/[docType]
  */
-export interface CompanyProfileFormProps {
+interface CompanyProfileFormProps {
   orgSlug: string;
   profile: OrgProfile;
   views: SignatureConfigView[];

@@ -23,7 +23,7 @@ const SHARED_RESOURCE_NOTES: Partial<Record<Resource, string>> = {
 
 // ─── Props ────────────────────────────────────────────────────────────────────
 
-export interface MatrixSectionProps {
+interface MatrixSectionProps {
   label: string;
   resources: Resource[];
   readSet: Set<Resource>;
