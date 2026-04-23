@@ -291,11 +291,12 @@ export class PaymentRepository extends BaseRepository {
 
   async linkJournalEntry(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     id: string,
     journalEntryId: string,
   ): Promise<void> {
     await tx.payment.update({
-      where: { id },
+      where: { id, organizationId },
       data: { journalEntryId },
     });
   }
@@ -432,13 +433,14 @@ export class PaymentRepository extends BaseRepository {
 
   async updateCxCPaymentTx(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     receivableId: string,
     paid: number,
     balance: number,
     status: string,
   ): Promise<void> {
     await tx.accountsReceivable.update({
-      where: { id: receivableId },
+      where: { id: receivableId, organizationId },
       data: {
         paid: new Prisma.Decimal(paid),
         balance: new Prisma.Decimal(balance),
@@ -449,13 +451,14 @@ export class PaymentRepository extends BaseRepository {
 
   async updateCxPPaymentTx(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     payableId: string,
     paid: number,
     balance: number,
     status: string,
   ): Promise<void> {
     await tx.accountsPayable.update({
-      where: { id: payableId },
+      where: { id: payableId, organizationId },
       data: {
         paid: new Prisma.Decimal(paid),
         balance: new Prisma.Decimal(balance),

@@ -485,7 +485,7 @@ export class PurchaseService {
         journalEntryId: entry.id,
       });
 
-      await this.repo.linkJournalAndPayable(tx, purchase.id, entry.id, payable.id);
+      await this.repo.linkJournalAndPayable(tx, organizationId, purchase.id, entry.id, payable.id);
     });
 
     const result = await this.repo.findById(organizationId, purchaseId);
@@ -646,7 +646,7 @@ export class PurchaseService {
         journalEntryId: entry.id,
       });
 
-      await this.repo.linkJournalAndPayable(tx, purchase.id, entry.id, payable.id);
+      await this.repo.linkJournalAndPayable(tx, organizationId, purchase.id, entry.id, payable.id);
     });
 
     const result = await this.repo.findById(organizationId, purchaseId);
@@ -1332,7 +1332,7 @@ export class PurchaseService {
 
     // 4. Anular el AccountsPayable vinculado
     if (purchase.payableId) {
-      await this.payablesRepo.voidTx(tx, purchase.payableId);
+      await this.payablesRepo.voidTx(tx, organizationId, purchase.payableId);
     }
   }
 

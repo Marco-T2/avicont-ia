@@ -210,7 +210,7 @@ export class PaymentService {
         await this.balancesService.applyPost(tx, entry);
 
         // Vincular asiento contable al pago
-        await this.repo.linkJournalEntry(tx, payment.id, entry.id);
+        await this.repo.linkJournalEntry(tx, organizationId, payment.id, entry.id);
       }
 
       // Actualizar cada objetivo de asignación CxC/CxP
@@ -226,6 +226,7 @@ export class PaymentService {
 
           await this.repo.updateCxCPaymentTx(
             tx,
+            organizationId,
             alloc.receivableId,
             newPaid,
             Math.max(0, newBalance),
@@ -242,6 +243,7 @@ export class PaymentService {
 
           await this.repo.updateCxPPaymentTx(
             tx,
+            organizationId,
             alloc.payableId,
             newPaid,
             Math.max(0, newBalance),
@@ -440,7 +442,7 @@ export class PaymentService {
       await this.balancesService.applyPost(tx, entry);
 
       // 5. Vincular asiento contable al pago
-      await this.repo.linkJournalEntry(tx, id, entry.id);
+      await this.repo.linkJournalEntry(tx, organizationId, id, entry.id);
 
       // 6. Actualizar cada objetivo de asignación CxC/CxP
       for (const alloc of payment.allocations) {
@@ -455,6 +457,7 @@ export class PaymentService {
 
           await this.repo.updateCxCPaymentTx(
             tx,
+            organizationId,
             alloc.receivableId,
             newPaid,
             Math.max(0, newBalance),
@@ -471,6 +474,7 @@ export class PaymentService {
 
           await this.repo.updateCxPPaymentTx(
             tx,
+            organizationId,
             alloc.payableId,
             newPaid,
             Math.max(0, newBalance),
@@ -550,6 +554,7 @@ export class PaymentService {
 
           await this.repo.updateCxCPaymentTx(
             tx,
+            organizationId,
             alloc.receivableId,
             revertedPaid,
             Math.max(0, revertedBalance),
@@ -566,6 +571,7 @@ export class PaymentService {
 
           await this.repo.updateCxPPaymentTx(
             tx,
+            organizationId,
             alloc.payableId,
             revertedPaid,
             Math.max(0, revertedBalance),
@@ -628,6 +634,7 @@ export class PaymentService {
 
           await this.repo.updateCxCPaymentTx(
             tx,
+            organizationId,
             alloc.receivableId,
             revertedPaid,
             Math.max(0, revertedBalance),
@@ -644,6 +651,7 @@ export class PaymentService {
 
           await this.repo.updateCxPPaymentTx(
             tx,
+            organizationId,
             alloc.payableId,
             revertedPaid,
             Math.max(0, revertedBalance),
@@ -710,6 +718,7 @@ export class PaymentService {
 
           await this.repo.updateCxCPaymentTx(
             tx,
+            organizationId,
             alloc.receivableId,
             newPaid,
             Math.max(0, newBalance),
@@ -726,6 +735,7 @@ export class PaymentService {
 
           await this.repo.updateCxPPaymentTx(
             tx,
+            organizationId,
             alloc.payableId,
             newPaid,
             Math.max(0, newBalance),
@@ -746,6 +756,7 @@ export class PaymentService {
 
   private async reverseAllocations(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     allocations: PaymentWithRelations["allocations"],
   ): Promise<void> {
     for (const alloc of allocations) {
@@ -756,6 +767,7 @@ export class PaymentService {
         const revertedBalance = Number(receivable.amount) - revertedPaid;
         await this.repo.updateCxCPaymentTx(
           tx,
+          organizationId,
           alloc.receivableId,
           revertedPaid,
           Math.max(0, revertedBalance),
@@ -768,6 +780,7 @@ export class PaymentService {
         const revertedBalance = Number(payable.amount) - revertedPaid;
         await this.repo.updateCxPPaymentTx(
           tx,
+          organizationId,
           alloc.payableId,
           revertedPaid,
           Math.max(0, revertedBalance),
@@ -781,6 +794,7 @@ export class PaymentService {
 
   private async applyAllocations(
     tx: Prisma.TransactionClient,
+    organizationId: string,
     allocations: { receivableId?: string | null; payableId?: string | null; amount: number }[],
   ): Promise<void> {
     for (const alloc of allocations) {
@@ -791,6 +805,7 @@ export class PaymentService {
         const newBalance = Number(receivable.amount) - newPaid;
         await this.repo.updateCxCPaymentTx(
           tx,
+          organizationId,
           alloc.receivableId,
           newPaid,
           Math.max(0, newBalance),
@@ -803,6 +818,7 @@ export class PaymentService {
         const newBalance = Number(payable.amount) - newPaid;
         await this.repo.updateCxPPaymentTx(
           tx,
+          organizationId,
           alloc.payableId,
           newPaid,
           Math.max(0, newBalance),
@@ -847,7 +863,7 @@ export class PaymentService {
       await setAuditContext(tx, userId);
 
       // b. Revertir asignaciones antiguas
-      await this.reverseAllocations(tx, payment.allocations);
+      await this.reverseAllocations(tx, organizationId, payment.allocations);
 
       // c. Revertir saldos del asiento contable anterior (si existe)
       if (payment.journalEntryId) {
@@ -960,7 +976,7 @@ export class PaymentService {
         });
 
         await this.balancesService.applyPost(tx, entry);
-        await this.repo.linkJournalEntry(tx, payment.id, entry.id);
+        await this.repo.linkJournalEntry(tx, organizationId, payment.id, entry.id);
       } else if (oldAmount > 0 && newAmount === 0) {
         // ANULAR asiento contable existente
         if (payment.journalEntryId) {
@@ -1020,11 +1036,12 @@ export class PaymentService {
 
         // Crear nuevos registros de asignaciones y aplicar
         await this.repo.updateAllocations(tx, payment.id, newAllocs);
-        await this.applyAllocations(tx, newAllocs);
+        await this.applyAllocations(tx, organizationId, newAllocs);
       } else {
         // Reaplicar asignaciones antiguas (fueron revertidas en el paso b)
         await this.applyAllocations(
           tx,
+          organizationId,
           payment.allocations.map((a) => ({
             receivableId: a.receivableId,
             payableId: a.payableId,
@@ -1111,6 +1128,7 @@ export class PaymentService {
     const newBalance = Number(receivable.amount) - newPaid;
     await this.repo.updateCxCPaymentTx(
       tx,
+      organizationId,
       receivableId,
       newPaid,
       Math.max(0, newBalance),
