@@ -3,7 +3,7 @@ import { BaseRepository } from "@/features/shared/base.repository";
 
 // ── Return types for agent context queries ──
 
-export interface AgentFarmWithActiveLots {
+interface AgentFarmWithActiveLots {
   id: string;
   name: string;
   lots: {
@@ -16,14 +16,14 @@ export interface AgentFarmWithActiveLots {
   }[];
 }
 
-export interface AgentRecentExpense {
+interface AgentRecentExpense {
   amount: unknown; // Prisma Decimal
   category: string;
   date: Date;
   lot: { name: string };
 }
 
-export interface AgentActiveAccount {
+interface AgentActiveAccount {
   id: string;
   code: string;
   name: string;

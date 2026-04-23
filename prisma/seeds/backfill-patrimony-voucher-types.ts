@@ -5,7 +5,7 @@ import { seedVoucherTypes } from "./voucher-types";
 
 type PrismaLike = Pick<PrismaClient, "organization" | "voucherTypeCfg" | "$disconnect">;
 
-export interface BackfillResult {
+interface BackfillResult {
   orgsProcessed: number;
 }
 

@@ -12,8 +12,6 @@ import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 
 // ─── Warning types ───────────────────────────────────────────────────────────
 
-export type WarningSeverity = "soft";
-
 export type Warning =
   | { severity: "soft"; kind: "empty-sidebar"; message: string }
   | {

@@ -42,22 +42,6 @@ export interface AllocationInput {
   amount: number;
 }
 
-/** Allocation with resolved target info (for display) */
-export interface AllocationWithTarget {
-  id: string;
-  receivableId: string | null;
-  payableId: string | null;
-  amount: number;
-  target: {
-    description: string;
-    totalAmount: number;
-    paid: number;
-    balance: number;
-    sourceType?: string | null;
-    sourceId?: string | null;
-  };
-}
-
 /** Payment type inferred from allocations */
 export type PaymentDirection = "COBRO" | "PAGO";
 
@@ -116,7 +100,3 @@ export interface PaymentFilters {
   periodId?: string;
 }
 
-export interface UpdateAllocationsInput {
-  allocations: AllocationInput[];
-  justification?: string;
-}

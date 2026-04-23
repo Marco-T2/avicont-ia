@@ -2,7 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { PrismaClient, Prisma } from "@/generated/prisma/client";
 
-export type OrgScope = { organizationId: string };
+type OrgScope = { organizationId: string };
 
 export abstract class BaseRepository {
   constructor(protected readonly db: PrismaClient = prisma) {}

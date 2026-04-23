@@ -10,17 +10,6 @@ export interface AgentResponse {
 
 // ── Suggestion types for each action ──
 
-export type AgentAction =
-  | "createExpense"
-  | "logMortality"
-  | "getLotSummary"
-  | "listFarms"
-  | "listLots"
-  | "getTrialBalance"
-  | "getAccountLedger"
-  | "listAccounts"
-  | "searchDocuments";
-
 export interface CreateExpenseSuggestion {
   action: "createExpense";
   data: {
@@ -86,23 +75,3 @@ export type AgentSuggestion =
   | GetAccountLedgerSuggestion
   | ListAccountsSuggestion;
 
-// ── Tool definition type ──
-
-export interface ToolDefinition {
-  name: AgentAction;
-  description: string;
-  parameters: Record<string, unknown>;
-}
-
-// ── Agent query request ──
-
-export interface AgentQueryRequest {
-  prompt: string;
-  session_id?: string;
-}
-
-// ── Confirm request ──
-
-export interface ConfirmActionRequest {
-  suggestion: AgentSuggestion;
-}

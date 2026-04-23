@@ -1,5 +1,3 @@
-import type { VoucherTypeCfg } from "@/generated/prisma/client";
-
 // ── Input types ──
 
 export interface CreateVoucherTypeInput {
@@ -21,6 +19,3 @@ export interface ListVoucherTypesOptions {
   includeCounts?: boolean;
 }
 
-// ── Re-export the Prisma model for convenience ──
-
-export type { VoucherTypeCfg };

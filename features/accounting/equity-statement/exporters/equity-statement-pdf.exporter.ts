@@ -19,7 +19,7 @@ export class MissingOrgNameError extends Error {
 
 // ── Public types ──────────────────────────────────────────────────────────────
 
-export interface EquityStatementPdfResult {
+interface EquityStatementPdfResult {
   buffer: Buffer;
   docDef: TDocumentDefinitions;
 }

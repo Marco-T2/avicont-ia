@@ -6,7 +6,7 @@ type Decimal = Prisma.Decimal;
 // ── Tipos mínimos para el repositorio inyectado ──
 // El resolver recibe solo los métodos que necesita, no el repo completo.
 // Esto facilita mocking en tests y mantiene la dependencia mínima.
-export type BalanceResolverRepo = {
+type BalanceResolverRepo = {
   findFiscalPeriod(
     orgId: string,
     periodId: string,
@@ -30,15 +30,15 @@ export type BalanceResolverRepo = {
   >;
 };
 
-export type BalanceSource = "snapshot" | "on-the-fly";
+type BalanceSource = "snapshot" | "on-the-fly";
 
-export type ResolvedBalanceResult = {
+type ResolvedBalanceResult = {
   balances: Array<{ accountId: string; balance: Decimal }>;
   source: BalanceSource;
   preliminary: boolean;
 };
 
-export type ResolveBalancesParams = {
+type ResolveBalancesParams = {
   orgId: string;
   date: Date;
   periodId?: string;

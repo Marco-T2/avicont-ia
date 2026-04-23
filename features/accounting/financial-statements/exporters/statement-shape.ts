@@ -68,10 +68,3 @@ export type ExportSheet = {
   orientation: "portrait" | "landscape";
 };
 
-export type WatermarkConfig = {
-  text: string;
-  color: string;
-  opacity: number;
-  bold: boolean;
-  italics: boolean;
-};

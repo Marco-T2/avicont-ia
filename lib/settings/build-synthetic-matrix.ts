@@ -17,7 +17,7 @@ import type { Resource } from "@/features/shared/permissions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type SyntheticMatrix = {
+type SyntheticMatrix = {
   canAccess: (resource: Resource, action: "read" | "write") => boolean;
   // canPost intentionally NOT here — see design §3 and REQ-RM.11
 };

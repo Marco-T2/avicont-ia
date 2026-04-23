@@ -6,14 +6,14 @@ import type { AccountMetadata, MovementAggregation } from "./financial-statement
 
 // ── Tipos de retorno específicos del repositorio ──
 
-export type FiscalPeriodRow = {
+type FiscalPeriodRow = {
   id: string;
   status: string;
   startDate: Date;
   endDate: Date;
 };
 
-export type AccountBalanceRow = {
+type AccountBalanceRow = {
   accountId: string;
   balance: Prisma.Decimal;
 };

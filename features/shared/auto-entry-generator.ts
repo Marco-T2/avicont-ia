@@ -21,7 +21,7 @@ export interface EntryLineTemplate {
   description?: string;
 }
 
-export interface EntryTemplate {
+interface EntryTemplate {
   organizationId: string;
   voucherTypeCode: string;
   contactId?: string;

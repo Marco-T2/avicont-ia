@@ -5,14 +5,14 @@ import type { AccountType } from "@/generated/prisma/enums";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export type WorksheetFiscalPeriodRow = {
+type WorksheetFiscalPeriodRow = {
   id: string;
   status: string;
   startDate: Date;
   endDate: Date;
 };
 
-export type WorksheetDateRange = {
+type WorksheetDateRange = {
   dateFrom: Date;
   dateTo: Date;
 };
