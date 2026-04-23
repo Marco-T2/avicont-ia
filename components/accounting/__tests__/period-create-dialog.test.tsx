@@ -184,6 +184,60 @@ describe("UX-T04 — Edición manual posterior no es sobreescrita (REQ-2)", () =
   });
 });
 
+// ── UX-T05 + UX-T06 — Cross-month warning ────────────────────────────────────
+
+describe("UX-T05 — Warning visible con rango cross-month (REQ-4)", () => {
+  it("muestra el warning cuando startDate='2026-01-01' y endDate='2026-12-31'", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const startDateInput = screen.getByLabelText(/fecha de inicio/i);
+    const endDateInput = screen.getByLabelText(/fecha de cierre/i);
+
+    fireEvent.change(startDateInput, { target: { value: "2026-01-01" } });
+    fireEvent.change(endDateInput, { target: { value: "2026-12-31" } });
+
+    expect(
+      screen.getByRole("alert"),
+    ).toHaveTextContent(
+      /Este período abarca más de un mes/,
+    );
+  });
+
+  it("NO muestra el warning cuando el rango es exactamente un mes (Abril 2026)", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    const startDateInput = screen.getByLabelText(/fecha de inicio/i);
+    const endDateInput = screen.getByLabelText(/fecha de cierre/i);
+
+    fireEvent.change(startDateInput, { target: { value: "2026-04-01" } });
+    fireEvent.change(endDateInput, { target: { value: "2026-04-30" } });
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+describe("UX-T06 — Warning no bloquea el submit (REQ-4)", () => {
+  it("el botón 'Crear Período' está habilitado cuando el warning está visible y los campos requeridos completos", () => {
+    render(<PeriodCreateDialog {...DEFAULT_PROPS} />);
+
+    // Fill required fields with a cross-month range to trigger warning
+    const nameInput = screen.getByLabelText(/nombre/i);
+    const startDateInput = screen.getByLabelText(/fecha de inicio/i);
+    const endDateInput = screen.getByLabelText(/fecha de cierre/i);
+
+    fireEvent.change(nameInput, { target: { value: "Q1 2026" } });
+    fireEvent.change(startDateInput, { target: { value: "2026-01-01" } });
+    fireEvent.change(endDateInput, { target: { value: "2026-03-31" } });
+
+    // Warning should be visible
+    expect(screen.getByRole("alert")).toBeInTheDocument();
+
+    // Submit button must NOT be disabled
+    const submitBtn = screen.getByRole("button", { name: /crear período/i });
+    expect(submitBtn).not.toBeDisabled();
+  });
+});
+
 // ── UX-T01 — Placeholder + Microcopia ────────────────────────────────────────
 
 describe("UX-T01 — Placeholder y microcopia presentes en el DOM (REQ-1)", () => {
