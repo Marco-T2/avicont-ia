@@ -16,6 +16,11 @@ import { FinancialStatementsService } from "../financial-statements.service";
 import { FinancialStatementsRepository } from "../financial-statements.repository";
 import { ForbiddenError } from "@/features/shared/errors";
 import type { MovementAggregation, AccountMetadata } from "../financial-statements.types";
+import { logStructured } from "@/lib/logging/structured";
+
+vi.mock("@/lib/logging/structured", () => ({
+  logStructured: vi.fn(),
+}));
 
 // ── Helpers ──
 
@@ -68,7 +73,6 @@ function createMockRepo(overrides: Partial<FinancialStatementsRepository> = {}):
         return map;
       },
     ),
-    writeImbalanceAuditLog: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   };
   return base as unknown as FinancialStatementsRepository;
@@ -206,6 +210,82 @@ describe("FinancialStatementsService — PR2 smoke tests", () => {
       expect(roles).toContain("current");
       expect(roles).toContain("comparative");
       expect(roles).toContain("diff_percent");
+    });
+  });
+
+  // ── Imbalance logging (ADR-001 — fire-and-forget eliminado) ──
+
+  describe("imbalance logging (ADR-001)", () => {
+    beforeEach(() => {
+      vi.mocked(logStructured).mockClear();
+    });
+
+    it("cuando el BS resulta imbalanced, invoca logStructured con payload estructurado", async () => {
+      // Arrange — forzar imbalance: Activo=1500, Pasivo=0, Patrimonio=0 (no hay income → retainedEarnings=0)
+      const imbalancedAccounts: AccountMetadata[] = [
+        {
+          id: "acc-caja",
+          code: "1.1.01",
+          name: "Caja",
+          level: 2,
+          subtype: AccountSubtype.ACTIVO_CORRIENTE,
+          nature: "DEUDORA",
+          isActive: true,
+          isContraAccount: false,
+        },
+      ];
+      const cajaDebit: MovementAggregation = {
+        accountId: "acc-caja",
+        totalDebit: D("1500.00"),
+        totalCredit: ZERO,
+        nature: "DEUDORA",
+        subtype: AccountSubtype.ACTIVO_CORRIENTE,
+      };
+      mockRepo = createMockRepo({
+        findAccountsWithSubtype: vi.fn().mockResolvedValue(imbalancedAccounts),
+        aggregateJournalLinesUpToBulk: vi.fn().mockImplementation(
+          async (_orgId: string, buckets: Array<{ columnId: string; asOfDate: Date }>) => {
+            const map = new Map<string, MovementAggregation[]>();
+            for (const b of buckets) map.set(b.columnId, [cajaDebit]);
+            return map;
+          },
+        ),
+        aggregateJournalLinesInRange: vi.fn().mockResolvedValue([]),
+      });
+      service = new FinancialStatementsService(mockRepo);
+
+      const asOf = new Date("2026-03-31");
+      const result = await service.generateBalanceSheet("org-1", "owner", {
+        asOfDate: asOf,
+      });
+
+      expect(result.current.imbalanced).toBe(true);
+
+      expect(logStructured).toHaveBeenCalledTimes(1);
+      expect(logStructured).toHaveBeenCalledWith({
+        event: "balance_sheet_imbalanced",
+        orgId: "org-1",
+        delta: expect.any(Prisma.Decimal),
+        asOfDate: asOf,
+      });
+    });
+
+    it("cuando el BS es balanced, NO invoca logStructured", async () => {
+      // Override del default mock: sin movimientos en ningún lado → Activo=0,
+      // Pasivo=0, Patrimonio=0 (retainedEarnings=0) → balanced.
+      // El default `aggregateJournalLinesInRange` devuelve income → rompe la
+      // ecuación contable, así que lo forzamos a vacío acá.
+      mockRepo = createMockRepo({
+        aggregateJournalLinesInRange: vi.fn().mockResolvedValue([]),
+      });
+      service = new FinancialStatementsService(mockRepo);
+
+      const result = await service.generateBalanceSheet("org-1", "owner", {
+        asOfDate: new Date("2026-03-31"),
+      });
+
+      expect(result.current.imbalanced).toBe(false);
+      expect(logStructured).not.toHaveBeenCalled();
     });
   });
 
