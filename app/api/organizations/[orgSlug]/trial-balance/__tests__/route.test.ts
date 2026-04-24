@@ -57,7 +57,8 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/trial-balance/server", () => ({
+vi.mock("@/features/accounting/trial-balance/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/accounting/trial-balance/server")>()),
   TrialBalanceService: vi.fn().mockImplementation(function () {
     return { generate: mockGenerate };
   }),

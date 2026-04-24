@@ -12,3 +12,6 @@ export type {
   TrialBalanceAccountMetadata,
   TrialBalanceOrgMetadata,
 } from "./trial-balance.repository";
+export * from "./trial-balance.validation";
+export * from "./exporters/trial-balance-pdf.exporter";
+export * from "./exporters/trial-balance-xlsx.exporter";

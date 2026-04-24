@@ -8,3 +8,6 @@ import "server-only";
 export { EquityStatementRepository } from "./equity-statement.repository";
 export type { EquityOrgMetadata } from "./equity-statement.repository";
 export { EquityStatementService } from "./equity-statement.service";
+export * from "./equity-statement.validation";
+export * from "./exporters/equity-statement-pdf.exporter";
+export * from "./exporters/equity-statement-xlsx.exporter";
