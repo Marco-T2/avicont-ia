@@ -121,7 +121,7 @@ export class PaymentService {
     let paymentId = "";
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       // Resolver dirección dentro de la transacción (puede necesitar consultar Contact.type)
       const direction = await resolveDirection(
@@ -315,7 +315,7 @@ export class PaymentService {
     // Para ediciones LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
       return this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, payment.createdById ?? "unknown", justification);
+        await setAuditContext(tx, payment.createdById ?? "unknown", organizationId, justification);
         return this.repo.updateTx(tx, organizationId, id, input);
       });
     }
@@ -514,7 +514,7 @@ export class PaymentService {
     }
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, justification);
+      await setAuditContext(tx, userId, organizationId, justification);
 
       // 1. Actualizar estado del pago a VOIDED
       await this.repo.updateStatusTx(tx, organizationId, id, "VOIDED");
@@ -620,7 +620,7 @@ export class PaymentService {
     validateAllocations(newAllocations, payment.amount);
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, justification);
+      await setAuditContext(tx, userId, organizationId, justification);
 
       // 1. Revertir asignaciones antiguas — restaurar saldos CxC/CxP
       for (const alloc of payment.allocations) {
@@ -861,7 +861,7 @@ export class PaymentService {
 
     await this.repo.transaction(async (tx) => {
       // a. Establecer contexto de auditoría
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       // b. Revertir asignaciones antiguas
       await this.reverseAllocations(tx, organizationId, payment.allocations);
