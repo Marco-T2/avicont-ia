@@ -3,6 +3,7 @@ import {
   type FunctionDeclaration,
   type FunctionCall,
 } from "@google/generative-ai";
+import { logStructured } from "@/lib/logging/structured";
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -62,11 +63,19 @@ export async function queryWithTools(
   const result = await model.generateContent(userMessage);
   const response = result.response;
 
+  // response.text() tira solo cuando el candidate tiene bad finishReason
+  // (SAFETY, RECITATION, LANGUAGE) o el prompt entero fue bloqueado. Para
+  // respuestas function-only retorna "" sin tirar. El catch NO es para
+  // "ocultar function calls" — es para observar bloqueos del modelo.
   let text = "";
   try {
-    text = response.text() ?? "";
-  } catch {
-    // text() throws if the response only contains function calls
+    text = response.text();
+  } catch (err) {
+    logStructured({
+      event: "gemini_response_parse_error",
+      level: "warn",
+      error: err instanceof Error ? err.message : String(err),
+    });
   }
 
   return {
