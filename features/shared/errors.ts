@@ -163,6 +163,10 @@ export const SLUG_TAKEN = "SLUG_TAKEN";
 export const RESERVED_SLUG = "RESERVED_SLUG";
 export const ROLE_HAS_MEMBERS = "ROLE_HAS_MEMBERS";
 
+// Auditoría (módulo de auditoría)
+export const AUDIT_DATE_RANGE_INVALID = "AUDIT_DATE_RANGE_INVALID"; // 422 — ValidationError
+export const AUDIT_CURSOR_INVALID = "AUDIT_CURSOR_INVALID"; // 422 — ValidationError
+
 // External Sync — DB/Clerk divergence (members-clerk-sync-saga, REQ-MCS.4)
 // Thrown when a saga's compensation completes (single failure) OR fails
 // (double failure, divergent). `handleError` serializes this as 503 via the

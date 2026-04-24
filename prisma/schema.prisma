@@ -948,6 +948,8 @@ model AuditLog {
   @@index([organizationId, entityType, entityId])
   @@index([organizationId, createdAt])
   @@index([correlationId])
+  @@index([organizationId, entityType, createdAt])
+  @@index([organizationId, changedById, createdAt])
   @@map("audit_logs")
 }
 

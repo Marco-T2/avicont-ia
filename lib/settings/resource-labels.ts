@@ -14,4 +14,5 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   documents: "Documentos",
   agent: "Agente IA",
   period: "Período Fiscal",
+  audit: "Auditoría",
 };
