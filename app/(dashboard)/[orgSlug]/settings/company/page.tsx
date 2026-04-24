@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { OrgProfileService } from "@/features/org-profile/server";
 import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
 import { CompanyProfileForm } from "@/components/settings/company/company-profile-form";

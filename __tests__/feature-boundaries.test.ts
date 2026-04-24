@@ -181,6 +181,9 @@ describe("Feature Module Boundaries (REQ-FMB.3)", () => {
  *   - bare top-level: `@/features/<Y>` or `@/features/<Y>/<subfeature>`
  *   - server barrel:  `@/features/<Y>/server` (or sub-feature's server)
  *   - client barrel:  `@/features/<Y>/index` (or sub-feature's index)
+ *   - cache barrel:   `@/features/<Y>/cache` (optional second server-only barrel
+ *     exposing state-cache primitives without loading gates/services that the
+ *     cache's own consumers might create circular imports through)
  *
  * Exemptions:
  *   - same-feature imports (X → X) — trivially allowed
@@ -277,13 +280,14 @@ function collectCrossFeatureDeepImports(
           if (targetTop === sourceFeature) continue; // same-feature
           if (targetTop === "shared") continue; // exempted target
 
-          // Allowed forms: bare feature path, path/server, path/index
+          // Allowed forms: bare feature path, path/server, path/index, path/cache
           let allowed = false;
           for (const vp of validBarrelPaths) {
             if (
               target === vp ||
               target === `${vp}/server` ||
-              target === `${vp}/index`
+              target === `${vp}/index` ||
+              target === `${vp}/cache`
             ) {
               allowed = true;
               break;

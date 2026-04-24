@@ -6,7 +6,7 @@
  * Pure function — no side effects, never throws, never blocks save.
  * Messages in Rioplatense voseo warm tone.
  */
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "@/features/permissions";
 import type { Module } from "@/components/sidebar/modules/registry";
 import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 

@@ -12,7 +12,7 @@
  */
 
 import type { ReactNode } from "react";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 
 export type ModuleId = "contabilidad" | "granjas";
 

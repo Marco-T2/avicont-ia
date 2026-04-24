@@ -13,7 +13,7 @@
  *  - 1–3 line body (per design §3 synthetic matrix contract).
  */
 
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 

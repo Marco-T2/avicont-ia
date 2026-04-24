@@ -1,6 +1,6 @@
 import "server-only";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 import { buildBalanceSheet } from "./balance-sheet.builder";
 import { buildIncomeStatement } from "./income-statement.builder";
 import { calculateRetainedEarnings } from "./retained-earnings.calculator";

@@ -3,7 +3,7 @@ import { queryWithTools } from "./gemini.client";
 import { getToolsForRole, isWriteAction } from "./agent.tools";
 import { buildAgentContext, buildRagContext } from "./agent.context";
 import { ChatMemoryRepository } from "./memory.repository";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 import type {
   AgentResponse,
   AgentSuggestion,

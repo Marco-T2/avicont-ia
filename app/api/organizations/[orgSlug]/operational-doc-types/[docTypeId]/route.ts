@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
 import { updateOperationalDocTypeSchema } from "@/features/operational-doc-types";
 import { ConflictError } from "@/features/shared/errors";

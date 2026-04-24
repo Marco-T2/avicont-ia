@@ -66,18 +66,18 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/shared/permissions.cache", () => ({
+vi.mock("@/features/permissions/server", () => ({
   revalidateOrgMatrix: vi.fn(),
   getMatrix: vi.fn(),
 }));
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
 }));
 
 // ─── Imports ────────────────────────────────────────────────────────────────
 
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import {
   NotFoundError,
   ForbiddenError,

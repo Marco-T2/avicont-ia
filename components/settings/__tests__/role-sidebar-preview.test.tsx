@@ -19,7 +19,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, it, expect } from "vitest";
 
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 import { RoleSidebarPreview } from "@/components/settings/role-sidebar-preview";
 
 afterEach(cleanup);

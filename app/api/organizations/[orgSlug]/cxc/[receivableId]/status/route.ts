@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesService } from "@/features/receivables/server";
 import { receivableStatusSchema } from "@/features/receivables";

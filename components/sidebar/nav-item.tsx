@@ -11,7 +11,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 
 interface NavSubItem {
   label: string;

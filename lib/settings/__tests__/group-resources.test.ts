@@ -3,7 +3,7 @@
  * REQ-RM.1, REQ-RM.2, REQ-RM.3, REQ-RM.4
  */
 import { describe, it, expect } from "vitest";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 import type { Module } from "@/components/sidebar/modules/registry";
 import { groupResources } from "@/lib/settings/group-resources";
 

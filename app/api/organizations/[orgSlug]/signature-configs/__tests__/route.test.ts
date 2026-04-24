@@ -9,7 +9,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockRequirePermission = vi.fn();
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

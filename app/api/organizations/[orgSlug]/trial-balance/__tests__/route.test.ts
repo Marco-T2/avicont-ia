@@ -32,7 +32,7 @@ const {
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

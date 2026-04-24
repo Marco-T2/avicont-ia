@@ -1,6 +1,6 @@
 import "server-only";
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 import { addUTCDays } from "@/lib/date-utils";
 import { EquityStatementRepository } from "./equity-statement.repository";
 import { buildEquityStatement } from "./equity-statement.builder";

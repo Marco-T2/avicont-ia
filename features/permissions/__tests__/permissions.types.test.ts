@@ -12,7 +12,7 @@ import {
   isSystemRole,
   type Role,
   type SystemRole,
-} from "@/features/shared/permissions";
+} from "../permissions";
 
 describe("PR1.2 — Role type widening", () => {
   it("(a) Role = string: any string is assignable to Role", () => {

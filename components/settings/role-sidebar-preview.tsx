@@ -27,7 +27,7 @@
 import { MODULES } from "@/components/sidebar/modules/registry";
 import { dropOrphanSeparators } from "@/lib/sidebar/drop-orphan-separators";
 import { buildSyntheticMatrix } from "@/lib/settings/build-synthetic-matrix";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 
 // ─── Cross-module resources (not in any Module.resources[]) ──────────────────
 // These appear in the Organización strip, gated by canAccess(r, "read").

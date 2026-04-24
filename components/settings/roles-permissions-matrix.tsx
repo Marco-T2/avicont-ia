@@ -17,7 +17,7 @@ import {
   type PostableResource,
   type Resource,
   type Role,
-} from "@/features/shared/permissions";
+} from "@/features/permissions";
 import { MODULES } from "@/components/sidebar/modules/registry";
 import { groupResources } from "@/lib/settings/group-resources";
 import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";

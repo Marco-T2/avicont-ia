@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 import { Document, AnalysisType } from "@/types";
 import { analysisTypes } from "@/app/data/data";
-import type { DocumentScope } from "@/features/shared/permissions";
+import type { DocumentScope } from "@/features/permissions";
 
 const SCOPE_LABELS: Record<DocumentScope, string> = {
   ORGANIZATION: "Organización",

@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { HubService } from "@/features/dispatch/server";
 import { SaleService } from "@/features/sale/server";
 import { DispatchService } from "@/features/dispatch/server";

@@ -29,7 +29,7 @@ const { mockGetById } = vi.hoisted(() => ({
   mockGetById: vi.fn(),
 }));
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi
     .fn()
     .mockResolvedValue({ orgId: "org-db-id", session: { userId: "clerk-user-1" }, role: "owner" }),

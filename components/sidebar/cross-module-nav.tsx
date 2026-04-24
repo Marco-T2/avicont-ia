@@ -22,7 +22,7 @@
 
 import { Bot, FileText, Users } from "lucide-react";
 import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 import { NavItem } from "./nav-item";
 
 interface CrossModuleNavProps {

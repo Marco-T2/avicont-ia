@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { HubService, DispatchService } from "@/features/dispatch/server";
 import { SaleService } from "@/features/sale/server";
 import DispatchList from "@/components/dispatches/dispatch-list";

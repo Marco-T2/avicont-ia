@@ -6,7 +6,7 @@
  * until PR3.2 [GREEN] creates the module.
  */
 import { describe, it, expect } from "vitest";
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "@/features/permissions";
 import type { Module } from "@/components/sidebar/modules/registry";
 import { computeWarnings } from "@/lib/settings/compute-warnings";
 

@@ -66,7 +66,7 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
 });
 
 // Permissions cache: we only need revalidateOrgMatrix to be callable.
-vi.mock("@/features/shared/permissions.cache", () => ({
+vi.mock("@/features/permissions/server", () => ({
   revalidateOrgMatrix: vi.fn(),
   getMatrix: vi.fn(),
 }));
@@ -74,7 +74,7 @@ vi.mock("@/features/shared/permissions.cache", () => ({
 // Gate at the requirePermission boundary — the inner middleware primitives
 // (requireAuth / requireOrgAccess / requireRole) stay mocked too for tests
 // that want to force a 401/403 at a specific layer.
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
 }));
 
@@ -82,7 +82,7 @@ vi.mock("@/features/shared/permissions.server", () => ({
 
 import { requireAuth } from "@/features/shared/middleware";
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import {
   UnauthorizedError,
   ForbiddenError,

@@ -1,6 +1,6 @@
 import "server-only";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 import { WorksheetRepository } from "./worksheet.repository";
 import { buildWorksheet } from "./worksheet.builder";
 import type { WorksheetFilters, WorksheetReport } from "./worksheet.types";

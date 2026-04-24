@@ -43,7 +43,7 @@ vi.mock("@/features/shared/middleware", () => ({
 // The route calls requirePermission(resource, action, orgSlug) directly.
 // We mock it so tests can assert the exact resource string passed to the gate.
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
 }));
 
@@ -83,7 +83,7 @@ vi.mock("@/features/organizations/server", () => ({
 }));
 
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
 
 // ── Constants ─────────────────────────────────────────────────────────────────

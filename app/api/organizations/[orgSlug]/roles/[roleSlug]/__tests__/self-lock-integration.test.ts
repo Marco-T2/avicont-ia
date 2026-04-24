@@ -120,9 +120,9 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/shared/permissions.cache", async (importOriginal) => {
+vi.mock("@/features/permissions/server", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/features/shared/permissions.cache")>();
+    await importOriginal<typeof import("@/features/permissions/server")>();
   return {
     ...actual,
     revalidateOrgMatrix: vi.fn(),
@@ -130,13 +130,13 @@ vi.mock("@/features/shared/permissions.cache", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
 }));
 
 // ─── Imports (AFTER mocks) ──────────────────────────────────────────────────
 
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { SELF_LOCK_GUARD } from "@/features/shared/errors";
 
 // ─── Constants ──────────────────────────────────────────────────────────────

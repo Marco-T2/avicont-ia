@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import {
   EquityStatementService,
   EquityStatementRepository,
@@ -8,7 +8,7 @@ import { serializeStatement } from "@/features/accounting/financial-statements/s
 import { equityStatementQuerySchema } from "@/features/accounting/equity-statement/server";
 import { exportEquityStatementPdf } from "@/features/accounting/equity-statement/server";
 import { exportEquityStatementXlsx } from "@/features/accounting/equity-statement/server";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";

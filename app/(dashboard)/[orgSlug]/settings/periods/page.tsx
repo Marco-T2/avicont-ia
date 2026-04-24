@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import PeriodList from "@/components/accounting/period-list";
 

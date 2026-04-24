@@ -62,7 +62,7 @@ vi.mock("@/lib/prisma", () => {
 import { POST } from "../route";
 import { requireAuth } from "@/features/shared/middleware";
 import { prisma } from "@/lib/prisma";
-import { SYSTEM_ROLES } from "@/features/shared/permissions";
+import { SYSTEM_ROLES } from "@/features/permissions";
 
 const mockedRequireAuth = vi.mocked(requireAuth);
 const mockedCreateMany = vi.mocked(prisma.customRole.createMany);
