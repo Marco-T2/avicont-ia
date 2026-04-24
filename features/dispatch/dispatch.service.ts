@@ -9,15 +9,6 @@ import {
   DISPATCH_CONTACT_CHANGE_BLOCKED,
   INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
-import {
-  validateTransition,
-  validateDraftOnly,
-  validateEditable,
-  validateLockedEdit,
-  validatePeriodOpen,
-  type DocumentStatus,
-} from "@/features/shared/document-lifecycle.service";
-import { computeReceivableStatus } from "@/features/shared/accounting-helpers";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
@@ -27,6 +18,13 @@ import {
   AutoEntryGenerator,
   JournalRepository,
   AccountsRepository,
+  validateTransition,
+  validateDraftOnly,
+  validateEditable,
+  validateLockedEdit,
+  validatePeriodOpen,
+  computeReceivableStatus,
+  type DocumentStatus,
 } from "@/features/accounting/server";
 import { VoucherTypesRepository } from "@/features/voucher-types/server";
 import { ContactsService } from "@/features/contacts/server";

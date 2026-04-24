@@ -22,7 +22,7 @@ import {
   validateLockedEdit,
   validatePeriodOpen,
   type DocumentStatus,
-} from "@/features/shared/document-lifecycle.service";
+} from "./document-lifecycle.service";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
