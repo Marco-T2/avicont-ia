@@ -50,6 +50,12 @@ vi.mock("@/features/organizations/server", () => ({
 }));
 
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
+
+vi.mock("@/features/permissions/server", () => ({
+  requirePermission: vi.fn(),
+}));
+import { requirePermission } from "@/features/permissions/server";
+
 import {
   UnauthorizedError,
   NotFoundError,
@@ -105,6 +111,11 @@ beforeEach(() => {
   vi.mocked(requireAuth).mockResolvedValue({ userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>);
   vi.mocked(requireOrgAccess).mockResolvedValue(ORG_ID);
   vi.mocked(requireRole).mockResolvedValue({ role: "admin" } as Awaited<ReturnType<typeof requireRole>>);
+  vi.mocked(requirePermission).mockResolvedValue({
+    session: { userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>,
+    orgId: ORG_ID,
+    role: "admin",
+  } as Awaited<ReturnType<typeof requirePermission>>);
 });
 
 describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate", () => {
@@ -163,7 +174,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate
   });
 
   it("T2.5-d: retorna 401 sin autenticación", async () => {
-    vi.mocked(requireAuth).mockRejectedValue(new UnauthorizedError());
+    vi.mocked(requirePermission).mockRejectedValueOnce(new UnauthorizedError());
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -178,7 +189,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate
   });
 
   it("T2.5-e: retorna 403 con rol insuficiente", async () => {
-    vi.mocked(requireRole).mockRejectedValue(new ForbiddenError("Rol insuficiente"));
+    vi.mocked(requirePermission).mockRejectedValueOnce(new ForbiddenError("Rol insuficiente"));
 
     const { PATCH } = await import("../route");
     const request = new Request(

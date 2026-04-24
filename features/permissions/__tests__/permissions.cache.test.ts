@@ -13,7 +13,7 @@
  * ensureOrgSeeded (D.6 completeness):
  * (h) when loader returns empty matrix, seeder is called, cache revalidated, populated matrix returned
  * (i) when loader returns non-empty matrix, seeder NOT called, matrix returned as-is
- * (j) when seedOrgSystemRoles throws, ensureOrgSeeded does NOT throw — returns empty matrix silently
+ * (j) when seedOrgSystemRoles throws, ensureOrgSeeded propagates the error (fail-loud — Audit H #2)
  */
 import {
   describe,
@@ -231,17 +231,14 @@ describe("ensureOrgSeeded (D.6 completeness)", () => {
     expect(result).toBe(populatedMatrix);
   });
 
-  it("(j) seedOrgSystemRoles throws → ensureOrgSeeded does NOT throw, returns empty matrix", async () => {
+  it("(j) seedOrgSystemRoles throws → ensureOrgSeeded propagates (fail-loud)", async () => {
     const emptyMatrix = makeMatrix("org-j");
     const loader = vi.fn().mockResolvedValue(emptyMatrix);
     _setLoader(loader);
 
-    mockedSeedOrgSystemRoles.mockRejectedValue(new Error("DB connection failed"));
+    const seedError = new Error("DB connection failed");
+    mockedSeedOrgSystemRoles.mockRejectedValue(seedError);
 
-    const result = await ensureOrgSeeded("org-j");
-
-    // Must not throw, returns the empty matrix silently
-    expect(result.roles.size).toBe(0);
-    expect(result.orgId).toBe("org-j");
+    await expect(ensureOrgSeeded("org-j")).rejects.toThrow(seedError);
   });
 });

@@ -43,8 +43,8 @@ export async function requirePermission(
 
   // Load permission matrix from cache, seeding 5 system roles if the org has none.
   // ensureOrgSeeded handles the D.6 / CR.1-S3 fallback: if roles.size === 0, seeds
-  // the org, revalidates the cache, and reloads. Seed failures are swallowed silently
-  // so test environments without a DB don't crash.
+  // the org, revalidates the cache, and reloads. Seed failures propagate (Audit H #2)
+  // — an infra failure must surface as a 5xx, not a phantom 403 from an empty matrix.
   const matrix = await ensureOrgSeeded(orgId);
 
   // Derive the allowed roles for this (resource, action) from the matrix

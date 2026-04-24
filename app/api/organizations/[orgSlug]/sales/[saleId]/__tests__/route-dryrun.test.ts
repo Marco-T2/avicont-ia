@@ -71,6 +71,11 @@ vi.mock("@/features/organizations/server", () => ({
 
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
 
+vi.mock("@/features/permissions/server", () => ({
+  requirePermission: vi.fn(),
+}));
+import { requirePermission } from "@/features/permissions/server";
+
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const ORG_SLUG = "test-org-dr";
@@ -107,6 +112,11 @@ beforeEach(() => {
   vi.mocked(requireRole).mockResolvedValue({
     role: "admin",
   } as Awaited<ReturnType<typeof requireRole>>);
+  vi.mocked(requirePermission).mockResolvedValue({
+    session: { userId: CLERK_USER_ID } as Awaited<ReturnType<typeof requireAuth>>,
+    orgId: ORG_ID,
+    role: "admin",
+  } as Awaited<ReturnType<typeof requirePermission>>);
 
   mockSaleServiceInstance.update.mockResolvedValue(UPDATED_SALE);
   mockSaleServiceInstance.getEditPreview.mockResolvedValue({ trimPreview: [] });
