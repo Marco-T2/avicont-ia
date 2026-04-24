@@ -81,14 +81,14 @@ export class AgentService {
       : fullContext;
     const systemPrompt = this.buildSystemPrompt(normalizedRole, contextWithHistory);
 
-    // Guardar mensaje del usuario en memoria
-    if (sessionId) {
-      memoryRepo.saveMessage(sessionId, orgId, userId, "user", prompt).catch(
-        (err) => console.error("Failed to save user message:", err),
-      );
-    }
-
     try {
+      // Persistimos el mensaje del usuario DENTRO del try: si falla (DB caída,
+      // timeout) queremos cortocircuitar antes de llamar a Gemini y devolver
+      // el error canned en vez de corromper silenciosamente el historial.
+      if (sessionId) {
+        await memoryRepo.saveMessage(sessionId, orgId, userId, "user", prompt);
+      }
+
       const result = await queryWithTools(systemPrompt, prompt, tools);
 
       const functionCalls = result.functionCalls;
@@ -103,9 +103,7 @@ export class AgentService {
         if (isWriteAction(actionName)) {
           const response = this.buildWriteSuggestion(actionName, args, result.text);
           if (sessionId) {
-            memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message).catch(
-              (err) => console.error("Failed to save assistant message:", err),
-            );
+            await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message);
           }
           return response;
         }
@@ -119,9 +117,7 @@ export class AgentService {
           result.text,
         );
         if (sessionId) {
-          memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message).catch(
-            (err) => console.error("Failed to save assistant message:", err),
-          );
+          await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message);
         }
         return response;
       }
@@ -129,9 +125,7 @@ export class AgentService {
       // Sin llamada a función — solo respuesta de texto
       const message = result.text || "No pude procesar tu solicitud.";
       if (sessionId) {
-        memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", message).catch(
-          (err) => console.error("Failed to save assistant message:", err),
-        );
+        await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", message);
       }
       return {
         message,
