@@ -10,7 +10,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { SaleService } from "../sale.service";
 import { SaleRepository } from "../sale.repository";
 import { OrgSettingsService } from "@/features/org-settings/server";
-import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
+import { AutoEntryGenerator } from "@/features/accounting/server";
 import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "@/features/receivables/receivables.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";

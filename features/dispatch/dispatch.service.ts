@@ -24,7 +24,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
 import type { ComputedDetail, BcSummary } from "./dispatch.repository";
 import { OrgSettingsService } from "@/features/org-settings/server";
-import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
+import { AutoEntryGenerator } from "@/features/accounting/server";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
 import { ContactsService } from "@/features/contacts/server";
