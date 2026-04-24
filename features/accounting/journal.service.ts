@@ -276,7 +276,7 @@ export class JournalService {
 
     // Transacción atómica única: crear DRAFT (número asignado con retry) y contabilizar
     return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       const created = await this.repo.createWithRetryTx(
         tx,
@@ -402,7 +402,7 @@ export class JournalService {
       // Para ediciones en LOCKED, envolver en transacción con contexto de auditoría
       if (status === "LOCKED") {
         return await this.repo.transaction(async (tx) => {
-          await setAuditContext(tx, updatedById, justification);
+          await setAuditContext(tx, updatedById, organizationId, justification);
           return this.repo.updateTx(tx, organizationId, id, data, lines, updatedById);
         });
       }
@@ -433,7 +433,7 @@ export class JournalService {
     const { lines, updatedById, ...data } = input;
 
     return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, updatedById ?? "unknown");
+      await setAuditContext(tx, updatedById ?? "unknown", organizationId);
 
       // Paso 1: Revertir los efectos del saldo anterior
       await this.balancesService.applyVoid(tx, entry);
@@ -599,7 +599,7 @@ export class JournalService {
     }
 
     return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, justification);
+      await setAuditContext(tx, userId, organizationId, justification);
 
       const updated = await this.repo.updateStatusTx(
         tx,

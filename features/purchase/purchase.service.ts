@@ -424,7 +424,7 @@ export class PurchaseService {
     let purchaseId = "";
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
@@ -588,7 +588,7 @@ export class PurchaseService {
     let purchaseId = "";
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
@@ -730,7 +730,7 @@ export class PurchaseService {
     // Para ediciones en LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
       const row = await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, purchase.createdById ?? "unknown", justification);
+        await setAuditContext(tx, purchase.createdById ?? "unknown", organizationId, justification);
         return this.repo.updateTx(
           tx,
           organizationId,
@@ -930,7 +930,7 @@ export class PurchaseService {
 
     // 7. Ejecutar la transacción atómica
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       // a. Revertir los saldos del asiento contable anterior
       if (purchase.journalEntryId) {
@@ -1097,7 +1097,7 @@ export class PurchaseService {
     }
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, justification);
+      await setAuditContext(tx, userId, organizationId, justification);
       await this.voidCascadeTx(tx, organizationId, purchase, userId);
     });
 
@@ -1196,7 +1196,7 @@ export class PurchaseService {
     // 5. Ejecutar el body atómico. Si hay externalTx, usarla directamente
     //    (Prisma NO soporta tx interactivas anidadas). Si no, abrir una propia.
     const body = async (tx: Prisma.TransactionClient) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       // Re-chequear que el período sigue ABIERTO dentro de la tx
       await tx.fiscalPeriod.findFirstOrThrow({

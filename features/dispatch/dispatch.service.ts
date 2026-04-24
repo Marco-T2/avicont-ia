@@ -325,7 +325,7 @@ export class DispatchService {
     let dispatchId = "";
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
@@ -508,7 +508,7 @@ export class DispatchService {
     // Para ediciones LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
       const row = await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, dispatch.createdById ?? "unknown", justification);
+        await setAuditContext(tx, dispatch.createdById ?? "unknown", organizationId, justification);
         return this.repo.updateTx(
           tx,
           organizationId,
@@ -609,7 +609,7 @@ export class DispatchService {
     // 5. Ejecutar transacción atómica
     await this.repo.transaction(async (tx) => {
       // a. Establecer contexto de auditoría
-      await setAuditContext(tx, userId);
+      await setAuditContext(tx, userId, organizationId);
 
       // b. Revertir saldos del asiento contable anterior
       if (dispatch.journalEntryId) {
@@ -924,7 +924,7 @@ export class DispatchService {
     }
 
     await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, justification);
+      await setAuditContext(tx, userId, organizationId, justification);
       await this.voidCascadeTx(tx, organizationId, dispatch, userId);
     });
 

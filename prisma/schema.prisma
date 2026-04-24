@@ -934,9 +934,9 @@ model SaleDetail {
 model AuditLog {
   id              String   @id @default(cuid())
   organizationId  String
-  entityType      String   // "dispatch", "payment", "journal_entry", "fiscal_periods", "purchases"
+  entityType      String   // tablas: "dispatches", "payments", "journal_entries", "sales", "purchases", "sale_details", "purchase_details", "journal_lines", "fiscal_periods"
   entityId        String
-  action          String   // "CREATE", "UPDATE", "DELETE", "STATUS_CHANGE"
+  action          String   // "CREATE" (INSERT), "UPDATE", "DELETE", "STATUS_CHANGE" (UPDATE con cambio de status)
   oldValues       Json?
   newValues       Json?
   changedById     String?

@@ -181,7 +181,7 @@ export class MonthlyCloseService {
       async (tx) => {
         // MUST be the first statement inside the TX so the trigger picks up
         // the correlation_id on every mutation that follows.
-        await setAuditContext(tx, userId, justification, correlationId);
+        await setAuditContext(tx, userId, organizationId, justification, correlationId);
 
         const balance = await this.repo.sumDebitCredit(
           tx,
