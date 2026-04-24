@@ -3,15 +3,17 @@
 /**
  * PR3.2 [GREEN] — REQ-MS.9: CrossModuleNav — persistent cross-module section.
  *
- * Renders three fixed entries regardless of the active module:
+ * Renders fixed entries regardless of the active module:
  *   - Agente IA  (action button — opens chat drawer, NOT a navigation link)
  *   - Miembros   (link → /{orgSlug}/members)
  *   - Documentos (link → /{orgSlug}/documents)
+ *   - Auditoría  (link → /{orgSlug}/audit) — admin-only, REQ-AUDIT.6
  *
  * Each is individually gated by `matrix.canAccess(resource, "read")`:
  *   - Agente IA  → "agent"
  *   - Miembros   → "members"
  *   - Documentos → "documents"
+ *   - Auditoría  → "audit"
  *
  * Design notes:
  * - `onOpenAgentChat` is threaded through from <AppSidebar> — Agente IA
@@ -20,7 +22,7 @@
  *   look & feel (icons, collapsed-mode tooltips, active-route highlighting).
  */
 
-import { Bot, FileText, Users } from "lucide-react";
+import { Bot, FileText, History, Users } from "lucide-react";
 import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import type { Resource } from "@/features/permissions";
 import { NavItem } from "./nav-item";
@@ -62,6 +64,12 @@ export function CrossModuleNav({ orgSlug, onOpenAgentChat }: CrossModuleNavProps
       label: "Documentos",
       resource: "documents",
       href: `/${orgSlug}/documents`,
+    },
+    {
+      icon: <History className="h-5 w-5" />,
+      label: "Auditoría",
+      resource: "audit",
+      href: `/${orgSlug}/audit`,
     },
   ];
 
