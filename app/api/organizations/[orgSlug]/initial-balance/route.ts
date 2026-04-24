@@ -1,10 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { InitialBalanceService } from "@/features/accounting/initial-balance/initial-balance.service";
-import { serializeStatement } from "@/features/accounting/financial-statements/money.utils";
-import { initialBalanceQuerySchema } from "@/features/accounting/initial-balance/initial-balance.validation";
-import { exportInitialBalancePdf } from "@/features/accounting/initial-balance/exporters/initial-balance-pdf.exporter";
-import { exportInitialBalanceXlsx } from "@/features/accounting/initial-balance/exporters/initial-balance-xlsx.exporter";
+import { InitialBalanceService } from "@/features/accounting/initial-balance/server";
+import { serializeStatement } from "@/features/accounting/financial-statements/server";
+import { initialBalanceQuerySchema } from "@/features/accounting/initial-balance/server";
+import { exportInitialBalancePdf } from "@/features/accounting/initial-balance/server";
+import { exportInitialBalanceXlsx } from "@/features/accounting/initial-balance/server";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";

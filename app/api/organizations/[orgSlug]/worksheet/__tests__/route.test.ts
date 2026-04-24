@@ -53,7 +53,8 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/worksheet/server", () => ({
+vi.mock("@/features/accounting/worksheet/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/accounting/worksheet/server")>()),
   WorksheetService: vi.fn().mockImplementation(function () {
     return { generateWorksheet: mockGenerateWorksheet };
   }),

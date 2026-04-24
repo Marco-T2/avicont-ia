@@ -40,7 +40,8 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/equity-statement/server", () => ({
+vi.mock("@/features/accounting/equity-statement/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/accounting/equity-statement/server")>()),
   EquityStatementService: vi.fn().mockImplementation(function () {
     return { generate: mockGenerate };
   }),

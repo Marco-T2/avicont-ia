@@ -4,10 +4,10 @@ import {
   EquityStatementService,
   EquityStatementRepository,
 } from "@/features/accounting/equity-statement/server";
-import { serializeStatement } from "@/features/accounting/financial-statements/money.utils";
-import { equityStatementQuerySchema } from "@/features/accounting/equity-statement/equity-statement.validation";
-import { exportEquityStatementPdf } from "@/features/accounting/equity-statement/exporters/equity-statement-pdf.exporter";
-import { exportEquityStatementXlsx } from "@/features/accounting/equity-statement/exporters/equity-statement-xlsx.exporter";
+import { serializeStatement } from "@/features/accounting/financial-statements/server";
+import { equityStatementQuerySchema } from "@/features/accounting/equity-statement/server";
+import { exportEquityStatementPdf } from "@/features/accounting/equity-statement/server";
+import { exportEquityStatementXlsx } from "@/features/accounting/equity-statement/server";
 import type { Role } from "@/features/shared/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
