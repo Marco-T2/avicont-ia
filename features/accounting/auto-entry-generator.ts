@@ -6,10 +6,10 @@ import {
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
 import type { Prisma } from "@/generated/prisma/client";
-import type { AccountsRepository } from "@/features/accounting/accounts.repository";
-import type { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
-import { JournalRepository } from "@/features/accounting/journal.repository";
-import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
+import type { AccountsRepository } from "./accounts.repository";
+import type { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { JournalRepository } from "./journal.repository";
+import type { JournalEntryWithLines } from "./journal.types";
 
 // ── Entry template types ──
 

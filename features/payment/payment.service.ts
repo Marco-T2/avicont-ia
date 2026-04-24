@@ -23,7 +23,7 @@ import { computeReceivableStatus, computePayableStatus } from "@/features/shared
 import { setAuditContext } from "@/features/shared/audit-context";
 import { PaymentRepository } from "./payment.repository";
 import { OrgSettingsService } from "@/features/org-settings/server";
-import { AutoEntryGenerator } from "@/features/shared/auto-entry-generator";
+import { AutoEntryGenerator } from "@/features/accounting/server";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
@@ -38,7 +38,7 @@ import type {
   PaymentDirection,
   CreditAllocationSource,
 } from "./payment.types";
-import type { EntryLineTemplate } from "@/features/shared/auto-entry-generator";
+import type { EntryLineTemplate } from "@/features/accounting/server";
 
 export class PaymentService {
   private readonly repo: PaymentRepository;
