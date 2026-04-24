@@ -326,3 +326,223 @@ describe("Feature Module Boundaries (REQ-FMB.4) — no cross-feature deep import
     ).toHaveLength(0);
   });
 });
+
+/**
+ * REQ-FMB.5: No deep imports from app/ routes into feature internals.
+ *
+ * Next.js routes under `app/` (API handlers, page.tsx, server components, client
+ * components that live alongside routes) must consume features via the public
+ * barrel — `@/features/<X>`, `@/features/<X>/server`, or `@/features/<X>/index`.
+ *
+ * Exemptions:
+ *   - `features/shared/*` (flat infrastructure, as in REQ-FMB.4)
+ *   - test files (*.test.ts, *.test.tsx, __tests__/)
+ *
+ * Migration note: the invariant is enforced against a SHRINKING allowlist
+ * (ALLOWED_LEGACY_APP_DEEP_IMPORTS below). Each entry is a `file::target`
+ * string identifying a legacy violation that has been accepted pending
+ * migration. The test FAILS on two conditions:
+ *   (a) actual violations contain entries NOT in the allowlist → new
+ *       violations are being introduced
+ *   (b) the allowlist contains entries that are NOT in the actual
+ *       violations → stale entries must be pruned after fixing
+ *
+ * Goal: drive the allowlist to zero, then delete it along with this note
+ * and make the assertion hard.
+ */
+
+interface AppDeepImportViolation {
+  file: string;
+  line: number;
+  target: string;
+  key: string;
+}
+
+function collectAppDeepImports(
+  validBarrelPaths: Set<string>,
+): AppDeepImportViolation[] {
+  const violations: AppDeepImportViolation[] = [];
+  const IMPORT_RE = /from\s+["']@\/features\/([^"']+)["']/g;
+  const APP_DIR = path.resolve(__dirname, "../app");
+
+  const walk = (dir: string) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name === "__tests__") continue;
+        walk(full);
+        continue;
+      }
+      if (!e.isFile()) continue;
+      if (!(e.name.endsWith(".ts") || e.name.endsWith(".tsx"))) continue;
+      if (e.name.endsWith(".test.ts") || e.name.endsWith(".test.tsx")) continue;
+
+      let source: string;
+      try {
+        source = fs.readFileSync(full, "utf8");
+      } catch {
+        continue;
+      }
+
+      const rel = path.relative(path.resolve(__dirname, ".."), full);
+      const lines = source.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        IMPORT_RE.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = IMPORT_RE.exec(line)) !== null) {
+          const target = match[1];
+          const targetTop = target.split("/")[0];
+          if (targetTop === "shared") continue;
+
+          let allowed = false;
+          for (const vp of validBarrelPaths) {
+            if (
+              target === vp ||
+              target === `${vp}/server` ||
+              target === `${vp}/index`
+            ) {
+              allowed = true;
+              break;
+            }
+          }
+          if (!allowed) {
+            const normFile = rel.split(path.sep).join("/");
+            violations.push({
+              file: normFile,
+              line: i + 1,
+              target,
+              key: `${normFile}::${target}`,
+            });
+          }
+        }
+      }
+    }
+  };
+
+  walk(APP_DIR);
+  return violations;
+}
+
+/**
+ * Legacy app/ → feature-internals violations accepted at the time REQ-FMB.5
+ * was introduced. Shrinks as each batch is migrated. When this array reaches
+ * zero, remove it and flip the assertion to `toHaveLength(0)`.
+ *
+ * Format: "<file path from repo root>::<import target after @/features/>"
+ */
+const ALLOWED_LEGACY_APP_DEEP_IMPORTS: readonly string[] = [
+  "app/(dashboard)/[orgSlug]/farms/[farmId]/farm-detail-client.tsx::farms/farms.types",
+  "app/(dashboard)/[orgSlug]/farms/farms-client.tsx::farms/farms.types",
+  "app/(dashboard)/[orgSlug]/lots/[lotId]/lot-detail-client.tsx::expenses/expenses.types",
+  "app/(dashboard)/[orgSlug]/lots/[lotId]/lot-detail-client.tsx::lots/lots.types",
+  "app/(dashboard)/[orgSlug]/lots/[lotId]/lot-detail-client.tsx::mortality/mortality.types",
+  "app/(dashboard)/[orgSlug]/lots/[lotId]/page.tsx::expenses/expenses.service",
+  "app/(dashboard)/[orgSlug]/lots/[lotId]/page.tsx::mortality/mortality.service",
+  "app/api/analyze/route.ts::documents/documents.validation",
+  "app/api/documents/[documentId]/route.ts::documents/documents.service",
+  "app/api/documents/route.ts::documents/documents.service",
+  "app/api/documents/route.ts::documents/documents.validation",
+  "app/api/organizations/[orgSlug]/accounting/correlation-audit/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/accounts/[accountId]/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/accounts/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/agent/route.ts::ai-agent/agent.validation",
+  "app/api/organizations/[orgSlug]/agent/route.ts::expenses/expenses.validation",
+  "app/api/organizations/[orgSlug]/agent/route.ts::mortality/mortality.validation",
+  "app/api/organizations/[orgSlug]/dispatches-hub/route.ts::dispatch/dispatch.service",
+  "app/api/organizations/[orgSlug]/dispatches-hub/route.ts::dispatch/hub.service",
+  "app/api/organizations/[orgSlug]/dispatches-hub/route.ts::dispatch/hub.validation",
+  "app/api/organizations/[orgSlug]/dispatches-hub/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/equity-statement/route.ts::accounting/equity-statement/equity-statement.validation",
+  "app/api/organizations/[orgSlug]/equity-statement/route.ts::accounting/equity-statement/exporters/equity-statement-pdf.exporter",
+  "app/api/organizations/[orgSlug]/equity-statement/route.ts::accounting/equity-statement/exporters/equity-statement-xlsx.exporter",
+  "app/api/organizations/[orgSlug]/equity-statement/route.ts::accounting/financial-statements/money.utils",
+  "app/api/organizations/[orgSlug]/expenses/[expenseId]/route.ts::expenses/expenses.service",
+  "app/api/organizations/[orgSlug]/expenses/[expenseId]/route.ts::expenses/expenses.validation",
+  "app/api/organizations/[orgSlug]/expenses/route.ts::expenses/expenses.service",
+  "app/api/organizations/[orgSlug]/expenses/route.ts::expenses/expenses.validation",
+  "app/api/organizations/[orgSlug]/financial-statements/balance-sheet/route.ts::accounting/financial-statements/financial-statements.validation",
+  "app/api/organizations/[orgSlug]/financial-statements/income-statement/route.ts::accounting/financial-statements/financial-statements.validation",
+  "app/api/organizations/[orgSlug]/initial-balance/route.ts::accounting/financial-statements/money.utils",
+  "app/api/organizations/[orgSlug]/initial-balance/route.ts::accounting/initial-balance/exporters/initial-balance-pdf.exporter",
+  "app/api/organizations/[orgSlug]/initial-balance/route.ts::accounting/initial-balance/exporters/initial-balance-xlsx.exporter",
+  "app/api/organizations/[orgSlug]/initial-balance/route.ts::accounting/initial-balance/initial-balance.service",
+  "app/api/organizations/[orgSlug]/initial-balance/route.ts::accounting/initial-balance/initial-balance.validation",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/[id]/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/[id]/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/[id]/void/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/[id]/void/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/purchases/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/[id]/reactivate/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/[id]/reactivate/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/[id]/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/[id]/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/[id]/void/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/[id]/void/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/route.ts::purchase/purchase.service",
+  "app/api/organizations/[orgSlug]/iva-books/sales/route.ts::sale/sale.service",
+  "app/api/organizations/[orgSlug]/journal/[entryId]/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/journal/[entryId]/route.ts::accounting/correlative.utils",
+  "app/api/organizations/[orgSlug]/journal/[entryId]/status/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/journal/last-reference/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/journal/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/journal/route.ts::accounting/correlative.utils",
+  "app/api/organizations/[orgSlug]/ledger/route.ts::accounting/accounting.validation",
+  "app/api/organizations/[orgSlug]/members/[memberId]/route.ts::organizations/members.validation",
+  "app/api/organizations/[orgSlug]/members/route.ts::organizations/members.validation",
+  "app/api/organizations/[orgSlug]/monthly-close/route.ts::monthly-close/monthly-close.validation",
+  "app/api/organizations/[orgSlug]/trial-balance/route.ts::accounting/financial-statements/money.utils",
+  "app/api/organizations/[orgSlug]/trial-balance/route.ts::accounting/trial-balance/exporters/trial-balance-pdf.exporter",
+  "app/api/organizations/[orgSlug]/trial-balance/route.ts::accounting/trial-balance/exporters/trial-balance-xlsx.exporter",
+  "app/api/organizations/[orgSlug]/trial-balance/route.ts::accounting/trial-balance/trial-balance.validation",
+  "app/api/organizations/[orgSlug]/voucher-types/[typeId]/route.ts::voucher-types/voucher-types.validation",
+  "app/api/organizations/[orgSlug]/voucher-types/route.ts::voucher-types/voucher-types.validation",
+  "app/api/organizations/[orgSlug]/worksheet/route.ts::accounting/worksheet/exporters/worksheet-pdf.exporter",
+  "app/api/organizations/[orgSlug]/worksheet/route.ts::accounting/worksheet/exporters/worksheet-xlsx.exporter",
+  "app/api/organizations/[orgSlug]/worksheet/route.ts::accounting/worksheet/worksheet.validation",
+  "app/api/organizations/route.ts::organizations/organizations.service",
+];
+
+describe("Feature Module Boundaries (REQ-FMB.5) — no deep imports from app/", () => {
+  const validBarrelPaths = collectValidBarrelPaths();
+  const violations = collectAppDeepImports(validBarrelPaths);
+
+  it("allowlist must be sorted (stability)", () => {
+    const sorted = [...ALLOWED_LEGACY_APP_DEEP_IMPORTS].sort();
+    expect(ALLOWED_LEGACY_APP_DEEP_IMPORTS).toEqual(sorted);
+  });
+
+  it("no new app/ deep imports beyond the legacy allowlist", () => {
+    const allowed = new Set(ALLOWED_LEGACY_APP_DEEP_IMPORTS);
+    const actualKeys = violations.map((v) => v.key);
+    const newViolations = violations.filter((v) => !allowed.has(v.key));
+    const message = newViolations
+      .map((v) => `  ${v.file}:${v.line} → @/features/${v.target}`)
+      .join("\n");
+    expect(
+      newViolations,
+      `\nApp/ deep-import violations NOT in the legacy allowlist:\n${message}\n\n` +
+        `Fix: either route through the target feature's server.ts/index.ts barrel, ` +
+        `or (if legacy) add the key to ALLOWED_LEGACY_APP_DEEP_IMPORTS in this test.`,
+    ).toHaveLength(0);
+
+    // Also check: every allowlist entry must correspond to an actual violation
+    // (stale entries are forbidden — after migration, prune the list).
+    const actualSet = new Set(actualKeys);
+    const stale = ALLOWED_LEGACY_APP_DEEP_IMPORTS.filter((k) => !actualSet.has(k));
+    expect(
+      stale,
+      `\nStale allowlist entries (no longer observed in the codebase):\n  ${stale.join("\n  ")}\n\n` +
+        `Fix: remove these lines from ALLOWED_LEGACY_APP_DEEP_IMPORTS.`,
+    ).toHaveLength(0);
+  });
+});
