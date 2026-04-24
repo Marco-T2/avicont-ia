@@ -1,5 +1,5 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { OrganizationsService } from "@/features/organizations/organizations.service";
+import { OrganizationsService } from "@/features/organizations/server";
 
 const service = new OrganizationsService();
 

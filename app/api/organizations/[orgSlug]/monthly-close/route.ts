@@ -2,7 +2,7 @@ import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { MonthlyCloseService } from "@/features/monthly-close/server";
 import { UsersService } from "@/features/shared/users.service";
-import { closeRequestSchema } from "@/features/monthly-close/monthly-close.validation";
+import { closeRequestSchema } from "@/features/monthly-close/server";
 
 const service = new MonthlyCloseService();
 const usersService = new UsersService();

@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { MembersService } from "@/features/organizations/server";
-import { buildAddMemberSchema } from "@/features/organizations/members.validation";
+import { buildAddMemberSchema } from "@/features/organizations/server";
 
 const service = new MembersService();
 

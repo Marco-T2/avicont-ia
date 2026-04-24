@@ -1,9 +1,9 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
-import { HubService } from "@/features/dispatch/hub.service";
+import { HubService } from "@/features/dispatch/server";
 import { SaleService } from "@/features/sale/server";
-import { DispatchService } from "@/features/dispatch/dispatch.service";
-import { hubQuerySchema } from "@/features/dispatch/hub.validation";
+import { DispatchService } from "@/features/dispatch/server";
+import { hubQuerySchema } from "@/features/dispatch/server";
 
 /**
  * Module-level instantiation — same pattern as iva-books/sales/route.ts.
