@@ -14,7 +14,13 @@ vi.mock("@vercel/blob", () => ({
   del: vi.fn(),
 }));
 
+// The service calls logStructured from lib/logging on blob delete failure.
+vi.mock("@/lib/logging/structured", () => ({
+  logStructured: vi.fn(),
+}));
+
 import { del } from "@vercel/blob";
+import { logStructured } from "@/lib/logging/structured";
 import type { OrgProfileRepository } from "../org-profile.repository";
 import { OrgProfileService } from "../org-profile.service";
 
@@ -179,5 +185,35 @@ describe("OrgProfileService.deleteLogoBlob (best-effort)", () => {
       "https://blob.example.com/happy.png",
       expect.any(Object),
     );
+  });
+
+  it("logs blob_orphan_detected via logStructured when del rejects", async () => {
+    const repo = makeRepoMock();
+    vi.mocked(del).mockRejectedValue(new Error("network down"));
+
+    const service = new OrgProfileService(repo);
+    await service.deleteLogoBlob(
+      "https://blob.example.com/orphan.png",
+      "org-1",
+    );
+
+    expect(logStructured).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "blob_orphan_detected",
+        orgId: "org-1",
+        orphanUrl: "https://blob.example.com/orphan.png",
+        error: "network down",
+      }),
+    );
+  });
+
+  it("does not call logStructured when del resolves", async () => {
+    const repo = makeRepoMock();
+    vi.mocked(del).mockResolvedValue(undefined as never);
+
+    const service = new OrgProfileService(repo);
+    await service.deleteLogoBlob("https://blob.example.com/ok.png", "org-1");
+
+    expect(logStructured).not.toHaveBeenCalled();
   });
 });

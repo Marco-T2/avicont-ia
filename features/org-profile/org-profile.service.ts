@@ -1,5 +1,6 @@
 import "server-only";
 import { del } from "@vercel/blob";
+import { logStructured } from "@/lib/logging/structured";
 import { OrgProfileRepository } from "./org-profile.repository";
 import type { OrgProfile, UpdateOrgProfileInput } from "./org-profile.types";
 
@@ -44,19 +45,26 @@ export class OrgProfileService {
 
     if (previousUrl && previousUrl !== newUrl) {
       // Fire-and-forget; never let a blob delete failure propagate.
-      await this.deleteLogoBlob(previousUrl);
+      await this.deleteLogoBlob(previousUrl, organizationId);
     }
     return after;
   }
 
-  /** Best-effort blob delete. Never throws — all errors are logged. */
-  async deleteLogoBlob(url: string): Promise<void> {
+  /** Best-effort blob delete. Never throws — failures are logged as orphan. */
+  async deleteLogoBlob(url: string, orgId?: string): Promise<void> {
     try {
       await del(url, {
         token: process.env.BLOB_READ_WRITE_TOKEN,
       });
     } catch (error) {
-      console.error("[OrgProfileService] deleteLogoBlob failed:", error);
+      logStructured({
+        event: "blob_orphan_detected",
+        level: "warn",
+        resource: "organization_logo",
+        orgId,
+        orphanUrl: url,
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 }
