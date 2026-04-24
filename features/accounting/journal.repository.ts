@@ -6,6 +6,7 @@ import {
   AppError,
   VOUCHER_NUMBER_CONTENTION,
 } from "@/features/shared/errors";
+import { logStructured } from "@/lib/logging/structured";
 import type {
   CreateJournalEntryInput,
   UpdateJournalEntryInput,
@@ -248,6 +249,14 @@ export class JournalRepository extends BaseRepository {
           },
           include: journalIncludeLines,
         });
+        if (attempt > 0) {
+          logStructured({
+            event: "journal_number_succeeded_after_retry",
+            level: "info",
+            orgId: scope.organizationId,
+            attempts: attempt + 1,
+          });
+        }
         return entry as JournalEntryWithLines;
       } catch (err) {
         if (isPrismaUniqueViolation(err, JOURNAL_NUMBER_UNIQUE_INDEX)) {

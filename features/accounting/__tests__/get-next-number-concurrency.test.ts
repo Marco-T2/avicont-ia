@@ -16,11 +16,23 @@
  * B.2-S2  — 5 P2002 in a row → throws VOUCHER_NUMBER_CONTENTION
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
+
+// Observabilidad mínima de retry: spy sobre logStructured para asertar el
+// evento journal_number_succeeded_after_retry cuando attempt > 0.
+vi.mock("@/lib/logging/structured", () => ({
+  logStructured: vi.fn(),
+}));
+
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { VOUCHER_NUMBER_CONTENTION } from "@/features/shared/errors";
 import { Prisma } from "@/generated/prisma/client";
 import type { JournalLineInput } from "@/features/accounting/journal.types";
+import { logStructured } from "@/lib/logging/structured";
+
+beforeEach(() => {
+  vi.mocked(logStructured).mockClear();
+});
 
 const ORG_ID = "org-contention";
 const VT_ID = "vt-diario";
@@ -175,6 +187,55 @@ describe("JournalRepository.createWithRetryTx (REQ-B.2)", () => {
       repo.createWithRetryTx(tx, ORG_ID, BASE_DATA, TWO_LINES),
     ).rejects.toBe(boom);
     expect(create).toHaveBeenCalledTimes(1);
+  });
+
+  it("B.2-OBS-1 — happy path (0 colisiones) NO emite log", async () => {
+    const { tx } = buildTx({
+      currentMax: 0,
+      createBehavior: ["success"],
+    });
+
+    const repo = new JournalRepository({} as any);
+
+    await repo.createWithRetryTx(tx, ORG_ID, BASE_DATA, TWO_LINES);
+
+    expect(logStructured).not.toHaveBeenCalled();
+  });
+
+  it("B.2-OBS-2 — 2 colisiones + éxito emite journal_number_succeeded_after_retry con attempts=3", async () => {
+    const { tx } = buildTx({
+      currentMax: 0,
+      createBehavior: ["p2002", "p2002", "success"],
+    });
+
+    const repo = new JournalRepository({} as any);
+
+    await repo.createWithRetryTx(tx, ORG_ID, BASE_DATA, TWO_LINES);
+
+    expect(logStructured).toHaveBeenCalledTimes(1);
+    expect(logStructured).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: "journal_number_succeeded_after_retry",
+        level: "info",
+        orgId: ORG_ID,
+        attempts: 3,
+      }),
+    );
+  });
+
+  it("B.2-OBS-3 — exhausting retries NO emite log (lo agarra el handler río arriba)", async () => {
+    const { tx } = buildTx({
+      currentMax: 0,
+      createBehavior: ["p2002", "p2002", "p2002", "p2002", "p2002"],
+    });
+
+    const repo = new JournalRepository({} as any);
+
+    await expect(
+      repo.createWithRetryTx(tx, ORG_ID, BASE_DATA, TWO_LINES),
+    ).rejects.toMatchObject({ code: VOUCHER_NUMBER_CONTENTION });
+
+    expect(logStructured).not.toHaveBeenCalled();
   });
 
   it("B.2-S1c — 5 concurrent callers → distinct {1..5} (retry consumes contention)", async () => {
