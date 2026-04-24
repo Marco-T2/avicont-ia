@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { HubService } from "@/features/dispatch/hub.service";
-import { SaleService } from "@/features/sale/sale.service";
+import { SaleService } from "@/features/sale/server";
 import { DispatchService } from "@/features/dispatch/dispatch.service";
 import { hubQuerySchema } from "@/features/dispatch/hub.validation";
 
