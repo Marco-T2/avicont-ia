@@ -39,7 +39,7 @@ export type MemberSagaContext = {
   correlationId: string;
 };
 
-export type MemberSagaInput<T> = {
+type MemberSagaInput<T> = {
   ctx: MemberSagaContext;
   dbWrite: () => Promise<{ memberId: string; result: T }>;
   clerkCall: () => Promise<void>;

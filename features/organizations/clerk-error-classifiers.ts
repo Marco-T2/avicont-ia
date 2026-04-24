@@ -42,7 +42,7 @@ export function clerkRetryAfterSeconds(err: unknown): number | undefined {
   return err.retryAfter;
 }
 
-export type ClerkErrorFingerprint =
+type ClerkErrorFingerprint =
   | { code?: string; status?: number; traceId?: string }
   | { code: "non_clerk_error"; message: string };
 
