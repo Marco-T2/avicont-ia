@@ -20,15 +20,17 @@ import {
   type TrimPreviewItem,
 } from "@/features/shared/document-lifecycle.service";
 import { computeReceivableStatus } from "@/features/shared/accounting-helpers";
-import { JournalRepository } from "@/features/accounting/journal.repository";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { Prisma } from "@/generated/prisma/client";
 import { SaleRepository } from "./sale.repository";
 import type { ComputedSaleDetail } from "./sale.repository";
 import { OrgSettingsService } from "@/features/org-settings/server";
-import { AutoEntryGenerator } from "@/features/accounting/server";
-import { AccountsRepository } from "@/features/accounting/accounts.repository";
-import { VoucherTypesRepository } from "@/features/voucher-types/voucher-types.repository";
+import {
+  AutoEntryGenerator,
+  JournalRepository,
+  AccountsRepository,
+} from "@/features/accounting/server";
+import { VoucherTypesRepository } from "@/features/voucher-types/server";
 import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "@/features/receivables/receivables.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";

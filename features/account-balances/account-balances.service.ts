@@ -2,7 +2,7 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { AccountBalancesRepository } from "./account-balances.repository";
 import type { AccountBalanceWithRelations } from "./account-balances.types";
-import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
+import type { JournalEntryWithLines } from "@/features/accounting/server";
 
 export class AccountBalancesService {
   private readonly repo: AccountBalancesRepository;
