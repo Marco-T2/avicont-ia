@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requireAuth } from "@/features/shared";
+import { requireOrgAccess } from "@/features/organizations/server";
 import { FarmsService } from "@/features/farms/server";
 import { LotsService } from "@/features/lots/server";
 import FarmDetailClient from "./farm-detail-client";

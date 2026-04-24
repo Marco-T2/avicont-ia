@@ -13,6 +13,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("../middleware", () => ({
   requireAuth: vi.fn(),
+}));
+
+vi.mock("@/features/organizations/server", () => ({
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
 }));
@@ -36,11 +39,8 @@ vi.mock("@/prisma/seed-system-roles", () => ({
 }));
 
 import { requirePermission } from "../permissions.server";
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-} from "../middleware";
+import { requireAuth } from "../middleware";
+import { requireOrgAccess, requireRole } from "@/features/organizations/server";
 import { getMatrix, revalidateOrgMatrix, ensureOrgSeeded } from "../permissions.cache";
 import type { OrgMatrix } from "../permissions.cache";
 import { ForbiddenError } from "../errors";

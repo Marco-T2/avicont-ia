@@ -1,8 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  handleError,
-} from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireOrgAccess } from "@/features/organizations/server";
 import { OrganizationsService } from "@/features/organizations/server";
 import { AgentService } from "@/features/ai-agent/server";
 import { ExpensesService } from "@/features/expenses/server";

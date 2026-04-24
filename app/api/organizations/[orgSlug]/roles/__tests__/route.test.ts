@@ -60,6 +60,8 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
     RolesRepository: vi.fn().mockImplementation(function () {
       return {};
     }),
+    requireOrgAccess: vi.fn(),
+    requireRole: vi.fn(),
   };
 });
 
@@ -78,11 +80,8 @@ vi.mock("@/features/shared/permissions.server", () => ({
 
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-} from "@/features/shared/middleware";
+import { requireAuth } from "@/features/shared/middleware";
+import { requireOrgAccess, requireRole } from "@/features/organizations/server";
 import { requirePermission } from "@/features/shared/permissions.server";
 import {
   UnauthorizedError,
