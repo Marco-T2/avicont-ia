@@ -120,8 +120,16 @@ describe("Audit triggers — cierre-periodo", () => {
       );
     });
 
+    // Filtramos por action='STATUS_CHANGE' (UPDATE puntual con cambio de
+    // status). Post-ADR-002 el trigger también emite una row CREATE en el
+    // INSERT del beforeEach (sin correlationId) — la excluimos del assert.
     const rows = await prisma.auditLog.findMany({
-      where: { organizationId: orgId, entityType: "purchases", entityId: purchaseId },
+      where: {
+        organizationId: orgId,
+        entityType: "purchases",
+        entityId: purchaseId,
+        action: "STATUS_CHANGE",
+      },
     });
     expect(rows.length).toBeGreaterThan(0);
     for (const r of rows) {
@@ -186,11 +194,15 @@ describe("Audit triggers — cierre-periodo", () => {
       );
     });
 
+    // Filtramos por action='UPDATE' porque post-ADR-002 el trigger también
+    // emite una row CREATE en el INSERT del beforeEach. Este test apunta
+    // específicamente al UPDATE.
     const rows = await prisma.auditLog.findMany({
       where: {
         organizationId: orgId,
         entityType: "purchases",
         entityId: purchaseId,
+        action: "UPDATE",
       },
     });
     expect(rows).toHaveLength(1);

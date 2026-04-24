@@ -11,6 +11,7 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { WorksheetRepository } from "../worksheet.repository";
+import { setAuditContext } from "@/features/shared/audit-context";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -279,27 +280,21 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // Delete in dependency order
-  // 1. Journal lines (via cascade from journal entries)
-  // 2. Journal entries
-  await prisma.journalEntry.deleteMany({ where: { organizationId: orgId } });
-  await prisma.journalEntry.deleteMany({ where: { organizationId: orgBId } });
-  // 3. Accounts
-  await prisma.account.deleteMany({ where: { organizationId: orgId } });
-  await prisma.account.deleteMany({ where: { organizationId: orgBId } });
-  // 4. VoucherTypeCfg
-  await prisma.voucherTypeCfg.deleteMany({ where: { organizationId: orgId } });
-  await prisma.voucherTypeCfg.deleteMany({ where: { organizationId: orgBId } });
-  // 5. FiscalPeriod
-  await prisma.fiscalPeriod.deleteMany({ where: { organizationId: orgId } });
-  await prisma.fiscalPeriod.deleteMany({ where: { organizationId: orgBId } });
-  // 6. AuditLog — must delete before org due to RESTRICT FK
-  await prisma.auditLog.deleteMany({ where: { organizationId: orgId } });
-  await prisma.auditLog.deleteMany({ where: { organizationId: orgBId } });
-  // 7. Orgs
+  // CASCADE delete sobre journalEntry dispara audit_trigger_fn AFTER DELETE en
+  // journal_lines, que requiere app.current_organization_id (post-ADR-002).
+  // Una transacción por org via setAuditContext propaga la session var.
+  for (const scopeOrgId of [orgId, orgBId]) {
+    await prisma.$transaction(async (tx) => {
+      await setAuditContext(tx, userId, scopeOrgId);
+      await tx.journalEntry.deleteMany({ where: { organizationId: scopeOrgId } });
+      await tx.account.deleteMany({ where: { organizationId: scopeOrgId } });
+      await tx.voucherTypeCfg.deleteMany({ where: { organizationId: scopeOrgId } });
+      await tx.fiscalPeriod.deleteMany({ where: { organizationId: scopeOrgId } });
+      await tx.auditLog.deleteMany({ where: { organizationId: scopeOrgId } });
+    });
+  }
   await prisma.organization.delete({ where: { id: orgId } });
   await prisma.organization.delete({ where: { id: orgBId } });
-  // 8. User
   await prisma.user.delete({ where: { id: userId } });
 
   await prisma.$disconnect();
