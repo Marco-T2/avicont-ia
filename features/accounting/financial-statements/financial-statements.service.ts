@@ -1,6 +1,7 @@
 import "server-only";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
 import type { Role } from "@/features/permissions";
+import { logStructured } from "@/lib/logging/structured";
 import { buildBalanceSheet } from "./balance-sheet.builder";
 import { buildIncomeStatement } from "./income-statement.builder";
 import { calculateRetainedEarnings } from "./retained-earnings.calculator";
@@ -125,7 +126,7 @@ function assertFinancialStatementsAccess(userRole: Role): void {
  * - Gate RBAC en el entry point
  * - Coordinar repo + resolver + builders (sin tocar Prisma directamente)
  * - Calcular la marca `preliminary` según las reglas del dominio
- * - Disparar el audit log si la ecuación contable está desbalanceada
+ * - Emitir log estructurado si la ecuación contable está desbalanceada
  *
  * IMPORTANTE: este service no importa Prisma. Toda la persistencia va por el repo.
  */
@@ -252,16 +253,14 @@ export class FinancialStatementsService {
     // 7. Columna "current" legacy = primera columna (backward compat)
     const current = columnCurrents[0];
 
-    // Audit log si la primera columna está desbalanceada (REQ-6, D10)
+    // Observabilidad de desbalance — ver docs/adr/001-eliminacion-audit-log-imbalance.md.
     if (current.imbalanced) {
-      this.repo
-        .writeImbalanceAuditLog(orgId, {
-          date: input.asOfDate,
-          delta: current.imbalanceDelta,
-        })
-        .catch((err) => {
-          console.error("[financial-statements] Error escribiendo audit log de desbalance:", err);
-        });
+      logStructured({
+        event: "balance_sheet_imbalanced",
+        orgId,
+        delta: current.imbalanceDelta,
+        asOfDate: input.asOfDate,
+      });
     }
 
     // 8. Comparative si se solicita

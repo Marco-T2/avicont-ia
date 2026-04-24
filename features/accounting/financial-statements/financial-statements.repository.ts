@@ -230,29 +230,4 @@ export class FinancialStatementsRepository extends BaseRepository {
     return map;
   }
 
-  /**
-   * Escribe un registro en AuditLog cuando la ecuación contable falla (REQ-6, D10).
-   * No bloquea la generación — se llama después de retornar el estado financiero.
-   *
-   * entityId: "financial_statement" (no hay entidad DB específica)
-   * action: "IMBALANCE_DETECTED"
-   * newValues: { delta (string para evitar pérdida de precisión), date }
-   */
-  async writeImbalanceAuditLog(
-    orgId: string,
-    payload: { date: Date; delta: Prisma.Decimal },
-  ): Promise<void> {
-    await this.db.auditLog.create({
-      data: {
-        organizationId: orgId,
-        entityType: "financial_statement",
-        entityId: "financial_statement",
-        action: "IMBALANCE_DETECTED",
-        newValues: {
-          delta: payload.delta.toFixed(2),
-          date: payload.date.toISOString(),
-        },
-      },
-    });
-  }
 }
