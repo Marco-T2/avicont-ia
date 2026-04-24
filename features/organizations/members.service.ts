@@ -81,39 +81,71 @@ export class MembersService {
         );
       }
 
-      // Miembro desactivado — reactivar
-      // Re-agregar a la organización en Clerk PRIMERO
-      const org = await this.repo.findById(organizationId);
-      if (!org) throw new NotFoundError("Organización");
+      // Miembro desactivado — reactivar.
+      //
+      // REQ-MCS.2: DB-first saga with compensation. Reactivation flips
+      // deactivatedAt: null AND overwrites role. On Clerk failure the
+      // compensation re-sets `deactivatedAt` via deactivateMember,
+      // restoring the soft-deleted state. On Clerk duplicate (user
+      // already in the Clerk org) the saga short-circuits as idempotent
+      // success.
+      const reactivateOrg = await this.repo.findById(organizationId);
+      if (!reactivateOrg) throw new NotFoundError("Organización");
 
-      try {
-        const client = await clerkClient();
-        await client.organizations.createOrganizationMembership({
-          organizationId: org.clerkOrgId,
-          userId: user.clerkUserId,
-          role: "org:member",
-        });
-      } catch (error: unknown) {
-        if (!isClerkDuplicateError(error)) {
-          console.error("Error re-adding member to Clerk org:", error);
-          throw error; // Abortar reactivación si Clerk falla
-        }
-      }
+      const reactivateCorrelationId = crypto.randomUUID();
 
-      // Reactivar en BD local (scoped by organizationId per I-8 / SF-2)
-      const reactivated = await this.repo.reactivateMember(
-        organizationId,
-        existing.id,
-        role,
-      );
+      const reactivatedDto = await runMemberClerkSaga<{
+        id: string;
+        role: string;
+        userId: string;
+        name: string;
+        email: string;
+      }>({
+        ctx: {
+          operation: "reactivate",
+          organizationId,
+          memberId: existing.id, // pre-known
+          clerkUserId: user.clerkUserId,
+          correlationId: reactivateCorrelationId,
+        },
+        dbWrite: async () => {
+          const reactivated = await this.repo.reactivateMember(
+            organizationId,
+            existing.id,
+            role,
+          );
+          return {
+            memberId: existing.id,
+            result: {
+              id: reactivated.id,
+              role: reactivated.role,
+              userId: reactivated.userId,
+              name: existing.user.name ?? existing.user.email,
+              email: existing.user.email,
+            },
+          };
+        },
+        clerkCall: async () => {
+          const client = await clerkClient();
+          await client.organizations.createOrganizationMembership({
+            organizationId: reactivateOrg.clerkOrgId,
+            userId: user.clerkUserId,
+            role: "org:member",
+          });
+        },
+        compensate: async () => {
+          // Re-set deactivatedAt (role left as-is; restoring to
+          // soft-deleted state is the only requirement per REQ-MCS.2-3).
+          await this.repo.deactivateMember(organizationId, existing.id);
+        },
+        isIdempotentSuccess: isClerkDuplicateMembershipError,
+        divergentState: {
+          dbState: "member_active",
+          clerkState: "membership_absent",
+        },
+      });
 
-      return {
-        id: reactivated.id,
-        role: reactivated.role,
-        userId: reactivated.userId,
-        name: existing.user.name ?? existing.user.email,
-        email: existing.user.email,
-      };
+      return reactivatedDto;
     }
 
     // No existe miembro previo — continuar con el flujo normal de alta.
