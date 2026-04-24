@@ -51,6 +51,15 @@ import { CrossModuleNav } from "../cross-module-nav";
 const ALL: ClientMatrixSnapshot = {
   orgId: "org-1",
   role: "owner",
+  permissionsRead: ["members", "documents", "agent", "audit", "farms"],
+  permissionsWrite: [],
+  canPost: [],
+};
+
+/** Has all cross-module access EXCEPT audit (e.g. contador with members access added) */
+const NO_AUDIT: ClientMatrixSnapshot = {
+  orgId: "org-1",
+  role: "contador",
   permissionsRead: ["members", "documents", "agent", "farms"],
   permissionsWrite: [],
   canPost: [],
@@ -118,9 +127,20 @@ afterEach(cleanup);
 // ---------------------------------------------------------------------------
 
 describe("CrossModuleNav — per-resource filtering (REQ-MS.9)", () => {
-  it("renders Agente IA, Miembros, and Documentos when all cross-module resources are accessible", () => {
+  it("renders Agente IA, Miembros, Documentos and Auditoría when all cross-module resources are accessible", () => {
     renderNav(ALL);
 
+    expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Auditoría/i })).toBeTruthy();
+  });
+
+  it("hides Auditoría when audit access is denied (REQ-AUDIT.6)", () => {
+    renderNav(NO_AUDIT);
+
+    expect(screen.queryByRole("link", { name: /Auditoría/i })).toBeNull();
+    // sanity: Agente IA / Miembros / Documentos siguen visibles
     expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
@@ -201,5 +221,11 @@ describe("CrossModuleNav — hrefs resolved with orgSlug", () => {
     renderNav(ALL);
     const link = screen.getByRole("link", { name: /Documentos/i });
     expect(link.getAttribute("href")).toBe("/test-org/documents");
+  });
+
+  it("Auditoría link points to /{orgSlug}/audit", () => {
+    renderNav(ALL);
+    const link = screen.getByRole("link", { name: /Auditoría/i });
+    expect(link.getAttribute("href")).toBe("/test-org/audit");
   });
 });
