@@ -11,7 +11,15 @@
 
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { vi } from "vitest";
-import { todayLocal, formatDateBO, toNoonUtc, lastDayOfUTCMonth, addUTCDays } from "@/lib/date-utils";
+import {
+  todayLocal,
+  formatDateBO,
+  toNoonUtc,
+  lastDayOfUTCMonth,
+  addUTCDays,
+  startOfMonth,
+  endOfMonth,
+} from "@/lib/date-utils";
 
 // ── todayLocal() ──────────────────────────────────────────────────────────────
 
@@ -206,3 +214,37 @@ describe("addUTCDays", () => {
     expect(src.toISOString()).toBe(iso);
   });
 });
+
+// ── startOfMonth / endOfMonth ────────────────────────────────────────────────
+
+describe("startOfMonth / endOfMonth", () => {
+  it("startOfMonth: input mid-April BO → BO-local 2026-04-01 00:00:00.000", () => {
+    // 15:00 BO local = 19:00 UTC
+    const mid = new Date("2026-04-15T19:00:00Z");
+    const start = startOfMonth(mid);
+    // BO-local midnight April 1 = 04:00 UTC April 1
+    expect(start.toISOString()).toBe("2026-04-01T04:00:00.000Z");
+  });
+
+  it("endOfMonth: input mid-April BO → BO-local 2026-04-30 23:59:59.999", () => {
+    const mid = new Date("2026-04-15T19:00:00Z");
+    const end = endOfMonth(mid);
+    // BO-local 23:59:59.999 April 30 = 03:59:59.999 UTC May 1
+    expect(end.toISOString()).toBe("2026-05-01T03:59:59.999Z");
+  });
+
+  it("endOfMonth handles February non-leap (28 days)", () => {
+    const mid = new Date("2026-02-15T19:00:00Z");
+    const end = endOfMonth(mid);
+    // Feb 28 23:59:59.999 BO = Mar 1 03:59:59.999 UTC
+    expect(end.toISOString()).toBe("2026-03-01T03:59:59.999Z");
+  });
+
+  it("endOfMonth handles December (31 days, year wrap)", () => {
+    const mid = new Date("2026-12-15T19:00:00Z");
+    const end = endOfMonth(mid);
+    // Dec 31 23:59:59.999 BO = Jan 1 03:59:59.999 UTC siguiente año
+    expect(end.toISOString()).toBe("2027-01-01T03:59:59.999Z");
+  });
+});
+

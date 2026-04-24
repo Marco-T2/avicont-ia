@@ -129,6 +129,36 @@ export function addUTCDays(date: Date, delta: number): Date {
   return next;
 }
 
+// ── startOfMonth / endOfMonth (local TZ) ──────────────────────────────────────
+
+/**
+ * Returns a Date at local midnight (00:00:00.000) of the first day of the month
+ * containing `date`. Uses local-time getters/constructor, so in a process with
+ * TZ=America/La_Paz the result is BO-local start-of-month.
+ *
+ * Used by route handlers that default date ranges to "current month" (REQ-AUDIT.1).
+ */
+export function startOfMonth(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+}
+
+/**
+ * Returns a Date at local 23:59:59.999 of the last day of the month containing
+ * `date`. Uses the `setDate(0)` of next month trick to handle variable-length
+ * months (Feb leap years, 30/31-day months).
+ */
+export function endOfMonth(date: Date): Date {
+  return new Date(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  );
+}
+
 // ── toNoonUtc ─────────────────────────────────────────────────────────────────
 
 /**
