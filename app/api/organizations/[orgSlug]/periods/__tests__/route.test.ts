@@ -40,7 +40,7 @@ vi.mock("@/features/fiscal-periods/server", () => ({
   }),
 }));
 
-vi.mock("@/features/shared/users.service", () => ({
+vi.mock("@/features/users/server", () => ({
   UsersService: vi.fn().mockImplementation(function () {
     return {
       resolveByClerkId: mockResolveByClerkId,

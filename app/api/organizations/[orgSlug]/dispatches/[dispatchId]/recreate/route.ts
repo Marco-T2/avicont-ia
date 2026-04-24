@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 import { DispatchService } from "@/features/dispatch/server";
 
 const usersService = new UsersService();

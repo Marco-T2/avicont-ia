@@ -1,6 +1,6 @@
 import "server-only";
 import { currentUser } from "@clerk/nextjs/server";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 import { AppError } from "@/features/shared/errors";
 
 const usersService = new UsersService();

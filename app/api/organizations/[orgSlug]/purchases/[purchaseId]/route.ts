@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { PurchaseService } from "@/features/purchase/server";
 import { updatePurchaseSchema } from "@/features/purchase";
 import { IvaBooksService } from "@/features/accounting/iva-books/server";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 
 const ivaBooksService = new IvaBooksService();
 const purchaseService = new PurchaseService(

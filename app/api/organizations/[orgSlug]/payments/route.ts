@@ -5,7 +5,7 @@ import {
   createPaymentSchema,
   paymentFiltersSchema,
 } from "@/features/payment";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 
 const paymentService = new PaymentService();
 const usersService = new UsersService();

@@ -5,7 +5,7 @@ import {
   createSaleSchema,
   saleFiltersSchema,
 } from "@/features/sale";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 
 const saleService = new SaleService();
 const usersService = new UsersService();

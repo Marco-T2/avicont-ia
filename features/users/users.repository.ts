@@ -1,5 +1,5 @@
 import "server-only";
-import { BaseRepository } from "./base.repository";
+import { BaseRepository } from "@/features/shared/base.repository";
 import type { User } from "@/generated/prisma/client";
 
 export interface CreateUserInput {
