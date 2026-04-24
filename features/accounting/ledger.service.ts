@@ -2,7 +2,7 @@ import "server-only";
 import { NotFoundError } from "@/features/shared/errors";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
-import { AccountBalancesService } from "@/features/account-balances/account-balances.service";
+import { AccountBalancesService } from "@/features/account-balances/server";
 import type { LedgerEntry, TrialBalanceRow, DateRangeFilter } from "./ledger.types";
 import type { AccountType } from "@/generated/prisma/client";
 

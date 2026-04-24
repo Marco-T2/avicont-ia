@@ -8,7 +8,7 @@ import {
   PERIOD_UNBALANCED,
 } from "@/features/shared/errors";
 import { setAuditContext } from "@/features/shared/audit-context";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/fiscal-periods.service";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { MonthlyCloseRepository } from "./monthly-close.repository";
 import type {
   CloseRequest,
