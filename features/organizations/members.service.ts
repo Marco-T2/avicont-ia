@@ -271,21 +271,59 @@ export class MembersService {
       );
     }
 
-    // Eliminar de la organización en Clerk
     const org = await this.repo.findById(organizationId);
     if (!org) throw new NotFoundError("Organización");
 
-    try {
-      const client = await clerkClient();
-      await client.organizations.deleteOrganizationMembership({
-        organizationId: org.clerkOrgId,
-        userId: member.user.clerkUserId,
-      });
-    } catch (error: unknown) {
-      // Si no se encuentra en Clerk, ignorar (ya fue eliminado o nunca fue agregado)
-      console.error("Error removing member from Clerk org:", error);
-    }
+    // REQ-MCS.3: DB-first saga with compensation for removal.
+    //
+    //   - dbWrite: repo.deactivateMember (soft-delete).
+    //   - clerkCall: clerkClient.organizations.deleteOrganizationMembership.
+    //   - compensate: repo.reactivateMember(org, memberId, previousRole)
+    //     restores the exact active-state row (role retained).
+    //   - isIdempotentSuccess: isClerkMembershipNotFoundError — a Clerk
+    //     404 means the membership is already absent on their side;
+    //     treat as success (per REQ-MCS.3-5). The old "Si no se encuentra
+    //     en Clerk, ignorar" swallow is replaced by this explicit
+    //     classifier.
+    //
+    // `previousRole` is captured from findMemberById BEFORE deactivation
+    // (per design §1, §11) — the soft-deleted row would be fine to
+    // re-read, but capturing up-front is simpler and avoids a second
+    // repo roundtrip during compensation.
+    const previousRole = member.role;
+    const removeCorrelationId = crypto.randomUUID();
 
-    await this.repo.deactivateMember(organizationId, memberId);
+    await runMemberClerkSaga<void>({
+      ctx: {
+        operation: "remove",
+        organizationId,
+        memberId,
+        clerkUserId: member.user.clerkUserId,
+        correlationId: removeCorrelationId,
+      },
+      dbWrite: async () => {
+        await this.repo.deactivateMember(organizationId, memberId);
+        return { memberId, result: undefined };
+      },
+      clerkCall: async () => {
+        const client = await clerkClient();
+        await client.organizations.deleteOrganizationMembership({
+          organizationId: org.clerkOrgId,
+          userId: member.user.clerkUserId,
+        });
+      },
+      compensate: async () => {
+        await this.repo.reactivateMember(
+          organizationId,
+          memberId,
+          previousRole,
+        );
+      },
+      isIdempotentSuccess: isClerkMembershipNotFoundError,
+      divergentState: {
+        dbState: "member_deactivated",
+        clerkState: "membership_present",
+      },
+    });
   }
 }
