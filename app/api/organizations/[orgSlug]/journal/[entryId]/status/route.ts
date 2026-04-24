@@ -2,7 +2,7 @@ import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { UsersService } from "@/features/shared/users.service";
 import { JournalService } from "@/features/accounting/server";
-import { statusTransitionSchema } from "@/features/accounting/accounting.validation";
+import { statusTransitionSchema } from "@/features/accounting/server";
 
 const usersService = new UsersService();
 const service = new JournalService();

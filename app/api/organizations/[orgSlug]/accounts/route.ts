@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { AccountsService } from "@/features/accounting/server";
-import { createAccountSchema } from "@/features/accounting/accounting.validation";
+import { createAccountSchema } from "@/features/accounting/server";
 import { AccountSubtype } from "@/generated/prisma/client";
 
 const service = new AccountsService();
