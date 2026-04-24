@@ -48,11 +48,13 @@ vi.mock("@/features/accounting/iva-books/server", () => ({
   }),
 }));
 
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-} from "@/features/shared/middleware";
+import { requireAuth } from "@/features/shared/middleware";
+vi.mock("@/features/organizations/server", () => ({
+  requireOrgAccess: vi.fn(),
+  requireRole: vi.fn(),
+}));
+
+import { requireOrgAccess, requireRole } from "@/features/organizations/server";
 import { UnauthorizedError, ForbiddenError, ConflictError } from "@/features/shared/errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));

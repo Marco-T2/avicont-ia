@@ -1,8 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  handleError,
-} from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireOrgAccess } from "@/features/organizations/server";
 import { ExpensesService } from "@/features/expenses/expenses.service";
 import { expenseIdSchema } from "@/features/expenses/expenses.validation";
 import { NotFoundError } from "@/features/shared/errors";

@@ -13,7 +13,8 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
-import { requireAuth, requireOrgAccess } from "@/features/shared";
+import { requireAuth } from "@/features/shared";
+import { requireOrgAccess } from "@/features/organizations/server";
 import { JournalService } from "@/features/accounting/server";
 
 interface AccountingPageProps {

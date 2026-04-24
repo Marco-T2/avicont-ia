@@ -1,8 +1,5 @@
-import {
-  requireAuth,
-  requireOrgAccess,
-  handleError,
-} from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireOrgAccess } from "@/features/organizations/server";
 import { LotsService } from "@/features/lots/server";
 import { closeLotSchema } from "@/features/lots";
 

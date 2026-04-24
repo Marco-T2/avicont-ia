@@ -62,11 +62,13 @@ vi.mock("@/features/org-profile/server", () => ({
   }),
 }));
 
-import {
-  requireAuth,
-  requireOrgAccess,
-  requireRole,
-} from "@/features/shared/middleware";
+import { requireAuth } from "@/features/shared/middleware";
+vi.mock("@/features/organizations/server", () => ({
+  requireOrgAccess: vi.fn(),
+  requireRole: vi.fn(),
+}));
+
+import { requireOrgAccess, requireRole } from "@/features/organizations/server";
 import {
   UnauthorizedError,
   ForbiddenError,
