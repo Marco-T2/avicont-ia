@@ -11,7 +11,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-vi.mock("../middleware", () => ({
+vi.mock("@/features/shared/middleware", () => ({
   requireAuth: vi.fn(),
 }));
 
@@ -39,11 +39,11 @@ vi.mock("@/prisma/seed-system-roles", () => ({
 }));
 
 import { requirePermission } from "../permissions.server";
-import { requireAuth } from "../middleware";
+import { requireAuth } from "@/features/shared/middleware";
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
 import { getMatrix, revalidateOrgMatrix, ensureOrgSeeded } from "../permissions.cache";
 import type { OrgMatrix } from "../permissions.cache";
-import { ForbiddenError } from "../errors";
+import { ForbiddenError } from "@/features/shared/errors";
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,

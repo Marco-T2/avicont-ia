@@ -8,7 +8,7 @@
  *
  * Raw <input type="checkbox"> — no shadcn Checkbox install per spec constraint.
  */
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "@/features/permissions";
 
 // Postable resources — must NOT be imported from features/shared/permissions
 // (getPostAllowedRoles / POST_ALLOWED_ROLES are internal); use local constant.

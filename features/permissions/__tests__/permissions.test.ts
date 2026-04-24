@@ -39,8 +39,8 @@ import {
   type Role,
   type Resource,
   type Action,
-} from "@/features/shared/permissions";
-import { canAccess } from "@/features/shared/permissions.server";
+} from "../permissions";
+import { canAccess } from "../permissions.server";
 
 const ALL_ROLES: Role[] = [
   "owner",

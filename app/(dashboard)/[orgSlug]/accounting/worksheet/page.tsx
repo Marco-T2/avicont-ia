@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { WorksheetPageClient } from "@/components/accounting/worksheet-page-client";
 
 interface WorksheetPageProps {

@@ -25,7 +25,7 @@ import {
   getPostAllowedRoles,
   type Resource,
   type PostableResource,
-} from "@/features/shared/permissions";
+} from "@/features/permissions";
 
 function buildSystemRoleSnapshot(
   role: string,

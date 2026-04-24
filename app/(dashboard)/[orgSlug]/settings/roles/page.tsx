@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { RolesService, RolesRepository } from "@/features/organizations/server";
 import RolesListClient from "@/components/settings/roles-list-client";
 import type { CustomRoleShape } from "@/components/settings/role-edit-drawer";

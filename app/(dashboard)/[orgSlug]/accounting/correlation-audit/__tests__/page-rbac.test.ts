@@ -14,7 +14,7 @@ const { mockRedirect, mockRequirePermission, mockVoucherTypesList } =
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

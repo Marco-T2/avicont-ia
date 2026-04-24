@@ -5,7 +5,7 @@
  * Renders one module (or "Organización") section header + one MatrixRow per resource.
  * Shared-resource rows (journal, purchases) include a contextual note per spec §10.
  */
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "@/features/permissions";
 import { MatrixRow } from "@/components/settings/matrix-row";
 import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 

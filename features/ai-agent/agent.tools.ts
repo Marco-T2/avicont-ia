@@ -2,7 +2,7 @@ import {
   SchemaType,
   type FunctionDeclaration,
 } from "@google/generative-ai";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 
 // ── Socio tools (farming operations) ──
 

@@ -23,7 +23,7 @@
 export const runtime = "nodejs";
 
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { IvaBooksService, exportIvaBookExcel } from "@/features/accounting/iva-books/server";
 import { listQuerySchema } from "@/features/accounting/iva-books";
 

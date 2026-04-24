@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 import { buildSyntheticMatrix } from "@/lib/settings/build-synthetic-matrix";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────

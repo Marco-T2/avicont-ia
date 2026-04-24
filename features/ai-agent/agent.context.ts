@@ -1,5 +1,5 @@
-import type { Role } from "@/features/shared/permissions";
-import { getRagScopes } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
+import { getRagScopes } from "@/features/permissions";
 import { RagService } from "@/features/rag/server";
 import { AgentContextRepository } from "./agent-context.repository";
 

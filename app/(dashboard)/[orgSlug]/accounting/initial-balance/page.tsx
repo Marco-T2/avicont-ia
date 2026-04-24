@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { InitialBalancePageClient } from "@/components/accounting/initial-balance-page-client";
 
 interface InitialBalancePageProps {

@@ -17,8 +17,8 @@
  */
 
 import "server-only";
-import type { Resource, PostableResource } from "@/features/shared/permissions";
-import { PERMISSIONS_CLOSE, PERMISSIONS_REOPEN } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "./permissions";
+import { PERMISSIONS_CLOSE, PERMISSIONS_REOPEN } from "./permissions";
 
 export type OrgMatrix = {
   orgId: string;

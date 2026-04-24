@@ -35,7 +35,7 @@ import {
   assertNotReserved,
   resolveUniqueSlug,
 } from "./roles.validation";
-import { revalidateOrgMatrix as defaultRevalidate } from "@/features/shared/permissions.cache";
+import { revalidateOrgMatrix as defaultRevalidate } from "@/features/permissions/cache";
 
 // ────────────────────────────────────────────────────────────
 // Public types

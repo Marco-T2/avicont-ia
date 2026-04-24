@@ -6,7 +6,7 @@ import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "@/features/permissions";
 import { RolesMatrixGrouped } from "@/components/settings/roles-matrix-grouped";
 
 afterEach(cleanup);

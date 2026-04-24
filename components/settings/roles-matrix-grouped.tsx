@@ -8,7 +8,7 @@
  * Fully controlled — owns no state. Receives readSet/writeSet/postSet + onToggle
  * from the parent (RoleEditDrawer in PR5). disabled=true for system roles.
  */
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import type { Resource, PostableResource } from "@/features/permissions";
 import { MODULES } from "@/components/sidebar/modules/registry";
 import { groupResources } from "@/lib/settings/group-resources";
 import { MatrixSection } from "@/components/settings/matrix-section";

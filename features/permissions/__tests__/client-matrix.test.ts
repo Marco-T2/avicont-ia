@@ -18,10 +18,10 @@ vi.mock("../permissions.cache", () => ({
   ensureOrgSeeded: vi.fn(),
 }));
 
-import { buildClientMatrixSnapshot } from "@/features/shared/client-matrix";
-import { ensureOrgSeeded } from "@/features/shared/permissions.cache";
-import type { OrgMatrix } from "@/features/shared/permissions.cache";
-import type { Resource, PostableResource } from "@/features/shared/permissions";
+import { buildClientMatrixSnapshot } from "../client-matrix";
+import { ensureOrgSeeded } from "../permissions.cache";
+import type { OrgMatrix } from "../permissions.cache";
+import type { Resource, PostableResource } from "../permissions";
 
 const mockedEnsureOrgSeeded = vi.mocked(ensureOrgSeeded);
 

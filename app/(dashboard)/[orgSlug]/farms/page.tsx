@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { canAccess } from "@/features/shared/permissions.server";
+import { canAccess } from "@/features/permissions/server";
 import { OrganizationsService } from "@/features/organizations/server";
 import { FarmsService } from "@/features/farms/server";
 import FarmsPageClient from "./farms-client";

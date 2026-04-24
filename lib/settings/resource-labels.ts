@@ -1,4 +1,4 @@
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 
 export const RESOURCE_LABELS: Record<Resource, string> = {
   members: "Miembros",

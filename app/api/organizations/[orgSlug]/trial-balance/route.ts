@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { TrialBalanceService, TrialBalanceRepository } from "@/features/accounting/trial-balance/server";
 import { serializeStatement } from "@/features/accounting/financial-statements/server";
 import { trialBalanceQuerySchema } from "@/features/accounting/trial-balance/server";
 import { exportTrialBalancePdf } from "@/features/accounting/trial-balance/server";
 import { exportTrialBalanceXlsx } from "@/features/accounting/trial-balance/server";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { AccountsService } from "@/features/accounting/server";
 import LedgerPageClient from "@/components/accounting/ledger-page-client";
 

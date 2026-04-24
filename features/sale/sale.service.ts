@@ -10,7 +10,7 @@ import {
   SALE_CONTACT_CHANGE_BLOCKED,
   SALE_INCOME_ACCOUNT_REQUIRED,
 } from "@/features/shared/errors";
-import { canPost } from "@/features/shared/permissions.server";
+import { canPost } from "@/features/permissions/server";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { Prisma } from "@/generated/prisma/client";
 import { SaleRepository } from "./sale.repository";

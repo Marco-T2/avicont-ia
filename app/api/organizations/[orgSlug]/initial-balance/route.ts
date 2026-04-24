@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/shared/permissions.server";
+import { requirePermission } from "@/features/permissions/server";
 import { InitialBalanceService } from "@/features/accounting/initial-balance/server";
 import { serializeStatement } from "@/features/accounting/financial-statements/server";
 import { initialBalanceQuerySchema } from "@/features/accounting/initial-balance/server";

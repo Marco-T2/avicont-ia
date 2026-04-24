@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ForbiddenError } from "@/features/shared/errors";
-import type { Resource } from "@/features/shared/permissions";
+import type { Resource } from "@/features/permissions";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -22,7 +22,7 @@ const { mockRequirePermission, mockClose, mockResolveByClerkId } = vi.hoisted(()
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("@/features/shared/permissions.server", () => ({
+vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

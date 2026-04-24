@@ -1,6 +1,6 @@
 import "server-only";
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/shared/permissions";
+import type { Role } from "@/features/permissions";
 import { TrialBalanceRepository } from "./trial-balance.repository";
 import { buildTrialBalance } from "./trial-balance.builder";
 import type { TrialBalanceFilters, TrialBalanceReport } from "./trial-balance.types";
