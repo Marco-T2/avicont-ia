@@ -37,7 +37,8 @@ vi.mock("@/features/shared/permissions.server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/monthly-close/server", () => ({
+vi.mock("@/features/monthly-close/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/monthly-close/server")>()),
   MonthlyCloseService: vi.fn().mockImplementation(function () {
     return { close: mockClose };
   }),

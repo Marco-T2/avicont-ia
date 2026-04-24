@@ -1,7 +1,7 @@
 import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { DocumentsService } from "@/features/documents/server";
-import { analyzeDocumentSchema } from "@/features/documents/documents.validation";
+import { analyzeDocumentSchema } from "@/features/documents/server";
 
 const docsService = new DocumentsService();
 

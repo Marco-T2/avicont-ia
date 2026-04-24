@@ -1,11 +1,11 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { UsersService } from "@/features/shared/users.service";
-import { ExpensesService } from "@/features/expenses/expenses.service";
+import { ExpensesService } from "@/features/expenses/server";
 import {
   createExpenseSchema,
   expenseFiltersSchema,
-} from "@/features/expenses/expenses.validation";
+} from "@/features/expenses/server";
 
 const usersService = new UsersService();
 const service = new ExpensesService();

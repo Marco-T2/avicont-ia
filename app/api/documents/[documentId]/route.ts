@@ -1,5 +1,5 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { DocumentsService } from "@/features/documents/documents.service";
+import { DocumentsService } from "@/features/documents/server";
 
 const service = new DocumentsService();
 

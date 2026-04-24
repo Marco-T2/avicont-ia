@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { VoucherTypesService } from "@/features/voucher-types/server";
-import { createVoucherTypeSchema } from "@/features/voucher-types/voucher-types.validation";
+import { createVoucherTypeSchema } from "@/features/voucher-types/server";
 
 const service = new VoucherTypesService();
 

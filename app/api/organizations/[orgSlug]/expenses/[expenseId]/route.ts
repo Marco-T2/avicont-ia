@@ -1,7 +1,7 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { ExpensesService } from "@/features/expenses/expenses.service";
-import { expenseIdSchema } from "@/features/expenses/expenses.validation";
+import { ExpensesService } from "@/features/expenses/server";
+import { expenseIdSchema } from "@/features/expenses/server";
 import { NotFoundError } from "@/features/shared/errors";
 
 const service = new ExpensesService();
