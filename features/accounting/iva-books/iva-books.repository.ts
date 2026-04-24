@@ -166,7 +166,13 @@ function toSaleDTO(row: {
  */
 function handlePrismaError(err: unknown, resource: string): never {
   if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
-    throw new ConflictError(`${resource} con los mismos datos ya existe`);
+    // Preservar el error original como cause para no perder stack al debuggear.
+    throw new ConflictError(
+      `${resource} con los mismos datos ya existe`,
+      undefined,
+      undefined,
+      err,
+    );
   }
   throw err;
 }

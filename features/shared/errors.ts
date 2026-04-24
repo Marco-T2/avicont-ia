@@ -6,8 +6,12 @@ export class AppError extends Error {
     public readonly statusCode: number = 500,
     public readonly code?: string,
     details?: Record<string, unknown>,
+    cause?: unknown,
   ) {
-    super(message);
+    // Forward cause al Error nativo solo si viene definido — evita que err.cause
+    // aparezca como `undefined` cuando nadie lo pasó (diferencia sutil:
+    // `'cause' in err` queda en false).
+    super(message, cause !== undefined ? { cause } : undefined);
     this.name = "AppError";
     if (details) this.details = details;
   }
@@ -40,8 +44,9 @@ export class ConflictError extends AppError {
     resource: string,
     code = "CONFLICT",
     details?: Record<string, unknown>,
+    cause?: unknown,
   ) {
-    super(`${resource} ya existe`, 409, code, details);
+    super(`${resource} ya existe`, 409, code, details, cause);
   }
 }
 
