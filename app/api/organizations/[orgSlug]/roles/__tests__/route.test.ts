@@ -65,17 +65,14 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
   };
 });
 
-// Permissions cache: we only need revalidateOrgMatrix to be callable.
-vi.mock("@/features/permissions/server", () => ({
-  revalidateOrgMatrix: vi.fn(),
-  getMatrix: vi.fn(),
-}));
-
 // Gate at the requirePermission boundary — the inner middleware primitives
 // (requireAuth / requireOrgAccess / requireRole) stay mocked too for tests
-// that want to force a 401/403 at a specific layer.
+// that want to force a 401/403 at a specific layer. revalidateOrgMatrix /
+// getMatrix are mocked here because the route pulls them transitively.
 vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
+  revalidateOrgMatrix: vi.fn(),
+  getMatrix: vi.fn(),
 }));
 
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
