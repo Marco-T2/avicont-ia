@@ -103,41 +103,66 @@ export class DocumentsService {
       fileUrl = blob.url;
       fileSize = file.size;
       fileType = file.type;
+    }
 
-      // Extraer texto de los PDFs
-      if (file.type === "application/pdf") {
+    // Saga: desde acá adelante, cualquier fallo compensa el blob subido y el
+    // documento creado para no dejar estado parcial (blob huérfano sin doc,
+    // o doc sin embeddings invisible al RAG).
+    let documentId: string | undefined;
+    try {
+      if (file && file.size > 0 && file.type === "application/pdf") {
         extractedContent = await this.extractPdfText(file);
-      } else if (!extractedContent && file.type.includes("text")) {
+      } else if (
+        file &&
+        file.size > 0 &&
+        !extractedContent &&
+        file.type.includes("text")
+      ) {
         extractedContent = await file.text();
       }
+
+      const document = await this.repo.create({
+        name,
+        content: extractedContent,
+        fileUrl,
+        fileSize,
+        fileType,
+        scope,
+        organizationId: orgId,
+        userId: user.id,
+      });
+      documentId = document.id;
+
+      if (extractedContent && extractedContent.length > 10) {
+        await this.ragService.indexDocument(
+          document.id,
+          orgId,
+          scope,
+          extractedContent,
+        );
+      }
+
+      return {
+        id: document.id,
+        name: document.name,
+        fileUrl: document.fileUrl,
+        organization: org.name,
+        clerkOrgId: org.clerkOrgId,
+        uploadedBy: document.user.name,
+      };
+    } catch (err) {
+      if (documentId) {
+        await this.repo.delete(documentId, orgId).catch((rollbackErr) =>
+          console.error("Rollback failed (document):", rollbackErr),
+        );
+      }
+      if (fileUrl) {
+        await deleteFromBlob(fileUrl).catch((rollbackErr) =>
+          console.error("Rollback failed (blob):", rollbackErr),
+        );
+      }
+      throw err;
     }
-
-    const document = await this.repo.create({
-      name,
-      content: extractedContent,
-      fileUrl,
-      fileSize,
-      fileType,
-      scope,
-      organizationId: orgId,
-      userId: user.id,
-    });
-
-    // Generar embeddings para el contenido de texto (asíncrono, no bloquea la respuesta)
-    if (extractedContent && extractedContent.length > 10) {
-      this.ragService.indexDocument(document.id, orgId, scope, extractedContent).catch(
-        (err) => console.error("Embedding generation failed:", err),
-      );
-    }
-
-    return {
-      id: document.id,
-      name: document.name,
-      fileUrl: document.fileUrl,
-      organization: org.name,
-      clerkOrgId: org.clerkOrgId,
-      uploadedBy: document.user.name,
-    };
   }
 
   // ── Eliminar un documento ──
@@ -192,10 +217,15 @@ export class DocumentsService {
         pages.push(content.items.map((item) => ("str" in item ? item.str : "")).join(" "));
       }
       await pdf.destroy();
+      // null legítimo: el PDF parseó OK pero no contiene texto extraíble
+      // (p. ej. escaneo sin OCR). Caso distinto del catch de abajo.
       return pages.join("\n").trim() || null;
     } catch (err) {
+      // El parser explotó — PDF corrupto o formato no soportado. Antes
+      // devolvíamos null, conflating con "sin texto"; el documento se creaba
+      // de todos modos y nunca llegaba al RAG. Ahora falla explícito.
       console.error("PDF text extraction failed:", err);
-      return null;
+      throw new ValidationError("No se pudo procesar el PDF");
     }
   }
 
