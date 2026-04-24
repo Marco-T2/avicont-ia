@@ -5,8 +5,8 @@ import { JournalService } from "@/features/accounting/server";
 import {
   updateJournalEntrySchema,
   exportVoucherQuerySchema,
-} from "@/features/accounting/accounting.validation";
-import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
+} from "@/features/accounting/server";
+import { formatCorrelativeNumber } from "@/features/accounting/server";
 
 // PDF exporter usa pdfmake (Buffer/streams nativos) — requiere runtime Node.js.
 export const runtime = "nodejs";

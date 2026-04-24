@@ -33,7 +33,8 @@ vi.mock("@/features/shared/users.service", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/server", () => ({
+vi.mock("@/features/accounting/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/features/accounting/server")>()),
   JournalService: vi.fn().mockImplementation(function () {
     return {
       getById: mockGetById,

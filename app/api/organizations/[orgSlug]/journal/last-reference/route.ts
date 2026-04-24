@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/shared/permissions.server";
 import { JournalService } from "@/features/accounting/server";
-import { lastReferenceQuerySchema } from "@/features/accounting/accounting.validation";
+import { lastReferenceQuerySchema } from "@/features/accounting/server";
 
 const service = new JournalService();
 

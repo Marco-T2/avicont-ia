@@ -11,3 +11,6 @@ export { LedgerService } from "./ledger.service";
 
 export { AutoEntryGenerator } from "./auto-entry-generator";
 export type { EntryLineTemplate } from "./auto-entry-generator";
+
+export * from "./accounting.validation";
+export * from "./correlative.utils";

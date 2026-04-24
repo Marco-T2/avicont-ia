@@ -5,8 +5,8 @@ import { JournalService } from "@/features/accounting/server";
 import {
   createJournalEntrySchema,
   journalFiltersSchema,
-} from "@/features/accounting/accounting.validation";
-import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
+} from "@/features/accounting/server";
+import { formatCorrelativeNumber } from "@/features/accounting/server";
 
 const usersService = new UsersService();
 const service = new JournalService();
