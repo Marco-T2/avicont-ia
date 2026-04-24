@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Home, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import CreateFarmDialog from "@/components/farms/create-farm-dialog";
-import type { FarmWithLots } from "@/features/farms/farms.types";
+import type { FarmWithLots } from "@/features/farms";
 
 interface FarmsPageClientProps {
   orgSlug: string;

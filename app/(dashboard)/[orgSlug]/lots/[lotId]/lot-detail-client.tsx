@@ -18,9 +18,9 @@ import {
 import Link from "next/link";
 import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
-import type { LotSummary } from "@/features/lots/lots.types";
-import type { ExpenseWithRelations } from "@/features/expenses/expenses.types";
-import type { MortalityLogWithRelations } from "@/features/mortality/mortality.types";
+import type { LotSummary } from "@/features/lots";
+import type { ExpenseWithRelations } from "@/features/expenses";
+import type { MortalityLogWithRelations } from "@/features/mortality";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   ACTIVE: { label: "Activo", className: "bg-green-100 text-green-800" },

@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, ArrowRight, Egg } from "lucide-react";
 import Link from "next/link";
 import CreateLotDialog from "@/components/lots/create-lot-dialog";
-import type { FarmWithLots } from "@/features/farms/farms.types";
+import type { FarmWithLots } from "@/features/farms";
 import type { ChickenLot } from "@/generated/prisma/client";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {

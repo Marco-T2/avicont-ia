@@ -2,8 +2,8 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { LotsService } from "@/features/lots/server";
-import { ExpensesService } from "@/features/expenses/expenses.service";
-import { MortalityService } from "@/features/mortality/mortality.service";
+import { ExpensesService } from "@/features/expenses/server";
+import { MortalityService } from "@/features/mortality/server";
 import LotDetailClient from "./lot-detail-client";
 
 interface LotDetailPageProps {

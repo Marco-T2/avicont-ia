@@ -337,18 +337,6 @@ describe("Feature Module Boundaries (REQ-FMB.4) — no cross-feature deep import
  * Exemptions:
  *   - `features/shared/*` (flat infrastructure, as in REQ-FMB.4)
  *   - test files (*.test.ts, *.test.tsx, __tests__/)
- *
- * Migration note: the invariant is enforced against a SHRINKING allowlist
- * (ALLOWED_LEGACY_APP_DEEP_IMPORTS below). Each entry is a `file::target`
- * string identifying a legacy violation that has been accepted pending
- * migration. The test FAILS on two conditions:
- *   (a) actual violations contain entries NOT in the allowlist → new
- *       violations are being introduced
- *   (b) the allowlist contains entries that are NOT in the actual
- *       violations → stale entries must be pruned after fixing
- *
- * Goal: drive the allowlist to zero, then delete it along with this note
- * and make the assertion hard.
  */
 
 interface AppDeepImportViolation {
@@ -430,54 +418,19 @@ function collectAppDeepImports(
   return violations;
 }
 
-/**
- * Legacy app/ → feature-internals violations accepted at the time REQ-FMB.5
- * was introduced. Shrinks as each batch is migrated. When this array reaches
- * zero, remove it and flip the assertion to `toHaveLength(0)`.
- *
- * Format: "<file path from repo root>::<import target after @/features/>"
- */
-const ALLOWED_LEGACY_APP_DEEP_IMPORTS: readonly string[] = [
-  "app/(dashboard)/[orgSlug]/farms/[farmId]/farm-detail-client.tsx::farms/farms.types",
-  "app/(dashboard)/[orgSlug]/farms/farms-client.tsx::farms/farms.types",
-  "app/(dashboard)/[orgSlug]/lots/[lotId]/lot-detail-client.tsx::expenses/expenses.types",
-  "app/(dashboard)/[orgSlug]/lots/[lotId]/lot-detail-client.tsx::lots/lots.types",
-  "app/(dashboard)/[orgSlug]/lots/[lotId]/lot-detail-client.tsx::mortality/mortality.types",
-  "app/(dashboard)/[orgSlug]/lots/[lotId]/page.tsx::expenses/expenses.service",
-  "app/(dashboard)/[orgSlug]/lots/[lotId]/page.tsx::mortality/mortality.service",
-];
-
 describe("Feature Module Boundaries (REQ-FMB.5) — no deep imports from app/", () => {
   const validBarrelPaths = collectValidBarrelPaths();
   const violations = collectAppDeepImports(validBarrelPaths);
 
-  it("allowlist must be sorted (stability)", () => {
-    const sorted = [...ALLOWED_LEGACY_APP_DEEP_IMPORTS].sort();
-    expect(ALLOWED_LEGACY_APP_DEEP_IMPORTS).toEqual(sorted);
-  });
-
-  it("no new app/ deep imports beyond the legacy allowlist", () => {
-    const allowed = new Set(ALLOWED_LEGACY_APP_DEEP_IMPORTS);
-    const actualKeys = violations.map((v) => v.key);
-    const newViolations = violations.filter((v) => !allowed.has(v.key));
-    const message = newViolations
+  it("app/ code must not deep-import into features' internals", () => {
+    const message = violations
       .map((v) => `  ${v.file}:${v.line} → @/features/${v.target}`)
       .join("\n");
     expect(
-      newViolations,
-      `\nApp/ deep-import violations NOT in the legacy allowlist:\n${message}\n\n` +
-        `Fix: either route through the target feature's server.ts/index.ts barrel, ` +
-        `or (if legacy) add the key to ALLOWED_LEGACY_APP_DEEP_IMPORTS in this test.`,
-    ).toHaveLength(0);
-
-    // Also check: every allowlist entry must correspond to an actual violation
-    // (stale entries are forbidden — after migration, prune the list).
-    const actualSet = new Set(actualKeys);
-    const stale = ALLOWED_LEGACY_APP_DEEP_IMPORTS.filter((k) => !actualSet.has(k));
-    expect(
-      stale,
-      `\nStale allowlist entries (no longer observed in the codebase):\n  ${stale.join("\n  ")}\n\n` +
-        `Fix: remove these lines from ALLOWED_LEGACY_APP_DEEP_IMPORTS.`,
+      violations,
+      `\n${violations.length} app/ deep-import violations found:\n${message}\n\n` +
+        `Fix: route through the target feature's server.ts or index.ts barrel, ` +
+        `or use the bare top-level path @/features/<name>.`,
     ).toHaveLength(0);
   });
 });
