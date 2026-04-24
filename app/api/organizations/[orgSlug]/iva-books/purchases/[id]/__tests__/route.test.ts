@@ -54,6 +54,12 @@ vi.mock("@/features/organizations/server", () => ({
 }));
 
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
+
+vi.mock("@/features/permissions/server", () => ({
+  requirePermission: vi.fn(),
+}));
+import { requirePermission } from "@/features/permissions/server";
+
 import {
   UnauthorizedError,
   NotFoundError,
@@ -111,6 +117,11 @@ beforeEach(() => {
   vi.mocked(requireAuth).mockResolvedValue({ userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>);
   vi.mocked(requireOrgAccess).mockResolvedValue(ORG_ID);
   vi.mocked(requireRole).mockResolvedValue({ role: "admin" } as Awaited<ReturnType<typeof requireRole>>);
+  vi.mocked(requirePermission).mockResolvedValue({
+    session: { userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>,
+    orgId: ORG_ID,
+    role: "admin",
+  } as Awaited<ReturnType<typeof requirePermission>>);
 });
 
 // ── GET /[id] ────────────────────────────────────────────────────────────────
@@ -147,7 +158,7 @@ describe("GET /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
   });
 
   it("retorna 401 sin auth", async () => {
-    vi.mocked(requireAuth).mockRejectedValue(new UnauthorizedError());
+    vi.mocked(requirePermission).mockRejectedValueOnce(new UnauthorizedError());
 
     const { GET } = await import("../route");
     const request = new Request(

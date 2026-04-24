@@ -55,6 +55,12 @@ vi.mock("@/features/organizations/server", () => ({
 }));
 
 import { requireOrgAccess, requireRole } from "@/features/organizations/server";
+
+vi.mock("@/features/permissions/server", () => ({
+  requirePermission: vi.fn(),
+}));
+import { requirePermission } from "@/features/permissions/server";
+
 import { UnauthorizedError, ForbiddenError, ConflictError } from "@/features/shared/errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
@@ -135,6 +141,11 @@ beforeEach(() => {
   vi.mocked(requireAuth).mockResolvedValue({ userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>);
   vi.mocked(requireOrgAccess).mockResolvedValue(ORG_ID);
   vi.mocked(requireRole).mockResolvedValue({ role: "admin" } as Awaited<ReturnType<typeof requireRole>>);
+  vi.mocked(requirePermission).mockResolvedValue({
+    session: { userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>,
+    orgId: ORG_ID,
+    role: "admin",
+  } as Awaited<ReturnType<typeof requirePermission>>);
 });
 
 // ── GET /sales ────────────────────────────────────────────────────────────────
@@ -170,7 +181,7 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales", () => {
   });
 
   it("retorna 401 si no está autenticado", async () => {
-    vi.mocked(requireAuth).mockRejectedValue(new UnauthorizedError());
+    vi.mocked(requirePermission).mockRejectedValueOnce(new UnauthorizedError());
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -182,7 +193,7 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales", () => {
   });
 
   it("retorna 403 si el usuario no tiene acceso a la org", async () => {
-    vi.mocked(requireOrgAccess).mockRejectedValue(new ForbiddenError());
+    vi.mocked(requirePermission).mockRejectedValueOnce(new ForbiddenError());
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -284,7 +295,7 @@ describe("POST /api/organizations/[orgSlug]/iva-books/sales", () => {
   });
 
   it("retorna 401 si no está autenticado", async () => {
-    vi.mocked(requireAuth).mockRejectedValue(new UnauthorizedError());
+    vi.mocked(requirePermission).mockRejectedValueOnce(new UnauthorizedError());
 
     const { POST } = await import("../route");
     const request = new Request(
@@ -301,7 +312,7 @@ describe("POST /api/organizations/[orgSlug]/iva-books/sales", () => {
   });
 
   it("retorna 403 si accede a org incorrecta", async () => {
-    vi.mocked(requireOrgAccess).mockRejectedValue(new ForbiddenError());
+    vi.mocked(requirePermission).mockRejectedValueOnce(new ForbiddenError());
 
     const { POST } = await import("../route");
     const request = new Request(

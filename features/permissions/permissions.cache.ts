@@ -179,8 +179,12 @@ function _evictOldest(): void {
 /**
  * Ensures an org's permission matrix has at least the 5 system roles.
  * If the cached matrix is empty, seeds the org and returns the fresh matrix.
- * If seeding fails (e.g. test env without DB), returns the empty matrix
- * silently — callers that hard-depend on non-empty matrices handle that case.
+ *
+ * Fail-loud: if seeding throws (DB down, migration not run, etc.), the error
+ * propagates to the caller. Swallowing it would surface as a phantom 403
+ * "forbidden" at `requirePermission` or a silent deny-all on the client, when
+ * the real cause is infra failure. Callers serialize via http-error-serializer
+ * into a 5xx, which is the semantically correct signal.
  *
  * Idempotent via Prisma `skipDuplicates:true` + cache revalidation. (D.6 / CR.1-S3)
  */
@@ -188,15 +192,10 @@ export async function ensureOrgSeeded(orgId: string): Promise<OrgMatrix> {
   let matrix = await getMatrix(orgId);
 
   if (matrix.roles.size === 0) {
-    try {
-      const { seedOrgSystemRoles } = await import("@/prisma/seed-system-roles");
-      await seedOrgSystemRoles(orgId);
-      revalidateOrgMatrix(orgId);
-      matrix = await getMatrix(orgId);
-    } catch {
-      // Seed failed (e.g. test environment without DB, or migration not run yet).
-      // Return the empty matrix silently — callers handle the empty case.
-    }
+    const { seedOrgSystemRoles } = await import("@/prisma/seed-system-roles");
+    await seedOrgSystemRoles(orgId);
+    revalidateOrgMatrix(orgId);
+    matrix = await getMatrix(orgId);
   }
 
   return matrix;
