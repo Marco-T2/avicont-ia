@@ -172,3 +172,157 @@ describe("Feature Module Boundaries (REQ-FMB.3)", () => {
     });
   }
 });
+
+/**
+ * REQ-FMB.4: No cross-feature deep imports from production code.
+ *
+ * When code under `features/<X>/` (excluding tests) imports from another feature
+ * via `@/features/<Y>/...`, the import path MUST resolve to a public barrel:
+ *   - bare top-level: `@/features/<Y>` or `@/features/<Y>/<subfeature>`
+ *   - server barrel:  `@/features/<Y>/server` (or sub-feature's server)
+ *   - client barrel:  `@/features/<Y>/index` (or sub-feature's index)
+ *
+ * Exemptions:
+ *   - same-feature imports (X → X) — trivially allowed
+ *   - `features/shared/*` as TARGET — shared is flat infrastructure without a
+ *     `server.ts` barrel; every other feature treats its leaf files as the API
+ *   - test files (`*.test.ts`, `*.test.tsx`) and anything under `__tests__/`
+ *
+ * Note: `features/shared/*` as SOURCE is NOT exempted — shared must not depend
+ * on domain features (inverted dependency).
+ */
+
+/** Collect every directory under features/ that exposes a barrel (server.ts or index.ts). */
+function collectValidBarrelPaths(): Set<string> {
+  const valid = new Set<string>();
+  const walk = (dir: string, rel: string, depth: number) => {
+    if (depth > 2) return;
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    const hasBarrel = entries.some(
+      (e) => e.isFile() && (e.name === "server.ts" || e.name === "index.ts"),
+    );
+    if (hasBarrel && rel) valid.add(rel);
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      if (e.name === "__tests__") continue;
+      const subRel = rel ? `${rel}/${e.name}` : e.name;
+      walk(path.join(dir, e.name), subRel, depth + 1);
+    }
+  };
+  walk(FEATURES_DIR, "", 0);
+  return valid;
+}
+
+/** Top-level feature name from a file path relative to FEATURES_DIR. */
+function topLevelFeature(relPath: string): string {
+  return relPath.split(path.sep)[0];
+}
+
+interface DeepImportViolation {
+  file: string;
+  line: number;
+  target: string;
+}
+
+/**
+ * Walk every production *.ts / *.tsx file under features/ and collect imports
+ * of `@/features/<target>` that violate the barrel contract (see REQ-FMB.4).
+ */
+function collectCrossFeatureDeepImports(
+  validBarrelPaths: Set<string>,
+): DeepImportViolation[] {
+  const violations: DeepImportViolation[] = [];
+  const IMPORT_RE = /from\s+["']@\/features\/([^"']+)["']/g;
+
+  const walk = (dir: string) => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory()) {
+        if (e.name === "__tests__") continue;
+        walk(full);
+        continue;
+      }
+      if (!e.isFile()) continue;
+      if (!(e.name.endsWith(".ts") || e.name.endsWith(".tsx"))) continue;
+      if (e.name.endsWith(".test.ts") || e.name.endsWith(".test.tsx")) continue;
+
+      const rel = path.relative(FEATURES_DIR, full);
+      const sourceFeature = topLevelFeature(rel);
+      let source: string;
+      try {
+        source = fs.readFileSync(full, "utf8");
+      } catch {
+        continue;
+      }
+
+      const lines = source.split("\n");
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        IMPORT_RE.lastIndex = 0;
+        let match: RegExpExecArray | null;
+        while ((match = IMPORT_RE.exec(line)) !== null) {
+          const target = match[1];
+          const targetTop = target.split("/")[0];
+          if (targetTop === sourceFeature) continue; // same-feature
+          if (targetTop === "shared") continue; // exempted target
+
+          // Allowed forms: bare feature path, path/server, path/index
+          let allowed = false;
+          for (const vp of validBarrelPaths) {
+            if (
+              target === vp ||
+              target === `${vp}/server` ||
+              target === `${vp}/index`
+            ) {
+              allowed = true;
+              break;
+            }
+          }
+          if (!allowed) {
+            violations.push({
+              file: `features/${rel.split(path.sep).join("/")}`,
+              line: i + 1,
+              target,
+            });
+          }
+        }
+      }
+    }
+  };
+
+  walk(FEATURES_DIR);
+  return violations;
+}
+
+describe("Feature Module Boundaries (REQ-FMB.4) — no cross-feature deep imports", () => {
+  const validBarrelPaths = collectValidBarrelPaths();
+  const violations = collectCrossFeatureDeepImports(validBarrelPaths);
+
+  it("should detect at least one valid barrel path", () => {
+    expect(validBarrelPaths.size).toBeGreaterThan(0);
+  });
+
+  it("production code must not deep-import into other features' internals", () => {
+    const message = violations
+      .map((v) => `  ${v.file}:${v.line} → @/features/${v.target}`)
+      .join("\n");
+    expect(
+      violations,
+      `\n${violations.length} cross-feature deep-import violations found:\n${message}\n\n` +
+        `Fix: extend the target feature's server.ts barrel and import from there.\n` +
+        `Target exemption: features/shared/* (flat infrastructure).\n` +
+        `Source exemption: none — shared must not depend on domain features.`,
+    ).toHaveLength(0);
+  });
+});
