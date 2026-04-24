@@ -1,7 +1,7 @@
 import "server-only";
 import { NotFoundError, ConflictError } from "@/features/shared/errors";
 import { FarmsRepository } from "./farms.repository";
-import { OrganizationsService } from "@/features/organizations/organizations.service";
+import { OrganizationsService } from "@/features/organizations/server";
 import type { CreateFarmInput, UpdateFarmInput, FarmWithLots } from "./farms.types";
 
 export class FarmsService {

@@ -1,7 +1,7 @@
 import "server-only";
 import { ValidationError } from "@/features/shared/errors";
 import { MortalityRepository } from "./mortality.repository";
-import { LotsService } from "@/features/lots/lots.service";
+import { LotsService } from "@/features/lots/server";
 import type {
   LogMortalityInput,
   MortalityLogWithRelations,
