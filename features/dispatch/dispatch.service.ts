@@ -30,7 +30,7 @@ import {
 } from "@/features/accounting/server";
 import { VoucherTypesRepository } from "@/features/voucher-types/server";
 import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesRepository } from "@/features/receivables/receivables.repository";
+import { ReceivablesRepository } from "@/features/receivables/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { DispatchType } from "@/generated/prisma/client";
