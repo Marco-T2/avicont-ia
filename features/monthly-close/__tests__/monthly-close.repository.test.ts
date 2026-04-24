@@ -9,6 +9,7 @@ import { describe, it, expect, beforeAll, afterAll, afterEach } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
 import { MonthlyCloseRepository } from "../monthly-close.repository";
+import { setAuditContext } from "@/features/shared/audit-context";
 
 const repo = new MonthlyCloseRepository();
 
@@ -119,16 +120,22 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  await prisma.journalEntry.deleteMany({ where: { organizationId: orgId } });
-  await prisma.dispatch.deleteMany({ where: { organizationId: orgId } });
-  await prisma.payment.deleteMany({ where: { organizationId: orgId } });
-  await prisma.sale.deleteMany({ where: { organizationId: orgId } });
-  await prisma.purchase.deleteMany({ where: { organizationId: orgId } });
-  await prisma.account.deleteMany({ where: { organizationId: orgId } });
-  await prisma.voucherTypeCfg.deleteMany({ where: { organizationId: orgId } });
-  await prisma.contact.deleteMany({ where: { organizationId: orgId } });
-  await prisma.auditLog.deleteMany({ where: { organizationId: orgId } });
-  await prisma.fiscalPeriod.deleteMany({ where: { organizationId: orgId } });
+  // CASCADE deletes que tocan journal_lines disparan audit_trigger_fn AFTER
+  // DELETE; el trigger requiere app.current_organization_id (post-ADR-002).
+  // setAuditContext propaga la session var dentro de la transacción.
+  await prisma.$transaction(async (tx) => {
+    await setAuditContext(tx, userId, orgId);
+    await tx.journalEntry.deleteMany({ where: { organizationId: orgId } });
+    await tx.dispatch.deleteMany({ where: { organizationId: orgId } });
+    await tx.payment.deleteMany({ where: { organizationId: orgId } });
+    await tx.sale.deleteMany({ where: { organizationId: orgId } });
+    await tx.purchase.deleteMany({ where: { organizationId: orgId } });
+    await tx.account.deleteMany({ where: { organizationId: orgId } });
+    await tx.voucherTypeCfg.deleteMany({ where: { organizationId: orgId } });
+    await tx.contact.deleteMany({ where: { organizationId: orgId } });
+    await tx.auditLog.deleteMany({ where: { organizationId: orgId } });
+    await tx.fiscalPeriod.deleteMany({ where: { organizationId: orgId } });
+  });
   await prisma.organization.delete({ where: { id: orgId } }).catch(() => {});
   await prisma.user.delete({ where: { id: userId } }).catch(() => {});
 });
@@ -136,11 +143,15 @@ afterAll(async () => {
 // ── Per-test mutation cleanup helper ──────────────────────────────────────────
 
 async function wipePerTestMutations() {
-  await prisma.journalEntry.deleteMany({ where: { organizationId: orgId } });
-  await prisma.dispatch.deleteMany({ where: { organizationId: orgId } });
-  await prisma.payment.deleteMany({ where: { organizationId: orgId } });
-  await prisma.sale.deleteMany({ where: { organizationId: orgId } });
-  await prisma.purchase.deleteMany({ where: { organizationId: orgId } });
+  // Mismo motivo: CASCADE journal_lines requiere session var.
+  await prisma.$transaction(async (tx) => {
+    await setAuditContext(tx, userId, orgId);
+    await tx.journalEntry.deleteMany({ where: { organizationId: orgId } });
+    await tx.dispatch.deleteMany({ where: { organizationId: orgId } });
+    await tx.payment.deleteMany({ where: { organizationId: orgId } });
+    await tx.sale.deleteMany({ where: { organizationId: orgId } });
+    await tx.purchase.deleteMany({ where: { organizationId: orgId } });
+  });
   // Reset period A state in case a test closed it
   await prisma.fiscalPeriod.update({
     where: { id: periodAId },
