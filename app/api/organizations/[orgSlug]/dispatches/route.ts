@@ -5,7 +5,7 @@ import {
   createDispatchSchema,
   dispatchFiltersSchema,
 } from "@/features/dispatch";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 
 const dispatchService = new DispatchService();
 const usersService = new UsersService();

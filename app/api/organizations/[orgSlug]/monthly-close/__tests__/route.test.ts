@@ -44,7 +44,7 @@ vi.mock("@/features/monthly-close/server", async (importOriginal) => ({
   }),
 }));
 
-vi.mock("@/features/shared/users.service", () => ({
+vi.mock("@/features/users/server", () => ({
   UsersService: vi.fn().mockImplementation(function () {
     return { resolveByClerkId: mockResolveByClerkId };
   }),

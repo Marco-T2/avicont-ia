@@ -4,7 +4,7 @@ import {
   ForbiddenError,
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 import { VoucherTypesService } from "@/features/voucher-types/server";
 import { buildSystemRolePayloads } from "@/prisma/seed-system-roles";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";

@@ -53,7 +53,7 @@ vi.mock("@/features/accounting/iva-books/server", () => ({
   }),
 }));
 
-vi.mock("@/features/shared/users.service", () => ({
+vi.mock("@/features/users/server", () => ({
   UsersService: vi.fn().mockImplementation(function () {
     return {
       resolveByClerkId: vi.fn().mockResolvedValue({ id: "user-db-id" }),

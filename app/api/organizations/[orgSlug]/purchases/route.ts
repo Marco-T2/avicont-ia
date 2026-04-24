@@ -5,7 +5,7 @@ import {
   createPurchaseSchema,
   purchaseFiltersSchema,
 } from "@/features/purchase";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 
 const purchaseService = new PurchaseService();
 const usersService = new UsersService();

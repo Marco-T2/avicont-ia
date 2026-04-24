@@ -1,6 +1,6 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 import { MortalityService } from "@/features/mortality/server";
 import { logMortalitySchema } from "@/features/mortality";
 

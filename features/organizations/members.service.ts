@@ -8,7 +8,7 @@ import {
   CANNOT_CHANGE_OWN_ROLE,
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 import { runMemberClerkSaga } from "./member-clerk-saga";
 import {
   isClerkDuplicateMembershipError,

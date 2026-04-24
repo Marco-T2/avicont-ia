@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { UsersService } from "@/features/shared/users.service";
+import { UsersService } from "@/features/users/server";
 import { JournalService } from "@/features/accounting/server";
 import { statusTransitionSchema } from "@/features/accounting/server";
 
