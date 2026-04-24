@@ -1,7 +1,7 @@
 import "server-only";
 import { currentUser } from "@clerk/nextjs/server";
 import { UsersService } from "@/features/users/server";
-import { AppError } from "@/features/shared/errors";
+import { AppError, NotFoundError } from "@/features/shared/errors";
 
 const usersService = new UsersService();
 
@@ -16,8 +16,16 @@ export async function syncUserToDatabase() {
     const name =
       `${clerkUser.firstName || ""} ${clerkUser.lastName || ""}`.trim();
 
-    // Verificar si el usuario existe en la base de datos
-    const existing = await usersService.resolveByClerkId(clerkUser.id).catch(() => null);
+    // Verificar si el usuario existe en la base de datos.
+    // Solo tratamos NotFoundError como "no existe todavía"; cualquier otro
+    // error (DB caída, timeout, error inesperado) se propaga, para no caer
+    // silenciosamente en findOrCreate y crear un duplicado.
+    const existing = await usersService
+      .resolveByClerkId(clerkUser.id)
+      .catch((err) => {
+        if (err instanceof NotFoundError) return null;
+        throw err;
+      });
 
     let dbUser;
     if (existing) {
