@@ -52,15 +52,15 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
         .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
           cb(txClient),
         ),
-    } as unknown as ConstructorParameters<typeof OrganizationsService>[0];
+    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[0]>;
 
     const voucherTypesService = {
       seedForOrg: vi.fn().mockResolvedValue([]),
-    } as unknown as ConstructorParameters<typeof OrganizationsService>[1];
+    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[1]>;
 
     const usersService = {
       findOrCreate: vi.fn().mockResolvedValue(CREATED_USER),
-    } as unknown as ConstructorParameters<typeof OrganizationsService>[2];
+    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[2]>;
 
     return {
       service: new OrganizationsService(

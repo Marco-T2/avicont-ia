@@ -148,7 +148,7 @@ describe("MembersService.addMember — new-member saga (REQ-MCS.1, REQ-MCS.6)", 
     expect(repo!.addMember).toHaveBeenCalledTimes(1);
     expect(mockCreateOrganizationMembership).toHaveBeenCalledTimes(1);
     // Divergent log MUST NOT fire on happy path
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(0);
@@ -194,11 +194,11 @@ describe("MembersService.addMember — new-member saga (REQ-MCS.1, REQ-MCS.6)", 
     expect(repo!.addMember).toHaveBeenCalledTimes(1);
     expect(repo!.hardDelete).toHaveBeenCalledWith(ORG_ID, CREATED_MEMBER.id);
     // compensated log fires (warn); divergent log MUST NOT fire
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(1);
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(0);
@@ -229,7 +229,7 @@ describe("MembersService.addMember — new-member saga (REQ-MCS.1, REQ-MCS.6)", 
       operation: "add",
     });
     // divergent log fires exactly once with required schema
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(1);
@@ -246,7 +246,7 @@ describe("MembersService.addMember — new-member saga (REQ-MCS.1, REQ-MCS.6)", 
     expect(logPayload.correlationId).toBeTypeOf("string");
     expect(logPayload.correlationId.length).toBeGreaterThan(0);
     // compensated log MUST NOT fire on double failure
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(0);
@@ -262,11 +262,11 @@ describe("MembersService.addMember — new-member saga (REQ-MCS.1, REQ-MCS.6)", 
     expect(result.id).toBe(CREATED_MEMBER.id);
     expect(repo!.hardDelete).not.toHaveBeenCalled();
     // compensated + divergent MUST NOT fire on idempotent path
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(0);
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(0);
@@ -434,7 +434,7 @@ describe("MembersService.addMember — reactivation saga (REQ-MCS.2)", () => {
       ORG_ID,
       DEACTIVATED_MEMBER.id,
     );
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(1);
@@ -464,7 +464,7 @@ describe("MembersService.addMember — reactivation saga (REQ-MCS.2)", () => {
         clerkState: "membership_absent",
       },
     });
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(1);
@@ -480,7 +480,7 @@ describe("MembersService.addMember — reactivation saga (REQ-MCS.2)", () => {
     });
     expect(payload.correlationId).toBeTypeOf("string");
     expect(payload.correlationId.length).toBeGreaterThan(0);
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(0);
