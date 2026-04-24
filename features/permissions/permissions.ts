@@ -31,7 +31,8 @@ export type Resource =
   | "farms"
   | "documents"
   | "agent"
-  | "period";
+  | "period"
+  | "audit";
 
 export type Action = "read" | "write" | "close" | "reopen";
 
@@ -52,6 +53,8 @@ export const PERMISSIONS_READ: Record<Resource, Role[]> = {
   agent: ["owner", "admin", "contador", "cobrador", "member"],
   // period: anyone with RBAC access can read period state
   period: ["owner", "admin"],
+  // audit: read-only module exposed to administrators (REQ-AUDIT.6).
+  audit: ["owner", "admin"],
 };
 
 export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
@@ -70,6 +73,8 @@ export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
   // period: write gate for metadata CRUD (create fiscal year, edit OPEN period metadata).
   // Close/reopen state transitions use PERMISSIONS_CLOSE and PERMISSIONS_REOPEN respectively.
   period: ["owner", "admin"],
+  // audit: read-only module — no write surface today (design §5.1).
+  audit: [],
 };
 
 /**
@@ -90,6 +95,7 @@ export const PERMISSIONS_CLOSE: Record<Resource, Role[]> = {
   documents: [],
   agent: [],
   period: ["owner", "admin"],
+  audit: [],
 };
 
 /**
@@ -110,6 +116,7 @@ export const PERMISSIONS_REOPEN: Record<Resource, Role[]> = {
   documents: [],
   agent: [],
   period: ["owner", "admin"],
+  audit: [],
 };
 
 export type PostableResource = "sales" | "purchases" | "journal";
