@@ -33,12 +33,15 @@ export async function analyzeDocument(
 
     const prompt = prompts[analysisType];
     const result = await model.generateContent(prompt);
-    const response = result.response;
-
-    return response.text();
-  } catch (error) {
-    console.log("Gemini error:", error);
-    return `Could not analyze for ${analysisType}`;
+    return result.response.text();
+  } catch (err) {
+    logStructured({
+      event: "gemini_document_analysis_failed",
+      level: "warn",
+      analysisType,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
   }
 }
 
