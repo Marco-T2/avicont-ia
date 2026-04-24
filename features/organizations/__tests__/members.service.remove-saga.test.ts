@@ -136,7 +136,7 @@ describe("MembersService.removeMember — saga (REQ-MCS.3)", () => {
     expect(repo!.deactivateMember).toHaveBeenCalledWith(ORG_ID, MEMBER_ID);
     expect(mockDeleteOrganizationMembership).toHaveBeenCalledTimes(1);
     expect(repo!.reactivateMember).not.toHaveBeenCalled();
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(0);
@@ -181,7 +181,7 @@ describe("MembersService.removeMember — saga (REQ-MCS.3)", () => {
       MEMBER_ID,
       ACTIVE_MEMBER.role, // "contador" — previousRole
     );
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(1);
@@ -211,7 +211,7 @@ describe("MembersService.removeMember — saga (REQ-MCS.3)", () => {
         clerkState: "membership_present",
       },
     });
-    const divergentCalls = consoleError.mock.calls.filter((c) =>
+    const divergentCalls = consoleError.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.divergent"),
     );
     expect(divergentCalls).toHaveLength(1);
@@ -228,7 +228,7 @@ describe("MembersService.removeMember — saga (REQ-MCS.3)", () => {
     });
     expect(payload.correlationId).toBeTypeOf("string");
     expect(payload.correlationId.length).toBeGreaterThan(0);
-    const compensatedCalls = consoleWarn.mock.calls.filter((c) =>
+    const compensatedCalls = consoleWarn.mock.calls.filter((c: unknown[]) =>
       String(c[0]).includes("members.clerk_sync.compensated"),
     );
     expect(compensatedCalls).toHaveLength(0);
