@@ -11,15 +11,6 @@ import {
   INVALID_STATUS_TRANSITION,
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
 } from "@/features/shared/errors";
-import {
-  validateTransition,
-  validateDraftOnly,
-  validateLockedEdit,
-  validatePeriodOpen,
-  validateEditable,
-  type DocumentStatus,
-} from "@/features/shared/document-lifecycle.service";
-import { computeReceivableStatus, computePayableStatus } from "@/features/shared/accounting-helpers";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { PaymentRepository } from "./payment.repository";
 import { OrgSettingsService } from "@/features/org-settings/server";
@@ -27,6 +18,14 @@ import {
   AutoEntryGenerator,
   AccountsRepository,
   JournalRepository,
+  validateTransition,
+  validateDraftOnly,
+  validateLockedEdit,
+  validatePeriodOpen,
+  validateEditable,
+  computeReceivableStatus,
+  computePayableStatus,
+  type DocumentStatus,
 } from "@/features/accounting/server";
 import { VoucherTypesRepository } from "@/features/voucher-types/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
