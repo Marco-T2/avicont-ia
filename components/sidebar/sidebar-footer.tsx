@@ -15,6 +15,7 @@
 
 import { Settings } from "lucide-react";
 import { NavItem } from "./nav-item";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 interface SidebarFooterProps {
   /** Current org slug — used to build the settings href */
@@ -23,7 +24,8 @@ interface SidebarFooterProps {
 
 export function SidebarFooter({ orgSlug }: SidebarFooterProps) {
   return (
-    <div className="border-t px-3 py-3">
+    <div className="border-t px-3 py-3 flex flex-col gap-1">
+      <ThemeToggle />
       <NavItem
         icon={<Settings className="h-5 w-5" />}
         label="Configuración"

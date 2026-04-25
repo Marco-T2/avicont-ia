@@ -33,6 +33,10 @@ vi.mock("../sidebar-provider", () => ({
   }),
 }));
 
+vi.mock("next-themes", () => ({
+  useTheme: () => ({ theme: "light", setTheme: vi.fn() }),
+}));
+
 // ---------------------------------------------------------------------------
 // Import production module AFTER mocks
 // ---------------------------------------------------------------------------
@@ -105,5 +109,25 @@ describe("SidebarFooter — Configuración link (REQ-MS.9 footer)", () => {
     renderFooter(OWNER, "acme-corp");
     const link = screen.getByRole("link", { name: /Configuración/i });
     expect(link.getAttribute("href")).toBe("/acme-corp/settings");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Theme toggle wired in the footer (above Configuración)
+// ---------------------------------------------------------------------------
+
+describe("SidebarFooter — theme toggle", () => {
+  it("renders the theme toggle button above the Configuración link", () => {
+    const { container } = renderFooter(OWNER);
+    const toggle = screen.getByRole("button", { name: /tema oscuro/i });
+    const link = screen.getByRole("link", { name: /Configuración/i });
+    expect(toggle).toBeTruthy();
+    // DOM order: toggle should appear before the link
+    const interactives = Array.from(
+      container.querySelectorAll("button, a"),
+    );
+    expect(interactives.indexOf(toggle)).toBeLessThan(
+      interactives.indexOf(link),
+    );
   });
 });

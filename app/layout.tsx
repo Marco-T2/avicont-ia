@@ -5,6 +5,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import Header from "@/components/common/header";
 import { Toaster } from "sonner";
 import { esES } from "@clerk/localizations";//Modificar el idioma a español
+import { ThemeProvider } from "@/components/theme/theme-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -22,13 +23,15 @@ export default async function RootLayout({
     <ClerkProvider localization={esES}>
       <html lang="es" suppressHydrationWarning>
         <body className={inter.className}>
-          <div className="flex flex-col h-screen overflow-hidden">
-            <Header />
-            <div className="flex-1 min-h-0 flex flex-col">
-              {children}
+          <ThemeProvider>
+            <div className="flex flex-col h-screen overflow-hidden">
+              <Header />
+              <div className="flex-1 min-h-0 flex flex-col">
+                {children}
+              </div>
+              <Toaster position="top-right" richColors />
             </div>
-            <Toaster position="top-right" richColors />
-          </div>
+          </ThemeProvider>
         </body>
       </html>
     </ClerkProvider>
