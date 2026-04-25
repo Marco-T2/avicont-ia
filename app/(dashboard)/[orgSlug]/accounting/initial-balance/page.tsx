@@ -19,7 +19,7 @@ export default async function InitialBalancePage({ params }: InitialBalancePageP
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Balance Inicial</h1>
-        <p className="text-gray-500 mt-1">Balance Inicial — Expresado en Bolivianos</p>
+        <p className="text-muted-foreground mt-1">Balance Inicial — Expresado en Bolivianos</p>
       </div>
 
       <InitialBalancePageClient orgSlug={orgSlug} />

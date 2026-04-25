@@ -32,7 +32,7 @@ export default async function ContactsPage({ params }: ContactsPageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Contactos</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Gestión de clientes, proveedores y otros contactos
         </p>
       </div>

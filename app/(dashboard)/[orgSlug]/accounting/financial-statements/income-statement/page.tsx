@@ -21,7 +21,7 @@ export default async function IncomeStatementPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Estado de Resultados</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Análisis de Ingresos y Gastos por período o rango de fechas
         </p>
       </div>

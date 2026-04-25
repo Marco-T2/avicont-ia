@@ -26,7 +26,7 @@ export default async function AccountsPage({ params }: AccountsPageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Plan de Cuentas</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Estructura de cuentas contables de la organizacion
         </p>
       </div>

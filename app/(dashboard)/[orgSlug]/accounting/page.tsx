@@ -67,32 +67,32 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
       description: "Administrar las cuentas contables de la organizacion",
       href: `/${orgSlug}/accounting/accounts`,
       icon: BookOpen,
-      color: "text-blue-600",
-      bgColor: "bg-blue-50",
+      color: "text-blue-600 dark:text-blue-400",
+      bgColor: "bg-blue-50 dark:bg-blue-950/40",
     },
     {
       title: "Libro Diario",
       description: "Registrar y consultar asientos contables",
       href: `/${orgSlug}/accounting/journal`,
       icon: FileText,
-      color: "text-green-600",
-      bgColor: "bg-green-50",
+      color: "text-green-600 dark:text-green-400",
+      bgColor: "bg-green-50 dark:bg-green-950/40",
     },
     {
       title: "Libro Mayor",
       description: "Consultar movimientos por cuenta",
       href: `/${orgSlug}/accounting/ledger`,
       icon: Calculator,
-      color: "text-purple-600",
-      bgColor: "bg-purple-50",
+      color: "text-purple-600 dark:text-purple-400",
+      bgColor: "bg-purple-50 dark:bg-purple-950/40",
     },
     {
       title: "Reportes",
       description: "Catálogo de informes contables y estados financieros",
       href: `/${orgSlug}/informes`,
       icon: BarChart3,
-      color: "text-orange-600",
-      bgColor: "bg-orange-50",
+      color: "text-orange-600 dark:text-orange-400",
+      bgColor: "bg-orange-50 dark:bg-orange-950/40",
     },
   ];
 
@@ -100,7 +100,7 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Contabilidad</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Gestion contable de la organizacion
         </p>
       </div>
@@ -109,7 +109,7 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">Total de Asientos</p>
+            <p className="text-sm text-muted-foreground">Total de Asientos</p>
             <p className="text-2xl font-bold mt-1">
               {entryCount.toLocaleString("es-BO")}
             </p>
@@ -117,7 +117,7 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
         </Card>
         <Card>
           <CardContent className="pt-6">
-            <p className="text-sm text-gray-500">Ultimo Asiento</p>
+            <p className="text-sm text-muted-foreground">Ultimo Asiento</p>
             <p className="text-2xl font-bold mt-1">
               {lastEntryDate ?? "Sin registros"}
             </p>
@@ -138,8 +138,8 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <p className="text-sm text-gray-500">{mod.description}</p>
-                  <ArrowRight className="h-4 w-4 text-gray-400" />
+                  <p className="text-sm text-muted-foreground">{mod.description}</p>
+                  <ArrowRight className="h-4 w-4 text-muted-foreground/70" />
                 </div>
               </CardContent>
             </Card>
