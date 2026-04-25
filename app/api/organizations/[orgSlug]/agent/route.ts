@@ -1,15 +1,20 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { OrganizationsService } from "@/features/organizations/server";
-import { AgentService } from "@/features/ai-agent/server";
+import {
+  AgentService,
+  AgentRateLimitService,
+} from "@/features/ai-agent/server";
 import { ExpensesService } from "@/features/expenses/server";
 import { MortalityService } from "@/features/mortality/server";
 import { createExpenseSchema } from "@/features/expenses/server";
 import { logMortalitySchema } from "@/features/mortality/server";
 import { agentQuerySchema, confirmActionSchema } from "@/features/ai-agent/server";
+import { logStructured } from "@/lib/logging/structured";
 
 const orgService = new OrganizationsService();
 const agentService = new AgentService();
+const rateLimitService = new AgentRateLimitService();
 const expensesService = new ExpensesService();
 const mortalityService = new MortalityService();
 
@@ -38,6 +43,41 @@ export async function POST(
     // ── Query agent ──
     const body = await request.json();
     const { prompt, session_id } = agentQuerySchema.parse(body);
+
+    // Rate limit gate. Per-user and per-org hourly buckets, configurable via
+    // env. Fails open on DB errors (logged inside the service) — accounting
+    // is the priority, the agent must not block on a rate-limit outage.
+    const decision = await rateLimitService.check(
+      organizationId,
+      member.user.id,
+    );
+    if (!decision.allowed) {
+      logStructured({
+        event: "agent_rate_limited",
+        level: "info",
+        orgId: organizationId,
+        userId: member.user.id,
+        scope: decision.scope,
+        limit: decision.limit,
+        retryAfterSeconds: decision.retryAfterSeconds,
+      });
+      return Response.json(
+        {
+          error: "rate_limit_exceeded",
+          scope: decision.scope,
+          limit: decision.limit,
+          retryAfterSeconds: decision.retryAfterSeconds,
+          message:
+            decision.scope === "user"
+              ? `Excediste el límite de ${decision.limit} consultas por hora. Intentá de nuevo en ${decision.retryAfterSeconds} segundos.`
+              : `Tu organización excedió el límite de ${decision.limit} consultas por hora. Intentá de nuevo en ${decision.retryAfterSeconds} segundos.`,
+        },
+        {
+          status: 429,
+          headers: { "Retry-After": String(decision.retryAfterSeconds) },
+        },
+      );
+    }
 
     const response = await agentService.query(
       organizationId,
