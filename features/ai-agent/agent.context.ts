@@ -18,7 +18,7 @@ export async function buildAgentContext(
   const parts: string[] = [];
 
   if (role === "member" || role === "admin" || role === "owner") {
-    parts.push(await buildSocioContext(orgId, userId));
+    parts.push(await buildSocioContext(orgId, userId, role));
   }
 
   if (role === "contador" || role === "admin" || role === "owner") {
@@ -67,10 +67,24 @@ export async function buildRagContext(
 
 async function buildSocioContext(
   orgId: string,
-  _userId: string,
+  userId: string,
+  role: Role,
 ): Promise<string> {
-  const farms = await contextRepo.findFarmsWithActiveLots(orgId);
-  const recentExpenses = await contextRepo.findRecentExpenses(orgId, 5);
+  // Privacy boundary: a `member` socio must only see their own farms / lots
+  // / expenses, not the rest of the org. `admin` and `owner` see everything
+  // (memberId stays undefined → no filter applied at the repo layer).
+  //
+  // If a member has no active OrganizationMember row (data inconsistency or
+  // mid-deactivation), we fail closed: empty memberId filter would show
+  // everything; `__no_member__` matches nothing, which is the safe default.
+  let memberId: string | undefined;
+  if (role === "member") {
+    const id = await contextRepo.findMemberIdByUserId(orgId, userId);
+    memberId = id ?? "__no_member__";
+  }
+
+  const farms = await contextRepo.findFarmsWithActiveLots(orgId, memberId);
+  const recentExpenses = await contextRepo.findRecentExpenses(orgId, 5, memberId);
 
   const activeLotCount = farms.reduce((sum, f) => sum + f.lots.length, 0);
 
