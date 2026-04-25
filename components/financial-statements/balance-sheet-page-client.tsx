@@ -13,6 +13,10 @@ import { StatementToolbar } from "./statement-toolbar";
 import { PreliminaryBanner } from "./preliminary-banner";
 import { ImbalanceBanner } from "./imbalance-banner";
 import {
+  BalanceSheetAnalysisCard,
+  type AnalyzeBalanceSheetResult,
+} from "./balance-sheet-analysis-card";
+import {
   buildBalanceSheetTableRows,
 } from "@/features/accounting/financial-statements/statement-table-rows.utils";
 import type {
@@ -35,10 +39,14 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
   const [lastParams, setLastParams] = useState<QuickBooksFilterParams | null>(null);
   // Params como Record<string, string> para la toolbar de exportación
   const [exportQueryParams, setExportQueryParams] = useState<Record<string, string>>({});
+  // Análisis IA — efímero, se reinicia al re-fetch del balance.
+  const [analysis, setAnalysis] = useState<AnalyzeBalanceSheetResult | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const fetchStatement = useCallback(async (params: QuickBooksFilterParams) => {
     setLoading(true);
     setError(null);
+    setAnalysis(null);
 
     // Construir query params para la API
     const queryParams: Record<string, string> = {};
@@ -104,6 +112,56 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
     }
   }
 
+  async function handleAnalyze() {
+    if (!statement || analyzing) return;
+
+    setAnalyzing(true);
+    setAnalysis(null);
+
+    try {
+      const res = await fetch(
+        `/api/organizations/${orgSlug}/financial-statements/balance-sheet/analyze`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(exportQueryParams),
+        },
+      );
+
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}));
+        setAnalysis({
+          status: "error",
+          reason:
+            body.message ??
+            "Excediste el límite de consultas por hora. Intentá de nuevo más tarde.",
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setAnalysis({
+          status: "error",
+          reason:
+            body.error ??
+            `Error al generar el análisis (${res.status}).`,
+        });
+        return;
+      }
+
+      const data = (await res.json()) as AnalyzeBalanceSheetResult;
+      setAnalysis(data);
+    } catch {
+      setAnalysis({
+        status: "error",
+        reason: "Error de conexión. Intentá de nuevo.",
+      });
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   // Construir árbol de filas para TanStack Table
   const tableRows = statement ? buildBalanceSheetTableRows(statement) : [];
   const tableColumns: SerializedColumn[] = statement?.columns ?? [];
@@ -133,6 +191,8 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
           onRefresh={handleRefresh}
           refreshing={loading}
           hasStatement={!!statement}
+          onAnalyze={handleAnalyze}
+          analyzing={analyzing}
         />
       )}
 
@@ -178,6 +238,9 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
               />
             </CardContent>
           </Card>
+
+          {/* Análisis IA — render inline debajo de la tabla, efímero */}
+          <BalanceSheetAnalysisCard result={analysis} loading={analyzing} />
         </div>
       )}
     </div>

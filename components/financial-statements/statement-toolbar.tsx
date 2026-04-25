@@ -12,6 +12,7 @@ import {
   Printer,
   FileSpreadsheet,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 
 interface StatementToolbarProps {
@@ -27,6 +28,9 @@ interface StatementToolbarProps {
   refreshing?: boolean;
   // Deshabilitar exportación si no hay informe generado
   hasStatement?: boolean;
+  // Análisis IA — sólo se muestra cuando se provee onAnalyze (hoy: balance-sheet)
+  onAnalyze?: () => void;
+  analyzing?: boolean;
 }
 
 type ExportFormat = "pdf" | "xlsx";
@@ -40,6 +44,8 @@ export function StatementToolbar({
   onRefresh,
   refreshing = false,
   hasStatement = false,
+  onAnalyze,
+  analyzing = false,
 }: StatementToolbarProps) {
   const [loadingPdf, setLoadingPdf] = useState(false);
   const [loadingXlsx, setLoadingXlsx] = useState(false);
@@ -142,6 +148,25 @@ export function StatementToolbar({
         )}
         Excel
       </Button>
+
+      {/* Análisis IA — sólo cuando el consumidor pasa onAnalyze */}
+      {onAnalyze && (
+        <Button
+          type="button"
+          variant="default"
+          size="sm"
+          onClick={onAnalyze}
+          disabled={!hasStatement || analyzing}
+          aria-label="Generar análisis IA del Balance General"
+        >
+          {analyzing ? (
+            <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+          ) : (
+            <Sparkles className="h-4 w-4 mr-1.5" />
+          )}
+          Análisis IA
+        </Button>
+      )}
     </div>
   );
 }
