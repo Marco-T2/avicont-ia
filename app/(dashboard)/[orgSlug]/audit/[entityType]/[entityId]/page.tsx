@@ -50,7 +50,7 @@ export default async function AuditDetailPage({
         <h1 className="text-3xl font-bold">
           Auditoría · {entityType} · {entityId}
         </h1>
-        <p className="mt-1 text-gray-500">Historial completo del comprobante</p>
+        <p className="mt-1 text-muted-foreground">Historial completo del comprobante</p>
       </div>
 
       <AuditDetailTimeline events={serialisedEvents} />
