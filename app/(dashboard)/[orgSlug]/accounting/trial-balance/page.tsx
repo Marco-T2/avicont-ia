@@ -19,7 +19,7 @@ export default async function TrialBalancePage({ params }: TrialBalancePageProps
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Balance de Comprobación</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Balance de Comprobación de Sumas y Saldos — Todos los tipos de asiento
         </p>
       </div>

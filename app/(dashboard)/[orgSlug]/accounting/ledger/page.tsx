@@ -25,7 +25,7 @@ export default async function LedgerPage({ params }: LedgerPageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Libro Mayor</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Movimientos por cuenta contable
         </p>
       </div>

@@ -46,7 +46,7 @@ export default async function CloseEventPage({
       <div className="space-y-6">
         <div>
           <h1 className="text-3xl font-bold">Evento de Cierre</h1>
-          <p className="text-gray-500 mt-1">No se especificó un evento de cierre.</p>
+          <p className="text-muted-foreground mt-1">No se especificó un evento de cierre.</p>
         </div>
       </div>
     );
@@ -70,7 +70,7 @@ export default async function CloseEventPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Evento de Cierre</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Registro de auditoría del cierre de período
         </p>
       </div>

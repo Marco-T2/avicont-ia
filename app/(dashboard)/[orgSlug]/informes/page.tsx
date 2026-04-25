@@ -24,7 +24,7 @@ export default async function InformesPage({ params }: InformesPageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Informes</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Catálogo de reportes contables y financieros
         </p>
       </div>

@@ -35,7 +35,7 @@ export default async function MonthlyClosePage({ params, searchParams }: Monthly
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Cierre Mensual</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Revisión y cierre de períodos fiscales
         </p>
       </div>

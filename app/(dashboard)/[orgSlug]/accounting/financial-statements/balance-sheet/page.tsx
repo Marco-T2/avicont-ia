@@ -21,7 +21,7 @@ export default async function BalanceSheetPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Balance General</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Estado de Situación Patrimonial — Activos, Pasivos y Patrimonio
         </p>
       </div>

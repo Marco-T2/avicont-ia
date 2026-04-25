@@ -30,7 +30,7 @@ export default async function LibroComprasPage({ params }: LibroComprasPageProps
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Libro de Compras IVA</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Registro SIN Bolivia — 23 columnas
         </p>
       </div>

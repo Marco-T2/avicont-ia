@@ -19,7 +19,7 @@ export default async function WorksheetPage({ params }: WorksheetPageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Hoja de Trabajo</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Hoja de Trabajo 12 Columnas — Herramienta auxiliar de ajustes contables
         </p>
       </div>

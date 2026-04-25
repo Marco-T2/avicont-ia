@@ -57,7 +57,7 @@ export default async function JournalPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Libro Diario</h1>
-        <p className="text-gray-500 mt-1">Registro de asientos contables</p>
+        <p className="text-muted-foreground mt-1">Registro de asientos contables</p>
       </div>
 
       <JournalEntryList

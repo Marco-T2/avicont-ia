@@ -19,7 +19,7 @@ export default async function EquityStatementPage({ params }: EquityStatementPag
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Estado de Evolución del Patrimonio Neto</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Estado de Evolución del Patrimonio Neto (F-605) — Expresado en Bolivianos
         </p>
       </div>
