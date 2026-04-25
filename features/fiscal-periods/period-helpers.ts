@@ -10,6 +10,8 @@ import type { FiscalPeriod } from "@/generated/prisma/client";
  *
  * Only OPEN periods are candidates. CLOSED and DRAFT periods are ignored.
  * Matching is inclusive on both bounds: startDate ≤ date ≤ endDate.
+ *
+ * Acepta `startDate`/`endDate` como Date (server) o string ISO (post-JSON wire).
  */
 export function findPeriodCoveringDate(
   date: string,
@@ -19,8 +21,12 @@ export function findPeriodCoveringDate(
     periods.find(
       (p) =>
         p.status === "OPEN" &&
-        p.startDate.toISOString().slice(0, 10) <= date &&
-        date <= p.endDate.toISOString().slice(0, 10),
+        toIsoDateSlice(p.startDate) <= date &&
+        date <= toIsoDateSlice(p.endDate),
     ) ?? null
   );
+}
+
+function toIsoDateSlice(d: Date | string): string {
+  return typeof d === "string" ? d.slice(0, 10) : d.toISOString().slice(0, 10);
 }
