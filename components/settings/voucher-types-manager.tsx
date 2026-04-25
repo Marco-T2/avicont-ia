@@ -212,20 +212,20 @@ export default function VoucherTypesManager({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left py-3 px-4 font-medium text-gray-600 w-20">
+              <tr className="border-b bg-muted/50">
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground w-20">
                   Código
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-600">
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                   Nombre
                 </th>
-                <th className="text-center py-3 px-4 font-medium text-gray-600 w-20">
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-20">
                   Prefijo
                 </th>
-                <th className="text-center py-3 px-4 font-medium text-gray-600 w-24">
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">
                   Asientos
                 </th>
-                <th className="text-center py-3 px-4 font-medium text-gray-600 w-24">
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">
                   Estado
                 </th>
                 <th className="w-24 py-3 px-4" />
@@ -233,7 +233,7 @@ export default function VoucherTypesManager({
             </thead>
             <tbody>
               {creating !== null && (
-                <tr className="border-b bg-blue-50/40">
+                <tr className="border-b bg-info/10">
                   <td className="py-2 px-4">
                     <Input
                       autoFocus
@@ -276,9 +276,9 @@ export default function VoucherTypesManager({
                       className="h-8 uppercase font-mono text-center"
                     />
                   </td>
-                  <td className="py-2 px-4 text-center text-gray-400">—</td>
+                  <td className="py-2 px-4 text-center text-muted-foreground">—</td>
                   <td className="py-2 px-4 text-center">
-                    <Badge className="bg-green-100 text-green-800">Activo</Badge>
+                    <Badge className="bg-success/10 text-success">Activo</Badge>
                   </td>
                   <td className="py-2 px-4">
                     <div className="flex items-center justify-end gap-1">
@@ -286,7 +286,7 @@ export default function VoucherTypesManager({
                         type="button"
                         size="icon-sm"
                         variant="ghost"
-                        className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                        className="text-success hover:text-success hover:bg-success/10"
                         onClick={handleCreate}
                         disabled={isSaving}
                       >
@@ -300,7 +300,7 @@ export default function VoucherTypesManager({
                         type="button"
                         size="icon-sm"
                         variant="ghost"
-                        className="text-gray-500 hover:text-gray-700"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={cancelCreate}
                       >
                         <X className="h-4 w-4" />
@@ -312,7 +312,7 @@ export default function VoucherTypesManager({
 
               {voucherTypes.length === 0 && creating === null && (
                 <tr>
-                  <td colSpan={6} className="py-10 text-center text-gray-500">
+                  <td colSpan={6} className="py-10 text-center text-muted-foreground">
                     No hay tipos de comprobante registrados.
                   </td>
                 </tr>
@@ -325,8 +325,8 @@ export default function VoucherTypesManager({
 
                 if (isEditing) {
                   return (
-                    <tr key={item.id} className="border-b bg-amber-50/40">
-                      <td className="py-2 px-4 font-mono text-sm text-gray-500">
+                    <tr key={item.id} className="border-b bg-warning/10">
+                      <td className="py-2 px-4 font-mono text-sm text-muted-foreground">
                         {item.code}
                       </td>
                       <td className="py-2 px-4">
@@ -356,13 +356,13 @@ export default function VoucherTypesManager({
                           className="h-8 uppercase font-mono text-center"
                         />
                       </td>
-                      <td className="py-2 px-4 text-center text-gray-500">{count}</td>
+                      <td className="py-2 px-4 text-center text-muted-foreground">{count}</td>
                       <td className="py-2 px-4 text-center">
                         <Badge
                           className={
                             item.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-600"
+                              ? "bg-success/10 text-success"
+                              : "bg-muted text-muted-foreground"
                           }
                         >
                           {item.isActive ? "Activo" : "Inactivo"}
@@ -374,7 +374,7 @@ export default function VoucherTypesManager({
                             type="button"
                             size="icon-sm"
                             variant="ghost"
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                            className="text-success hover:text-success hover:bg-success/10"
                             onClick={handleSaveEdit}
                             disabled={isSaving}
                           >
@@ -388,7 +388,7 @@ export default function VoucherTypesManager({
                             type="button"
                             size="icon-sm"
                             variant="ghost"
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={cancelEdit}
                           >
                             <X className="h-4 w-4" />
@@ -402,18 +402,18 @@ export default function VoucherTypesManager({
                 return (
                   <tr
                     key={item.id}
-                    className={`border-b hover:bg-gray-50 ${!item.isActive ? "opacity-60" : ""}`}
+                    className={`border-b hover:bg-accent/50 ${!item.isActive ? "opacity-60" : ""}`}
                   >
                     <td className="py-3 px-4 font-mono text-sm">{item.code}</td>
                     <td className="py-3 px-4">{item.name}</td>
                     <td className="py-3 px-4 text-center font-mono">{item.prefix}</td>
-                    <td className="py-3 px-4 text-center text-gray-600">{count}</td>
+                    <td className="py-3 px-4 text-center text-muted-foreground">{count}</td>
                     <td className="py-3 px-4 text-center">
                       <Badge
                         className={
                           item.isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
+                            ? "bg-success/10 text-success"
+                            : "bg-muted text-muted-foreground"
                         }
                       >
                         {item.isActive ? "Activo" : "Inactivo"}
@@ -426,7 +426,7 @@ export default function VoucherTypesManager({
                             type="button"
                             size="icon-sm"
                             variant="ghost"
-                            className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                            className="text-info hover:text-info hover:bg-info/10"
                             onClick={() => openEdit(item)}
                             disabled={isLoading}
                             title="Editar"
@@ -439,8 +439,8 @@ export default function VoucherTypesManager({
                             variant="ghost"
                             className={
                               item.isActive
-                                ? "text-red-500 hover:text-red-700 hover:bg-red-50"
-                                : "text-green-500 hover:text-green-700 hover:bg-green-50"
+                                ? "text-destructive hover:text-destructive hover:bg-destructive/10"
+                                : "text-success hover:text-success hover:bg-success/10"
                             }
                             onClick={() => handleToggleActive(item)}
                             disabled={isLoading}

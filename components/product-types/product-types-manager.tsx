@@ -244,17 +244,17 @@ export default function ProductTypesManager({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="text-left py-3 px-4 font-medium text-gray-600">
+              <tr className="border-b bg-muted/50">
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                   Nombre
                 </th>
-                <th className="text-left py-3 px-4 font-medium text-gray-600 w-32">
+                <th className="text-left py-3 px-4 font-medium text-muted-foreground w-32">
                   Código
                 </th>
-                <th className="text-center py-3 px-4 font-medium text-gray-600 w-24">
+                <th className="text-center py-3 px-4 font-medium text-muted-foreground w-24">
                   Estado
                 </th>
-                <th className="text-right py-3 px-4 font-medium text-gray-600 w-28">
+                <th className="text-right py-3 px-4 font-medium text-muted-foreground w-28">
                   Orden
                 </th>
                 <th className="w-28 py-3 px-4" />
@@ -263,7 +263,7 @@ export default function ProductTypesManager({
             <tbody>
               {/* New product row */}
               {creating !== null && (
-                <tr className="border-b bg-blue-50/40">
+                <tr className="border-b bg-info/10">
                   <td className="py-2 px-4">
                     <Input
                       autoFocus
@@ -296,7 +296,7 @@ export default function ProductTypesManager({
                     />
                   </td>
                   <td className="py-2 px-4 text-center">
-                    <Badge className="bg-green-100 text-green-800">Activo</Badge>
+                    <Badge className="bg-success/10 text-success">Activo</Badge>
                   </td>
                   <td className="py-2 px-4">
                     <Input
@@ -319,7 +319,7 @@ export default function ProductTypesManager({
                         type="button"
                         size="icon-sm"
                         variant="ghost"
-                        className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                        className="text-success hover:text-success hover:bg-success/10"
                         onClick={handleCreate}
                         disabled={isSaving}
                       >
@@ -333,7 +333,7 @@ export default function ProductTypesManager({
                         type="button"
                         size="icon-sm"
                         variant="ghost"
-                        className="text-gray-500 hover:text-gray-700"
+                        className="text-muted-foreground hover:text-foreground"
                         onClick={cancelCreate}
                       >
                         <X className="h-4 w-4" />
@@ -346,7 +346,7 @@ export default function ProductTypesManager({
               {/* Existing product rows */}
               {productTypes.length === 0 && creating === null && (
                 <tr>
-                  <td colSpan={5} className="py-10 text-center text-gray-500">
+                  <td colSpan={5} className="py-10 text-center text-muted-foreground">
                     No hay tipos de producto registrados.
                   </td>
                 </tr>
@@ -357,7 +357,7 @@ export default function ProductTypesManager({
 
                 if (isEditing) {
                   return (
-                    <tr key={item.id} className="border-b bg-amber-50/40">
+                    <tr key={item.id} className="border-b bg-warning/10">
                       <td className="py-2 px-4">
                         <Input
                           autoFocus
@@ -391,8 +391,8 @@ export default function ProductTypesManager({
                         <Badge
                           className={
                             item.isActive
-                              ? "bg-green-100 text-green-800"
-                              : "bg-gray-100 text-gray-600"
+                              ? "bg-success/10 text-success"
+                              : "bg-muted text-muted-foreground"
                           }
                         >
                           {item.isActive ? "Activo" : "Inactivo"}
@@ -420,7 +420,7 @@ export default function ProductTypesManager({
                             type="button"
                             size="icon-sm"
                             variant="ghost"
-                            className="text-green-600 hover:text-green-800 hover:bg-green-50"
+                            className="text-success hover:text-success hover:bg-success/10"
                             onClick={handleSaveEdit}
                             disabled={isSaving}
                           >
@@ -434,7 +434,7 @@ export default function ProductTypesManager({
                             type="button"
                             size="icon-sm"
                             variant="ghost"
-                            className="text-gray-500 hover:text-gray-700"
+                            className="text-muted-foreground hover:text-foreground"
                             onClick={cancelEdit}
                           >
                             <X className="h-4 w-4" />
@@ -448,7 +448,7 @@ export default function ProductTypesManager({
                 return (
                   <tr
                     key={item.id}
-                    className={`border-b hover:bg-gray-50 ${!item.isActive ? "opacity-60" : ""}`}
+                    className={`border-b hover:bg-accent/50 ${!item.isActive ? "opacity-60" : ""}`}
                   >
                     <td className="py-3 px-4">{item.name}</td>
                     <td className="py-3 px-4 font-mono text-sm">{item.code}</td>
@@ -456,14 +456,14 @@ export default function ProductTypesManager({
                       <Badge
                         className={
                           item.isActive
-                            ? "bg-green-100 text-green-800"
-                            : "bg-gray-100 text-gray-600"
+                            ? "bg-success/10 text-success"
+                            : "bg-muted text-muted-foreground"
                         }
                       >
                         {item.isActive ? "Activo" : "Inactivo"}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-right text-gray-500">
+                    <td className="py-3 px-4 text-right text-muted-foreground">
                       {item.sortOrder}
                     </td>
                     <td className="py-3 px-4">
@@ -472,7 +472,7 @@ export default function ProductTypesManager({
                           type="button"
                           size="icon-sm"
                           variant="ghost"
-                          className="text-blue-500 hover:text-blue-700 hover:bg-blue-50"
+                          className="text-info hover:text-info hover:bg-info/10"
                           onClick={() => openEdit(item)}
                           disabled={isLoading}
                           title="Editar"
@@ -485,8 +485,8 @@ export default function ProductTypesManager({
                           variant="ghost"
                           className={
                             item.isActive
-                              ? "text-red-500 hover:text-red-700 hover:bg-red-50"
-                              : "text-green-500 hover:text-green-700 hover:bg-green-50"
+                              ? "text-destructive hover:text-destructive hover:bg-destructive/10"
+                              : "text-success hover:text-success hover:bg-success/10"
                           }
                           onClick={() => handleToggleActive(item)}
                           disabled={isLoading}
