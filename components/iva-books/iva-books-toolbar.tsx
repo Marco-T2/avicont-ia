@@ -84,7 +84,7 @@ export function IvaBooksToolbar({
     <div className="flex flex-wrap items-end gap-3">
       {/* Selector de período fiscal */}
       <div className="flex flex-col gap-1 min-w-[180px]">
-        <Label htmlFor="iva-period-select" className="text-xs font-medium text-gray-600">
+        <Label htmlFor="iva-period-select" className="text-xs font-medium text-muted-foreground">
           Período fiscal
         </Label>
         <select

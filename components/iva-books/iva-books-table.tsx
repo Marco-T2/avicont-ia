@@ -47,27 +47,27 @@ function PurchasesTable({
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse min-w-[1400px]">
         <thead>
-          <tr className="border-b bg-gray-50 text-left">
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Fecha</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">NIT Proveedor</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap min-w-[150px]">Razón Social</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Nro. Factura</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Cód. Autorización</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Tipo Compra</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Importe Total</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">ICE</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">IEHD</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">IPJ</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Tasas</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Otros NoSuj.</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Exentos</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Tasa 0%</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Subtotal</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Descuento</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Gift Card</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Base CF</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">CF IVA</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Estado</th>
+          <tr className="border-b bg-muted text-left">
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Fecha</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">NIT Proveedor</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap min-w-[150px]">Razón Social</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Nro. Factura</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Cód. Autorización</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Tipo Compra</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Importe Total</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">ICE</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">IEHD</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">IPJ</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Tasas</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Otros NoSuj.</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Exentos</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Tasa 0%</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Subtotal</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Descuento</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Gift Card</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Base CF</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">CF IVA</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Estado</th>
             {onVoid && <th className="py-2 px-2 w-16" />}
           </tr>
         </thead>
@@ -76,7 +76,7 @@ function PurchasesTable({
             <tr>
               <td
                 colSpan={onVoid ? 21 : 20}
-                className="py-12 text-center text-sm text-gray-400"
+                className="py-12 text-center text-sm text-muted-foreground/70"
               >
                 No hay entradas para el período seleccionado
               </td>
@@ -85,7 +85,7 @@ function PurchasesTable({
           {entries.map((e) => (
             <tr
               key={e.id}
-              className={`border-b hover:bg-gray-50/50 ${e.status === "VOIDED" ? "opacity-50 line-through" : ""}`}
+              className={`border-b hover:bg-accent/50 ${e.status === "VOIDED" ? "opacity-50 line-through" : ""}`}
               data-testid={`purchase-row-${e.id}`}
             >
               <td className="py-1.5 px-2 whitespace-nowrap">{fmt(e.fechaFactura)}</td>
@@ -106,10 +106,10 @@ function PurchasesTable({
               <td className="py-1.5 px-2 text-right font-mono">{fmtMoney(e.codigoDescuentoAdicional)}</td>
               <td className="py-1.5 px-2 text-right font-mono">{fmtMoney(e.importeGiftCard)}</td>
               <td className="py-1.5 px-2 text-right font-mono font-medium">{fmtMoney(e.baseIvaSujetoCf)}</td>
-              <td className="py-1.5 px-2 text-right font-mono font-bold text-blue-700">{fmtMoney(e.dfCfIva)}</td>
+              <td className="py-1.5 px-2 text-right font-mono font-bold text-info">{fmtMoney(e.dfCfIva)}</td>
               <td className="py-1.5 px-2">
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                  e.status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
+                  e.status === "ACTIVE" ? "bg-success/10 text-success dark:bg-success/20" : "bg-destructive/10 text-destructive dark:bg-destructive/20"
                 }`}>
                   {e.status === "ACTIVE" ? "Activo" : "Anulado"}
                 </span>
@@ -120,7 +120,7 @@ function PurchasesTable({
                     <button
                       type="button"
                       onClick={() => onVoid(e.id)}
-                      className="text-xs text-red-500 hover:text-red-700 underline"
+                      className="text-xs text-destructive hover:text-destructive/80 underline"
                     >
                       Anular
                     </button>
@@ -148,27 +148,27 @@ function SalesTable({
     <div className="overflow-x-auto">
       <table className="w-full text-xs border-collapse min-w-[1500px]">
         <thead>
-          <tr className="border-b bg-gray-50 text-left">
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Fecha</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">NIT Cliente</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap min-w-[150px]">Razón Social</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Nro. Factura</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Cód. Autorización</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Estado SIN</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Importe Total</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">ICE</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">IEHD</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">IPJ</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Tasas</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Otros NoSuj.</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Exentos</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Tasa 0%</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Subtotal</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Descuento</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Gift Card</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">Base DF</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap text-right">DF IVA</th>
-            <th className="py-2 px-2 font-medium text-gray-600 whitespace-nowrap">Estado</th>
+          <tr className="border-b bg-muted text-left">
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Fecha</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">NIT Cliente</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap min-w-[150px]">Razón Social</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Nro. Factura</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Cód. Autorización</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Estado SIN</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Importe Total</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">ICE</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">IEHD</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">IPJ</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Tasas</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Otros NoSuj.</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Exentos</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Tasa 0%</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Subtotal</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Descuento</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Gift Card</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">Base DF</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap text-right">DF IVA</th>
+            <th className="py-2 px-2 font-medium text-muted-foreground whitespace-nowrap">Estado</th>
             {onVoid && <th className="py-2 px-2 w-16" />}
           </tr>
         </thead>
@@ -177,7 +177,7 @@ function SalesTable({
             <tr>
               <td
                 colSpan={onVoid ? 21 : 20}
-                className="py-12 text-center text-sm text-gray-400"
+                className="py-12 text-center text-sm text-muted-foreground/70"
               >
                 No hay entradas para el período seleccionado
               </td>
@@ -186,7 +186,7 @@ function SalesTable({
           {entries.map((e) => (
             <tr
               key={e.id}
-              className={`border-b hover:bg-gray-50/50 ${e.status === "VOIDED" ? "opacity-50 line-through" : ""}`}
+              className={`border-b hover:bg-accent/50 ${e.status === "VOIDED" ? "opacity-50 line-through" : ""}`}
               data-testid={`sale-row-${e.id}`}
             >
               <td className="py-1.5 px-2 whitespace-nowrap">{fmt(e.fechaFactura)}</td>
@@ -195,7 +195,7 @@ function SalesTable({
               <td className="py-1.5 px-2 font-mono">{fmt(e.numeroFactura)}</td>
               <td className="py-1.5 px-2 font-mono text-xs truncate max-w-[120px]" title={fmt(e.codigoAutorizacion)}>{fmt(e.codigoAutorizacion)}</td>
               <td className="py-1.5 px-2">
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-purple-100 text-purple-800">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-mono font-medium bg-primary/10 text-primary dark:bg-primary/20">
                   {fmt(e.estadoSIN)}
                 </span>
               </td>
@@ -211,10 +211,10 @@ function SalesTable({
               <td className="py-1.5 px-2 text-right font-mono">{fmtMoney(e.codigoDescuentoAdicional)}</td>
               <td className="py-1.5 px-2 text-right font-mono">{fmtMoney(e.importeGiftCard)}</td>
               <td className="py-1.5 px-2 text-right font-mono font-medium">{fmtMoney(e.baseIvaSujetoCf)}</td>
-              <td className="py-1.5 px-2 text-right font-mono font-bold text-orange-700">{fmtMoney(e.dfIva)}</td>
+              <td className="py-1.5 px-2 text-right font-mono font-bold text-warning">{fmtMoney(e.dfIva)}</td>
               <td className="py-1.5 px-2">
                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${
-                  e.status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-red-100 text-red-700"
+                  e.status === "ACTIVE" ? "bg-success/10 text-success dark:bg-success/20" : "bg-destructive/10 text-destructive dark:bg-destructive/20"
                 }`}>
                   {e.status === "ACTIVE" ? "Activo" : "Anulado"}
                 </span>
@@ -225,7 +225,7 @@ function SalesTable({
                     <button
                       type="button"
                       onClick={() => onVoid(e.id)}
-                      className="text-xs text-red-500 hover:text-red-700 underline"
+                      className="text-xs text-destructive hover:text-destructive/80 underline"
                     >
                       Anular
                     </button>

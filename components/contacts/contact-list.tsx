@@ -20,11 +20,11 @@ import ContactForm from "./contact-form";
 import type { ContactWithBalance, ContactFilters, Contact } from "@/features/contacts";
 
 const TYPE_BADGE_STYLES: Record<string, string> = {
-  CLIENTE: "bg-blue-100 text-blue-800",
-  PROVEEDOR: "bg-orange-100 text-orange-800",
-  SOCIO: "bg-green-100 text-green-800",
-  TRANSPORTISTA: "bg-purple-100 text-purple-800",
-  OTRO: "bg-gray-100 text-gray-600",
+  CLIENTE: "bg-info/10 text-info dark:bg-info/20",
+  PROVEEDOR: "bg-warning/10 text-warning dark:bg-warning/20",
+  SOCIO: "bg-success/10 text-success dark:bg-success/20",
+  TRANSPORTISTA: "bg-primary/10 text-primary dark:bg-primary/20",
+  OTRO: "bg-muted text-muted-foreground",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -113,24 +113,24 @@ export default function ContactList({ contacts: initialContacts, orgSlug }: Cont
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Tipo</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Nombre</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">NIT</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Teléfono</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">CxC Abierta</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">CxP Abierta</th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">Estado</th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">Acciones</th>
+                  <tr className="border-b bg-muted">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nombre</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">NIT</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Teléfono</th>
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">CxC Abierta</th>
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">CxP Abierta</th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={8} className="py-12 text-center">
-                        <Users className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-600">No hay contactos registrados</p>
-                        <p className="text-sm text-gray-400 mt-1">
+                        <Users className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                        <p className="text-muted-foreground">No hay contactos registrados</p>
+                        <p className="text-sm text-muted-foreground/70 mt-1">
                           {filters.type || filters.search || filters.isActive !== undefined
                             ? "Pruebe ajustando los filtros"
                             : "Cree el primer contacto para comenzar"}
@@ -141,11 +141,11 @@ export default function ContactList({ contacts: initialContacts, orgSlug }: Cont
                     filtered.map((contact) => (
                       <tr
                         key={contact.id}
-                        className={`border-b hover:bg-gray-50 ${!contact.isActive ? "opacity-50" : ""}`}
+                        className={`border-b hover:bg-accent/50 ${!contact.isActive ? "opacity-50" : ""}`}
                       >
                         <td className="py-3 px-4">
                           <Badge
-                            className={TYPE_BADGE_STYLES[contact.type] ?? "bg-gray-100 text-gray-600"}
+                            className={TYPE_BADGE_STYLES[contact.type] ?? "bg-muted text-muted-foreground"}
                           >
                             {TYPE_LABELS[contact.type] ?? contact.type}
                           </Badge>
@@ -158,23 +158,23 @@ export default function ContactList({ contacts: initialContacts, orgSlug }: Cont
                             {contact.name}
                           </Link>
                         </td>
-                        <td className="py-3 px-4 text-gray-600 font-mono text-xs">
+                        <td className="py-3 px-4 text-muted-foreground font-mono text-xs">
                           {contact.nit ?? "—"}
                         </td>
-                        <td className="py-3 px-4 text-gray-600">
+                        <td className="py-3 px-4 text-muted-foreground">
                           {contact.phone ?? "—"}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-xs text-blue-700">
+                        <td className="py-3 px-4 text-right font-mono text-xs text-info">
                           {formatCurrency(String(contact.balanceSummary.totalReceivable))}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-xs text-orange-700">
+                        <td className="py-3 px-4 text-right font-mono text-xs text-warning">
                           {formatCurrency(String(contact.balanceSummary.totalPayable))}
                         </td>
                         <td className="py-3 px-4">
                           {contact.isActive ? (
-                            <Badge className="bg-green-100 text-green-800">Activo</Badge>
+                            <Badge className="bg-success/10 text-success dark:bg-success/20">Activo</Badge>
                           ) : (
-                            <Badge className="bg-gray-100 text-gray-600">Inactivo</Badge>
+                            <Badge className="bg-muted text-muted-foreground">Inactivo</Badge>
                           )}
                         </td>
                         <td className="py-3 px-4 text-right">

@@ -15,11 +15,11 @@ import ContactForm from "./contact-form";
 import type { ContactWithBalance } from "@/features/contacts";
 
 const TYPE_BADGE_STYLES: Record<string, string> = {
-  CLIENTE: "bg-blue-100 text-blue-800",
-  PROVEEDOR: "bg-orange-100 text-orange-800",
-  SOCIO: "bg-green-100 text-green-800",
-  TRANSPORTISTA: "bg-purple-100 text-purple-800",
-  OTRO: "bg-gray-100 text-gray-600",
+  CLIENTE: "bg-info/10 text-info dark:bg-info/20",
+  PROVEEDOR: "bg-warning/10 text-warning dark:bg-warning/20",
+  SOCIO: "bg-success/10 text-success dark:bg-success/20",
+  TRANSPORTISTA: "bg-primary/10 text-primary dark:bg-primary/20",
+  OTRO: "bg-muted text-muted-foreground",
 };
 
 const TYPE_LABELS: Record<string, string> = {
@@ -62,12 +62,12 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-xl">{contact.name}</CardTitle>
                   <Badge
-                    className={TYPE_BADGE_STYLES[contact.type] ?? "bg-gray-100 text-gray-600"}
+                    className={TYPE_BADGE_STYLES[contact.type] ?? "bg-muted text-muted-foreground"}
                   >
                     {TYPE_LABELS[contact.type] ?? contact.type}
                   </Badge>
                   {!contact.isActive && (
-                    <Badge className="bg-gray-100 text-gray-500">Inactivo</Badge>
+                    <Badge className="bg-muted text-muted-foreground">Inactivo</Badge>
                   )}
                 </div>
               </div>
@@ -128,7 +128,7 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total CxC</p>
-              <p className="text-2xl font-bold text-blue-700 mt-1">
+              <p className="text-2xl font-bold text-info mt-1">
                 {formatCurrency(totalReceivable)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Cuentas por cobrar abiertas</p>
@@ -138,7 +138,7 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Total CxP</p>
-              <p className="text-2xl font-bold text-orange-700 mt-1">
+              <p className="text-2xl font-bold text-warning mt-1">
                 {formatCurrency(totalPayable)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">Cuentas por pagar abiertas</p>
@@ -150,7 +150,7 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
               <p className="text-sm text-muted-foreground">Posición Neta</p>
               <p
                 className={`text-2xl font-bold mt-1 ${
-                  netPosition >= 0 ? "text-green-700" : "text-red-600"
+                  netPosition >= 0 ? "text-success" : "text-destructive"
                 }`}
               >
                 {formatCurrency(netPosition)}
