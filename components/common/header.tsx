@@ -17,7 +17,7 @@ export default function Header() {
     ];
 
     return (
-        <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
+        <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60">
             <div className="px-4 lg:px-8 h-16 flex items-center justify-between">
                 <Link href="/" className="flex items-center gap-2 font-bold text-xl">
                     <Brain className="w-6 h-6 text-blue-600" />
@@ -41,7 +41,7 @@ export default function Header() {
                 <div className="flex items-center gap-4">
                     {isSignedIn ? (
                         <div className="flex items-center gap-2">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-muted-foreground">
                                 {organization ? `En ${organization.name}` : user?.firstName || user?.username}
                             </span>
                             <RoleBadge />

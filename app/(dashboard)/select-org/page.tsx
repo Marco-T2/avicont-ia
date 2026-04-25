@@ -135,7 +135,7 @@ export default function SelectOrgPage() {
     <div className="container max-w-4xl mx-auto p-6">
       <div className="mb-8 text-center">
         <h1 className="text-3xl font-bold">¡Bienvenido, {user?.firstName}!</h1>
-        <p className="text-gray-600">
+        <p className="text-muted-foreground">
           {hasOrganizations
             ? "Seleccioná una organización para continuar"
             : "Esperando asignación a una organización"}
@@ -206,26 +206,26 @@ export default function SelectOrgPage() {
               {userMemberships?.data?.map((membership) => (
                 <div
                   key={membership.organization.id}
-                  className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+                  className="border rounded-lg p-4 hover:bg-muted cursor-pointer transition-colors"
                   onClick={() => handleSelectOrg(membership.organization)}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                        <Building className="h-6 w-6 text-blue-600" />
+                      <div className="h-12 w-12 bg-blue-100 dark:bg-blue-900/40 rounded-lg flex items-center justify-center">
+                        <Building className="h-6 w-6 text-blue-600 dark:text-blue-300" />
                       </div>
                       <div>
                         <h3 className="font-semibold text-lg">
                           {membership.organization.name}
                         </h3>
-                        <span className="bg-gray-100 px-2 py-1 rounded text-xs capitalize text-gray-500">
+                        <span className="bg-muted px-2 py-1 rounded text-xs capitalize text-muted-foreground">
                           {membership.role === "org:admin" ? "Administrador" :
                            membership.role === "org:owner" ? "Propietario" :
                            "Miembro"}
                         </span>
                       </div>
                     </div>
-                    <ArrowRight className="h-5 w-5 text-gray-400" />
+                    <ArrowRight className="h-5 w-5 text-muted-foreground/70" />
                   </div>
                 </div>
               ))}
@@ -236,11 +236,11 @@ export default function SelectOrgPage() {
         <Card>
           <CardContent className="py-16">
             <div className="text-center">
-              <Clock className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+              <Clock className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
               <h3 className="text-xl font-semibold mb-2">
                 Aún no pertenecés a ninguna organización
               </h3>
-              <p className="text-gray-500 max-w-md mx-auto mb-6">
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">
                 Un administrador debe agregarte como miembro de una organización.
                 Contactá al administrador de tu asociación para que te asigne acceso.
               </p>
