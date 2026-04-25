@@ -34,11 +34,35 @@ interface AgentActiveAccount {
 // ── Repository ──
 
 export class AgentContextRepository extends BaseRepository {
-  async findFarmsWithActiveLots(organizationId: string): Promise<AgentFarmWithActiveLots[]> {
+  /**
+   * Resolve the active OrganizationMember.id for a (org, user) pair. Returns
+   * null if the user has no active membership in this org. Used by the agent
+   * context layer to scope a socio's view to their own farms.
+   */
+  async findMemberIdByUserId(
+    organizationId: string,
+    userId: string,
+  ): Promise<string | null> {
+    const member = await this.db.organizationMember.findFirst({
+      where: { organizationId, userId, deactivatedAt: null },
+      select: { id: true },
+    });
+    return member?.id ?? null;
+  }
+
+  /**
+   * @param memberId - When provided, only farms owned by this OrganizationMember
+   *   are returned. Used to scope the socio agent context to "my farms only"
+   *   instead of leaking every farm in the org.
+   */
+  async findFarmsWithActiveLots(
+    organizationId: string,
+    memberId?: string,
+  ): Promise<AgentFarmWithActiveLots[]> {
     const scope = this.requireOrg(organizationId);
 
     return this.db.farm.findMany({
-      where: scope,
+      where: { ...scope, ...(memberId ? { memberId } : {}) },
       include: {
         lots: {
           where: { status: "ACTIVE" },
@@ -55,14 +79,23 @@ export class AgentContextRepository extends BaseRepository {
     }) as unknown as AgentFarmWithActiveLots[];
   }
 
+  /**
+   * @param memberId - When provided, expenses are filtered to lots whose farm
+   *   belongs to this member. Expense itself has no memberId column; the
+   *   filter walks `lot.farm.memberId` via Prisma's nested relation where.
+   */
   async findRecentExpenses(
     organizationId: string,
     limit: number = 5,
+    memberId?: string,
   ): Promise<AgentRecentExpense[]> {
     const scope = this.requireOrg(organizationId);
 
     return this.db.expense.findMany({
-      where: scope,
+      where: {
+        ...scope,
+        ...(memberId ? { lot: { farm: { memberId } } } : {}),
+      },
       orderBy: { date: "desc" },
       take: limit,
       select: {
