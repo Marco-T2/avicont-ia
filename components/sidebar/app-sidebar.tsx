@@ -94,7 +94,7 @@ export function AppSidebar({ onOpenAgentChat }: AppSidebarProps) {
       {/* Desktop sidebar */}
       <aside
         className={cn(
-          "hidden md:flex h-full flex-col border-r bg-white transition-all duration-200",
+          "hidden md:flex h-full flex-col border-r bg-sidebar transition-all duration-200",
           isCollapsed ? "w-16" : "w-64",
         )}
       >

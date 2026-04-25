@@ -43,7 +43,7 @@ export default async function OrgDashboardPage({
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold">Panel de {organization.name}</h1>
-        <p className="text-gray-600">Bienvenido a tu espacio de trabajo</p>
+        <p className="text-muted-foreground">Bienvenido a tu espacio de trabajo</p>
       </div>
 
       {/* Stats */}
@@ -89,7 +89,7 @@ export default async function OrgDashboardPage({
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{analyzedDocs}</div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="text-sm text-muted-foreground mt-1">
               {(
                 (analyzedDocs / organization._count.documents) * 100 || 0
               ).toFixed(0)}
@@ -108,8 +108,8 @@ export default async function OrgDashboardPage({
         <CardContent>
           {recentDocs.length === 0 ? (
             <div className="text-center py-8">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 mb-4">No hay documentos cargados aún</p>
+              <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground mb-4">No hay documentos cargados aún</p>
               <Link href={`/${orgSlug}/documents`}>
                 <Button>
                   <Upload className="h-4 w-4 mr-2" />
@@ -125,16 +125,16 @@ export default async function OrgDashboardPage({
                   className="flex items-center justify-between p-4 border rounded-lg"
                 >
                   <div className="flex items-center gap-3">
-                    <FileText className="h-5 w-5 text-gray-400" />
+                    <FileText className="h-5 w-5 text-muted-foreground/70" />
                     <div>
                       <p className="font-medium">{doc.name}</p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-muted-foreground">
                         Subido el {new Date(doc.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
                   {doc.aiSummary ? (
-                    <Brain className="h-5 w-5 text-green-500" />
+                    <Brain className="h-5 w-5 text-success" />
                   ) : (
                     <Button variant="outline" size="sm">
                       Analizar

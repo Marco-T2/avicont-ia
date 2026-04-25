@@ -45,9 +45,9 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   return (
     <RolesMatrixProvider snapshot={matrixSnapshot}>
       <DashboardShell>
-        <div className="bg-gray-50">
+        <div className="bg-muted">
           {/* Organization Banner */}
-          <div className="w-full border-b bg-white px-4 py-3.5">
+          <div className="w-full border-b bg-card px-4 py-3.5">
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-sm font-medium leading-none">
