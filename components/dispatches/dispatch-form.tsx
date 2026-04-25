@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -152,15 +152,6 @@ function computeLine(
   const lineAmount = Math.round(netWeight * unitPrice * 100) / 100;
   return { tare, netWeight, shrinkage: 0, realNetWeight: netWeight, lineAmount };
 }
-
-// ── Status badge config ──
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-};
 
 // ── Existing dispatch shape (from API) ──
 
@@ -768,11 +759,7 @@ export default function DispatchForm({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{headerTitle}</CardTitle>
-            {isEditMode && (
-              <Badge className={STATUS_BADGE[status]?.className ?? "bg-gray-100 text-gray-800"}>
-                {STATUS_BADGE[status]?.label ?? status}
-              </Badge>
-            )}
+            {isEditMode && <VoucherStatusBadge status={status} />}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -815,13 +802,13 @@ export default function DispatchForm({
                 {existingDispatch.notes && (
                   <div className="col-span-2 sm:col-span-4">
                     <dt className="text-muted-foreground">Notas</dt>
-                    <dd className="mt-0.5 text-gray-700">{existingDispatch.notes}</dd>
+                    <dd className="mt-0.5 text-foreground/80">{existingDispatch.notes}</dd>
                   </div>
                 )}
                 {existingDispatch.description && (
                   <div className="col-span-2 sm:col-span-4">
                     <dt className="text-muted-foreground">Descripción</dt>
-                    <dd className="mt-0.5 text-xs text-gray-600">{existingDispatch.description}</dd>
+                    <dd className="mt-0.5 text-xs text-muted-foreground">{existingDispatch.description}</dd>
                   </div>
                 )}
               </dl>
@@ -1081,43 +1068,43 @@ export default function DispatchForm({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-6">#</th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-36">
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-36">
                     Producto
                   </th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-28">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-28">
                     Detalle
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-20">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-20">
                     Cajas
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                     P. Bruto
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-24">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-24">
                     Tara
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                     P. Neto
                   </th>
                   {isBC && (
                     <>
-                      <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                      <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                         Merma
                       </th>
-                      <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                      <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                         Faltante
                       </th>
-                      <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                      <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                         Neto Real
                       </th>
                     </>
                   )}
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                     Precio
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">
                     Subtotal
                   </th>
                   {!isReadOnly && <th className="w-10" />}
@@ -1127,8 +1114,8 @@ export default function DispatchForm({
                 {lines.map((line, idx) => {
                   const computed = computedLines[idx];
                   return (
-                    <tr key={line.id} className="border-b hover:bg-gray-50/50">
-                      <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
+                    <tr key={line.id} className="border-b hover:bg-accent/50">
+                      <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
 
                       {/* Producto (Select) */}
                       <td className="py-2 px-2">
@@ -1317,7 +1304,7 @@ export default function DispatchForm({
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => removeLine(line.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -1332,7 +1319,7 @@ export default function DispatchForm({
               <tfoot>
                 {isBC && (
                   <>
-                    <tr className="border-t bg-gray-50 text-xs text-gray-500">
+                    <tr className="border-t bg-muted/50 text-xs text-muted-foreground">
                       <td colSpan={4} className="py-2 px-2 text-right font-medium">
                         Totales:
                       </td>
@@ -1357,11 +1344,11 @@ export default function DispatchForm({
                       {!isReadOnly && <td />}
                     </tr>
                     {avgKgPerChicken !== null && (
-                      <tr className="bg-gray-50 text-xs text-gray-500">
+                      <tr className="bg-muted/50 text-xs text-muted-foreground">
                         <td colSpan={6} className="py-1 px-2 text-right">
                           Promedio kg/pollo:
                         </td>
-                        <td className="py-1 px-2 text-right font-mono text-gray-700">
+                        <td className="py-1 px-2 text-right font-mono text-foreground">
                           {formatKg(avgKgPerChicken)}
                         </td>
                         <td colSpan={isReadOnly ? 5 : 6} />
@@ -1371,28 +1358,28 @@ export default function DispatchForm({
                 )}
 
                 {/* Subtotal row */}
-                <tr className="border-t bg-gray-50">
+                <tr className="border-t bg-muted/50">
                   <td
                     colSpan={isBC ? 11 : 8}
-                    className="py-2 px-2 text-right text-xs text-gray-500"
+                    className="py-2 px-2 text-right text-xs text-muted-foreground"
                   >
                     Subtotal (exacto):
                   </td>
-                  <td className="py-2 px-2 text-right font-mono text-sm text-gray-700">
+                  <td className="py-2 px-2 text-right font-mono text-sm text-foreground">
                     {formatCurrency(subtotal)}
                   </td>
                   {!isReadOnly && <td />}
                 </tr>
 
                 {/* Total CxC row */}
-                <tr className="border-t-2 border-gray-300 bg-gray-100">
+                <tr className="border-t-2 border-border bg-muted">
                   <td
                     colSpan={isBC ? 11 : 8}
-                    className="py-3 px-2 text-right font-semibold text-gray-700"
+                    className="py-3 px-2 text-right font-semibold text-foreground"
                   >
                     Total CxC (Bs.)
                   </td>
-                  <td className="py-3 px-2 text-right font-mono font-bold text-gray-900 text-base">
+                  <td className="py-3 px-2 text-right font-mono font-bold text-foreground text-base">
                     {totalCxC.toLocaleString("es-BO")}
                   </td>
                   {!isReadOnly && <td />}
@@ -1445,7 +1432,7 @@ export default function DispatchForm({
                       Pago el{" "}
                       {formatDateBO(alloc.payment.date)}
                     </Link>
-                    <span className="font-mono text-green-700 text-right whitespace-nowrap">
+                    <span className="font-mono text-success text-right whitespace-nowrap">
                       -{formatCurrency(alloc.amount)}
                     </span>
                   </div>
@@ -1453,8 +1440,8 @@ export default function DispatchForm({
                 <div
                   className={`flex justify-between items-start gap-4 border-t-2 pt-2 font-bold ${
                     existingDispatch.receivable.balance > 0
-                      ? "text-red-600"
-                      : "text-green-700"
+                      ? "text-destructive"
+                      : "text-success"
                   }`}
                 >
                   <span className="text-foreground">Saldo pendiente</span>
@@ -1510,7 +1497,7 @@ export default function DispatchForm({
                 </Button>
                 <Button
                   type="button"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handleCreateAndPost}
                   disabled={!canSubmit || isSubmitting}
                 >
@@ -1540,7 +1527,7 @@ export default function DispatchForm({
                 <Button
                   type="button"
                   variant="default"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handlePost}
                   disabled={!canSubmit || isActioning}
                 >
