@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -78,15 +78,6 @@ function deriveLcvStatePurchase(
   if (!purchase.ivaPurchaseBook || purchase.ivaPurchaseBook.status === "VOIDED") return "S2";
   return "S3";
 }
-
-// ── Status badge config ──
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-};
 
 const PURCHASE_TYPE_LABEL: Record<string, string> = {
   FLETE: "Flete",
@@ -658,11 +649,7 @@ export default function PurchaseForm({
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle>{headerTitle}</CardTitle>
-            {isEditMode && (
-              <Badge className={STATUS_BADGE[status]?.className ?? "bg-gray-100 text-gray-800"}>
-                {STATUS_BADGE[status]?.label ?? status}
-              </Badge>
-            )}
+            {isEditMode && <VoucherStatusBadge status={status} />}
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -732,13 +719,13 @@ export default function PurchaseForm({
               {purchase!.notes && (
                 <div className="col-span-2 sm:col-span-4">
                   <dt className="text-muted-foreground">Notas</dt>
-                  <dd className="mt-0.5 text-gray-700">{purchase!.notes}</dd>
+                  <dd className="mt-0.5 text-foreground/80">{purchase!.notes}</dd>
                 </div>
               )}
               {purchase!.description && (
                 <div className="col-span-2 sm:col-span-4">
                   <dt className="text-muted-foreground">Descripción</dt>
-                  <dd className="mt-0.5 text-xs text-gray-600">{purchase!.description}</dd>
+                  <dd className="mt-0.5 text-xs text-muted-foreground">{purchase!.description}</dd>
                 </div>
               )}
             </dl>
@@ -983,14 +970,14 @@ export default function PurchaseForm({
             {purchaseType === "FLETE" && (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 w-6">#</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-28">Fecha</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-28">Doc. Ref.</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-40">Detalle</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Cant. Pollos</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Precio x Pollo</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Total</th>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-28">Fecha</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-28">Doc. Ref.</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-40">Detalle</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Cant. Pollos</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Precio x Pollo</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Total</th>
                     {!isReadOnly && <th className="w-10" />}
                   </tr>
                 </thead>
@@ -1000,8 +987,8 @@ export default function PurchaseForm({
                     const price = parseFloat(line.pricePerChicken) || 0;
                     const lineAmount = Math.round(qty * price * 100) / 100;
                     return (
-                      <tr key={line.id} className="border-b hover:bg-gray-50/50">
-                        <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
+                      <tr key={line.id} className="border-b hover:bg-accent/50">
+                        <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
                         <td className="py-2 px-2">
                           <Input
                             type="date"
@@ -1068,7 +1055,7 @@ export default function PurchaseForm({
                               variant="ghost"
                               size="icon-sm"
                               onClick={() => removeFleteLine(line.id)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1079,11 +1066,11 @@ export default function PurchaseForm({
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-gray-300 bg-gray-100">
-                    <td colSpan={6} className="py-3 px-2 text-right font-semibold text-gray-700">
+                  <tr className="border-t-2 border-border bg-muted">
+                    <td colSpan={6} className="py-3 px-2 text-right font-semibold text-foreground">
                       Total CxP (Bs.)
                     </td>
-                    <td className="py-3 px-2 text-right font-mono font-bold text-gray-900 text-base">
+                    <td className="py-3 px-2 text-right font-mono font-bold text-foreground text-base">
                       {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     {!isReadOnly && <td />}
@@ -1096,19 +1083,19 @@ export default function PurchaseForm({
             {purchaseType === "POLLO_FAENADO" && (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 w-6">#</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-36">Tipo Producto</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-28">Nota</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-20">Cajas</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Peso Bruto</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-24">Tara</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Peso Neto</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Merma</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Faltante</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Neto Real</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Precio</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Total</th>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-36">Tipo Producto</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-28">Nota</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-20">Cajas</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Peso Bruto</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-24">Tara</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Peso Neto</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Merma</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Faltante</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Neto Real</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Precio</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Total</th>
                     {!isReadOnly && <th className="w-10" />}
                   </tr>
                 </thead>
@@ -1116,8 +1103,8 @@ export default function PurchaseForm({
                   {pfLines.map((line, idx) => {
                     const computed = computedPfLines[idx];
                     return (
-                      <tr key={line.id} className="border-b hover:bg-gray-50/50">
-                        <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
+                      <tr key={line.id} className="border-b hover:bg-accent/50">
+                        <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
 
                         {/* Tipo Producto */}
                         <td className="py-2 px-2">
@@ -1268,7 +1255,7 @@ export default function PurchaseForm({
                               variant="ghost"
                               size="icon-sm"
                               onClick={() => removePfLine(line.id)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1279,7 +1266,7 @@ export default function PurchaseForm({
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t bg-gray-50 text-xs text-gray-500">
+                  <tr className="border-t bg-muted/50 text-xs text-muted-foreground">
                     <td colSpan={4} className="py-2 px-2 text-right font-medium">Totales:</td>
                     <td className="py-2 px-2 text-right font-mono">{formatKg(totalPfGrossKg)}</td>
                     <td />
@@ -1292,26 +1279,26 @@ export default function PurchaseForm({
                     {!isReadOnly && <td />}
                   </tr>
                   {avgKgPerChicken !== null && (
-                    <tr className="bg-gray-50 text-xs text-gray-500">
+                    <tr className="bg-muted/50 text-xs text-muted-foreground">
                       <td colSpan={6} className="py-1 px-2 text-right">Promedio kg/pollo:</td>
-                      <td className="py-1 px-2 text-right font-mono text-gray-700">{formatKg(avgKgPerChicken)}</td>
+                      <td className="py-1 px-2 text-right font-mono text-foreground">{formatKg(avgKgPerChicken)}</td>
                       <td colSpan={isReadOnly ? 5 : 6} />
                     </tr>
                   )}
-                  <tr className="border-t bg-gray-50">
-                    <td colSpan={11} className="py-2 px-2 text-right text-xs text-gray-500">
+                  <tr className="border-t bg-muted/50">
+                    <td colSpan={11} className="py-2 px-2 text-right text-xs text-muted-foreground">
                       Subtotal (exacto):
                     </td>
-                    <td className="py-2 px-2 text-right font-mono text-sm text-gray-700">
+                    <td className="py-2 px-2 text-right font-mono text-sm text-foreground">
                       {formatCurrency(subtotal)}
                     </td>
                     {!isReadOnly && <td />}
                   </tr>
-                  <tr className="border-t-2 border-gray-300 bg-gray-100">
-                    <td colSpan={11} className="py-3 px-2 text-right font-semibold text-gray-700">
+                  <tr className="border-t-2 border-border bg-muted">
+                    <td colSpan={11} className="py-3 px-2 text-right font-semibold text-foreground">
                       Total CxP (Bs.)
                     </td>
-                    <td className="py-3 px-2 text-right font-mono font-bold text-gray-900 text-base">
+                    <td className="py-3 px-2 text-right font-mono font-bold text-foreground text-base">
                       {subtotal.toLocaleString("es-BO")}
                     </td>
                     {!isReadOnly && <td />}
@@ -1324,13 +1311,13 @@ export default function PurchaseForm({
             {(purchaseType === "COMPRA_GENERAL" || purchaseType === "SERVICIO") && (
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 w-6">#</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-48">Concepto</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-24">Cantidad</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Precio Unitario</th>
-                    <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Total</th>
-                    <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-32">Cuenta de Gasto</th>
+                  <tr className="border-b bg-muted/50">
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Concepto</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-24">Cantidad</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Precio Unitario</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Total</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-32">Cuenta de Gasto</th>
                     {!isReadOnly && <th className="w-10" />}
                   </tr>
                 </thead>
@@ -1340,8 +1327,8 @@ export default function PurchaseForm({
                     const price = parseFloat(line.unitPrice) || 0;
                     const lineAmount = Math.round(qty * price * 100) / 100;
                     return (
-                      <tr key={line.id} className="border-b hover:bg-gray-50/50">
-                        <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
+                      <tr key={line.id} className="border-b hover:bg-accent/50">
+                        <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
                         <td className="py-2 px-2">
                           <Input
                             value={line.description}
@@ -1398,7 +1385,7 @@ export default function PurchaseForm({
                               variant="ghost"
                               size="icon-sm"
                               onClick={() => removeGeneralLine(line.id)}
-                              className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
                             >
                               <Trash2 className="h-4 w-4" />
                             </Button>
@@ -1409,11 +1396,11 @@ export default function PurchaseForm({
                   })}
                 </tbody>
                 <tfoot>
-                  <tr className="border-t-2 border-gray-300 bg-gray-100">
-                    <td colSpan={4} className="py-3 px-2 text-right font-semibold text-gray-700">
+                  <tr className="border-t-2 border-border bg-muted">
+                    <td colSpan={4} className="py-3 px-2 text-right font-semibold text-foreground">
                       Total CxP (Bs.)
                     </td>
-                    <td className="py-3 px-2 text-right font-mono font-bold text-gray-900 text-base">
+                    <td className="py-3 px-2 text-right font-mono font-bold text-foreground text-base">
                       {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
                     <td />
@@ -1466,14 +1453,14 @@ export default function PurchaseForm({
                       {formatDateBO(alloc.payment.date)}
                       {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
                     </Link>
-                    <span className="font-mono text-green-700 text-right whitespace-nowrap">
+                    <span className="font-mono text-success text-right whitespace-nowrap">
                       -{formatCurrency(alloc.amount)}
                     </span>
                   </div>
                 ))}
                 <div
                   className={`flex justify-between items-start gap-4 border-t-2 pt-2 font-bold ${
-                    purchase.payable.balance > 0 ? "text-red-600" : "text-green-700"
+                    purchase.payable.balance > 0 ? "text-destructive" : "text-success"
                   }`}
                 >
                   <span className="text-foreground">Saldo pendiente</span>
@@ -1531,7 +1518,7 @@ export default function PurchaseForm({
                 </Button>
                 <Button
                   type="button"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handleCreateAndPost}
                   disabled={!canSubmit || isSubmitting}
                 >
@@ -1560,7 +1547,7 @@ export default function PurchaseForm({
                 </Button>
                 <Button
                   type="button"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handlePost}
                   disabled={!canSubmit || isActioning}
                 >
