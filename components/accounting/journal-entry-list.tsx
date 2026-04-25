@@ -58,9 +58,18 @@ function formatCurrency(amount: number): string {
 }
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
+  DRAFT: {
+    label: "Borrador",
+    className: "bg-warning/10 text-warning dark:bg-warning/20",
+  },
+  POSTED: {
+    label: "Contabilizado",
+    className: "bg-success/10 text-success dark:bg-success/20",
+  },
+  VOIDED: {
+    label: "Anulado",
+    className: "bg-destructive/10 text-destructive dark:bg-destructive/20",
+  },
 };
 
 interface JournalLine {

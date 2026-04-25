@@ -30,7 +30,7 @@ export function sourceTypeLabel(sourceType: string | null): string {
  */
 export function sourceTypeBadgeClassName(sourceType: string | null): string {
   if (sourceType === null) {
-    return "bg-gray-100 text-gray-700 ring-gray-300";
+    return "bg-muted text-muted-foreground ring-border";
   }
-  return "bg-blue-50 text-blue-700 ring-blue-300";
+  return "bg-info/10 text-info ring-info/30 dark:bg-info/20";
 }
