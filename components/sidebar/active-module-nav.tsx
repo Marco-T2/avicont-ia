@@ -28,11 +28,42 @@
  * - Null module OR empty navItems → renders nothing (no empty nav shell).
  */
 
+import {
+  ArrowLeftRight,
+  BarChart3,
+  BookOpen,
+  CalendarCheck,
+  Contact,
+  FolderTree,
+  HandCoins,
+  Library,
+  Receipt,
+  ShoppingBag,
+  ShoppingCart,
+  Warehouse,
+} from "lucide-react";
+import type { ReactNode } from "react";
 import { NavItem } from "./nav-item";
-import type { Module, ModuleNavItem } from "./modules/registry";
+import { useSidebar } from "./sidebar-provider";
+import type { Module, ModuleNavItem, NavIconKey } from "./modules/registry";
 import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import type { ClientMatrix } from "@/components/common/roles-matrix-provider";
 import { dropOrphanSeparators } from "@/lib/sidebar/drop-orphan-separators";
+
+const NAV_ICONS: Record<NavIconKey, ReactNode> = {
+  "ventas-despachos": <ShoppingCart className="h-5 w-5" />,
+  "compras-servicios": <ShoppingBag className="h-5 w-5" />,
+  "cobros-pagos": <ArrowLeftRight className="h-5 w-5" />,
+  "cuentas-cobrar": <HandCoins className="h-5 w-5" />,
+  "cuentas-pagar": <Receipt className="h-5 w-5" />,
+  "plan-cuentas": <FolderTree className="h-5 w-5" />,
+  "libro-diario": <BookOpen className="h-5 w-5" />,
+  "libro-mayor": <Library className="h-5 w-5" />,
+  contactos: <Contact className="h-5 w-5" />,
+  informes: <BarChart3 className="h-5 w-5" />,
+  "cierre-mensual": <CalendarCheck className="h-5 w-5" />,
+  "mis-granjas": <Warehouse className="h-5 w-5" />,
+};
 
 interface ActiveModuleNavProps {
   /** The active module; null renders nothing */
@@ -59,6 +90,7 @@ function isChildVisible(
 
 export function ActiveModuleNav({ module, orgSlug }: ActiveModuleNavProps) {
   const matrix = useRolesMatrix();
+  const { isCollapsed } = useSidebar();
 
   if (!module) return null;
   if (module.navItems.length === 0) return null;
@@ -69,7 +101,14 @@ export function ActiveModuleNav({ module, orgSlug }: ActiveModuleNavProps) {
   );
 
   // PR4.6: hide separators that would now be orphaned
-  const visibleItems = dropOrphanSeparators(rbacFiltered);
+  let visibleItems = dropOrphanSeparators(rbacFiltered);
+
+  // Collapsed mode: separators would render as broken short text ("Oper",
+  // "Cont") inside the w-16 rail. Drop them entirely — the gap between
+  // grouped icons is visual separation enough.
+  if (isCollapsed) {
+    visibleItems = visibleItems.filter((item) => !item.isSeparator);
+  }
 
   // PR4.4: empty-parent rule — no visible non-separator child → render null
   const hasVisibleChild = visibleItems.some((item) => !item.isSeparator);
@@ -94,11 +133,12 @@ export function ActiveModuleNav({ module, orgSlug }: ActiveModuleNavProps) {
 
         // Pre-resolve href(orgSlug) → static string before passing to NavItem.
         const resolvedHref = item.href ? item.href(orgSlug) : undefined;
+        const icon = item.iconKey ? NAV_ICONS[item.iconKey] : null;
 
         return (
           <NavItem
             key={`item-${index}-${item.label}`}
-            icon={null}
+            icon={icon}
             label={item.label}
             href={resolvedHref}
           />
