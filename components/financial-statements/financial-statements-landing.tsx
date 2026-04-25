@@ -22,16 +22,16 @@ export function FinancialStatementsLanding({
       description:
         "Estado de Situación Patrimonial a una fecha de corte. Muestra Activos, Pasivos y Patrimonio de la organización con verificación de ecuación contable.",
       href: `/${orgSlug}/accounting/financial-statements/balance-sheet`,
-      icon: <Scale className="h-8 w-8 text-blue-600" />,
-      color: "border-blue-200 hover:border-blue-400 hover:bg-blue-50",
+      icon: <Scale className="h-8 w-8 text-info" />,
+      color: "border-info/30 hover:border-info/60 hover:bg-info/10",
     },
     {
       title: "Estado de Resultados",
       description:
         "Análisis de Ingresos y Gastos para un período o rango de fechas. Incluye Utilidad Operativa y Utilidad Neta del ejercicio.",
       href: `/${orgSlug}/accounting/financial-statements/income-statement`,
-      icon: <BarChart3 className="h-8 w-8 text-green-600" />,
-      color: "border-green-200 hover:border-green-400 hover:bg-green-50",
+      icon: <BarChart3 className="h-8 w-8 text-success" />,
+      color: "border-success/30 hover:border-success/60 hover:bg-success/10",
     },
   ];
 
@@ -47,7 +47,7 @@ export function FinancialStatementsLanding({
               <CardTitle className="text-xl">{card.title}</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-sm text-gray-600">{card.description}</p>
+              <p className="text-sm text-muted-foreground">{card.description}</p>
             </CardContent>
           </Card>
         </Link>

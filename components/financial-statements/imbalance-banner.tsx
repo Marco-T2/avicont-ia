@@ -14,7 +14,7 @@ export function ImbalanceBanner({
   return (
     <div
       role="alert"
-      className="flex items-center gap-3 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-red-800"
+      className="flex items-center gap-3 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive"
     >
       <span className="text-lg font-bold">✕</span>
       <div>
