@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import {
   Select,
   SelectContent,
@@ -52,13 +53,6 @@ const PAYMENT_METHODS = [
   { value: "CHEQUE", label: "Cheque" },
   { value: "DEPOSITO", label: "Depósito" },
 ] as const;
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-};
 
 // ── Allocation line state ──
 
@@ -1071,13 +1065,11 @@ export default function PaymentForm({
         {existingPayment && (
           <div className="flex items-center gap-2">
             {isVoided && (
-              <Badge className="bg-red-100 text-red-700 text-sm px-3 py-1">
+              <Badge className="bg-destructive/10 text-destructive dark:bg-destructive/20 text-sm px-3 py-1">
                 ANULADO
               </Badge>
             )}
-            <Badge className={STATUS_BADGE[existingPayment.status]?.className ?? ""}>
-              {STATUS_BADGE[existingPayment.status]?.label ?? existingPayment.status}
-            </Badge>
+            <VoucherStatusBadge status={existingPayment.status} />
           </div>
         )}
       </div>
@@ -1362,14 +1354,14 @@ export default function PaymentForm({
               <div className="flex gap-6 text-sm flex-wrap">
                 <div className="text-center">
                   <p className="text-muted-foreground">Importe aplicado</p>
-                  <p className="font-mono font-semibold text-gray-800">
+                  <p className="font-mono font-semibold text-foreground">
                     {formatCurrency(totalAllocated)}
                   </p>
                 </div>
                 {creditFromPayment > 0 && (
                   <div className="text-center">
-                    <p className="text-amber-700">Importe a acreditar</p>
-                    <p className="font-mono font-semibold text-amber-700">
+                    <p className="text-warning">Importe a acreditar</p>
+                    <p className="font-mono font-semibold text-warning">
                       {formatCurrency(creditFromPayment)}
                     </p>
                   </div>
@@ -1426,23 +1418,23 @@ export default function PaymentForm({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
+                  <tr className="border-b bg-muted/50">
                     {!isReadOnly && (
                       <th className="py-3 px-3 w-10" />
                     )}
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Descripción
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Total
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Pagado
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Saldo
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600 w-40">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground w-40">
                       Aplicar
                     </th>
                   </tr>
@@ -1454,8 +1446,8 @@ export default function PaymentForm({
                     return (
                       <tr
                         key={alloc.id}
-                        className={`border-b hover:bg-gray-50/50 ${
-                          alloc.checked ? "bg-blue-50/30" : ""
+                        className={`border-b hover:bg-accent/50 ${
+                          alloc.checked ? "bg-info/10" : ""
                         }`}
                       >
                         {!isReadOnly && (
@@ -1464,17 +1456,17 @@ export default function PaymentForm({
                               type="checkbox"
                               checked={alloc.checked}
                               onChange={(e) => handleCheckToggle(alloc.id, e.target.checked)}
-                              className="h-4 w-4 rounded border-gray-300 accent-blue-600 cursor-pointer"
+                              className="h-4 w-4 rounded border-border accent-info cursor-pointer"
                             />
                           </td>
                         )}
                         <td className="py-3 px-4">
                           <div>
-                            <p className="font-medium text-gray-800">
+                            <p className="font-medium text-foreground">
                               {alloc.description}
                             </p>
                             {alloc.dueDate && (
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-muted-foreground">
                                 Vence: {formatDate(alloc.dueDate)}
                               </p>
                             )}
@@ -1483,7 +1475,7 @@ export default function PaymentForm({
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(alloc.totalAmount)}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-gray-500">
+                        <td className="py-3 px-4 text-right font-mono text-muted-foreground">
                           {formatCurrency(alloc.paid)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-medium">
@@ -1515,7 +1507,7 @@ export default function PaymentForm({
                               placeholder="0.00"
                               className={`h-8 text-right font-mono ${
                                 overLimit
-                                  ? "border-red-500 focus-visible:ring-red-500"
+                                  ? "border-destructive focus-visible:ring-destructive"
                                   : ""
                               }`}
                             />
@@ -1528,10 +1520,10 @@ export default function PaymentForm({
 
                 {/* Summary */}
                 <tfoot>
-                  <tr className="border-t bg-gray-50">
+                  <tr className="border-t bg-muted/50">
                     <td
                       colSpan={isReadOnly ? 4 : 5}
-                      className="py-2 px-4 text-right text-sm text-gray-600"
+                      className="py-2 px-4 text-right text-sm text-muted-foreground"
                     >
                       Importe aplicado:
                     </td>
@@ -1542,14 +1534,14 @@ export default function PaymentForm({
 
                   {/* Credit balance row */}
                   {creditFromPayment > 0 && !isReadOnly && (
-                    <tr className="bg-amber-50">
+                    <tr className="bg-warning/10">
                       <td
                         colSpan={5}
-                        className="py-2 px-4 text-right text-sm text-amber-700"
+                        className="py-2 px-4 text-right text-sm text-warning"
                       >
                         Importe a acreditar:
                       </td>
-                      <td className="py-2 px-4 text-right font-mono text-amber-700 font-medium">
+                      <td className="py-2 px-4 text-right font-mono text-warning font-medium">
                         {formatCurrency(creditFromPayment)}
                       </td>
                     </tr>
@@ -1557,14 +1549,14 @@ export default function PaymentForm({
 
                   {/* Existing credit balance */}
                   {creditBalance > 0 && isNew && (
-                    <tr className="bg-blue-50">
+                    <tr className="bg-info/10">
                       <td
                         colSpan={5}
-                        className="py-2 px-4 text-right text-sm text-blue-700"
+                        className="py-2 px-4 text-right text-sm text-info"
                       >
                         Saldo a favor existente del contacto:
                       </td>
-                      <td className="py-2 px-4 text-right font-mono text-blue-700 font-medium">
+                      <td className="py-2 px-4 text-right font-mono text-info font-medium">
                         {formatCurrency(creditBalance)}
                       </td>
                     </tr>
@@ -1575,7 +1567,7 @@ export default function PaymentForm({
           )}
 
           {hasOverAllocation && (
-            <p className="text-red-500 text-sm mt-2">
+            <p className="text-destructive text-sm mt-2">
               Una o más asignaciones exceden el saldo disponible del documento.
             </p>
           )}
@@ -1600,20 +1592,20 @@ export default function PaymentForm({
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="border-b bg-gray-50">
+                    <tr className="border-b bg-muted/50">
                       {!isReadOnly && (
                         <th className="py-3 px-3 w-10" />
                       )}
-                      <th className="text-left py-3 px-4 font-medium text-gray-600">
+                      <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                         Descripción
                       </th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600">
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                         Importe original
                       </th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600">
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                         Saldo disponible
                       </th>
-                      <th className="text-right py-3 px-4 font-medium text-gray-600 w-40">
+                      <th className="text-right py-3 px-4 font-medium text-muted-foreground w-40">
                         Aplicar
                       </th>
                     </tr>
@@ -1625,8 +1617,8 @@ export default function PaymentForm({
                       return (
                         <tr
                           key={credit.sourcePaymentId}
-                          className={`border-b hover:bg-gray-50/50 ${
-                            credit.checked ? "bg-blue-50/30" : ""
+                          className={`border-b hover:bg-accent/50 ${
+                            credit.checked ? "bg-info/10" : ""
                           }`}
                         >
                           {!isReadOnly && (
@@ -1644,16 +1636,16 @@ export default function PaymentForm({
                                     }),
                                   );
                                 }}
-                                className="h-4 w-4 rounded border-gray-300 accent-blue-600 cursor-pointer"
+                                className="h-4 w-4 rounded border-border accent-info cursor-pointer"
                               />
                             </td>
                           )}
                           <td className="py-3 px-4">
                             <div>
-                              <p className="font-medium text-gray-800">
+                              <p className="font-medium text-foreground">
                                 {credit.description}
                               </p>
-                              <p className="text-xs text-gray-400">
+                              <p className="text-xs text-muted-foreground">
                                 {formatDate(credit.date)}
                               </p>
                             </div>
@@ -1697,7 +1689,7 @@ export default function PaymentForm({
                                 placeholder="0.00"
                                 className={`h-8 text-right font-mono ${
                                   overLimit
-                                    ? "border-red-500 focus-visible:ring-red-500"
+                                    ? "border-destructive focus-visible:ring-destructive"
                                     : ""
                                 }`}
                               />
@@ -1710,10 +1702,10 @@ export default function PaymentForm({
 
                   {/* Footer */}
                   <tfoot>
-                    <tr className="border-t bg-gray-50">
+                    <tr className="border-t bg-muted/50">
                       <td
                         colSpan={isReadOnly ? 3 : 4}
-                        className="py-2 px-4 text-right text-sm text-gray-600"
+                        className="py-2 px-4 text-right text-sm text-muted-foreground"
                       >
                         Crédito aplicado:
                       </td>
@@ -1727,7 +1719,7 @@ export default function PaymentForm({
             )}
 
             {hasCreditOverLimit && (
-              <p className="text-red-500 text-sm mt-2">
+              <p className="text-destructive text-sm mt-2">
                 Uno o más créditos exceden el saldo disponible.
               </p>
             )}
@@ -1739,9 +1731,9 @@ export default function PaymentForm({
       {isPosted && existingPayment?.journalEntry && (
         <Card>
           <CardContent className="pt-6">
-            <div className="flex items-center gap-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-medium">Asiento Contable:</span>
-              <span className="font-mono text-blue-600">
+              <span className="font-mono text-info">
                 {`#${existingPayment.journalEntry.number}`}
               </span>
             </div>
@@ -1773,7 +1765,7 @@ export default function PaymentForm({
               </Button>
               <Button
                 type="button"
-                className="bg-green-600 hover:bg-green-700"
+                className="bg-success hover:bg-success/90 text-success-foreground"
                 onClick={handleCreateAndPost}
                 disabled={!canSubmit || isSubmitting}
               >
@@ -1791,7 +1783,7 @@ export default function PaymentForm({
           {isNew && isCreditOnly && (
             <Button
               type="button"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               onClick={handleApplyCredits}
               disabled={!canSubmit || isSubmitting}
             >

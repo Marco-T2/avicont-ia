@@ -11,6 +11,7 @@ import {
   CardAction,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -70,13 +71,6 @@ function formatDate(date: Date | string): string {
   });
 }
 
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-};
-
 const METHOD_LABEL: Record<string, string> = {
   EFECTIVO: "Efectivo",
   TRANSFERENCIA: "Transferencia",
@@ -132,10 +126,6 @@ function PaymentRow({
   onDelete,
 }: PaymentRowProps) {
   const router = useRouter();
-  const statusBadge = STATUS_BADGE[payment.status] ?? {
-    label: payment.status,
-    className: "bg-gray-100 text-gray-800",
-  };
   const totalAllocated = payment.allocations.reduce(
     (sum, a) => sum + a.amount,
     0,
@@ -149,7 +139,7 @@ function PaymentRow({
 
   return (
     <tr
-      className="border-b hover:bg-gray-50 cursor-pointer"
+      className="border-b hover:bg-accent/50 cursor-pointer"
       onClick={() => router.push(viewPath)}
     >
       <td className="py-3 px-4 whitespace-nowrap">{formatDate(payment.date)}</td>
@@ -157,37 +147,37 @@ function PaymentRow({
         <Badge
           className={
             direction === "COBRO"
-              ? "bg-blue-100 text-blue-800"
-              : "bg-green-100 text-green-800"
+              ? "bg-info/10 text-info dark:bg-info/20"
+              : "bg-success/10 text-success dark:bg-success/20"
           }
         >
           {direction === "COBRO" ? "Cobro" : "Pago"}
         </Badge>
       </td>
-      <td className="py-3 px-4 text-gray-600">
+      <td className="py-3 px-4 text-muted-foreground">
         {payment.contact?.name ?? "---"}
       </td>
-      <td className="py-3 px-4 text-gray-500">
+      <td className="py-3 px-4 text-muted-foreground">
         {METHOD_LABEL[payment.method] ?? payment.method}
       </td>
-      <td className="py-3 px-4 text-gray-500 whitespace-nowrap">
+      <td className="py-3 px-4 text-muted-foreground whitespace-nowrap">
         {payment.operationalDocType && payment.referenceNumber
           ? `${payment.operationalDocType.code}-${payment.referenceNumber}`
           : payment.referenceNumber
             ? String(payment.referenceNumber)
             : "—"}
       </td>
-      <td className="py-3 px-4 text-gray-500 max-w-48 truncate">
+      <td className="py-3 px-4 text-muted-foreground max-w-48 truncate">
         {payment.description}
       </td>
       <td className="py-3 px-4 text-center">
-        <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
+        <VoucherStatusBadge status={payment.status} />
       </td>
       <td className="py-3 px-4 text-right font-mono">
         <div className="flex flex-col items-end gap-1">
           <span>{formatCurrency(payment.amount)}</span>
           {hasUnapplied && (
-            <Badge className="bg-sky-100 text-sky-700 text-xs font-normal">
+            <Badge className="bg-info/10 text-info dark:bg-info/20 text-xs font-normal">
               Crédito: Bs
               {unapplied.toLocaleString("es-BO", {
                 minimumFractionDigits: 2,
@@ -199,7 +189,7 @@ function PaymentRow({
       </td>
       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -230,7 +220,7 @@ function PaymentRow({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onDelete(payment)}
-                    className="text-red-600 focus:text-red-600"
+                    className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Eliminar
@@ -242,7 +232,7 @@ function PaymentRow({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onVoid(payment)}
-                    className="text-red-600 focus:text-red-600"
+                    className="text-destructive focus:text-destructive"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Anular
@@ -386,8 +376,8 @@ export default function PaymentList({
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-100 p-2">
-                <ArrowDownCircle className="h-5 w-5 text-blue-600" />
+              <div className="rounded-lg bg-info/10 dark:bg-info/20 p-2">
+                <ArrowDownCircle className="h-5 w-5 text-info" />
               </div>
               <div>
                 <CardTitle>Cobros</CardTitle>
@@ -412,8 +402,8 @@ export default function PaymentList({
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <ArrowUpCircle className="h-5 w-5 text-green-600" />
+              <div className="rounded-lg bg-success/10 dark:bg-success/20 p-2">
+                <ArrowUpCircle className="h-5 w-5 text-success" />
               </div>
               <div>
                 <CardTitle>Pagos</CardTitle>
@@ -513,32 +503,32 @@ export default function PaymentList({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Fecha
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Tipo
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Contacto
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Método
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Documento
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Descripción
                   </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">
                     Estado
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Monto
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Acciones
                   </th>
                 </tr>
@@ -547,11 +537,11 @@ export default function PaymentList({
                 {filteredPayments.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center">
-                      <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">
+                      <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground">
                         No hay cobros ni pagos registrados
                       </p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-sm text-muted-foreground mt-1">
                         {hasFilters
                           ? "Ningún registro coincide con los filtros aplicados"
                           : "Cree el primer cobro o pago para comenzar"}
@@ -600,7 +590,7 @@ export default function PaymentList({
               Cancelar
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               disabled={actioningId !== null}
               onClick={() =>
                 postPayment && executeStatusTransition(postPayment, "POSTED")
