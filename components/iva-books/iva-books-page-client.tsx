@@ -99,7 +99,7 @@ export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClien
 
       {/* Estado de carga */}
       {loading && (
-        <div className="py-8 text-center text-sm text-gray-500" aria-live="polite">
+        <div className="py-8 text-center text-sm text-muted-foreground" aria-live="polite">
           Cargando entradas...
         </div>
       )}
@@ -117,7 +117,7 @@ export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClien
 
       {/* Resumen de totales */}
       {!loading && entries.length > 0 && (
-        <div className="text-xs text-gray-500 text-right">
+        <div className="text-xs text-muted-foreground text-right">
           {entries.length} {entries.length === 1 ? "entrada" : "entradas"} en Libro de {kindLabel}
           {selectedPeriodId
             ? ` — período: ${periods.find((p) => p.id === selectedPeriodId)?.name ?? selectedPeriodId}`

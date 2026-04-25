@@ -394,7 +394,7 @@ export function IvaBookPurchaseModal({
       aria-labelledby="purchase-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
     >
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6">
         <div className="flex items-center justify-between mb-6">
           <h2 id="purchase-modal-title" className="text-xl font-semibold">
             Registrar Libro de Compras IVA
@@ -407,7 +407,7 @@ export function IvaBookPurchaseModal({
         <form onSubmit={handleSubmit} noValidate className="space-y-6">
           {/* ── Sección: Datos del documento ── */}
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-3">Datos del documento</legend>
+            <legend className="text-sm font-medium text-foreground mb-3">Datos del documento</legend>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="pm-fecha-factura">Fecha de factura</Label>
@@ -419,7 +419,7 @@ export function IvaBookPurchaseModal({
                   aria-invalid={!!errors.fechaFactura}
                 />
                 {errors.fechaFactura && (
-                  <p className="text-xs text-red-600">{errors.fechaFactura}</p>
+                  <p className="text-xs text-destructive">{errors.fechaFactura}</p>
                 )}
               </div>
 
@@ -434,7 +434,7 @@ export function IvaBookPurchaseModal({
                   aria-invalid={!!errors.nitProveedor}
                 />
                 {errors.nitProveedor && (
-                  <p className="text-xs text-red-600">{errors.nitProveedor}</p>
+                  <p className="text-xs text-destructive">{errors.nitProveedor}</p>
                 )}
               </div>
 
@@ -449,7 +449,7 @@ export function IvaBookPurchaseModal({
                   aria-invalid={!!errors.razonSocial}
                 />
                 {errors.razonSocial && (
-                  <p className="text-xs text-red-600">{errors.razonSocial}</p>
+                  <p className="text-xs text-destructive">{errors.razonSocial}</p>
                 )}
               </div>
 
@@ -464,7 +464,7 @@ export function IvaBookPurchaseModal({
                   aria-invalid={!!errors.numeroFactura}
                 />
                 {errors.numeroFactura && (
-                  <p className="text-xs text-red-600">{errors.numeroFactura}</p>
+                  <p className="text-xs text-destructive">{errors.numeroFactura}</p>
                 )}
               </div>
 
@@ -479,7 +479,7 @@ export function IvaBookPurchaseModal({
                   aria-invalid={!!errors.codigoAutorizacion}
                 />
                 {errors.codigoAutorizacion && (
-                  <p className="text-xs text-red-600">{errors.codigoAutorizacion}</p>
+                  <p className="text-xs text-destructive">{errors.codigoAutorizacion}</p>
                 )}
               </div>
 
@@ -528,7 +528,7 @@ export function IvaBookPurchaseModal({
                   ))}
                 </select>
                 {errors.fiscalPeriodId && (
-                  <p className="text-xs text-red-600">{errors.fiscalPeriodId}</p>
+                  <p className="text-xs text-destructive">{errors.fiscalPeriodId}</p>
                 )}
               </div>
             </div>
@@ -536,14 +536,14 @@ export function IvaBookPurchaseModal({
 
           {/* ── Banner: importes bloqueados por compra vinculada ── */}
           {isLinkedToPurchase && (
-            <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+            <div className="rounded-md border border-info/30 bg-info/10 px-4 py-3 text-sm text-info">
               Los importes se calculan automáticamente desde la compra vinculada. Para modificarlos, editá la compra.
             </div>
           )}
 
           {/* ── Sección: Importes ── */}
           <fieldset>
-            <legend className="text-sm font-medium text-gray-700 mb-3">Importes (Bs.)</legend>
+            <legend className="text-sm font-medium text-foreground mb-3">Importes (Bs.)</legend>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div className="space-y-1">
                 <Label htmlFor="pm-importe-total">Importe total</Label>
@@ -698,11 +698,11 @@ export function IvaBookPurchaseModal({
           </fieldset>
 
           {/* ── Sección: Calculados (read-only) ── */}
-          <div className="rounded-md border border-gray-200 bg-gray-50 p-4">
-            <p className="text-xs font-medium text-gray-600 mb-3">Calculado automáticamente (SIN Bolivia IVA 13%)</p>
+          <div className="rounded-md border border-border bg-muted p-4">
+            <p className="text-xs font-medium text-muted-foreground mb-3">Calculado automáticamente (SIN Bolivia IVA 13%)</p>
             <div className="grid grid-cols-3 gap-4 text-sm">
               <div>
-                <span className="text-gray-500 block text-xs">Subtotal</span>
+                <span className="text-muted-foreground block text-xs">Subtotal</span>
                 <span
                   data-testid="computed-subtotal"
                   className="font-mono font-medium"
@@ -711,7 +711,7 @@ export function IvaBookPurchaseModal({
                 </span>
               </div>
               <div>
-                <span className="text-gray-500 block text-xs">Base sujeta CF</span>
+                <span className="text-muted-foreground block text-xs">Base sujeta CF</span>
                 <span
                   data-testid="computed-base"
                   className="font-mono font-medium"
@@ -720,7 +720,7 @@ export function IvaBookPurchaseModal({
                 </span>
               </div>
               <div>
-                <span className="text-gray-500 block text-xs">Crédito Fiscal (CF)</span>
+                <span className="text-muted-foreground block text-xs">Crédito Fiscal (CF)</span>
                 <span
                   data-testid="computed-credito-fiscal"
                   className="font-mono font-medium"
