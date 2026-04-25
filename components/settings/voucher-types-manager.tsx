@@ -197,12 +197,10 @@ export default function VoucherTypesManager({
           <Gated resource="accounting-config" action="write">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
               onClick={openCreate}
               disabled={!!creating}
             >
-              <Plus className="h-4 w-4 mr-1" />
+              <Plus className="h-4 w-4 mr-2" />
               Nuevo tipo de comprobante
             </Button>
           </Gated>

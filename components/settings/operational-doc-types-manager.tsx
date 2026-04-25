@@ -245,12 +245,10 @@ export default function OperationalDocTypesManager({
           <CardTitle>Tipos de Documento Operativo</CardTitle>
           <Button
             type="button"
-            variant="outline"
-            size="sm"
             onClick={openCreate}
             disabled={!!creating}
           >
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="h-4 w-4 mr-2" />
             Nuevo tipo de documento
           </Button>
         </div>
