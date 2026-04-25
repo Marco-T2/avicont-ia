@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardAction } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -47,13 +47,6 @@ function formatCurrency(amount: string): string {
     maximumFractionDigits: 2,
   })}`;
 }
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-};
 
 const TYPE_LABEL: Record<string, string> = {
   VENTA_GENERAL: "Venta General",
@@ -145,39 +138,35 @@ interface HubItemRowProps {
 
 function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubItemRowProps) {
   const router = useRouter();
-  const statusBadge = STATUS_BADGE[item.status] ?? {
-    label: item.status,
-    className: "bg-gray-100 text-gray-800",
-  };
   const typeName = TYPE_LABEL[item.type] ?? item.type;
   const viewPath = getViewPath(orgSlug, item);
   const editPath = getEditPath(orgSlug, item);
 
   return (
     <tr
-      className="border-b hover:bg-gray-50 cursor-pointer"
+      className="border-b hover:bg-accent/50 cursor-pointer"
       onClick={() => router.push(viewPath)}
     >
-      <td className="py-3 px-4 font-mono text-blue-600 font-medium">
+      <td className="py-3 px-4 font-mono text-info font-medium">
         {item.displayCode}
       </td>
-      <td className="py-3 px-4 font-mono text-gray-500">
+      <td className="py-3 px-4 font-mono text-muted-foreground">
         {item.referenceNumber ?? "—"}
       </td>
       <td className="py-3 px-4 whitespace-nowrap">
         {formatDateBO(item.date)}
       </td>
       <td className="py-3 px-4">{typeName}</td>
-      <td className="py-3 px-4 text-gray-500">{item.contactName}</td>
+      <td className="py-3 px-4 text-muted-foreground">{item.contactName}</td>
       <td className="py-3 px-4 text-center">
-        <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
+        <VoucherStatusBadge status={item.status} />
       </td>
       <td className="py-3 px-4 text-right font-mono">
         {formatCurrency(item.totalAmount)}
       </td>
       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -199,7 +188,7 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onDelete(item)}
-                    className="text-red-600 focus:text-red-600"
+                    className="text-destructive focus:text-destructive"
                   >
                     <Trash2 className="h-4 w-4 mr-2" />
                     Eliminar
@@ -215,7 +204,7 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onVoid(item)}
-                    className="text-red-600 focus:text-red-600"
+                    className="text-destructive focus:text-destructive"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Anular
@@ -348,8 +337,8 @@ export default function DispatchList({
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
+              <div className="rounded-lg bg-success/10 dark:bg-success/20 p-2">
+                <DollarSign className="h-5 w-5 text-success" />
               </div>
               <div>
                 <CardTitle>Ventas General</CardTitle>
@@ -371,8 +360,8 @@ export default function DispatchList({
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-blue-100 p-2">
-                <ClipboardList className="h-5 w-5 text-blue-600" />
+              <div className="rounded-lg bg-info/10 dark:bg-info/20 p-2">
+                <ClipboardList className="h-5 w-5 text-info" />
               </div>
               <div>
                 <CardTitle>Nota de Despacho</CardTitle>
@@ -394,8 +383,8 @@ export default function DispatchList({
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-purple-100 p-2">
-                <Package className="h-5 w-5 text-purple-600" />
+              <div className="rounded-lg bg-primary/10 dark:bg-primary/20 p-2">
+                <Package className="h-5 w-5 text-primary" />
               </div>
               <div>
                 <CardTitle>Boleta Cerrada</CardTitle>
@@ -470,14 +459,14 @@ export default function DispatchList({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Código</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Ref.</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Tipo</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Cliente</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">Estado</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">Total</th>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Código</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cliente</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
                   <th className="w-12 py-3 px-4" />
                 </tr>
               </thead>
@@ -485,9 +474,9 @@ export default function DispatchList({
                 {items.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center" data-testid="dispatch-list-empty">
-                      <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">No hay registros</p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground">No hay registros</p>
+                      <p className="text-sm text-muted-foreground mt-1">
                         {hasFilters
                           ? "Ningún registro coincide con los filtros aplicados"
                           : "Cree el primer registro para comenzar"}
