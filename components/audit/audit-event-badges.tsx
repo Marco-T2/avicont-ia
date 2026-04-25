@@ -11,11 +11,11 @@ const CLASSIFICATION_CONFIG: Record<
 > = {
   directa: {
     label: "Directa",
-    className: "bg-green-100 text-green-800 hover:bg-green-100",
+    className: "bg-success/10 text-success dark:bg-success/20",
   },
   indirecta: {
     label: "Indirecta",
-    className: "bg-gray-100 text-gray-600 hover:bg-gray-100",
+    className: "bg-muted text-muted-foreground",
   },
 };
 
@@ -33,19 +33,20 @@ export function ClassificationBadge({ classification }: ClassificationBadgeProps
 const ACTION_CONFIG: Record<AuditAction, { label: string; className: string }> = {
   CREATE: {
     label: "Creación",
-    className: "bg-blue-100 text-blue-800 hover:bg-blue-100",
+    className: "bg-info/10 text-info dark:bg-info/20",
   },
   UPDATE: {
     label: "Actualización",
-    className: "bg-amber-100 text-amber-800 hover:bg-amber-100",
+    className: "bg-warning/10 text-warning dark:bg-warning/20",
   },
   DELETE: {
     label: "Eliminación",
-    className: "bg-red-100 text-red-800 hover:bg-red-100",
+    className: "bg-destructive/10 text-destructive dark:bg-destructive/20",
   },
   STATUS_CHANGE: {
     label: "Cambio de estado",
-    className: "bg-violet-100 text-violet-800 hover:bg-violet-100",
+    className:
+      "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200",
   },
 };
 
