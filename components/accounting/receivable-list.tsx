@@ -202,29 +202,29 @@ export default function ReceivableList({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                <tr className="border-b bg-muted">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Contacto
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Descripción
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Monto
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Pagado
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Saldo
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Vencimiento
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Estado
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Acciones
                   </th>
                 </tr>
@@ -233,11 +233,11 @@ export default function ReceivableList({
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="py-12 text-center">
-                      <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">
+                      <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                      <p className="text-muted-foreground">
                         No hay cuentas por cobrar registradas
                       </p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-sm text-muted-foreground/70 mt-1">
                         Cree la primera CxC para comenzar
                       </p>
                     </td>
@@ -248,17 +248,17 @@ export default function ReceivableList({
                     const paid = Number(r.paid ?? 0);
                     const balance = Number(r.balance ?? (amount - paid));
                     return (
-                      <tr key={r.id} className="border-b hover:bg-gray-50">
+                      <tr key={r.id} className="border-b hover:bg-accent/50">
                         <td className="py-3 px-4 font-medium">
                           {r.contact.name}
                         </td>
-                        <td className="py-3 px-4 text-gray-600">
+                        <td className="py-3 px-4 text-muted-foreground">
                           {r.description}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(amount)}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-green-700">
+                        <td className="py-3 px-4 text-right font-mono text-success">
                           {formatCurrency(paid)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-semibold">
@@ -270,7 +270,7 @@ export default function ReceivableList({
                         </td>
                         <td className="py-3 px-4 text-right">
                           {actioningId === r.id ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400 ml-auto" />
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground ml-auto" />
                           ) : hasAnyAction(r.status) ? (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -298,7 +298,7 @@ export default function ReceivableList({
                                 {canCancel(r.status) && (
                                   <DropdownMenuItem
                                     onClick={() => setCancelDialogFor(r)}
-                                    className="text-red-600 focus:text-red-600"
+                                    className="text-destructive focus:text-destructive"
                                   >
                                     <XCircle className="h-4 w-4 mr-2" />
                                     Cancelar

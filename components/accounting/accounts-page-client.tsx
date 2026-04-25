@@ -24,14 +24,14 @@ const ACCOUNT_TYPE_CONFIG: Record<
   string,
   { label: string; className: string }
 > = {
-  ACTIVO: { label: "Activo", className: "bg-blue-100 text-blue-800" },
-  PASIVO: { label: "Pasivo", className: "bg-red-100 text-red-800" },
+  ACTIVO: { label: "Activo", className: "bg-info/10 text-info dark:bg-info/20" },
+  PASIVO: { label: "Pasivo", className: "bg-destructive/10 text-destructive dark:bg-destructive/20" },
   PATRIMONIO: {
     label: "Patrimonio",
-    className: "bg-purple-100 text-purple-800",
+    className: "bg-primary/10 text-primary dark:bg-primary/20",
   },
-  INGRESO: { label: "Ingreso", className: "bg-green-100 text-green-800" },
-  GASTO: { label: "Gasto", className: "bg-orange-100 text-orange-800" },
+  INGRESO: { label: "Ingreso", className: "bg-success/10 text-success dark:bg-success/20" },
+  GASTO: { label: "Gasto", className: "bg-warning/10 text-warning dark:bg-warning/20" },
 };
 
 type AccountWithChildren = Account & { children: Account[] };
@@ -87,30 +87,30 @@ export default function AccountsPageClient({
     const isExpanded = expandedIds.has(account.id);
     const typeConfig = ACCOUNT_TYPE_CONFIG[account.type] ?? {
       label: account.type,
-      className: "bg-gray-100 text-gray-800",
+      className: "bg-muted text-muted-foreground",
     };
     const canAddChild = account.isActive && account.level < 4;
     const canDeactivate = account.isActive && account.level > 2;
 
     const levelStyles = [
-      "font-bold text-[15px] text-gray-900 bg-gray-50/80",
-      "font-semibold text-sm text-gray-800",
-      "font-medium text-sm text-gray-700",
-      "text-sm text-gray-600",
+      "font-bold text-[15px] text-foreground bg-muted/50",
+      "font-semibold text-sm text-foreground/90",
+      "font-medium text-sm text-foreground/80",
+      "text-sm text-muted-foreground",
     ];
     const rowStyle = levelStyles[level] ?? levelStyles[3];
 
     return (
       <div key={account.id}>
         <div
-          className={`group flex items-center py-3 px-4 border-b hover:bg-gray-50 transition-colors ${rowStyle} ${
+          className={`group flex items-center py-3 px-4 border-b hover:bg-accent/50 transition-colors ${rowStyle} ${
             !account.isActive ? "opacity-50" : ""
           }`}
           style={{ paddingLeft: `${level * 32 + 16}px` }}
         >
           {/* Tree connector line */}
           {level > 0 && (
-            <span className="mr-2 text-gray-300 select-none" aria-hidden>
+            <span className="mr-2 text-muted-foreground/40 select-none" aria-hidden>
               {"└"}
             </span>
           )}
@@ -120,7 +120,7 @@ export default function AccountsPageClient({
             {hasChildren && (
               <button
                 onClick={() => toggleExpand(account.id)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-muted-foreground hover:text-foreground"
               >
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4" />
@@ -132,7 +132,7 @@ export default function AccountsPageClient({
           </div>
 
           {/* Code */}
-          <span className="font-mono text-sm text-gray-500 w-28 shrink-0">
+          <span className="font-mono text-sm text-muted-foreground w-28 shrink-0">
             {account.code}
           </span>
 
@@ -155,7 +155,7 @@ export default function AccountsPageClient({
 
           {/* Status */}
           {!account.isActive && (
-            <Badge variant="outline" className="text-gray-400 mr-3">
+            <Badge variant="outline" className="text-muted-foreground mr-3">
               Inactiva
             </Badge>
           )}
@@ -166,7 +166,7 @@ export default function AccountsPageClient({
               {canAddChild && (
                 <button
                   onClick={() => handleAddChild(account.id)}
-                  className="p-1.5 rounded hover:bg-blue-100 text-gray-400 hover:text-blue-600"
+                  className="p-1.5 rounded hover:bg-info/10 text-muted-foreground hover:text-info"
                   title="Agregar cuenta hija"
                 >
                   <PlusCircle className="h-4 w-4" />
@@ -174,7 +174,7 @@ export default function AccountsPageClient({
               )}
               <button
                 onClick={() => setEditAccount(account)}
-                className="p-1.5 rounded hover:bg-gray-200 text-gray-400 hover:text-gray-700"
+                className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground"
                 title="Editar"
               >
                 <Pencil className="h-4 w-4" />
@@ -182,7 +182,7 @@ export default function AccountsPageClient({
               {canDeactivate && (
                 <button
                   onClick={() => setDeactivateAccount(account)}
-                  className="p-1.5 rounded hover:bg-red-100 text-gray-400 hover:text-red-600"
+                  className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
                   title="Desactivar"
                 >
                   <Ban className="h-4 w-4" />
@@ -214,7 +214,7 @@ export default function AccountsPageClient({
       <Card>
         <CardContent className="p-0">
           {/* Table Header */}
-          <div className="flex items-center py-3 px-4 border-b bg-gray-50 text-sm font-medium text-gray-600">
+          <div className="flex items-center py-3 px-4 border-b bg-muted text-sm font-medium text-muted-foreground">
             <div className="w-6 mr-2" />
             <span className="w-24 shrink-0">Codigo</span>
             <span className="flex-1">Nombre</span>
@@ -225,9 +225,9 @@ export default function AccountsPageClient({
 
           {tree.length === 0 ? (
             <div className="py-12 text-center">
-              <BookOpen className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600">No hay cuentas registradas</p>
-              <p className="text-sm text-gray-400 mt-1">
+              <BookOpen className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+              <p className="text-muted-foreground">No hay cuentas registradas</p>
+              <p className="text-sm text-muted-foreground/70 mt-1">
                 Cree la primera cuenta para comenzar
               </p>
             </div>

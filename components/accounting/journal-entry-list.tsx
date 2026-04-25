@@ -135,7 +135,7 @@ function JournalEntryRow({
 
   const statusBadge = STATUS_BADGE[entry.status] ?? {
     label: entry.status,
-    className: "bg-gray-100 text-gray-800",
+    className: "bg-muted text-muted-foreground",
   };
 
   const totalDebit = entry.lines.reduce(
@@ -159,20 +159,20 @@ function JournalEntryRow({
 
   return (
     <tr
-      className="border-b hover:bg-gray-50 cursor-pointer"
+      className="border-b hover:bg-accent/50 cursor-pointer"
       onClick={() => router.push(viewPath)}
     >
-      <td className="py-3 px-4 font-mono text-blue-600 font-medium">
+      <td className="py-3 px-4 font-mono text-info font-medium">
         {displayNumber ?? entry.number}
       </td>
-      <td className="py-3 px-4 font-mono text-gray-500">
+      <td className="py-3 px-4 font-mono text-muted-foreground">
         {entry.referenceNumber ?? "—"}
       </td>
       <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(entry.date)}</td>
       <td className="py-3 px-4">{voucherName}</td>
-      <td className="py-3 px-4 text-gray-500">{periodName}</td>
+      <td className="py-3 px-4 text-muted-foreground">{periodName}</td>
       <td className="py-3 px-4 max-w-xs truncate">{entry.description}</td>
-      <td className="py-3 px-4 text-gray-500">{entry.contact?.name ?? "—"}</td>
+      <td className="py-3 px-4 text-muted-foreground">{entry.contact?.name ?? "—"}</td>
       <td className="py-3 px-4 text-center">
         <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
       </td>
@@ -186,7 +186,7 @@ function JournalEntryRow({
       </td>
       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -230,7 +230,7 @@ function JournalEntryRow({
                   <DropdownMenuSeparator />
                   <DropdownMenuItem
                     onClick={() => onVoid(entry)}
-                    className="text-red-600 focus:text-red-600"
+                    className="text-destructive focus:text-destructive"
                   >
                     <XCircle className="h-4 w-4 mr-2" />
                     Anular
@@ -427,32 +427,32 @@ export default function JournalEntryList({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Comprobante</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Ref.</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                <tr className="border-b bg-muted">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Comprobante</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Tipo
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Período
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Descripción
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Contacto
                   </th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">
                     Estado
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Origen
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Total
                   </th>
-                  <th className="w-12 py-3 px-4 font-medium text-gray-600 text-center">
+                  <th className="w-12 py-3 px-4 font-medium text-muted-foreground text-center">
                     Acciones
                   </th>
                 </tr>
@@ -461,9 +461,9 @@ export default function JournalEntryList({
                 {entries.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="py-12 text-center">
-                      <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">No hay asientos registrados</p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                      <p className="text-muted-foreground">No hay asientos registrados</p>
+                      <p className="text-sm text-muted-foreground/70 mt-1">
                         {hasFilters
                           ? "Ningún asiento coincide con los filtros aplicados"
                           : "Cree el primer asiento contable para comenzar"}
@@ -514,7 +514,7 @@ export default function JournalEntryList({
               Cancelar
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               disabled={actioningId !== null}
               onClick={() => postEntry && executeTransition(postEntry, "POSTED")}
             >

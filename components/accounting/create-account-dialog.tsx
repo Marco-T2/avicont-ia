@@ -219,7 +219,7 @@ export default function CreateAccountDialog({
               <Label htmlFor="code">Codigo</Label>
               <button
                 type="button"
-                className="text-xs text-blue-600 hover:underline"
+                className="text-xs text-primary hover:underline"
                 onClick={() => {
                   setUseCustomCode(!useCustomCode);
                   if (!useCustomCode) setCustomCode(suggestedCode);
@@ -240,7 +240,7 @@ export default function CreateAccountDialog({
                 id="code"
                 value={suggestedCode}
                 disabled
-                className="bg-gray-50 text-gray-600"
+                className="bg-muted text-muted-foreground"
               />
             )}
           </div>
@@ -265,7 +265,7 @@ export default function CreateAccountDialog({
                 id="type"
                 value={ACCOUNT_TYPES.find((t) => t.value === parent.type)?.label ?? parent.type}
                 disabled
-                className="bg-gray-50 text-gray-600"
+                className="bg-muted text-muted-foreground"
               />
             ) : (
               <Select value={type} onValueChange={setType} required>
@@ -306,7 +306,7 @@ export default function CreateAccountDialog({
               </SelectContent>
             </Select>
             {parent && parentSubtype && !subtype && (
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-muted-foreground/70">
                 Heredado del padre: {formatSubtypeLabel(parentSubtype)}
               </p>
             )}
@@ -324,14 +324,14 @@ export default function CreateAccountDialog({
                 />
                 <span className="text-sm">Es contra-cuenta</span>
               </label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Marca la cuenta como contra-activo (naturaleza acreedora). Ej: Depreciación Acumulada, Amortización Acumulada.
               </p>
             </div>
           )}
 
           {/* Level — informational only */}
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-muted-foreground">
             Nivel: {computedLevel} {computedLevel === 1 ? "(grupo principal)" : `(subcuenta de ${parent?.name})`}
           </p>
 

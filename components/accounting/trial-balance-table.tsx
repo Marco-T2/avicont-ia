@@ -72,7 +72,7 @@ export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
       {report.imbalanced && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm font-medium"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm font-medium"
         >
           Balance desbalanceado — Delta Sumas: {report.deltaSumas} · Delta Saldos:{" "}
           {report.deltaSaldos}
@@ -83,7 +83,7 @@ export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
       <div className="overflow-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
+            <tr className="border-b border-border bg-muted">
               <th className="px-2 py-2 text-center font-semibold w-10">N°</th>
               <th className="px-2 py-2 text-left font-semibold w-24">Código</th>
               <th className="px-2 py-2 text-left font-semibold">Cuenta</th>
@@ -95,8 +95,8 @@ export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
           </thead>
           <tbody>
             {report.rows.map((row, idx) => (
-              <tr key={row.accountId} className="border-b border-gray-100 hover:bg-gray-50">
-                <td className="px-2 py-1.5 text-center text-gray-500">{idx + 1}</td>
+              <tr key={row.accountId} className="border-b border-border hover:bg-accent/50">
+                <td className="px-2 py-1.5 text-center text-muted-foreground">{idx + 1}</td>
                 <td className="px-2 py-1.5 font-mono text-xs">{row.code}</td>
                 <td className="px-2 py-1.5">{row.name}</td>
                 <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.sumasDebe)}</td>
@@ -107,7 +107,7 @@ export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
             ))}
           </tbody>
           <tfoot>
-            <tr className="border-t-2 border-gray-800 font-bold">
+            <tr className="border-t-2 border-border font-bold">
               <td className="px-2 py-2" colSpan={3}>
                 TOTAL
               </td>

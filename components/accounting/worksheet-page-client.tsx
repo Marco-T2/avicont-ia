@@ -135,8 +135,8 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-3 text-gray-500">Generando Hoja de Trabajo...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-3 text-muted-foreground">Generando Hoja de Trabajo...</span>
         </div>
       )}
 
@@ -144,7 +144,7 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
       {error && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive"
         >
           {error}
         </div>
@@ -155,7 +155,7 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
         <div className="space-y-4">
           {/* No-CJ note (spec 1.S2) */}
           {report.allAjustesZero && (
-            <div className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800 text-sm">
+            <div className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-foreground text-sm">
               Sin asientos de ajuste (CJ) en este período. Las columnas de ajuste
               aparecen en cero.
             </div>
@@ -166,14 +166,14 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
             <a
               href={buildExportUrl("pdf")}
               download
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
             >
               Descargar PDF
             </a>
             <a
               href={buildExportUrl("xlsx")}
               download
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
             >
               Descargar Excel
             </a>
