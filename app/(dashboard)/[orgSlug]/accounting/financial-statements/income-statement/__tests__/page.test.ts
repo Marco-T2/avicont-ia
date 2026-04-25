@@ -6,15 +6,22 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRedirect, mockRequirePermission } = vi.hoisted(() => ({
+const { mockRedirect, mockRequirePermission, mockGetOrCreate } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
+  mockGetOrCreate: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
 vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
+}));
+
+vi.mock("@/features/org-profile/server", () => ({
+  OrgProfileService: class {
+    getOrCreate = mockGetOrCreate;
+  },
 }));
 
 vi.mock("@/components/financial-statements/income-statement-page-client", () => ({
@@ -31,6 +38,7 @@ function makeParams() {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockGetOrCreate.mockResolvedValue({ razonSocial: "" });
 });
 
 describe("/accounting/financial-statements/income-statement — rbac gate", () => {
