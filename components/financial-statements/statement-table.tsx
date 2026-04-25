@@ -85,9 +85,9 @@ export function StatementTable({
                 className="flex-shrink-0 p-0.5 rounded hover:bg-black/5 transition-colors"
               >
                 {isExpanded ? (
-                  <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                  <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                 ) : (
-                  <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                  <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
                 )}
               </button>
             ) : (
@@ -111,10 +111,10 @@ export function StatementTable({
               className={`font-mono text-sm tabular-nums ${
                 col.role === "diff_percent"
                   ? isNegative
-                    ? "text-red-600"
-                    : "text-green-700"
+                    ? "text-destructive"
+                    : "text-success"
                   : isNegative
-                    ? "text-red-700"
+                    ? "text-destructive"
                     : ""
               } ${row.original.semanticClass === "total-row" ? "font-semibold" : ""}`}
             >
@@ -157,15 +157,15 @@ export function StatementTable({
       {(title || orgName || subtitle) && (
         <div className="text-center mb-4 px-4 pt-2">
           {title && (
-            <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
+            <h2 className="text-2xl font-semibold text-foreground tracking-tight">
               {title}
             </h2>
           )}
           {orgName && (
-            <div className="text-base text-gray-700 mt-1">{orgName}</div>
+            <div className="text-base text-foreground mt-1">{orgName}</div>
           )}
           {subtitle && (
-            <div className="text-sm text-gray-500 mt-0.5">{subtitle}</div>
+            <div className="text-sm text-muted-foreground mt-0.5">{subtitle}</div>
           )}
         </div>
       )}
@@ -173,15 +173,15 @@ export function StatementTable({
       <table className="mx-auto w-auto border-collapse text-sm">
         <thead>
           {table.getHeaderGroups().map((headerGroup) => (
-            <tr key={headerGroup.id} className="border-b border-gray-200 bg-gray-50">
+            <tr key={headerGroup.id} className="border-b border-border bg-muted">
               {headerGroup.headers.map((header, colIndex) => (
                 <th
                   key={header.id}
                   className={[
-                    "px-3 py-2 text-left font-semibold text-gray-700 text-xs uppercase tracking-wide whitespace-nowrap",
+                    "px-3 py-2 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide whitespace-nowrap",
                     // Columna nombre: sticky izquierda
                     colIndex === 0
-                      ? "sticky left-0 z-10 bg-gray-50 w-[280px]"
+                      ? "sticky left-0 z-10 bg-muted w-[280px]"
                       : "text-right w-[140px]",
                   ].join(" ")}
                 >
@@ -202,12 +202,12 @@ export function StatementTable({
                   semanticClass,
                   // Clases base según semántica
                   semanticClass === "top-level-grouped-row"
-                    ? "bg-gray-100 font-semibold border-t border-gray-300"
+                    ? "bg-muted font-semibold border-t border-border"
                     : semanticClass === "custom-grouped-row"
-                      ? "bg-gray-50 font-medium border-t border-gray-200"
+                      ? "bg-muted/50 font-medium border-t border-border"
                       : semanticClass === "total-row"
-                        ? "bg-white font-semibold border-t-2 border-gray-400"
-                        : "bg-white hover:bg-blue-50/30 transition-colors",
+                        ? "bg-card font-semibold border-t-2 border-border"
+                        : "bg-card hover:bg-accent/50 transition-colors",
                   // Compacto: padding reducido via data-compact en el wrapper
                   "data-[compact=true]:py-0",
                 ].join(" ")}
@@ -216,7 +216,7 @@ export function StatementTable({
                   <td
                     key={cell.id}
                     className={[
-                      "px-3 border-b border-gray-100",
+                      "px-3 border-b border-border",
                       // Altura normal vs compacta
                       compact ? "py-0.5" : "py-2",
                       // Columna nombre: sticky izquierda, z-index para no solapar
@@ -224,12 +224,12 @@ export function StatementTable({
                         ? [
                             "sticky left-0 z-[1] w-[280px]",
                             semanticClass === "top-level-grouped-row"
-                              ? "bg-gray-100"
+                              ? "bg-muted"
                               : semanticClass === "custom-grouped-row"
-                                ? "bg-gray-50"
+                                ? "bg-muted/50"
                                 : semanticClass === "total-row"
-                                  ? "bg-white"
-                                  : "bg-white",
+                                  ? "bg-card"
+                                  : "bg-card",
                           ].join(" ")
                         : "text-right w-[140px]",
                     ].join(" ")}

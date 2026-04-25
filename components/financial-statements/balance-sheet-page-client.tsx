@@ -139,8 +139,8 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
       {/* Estado de carga */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-3 text-gray-500">Generando Balance General...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-3 text-muted-foreground">Generando Balance General...</span>
         </div>
       )}
 
@@ -148,7 +148,7 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
       {error && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive"
         >
           {error}
         </div>

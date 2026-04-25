@@ -219,7 +219,7 @@ export function StatementFilters({
   const showISCustomRange = mode === "income-statement" && !hasPeriod && (!hasPreset || isCustomDate);
 
   const fieldClass = "flex flex-col gap-1 min-w-[160px]";
-  const labelClass = "text-xs font-medium text-gray-600";
+  const labelClass = "text-xs font-medium text-muted-foreground";
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
@@ -245,7 +245,7 @@ export function StatementFilters({
             {periods.map((p) => (
               <SelectItem key={p.id} value={p.id}>
                 {p.name}{" "}
-                <span className="text-xs text-gray-500">
+                <span className="text-xs text-muted-foreground">
                   ({p.status === "CLOSED" ? "Cerrado" : "Abierto"})
                 </span>
               </SelectItem>

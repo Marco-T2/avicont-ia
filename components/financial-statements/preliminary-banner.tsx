@@ -10,7 +10,7 @@ export function PreliminaryBanner({ show }: PreliminaryBannerProps) {
   return (
     <div
       role="alert"
-      className="flex items-center gap-3 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-amber-800"
+      className="flex items-center gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-foreground"
     >
       <span className="text-lg font-bold">⚠</span>
       <div>
