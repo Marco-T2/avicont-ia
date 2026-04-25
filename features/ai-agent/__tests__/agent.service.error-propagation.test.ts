@@ -1,39 +1,33 @@
 /**
- * Audit H #1 — agent.service memoryRepo fire-and-forget error propagation
+ * Audit H #1 — agent.service memoryRepo error propagation
  *
- * Covers the CRITICAL finding from Audit H (2026-04-24): `agent.service.ts`
- * contains 4 fire-and-forget calls to `memoryRepo.saveMessage(...).catch(
- * err => console.error(...))`. A failed save (DB down, timeout) vanishes into
- * console.error, the turn succeeds from the user's perspective, and the next
- * turn's history is silently corrupt (missing message) — the agent loses
- * conversational context without any alarm.
- *
- * Expected failure mode on current (pre-fix) code:
- *   - User-message save rejects → current code STILL calls Gemini
- *     (because the save is fire-and-forget BEFORE the try/catch).
- *   - Assistant-message save rejects after a successful Gemini call → current
- *     code STILL returns the assistant's text as if the save succeeded.
- *
- * Fix: `await` all four saves, move the user-save into the outer try block so
- * any save failure is caught by the existing `catch (error)` handler that
- * returns the canned "Ocurrió un error..." response. Net effect: failures are
- * surfaced to the user instead of silently corrupting session state.
+ * Covers the CRITICAL finding from Audit H (2026-04-24): saveMessage failures
+ * must propagate to the canned error path instead of being silently swallowed.
+ * Updated for the LLM wrapper refactor: now mocks `../llm` (the barrel) and
+ * `llmClient.query` instead of the legacy `queryWithTools`.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const {
   mockSaveMessage,
   mockGetRecentMessages,
-  mockQueryWithTools,
+  mockLLMQuery,
   mockBuildAgentContext,
   mockBuildRagContext,
 } = vi.hoisted(() => ({
   mockSaveMessage: vi.fn(),
   mockGetRecentMessages: vi.fn(),
-  mockQueryWithTools: vi.fn(),
+  mockLLMQuery: vi.fn(),
   mockBuildAgentContext: vi.fn(),
   mockBuildRagContext: vi.fn(),
 }));
+
+// Pre-set GEMINI_API_KEY before any module evaluation so the wrapper's
+// startup guard (which throws if the key is missing) does not trip when
+// vi.importActual loads the real `../llm` barrel.
+vi.hoisted(() => {
+  process.env.GEMINI_API_KEY = "test-key-for-vitest";
+});
 
 vi.mock("../memory.repository", () => ({
   ChatMemoryRepository: class {
@@ -43,9 +37,13 @@ vi.mock("../memory.repository", () => ({
   },
 }));
 
-vi.mock("../gemini.client", () => ({
-  queryWithTools: mockQueryWithTools,
-}));
+vi.mock("../llm", async () => {
+  const actual = await vi.importActual<typeof import("../llm")>("../llm");
+  return {
+    ...actual,
+    llmClient: { query: mockLLMQuery },
+  };
+});
 
 vi.mock("../agent.context", () => ({
   buildAgentContext: mockBuildAgentContext,
@@ -85,13 +83,13 @@ describe("AgentService.query — error-handling boundary (Audit H #1)", () => {
     mockBuildAgentContext.mockResolvedValue("context");
     mockBuildRagContext.mockResolvedValue("rag context");
     mockSaveMessage.mockResolvedValue(undefined);
-    mockQueryWithTools.mockResolvedValue({
+    mockLLMQuery.mockResolvedValue({
       text: "Hola, ¿cómo puedo ayudarte?",
-      functionCalls: undefined,
+      toolCalls: [],
     });
   });
 
-  it("happy path: saves user message and assistant message, returns Gemini text", async () => {
+  it("happy path: saves user message and assistant message, returns LLM text", async () => {
     const service = new AgentService();
 
     const result = await service.query(
@@ -103,7 +101,7 @@ describe("AgentService.query — error-handling boundary (Audit H #1)", () => {
     );
 
     expect(result.message).toBe("Hola, ¿cómo puedo ayudarte?");
-    expect(mockQueryWithTools).toHaveBeenCalledTimes(1);
+    expect(mockLLMQuery).toHaveBeenCalledTimes(1);
     expect(mockSaveMessage).toHaveBeenCalledTimes(2);
     expect(mockSaveMessage).toHaveBeenNthCalledWith(
       1,
@@ -123,11 +121,7 @@ describe("AgentService.query — error-handling boundary (Audit H #1)", () => {
     );
   });
 
-  it("short-circuits when user-message save fails — Gemini must NOT be called", async () => {
-    // Pre-fix: saveMessage is fire-and-forget at L86, so this rejection is
-    // swallowed by `.catch(console.error)` and Gemini is still called.
-    // Post-fix: the await propagates, outer catch returns the canned error,
-    // Gemini is never called.
+  it("short-circuits when user-message save fails — LLM must NOT be called", async () => {
     mockSaveMessage.mockRejectedValueOnce(new Error("DB down"));
     const service = new AgentService();
 
@@ -142,15 +136,10 @@ describe("AgentService.query — error-handling boundary (Audit H #1)", () => {
     expect(result.message).toBe(CANNED_ERROR_MESSAGE);
     expect(result.suggestion).toBeNull();
     expect(result.requiresConfirmation).toBe(false);
-    expect(mockQueryWithTools).not.toHaveBeenCalled();
+    expect(mockLLMQuery).not.toHaveBeenCalled();
   });
 
   it("propagates assistant-save failure to canned error instead of returning a falsely-successful response", async () => {
-    // Pre-fix: the assistant save at L132 (text-only path) is fire-and-forget;
-    // a rejection here is swallowed and the agent returns the Gemini text as
-    // if the turn succeeded — but the next turn will be missing this assistant
-    // message, silently corrupting conversation history.
-    // Post-fix: the await propagates into the outer catch.
     mockSaveMessage
       .mockResolvedValueOnce(undefined) // user save ok
       .mockRejectedValueOnce(new Error("DB down")); // assistant save fails
@@ -165,7 +154,7 @@ describe("AgentService.query — error-handling boundary (Audit H #1)", () => {
     );
 
     expect(result.message).toBe(CANNED_ERROR_MESSAGE);
-    expect(mockQueryWithTools).toHaveBeenCalledTimes(1);
+    expect(mockLLMQuery).toHaveBeenCalledTimes(1);
   });
 
   it("does not persist any message when sessionId is absent", async () => {

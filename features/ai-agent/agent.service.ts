@@ -1,13 +1,17 @@
 import "server-only";
-import { queryWithTools } from "./gemini.client";
-import { getToolsForRole, isWriteAction } from "./agent.tools";
+import { llmClient, type ToolCall, type TokenUsage } from "./llm";
+import { getToolsForRole, isWriteAction, TOOL_REGISTRY } from "./agent.tools";
 import { buildAgentContext, buildRagContext } from "./agent.context";
 import { ChatMemoryRepository } from "./memory.repository";
+import { logStructured } from "@/lib/logging/structured";
 import type { Role } from "@/features/permissions";
-import type {
-  AgentResponse,
-  AgentSuggestion,
-} from "./agent.types";
+import type { AgentResponse, AgentSuggestion } from "./agent.types";
+
+type InvocationOutcome =
+  | "ok"
+  | "error"
+  | "validation_failed"
+  | "no_tools_for_role";
 
 const memoryRepo = new ChatMemoryRepository();
 
@@ -43,86 +47,106 @@ export class AgentService {
     prompt: string,
     sessionId?: string,
   ): Promise<AgentResponse> {
+    const startedAt = performance.now();
     const normalizedRole = this.normalizeRole(role);
-    const tools = getToolsForRole(normalizedRole);
 
-    if (tools.length === 0) {
-      return {
-        message: "No tienes herramientas disponibles para tu rol actual.",
-        suggestion: null,
-        requiresConfirmation: false,
-      };
-    }
-
-    const [context, ragContext, history] = await Promise.all([
-      buildAgentContext(orgId, userId, normalizedRole),
-      buildRagContext(orgId, prompt, normalizedRole),
-      sessionId ? memoryRepo.getRecentMessages(orgId, sessionId) : Promise.resolve([]),
-    ]);
-
-    const fullContext = ragContext ? `${ragContext}\n\n${context}` : context;
-
-    // Inyectar historial de conversación en el contexto
-    let historyContext = "";
-    if (history.length > 0) {
-      const historyLines = history.map(
-        (msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`,
-      );
-      historyContext = [
-        "## Historial de Conversación Reciente",
-        "",
-        ...historyLines,
-        "",
-      ].join("\n");
-    }
-
-    const contextWithHistory = historyContext
-      ? `${historyContext}\n\n${fullContext}`
-      : fullContext;
-    const systemPrompt = this.buildSystemPrompt(normalizedRole, contextWithHistory);
+    let outcome: InvocationOutcome = "ok";
+    let usage: TokenUsage | undefined;
+    let toolCalls: readonly ToolCall[] = [];
+    let errorMessage: string | undefined;
 
     try {
+      const tools = getToolsForRole(normalizedRole);
+
+      if (tools.length === 0) {
+        outcome = "no_tools_for_role";
+        return {
+          message: "No tienes herramientas disponibles para tu rol actual.",
+          suggestion: null,
+          requiresConfirmation: false,
+        };
+      }
+
+      const [context, ragContext, history] = await Promise.all([
+        buildAgentContext(orgId, userId, normalizedRole),
+        buildRagContext(orgId, prompt, normalizedRole),
+        sessionId ? memoryRepo.getRecentMessages(orgId, sessionId) : Promise.resolve([]),
+      ]);
+
+      const fullContext = ragContext ? `${ragContext}\n\n${context}` : context;
+
+      let historyContext = "";
+      if (history.length > 0) {
+        const historyLines = history.map(
+          (msg) => `${msg.role === "user" ? "Usuario" : "Asistente"}: ${msg.content}`,
+        );
+        historyContext = [
+          "## Historial de Conversación Reciente",
+          "",
+          ...historyLines,
+          "",
+        ].join("\n");
+      }
+
+      const contextWithHistory = historyContext
+        ? `${historyContext}\n\n${fullContext}`
+        : fullContext;
+      const systemPrompt = this.buildSystemPrompt(normalizedRole, contextWithHistory);
+
       // Persistimos el mensaje del usuario DENTRO del try: si falla (DB caída,
-      // timeout) queremos cortocircuitar antes de llamar a Gemini y devolver
+      // timeout) queremos cortocircuitar antes de llamar al LLM y devolver
       // el error canned en vez de corromper silenciosamente el historial.
       if (sessionId) {
         await memoryRepo.saveMessage(sessionId, orgId, userId, "user", prompt);
       }
 
-      const result = await queryWithTools(systemPrompt, prompt, tools);
+      const result = await llmClient.query({
+        systemPrompt,
+        userMessage: prompt,
+        tools,
+      });
 
-      const functionCalls = result.functionCalls;
+      usage = result.usage;
+      toolCalls = result.toolCalls;
 
-      // Si Gemini eligió llamar una función
-      if (functionCalls && functionCalls.length > 0) {
-        const call = functionCalls[0];
-        const actionName = call.name;
-        const args = call.args as Record<string, unknown>;
-
-        // Acciones de escritura: retornar sugerencia para confirmación del usuario
-        if (isWriteAction(actionName)) {
-          const response = this.buildWriteSuggestion(actionName, args, result.text);
-          if (sessionId) {
-            await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message);
-          }
-          return response;
+      if (toolCalls.length > 0) {
+        // Hoy procesamos solo la primera tool call. Los modelos modernos
+        // (Gemini 2.5, Claude, GPT-4) pueden devolver varias en paralelo;
+        // cuando empiece a aparecer queremos verlo en logs antes de que un
+        // usuario reporte un bug raro de "el agente ignoró parte de mi pedido".
+        if (toolCalls.length > 1) {
+          logStructured({
+            event: "multiple_tool_calls_dropped",
+            level: "warn",
+            count: toolCalls.length,
+            dropped: toolCalls.slice(1).map((c) => c.name),
+          });
         }
 
-        // Acciones de lectura: ejecutar inmediatamente y retornar resultados
-        const response = await this.executeReadAction(
+        const call = toolCalls[0];
+
+        if (isWriteAction(call.name)) {
+          const exec = await this.handleWriteCall(call, result.text);
+          outcome = exec.outcome;
+          if (sessionId) {
+            await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", exec.response.message);
+          }
+          return exec.response;
+        }
+
+        const exec = await this.handleReadCall(
           orgId,
           normalizedRole,
-          actionName,
-          args,
+          call,
           result.text,
         );
+        outcome = exec.outcome;
         if (sessionId) {
-          await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", response.message);
+          await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", exec.response.message);
         }
-        return response;
+        return exec.response;
       }
 
-      // Sin llamada a función — solo respuesta de texto
       const message = result.text || "No pude procesar tu solicitud.";
       if (sessionId) {
         await memoryRepo.saveMessage(sessionId, orgId, userId, "assistant", message);
@@ -133,6 +157,8 @@ export class AgentService {
         requiresConfirmation: false,
       };
     } catch (error) {
+      outcome = "error";
+      errorMessage = error instanceof Error ? error.message : String(error);
       console.error("Agent query error:", error);
       return {
         message:
@@ -140,6 +166,22 @@ export class AgentService {
         suggestion: null,
         requiresConfirmation: false,
       };
+    } finally {
+      logStructured({
+        event: "agent_invocation",
+        level: "info",
+        orgId,
+        userId,
+        role: normalizedRole,
+        durationMs: Math.round(performance.now() - startedAt),
+        inputTokens: usage?.inputTokens ?? null,
+        outputTokens: usage?.outputTokens ?? null,
+        totalTokens: usage?.totalTokens ?? null,
+        toolCallsCount: toolCalls.length,
+        toolNames: toolCalls.map((c) => c.name),
+        outcome,
+        ...(errorMessage ? { errorMessage } : {}),
+      });
     }
   }
 
@@ -181,36 +223,94 @@ export class AgentService {
     ].join("\n");
   }
 
-  private buildWriteSuggestion(
-    actionName: string,
-    args: Record<string, unknown>,
+  /**
+   * Resuelve la tool por nombre, valida `call.input` contra el schema Zod
+   * registrado, y devuelve el input tipado. Si el LLM alucina args o falta
+   * la tool en el registry, devuelve una respuesta de error estructurada.
+   */
+  private validateToolInput(
+    call: ToolCall,
+  ):
+    | { ok: true; input: Record<string, unknown> }
+    | { ok: false; response: AgentResponse } {
+    const tool = TOOL_REGISTRY[call.name];
+    if (!tool) {
+      return {
+        ok: false,
+        response: {
+          message: `Acción no reconocida: ${call.name}`,
+          suggestion: null,
+          requiresConfirmation: false,
+        },
+      };
+    }
+
+    const parsed = tool.inputSchema.safeParse(call.input);
+    if (!parsed.success) {
+      logStructured({
+        event: "tool_input_validation_failed",
+        level: "warn",
+        tool: call.name,
+        issues: parsed.error.issues.map((i) => ({
+          path: i.path.join("."),
+          message: i.message,
+        })),
+      });
+      return {
+        ok: false,
+        response: {
+          message: `Los argumentos para ${call.name} no son válidos. Reintentá la consulta.`,
+          suggestion: null,
+          requiresConfirmation: false,
+        },
+      };
+    }
+
+    return { ok: true, input: parsed.data as Record<string, unknown> };
+  }
+
+  private async handleWriteCall(
+    call: ToolCall,
     text: string,
-  ): AgentResponse {
+  ): Promise<{ response: AgentResponse; outcome: InvocationOutcome }> {
+    const validation = this.validateToolInput(call);
+    if (!validation.ok) {
+      return { response: validation.response, outcome: "validation_failed" };
+    }
+
     const suggestion: AgentSuggestion = {
-      action: actionName as AgentSuggestion["action"],
-      data: args,
+      action: call.name as AgentSuggestion["action"],
+      data: validation.input,
     } as AgentSuggestion;
 
     return {
-      message:
-        text ||
-        `Voy a ${actionName === "createExpense" ? "registrar un gasto" : "registrar mortalidad"}. Por favor confirma.`,
-      suggestion,
-      requiresConfirmation: true,
+      outcome: "ok",
+      response: {
+        message:
+          text ||
+          `Voy a ${call.name === "createExpense" ? "registrar un gasto" : "registrar mortalidad"}. Por favor confirma.`,
+        suggestion,
+        requiresConfirmation: true,
+      },
     };
   }
 
-  private async executeReadAction(
+  private async handleReadCall(
     orgId: string,
     role: Role,
-    actionName: string,
-    args: Record<string, unknown>,
+    call: ToolCall,
     text: string,
-  ): Promise<AgentResponse> {
+  ): Promise<{ response: AgentResponse; outcome: InvocationOutcome }> {
+    const validation = this.validateToolInput(call);
+    if (!validation.ok) {
+      return { response: validation.response, outcome: "validation_failed" };
+    }
+    const args = validation.input;
+
     try {
       let data: unknown;
 
-      switch (actionName) {
+      switch (call.name) {
         case "listFarms":
           data = await farmsService.list(orgId);
           break;
@@ -226,33 +326,45 @@ export class AgentService {
         case "searchDocuments": {
           const ragContext = await buildRagContext(orgId, args.query as string, role);
           return {
-            message: text || ragContext || "No se encontraron documentos relevantes.",
-            suggestion: null,
-            requiresConfirmation: false,
+            outcome: "ok",
+            response: {
+              message: text || ragContext || "No se encontraron documentos relevantes.",
+              suggestion: null,
+              requiresConfirmation: false,
+            },
           };
         }
         default:
           return {
-            message: `Acción no reconocida: ${actionName}`,
-            suggestion: null,
-            requiresConfirmation: false,
+            outcome: "validation_failed",
+            response: {
+              message: `Acción no reconocida: ${call.name}`,
+              suggestion: null,
+              requiresConfirmation: false,
+            },
           };
       }
 
       return {
-        message: text || "Aquí están los datos solicitados.",
-        suggestion: {
-          action: actionName as AgentSuggestion["action"],
-          data: data as AgentSuggestion["data"],
-        } as AgentSuggestion,
-        requiresConfirmation: false,
+        outcome: "ok",
+        response: {
+          message: text || "Aquí están los datos solicitados.",
+          suggestion: {
+            action: call.name as AgentSuggestion["action"],
+            data: data as AgentSuggestion["data"],
+          } as AgentSuggestion,
+          requiresConfirmation: false,
+        },
       };
     } catch (error) {
-      console.error(`Error executing read action ${actionName}:`, error);
+      console.error(`Error executing read action ${call.name}:`, error);
       return {
-        message: `Error al consultar los datos: ${error instanceof Error ? error.message : "Error desconocido"}`,
-        suggestion: null,
-        requiresConfirmation: false,
+        outcome: "error",
+        response: {
+          message: `Error al consultar los datos: ${error instanceof Error ? error.message : "Error desconocido"}`,
+          suggestion: null,
+          requiresConfirmation: false,
+        },
       };
     }
   }
