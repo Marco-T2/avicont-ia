@@ -32,7 +32,7 @@ export default async function SettingsHubPage({ params }: SettingsHubPageProps) 
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Configuración</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Catálogo de parámetros y catálogos de la organización
         </p>
       </div>

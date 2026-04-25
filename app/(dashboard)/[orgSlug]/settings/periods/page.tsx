@@ -25,7 +25,7 @@ export default async function PeriodsPage({ params }: PeriodsPageProps) {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Períodos Fiscales</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Gestión de períodos contables de la organización
         </p>
       </div>

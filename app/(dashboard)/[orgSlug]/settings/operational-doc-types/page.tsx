@@ -33,7 +33,7 @@ export default async function OperationalDocTypesPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Tipos de Documento Operativo</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Administra los talonarios utilizados en cobros y pagos
         </p>
       </div>

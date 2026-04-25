@@ -25,7 +25,7 @@ export default async function VoucherTypesPage({ params }: VoucherTypesPageProps
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Tipos de Comprobante</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Configuración de tipos de comprobante contable
         </p>
       </div>
