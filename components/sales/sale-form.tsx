@@ -8,7 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,15 +74,6 @@ function deriveLcvState(
   if (!sale.ivaSalesBook || sale.ivaSalesBook.status === "VOIDED") return "S2";
   return "S3";
 }
-
-// ── Configuración de badge de estado ──
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-};
 
 // ── Interfaz para la línea de detalle ──
 
@@ -525,9 +516,7 @@ export default function SaleForm({
           <div className="flex items-center justify-between">
             <CardTitle>{headerTitle}</CardTitle>
             {isEditMode && (
-              <Badge className={STATUS_BADGE[status]?.className ?? "bg-gray-100 text-gray-800"}>
-                {STATUS_BADGE[status]?.label ?? status}
-              </Badge>
+              <VoucherStatusBadge status={status} />
             )}
           </div>
         </CardHeader>
@@ -566,13 +555,13 @@ export default function SaleForm({
               {sale!.notes && (
                 <div className="col-span-2 sm:col-span-4">
                   <dt className="text-muted-foreground">Notas</dt>
-                  <dd className="mt-0.5 text-gray-700">{sale!.notes}</dd>
+                  <dd className="mt-0.5 text-foreground/80">{sale!.notes}</dd>
                 </div>
               )}
               {sale!.description && (
                 <div className="col-span-2 sm:col-span-4">
                   <dt className="text-muted-foreground">Descripción</dt>
-                  <dd className="mt-0.5 text-xs text-gray-600">{sale!.description}</dd>
+                  <dd className="mt-0.5 text-xs text-muted-foreground">{sale!.description}</dd>
                 </div>
               )}
             </dl>
@@ -730,13 +719,13 @@ export default function SaleForm({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-6">#</th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-48">Descripción</th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 min-w-48">Cuenta de Ingreso</th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-24">Cantidad</th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Precio Unitario</th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-28">Importe</th>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Descripción</th>
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Cuenta de Ingreso</th>
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-24">Cantidad</th>
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Precio Unitario</th>
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Importe</th>
                   {!isReadOnly && <th className="w-10" />}
                 </tr>
               </thead>
@@ -746,8 +735,8 @@ export default function SaleForm({
                   const price = parseFloat(line.unitPrice) || 0;
                   const lineAmount = Math.round(qty * price * 100) / 100;
                   return (
-                    <tr key={line.id} className="border-b hover:bg-gray-50/50">
-                      <td className="py-2 px-2 text-gray-400 text-xs">{idx + 1}</td>
+                    <tr key={line.id} className="border-b hover:bg-accent/50">
+                      <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
                       <td className="py-2 px-2">
                         <Input
                           value={line.description}
@@ -824,7 +813,7 @@ export default function SaleForm({
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => removeLine(line.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -835,11 +824,11 @@ export default function SaleForm({
                 })}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-300 bg-gray-100">
-                  <td colSpan={5} className="py-3 px-2 text-right font-semibold text-gray-700">
+                <tr className="border-t-2 border-border bg-muted">
+                  <td colSpan={5} className="py-3 px-2 text-right font-semibold text-foreground">
                     Total CxC (Bs.)
                   </td>
-                  <td className="py-3 px-2 text-right font-mono font-bold text-gray-900 text-base">
+                  <td className="py-3 px-2 text-right font-mono font-bold text-foreground text-base">
                     {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </td>
                   {!isReadOnly && <td />}
@@ -890,14 +879,14 @@ export default function SaleForm({
                       {formatDateBO(alloc.payment.date)}
                       {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
                     </Link>
-                    <span className="font-mono text-green-700 text-right whitespace-nowrap">
+                    <span className="font-mono text-success text-right whitespace-nowrap">
                       -{formatCurrency(alloc.amount)}
                     </span>
                   </div>
                 ))}
                 <div
                   className={`flex justify-between items-start gap-4 border-t-2 pt-2 font-bold ${
-                    sale.receivable.balance > 0 ? "text-red-600" : "text-green-700"
+                    sale.receivable.balance > 0 ? "text-destructive" : "text-success"
                   }`}
                 >
                   <span className="text-foreground">Saldo pendiente</span>
@@ -955,7 +944,7 @@ export default function SaleForm({
                 </Button>
                 <Button
                   type="button"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handleCreateAndPost}
                   disabled={!canSubmit || isSubmitting}
                 >
@@ -984,7 +973,7 @@ export default function SaleForm({
                 </Button>
                 <Button
                   type="button"
-                  className="bg-green-600 hover:bg-green-700"
+                  className="bg-success hover:bg-success/90 text-success-foreground"
                   onClick={handlePost}
                   disabled={!canSubmit || isActioning}
                 >

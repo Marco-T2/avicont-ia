@@ -10,7 +10,7 @@ import {
   CardDescription,
   CardAction,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import VoucherStatusBadge from "@/components/common/voucher-status-badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,13 +52,6 @@ function formatCurrency(amount: number): string {
     maximumFractionDigits: 2,
   })}`;
 }
-
-const STATUS_BADGE: Record<string, { label: string; className: string }> = {
-  DRAFT: { label: "Borrador", className: "bg-amber-100 text-amber-800" },
-  POSTED: { label: "Contabilizado", className: "bg-green-100 text-green-800" },
-  LOCKED: { label: "Bloqueado", className: "bg-blue-100 text-blue-800 border-blue-300" },
-  VOIDED: { label: "Anulado", className: "bg-red-100 text-red-700" },
-};
 
 // ── Props ──
 
@@ -155,8 +148,8 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
         <Card className="cursor-pointer transition-shadow hover:shadow-md">
           <CardHeader>
             <div className="flex items-center gap-3">
-              <div className="rounded-lg bg-green-100 p-2">
-                <TrendingUp className="h-5 w-5 text-green-600" />
+              <div className="rounded-lg bg-success/10 dark:bg-success/20 p-2">
+                <TrendingUp className="h-5 w-5 text-success" />
               </div>
               <div>
                 <CardTitle className="text-sm">Venta General</CardTitle>
@@ -204,12 +197,12 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Nro</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Cliente</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">Fecha</th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">Total</th>
-                  <th className="text-center py-3 px-4 font-medium text-gray-600">Estado</th>
+                <tr className="border-b bg-muted/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cliente</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
                   <th className="w-12 py-3 px-4" />
                 </tr>
               </thead>
@@ -217,9 +210,9 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                 {filtered.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center">
-                      <FileText className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">No hay ventas registradas</p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                      <p className="text-muted-foreground">No hay ventas registradas</p>
+                      <p className="text-sm text-muted-foreground mt-1">
                         {statusFilter !== "all"
                           ? "Ninguna venta coincide con los filtros aplicados"
                           : "Cree la primera venta para comenzar"}
@@ -228,22 +221,18 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                   </tr>
                 ) : (
                   filtered.map((sale) => {
-                    const statusBadge = STATUS_BADGE[sale.status] ?? {
-                      label: sale.status,
-                      className: "bg-gray-100 text-gray-800",
-                    };
                     const isLoading = actioningId === sale.id;
 
                     return (
                       <tr
                         key={sale.id}
-                        className="border-b hover:bg-gray-50 cursor-pointer"
+                        className="border-b hover:bg-accent/50 cursor-pointer"
                         onClick={() => router.push(`/${orgSlug}/sales/${sale.id}`)}
                       >
-                        <td className="py-3 px-4 font-mono text-blue-600 font-medium">
+                        <td className="py-3 px-4 font-mono text-info font-medium">
                           {sale.displayCode}
                         </td>
-                        <td className="py-3 px-4 text-gray-500">
+                        <td className="py-3 px-4 text-muted-foreground">
                           {sale.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
@@ -253,13 +242,11 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                           {formatCurrency(sale.totalAmount)}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <Badge className={statusBadge.className}>
-                            {statusBadge.label}
-                          </Badge>
+                          <VoucherStatusBadge status={sale.status} />
                         </td>
                         <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
                           {isLoading ? (
-                            <Loader2 className="h-4 w-4 animate-spin text-gray-400 mx-auto" />
+                            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground mx-auto" />
                           ) : (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -285,7 +272,7 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => handleDelete(sale.id)}
-                                      className="text-red-600 focus:text-red-600"
+                                      className="text-destructive focus:text-destructive"
                                     >
                                       <Trash2 className="h-4 w-4 mr-2" />
                                       Eliminar
@@ -303,7 +290,7 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem
                                       onClick={() => handleVoid(sale.id)}
-                                      className="text-red-600 focus:text-red-600"
+                                      className="text-destructive focus:text-destructive"
                                     >
                                       <XCircle className="h-4 w-4 mr-2" />
                                       Anular
