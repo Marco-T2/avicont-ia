@@ -75,9 +75,9 @@ function Cell({
       className="text-center px-2 py-1.5"
     >
       {allowed ? (
-        <Check className="h-4 w-4 text-emerald-600 inline-block" aria-label="permitido" />
+        <Check className="h-4 w-4 text-success inline-block" aria-label="permitido" />
       ) : (
-        <X className="h-4 w-4 text-gray-300 inline-block" aria-label="denegado" />
+        <X className="h-4 w-4 text-muted-foreground/50 inline-block" aria-label="denegado" />
       )}
     </td>
   );
@@ -91,7 +91,7 @@ export function RolesPermissionsMatrix() {
   return (
     <div className="overflow-x-auto border rounded-md">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b">
+        <thead className="bg-muted/50 border-b">
           <tr>
             <th className="text-left px-3 py-2 font-medium">Recurso</th>
             {ROLES.map((role) => (
@@ -105,7 +105,7 @@ export function RolesPermissionsMatrix() {
               </th>
             ))}
           </tr>
-          <tr className="bg-gray-50 border-b text-xs text-gray-500">
+          <tr className="bg-muted/50 border-b text-xs text-muted-foreground">
             <th className="px-3 py-1" />
             {ROLES.map((role) => (
               <>
@@ -120,10 +120,10 @@ export function RolesPermissionsMatrix() {
           {groups.map((group) => (
             <>
               {/* Section heading row */}
-              <tr key={`heading-${group.label}`} className="bg-gray-100">
+              <tr key={`heading-${group.label}`} className="bg-muted">
                 <td
                   colSpan={1 + ROLES.length * 3}
-                  className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
+                  className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
                 >
                   {group.label}
                 </td>
@@ -135,7 +135,7 @@ export function RolesPermissionsMatrix() {
                 return (
                   <tr
                     key={res}
-                    className={cn("border-b last:border-b-0", i % 2 === 1 && "bg-gray-50/50")}
+                    className={cn("border-b last:border-b-0", i % 2 === 1 && "bg-muted/30")}
                   >
                     <td className="px-3 py-1.5 font-medium">
                       {RESOURCE_LABELS[res as Resource]}

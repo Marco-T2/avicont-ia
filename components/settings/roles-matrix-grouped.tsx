@@ -60,7 +60,7 @@ export function RolesMatrixGrouped({
   return (
     <div className="overflow-x-auto border rounded-md">
       <table className="w-full text-sm">
-        <thead className="bg-gray-50 border-b">
+        <thead className="bg-muted/50 border-b">
           <tr>
             <th className="text-left px-3 py-2 font-medium">Recurso</th>
             <th className="text-center px-3 py-2 font-medium">Ver</th>
