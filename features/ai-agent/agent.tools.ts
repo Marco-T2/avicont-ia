@@ -1,134 +1,87 @@
-import {
-  SchemaType,
-  type FunctionDeclaration,
-} from "@google/generative-ai";
+import { z } from "zod";
+import { defineTool, type Tool } from "./llm";
 import type { Role } from "@/features/permissions";
 
 // ── Socio tools (farming operations) ──
 
-const createExpenseTool: FunctionDeclaration = {
+export const createExpenseTool = defineTool({
   name: "createExpense",
   description:
     "Sugerir la creación de un gasto para un lote de pollos. Extraer monto, categoría, lote y fecha del mensaje del usuario.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      amount: {
-        type: SchemaType.NUMBER,
-        description: "Monto del gasto en bolivianos",
-      },
-      category: {
-        type: SchemaType.STRING,
-        description:
-          "Categoría del gasto. Valores posibles: ALIMENTO, CHALA, AGUA, GARRAFAS, MANTENIMIENTO, GALPONERO, MEDICAMENTOS, VETERINARIO, OTROS",
-      },
-      description: {
-        type: SchemaType.STRING,
-        description: "Descripción opcional del gasto",
-      },
-      lotId: {
-        type: SchemaType.STRING,
-        description: "ID del lote al que corresponde el gasto",
-      },
-      date: {
-        type: SchemaType.STRING,
-        description: "Fecha del gasto en formato YYYY-MM-DD",
-      },
-    },
-    required: ["amount", "category", "lotId", "date"],
-  },
-};
+  inputSchema: z.object({
+    amount: z.number().describe("Monto del gasto en bolivianos"),
+    category: z
+      .enum([
+        "ALIMENTO",
+        "CHALA",
+        "AGUA",
+        "GARRAFAS",
+        "MANTENIMIENTO",
+        "GALPONERO",
+        "MEDICAMENTOS",
+        "VETERINARIO",
+        "OTROS",
+      ])
+      .describe("Categoría del gasto"),
+    description: z.string().optional().describe("Descripción opcional del gasto"),
+    lotId: z.string().describe("ID del lote al que corresponde el gasto"),
+    date: z.string().describe("Fecha del gasto en formato YYYY-MM-DD"),
+  }),
+});
 
-const logMortalityTool: FunctionDeclaration = {
+export const logMortalityTool = defineTool({
   name: "logMortality",
   description:
     "Sugerir el registro de mortalidad de pollos en un lote. Extraer cantidad, causa, lote y fecha.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      count: {
-        type: SchemaType.INTEGER,
-        description: "Cantidad de pollos muertos",
-      },
-      cause: {
-        type: SchemaType.STRING,
-        description: "Causa de la mortalidad (opcional)",
-      },
-      lotId: {
-        type: SchemaType.STRING,
-        description: "ID del lote",
-      },
-      date: {
-        type: SchemaType.STRING,
-        description: "Fecha del evento en formato YYYY-MM-DD",
-      },
-    },
-    required: ["count", "lotId", "date"],
-  },
-};
+  inputSchema: z.object({
+    count: z.number().int().describe("Cantidad de pollos muertos"),
+    cause: z.string().optional().describe("Causa de la mortalidad (opcional)"),
+    lotId: z.string().describe("ID del lote"),
+    date: z.string().describe("Fecha del evento en formato YYYY-MM-DD"),
+  }),
+});
 
-const getLotSummaryTool: FunctionDeclaration = {
+export const getLotSummaryTool = defineTool({
   name: "getLotSummary",
   description:
     "Obtener el resumen de un lote: gastos totales, mortalidad, pollos vivos y costo por pollo.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      lotId: {
-        type: SchemaType.STRING,
-        description: "ID del lote",
-      },
-    },
-    required: ["lotId"],
-  },
-};
+  inputSchema: z.object({
+    lotId: z.string().describe("ID del lote"),
+  }),
+});
 
-const listFarmsTool: FunctionDeclaration = {
+export const listFarmsTool = defineTool({
   name: "listFarms",
   description: "Listar todas las granjas del usuario en la organización.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {},
-  },
-};
+  inputSchema: z.object({}),
+});
 
-const listLotsTool: FunctionDeclaration = {
+export const listLotsTool = defineTool({
   name: "listLots",
   description: "Listar los lotes de una granja específica.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      farmId: {
-        type: SchemaType.STRING,
-        description: "ID de la granja",
-      },
-    },
-    required: ["farmId"],
-  },
-};
+  inputSchema: z.object({
+    farmId: z.string().describe("ID de la granja"),
+  }),
+});
 
 // ── Shared tools (RAG search) ──
 
-const searchDocumentsTool: FunctionDeclaration = {
+export const searchDocumentsTool = defineTool({
   name: "searchDocuments",
   description:
     "Buscar información en los documentos de la organización usando búsqueda semántica. Usar cuando el usuario pregunte sobre políticas, contratos, normas o cualquier documento subido.",
-  parameters: {
-    type: SchemaType.OBJECT,
-    properties: {
-      query: {
-        type: SchemaType.STRING,
-        description:
-          "Consulta de búsqueda en lenguaje natural para encontrar documentos relevantes",
-      },
-    },
-    required: ["query"],
-  },
-};
+  inputSchema: z.object({
+    query: z
+      .string()
+      .describe(
+        "Consulta de búsqueda en lenguaje natural para encontrar documentos relevantes",
+      ),
+  }),
+});
 
 // ── Tool sets by role ──
 
-const socioTools: FunctionDeclaration[] = [
+const socioTools: Tool[] = [
   createExpenseTool,
   logMortalityTool,
   getLotSummaryTool,
@@ -137,19 +90,31 @@ const socioTools: FunctionDeclaration[] = [
   searchDocumentsTool,
 ];
 
-const contadorTools: FunctionDeclaration[] = [
-  searchDocumentsTool,
-];
+const contadorTools: Tool[] = [searchDocumentsTool];
 
-const adminTools: FunctionDeclaration[] = [
+const adminTools: Tool[] = [
   ...socioTools,
   ...contadorTools.filter((t) => !socioTools.some((s) => s.name === t.name)),
 ];
 
 /**
+ * Registro central de tools por nombre. El executor usa este registry para
+ * resolver el inputSchema correspondiente a una tool call y validarla
+ * (safeParse) antes de ejecutar el handler. Single source of truth.
+ */
+export const TOOL_REGISTRY: Record<string, Tool> = {
+  [createExpenseTool.name]: createExpenseTool,
+  [logMortalityTool.name]: logMortalityTool,
+  [getLotSummaryTool.name]: getLotSummaryTool,
+  [listFarmsTool.name]: listFarmsTool,
+  [listLotsTool.name]: listLotsTool,
+  [searchDocumentsTool.name]: searchDocumentsTool,
+};
+
+/**
  * Obtiene las definiciones de herramientas disponibles para un rol dado.
  */
-export function getToolsForRole(role: Role): FunctionDeclaration[] {
+export function getToolsForRole(role: Role): Tool[] {
   switch (role) {
     case "member":
       return socioTools;
