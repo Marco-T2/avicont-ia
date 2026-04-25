@@ -32,7 +32,7 @@ export default async function ProductTypesPage({ params }: ProductTypesPageProps
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Tipos de Producto</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Administra los tipos de producto utilizados en los despachos
         </p>
       </div>

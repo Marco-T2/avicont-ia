@@ -138,7 +138,7 @@ export default function DocumentsPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Documentos</h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Subí y analizá documentos en {organization?.name}
           </p>
         </div>
@@ -154,17 +154,17 @@ export default function DocumentsPage() {
             <CardContent className="pt-6">
               <div className="text-center">
                 <div className="text-3xl font-bold">{documents.length}</div>
-                <p className="text-sm text-gray-500">Total de Documentos</p>
+                <p className="text-sm text-muted-foreground">Total de Documentos</p>
               </div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <div className="text-center">
-                <div className="text-3xl font-bold text-green-600">
+                <div className="text-3xl font-bold text-success">
                   {documents.filter((d) => d.aiSummary).length}
                 </div>
-                <p className="text-sm text-gray-500">Analizados</p>
+                <p className="text-sm text-muted-foreground">Analizados</p>
               </div>
             </CardContent>
           </Card>
@@ -179,7 +179,7 @@ export default function DocumentsPage() {
                     ),
                   )}
                 </div>
-                <p className="text-sm text-gray-500">Tamaño Total</p>
+                <p className="text-sm text-muted-foreground">Tamaño Total</p>
               </div>
             </CardContent>
           </Card>
@@ -204,13 +204,13 @@ export default function DocumentsPage() {
           {isLoading ? (
             <div className="text-center py-12">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-              <p className="text-gray-600">Cargando documentos...</p>
+              <p className="text-muted-foreground">Cargando documentos...</p>
             </div>
           ) : documents.length === 0 ? (
             <div className="text-center py-12">
-              <FileText className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600">No hay documentos cargados aún</p>
-              <p className="text-sm text-gray-500 mt-2">
+              <FileText className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground">No hay documentos cargados aún</p>
+              <p className="text-sm text-muted-foreground mt-2">
                 Subí tu primer documento para comenzar
               </p>
             </div>

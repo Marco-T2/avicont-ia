@@ -32,7 +32,7 @@ export default async function SettingsGeneralPage({
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Configuración General</h1>
-        <p className="text-gray-500 mt-1">
+        <p className="text-muted-foreground mt-1">
           Cuentas contables y parámetros de la organización
         </p>
       </div>
