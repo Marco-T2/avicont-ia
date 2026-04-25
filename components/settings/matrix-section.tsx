@@ -51,10 +51,10 @@ export function MatrixSection({
   return (
     <>
       {/* Section heading row spanning all columns */}
-      <tr className="bg-gray-100">
+      <tr className="bg-muted">
         <td
           colSpan={4}
-          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-gray-600"
+          className="px-3 py-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground"
         >
           {label}
         </td>
