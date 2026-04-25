@@ -23,33 +23,69 @@ import type { ExpenseWithRelations } from "@/features/expenses";
 import type { MortalityLogWithRelations } from "@/features/mortality";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: "Activo", className: "bg-green-100 text-green-800" },
-  CLOSED: { label: "Cerrado", className: "bg-gray-100 text-gray-800" },
-  SOLD: { label: "Vendido", className: "bg-blue-100 text-blue-800" },
+  ACTIVE: {
+    label: "Activo",
+    className:
+      "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
+  },
+  CLOSED: {
+    label: "Cerrado",
+    className:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
+  },
+  SOLD: {
+    label: "Vendido",
+    className:
+      "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
+  },
 };
 
 const CATEGORY_CONFIG: Record<string, { label: string; className: string }> = {
-  ALIMENTO: { label: "Alimento", className: "bg-amber-100 text-amber-800" },
-  CHALA: { label: "Chala", className: "bg-yellow-100 text-yellow-800" },
-  AGUA: { label: "Agua", className: "bg-cyan-100 text-cyan-800" },
-  GARRAFAS: { label: "Garrafas", className: "bg-orange-100 text-orange-800" },
+  ALIMENTO: {
+    label: "Alimento",
+    className:
+      "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
+  },
+  CHALA: {
+    label: "Chala",
+    className:
+      "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200",
+  },
+  AGUA: {
+    label: "Agua",
+    className:
+      "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200",
+  },
+  GARRAFAS: {
+    label: "Garrafas",
+    className:
+      "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200",
+  },
   MANTENIMIENTO: {
     label: "Mantenimiento",
-    className: "bg-slate-100 text-slate-800",
+    className:
+      "bg-slate-100 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200",
   },
   GALPONERO: {
     label: "Galponero",
-    className: "bg-purple-100 text-purple-800",
+    className:
+      "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200",
   },
   MEDICAMENTOS: {
     label: "Medicamentos",
-    className: "bg-red-100 text-red-800",
+    className:
+      "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
   },
   VETERINARIO: {
     label: "Veterinario",
-    className: "bg-pink-100 text-pink-800",
+    className:
+      "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-200",
   },
-  OTROS: { label: "Otros", className: "bg-gray-100 text-gray-800" },
+  OTROS: {
+    label: "Otros",
+    className:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
+  },
 };
 
 function formatCurrency(amount: number): string {
@@ -90,7 +126,8 @@ export default function LotDetailClient({
 
   const status = STATUS_CONFIG[lot.status] ?? {
     label: lot.status,
-    className: "bg-gray-100 text-gray-800",
+    className:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
   };
 
   const farmId = lot.farmId;
@@ -114,7 +151,7 @@ export default function LotDetailClient({
               <h1 className="text-3xl font-bold">{lot.name}</h1>
               <Badge className={status.className}>{status.label}</Badge>
             </div>
-            <p className="text-gray-500 mt-1">
+            <p className="text-muted-foreground mt-1">
               Galpon #{lot.barnNumber} &middot; Inicio:{" "}
               {formatDate(lot.startDate)}
               {lot.endDate && ` &middot; Cierre: ${formatDate(lot.endDate)}`}
@@ -128,13 +165,13 @@ export default function LotDetailClient({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <Egg className="h-4 w-4 text-green-600" />
-              <p className="text-sm text-gray-500">Pollos Vivos</p>
+              <Egg className="h-4 w-4 text-green-600 dark:text-green-400" />
+              <p className="text-sm text-muted-foreground">Pollos Vivos</p>
             </div>
             <p className="text-2xl font-bold">
               {aliveCount.toLocaleString("es-BO")}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               de {lot.initialCount.toLocaleString("es-BO")} iniciales
             </p>
           </CardContent>
@@ -143,8 +180,8 @@ export default function LotDetailClient({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-4 w-4 text-blue-600" />
-              <p className="text-sm text-gray-500">Total Gastos</p>
+              <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <p className="text-sm text-muted-foreground">Total Gastos</p>
             </div>
             <p className="text-2xl font-bold">{formatCurrency(totalExpenses)}</p>
           </CardContent>
@@ -153,13 +190,13 @@ export default function LotDetailClient({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <Skull className="h-4 w-4 text-red-600" />
-              <p className="text-sm text-gray-500">Mortalidad</p>
+              <Skull className="h-4 w-4 text-red-600 dark:text-red-400" />
+              <p className="text-sm text-muted-foreground">Mortalidad</p>
             </div>
             <p className="text-2xl font-bold">
               {totalMortality.toLocaleString("es-BO")}
             </p>
-            <p className="text-xs text-gray-400">
+            <p className="text-xs text-muted-foreground">
               {lot.initialCount > 0
                 ? `${((totalMortality / lot.initialCount) * 100).toFixed(1)}%`
                 : "0%"}
@@ -170,8 +207,8 @@ export default function LotDetailClient({
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-2 mb-2">
-              <Calculator className="h-4 w-4 text-purple-600" />
-              <p className="text-sm text-gray-500">Costo/Pollo</p>
+              <Calculator className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              <p className="text-sm text-muted-foreground">Costo/Pollo</p>
             </div>
             <p className="text-2xl font-bold">
               {costPerChicken > 0
@@ -220,8 +257,8 @@ export default function LotDetailClient({
               <Card>
                 <CardContent className="py-8">
                   <div className="text-center">
-                    <DollarSign className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-600">
+                    <DollarSign className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-muted-foreground">
                       No hay gastos registrados
                     </p>
                   </div>
@@ -232,7 +269,8 @@ export default function LotDetailClient({
                 {expenses.map((expense) => {
                   const cat = CATEGORY_CONFIG[expense.category] ?? {
                     label: expense.category,
-                    className: "bg-gray-100 text-gray-800",
+                    className:
+                      "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
                   };
 
                   return (
@@ -248,13 +286,13 @@ export default function LotDetailClient({
                                 {formatCurrency(Number(expense.amount))}
                               </p>
                               {expense.description && (
-                                <p className="text-sm text-gray-500">
+                                <p className="text-sm text-muted-foreground">
                                   {expense.description}
                                 </p>
                               )}
                             </div>
                           </div>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             {formatDate(expense.date)}
                           </p>
                         </div>
@@ -285,8 +323,8 @@ export default function LotDetailClient({
               <Card>
                 <CardContent className="py-8">
                   <div className="text-center">
-                    <Skull className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-600">
+                    <Skull className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3" />
+                    <p className="text-muted-foreground">
                       No hay registros de mortalidad
                     </p>
                   </div>
@@ -306,13 +344,13 @@ export default function LotDetailClient({
                             {log.cause ? (
                               <p className="font-medium">{log.cause}</p>
                             ) : (
-                              <p className="text-gray-500 italic">
+                              <p className="text-muted-foreground italic">
                                 Sin causa especificada
                               </p>
                             )}
                           </div>
                         </div>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-sm text-muted-foreground">
                           {formatDate(log.date)}
                         </p>
                       </div>

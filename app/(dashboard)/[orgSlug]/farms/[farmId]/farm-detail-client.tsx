@@ -14,9 +14,21 @@ import type { FarmWithLots } from "@/features/farms";
 import type { ChickenLot } from "@/generated/prisma/client";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
-  ACTIVE: { label: "Activo", className: "bg-green-100 text-green-800" },
-  CLOSED: { label: "Cerrado", className: "bg-gray-100 text-gray-800" },
-  SOLD: { label: "Vendido", className: "bg-blue-100 text-blue-800" },
+  ACTIVE: {
+    label: "Activo",
+    className:
+      "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
+  },
+  CLOSED: {
+    label: "Cerrado",
+    className:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
+  },
+  SOLD: {
+    label: "Vendido",
+    className:
+      "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
+  },
 };
 
 interface FarmDetailClientProps {
@@ -47,7 +59,7 @@ export default function FarmDetailClient({
           <div>
             <h1 className="text-3xl font-bold">{farm.name}</h1>
             {farm.location && (
-              <p className="text-gray-500 flex items-center gap-1 mt-1">
+              <p className="text-muted-foreground flex items-center gap-1 mt-1">
                 <MapPin className="h-4 w-4" />
                 {farm.location}
               </p>
@@ -66,11 +78,11 @@ export default function FarmDetailClient({
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <Egg className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg mb-2">
+              <Egg className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg mb-2">
                 No hay lotes en esta granja
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Crea un lote para empezar a registrar tus pollos
               </p>
             </div>
@@ -85,7 +97,8 @@ export default function FarmDetailClient({
             {lots.map((lot) => {
               const status = STATUS_CONFIG[lot.status] ?? {
                 label: lot.status,
-                className: "bg-gray-100 text-gray-800",
+                className:
+                  "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
               };
 
               return (
@@ -105,22 +118,22 @@ export default function FarmDetailClient({
                               {status.label}
                             </Badge>
                           </div>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-muted-foreground">
                             Galpon #{lot.barnNumber}
                           </p>
                         </div>
-                        <ArrowRight className="h-5 w-5 text-gray-400" />
+                        <ArrowRight className="h-5 w-5 text-muted-foreground" />
                       </div>
 
                       <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
                         <div>
-                          <p className="text-gray-500">Pollos iniciales</p>
+                          <p className="text-muted-foreground">Pollos iniciales</p>
                           <p className="font-medium">
                             {lot.initialCount.toLocaleString("es-BO")}
                           </p>
                         </div>
                         <div>
-                          <p className="text-gray-500">Inicio</p>
+                          <p className="text-muted-foreground">Inicio</p>
                           <p className="font-medium">
                             {new Date(lot.startDate).toLocaleDateString(
                               "es-BO",

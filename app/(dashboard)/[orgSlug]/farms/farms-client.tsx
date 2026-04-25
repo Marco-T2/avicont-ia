@@ -30,7 +30,7 @@ export default function FarmsPageClient({
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-3xl font-bold">Mis Granjas</h1>
-          <p className="text-gray-600">
+          <p className="text-muted-foreground">
             Administra tus granjas y lotes de pollos
           </p>
         </div>
@@ -46,11 +46,11 @@ export default function FarmsPageClient({
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <Home className="h-12 w-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-600 text-lg mb-2">
+              <Home className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+              <p className="text-muted-foreground text-lg mb-2">
                 No tenes granjas todavia
               </p>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-muted-foreground">
                 Crea tu primera granja para empezar a registrar tus lotes
               </p>
             </div>
@@ -75,13 +75,13 @@ export default function FarmsPageClient({
                       <div className="space-y-2">
                         <h3 className="font-semibold text-lg">{farm.name}</h3>
                         {farm.location && (
-                          <p className="text-sm text-gray-500 flex items-center gap-1">
+                          <p className="text-sm text-muted-foreground flex items-center gap-1">
                             <MapPin className="h-3 w-3" />
                             {farm.location}
                           </p>
                         )}
                       </div>
-                      <ArrowRight className="h-5 w-5 text-gray-400" />
+                      <ArrowRight className="h-5 w-5 text-muted-foreground" />
                     </div>
 
                     <div className="mt-4 flex gap-2">
@@ -89,7 +89,7 @@ export default function FarmsPageClient({
                         {totalLots} {totalLots === 1 ? "lote" : "lotes"}
                       </Badge>
                       {activeLots > 0 && (
-                        <Badge className="bg-green-100 text-green-800">
+                        <Badge className="bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200">
                           {activeLots} {activeLots === 1 ? "activo" : "activos"}
                         </Badge>
                       )}
