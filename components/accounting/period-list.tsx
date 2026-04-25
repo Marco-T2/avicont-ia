@@ -41,23 +41,23 @@ export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                <tr className="border-b bg-muted">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Nombre
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Año
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Inicio
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Cierre
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Estado
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Acciones
                   </th>
                 </tr>
@@ -66,18 +66,18 @@ export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
                 {periods.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center">
-                      <CalendarDays className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-600">
+                      <CalendarDays className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                      <p className="text-muted-foreground">
                         No hay períodos fiscales registrados
                       </p>
-                      <p className="text-sm text-gray-400 mt-1">
+                      <p className="text-sm text-muted-foreground/70 mt-1">
                         Cree el primer período para comenzar
                       </p>
                     </td>
                   </tr>
                 ) : (
                   periods.map((period) => (
-                    <tr key={period.id} className="border-b hover:bg-gray-50">
+                    <tr key={period.id} className="border-b hover:bg-accent/50">
                       <td className="py-3 px-4 font-medium">{period.name}</td>
                       <td className="py-3 px-4 font-mono">{period.year}</td>
                       <td className="py-3 px-4">
@@ -88,11 +88,11 @@ export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
                       </td>
                       <td className="py-3 px-4">
                         {period.status === "OPEN" ? (
-                          <Badge className="bg-green-100 text-green-800">
+                          <Badge className="bg-success/10 text-success dark:bg-success/20">
                             Abierto
                           </Badge>
                         ) : (
-                          <Badge className="bg-gray-100 text-gray-600">
+                          <Badge className="bg-muted text-muted-foreground">
                             Cerrado
                           </Badge>
                         )}

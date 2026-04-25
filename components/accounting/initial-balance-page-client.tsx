@@ -133,8 +133,8 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-3 text-gray-500">Cargando Balance Inicial...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-3 text-muted-foreground">Cargando Balance Inicial...</span>
         </div>
       )}
 
@@ -142,7 +142,7 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
       {error && !loading && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive"
         >
           {error}
         </div>

@@ -309,7 +309,7 @@ export default function PeriodCreateDialog({
           {crossMonthWarning && (
             <div
               role="alert"
-              className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-300"
+              className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
             >
               Este período abarca más de un mes. Al cerrarlo, se bloquearán
               todos los comprobantes del período a la vez. ¿Es lo que querés?

@@ -158,23 +158,23 @@ export default function LedgerPageClient({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <tr className="border-b bg-muted">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Fecha
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       # Asiento
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Descripcion
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Debe
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Haber
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Saldo
                     </th>
                   </tr>
@@ -183,8 +183,8 @@ export default function LedgerPageClient({
                   {entries.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center">
-                        <Calculator className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-600">
+                        <Calculator className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                        <p className="text-muted-foreground">
                           No hay movimientos para esta cuenta
                         </p>
                       </td>
@@ -210,8 +210,8 @@ export default function LedgerPageClient({
                         <td
                           className={`py-3 px-4 text-right font-mono font-medium ${
                             entry.balance >= 0
-                              ? "text-blue-700"
-                              : "text-red-600"
+                              ? "text-info"
+                              : "text-destructive"
                           }`}
                         >
                           {formatCurrency(entry.balance)}
@@ -230,8 +230,8 @@ export default function LedgerPageClient({
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <Calculator className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600">
+              <Calculator className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+              <p className="text-muted-foreground">
                 Seleccione una cuenta y presione Consultar para ver los
                 movimientos
               </p>

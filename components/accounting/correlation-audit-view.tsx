@@ -87,7 +87,7 @@ export default function CorrelationAuditView({
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="audit-voucher-type">
-                Tipo de Comprobante <span className="text-red-500">*</span>
+                Tipo de Comprobante <span className="text-destructive">*</span>
               </Label>
               <Select value={voucherTypeId} onValueChange={setVoucherTypeId}>
                 <SelectTrigger id="audit-voucher-type">
@@ -141,7 +141,7 @@ export default function CorrelationAuditView({
           </div>
 
           {error && (
-            <p className="text-sm text-red-600 font-medium">{error}</p>
+            <p className="text-sm text-destructive font-medium">{error}</p>
           )}
         </CardContent>
       </Card>
@@ -154,7 +154,7 @@ export default function CorrelationAuditView({
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Summary row */}
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+            <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
               <span>
                 <strong>{result.totalEntries}</strong> asientos en total
               </span>
@@ -162,12 +162,12 @@ export default function CorrelationAuditView({
                 <strong>{result.entries.length}</strong> con número de referencia
               </span>
               {result.entriesWithoutReference > 0 && (
-                <span className="text-amber-600">
+                <span className="text-warning">
                   <strong>{result.entriesWithoutReference}</strong> sin número de referencia en este rango
                 </span>
               )}
               {result.hasGaps && (
-                <span className="text-red-600 font-medium">
+                <span className="text-destructive font-medium">
                   <strong>{result.gaps.length}</strong>{" "}
                   {result.gaps.length === 1 ? "salto detectado" : "saltos detectados"}
                 </span>
@@ -176,14 +176,14 @@ export default function CorrelationAuditView({
 
             {/* No entries case */}
             {result.entries.length === 0 && (
-              <p className="text-gray-500 text-sm py-4 text-center">
+              <p className="text-muted-foreground text-sm py-4 text-center">
                 No hay asientos con número de referencia para los filtros seleccionados.
               </p>
             )}
 
             {/* No gaps indicator */}
             {result.entries.length > 0 && !result.hasGaps && (
-              <div className="flex items-center gap-2 text-green-700 font-medium">
+              <div className="flex items-center gap-2 text-success font-medium">
                 <CheckCircle className="h-5 w-5" />
                 <span>Sin saltos detectados</span>
               </div>
@@ -201,13 +201,13 @@ export default function CorrelationAuditView({
                   return (
                     <span key={entry.id} className="flex items-center gap-2">
                       {gap && (
-                        <Badge className="bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1 px-2 py-1">
+                        <Badge className="bg-warning/10 text-warning border border-warning/40 dark:bg-warning/20 flex items-center gap-1 px-2 py-1">
                           <AlertTriangle className="h-3 w-3" />
                           Salto: {gap.from}–{gap.to} ausentes
                         </Badge>
                       )}
                       <Badge
-                        className="bg-blue-50 text-blue-800 border border-blue-200 font-mono px-2 py-1"
+                        className="bg-info/10 text-info border border-info/30 dark:bg-info/20 font-mono px-2 py-1"
                         title={entry.description}
                       >
                         {entry.referenceNumber}

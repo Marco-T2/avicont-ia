@@ -113,8 +113,8 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
       {/* Loading */}
       {loading && (
         <div className="flex items-center justify-center py-12">
-          <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-          <span className="ml-3 text-gray-500">Generando Balance de Comprobación...</span>
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <span className="ml-3 text-muted-foreground">Generando Balance de Comprobación...</span>
         </div>
       )}
 
@@ -122,7 +122,7 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
       {error && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive"
         >
           {error}
         </div>
@@ -136,14 +136,14 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
             <a
               href={buildExportUrl("pdf")}
               download
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
             >
               Descargar PDF
             </a>
             <a
               href={buildExportUrl("xlsx")}
               download
-              className="inline-flex items-center gap-1 rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-gray-50"
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
             >
               Descargar Excel
             </a>

@@ -143,7 +143,7 @@ function SubtotalRow({
   totals: SerializedTotals;
 }) {
   return (
-    <tr data-subtotal className="font-bold border-t border-gray-400">
+    <tr data-subtotal className="font-bold border-t border-border">
       <td className="px-1 py-0.5 text-xs" />
       <td className="px-1 py-0.5 text-xs">{label}</td>
       <NumericCells row={totals} isTotal={true} />
@@ -158,36 +158,36 @@ export const WorksheetTable: FC<WorksheetTableProps> = ({ report }) => {
     <div className="overflow-x-auto">
       <table className="min-w-full text-xs border-collapse">
         <thead>
-          <tr className="bg-gray-100 font-bold text-center">
-            <th rowSpan={2} className="px-1 py-1 text-left border-b border-gray-300">
+          <tr className="bg-muted font-bold text-center">
+            <th rowSpan={2} className="px-1 py-1 text-left border-b border-border">
               Código
             </th>
-            <th rowSpan={2} className="px-1 py-1 text-left border-b border-gray-300">
+            <th rowSpan={2} className="px-1 py-1 text-left border-b border-border">
               Cuenta
             </th>
-            <th colSpan={2} className="px-1 py-1 border-b border-gray-300">
+            <th colSpan={2} className="px-1 py-1 border-b border-border">
               Sumas
             </th>
-            <th colSpan={2} className="px-1 py-1 border-b border-gray-300">
+            <th colSpan={2} className="px-1 py-1 border-b border-border">
               Saldos
             </th>
-            <th colSpan={2} className="px-1 py-1 border-b border-gray-300">
+            <th colSpan={2} className="px-1 py-1 border-b border-border">
               Ajustes
             </th>
-            <th colSpan={2} className="px-1 py-1 border-b border-gray-300">
+            <th colSpan={2} className="px-1 py-1 border-b border-border">
               Saldos Ajustados
             </th>
-            <th colSpan={2} className="px-1 py-1 border-b border-gray-300">
+            <th colSpan={2} className="px-1 py-1 border-b border-border">
               Resultados
             </th>
-            <th colSpan={2} className="px-1 py-1 border-b border-gray-300">
+            <th colSpan={2} className="px-1 py-1 border-b border-border">
               Balance General
             </th>
           </tr>
-          <tr className="bg-gray-100 text-center">
+          <tr className="bg-muted text-center">
             {["Debe", "Haber", "Deudor", "Acreedor", "Debe", "Haber", "Deudor", "Acreedor", "Pérdidas", "Ganancias", "Activo", "Pas-Pat"].map(
               (h, i) => (
-                <th key={`${i}-${h}`} className="px-1 py-0.5 border-b border-gray-300 font-semibold">
+                <th key={`${i}-${h}`} className="px-1 py-0.5 border-b border-border font-semibold">
                   {h}
                 </th>
               ),
@@ -198,7 +198,7 @@ export const WorksheetTable: FC<WorksheetTableProps> = ({ report }) => {
         {report.groups.map((group) => (
           <tbody key={group.accountType} role="rowgroup">
             {/* Group header */}
-            <tr className="bg-gray-50">
+            <tr className="bg-muted/50">
               <td className="px-1 py-1 text-xs" />
               <td
                 data-group-header
@@ -237,7 +237,7 @@ export const WorksheetTable: FC<WorksheetTableProps> = ({ report }) => {
 
       {/* Imbalance warning */}
       {report.imbalanced && (
-        <p className="mt-2 text-red-700 text-xs font-bold">
+        <p className="mt-2 text-destructive text-xs font-bold">
           Ecuación contable desbalanceada — Delta:{" "}
           {fmtNum(report.imbalanceDelta, true)} BOB
         </p>

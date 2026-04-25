@@ -81,7 +81,7 @@ export const EquityStatementView: FC<EquityStatementViewProps> = ({ statement })
       {statement.imbalanced && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm"
         >
           <div className="font-semibold">
             Diferencia patrimonial sin clasificar: Bs. {fmtNum(statement.imbalanceDelta, true)}
@@ -96,7 +96,7 @@ export const EquityStatementView: FC<EquityStatementViewProps> = ({ statement })
       {statement.preliminary && !statement.imbalanced && (
         <div
           role="status"
-          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700 text-sm font-medium"
+          className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-foreground text-sm font-medium"
         >
           PRELIMINAR — Este reporte cubre un período no cerrado
         </div>
@@ -106,7 +106,7 @@ export const EquityStatementView: FC<EquityStatementViewProps> = ({ statement })
       <div className="overflow-auto">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
+            <tr className="border-b border-border bg-muted">
               <th className="px-3 py-2 text-left font-semibold min-w-[200px]">Descripción</th>
               {visibleCols.map((col) => (
                 <th key={col.key} className="px-2 py-2 text-right font-semibold min-w-[120px]">
@@ -124,7 +124,7 @@ export const EquityStatementView: FC<EquityStatementViewProps> = ({ statement })
               return (
                 <tr
                   key={row.key}
-                  className={`border-b border-gray-100 ${isFinal ? "border-t border-gray-700 font-bold" : "hover:bg-gray-50"}`}
+                  className={`border-b border-border ${isFinal ? "border-t border-foreground/40 font-bold" : "hover:bg-accent/50"}`}
                 >
                   <td className={`px-3 py-2 ${isFinal ? "font-bold" : ""}`}>{row.label}</td>
                   {visibleCols.map((col) => {

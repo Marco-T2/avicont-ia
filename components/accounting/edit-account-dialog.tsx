@@ -143,7 +143,7 @@ export default function EditAccountDialog({
                 />
                 <span className="text-sm">Es contra-cuenta</span>
               </label>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-muted-foreground">
                 Contra-activo (naturaleza acreedora). Ej: Depreciación Acumulada, Amortización Acumulada.
               </p>
             </div>

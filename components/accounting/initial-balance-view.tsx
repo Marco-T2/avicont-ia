@@ -90,15 +90,15 @@ function flattenSection(section: SerializedSection): TableRow[] {
 function rowClassName(kind: TableRow["kind"]): string {
   switch (kind) {
     case "section-header":
-      return "bg-gray-100 font-semibold border-t border-gray-300";
+      return "bg-muted font-semibold border-t border-border";
     case "group-header":
-      return "bg-gray-50 font-medium border-t border-gray-200";
+      return "bg-muted/50 font-medium border-t border-border";
     case "detail":
-      return "bg-white hover:bg-blue-50/30 transition-colors";
+      return "bg-card hover:bg-accent/50 transition-colors";
     case "subtotal":
-      return "bg-gray-50 font-medium border-t border-gray-200";
+      return "bg-muted/50 font-medium border-t border-border";
     case "section-total":
-      return "bg-white font-semibold border-t-2 border-gray-400";
+      return "bg-card font-semibold border-t-2 border-border";
   }
 }
 
@@ -156,7 +156,7 @@ export const InitialBalanceView: FC<InitialBalanceViewProps> = ({ statement }) =
       {statement.imbalanced && (
         <div
           role="alert"
-          className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-red-700 text-sm"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-destructive text-sm"
         >
           <div className="font-semibold">
             Desequilibrio contable detectado — Diferencia:{" "}
@@ -173,7 +173,7 @@ export const InitialBalanceView: FC<InitialBalanceViewProps> = ({ statement }) =
       {statement.multipleCA && (
         <div
           role="status"
-          className="rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-amber-700 text-sm font-medium"
+          className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-foreground text-sm font-medium"
         >
           Múltiples Comprobantes de Apertura ({statement.caCount}) — Los saldos han sido
           acumulados. Verifique que el Balance Inicial sea correcto.
@@ -189,12 +189,12 @@ export const InitialBalanceView: FC<InitialBalanceViewProps> = ({ statement }) =
               return (
                 <tr key={idx} className={rowClassName(row.kind)}>
                   <td
-                    className="px-3 py-1 text-left w-[320px] border-b border-gray-100"
+                    className="px-3 py-1 text-left w-[320px] border-b border-border"
                     style={nameCellIndent(row.kind)}
                   >
                     {rowLabel(row)}
                   </td>
-                  <td className="px-3 py-1 text-right w-[140px] font-mono tabular-nums border-b border-gray-100">
+                  <td className="px-3 py-1 text-right w-[140px] font-mono tabular-nums border-b border-border">
                     {amount ?? ""}
                   </td>
                 </tr>

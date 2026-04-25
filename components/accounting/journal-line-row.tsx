@@ -108,7 +108,7 @@ export default function JournalLineRow({
           size="sm"
           disabled={!canRemove}
           onClick={() => onRemove(line.id)}
-          className="text-red-500 hover:text-red-700 disabled:opacity-30"
+          className="text-destructive hover:text-destructive/80 disabled:opacity-30"
         >
           <Trash2 className="h-4 w-4" />
         </Button>

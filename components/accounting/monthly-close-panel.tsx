@@ -211,8 +211,8 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
               <Badge
                 className={
                   isClosed
-                    ? "bg-blue-100 text-blue-700 border-blue-300"
-                    : "bg-green-100 text-green-700 border-green-300"
+                    ? "bg-info/10 text-info border-info/30 dark:bg-info/20"
+                    : "bg-success/10 text-success border-success/30 dark:bg-success/20"
                 }
                 variant="outline"
               >
@@ -234,7 +234,7 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
 
       {/* Error state */}
       {error && (
-        <div className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="flex items-center gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
           <AlertTriangle className="h-4 w-4 shrink-0" />
           {error}
         </div>
@@ -245,8 +245,8 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
         <>
           {/* Draft warning */}
           {hasDrafts && (
-            <div className="flex items-start gap-2 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />
+            <div className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-foreground">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning" />
               <span>
                 Hay documentos en borrador. Debe contabilizarlos o eliminarlos
                 antes de cerrar.
@@ -277,35 +277,35 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
 
               {hasDrafts && (
                 <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-700">
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">
                       {summary.drafts.dispatches}
                     </p>
-                    <p className="text-sm text-amber-600">Despachos en borrador</p>
+                    <p className="text-sm text-muted-foreground">Despachos en borrador</p>
                   </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-700">
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">
                       {summary.drafts.payments}
                     </p>
-                    <p className="text-sm text-amber-600">Pagos en borrador</p>
+                    <p className="text-sm text-muted-foreground">Pagos en borrador</p>
                   </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-700">
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">
                       {summary.drafts.journalEntries}
                     </p>
-                    <p className="text-sm text-amber-600">Asientos en borrador</p>
+                    <p className="text-sm text-muted-foreground">Asientos en borrador</p>
                   </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-700">
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">
                       {summary.drafts.sales}
                     </p>
-                    <p className="text-sm text-amber-600">Ventas en borrador</p>
+                    <p className="text-sm text-muted-foreground">Ventas en borrador</p>
                   </div>
-                  <div className="rounded-lg border border-amber-200 bg-amber-50/50 p-4 text-center">
-                    <p className="text-2xl font-bold text-amber-700">
+                  <div className="rounded-lg border border-warning/40 bg-warning/10 p-4 text-center">
+                    <p className="text-2xl font-bold text-foreground">
                       {summary.drafts.purchases}
                     </p>
-                    <p className="text-sm text-amber-600">Compras en borrador</p>
+                    <p className="text-sm text-muted-foreground">Compras en borrador</p>
                   </div>
                 </div>
               )}
@@ -351,9 +351,9 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
           {summary && !summary.balance.balanced && (
             <div
               role="alert"
-              className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+              className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
             >
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-600" />
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-destructive" />
               <div>
                 <p className="font-semibold">DEBE ≠ HABER — No se puede cerrar este período</p>
                 <p>
@@ -407,7 +407,7 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
                     contabilizados.
                   </p>
                 )}
-                <p className="text-amber-700">
+                <p className="text-warning">
                   Esta acción bloqueará todos los documentos contabilizados del
                   período. Solo administradores podrán editar documentos
                   bloqueados con justificación.

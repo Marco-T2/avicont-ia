@@ -213,17 +213,17 @@ export default function CreateJournalEntryForm({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-64">
+                <tr className="border-b bg-muted">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground w-64">
                     Cuenta
                   </th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground">
                     Descripcion
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-36">
                     Debe
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-36">
                     Haber
                   </th>
                   <th className="w-10" />
@@ -292,7 +292,7 @@ export default function CreateJournalEntryForm({
                         variant="ghost"
                         size="sm"
                         onClick={() => removeLine(line.id)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-destructive hover:text-destructive/80"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -301,20 +301,20 @@ export default function CreateJournalEntryForm({
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-300 bg-gray-50">
+                <tr className="border-t-2 border-border bg-muted">
                   <td colSpan={2} className="py-3 px-2 text-right font-bold">
                     Totales
                   </td>
                   <td
                     className={`py-3 px-2 text-right font-mono font-bold ${
-                      isBalanced ? "text-green-700" : "text-red-600"
+                      isBalanced ? "text-success" : "text-destructive"
                     }`}
                   >
                     {formatCurrency(totalDebit)}
                   </td>
                   <td
                     className={`py-3 px-2 text-right font-mono font-bold ${
-                      isBalanced ? "text-green-700" : "text-red-600"
+                      isBalanced ? "text-success" : "text-destructive"
                     }`}
                   >
                     {formatCurrency(totalCredit)}
@@ -326,7 +326,7 @@ export default function CreateJournalEntryForm({
           </div>
 
           {!isBalanced && totalDebit > 0 && (
-            <p className="mt-3 text-sm text-red-600">
+            <p className="mt-3 text-sm text-destructive">
               Los debitos y creditos no balancean. Diferencia:{" "}
               {formatCurrency(Math.abs(totalDebit - totalCredit))}
             </p>

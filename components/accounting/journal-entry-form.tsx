@@ -379,7 +379,7 @@ export default function JournalEntryForm({
                       <SelectItem key={vt.id} value={vt.id}>
                         {vt.name}
                         {!vt.isActive && (
-                          <span className="text-gray-400 ml-1">(inactivo)</span>
+                          <span className="text-muted-foreground/70 ml-1">(inactivo)</span>
                         )}
                       </SelectItem>
                     ))}
@@ -424,7 +424,7 @@ export default function JournalEntryForm({
           {date && !periodId && periods.length > 0 && (
             <div
               role="alert"
-              className="rounded-md border border-yellow-400 bg-yellow-50 p-3 text-sm text-yellow-800 dark:border-yellow-600 dark:bg-yellow-900/20 dark:text-yellow-300"
+              className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
             >
               No hay un período abierto que cubra esta fecha. Abrí el período
               correspondiente o elegí otra fecha.
@@ -448,20 +448,20 @@ export default function JournalEntryForm({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-64">
+                <tr className="border-b bg-muted">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground w-64">
                     Cuenta
                   </th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground">
                     Descripción
                   </th>
-                  <th className="text-left py-3 px-2 font-medium text-gray-600 w-44">
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground w-44">
                     Contacto
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-36">
                     Debe
                   </th>
-                  <th className="text-right py-3 px-2 font-medium text-gray-600 w-36">
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-36">
                     Haber
                   </th>
                   <th className="w-10" />
@@ -481,33 +481,33 @@ export default function JournalEntryForm({
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-300 bg-gray-50">
-                  <td colSpan={3} className="py-3 px-2 text-right text-sm text-gray-600">
+                <tr className="border-t-2 border-border bg-muted">
+                  <td colSpan={3} className="py-3 px-2 text-right text-sm text-muted-foreground">
                     Total Débitos
                   </td>
-                  <td className="py-3 px-2 text-right font-mono font-bold text-gray-800">
+                  <td className="py-3 px-2 text-right font-mono font-bold text-foreground">
                     {formatCurrency(totalDebit)}
                   </td>
                   <td colSpan={2} />
                 </tr>
-                <tr className="bg-gray-50">
-                  <td colSpan={3} className="py-3 px-2 text-right text-sm text-gray-600">
+                <tr className="bg-muted">
+                  <td colSpan={3} className="py-3 px-2 text-right text-sm text-muted-foreground">
                     Total Créditos
                   </td>
                   <td />
-                  <td className="py-3 px-2 text-right font-mono font-bold text-gray-800">
+                  <td className="py-3 px-2 text-right font-mono font-bold text-foreground">
                     {formatCurrency(totalCredit)}
                   </td>
                   <td />
                 </tr>
-                <tr className="bg-gray-50 border-t">
+                <tr className="bg-muted border-t">
                   <td colSpan={3} className="py-3 px-2 text-right text-sm font-semibold">
                     Diferencia
                   </td>
                   <td
                     colSpan={2}
                     className={`py-3 px-2 text-right font-mono font-bold ${
-                      isBalanced ? "text-green-700" : "text-red-600"
+                      isBalanced ? "text-success" : "text-destructive"
                     }`}
                   >
                     {formatCurrency(Math.abs(difference))}
@@ -519,12 +519,12 @@ export default function JournalEntryForm({
           </div>
 
           {!isBalanced && totalDebit > 0 && (
-            <p className="mt-3 text-sm text-red-600 font-medium">
+            <p className="mt-3 text-sm text-destructive font-medium">
               Los débitos y créditos no balancean. Ajuste las líneas antes de guardar.
             </p>
           )}
           {isBalanced && (
-            <p className="mt-3 text-sm text-green-600 font-medium">
+            <p className="mt-3 text-sm text-success font-medium">
               El asiento está balanceado correctamente.
             </p>
           )}
@@ -568,7 +568,7 @@ export default function JournalEntryForm({
             </Button>
             <Button
               type="button"
-              className="bg-green-600 hover:bg-green-700"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               onClick={handleCreateAndPost}
               disabled={!canSubmit || isSubmitting || isCreatingAndPosting}
             >

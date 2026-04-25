@@ -104,7 +104,7 @@ export default function JournalEntryDetail({
 
   const statusBadge = STATUS_BADGE[entry.status] ?? {
     label: entry.status,
-    className: "bg-gray-100 text-gray-800",
+    className: "bg-muted text-muted-foreground",
   };
 
   async function executeTransition(targetStatus: "POSTED" | "VOIDED") {
@@ -159,7 +159,7 @@ export default function JournalEntryDetail({
                 <CardTitle className="text-2xl">Asiento #{entry.number}</CardTitle>
                 <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
               </div>
-              <p className="text-gray-500 mt-1">{entry.description}</p>
+              <p className="text-muted-foreground mt-1">{entry.description}</p>
             </div>
 
             {/* Action buttons */}
@@ -187,7 +187,7 @@ export default function JournalEntryDetail({
                   <Button
                     size="sm"
                     onClick={() => setActionDialog("POST")}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-success hover:bg-success/90 text-success-foreground"
                   >
                     <CheckCircle className="h-4 w-4 mr-1" />
                     Contabilizar
@@ -198,7 +198,7 @@ export default function JournalEntryDetail({
                     variant="outline"
                     size="sm"
                     onClick={() => setActionDialog("VOID")}
-                    className="border-red-300 text-red-600 hover:bg-red-50"
+                    className="border-destructive/40 text-destructive hover:bg-destructive/10"
                   >
                     <XCircle className="h-4 w-4 mr-1" />
                     Anular
@@ -206,7 +206,7 @@ export default function JournalEntryDetail({
                 )}
               </Gated>
               {entry.status === "VOIDED" && (
-                <Badge className="bg-red-100 text-red-700 text-sm px-3 py-1">
+                <Badge className="bg-destructive/10 text-destructive dark:bg-destructive/20 text-sm px-3 py-1">
                   Asiento Anulado
                 </Badge>
               )}
@@ -216,24 +216,24 @@ export default function JournalEntryDetail({
         <CardContent>
           <dl className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
             <div>
-              <dt className="text-gray-500">Fecha</dt>
+              <dt className="text-muted-foreground">Fecha</dt>
               <dd className="font-medium mt-0.5">{formatDateBO(entry.date)}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Período</dt>
+              <dt className="text-muted-foreground">Período</dt>
               <dd className="font-medium mt-0.5">{periodName}</dd>
             </div>
             <div>
-              <dt className="text-gray-500">Tipo de Comprobante</dt>
+              <dt className="text-muted-foreground">Tipo de Comprobante</dt>
               <dd className="font-medium mt-0.5 flex items-center gap-2">
                 <span>{voucherTypeName}</span>
                 {!voucherTypeActive && (
-                  <Badge className="bg-gray-100 text-gray-600">Inactivo</Badge>
+                  <Badge className="bg-muted text-muted-foreground">Inactivo</Badge>
                 )}
               </dd>
             </div>
             <div>
-              <dt className="text-gray-500">Origen</dt>
+              <dt className="text-muted-foreground">Origen</dt>
               <dd className="mt-0.5">
                 <Badge
                   className={sourceTypeBadgeClassName(entry.sourceType ?? null)}
@@ -244,13 +244,13 @@ export default function JournalEntryDetail({
             </div>
             {entry.contact && (
               <div>
-                <dt className="text-gray-500">Contacto</dt>
+                <dt className="text-muted-foreground">Contacto</dt>
                 <dd className="font-medium mt-0.5">{entry.contact.name}</dd>
               </div>
             )}
             {entry.createdAt && (
               <div>
-                <dt className="text-gray-500">Creado</dt>
+                <dt className="text-muted-foreground">Creado</dt>
                 <dd className="font-medium mt-0.5">
                   {formatDateBO(entry.createdAt)}
                 </dd>
@@ -269,38 +269,38 @@ export default function JournalEntryDetail({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b bg-gray-50">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                <tr className="border-b bg-muted">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Código
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Cuenta
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Descripción
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Contacto
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Debe
                   </th>
-                  <th className="text-right py-3 px-4 font-medium text-gray-600">
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                     Haber
                   </th>
                 </tr>
               </thead>
               <tbody>
                 {entry.lines.map((line) => (
-                  <tr key={line.id} className="border-b hover:bg-gray-50">
-                    <td className="py-3 px-4 font-mono text-gray-600">
+                  <tr key={line.id} className="border-b hover:bg-accent/50">
+                    <td className="py-3 px-4 font-mono text-muted-foreground">
                       {line.account.code}
                     </td>
                     <td className="py-3 px-4">{line.account.name}</td>
-                    <td className="py-3 px-4 text-gray-500">
+                    <td className="py-3 px-4 text-muted-foreground">
                       {line.description ?? "—"}
                     </td>
-                    <td className="py-3 px-4 text-gray-500">
+                    <td className="py-3 px-4 text-muted-foreground">
                       {line.contact?.name ?? "—"}
                     </td>
                     <td className="py-3 px-4 text-right font-mono">
@@ -317,7 +317,7 @@ export default function JournalEntryDetail({
                 ))}
               </tbody>
               <tfoot>
-                <tr className="border-t-2 border-gray-300 bg-gray-50 font-bold">
+                <tr className="border-t-2 border-border bg-muted font-bold">
                   <td colSpan={4} className="py-3 px-4 text-right">
                     Totales
                   </td>
@@ -333,11 +333,11 @@ export default function JournalEntryDetail({
           </div>
 
           {isBalanced ? (
-            <p className="mt-4 text-sm text-green-600 font-medium">
+            <p className="mt-4 text-sm text-success font-medium">
               El asiento está balanceado correctamente.
             </p>
           ) : (
-            <p className="mt-4 text-sm text-red-600 font-medium">
+            <p className="mt-4 text-sm text-destructive font-medium">
               Advertencia: El asiento NO está balanceado.
             </p>
           )}
@@ -364,7 +364,7 @@ export default function JournalEntryDetail({
               Cancelar
             </Button>
             <Button
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-success hover:bg-success/90 text-success-foreground"
               disabled={isSubmitting}
               onClick={() => executeTransition("POSTED")}
             >

@@ -121,8 +121,8 @@ export default function BalanceTable({
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
-              <Scale className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-600">
+              <Scale className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+              <p className="text-muted-foreground">
                 Seleccione un período fiscal para ver los saldos de cuentas
               </p>
             </div>
@@ -137,23 +137,23 @@ export default function BalanceTable({
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b bg-gray-50">
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                  <tr className="border-b bg-muted">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Código
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Cuenta
                     </th>
-                    <th className="text-left py-3 px-4 font-medium text-gray-600">
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Tipo
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Débitos
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Créditos
                     </th>
-                    <th className="text-right py-3 px-4 font-medium text-gray-600">
+                    <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Saldo
                     </th>
                   </tr>
@@ -162,8 +162,8 @@ export default function BalanceTable({
                   {balances.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center">
-                        <Scale className="h-10 w-10 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-600">
+                        <Scale className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
+                        <p className="text-muted-foreground">
                           No hay saldos para este período
                         </p>
                       </td>
@@ -174,12 +174,12 @@ export default function BalanceTable({
                       const isNegative = balanceNum < 0;
 
                       return (
-                        <tr key={b.id} className="border-b hover:bg-gray-50">
-                          <td className="py-3 px-4 font-mono text-gray-700">
+                        <tr key={b.id} className="border-b hover:bg-accent/50">
+                          <td className="py-3 px-4 font-mono text-foreground">
                             {b.account.code}
                           </td>
                           <td className="py-3 px-4">{b.account.name}</td>
-                          <td className="py-3 px-4 text-gray-600">
+                          <td className="py-3 px-4 text-muted-foreground">
                             {ACCOUNT_TYPE_LABELS[b.account.type] ??
                               b.account.type}
                           </td>
@@ -191,7 +191,7 @@ export default function BalanceTable({
                           </td>
                           <td
                             className={`py-3 px-4 text-right font-mono font-medium ${
-                              isNegative ? "text-red-600" : "text-gray-900"
+                              isNegative ? "text-destructive" : "text-foreground"
                             }`}
                           >
                             {formatAmount(b.balance)}
@@ -203,8 +203,8 @@ export default function BalanceTable({
                 </tbody>
                 {balances.length > 0 && (
                   <tfoot>
-                    <tr className="border-t-2 bg-gray-50 font-semibold">
-                      <td colSpan={3} className="py-3 px-4 text-gray-700">
+                    <tr className="border-t-2 bg-muted font-semibold">
+                      <td colSpan={3} className="py-3 px-4 text-foreground">
                         Totales
                       </td>
                       <td className="py-3 px-4 text-right font-mono">

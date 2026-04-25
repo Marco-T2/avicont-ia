@@ -26,9 +26,9 @@ const STATUS_LABELS: Record<string, string> = {
 };
 
 const STATUS_BUTTON_STYLES: Record<string, string> = {
-  PARTIAL: "border-blue-500 text-blue-700 hover:bg-blue-50",
-  PAID: "border-green-500 text-green-700 hover:bg-green-50",
-  CANCELLED: "border-gray-400 text-gray-600 hover:bg-gray-50",
+  PARTIAL: "border-info/60 text-info hover:bg-info/10",
+  PAID: "border-success/60 text-success hover:bg-success/10",
+  CANCELLED: "border-border text-muted-foreground hover:bg-accent/50",
 };
 
 interface StatusUpdateDialogProps {
@@ -80,7 +80,7 @@ export default function StatusUpdateDialog({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-muted-foreground">
             Estado actual:{" "}
             <span className="font-medium">
               {STATUS_LABELS[currentStatus] ?? currentStatus}
@@ -88,12 +88,12 @@ export default function StatusUpdateDialog({
           </p>
 
           {transitions.length === 0 ? (
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-muted-foreground">
               No hay transiciones disponibles para este estado.
             </p>
           ) : (
             <div className="space-y-2">
-              <p className="text-sm font-medium text-gray-700">
+              <p className="text-sm font-medium text-foreground">
                 Seleccione el nuevo estado:
               </p>
               <div className="flex flex-wrap gap-2">
