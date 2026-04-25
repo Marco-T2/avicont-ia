@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
+import { OrgProfileService } from "@/features/org-profile/server";
 import { BalanceSheetPageClient } from "@/components/financial-statements/balance-sheet-page-client";
+
+const orgProfileService = new OrgProfileService();
 
 interface BalanceSheetPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -11,11 +14,16 @@ export default async function BalanceSheetPage({
 }: BalanceSheetPageProps) {
   const { orgSlug } = await params;
 
+  let orgId: string;
   try {
-    await requirePermission("reports", "read", orgSlug);
+    const result = await requirePermission("reports", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
     redirect(`/${orgSlug}`);
   }
+
+  const profile = await orgProfileService.getOrCreate(orgId);
+  const orgName = profile.razonSocial.trim() || undefined;
 
   return (
     <div className="space-y-6">
@@ -26,7 +34,7 @@ export default async function BalanceSheetPage({
         </p>
       </div>
 
-      <BalanceSheetPageClient orgSlug={orgSlug} />
+      <BalanceSheetPageClient orgSlug={orgSlug} orgName={orgName} />
     </div>
   );
 }

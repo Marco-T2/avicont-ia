@@ -70,6 +70,7 @@ export function StatementTable({
         const canExpand = row.getCanExpand();
         const isExpanded = row.getIsExpanded();
         const paddingLeft = `${row.depth * 16 + 8}px`;
+        const code = row.original.code;
 
         return (
           <div style={{ paddingLeft }} className="flex items-center gap-1 min-w-0">
@@ -92,6 +93,11 @@ export function StatementTable({
               </button>
             ) : (
               <span className="flex-shrink-0 w-5" aria-hidden="true" />
+            )}
+            {code && (
+              <span className="font-mono text-xs text-muted-foreground tabular-nums flex-shrink-0">
+                {code}
+              </span>
             )}
             <span className="truncate text-sm">{getValue()}</span>
           </div>

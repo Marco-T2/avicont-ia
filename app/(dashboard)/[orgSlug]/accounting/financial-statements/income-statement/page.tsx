@@ -1,6 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
+import { OrgProfileService } from "@/features/org-profile/server";
 import { IncomeStatementPageClient } from "@/components/financial-statements/income-statement-page-client";
+
+const orgProfileService = new OrgProfileService();
 
 interface IncomeStatementPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -11,11 +14,16 @@ export default async function IncomeStatementPage({
 }: IncomeStatementPageProps) {
   const { orgSlug } = await params;
 
+  let orgId: string;
   try {
-    await requirePermission("reports", "read", orgSlug);
+    const result = await requirePermission("reports", "read", orgSlug);
+    orgId = result.orgId;
   } catch {
     redirect(`/${orgSlug}`);
   }
+
+  const profile = await orgProfileService.getOrCreate(orgId);
+  const orgName = profile.razonSocial.trim() || undefined;
 
   return (
     <div className="space-y-6">
@@ -26,7 +34,7 @@ export default async function IncomeStatementPage({
         </p>
       </div>
 
-      <IncomeStatementPageClient orgSlug={orgSlug} />
+      <IncomeStatementPageClient orgSlug={orgSlug} orgName={orgName} />
     </div>
   );
 }
