@@ -48,14 +48,14 @@ export function ConfirmTrimDialog({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="py-2 px-3 text-left font-medium text-gray-600">
+              <tr className="border-b bg-muted/50">
+                <th className="py-2 px-3 text-left font-medium text-muted-foreground">
                   Fecha
                 </th>
-                <th className="py-2 px-3 text-right font-medium text-gray-600">
+                <th className="py-2 px-3 text-right font-medium text-muted-foreground">
                   Monto original
                 </th>
-                <th className="py-2 px-3 text-right font-medium text-gray-600">
+                <th className="py-2 px-3 text-right font-medium text-muted-foreground">
                   Se reducirá a
                 </th>
               </tr>
@@ -69,7 +69,7 @@ export function ConfirmTrimDialog({
                   <td className="py-2 px-3 text-right font-mono">
                     {item.originalAmount}
                   </td>
-                  <td className="py-2 px-3 text-right font-mono text-amber-700 font-medium">
+                  <td className="py-2 px-3 text-right font-mono text-warning font-medium">
                     {item.trimmedTo}
                   </td>
                 </tr>
