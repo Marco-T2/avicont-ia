@@ -154,6 +154,25 @@ model ChatMessage {
   @@map("chat_messages")
 }
 
+// Hourly bucket counter for the agent rate limiter.
+// Per-user limit: counted directly on this row's `count` (one row per
+// (org,user,hour)). Per-org limit: SUM(count) across rows matching
+// (organizationId, windowStart). Keeping a single non-null `userId` avoids
+// the NULL-in-UNIQUE Postgres pitfall (NULLs are treated as DISTINCT).
+model AgentRateLimit {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  windowStart    DateTime
+  count          Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  @@unique([organizationId, userId, windowStart])
+  @@index([windowStart])
+  @@index([organizationId, windowStart])
+  @@map("agent_rate_limits")
+}
+
 enum LotStatus {
   ACTIVE
   CLOSED
