@@ -1,8 +1,17 @@
 import { z } from "zod";
 
+// Modos del agente. "chat" es el default (conversación libre). "journal-entry-ai" es
+// el modo de captura asistida del botón "+ Crear Asiento con IA" — single-turn,
+// sin RAG, sin historial, con catálogo precargado de cuentas/contactos en
+// contextHints (formato definido en journal-entry-ai.prompt.ts).
+export const AGENT_MODES = ["chat", "journal-entry-ai"] as const;
+export type AgentMode = (typeof AGENT_MODES)[number];
+
 export const agentQuerySchema = z.object({
   prompt: z.string().min(1, "Se requiere un prompt"),
   session_id: z.string().optional(),
+  mode: z.enum(AGENT_MODES).optional().default("chat"),
+  contextHints: z.unknown().optional(),
 });
 
 export const confirmActionSchema = z.object({
