@@ -12,7 +12,7 @@ import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 /**
  * Contextual notes for shared resources.
  * journal backs Libro Diario AND Libro Mayor — toggling one affects both nav items.
- * purchases backs Compras y Servicios AND CxP — same pairing.
+ * purchases backs Compras AND CxP — same pairing.
  */
 const SHARED_RESOURCE_NOTES: Partial<Record<Resource, string>> = {
   journal: "(Afecta Libro Diario y Libro Mayor)",

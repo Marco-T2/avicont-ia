@@ -101,12 +101,12 @@ const CONTAB_MODULE: Module = {
   navItems: [
     { label: "Operaciones", isSeparator: true },
     {
-      label: "Ventas y Despachos",
+      label: "Ventas",
       href: (slug) => `/${slug}/dispatches`,
       resource: "sales",
     },
     {
-      label: "Compras y Servicios",
+      label: "Compras",
       href: (slug) => `/${slug}/purchases`,
       resource: "purchases",
     },
@@ -163,15 +163,15 @@ describe("ActiveModuleNav — renders active module's navItems (REQ-MS.7 wiring)
     renderNav(CONTAB_MODULE);
     // All three links should be present (NavItem resolves clicks/expansion itself;
     // these are top-level links since we are passing a flat navItems list).
-    expect(screen.getByRole("link", { name: /Ventas y Despachos/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Compras y Servicios/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /^Ventas$/i })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /^Compras$/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Libro Diario/i })).toBeTruthy();
   });
 
   it("resolves every navItem's href with the provided orgSlug", () => {
     renderNav(CONTAB_MODULE, "test-org");
     expect(
-      screen.getByRole("link", { name: /Ventas y Despachos/i }).getAttribute("href")
+      screen.getByRole("link", { name: /^Ventas$/i }).getAttribute("href")
     ).toBe("/test-org/dispatches");
     expect(
       screen.getByRole("link", { name: /Libro Diario/i }).getAttribute("href")
@@ -214,7 +214,7 @@ describe("ActiveModuleNav — empty-parent rule (REQ-MS.7 edge)", () => {
   it("renders null when every navItem is filtered out by RBAC", () => {
     // CONTAB_MODULE has resources journal, dispatches, purchases. Snapshot
     // with NONE of those → every child filtered → render null.
-    // Note: 'Ventas y Despachos' now gates on sales, not dispatches (post resource-nav-mapping-fix).
+    // Note: 'Ventas' now gates on sales, not dispatches (post resource-nav-mapping-fix).
     const deniedSnapshot: ClientMatrixSnapshot = {
       orgId: "org-1",
       role: "member",
@@ -295,7 +295,7 @@ describe("ActiveModuleNav — separator-hiding (REQ-MS.7 separator logic)", () =
   });
 
   it("(c) hides the Contabilidad separator when only Operaciones-group children survive", () => {
-    // User has ONLY sales → Ventas y Despachos survives (gates on sales post
+    // User has ONLY sales → Ventas survives (gates on sales post
     // resource-nav-mapping-fix); all Contabilidad-group items (journal) filtered.
     const salesOnly: ClientMatrixSnapshot = {
       orgId: "org-1",
@@ -309,8 +309,8 @@ describe("ActiveModuleNav — separator-hiding (REQ-MS.7 separator logic)", () =
         <ActiveModuleNav module={CONTAB_MODULE} orgSlug="test-org" />
       </RolesMatrixProvider>,
     );
-    // Ventas y Despachos IS rendered
-    expect(screen.getByRole("link", { name: /Ventas y Despachos/i })).toBeTruthy();
+    // Ventas IS rendered
+    expect(screen.getByRole("link", { name: /^Ventas$/i })).toBeTruthy();
     // Operaciones separator IS rendered (group has survivor)
     expect(screen.getByText("Operaciones")).toBeTruthy();
     // Contabilidad separator is NOT rendered (all children filtered)
@@ -361,7 +361,7 @@ describe("ActiveModuleNav — per-child RBAC filter (REQ-MS.7)", () => {
   it("contador with journal but NOT sales/purchases sees Libro Diario but not Ventas or Compras", () => {
     // Contador can read journal + reports + contacts + payments, but NOT
     // sales, dispatches, or purchases.
-    // Ventas y Despachos maps to sales in registry (post resource-nav-mapping-fix).
+    // Ventas maps to sales in registry (post resource-nav-mapping-fix).
     const contadorJournalOnly: ClientMatrixSnapshot = {
       orgId: "org-1",
       role: "contador",
@@ -378,11 +378,11 @@ describe("ActiveModuleNav — per-child RBAC filter (REQ-MS.7)", () => {
 
     // Libro Diario (resource=journal) IS visible
     expect(screen.getByRole("link", { name: /Libro Diario/i })).toBeTruthy();
-    // Ventas y Despachos (resource=sales) is NOT visible [sales not in readSet;
+    // Ventas (resource=sales) is NOT visible [sales not in readSet;
     // dispatches resource has no nav items after the swap]
-    expect(screen.queryByRole("link", { name: /Ventas y Despachos/i })).toBeNull();
-    // Compras y Servicios (resource=purchases) is NOT visible
-    expect(screen.queryByRole("link", { name: /Compras y Servicios/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Ventas$/i })).toBeNull();
+    // Compras (resource=purchases) is NOT visible
+    expect(screen.queryByRole("link", { name: /^Compras$/i })).toBeNull();
   });
 
   it("null matrix denies every child (deny-by-default) — no links render", () => {
@@ -393,8 +393,8 @@ describe("ActiveModuleNav — per-child RBAC filter (REQ-MS.7)", () => {
     );
     // Every navItem in CONTAB_MODULE has a resource — all denied
     expect(screen.queryByRole("link", { name: /Libro Diario/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Ventas y Despachos/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Compras y Servicios/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Ventas$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /^Compras$/i })).toBeNull();
   });
 
   it("items WITHOUT a resource are always visible (e.g., separators handled as always-render)", () => {

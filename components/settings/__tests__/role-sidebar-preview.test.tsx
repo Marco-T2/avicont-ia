@@ -64,7 +64,7 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.getAllByText("Granjas").length).toBeGreaterThan(0);
 
     // Nav items inside Contabilidad module (rendered in both desktop + mobile panes)
-    expect(screen.getAllByText("Ventas y Despachos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ventas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Libro Diario").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
 
@@ -74,10 +74,10 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.getAllByText("Documentos").length).toBeGreaterThan(0);
   });
 
-  // (b) Chofer-like — readSet={sales, farms} → Contabilidad shows Ventas y Despachos
+  // (b) Chofer-like — readSet={sales, farms} → Contabilidad shows Ventas
   // AND Cuentas por Cobrar (both gated by 'sales' post resource-nav-mapping-fix);
   // Granjas present; no Organización strip items
-  it("(b) chofer (sales+farms) → Contabilidad with Ventas y Despachos + Cuentas por Cobrar + Granjas; no Org strip", () => {
+  it("(b) chofer (sales+farms) → Contabilidad with Ventas + Cuentas por Cobrar + Granjas; no Org strip", () => {
     render(
       <RoleSidebarPreview
         readSet={rs("sales", "farms")}
@@ -88,13 +88,13 @@ describe("<RoleSidebarPreview />", () => {
     // Contabilidad module section header visible (dual-mount → multiple)
     expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
     // Both nav items gated by 'sales' now visible (dual-mount → multiple)
-    expect(screen.getAllByText("Ventas y Despachos").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Ventas").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText(/Cuentas por Cobrar/i).length,
     ).toBeGreaterThan(0);
     // These items require resources the chofer does NOT have
     expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
-    expect(screen.queryByText("Compras y Servicios")).not.toBeInTheDocument();
+    expect(screen.queryByText("Compras")).not.toBeInTheDocument();
     expect(screen.queryByText("Cobros y Pagos")).not.toBeInTheDocument();
 
     // Granjas visible (dual-mount → multiple)
@@ -109,13 +109,13 @@ describe("<RoleSidebarPreview />", () => {
 
   // (b-variant) REQ-RNM.3 — dispatches-only readSet has zero nav items
   // (dispatches is an API-only resource after the swap; no registry nav item gates on it)
-  it("(b-variant) dispatches-only readSet → no Ventas y Despachos in preview (no nav items gate on dispatches)", () => {
+  it("(b-variant) dispatches-only readSet → no Ventas in preview (no nav items gate on dispatches)", () => {
     render(
       <RoleSidebarPreview readSet={rs("dispatches")} writeSet={rs()} />,
     );
 
-    // No nav item references dispatches — Ventas y Despachos should NOT appear
-    expect(screen.queryAllByText(/Ventas y Despachos/i)).toHaveLength(0);
+    // No nav item references dispatches — Ventas should NOT appear
+    expect(screen.queryAllByText(/Ventas/i)).toHaveLength(0);
     // And no Cuentas por Cobrar (gated by 'sales', not present)
     expect(screen.queryAllByText(/Cuentas por Cobrar/i)).toHaveLength(0);
   });
@@ -128,7 +128,7 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.getAllByText(/ningún módulo/i).length).toBeGreaterThan(0);
 
     // No module nav items
-    expect(screen.queryByText("Ventas y Despachos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
     expect(screen.queryByText("Mis Granjas")).not.toBeInTheDocument();
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
   });
@@ -150,7 +150,7 @@ describe("<RoleSidebarPreview />", () => {
     // Operaciones separator should be dropped (no children)
     expect(screen.queryByText("Operaciones")).not.toBeInTheDocument();
     // Items under Operaciones not visible
-    expect(screen.queryByText("Ventas y Despachos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
   });
 
   // (e) readSet={farms} only → only Granjas in module switcher area, Contabilidad absent
@@ -165,7 +165,7 @@ describe("<RoleSidebarPreview />", () => {
 
     // Contabilidad module entirely absent (no readable resources in it)
     // We check for the Contabilidad MODULE section not rendering its nav items
-    expect(screen.queryByText("Ventas y Despachos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
     expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
   });
 
@@ -181,7 +181,7 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
     expect(screen.queryByText("Documentos")).not.toBeInTheDocument();
     // No module nav items (members is not in any module)
-    expect(screen.queryByText("Ventas y Despachos")).not.toBeInTheDocument();
+    expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
     expect(screen.queryByText("Mis Granjas")).not.toBeInTheDocument();
   });
 
