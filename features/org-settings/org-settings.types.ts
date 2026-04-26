@@ -13,4 +13,6 @@ export interface UpdateOrgSettingsInput {
   bankParentCode?: string;
   fleteExpenseAccountCode?: string;
   polloFaenadoCOGSAccountCode?: string;
+  defaultCashAccountIds?: string[];
+  defaultBankAccountIds?: string[];
 }

@@ -367,6 +367,7 @@ model JournalEntry {
   contactId       String?
   sourceType      String?
   sourceId        String?
+  aiOriginalText  String?            // texto crudo del usuario cuando sourceType="ai" — inmutable post-creación
   organizationId  String
   createdById     String
   updatedById     String?
@@ -662,6 +663,11 @@ model OrgSettings {
   cashParentCode         String       @default("1.1.1")
   pettyCashParentCode    String       @default("1.1.2")
   bankParentCode         String       @default("1.1.3")
+  // Listas curadas de cuentas a sugerir primero al crear asientos con IA. IDs (no codes) por
+  // estabilidad ante renombre. Validadas en OrgSettingsService.update — los codes legacy
+  // de arriba NO se validan (decisión consciente, fuera de scope de este PR).
+  defaultCashAccountIds  String[]     @default([])
+  defaultBankAccountIds  String[]     @default([])
   fleteExpenseAccountCode      String @default("5.1.3")
   polloFaenadoCOGSAccountCode  String @default("5.1.1")
   itExpenseAccountCode         String @default("5.3.3")
