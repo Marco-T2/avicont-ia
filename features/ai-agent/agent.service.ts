@@ -18,12 +18,7 @@ import type {
   AnalyzeBalanceSheetResponse,
   AnalyzeIncomeStatementResponse,
 } from "./agent.types";
-import {
-  BALANCE_SHEET_ANALYSIS_SYSTEM_PROMPT,
-  checkBalanceTriviality,
-  curateBalanceSheetForLLM,
-  formatBalanceSheetUserMessage,
-} from "./balance-sheet-analysis.prompt";
+import { executeBalanceSheetAnalysis } from "./modes/balance-sheet-analysis";
 import {
   INCOME_STATEMENT_ANALYSIS_SYSTEM_PROMPT,
   checkIncomeStatementTriviality,
@@ -263,88 +258,18 @@ export class AgentService {
     }
   }
 
-  /**
-   * Analiza un Balance General produciendo cálculo + interpretación de ratios
-   * financieros estándar. One-shot: sin tools, sin RAG, sin historial. Reusa
-   * la misma capa de telemetría (`agent_invocation`) que `query()` con
-   * `mode: "balance-sheet-analysis"` para distinguir buckets en logs.
-   */
   async analyzeBalanceSheet(
     orgId: string,
     userId: string,
     role: string,
     balance: BalanceSheet,
   ): Promise<AnalyzeBalanceSheetResponse> {
-    const startedAt = performance.now();
-    const normalizedRole = normalizeRole(role);
-
-    let outcome: "ok" | "trivial" | "error" = "ok";
-    let usage: TokenUsage | undefined;
-    let trivialCode: string | undefined;
-    let errorMessage: string | undefined;
-    let errorStack: string | undefined;
-
-    try {
-      const triviality = checkBalanceTriviality(balance);
-      if (triviality.trivial) {
-        outcome = "trivial";
-        trivialCode = triviality.code;
-        return {
-          status: "trivial",
-          code: triviality.code,
-          reason: triviality.reason,
-        };
-      }
-
-      const curated = curateBalanceSheetForLLM(balance);
-      const userMessage = formatBalanceSheetUserMessage(curated);
-
-      const result = await llmClient.query({
-        systemPrompt: BALANCE_SHEET_ANALYSIS_SYSTEM_PROMPT,
-        userMessage,
-        tools: [],
-      });
-
-      usage = result.usage;
-
-      const text = result.text.trim();
-      if (!text) {
-        outcome = "error";
-        errorMessage = "empty_llm_response";
-        return {
-          status: "error",
-          reason: "El modelo no devolvió un análisis. Intente nuevamente.",
-        };
-      }
-
-      return { status: "ok", analysis: text };
-    } catch (error) {
-      outcome = "error";
-      errorMessage = error instanceof Error ? error.message : String(error);
-      errorStack = error instanceof Error ? error.stack : undefined;
-      return {
-        status: "error",
-        reason:
-          "Ocurrió un error al generar el análisis. Intente nuevamente.",
-      };
-    } finally {
-      logStructured({
-        event: "agent_invocation",
-        level: outcome === "error" ? "warn" : "info",
-        mode: "balance-sheet-analysis",
-        orgId,
-        userId,
-        role: normalizedRole,
-        durationMs: Math.round(performance.now() - startedAt),
-        inputTokens: usage?.inputTokens ?? null,
-        outputTokens: usage?.outputTokens ?? null,
-        totalTokens: usage?.totalTokens ?? null,
-        outcome,
-        ...(trivialCode ? { trivialCode } : {}),
-        ...(errorMessage ? { errorMessage } : {}),
-        ...(errorStack ? { errorStack } : {}),
-      });
-    }
+    return executeBalanceSheetAnalysis({
+      orgId,
+      userId,
+      role: normalizeRole(role),
+      balance,
+    });
   }
 
   /**
