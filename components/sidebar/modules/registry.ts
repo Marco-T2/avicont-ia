@@ -23,6 +23,7 @@ export type ModuleId = "contabilidad" | "granjas";
  * label-derived so the mapping survives label edits.
  */
 export type NavIconKey =
+  | "inicio"
   | "ventas-despachos"
   | "compras-servicios"
   | "cobros-pagos"
@@ -74,6 +75,11 @@ export const MODULES: Module[] = [
     ],
     homeRoute: (orgSlug: string) => `/${orgSlug}/accounting`,
     navItems: [
+      {
+        label: "Inicio",
+        href: (orgSlug) => `/${orgSlug}/accounting`,
+        iconKey: "inicio",
+      },
       // --- Separator: Operaciones ---
       { label: "Operaciones", isSeparator: true },
       {

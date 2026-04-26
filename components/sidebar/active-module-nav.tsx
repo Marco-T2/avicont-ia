@@ -36,6 +36,7 @@ import {
   Contact,
   FolderTree,
   HandCoins,
+  Home,
   Library,
   Receipt,
   ShoppingBag,
@@ -51,6 +52,7 @@ import type { ClientMatrix } from "@/components/common/roles-matrix-provider";
 import { dropOrphanSeparators } from "@/lib/sidebar/drop-orphan-separators";
 
 const NAV_ICONS: Record<NavIconKey, ReactNode> = {
+  inicio: <Home className="h-5 w-5" />,
   "ventas-despachos": <ShoppingCart className="h-5 w-5" />,
   "compras-servicios": <ShoppingBag className="h-5 w-5" />,
   "cobros-pagos": <ArrowLeftRight className="h-5 w-5" />,
