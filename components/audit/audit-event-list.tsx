@@ -15,8 +15,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  ACTION_LABELS,
   AUDIT_ACTIONS,
   AUDITED_ENTITY_TYPES,
+  ENTITY_TYPE_LABELS,
   type AuditAction,
   type AuditCursor,
   type AuditEntityType,
@@ -120,7 +122,7 @@ export function AuditEventList({
                 <SelectItem value={ALL}>Todos</SelectItem>
                 {AUDITED_ENTITY_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
-                    {t}
+                    {ENTITY_TYPE_LABELS[t]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -164,7 +166,7 @@ export function AuditEventList({
                 <SelectItem value={ALL}>Todas</SelectItem>
                 {AUDIT_ACTIONS.map((a) => (
                   <SelectItem key={a} value={a}>
-                    {a}
+                    {ACTION_LABELS[a]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -198,7 +200,8 @@ export function AuditEventList({
                     href={`/${orgSlug}/audit/${group.parentVoucherType}/${group.parentVoucherId}`}
                     className="text-sm font-medium hover:underline"
                   >
-                    {group.parentVoucherType} · {group.parentVoucherId}
+                    {ENTITY_TYPE_LABELS[group.parentVoucherType]} ·{" "}
+                    {group.parentVoucherId}
                   </Link>
                 </div>
                 <span className="text-xs text-muted-foreground">
@@ -213,7 +216,7 @@ export function AuditEventList({
                     className="flex items-center gap-3 text-sm text-muted-foreground"
                   >
                     <ActionBadge action={ev.action} />
-                    <span>{ev.entityType}</span>
+                    <span>{ENTITY_TYPE_LABELS[ev.entityType]}</span>
                     <span className="truncate">
                       {ev.changedBy?.name ?? "Usuario eliminado"}
                     </span>

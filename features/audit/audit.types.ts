@@ -27,6 +27,26 @@ export type AuditAction = (typeof AUDIT_ACTIONS)[number];
 
 export type AuditClassification = "directa" | "indirecta";
 
+/** Etiquetas en español para mostrar AuditEntityType en la UI. */
+export const ENTITY_TYPE_LABELS: Record<AuditEntityType, string> = {
+  sales: "Ventas",
+  purchases: "Compras",
+  payments: "Pagos",
+  dispatches: "Despachos",
+  journal_entries: "Asientos contables",
+  sale_details: "Detalle de venta",
+  purchase_details: "Detalle de compra",
+  journal_lines: "Línea de asiento",
+};
+
+/** Etiquetas en español para mostrar AuditAction en la UI. */
+export const ACTION_LABELS: Record<AuditAction, string> = {
+  CREATE: "Creación",
+  UPDATE: "Actualización",
+  DELETE: "Eliminación",
+  STATUS_CHANGE: "Cambio de estado",
+};
+
 /** Fila individual de auditoría enriquecida con clasificación y display data. */
 export interface AuditEvent {
   id: string;
