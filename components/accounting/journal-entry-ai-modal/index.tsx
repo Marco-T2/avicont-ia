@@ -266,7 +266,7 @@ export default function JournalEntryAiModal({
 
         {/* Mensaje del agente cuando viene (ej. "Asumí fecha 2026-04-22 (lunes)…") */}
         {state.phase === "ready" && state.message && (
-          <div className="rounded-md bg-info/10 px-3 py-2 text-sm text-info-foreground">
+          <div className="rounded-md bg-info/10 px-3 py-2 text-sm text-info">
             {state.message}
           </div>
         )}
