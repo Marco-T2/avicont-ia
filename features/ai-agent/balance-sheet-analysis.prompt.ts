@@ -1,5 +1,6 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
+import { formatBolivianAmount } from "@/features/accounting/financial-statements/money.utils";
 import type {
   BalanceSheet,
   BalanceSheetCurrent,
@@ -177,27 +178,6 @@ function curateSection(section: {
 
 function toIsoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
-}
-
-/**
- * Formato numérico boliviano: punto como separador de miles y coma como
- * separador de decimales (siempre 2 decimales). Pre-formatear en el curador
- * cumple dos funciones: (a) ancla el formato exacto que el LLM debe mirror
- * en su respuesta (más confiable que sólo la regla del prompt), (b) elimina
- * la inconsistencia tabla-vs-texto que aparece cuando el LLM elige formato
- * inglés por defecto (1,234.50) en una celda y "ES" (1.234,50) en otra.
- *
- * Ejemplos:
- *   0           → "0,00"
- *   1234.5      → "1.234,50"
- *   -30000      → "-30.000,00"
- *   1000000     → "1.000.000,00"
- */
-function formatBolivianAmount(d: Prisma.Decimal): string {
-  const negative = d.isNegative();
-  const [intPart, decPart] = d.abs().toFixed(2).split(".");
-  const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-  return `${negative ? "-" : ""}${withThousands},${decPart}`;
 }
 
 // ── User message: el JSON curado en bloque de código ──
