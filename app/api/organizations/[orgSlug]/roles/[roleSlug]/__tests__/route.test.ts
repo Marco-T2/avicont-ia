@@ -66,13 +66,13 @@ vi.mock("@/features/organizations/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/permissions/server", () => ({
-  revalidateOrgMatrix: vi.fn(),
-  getMatrix: vi.fn(),
-}));
-
+// Single combined mock — antes había dos vi.mock declarations para esta misma
+// ruta, lo que dejaba el comportamiento dependiente del orden de hoisting de
+// vitest (frágil). Combinadas acá con todas las funciones que el test usa.
 vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
+  revalidateOrgMatrix: vi.fn(),
+  getMatrix: vi.fn(),
 }));
 
 // ─── Imports ────────────────────────────────────────────────────────────────

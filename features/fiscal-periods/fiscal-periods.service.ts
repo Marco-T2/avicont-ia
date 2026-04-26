@@ -60,6 +60,21 @@ export class FiscalPeriodsService {
     return period;
   }
 
+  // ── Find the fiscal period containing the given date ──
+  //
+  // Resolves (year, month) in UTC and looks up via the existing
+  // findByYearAndMonth path. Used by callers that have a journal entry date
+  // and need the matching period (e.g. agent IA capture). Returns null if no
+  // period exists for that month — caller decides how to surface it.
+  async findByDate(
+    organizationId: string,
+    date: Date,
+  ): Promise<FiscalPeriod | null> {
+    const year = date.getUTCFullYear();
+    const month = date.getUTCMonth() + 1;
+    return this.repo.findByYearAndMonth(organizationId, year, month);
+  }
+
   // ── Create a new fiscal period ──
 
   async create(

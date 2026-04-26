@@ -1,6 +1,6 @@
 import "server-only";
 import { OrgSettingsRepository } from "./org-settings.repository";
-import { AccountsRepository } from "@/features/accounting/accounts.repository";
+import { AccountsRepository } from "@/features/accounting/server";
 import {
   ValidationError,
   ORG_SETTINGS_ACCOUNT_NOT_FOUND,

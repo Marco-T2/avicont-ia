@@ -11,8 +11,8 @@ import type {
   ResolvedAccountInfo,
   ResolvedContactInfo,
 } from "../agent.types";
-import { AccountsRepository } from "@/features/accounting/accounts.repository";
-import { ContactsService } from "@/features/contacts/contacts.service";
+import { AccountsRepository } from "@/features/accounting/server";
+import { ContactsService } from "@/features/contacts/server";
 import {
   ValidationError,
   ACCOUNT_NOT_POSTABLE,

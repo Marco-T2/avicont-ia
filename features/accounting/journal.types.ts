@@ -28,6 +28,11 @@ export interface CreateJournalEntryInput {
   sourceId?: string;
   referenceNumber?: number;
   createdById: string;
+  // Texto crudo del usuario cuando el asiento se origina vía agente IA. Se persiste
+  // junto al entry e inmutable post-creación (no se expone en updateEntry). Lo usa
+  // el route handler de captura asistida — el form normal de "+ Nuevo Asiento" lo
+  // omite y queda null.
+  aiOriginalText?: string;
   lines: JournalLineInput[];
 }
 

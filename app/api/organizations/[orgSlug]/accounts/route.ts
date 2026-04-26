@@ -3,8 +3,12 @@ import { requirePermission } from "@/features/permissions/server";
 import { AccountsService } from "@/features/accounting/server";
 import { createAccountSchema } from "@/features/accounting/server";
 import { AccountSubtype } from "@/generated/prisma/client";
+import { executeFindAccountsByPurpose } from "@/features/ai-agent/server";
 
 const service = new AccountsService();
+
+const PURPOSES = ["cash", "bank", "expense"] as const;
+type AccountPurpose = (typeof PURPOSES)[number];
 
 export async function GET(
   request: Request,
@@ -15,6 +19,19 @@ export async function GET(
     const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
+
+    // ── Modo "by purpose" — usado por el modal de Crear Asiento con IA y por
+    // futuros consumidores de UI que necesiten dropdowns de cuentas categorizadas
+    // (ej: form de pago, form de depósito). Reusa la lógica de tres capas
+    // (defaults curados en OrgSettings → heurística por parent code → vacío).
+    const purposeRaw = searchParams.get("purpose");
+    if (purposeRaw && (PURPOSES as readonly string[]).includes(purposeRaw)) {
+      const purpose = purposeRaw as AccountPurpose;
+      const query = searchParams.get("query") ?? undefined;
+      const result = await executeFindAccountsByPurpose(orgId, { purpose, query });
+      return Response.json(result);
+    }
+
     const tree = searchParams.get("tree") === "true";
     const type = searchParams.get("type") as import("@/generated/prisma/client").AccountType | null;
     const subtypeParam = searchParams.get("subtype");

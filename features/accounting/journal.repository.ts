@@ -233,6 +233,7 @@ export class JournalRepository extends BaseRepository {
             contactId: data.contactId ?? null,
             sourceType: data.sourceType ?? null,
             sourceId: data.sourceId ?? null,
+            aiOriginalText: data.aiOriginalText ?? null,
             referenceNumber: data.referenceNumber ?? null,
             createdById: data.createdById,
             organizationId: scope.organizationId,

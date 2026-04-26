@@ -1,8 +1,8 @@
 import "server-only";
 import { z } from "zod";
 import { defineTool } from "../llm";
-import { AccountsRepository } from "@/features/accounting/accounts.repository";
-import { OrgSettingsService } from "@/features/org-settings/org-settings.service";
+import { AccountsRepository } from "@/features/accounting/server";
+import { OrgSettingsService } from "@/features/org-settings/server";
 import type { Account } from "@/generated/prisma/client";
 
 // ── Tool definition ──
