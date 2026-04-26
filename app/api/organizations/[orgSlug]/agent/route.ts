@@ -62,6 +62,15 @@ export async function POST(
       return await handleConfirm(request, organizationId, member.user.id, orgSlug);
     }
 
+    // ── Telemetry action — frontend reporta eventos del modal de captura asistida ──
+    // Eventos como journal_ai_abandoned se emiten desde el cliente cuando el
+    // usuario cierra el modal sin confirmar. El backend los pasa a logStructured
+    // junto con orgId/userId para análisis de adopción (¿la gente abre el modal
+    // y no termina creando el asiento?). Set restringido — no es un sink general.
+    if (action === "telemetry") {
+      return await handleTelemetry(request, organizationId, member.user.id, member.role);
+    }
+
     // ── Query agent ──
     const body = await request.json();
     const parsed = agentQuerySchema.parse(body);
@@ -294,6 +303,38 @@ function deriveVoucherTypeCode(template: string): "CE" | "CI" {
     default:
       throw new ValidationError(`Template desconocido: ${template}`);
   }
+}
+
+// ── Telemetry handler ──────────────────────────────────────────────────────
+//
+// Eventos permitidos del modal de captura asistida. Lista cerrada — cualquier
+// otro nombre se rechaza con 400. journal_ai_parsed y journal_ai_correction
+// los emite el backend desde agent.service; el frontend solo emite los que
+// requieren observación del lado cliente (cierre del modal sin confirmar).
+const ALLOWED_TELEMETRY_EVENTS = new Set(["journal_ai_abandoned"]);
+
+async function handleTelemetry(
+  request: Request,
+  organizationId: string,
+  userId: string,
+  role: string,
+): Promise<Response> {
+  const body = (await request.json().catch(() => ({}))) as { event?: unknown };
+  const event = typeof body.event === "string" ? body.event : null;
+  if (!event || !ALLOWED_TELEMETRY_EVENTS.has(event)) {
+    return Response.json({ error: "Evento de telemetría no permitido." }, { status: 400 });
+  }
+
+  logStructured({
+    event,
+    level: "info",
+    mode: "journal-entry-ai",
+    orgId: organizationId,
+    userId,
+    role,
+  });
+
+  return Response.json({ ok: true });
 }
 
 function parseEntryDate(rawDate: string): Date {

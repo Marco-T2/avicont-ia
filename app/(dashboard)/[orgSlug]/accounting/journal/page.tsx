@@ -25,6 +25,17 @@ export default async function JournalPage({
     redirect(`/${orgSlug}`);
   }
 
+  // Check separado para journal:write — controla la visibilidad del botón
+  // "+ Crear Asiento con IA". Los roles sin permiso no lo ven; el RBAC del
+  // backend cierra el hueco igualmente (defensa en profundidad).
+  let canWrite = false;
+  try {
+    await requirePermission("journal", "write", orgSlug);
+    canWrite = true;
+  } catch {
+    canWrite = false;
+  }
+
   const journalService = new JournalService();
   const periodsService = new FiscalPeriodsService();
   const voucherTypesService = new VoucherTypesService();
@@ -75,6 +86,8 @@ export default async function JournalPage({
               ? (sp.origin as "manual" | "auto")
               : undefined,
         }}
+        highlightId={typeof sp.highlightId === "string" ? sp.highlightId : undefined}
+        canWrite={canWrite}
       />
     </div>
   );
