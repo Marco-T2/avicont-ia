@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { defineTool, type Tool } from "./llm";
 import type { Role } from "@/features/permissions";
+import {
+  findAccountsByPurposeTool,
+  findContactTool,
+  parseAccountingOperationToSuggestionTool,
+} from "./tools";
 
 // ── Socio tools (farming operations) ──
 
@@ -97,6 +102,16 @@ const adminTools: Tool[] = [
   ...contadorTools.filter((t) => !socioTools.some((s) => s.name === t.name)),
 ];
 
+// Tools del modo "captura asistida de asientos contables" (botón "+ Crear Asiento
+// con IA" en /accounting/journal). En este modo el LLM SOLO ve estas tres tools —
+// no se mezclan con las del rol. El dispatch por modo vive en agent.service.ts
+// (commit posterior).
+export const journalEntryAiTools: Tool[] = [
+  findAccountsByPurposeTool,
+  findContactTool,
+  parseAccountingOperationToSuggestionTool,
+];
+
 /**
  * Registro central de tools por nombre. El executor usa este registry para
  * resolver el inputSchema correspondiente a una tool call y validarla
@@ -109,6 +124,9 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [listFarmsTool.name]: listFarmsTool,
   [listLotsTool.name]: listLotsTool,
   [searchDocumentsTool.name]: searchDocumentsTool,
+  [findAccountsByPurposeTool.name]: findAccountsByPurposeTool,
+  [findContactTool.name]: findContactTool,
+  [parseAccountingOperationToSuggestionTool.name]: parseAccountingOperationToSuggestionTool,
 };
 
 /**

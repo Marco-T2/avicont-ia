@@ -168,6 +168,12 @@ export const ORG_SETTINGS_ACCOUNT_NOT_FOUND = "ORG_SETTINGS_ACCOUNT_NOT_FOUND";
 export const ORG_SETTINGS_ACCOUNT_NOT_USABLE = "ORG_SETTINGS_ACCOUNT_NOT_USABLE";
 export const ORG_SETTINGS_ACCOUNT_WRONG_PARENT = "ORG_SETTINGS_ACCOUNT_WRONG_PARENT";
 
+// Captura asistida de asientos por IA — errores que vuelven al LLM (422) para que pueda
+// reaccionar (pedir aclaración al usuario o reintentar). ACCOUNT_NOT_POSTABLE y
+// CONTACT_REQUIRED_FOR_ACCOUNT (ya existentes) se reúsan para coherencia con journal.service.
+export const JOURNAL_AI_ACCOUNT_NOT_FOUND = "JOURNAL_AI_ACCOUNT_NOT_FOUND";
+export const JOURNAL_AI_CONTACT_NOT_FOUND = "JOURNAL_AI_CONTACT_NOT_FOUND";
+
 // Auditoría (módulo de auditoría)
 export const AUDIT_DATE_RANGE_INVALID = "AUDIT_DATE_RANGE_INVALID"; // 422 — ValidationError
 export const AUDIT_CURSOR_INVALID = "AUDIT_CURSOR_INVALID"; // 422 — ValidationError
