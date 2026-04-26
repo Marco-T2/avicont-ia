@@ -19,6 +19,10 @@ export interface JournalLineInput {
 }
 
 export interface CreateJournalEntryInput {
+  // Fecha calendario del asiento como UTC midnight. Si construís este input
+  // desde un string ISO crudo (LLM, integraciones), usá `parseEntryDate` de
+  // `./journal.dates` — `new Date(rawString)` puede caer en el día siguiente
+  // cuando el offset cruza la medianoche UTC.
   date: Date;
   description: string;
   periodId: string;

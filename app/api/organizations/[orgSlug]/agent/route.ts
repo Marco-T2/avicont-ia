@@ -18,7 +18,7 @@ import {
   type CreateJournalEntryConfirmInput,
 } from "@/features/ai-agent/server";
 import { requirePermission } from "@/features/permissions/server";
-import { JournalService } from "@/features/accounting/server";
+import { JournalService, parseEntryDate } from "@/features/accounting/server";
 import { VoucherTypesService } from "@/features/voucher-types/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import {
@@ -335,26 +335,6 @@ async function handleTelemetry(
   });
 
   return Response.json({ ok: true });
-}
-
-function parseEntryDate(rawDate: string): Date {
-  // Extrae YYYY-MM-DD del string ISO (descarta tiempo y offset). El día
-  // extraído se interpreta como "fecha calendario" y se construye como UTC
-  // midnight — alineado con cómo FiscalPeriodsService persiste el month
-  // (getUTCMonth desde startDate mandado como YYYY-MM-DD por el seed).
-  const dateOnly = rawDate.split("T")[0];
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
-    throw new ValidationError(
-      `La fecha del asiento es inválida (recibido: "${rawDate}").`,
-    );
-  }
-  const parsed = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(parsed.getTime())) {
-    throw new ValidationError(
-      `La fecha del asiento es inválida (recibido: "${rawDate}").`,
-    );
-  }
-  return parsed;
 }
 
 function getContactId(

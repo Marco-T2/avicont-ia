@@ -6,6 +6,7 @@ export { AccountsService } from "./accounts.service";
 export { JournalRepository } from "./journal.repository";
 export { JournalService } from "./journal.service";
 export type * from "./journal.types";
+export { parseEntryDate } from "./journal.dates";
 
 export { LedgerService } from "./ledger.service";
 
