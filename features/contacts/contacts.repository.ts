@@ -16,6 +16,10 @@ export class ContactsRepository extends BaseRepository {
       where: {
         ...scope,
         ...(filters?.type !== undefined && { type: filters.type }),
+        ...(filters?.excludeTypes !== undefined &&
+          filters.excludeTypes.length > 0 && {
+            type: { notIn: filters.excludeTypes },
+          }),
         ...(filters?.isActive !== undefined && { isActive: filters.isActive }),
         ...(filters?.search && {
           OR: [

@@ -93,6 +93,9 @@ export const contactFiltersSchema = z.object({
   type: z
     .enum(["CLIENTE", "PROVEEDOR", "SOCIO", "TRANSPORTISTA", "OTRO"])
     .optional(),
+  excludeTypes: z
+    .array(z.enum(["CLIENTE", "PROVEEDOR", "SOCIO", "TRANSPORTISTA", "OTRO"]))
+    .optional(),
   isActive: z.boolean().optional(),
   search: z.string().max(100, "El término de búsqueda es demasiado largo").optional(),
 });

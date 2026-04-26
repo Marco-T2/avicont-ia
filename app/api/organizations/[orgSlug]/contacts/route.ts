@@ -17,8 +17,12 @@ export async function GET(
     const { orgId } = await requirePermission("contacts", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
+    // excludeType puede aparecer múltiples veces (?excludeType=CLIENTE&excludeType=SOCIO).
+    // Se filtra desde DB en el repo, no en memoria.
+    const excludeTypes = searchParams.getAll("excludeType");
     const rawFilters = {
       type: searchParams.get("type") ?? undefined,
+      excludeTypes: excludeTypes.length > 0 ? excludeTypes : undefined,
       isActive:
         searchParams.has("isActive")
           ? searchParams.get("isActive") === "true"

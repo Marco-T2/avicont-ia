@@ -32,6 +32,10 @@ export interface UpdateContactInput {
 
 export interface ContactFilters {
   type?: ContactType;
+  // Excluye contactos de los tipos listados (NOT IN). Útil para lookups del modo
+  // captura asistida del agente IA, donde CLIENTE no aplica a las plantillas de
+  // gasto/depósito. Filtra desde DB, no en memoria.
+  excludeTypes?: ContactType[];
   isActive?: boolean;
   search?: string; // matches name or nit
 }

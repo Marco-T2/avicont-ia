@@ -122,3 +122,38 @@ export const journalEntryAiInputSchema = z
   });
 
 export type JournalEntryAiInput = z.infer<typeof journalEntryAiInputSchema>;
+
+// Schema para el payload del action=confirm de createJournalEntry. Valida el
+// shape que llega del modal (CreateJournalEntrySuggestion["data"]), que puede
+// haber sido editado por el usuario antes de confirmar. Usa passthrough para
+// no rechazar metadata de display (resolvedAccounts, resolvedContact,
+// voucherTypeCode) que el route handler ignora — sólo le importa lo que va
+// al servicio. Defensa en profundidad: el journalService valida cuadre,
+// período abierto, isDetail, etc. nuevamente.
+export const createJournalEntryConfirmSchema = z
+  .object({
+    template: z.enum(JOURNAL_ENTRY_AI_TEMPLATES),
+    date: isoDateString,
+    description: z
+      .string()
+      .min(3, "La glosa debe tener al menos 3 caracteres")
+      .max(500, "La glosa no puede superar los 500 caracteres"),
+    amount: z.number().positive("El monto debe ser mayor a 0"),
+    contactId: z.string().cuid("ID de contacto inválido").optional(),
+    originalText: z
+      .string()
+      .min(1, "El texto original es requerido")
+      .max(2000, "El texto original no puede superar los 2000 caracteres"),
+    lines: z
+      .array(
+        z.object({
+          accountId: z.string().cuid("ID de cuenta inválido"),
+          debit: z.number().min(0, "El débito no puede ser negativo"),
+          credit: z.number().min(0, "El crédito no puede ser negativo"),
+        }),
+      )
+      .min(2, "Un asiento contable debe tener al menos 2 líneas"),
+  })
+  .passthrough();
+
+export type CreateJournalEntryConfirmInput = z.infer<typeof createJournalEntryConfirmSchema>;
