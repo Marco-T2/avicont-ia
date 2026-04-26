@@ -1,10 +1,16 @@
 import "server-only";
 import { llmClient, type ToolCall, type TokenUsage } from "./llm";
-import { getToolsForRole, isWriteAction, TOOL_REGISTRY } from "./agent.tools";
+import {
+  getToolsForRole,
+  isWriteAction,
+  journalEntryAiTools,
+  TOOL_REGISTRY,
+} from "./agent.tools";
 import { buildAgentContext, buildRagContext } from "./agent.context";
 import { ChatMemoryRepository } from "./memory.repository";
 import { logStructured } from "@/lib/logging/structured";
 import type { Role } from "@/features/permissions";
+import type { AgentMode } from "./agent.validation";
 import type {
   AgentResponse,
   AgentSuggestion,
@@ -23,6 +29,12 @@ import {
   curateIncomeStatementForLLM,
   formatIncomeStatementUserMessage,
 } from "./income-statement-analysis.prompt";
+import {
+  buildJournalEntryAiSystemPrompt,
+  coerceContextHints,
+} from "./journal-entry-ai.prompt";
+import { executeParseAccountingOperation } from "./tools";
+import { AppError } from "@/features/shared/errors";
 import type {
   BalanceSheet,
   BalanceSheetCurrent,
@@ -33,7 +45,10 @@ type InvocationOutcome =
   | "ok"
   | "error"
   | "validation_failed"
-  | "no_tools_for_role";
+  | "no_tools_for_role"
+  | "no_tool_call"
+  | "unexpected_tool"
+  | "parse_failed";
 
 const memoryRepo = new ChatMemoryRepository();
 
@@ -68,7 +83,16 @@ export class AgentService {
     role: string,
     prompt: string,
     sessionId?: string,
+    mode: AgentMode = "chat",
+    contextHints?: unknown,
   ): Promise<AgentResponse> {
+    // El modo journal-entry-ai vive en su propio método — flow distinto:
+    // single-turn, single-tool, sin RAG/context/history, catálogo precargado
+    // en system prompt vía contextHints.
+    if (mode === "journal-entry-ai") {
+      return this.queryJournalEntryAi(orgId, userId, role, prompt, contextHints);
+    }
+
     const startedAt = performance.now();
     const normalizedRole = this.normalizeRole(role);
 
@@ -373,6 +397,163 @@ export class AgentService {
         totalTokens: usage?.totalTokens ?? null,
         outcome,
         ...(trivialCode ? { trivialCode } : {}),
+        ...(errorMessage ? { errorMessage } : {}),
+      });
+    }
+  }
+
+  /**
+   * Modo "captura asistida de asientos contables" del botón "+ Crear Asiento con IA".
+   * Single-turn, single-tool: el LLM tiene acceso únicamente a
+   * parseAccountingOperationToSuggestion. El catálogo de cuentas y proveedores
+   * viaja precargado en el system prompt vía contextHints — sin RAG, sin context
+   * de granjas/lotes, sin historial. Cada modal arranca limpio (stateless v1);
+   * la "memoria" del flow son los contextHints.formState que el frontend manda
+   * explícitamente cuando el usuario corrige en lenguaje natural.
+   */
+  private async queryJournalEntryAi(
+    orgId: string,
+    userId: string,
+    role: string,
+    prompt: string,
+    rawContextHints: unknown,
+  ): Promise<AgentResponse> {
+    const startedAt = performance.now();
+    const normalizedRole = this.normalizeRole(role);
+
+    let outcome: InvocationOutcome = "ok";
+    let usage: TokenUsage | undefined;
+    let toolCalls: readonly ToolCall[] = [];
+    let errorMessage: string | undefined;
+    let parsedTemplate: string | undefined;
+
+    const hints = coerceContextHints(rawContextHints);
+    const isCorrection = hints?.formState !== undefined;
+
+    if (isCorrection) {
+      logStructured({
+        event: "journal_ai_correction",
+        level: "info",
+        orgId,
+        userId,
+        role: normalizedRole,
+      });
+    }
+
+    try {
+      const systemPrompt = buildJournalEntryAiSystemPrompt(hints);
+
+      const result = await llmClient.query({
+        systemPrompt,
+        userMessage: prompt,
+        tools: journalEntryAiTools,
+      });
+
+      usage = result.usage;
+      toolCalls = result.toolCalls;
+
+      // Sin tool call: el LLM decidió responder al usuario (pidiendo aclaración,
+      // o rechazando la operación por no encajar en las plantillas).
+      if (toolCalls.length === 0) {
+        outcome = "no_tool_call";
+        return {
+          message: result.text || "No pude procesar la operación. Reformulá el pedido.",
+          suggestion: null,
+          requiresConfirmation: false,
+        };
+      }
+
+      if (toolCalls.length > 1) {
+        logStructured({
+          event: "multiple_tool_calls_dropped",
+          level: "warn",
+          mode: "journal-entry-ai",
+          count: toolCalls.length,
+          dropped: toolCalls.slice(1).map((c) => c.name),
+        });
+      }
+
+      const call = toolCalls[0];
+
+      // En este modo el LLM solo debería llamar parseAccountingOperationToSuggestion.
+      // Cualquier otra tool es un bug del system prompt o del modelo.
+      if (call.name !== "parseAccountingOperationToSuggestion") {
+        outcome = "unexpected_tool";
+        logStructured({
+          event: "journal_ai_unexpected_tool",
+          level: "warn",
+          orgId,
+          userId,
+          tool: call.name,
+        });
+        return {
+          message: "Hubo un error procesando la operación. Reformulá el pedido.",
+          suggestion: null,
+          requiresConfirmation: false,
+        };
+      }
+
+      // Builder: valida con Zod, hace lookup batch, construye lines, devuelve
+      // CreateJournalEntrySuggestion. Errores tipados (ValidationError) son
+      // esperables — vuelven al usuario como mensaje sin tirar la respuesta.
+      try {
+        const suggestion = await executeParseAccountingOperation(orgId, call.input);
+        parsedTemplate = suggestion.data.template;
+        logStructured({
+          event: "journal_ai_parsed",
+          level: "info",
+          orgId,
+          userId,
+          role: normalizedRole,
+          template: suggestion.data.template,
+          isCorrection,
+        });
+        return {
+          message:
+            result.text || "Revisá los datos del asiento y confirmá para crear el borrador.",
+          suggestion,
+          requiresConfirmation: true,
+        };
+      } catch (error) {
+        outcome = "parse_failed";
+        if (error instanceof AppError) {
+          // ValidationError esperable — el LLM proveyó algo inválido (ID inexistente,
+          // cuenta sin requiresContact, etc.). Devolvemos el mensaje al usuario.
+          errorMessage = error.code ?? error.message;
+          return {
+            message: error.message,
+            suggestion: null,
+            requiresConfirmation: false,
+          };
+        }
+        throw error;
+      }
+    } catch (error) {
+      outcome = "error";
+      errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Agent journal-entry-ai error:", error);
+      return {
+        message: "Ocurrió un error al procesar la operación. Intentá de nuevo.",
+        suggestion: null,
+        requiresConfirmation: false,
+      };
+    } finally {
+      logStructured({
+        event: "agent_invocation",
+        level: outcome === "error" ? "warn" : "info",
+        mode: "journal-entry-ai",
+        orgId,
+        userId,
+        role: normalizedRole,
+        durationMs: Math.round(performance.now() - startedAt),
+        inputTokens: usage?.inputTokens ?? null,
+        outputTokens: usage?.outputTokens ?? null,
+        totalTokens: usage?.totalTokens ?? null,
+        toolCallsCount: toolCalls.length,
+        toolNames: toolCalls.map((c) => c.name),
+        outcome,
+        isCorrection,
+        ...(parsedTemplate ? { template: parsedTemplate } : {}),
         ...(errorMessage ? { errorMessage } : {}),
       });
     }

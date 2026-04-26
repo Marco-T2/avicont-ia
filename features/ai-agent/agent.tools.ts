@@ -1,11 +1,7 @@
 import { z } from "zod";
 import { defineTool, type Tool } from "./llm";
 import type { Role } from "@/features/permissions";
-import {
-  findAccountsByPurposeTool,
-  findContactTool,
-  parseAccountingOperationToSuggestionTool,
-} from "./tools";
+import { parseAccountingOperationToSuggestionTool } from "./tools";
 
 // ── Socio tools (farming operations) ──
 
@@ -103,14 +99,12 @@ const adminTools: Tool[] = [
 ];
 
 // Tools del modo "captura asistida de asientos contables" (botón "+ Crear Asiento
-// con IA" en /accounting/journal). En este modo el LLM SOLO ve estas tres tools —
-// no se mezclan con las del rol. El dispatch por modo vive en agent.service.ts
-// (commit posterior).
-export const journalEntryAiTools: Tool[] = [
-  findAccountsByPurposeTool,
-  findContactTool,
-  parseAccountingOperationToSuggestionTool,
-];
+// con IA" en /accounting/journal). Single-tool por diseño: el catálogo de cuentas
+// y proveedores viaja precargado en el system prompt vía contextHints. Las
+// funciones executor de findAccountsByPurpose y findContact viven en
+// features/ai-agent/tools/ pero se invocan desde endpoints HTTP genéricos
+// (/api/.../accounts, /api/.../contacts), no como tools del LLM.
+export const journalEntryAiTools: Tool[] = [parseAccountingOperationToSuggestionTool];
 
 /**
  * Registro central de tools por nombre. El executor usa este registry para
@@ -124,8 +118,6 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [listFarmsTool.name]: listFarmsTool,
   [listLotsTool.name]: listLotsTool,
   [searchDocumentsTool.name]: searchDocumentsTool,
-  [findAccountsByPurposeTool.name]: findAccountsByPurposeTool,
-  [findContactTool.name]: findContactTool,
   [parseAccountingOperationToSuggestionTool.name]: parseAccountingOperationToSuggestionTool,
 };
 
