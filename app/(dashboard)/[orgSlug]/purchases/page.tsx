@@ -24,7 +24,7 @@ export default async function PurchasesPage({ params }: PurchasesPageProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Compras y Servicios</h1>
+        <h1 className="text-3xl font-bold">Compras</h1>
         <p className="text-gray-500 mt-1">
           Gestión de fletes, pollos faenados, compras generales y servicios
         </p>

@@ -47,7 +47,7 @@ const CONTAB_LIKE: Module = {
   homeRoute: (slug) => `/${slug}/accounting`,
   navItems: [
     { label: "Operaciones", isSeparator: true },
-    { label: "Ventas y Despachos", href: (s) => `/${s}/dispatches`, resource: "sales" },
+    { label: "Ventas", href: (s) => `/${s}/dispatches`, resource: "sales" },
     { label: "Contabilidad", isSeparator: true },
     { label: "Libro Diario", href: (s) => `/${s}/accounting/journal`, resource: "journal" },
   ],

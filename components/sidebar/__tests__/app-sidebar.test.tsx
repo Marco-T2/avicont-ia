@@ -318,9 +318,9 @@ describe("AppSidebar — no legacy parent-level filter (REQ-MS.8)", () => {
 
     // Libro Diario (journal) IS rendered in ActiveModuleNav
     expect(screen.getByRole("link", { name: /Libro Diario/i })).toBeTruthy();
-    // But Ventas y Despachos (dispatches, denied) is NOT rendered
+    // But Ventas (dispatches, denied) is NOT rendered
     expect(
-      screen.queryByRole("link", { name: /Ventas y Despachos/i }),
+      screen.queryByRole("link", { name: /Ventas/i }),
     ).toBeNull();
   });
 
