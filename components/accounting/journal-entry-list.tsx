@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import {
   Plus,
+  Sparkles,
   FileText,
   Search,
   MoreHorizontal,
@@ -40,6 +41,7 @@ import {
   FileDown,
   Loader2,
 } from "lucide-react";
+import JournalEntryAiModal from "./journal-entry-ai-modal";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
@@ -104,6 +106,15 @@ interface JournalEntryListProps {
     status?: string;
     origin?: "manual" | "auto";
   };
+  /**
+   * ID del entry recién creado por el modal de captura asistida. Lo pinta con
+   * un anillo púrpura por 3 segundos y limpia el query param post-aplicación
+   * (router.replace) para que un refresh del browser no re-dispare el
+   * highlight. One-shot, resistente a recarga.
+   */
+  highlightId?: string;
+  /** Indica si el rol del usuario puede crear asientos (controla visibilidad del botón IA). */
+  canWrite?: boolean;
 }
 
 // ── Row sub-component with actions dropdown ─────────────────────────────────
@@ -128,10 +139,18 @@ function JournalEntryRow({
   periodName,
   periodStatus,
   isLoading,
+  isHighlighted,
   onPost,
   onVoid,
-}: JournalEntryRowProps) {
+}: JournalEntryRowProps & { isHighlighted: boolean }) {
   const router = useRouter();
+  const rowRef = useRef<HTMLTableRowElement>(null);
+
+  useEffect(() => {
+    if (isHighlighted && rowRef.current) {
+      rowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isHighlighted]);
 
   const statusBadge = STATUS_BADGE[entry.status] ?? {
     label: entry.status,
@@ -159,7 +178,13 @@ function JournalEntryRow({
 
   return (
     <tr
-      className="border-b hover:bg-accent/50 cursor-pointer"
+      ref={rowRef}
+      data-entry-id={entry.id}
+      className={`border-b hover:bg-accent/50 cursor-pointer transition-colors ${
+        isHighlighted
+          ? "ring-2 ring-purple-500/50 bg-purple-500/5 dark:bg-purple-500/10"
+          : ""
+      }`}
       onClick={() => router.push(viewPath)}
     >
       <td className="py-3 px-4 font-mono text-info font-medium">
@@ -251,11 +276,34 @@ export default function JournalEntryList({
   periods,
   voucherTypes,
   filters,
+  highlightId,
+  canWrite = false,
 }: JournalEntryListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [voidEntry, setVoidEntry] = useState<JournalEntry | null>(null);
   const [postEntry, setPostEntry] = useState<JournalEntry | null>(null);
+  const [aiModalOpen, setAiModalOpen] = useState(false);
+
+  // Highlight: muestra el anillo por 3 segundos y limpia el query param vía
+  // router.replace para que un refresh manual no lo re-dispare. One-shot,
+  // resistente a recarga (el query param desaparece del URL al recargar
+  // queda automatically en estado "no highlight").
+  const [activeHighlightId, setActiveHighlightId] = useState<string | undefined>(highlightId);
+  useEffect(() => {
+    if (!highlightId) return;
+    setActiveHighlightId(highlightId);
+    // Limpieza del query param: reemplazamos la URL sin el param para que el
+    // back/forward y el refresh no traigan el highlight de vuelta.
+    const params = new URLSearchParams(window.location.search);
+    params.delete("highlightId");
+    const query = params.toString();
+    router.replace(`/${orgSlug}/accounting/journal${query ? `?${query}` : ""}`, {
+      scroll: false,
+    });
+    const t = setTimeout(() => setActiveHighlightId(undefined), 3000);
+    return () => clearTimeout(t);
+  }, [highlightId, orgSlug, router]);
 
   // Build lookup maps
   const periodMap = new Map(periods.map((p) => [p.id, p.name]));
@@ -411,6 +459,17 @@ export default function JournalEntryList({
 
             <div className="flex-1" />
 
+            {canWrite && (
+              <Button
+                variant="outline"
+                onClick={() => setAiModalOpen(true)}
+                className="border-purple-500/50 text-purple-600 hover:bg-purple-500/10 hover:text-purple-700 dark:text-purple-400"
+              >
+                <Sparkles className="h-4 w-4 mr-2" />
+                Crear Asiento con IA
+              </Button>
+            )}
+
             <Link href={`/${orgSlug}/accounting/journal/new`}>
               <Button>
                 <Plus className="h-4 w-4 mr-2" />
@@ -420,6 +479,12 @@ export default function JournalEntryList({
           </div>
         </CardContent>
       </Card>
+
+      <JournalEntryAiModal
+        orgSlug={orgSlug}
+        open={aiModalOpen}
+        onOpenChange={setAiModalOpen}
+      />
 
       {/* Table */}
       <Card>
@@ -481,6 +546,7 @@ export default function JournalEntryList({
                       periodName={periodMap.get(entry.periodId) ?? "—"}
                       periodStatus={periodStatusMap.get(entry.periodId) ?? "OPEN"}
                       isLoading={actioningId === entry.id}
+                      isHighlighted={activeHighlightId === entry.id}
                       onPost={setPostEntry}
                       onVoid={setVoidEntry}
                     />
