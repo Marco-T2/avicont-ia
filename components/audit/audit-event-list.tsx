@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,9 @@ import {
   AUDIT_ACTIONS,
   AUDITED_ENTITY_TYPES,
   ENTITY_TYPE_LABELS,
+  STATUS_BADGE_LABELS,
+  buildGroupSummary,
+  getVoucherDetailUrl,
   type AuditAction,
   type AuditCursor,
   type AuditEntityType,
@@ -26,6 +29,7 @@ import {
 } from "@/features/audit";
 import { formatDateBO } from "@/lib/date-utils";
 import { ActionBadge, ClassificationBadge } from "./audit-event-badges";
+import { AuditDiffViewer } from "./audit-diff-viewer";
 
 // Sentinel para el item "Todos" — Radix Select no acepta value="" (throws runtime error).
 const ALL = "__ALL__";
@@ -185,56 +189,127 @@ export function AuditEventList({
       ) : (
         initialData.groups.map((group) => {
           const key = `${group.parentVoucherType}:${group.parentVoucherId}`;
+          const summary = buildGroupSummary(group);
+
+          // A11-S5: grupo huérfano — card minimalista sin CTA
+          if (summary.isOrphan) {
+            const fallbackEvent = group.events[0] ?? null;
+            return (
+              <Card key={key} role="article" data-testid="orphan-card">
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">
+                    <ClassificationBadge
+                      classification={group.parentClassification}
+                    />
+                    <span className="ml-2">
+                      {ENTITY_TYPE_LABELS[group.parentVoucherType]}
+                    </span>
+                  </CardTitle>
+                  {fallbackEvent && (
+                    <p className="text-xs text-muted-foreground">
+                      {fallbackEvent.changedBy?.name ?? "Usuario eliminado"} ·{" "}
+                      {formatDateBO(fallbackEvent.createdAt)}
+                    </p>
+                  )}
+                </CardHeader>
+              </Card>
+            );
+          }
+
+          // Grupo con identidad de comprobante — operation card completa
           const isExpanded = expanded[key] ?? false;
-          const visible = isExpanded ? group.events : group.events.slice(0, 3);
-          const hidden = group.events.length - visible.length;
+          const ctaHref = getVoucherDetailUrl(
+            orgSlug,
+            group.parentVoucherType,
+            group.parentVoucherId,
+          );
 
           return (
-            <Card key={key}>
+            <Card key={key} role="article">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <div className="flex items-center gap-2">
                   <ClassificationBadge
                     classification={group.parentClassification}
                   />
-                  <Link
-                    href={`/${orgSlug}/audit/${group.parentVoucherType}/${group.parentVoucherId}`}
-                    className="text-sm font-medium hover:underline"
-                  >
+                  <span className="text-sm font-medium">
                     {ENTITY_TYPE_LABELS[group.parentVoucherType]} ·{" "}
                     {group.parentVoucherId}
-                  </Link>
+                  </span>
+                  {summary.statusTransition && (
+                    <span className="text-xs text-muted-foreground">
+                      {STATUS_BADGE_LABELS[summary.statusTransition.from ?? ""] ??
+                        summary.statusTransition.from}{" "}
+                      →{" "}
+                      {STATUS_BADGE_LABELS[summary.statusTransition.to ?? ""] ??
+                        summary.statusTransition.to}
+                    </span>
+                  )}
                 </div>
                 <span className="text-xs text-muted-foreground">
                   {formatDateBO(group.lastActivityAt)} · {group.eventCount}{" "}
                   {group.eventCount === 1 ? "evento" : "eventos"}
                 </span>
               </CardHeader>
-              <CardContent className="space-y-2 pb-4">
-                {visible.map((ev) => (
-                  <div
-                    key={ev.id}
-                    className="flex items-center gap-3 text-sm text-muted-foreground"
+
+              <CardContent className="space-y-3 pb-4">
+                {/* Sección de cabecera: evento de tipo header */}
+                {summary.headerEvent && (
+                  <section data-testid="header-section">
+                    <div className="flex items-center gap-2 text-sm">
+                      <ActionBadge action={summary.headerEvent.action} />
+                      <span>
+                        {summary.headerEvent.changedBy?.name ?? "Usuario eliminado"}
+                      </span>
+                      <span className="text-muted-foreground">
+                        {formatDateBO(summary.headerEvent.createdAt)}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setExpanded((prev) => ({ ...prev, [key]: !prev[key] }))
+                        }
+                        className="ml-auto text-xs text-primary hover:underline"
+                      >
+                        {isExpanded ? "Ocultar diff" : "Ver diff"}
+                      </button>
+                    </div>
+                    {isExpanded && (
+                      <div className="mt-2">
+                        <AuditDiffViewer event={summary.headerEvent} />
+                      </div>
+                    )}
+                  </section>
+                )}
+
+                {/* Sección de detalle: resumen agregado de líneas */}
+                {summary.detailTotal > 0 && (
+                  <section data-testid="detail-section">
+                    <p className="text-sm text-muted-foreground">
+                      {[
+                        summary.detailCounts.created > 0
+                          ? `${summary.detailCounts.created} ${summary.detailCounts.created === 1 ? "creada" : "creadas"}`
+                          : null,
+                        summary.detailCounts.deleted > 0
+                          ? `${summary.detailCounts.deleted} ${summary.detailCounts.deleted === 1 ? "eliminada" : "eliminadas"}`
+                          : null,
+                        summary.detailCounts.updated > 0
+                          ? `${summary.detailCounts.updated} ${summary.detailCounts.updated === 1 ? "modificada" : "modificadas"}`
+                          : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </p>
+                  </section>
+                )}
+
+                {/* CTA al detalle del comprobante */}
+                {ctaHref && (
+                  <Link
+                    href={ctaHref}
+                    className="text-sm text-primary hover:underline"
                   >
-                    <ActionBadge action={ev.action} />
-                    <span>{ENTITY_TYPE_LABELS[ev.entityType]}</span>
-                    <span className="truncate">
-                      {ev.changedBy?.name ?? "Usuario eliminado"}
-                    </span>
-                    <span className="ml-auto">
-                      {formatDateBO(ev.createdAt)}
-                    </span>
-                  </div>
-                ))}
-                {hidden > 0 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setExpanded((prev) => ({ ...prev, [key]: true }))
-                    }
-                    className="text-xs text-primary hover:underline"
-                  >
-                    Ver {hidden} {hidden === 1 ? "más" : "más"}
-                  </button>
+                    Ver comprobante
+                  </Link>
                 )}
               </CardContent>
             </Card>
