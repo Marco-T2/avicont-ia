@@ -11,6 +11,7 @@ import { ChatMemoryRepository } from "./memory.repository";
 import { logStructured } from "@/lib/logging/structured";
 import type { Role } from "@/features/permissions";
 import type { AgentMode } from "./agent.validation";
+import { normalizeRole, type InvocationOutcome } from "./agent.utils";
 import type {
   AgentResponse,
   AgentSuggestion,
@@ -40,15 +41,6 @@ import type {
   BalanceSheetCurrent,
   IncomeStatementCurrent,
 } from "@/features/accounting/financial-statements/financial-statements.types";
-
-type InvocationOutcome =
-  | "ok"
-  | "error"
-  | "validation_failed"
-  | "no_tools_for_role"
-  | "no_tool_call"
-  | "unexpected_tool"
-  | "parse_failed";
 
 const memoryRepo = new ChatMemoryRepository();
 
@@ -132,7 +124,7 @@ export class AgentService {
     }
 
     const startedAt = performance.now();
-    const normalizedRole = this.normalizeRole(role);
+    const normalizedRole = normalizeRole(role);
 
     let outcome: InvocationOutcome = "ok";
     let usage: TokenUsage | undefined;
@@ -284,7 +276,7 @@ export class AgentService {
     balance: BalanceSheet,
   ): Promise<AnalyzeBalanceSheetResponse> {
     const startedAt = performance.now();
-    const normalizedRole = this.normalizeRole(role);
+    const normalizedRole = normalizeRole(role);
 
     let outcome: "ok" | "trivial" | "error" = "ok";
     let usage: TokenUsage | undefined;
@@ -375,7 +367,7 @@ export class AgentService {
     bg: BalanceSheetCurrent,
   ): Promise<AnalyzeIncomeStatementResponse> {
     const startedAt = performance.now();
-    const normalizedRole = this.normalizeRole(role);
+    const normalizedRole = normalizeRole(role);
 
     let outcome: "ok" | "trivial" | "error" = "ok";
     let usage: TokenUsage | undefined;
@@ -463,7 +455,7 @@ export class AgentService {
     rawContextHints: unknown,
   ): Promise<AgentResponse> {
     const startedAt = performance.now();
-    const normalizedRole = this.normalizeRole(role);
+    const normalizedRole = normalizeRole(role);
 
     let outcome: InvocationOutcome = "ok";
     let usage: TokenUsage | undefined;
@@ -645,14 +637,6 @@ export class AgentService {
   }
 
   // ── Helpers privados ──
-
-  private normalizeRole(role: string): Role {
-    const lower = role.toLowerCase();
-    if (lower === "owner") return "owner";
-    if (lower === "admin") return "admin";
-    if (lower === "contador" || lower === "accountant") return "contador";
-    return "member";
-  }
 
   private buildSystemPrompt(role: Role, context: string): string {
     const roleDescriptions: Record<AgentLabel, string> = {
