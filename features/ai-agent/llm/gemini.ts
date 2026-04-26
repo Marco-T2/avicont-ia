@@ -28,9 +28,15 @@ const MODEL_ID = "gemini-2.5-flash";
 // ── Adapter (private, both directions live here so the SDK never leaks) ──
 
 /**
- * Strip JSON Schema fields the Gemini SDK does not accept. Zod emits
- * `$schema` at the root and `additionalProperties: false` on every object;
- * Google's Schema type whitelists a small set of fields and rejects the rest.
+ * Strip / rewrite JSON Schema fields the Gemini SDK does not accept. Zod 4
+ * emits draft 2020-12 (`$schema`, `additionalProperties`, `const`, numeric
+ * `exclusiveMinimum`/`exclusiveMaximum`) but Gemini's `Schema` whitelists an
+ * OpenAPI 3.0 subset. Translations:
+ *  - `const: V` → `enum: [V]` (semantic equivalent in OpenAPI)
+ *  - `exclusiveMinimum: N` → `minimum: N` (loses "strictly greater" in the
+ *    hint, but Zod stays the source of truth on the server — defensa en
+ *    profundidad — so output strictly greater than N still gets enforced)
+ *  - `exclusiveMaximum: N` → `maximum: N` (idem)
  */
 function sanitizeForGemini(node: unknown): unknown {
   if (Array.isArray(node)) return node.map(sanitizeForGemini);
@@ -38,6 +44,18 @@ function sanitizeForGemini(node: unknown): unknown {
     const out: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(node)) {
       if (k === "$schema" || k === "additionalProperties") continue;
+      if (k === "const") {
+        out.enum = [v];
+        continue;
+      }
+      if (k === "exclusiveMinimum" && typeof v === "number") {
+        out.minimum = v;
+        continue;
+      }
+      if (k === "exclusiveMaximum" && typeof v === "number") {
+        out.maximum = v;
+        continue;
+      }
       out[k] = sanitizeForGemini(v);
     }
     return out;

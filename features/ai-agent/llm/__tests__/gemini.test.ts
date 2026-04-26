@@ -117,6 +117,51 @@ describe("LLMClient (gemini) — wrapper smoke tests", () => {
     expect(params).not.toHaveProperty("additionalProperties");
   });
 
+  it("rewrites Zod 4 draft 2020-12 keywords Gemini rejects (const, exclusiveMinimum/Maximum)", async () => {
+    // Reproduce el escenario real que rompió en producción:
+    //   parseAccountingOperationToSuggestion usa una discriminatedUnion con
+    //   .literal() (genera `const`) y .positive() (genera `exclusiveMinimum: 0`).
+    //   Gemini rechaza ambos con 400 Bad Request.
+    mockGenerateContent.mockResolvedValue(fakeResult({ text: () => "ok" }));
+
+    const tool = defineTool({
+      name: "operation",
+      description: "Test discriminated union with literals and positive numbers",
+      inputSchema: z.discriminatedUnion("kind", [
+        z.object({
+          kind: z.literal("a"),
+          amount: z.number().positive(),
+          ratio: z.number().lt(1),
+        }),
+        z.object({
+          kind: z.literal("b"),
+          count: z.number().int().positive(),
+        }),
+      ]),
+    });
+
+    await llmClient.query({
+      systemPrompt: "sys",
+      userMessage: "user",
+      tools: [tool],
+    });
+
+    const config = mockGetGenerativeModel.mock.calls[0][0];
+    const params = config.tools[0].functionDeclarations[0].parameters;
+    const serialized = JSON.stringify(params);
+
+    // Ningún keyword no soportado por Gemini debe sobrevivir.
+    expect(serialized).not.toContain('"const"');
+    expect(serialized).not.toContain('"exclusiveMinimum"');
+    expect(serialized).not.toContain('"exclusiveMaximum"');
+
+    // Las traducciones deben estar presentes (const→enum, exclusive*→min/max).
+    expect(serialized).toContain('"enum":["a"]');
+    expect(serialized).toContain('"enum":["b"]');
+    expect(serialized).toContain('"minimum":0');
+    expect(serialized).toContain('"maximum":1');
+  });
+
   it("function-only response: empty text + ToolCall with synthesized id", async () => {
     const calls = [{ name: "echo", args: { message: "hi" } }];
     mockGenerateContent.mockResolvedValue(
