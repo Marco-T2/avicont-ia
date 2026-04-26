@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { RolesService, RolesRepository } from "@/features/organizations/server";
+import { Button } from "@/components/ui/button";
 import RolesListClient from "@/components/settings/roles-list-client";
 import type { CustomRoleShape } from "@/components/settings/role-edit-drawer";
 
@@ -45,6 +48,13 @@ export default async function RolesPage({ params }: RolesPageProps) {
 
   return (
     <div className="space-y-6">
+      <Link href={`/${orgSlug}/settings`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Configuración
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Roles y Permisos</h1>
         <p className="text-muted-foreground mt-1">
