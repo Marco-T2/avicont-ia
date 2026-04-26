@@ -230,6 +230,18 @@ describe("buildJournalEntryAiSystemPrompt — estado actual del formulario", () 
     expect(prompt).toContain("## Si el usuario está corrigiendo");
     expect(prompt).toContain("modificá **solo** los campos que el usuario menciona");
   });
+
+  it("bloque de corrección refuerza con énfasis byte-por-byte y prohíbe sustituciones creativas", () => {
+    // Mitigación contra el caso degenerado donde el LLM, al recibir una
+    // corrección de un solo campo, modifica otros IDs por interpretación
+    // creativa (temperature alta). El reducer del modal NO mergea — el data
+    // nuevo reemplaza completo. La defensa vive en este prompt.
+    const prompt = buildJournalEntryAiSystemPrompt();
+    expect(prompt).toContain("Énfasis crítico");
+    expect(prompt).toContain("idénticos byte por byte");
+    expect(prompt).toContain("NO sustituyas un ID por otro");
+    expect(prompt).toContain("NO reinterpretes campos no mencionados");
+  });
 });
 
 // ── Combinación: prompt completo con catálogo + contactos + corrección ──
