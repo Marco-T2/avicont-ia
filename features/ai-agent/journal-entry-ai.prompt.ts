@@ -72,7 +72,9 @@ function rulesBlock(today: string): string {
 
 const CORRECTION_BLOCK = `## Si el usuario está corrigiendo (estado actual presente abajo)
 
-Recibís el estado actual del formulario como JSON. NO re-parsees todo desde cero — modificá **solo** los campos que el usuario menciona en su mensaje. El resto queda igual. Después llamá parseAccountingOperationToSuggestion con el estado modificado completo.`;
+Recibís el estado actual del formulario como JSON. NO re-parsees todo desde cero — modificá **solo** los campos que el usuario menciona en su mensaje. El resto queda igual. Después llamá parseAccountingOperationToSuggestion con el estado modificado completo.
+
+**Énfasis crítico**: si el usuario menciona solo un campo (ej. "el monto era 4500"), todos los demás IDs (\`expenseAccountId\`, \`bankAccountId\`, \`cashAccountId\`, \`contactId\`) y campos (\`description\`, \`date\`, \`template\`) DEBEN ser **idénticos byte por byte** al estado actual del formulario. NO sustituyas un ID por otro porque te parezca "más apropiado". NO reinterpretes campos no mencionados. Si el usuario quiere cambiar un campo, lo va a decir explícitamente.`;
 
 const RESPONSE_FORMAT_BLOCK = `## Formato de respuesta al usuario
 
