@@ -1,6 +1,7 @@
 import type { ExpenseCategory } from "@/generated/prisma/client";
 import type { TrivialityCode } from "./balance-sheet-analysis.prompt";
 import type { IncomeStatementTrivialityCode } from "./income-statement-analysis.prompt";
+import type { JournalEntryAiTemplate } from "./agent.validation";
 
 // ── Agent response types ──
 
@@ -81,6 +82,46 @@ export interface ListAccountsSuggestion {
   data: Record<string, never>;
 }
 
+// ── Crear asiento contable con IA (modo journal-entry-ai) ────────────────────
+// Producida por la tool parseAccountingOperationToSuggestion. data.lines y
+// data.resolvedAccounts/resolvedContact son enriquecimientos del builder a
+// partir de la entrada JournalEntryAiInput (la entrada cruda del LLM). El
+// modal usa resolvedAccounts/resolvedContact para pintar nombres sin re-fetch.
+
+export type JournalEntryAiVoucherTypeCode = "CE" | "CI";
+
+export interface ResolvedAccountInfo {
+  code: string;
+  name: string;
+  requiresContact: boolean;
+}
+
+export interface ResolvedContactInfo {
+  id: string;
+  name: string;
+  nit: string | null;
+}
+
+export interface CreateJournalEntrySuggestion {
+  action: "createJournalEntry";
+  data: {
+    template: JournalEntryAiTemplate;
+    voucherTypeCode: JournalEntryAiVoucherTypeCode;
+    date: string;
+    description: string;
+    amount: number;
+    contactId?: string;
+    lines: Array<{
+      accountId: string;
+      debit: number;
+      credit: number;
+    }>;
+    originalText: string;
+    resolvedAccounts: Record<string, ResolvedAccountInfo>;
+    resolvedContact?: ResolvedContactInfo;
+  };
+}
+
 export type AgentSuggestion =
   | CreateExpenseSuggestion
   | LogMortalitySuggestion
@@ -89,5 +130,6 @@ export type AgentSuggestion =
   | ListLotsSuggestion
   | GetTrialBalanceSuggestion
   | GetAccountLedgerSuggestion
-  | ListAccountsSuggestion;
+  | ListAccountsSuggestion
+  | CreateJournalEntrySuggestion;
 
