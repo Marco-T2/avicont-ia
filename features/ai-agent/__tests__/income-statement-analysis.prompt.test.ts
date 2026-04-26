@@ -130,7 +130,7 @@ describe("curateIncomeStatementForLLM", () => {
     expect(out.period.dateFrom).toBe("2026-01-01");
     expect(out.period.dateTo).toBe("2026-06-30");
     expect(out.currency).toBe("BOB");
-    expect(out.preliminary === undefined || typeof out.period.preliminary === "boolean").toBe(true);
+    expect(typeof out.period.preliminary).toBe("boolean");
 
     // Secciones
     expect(out.income.total).toBe("1.833.000,00");
