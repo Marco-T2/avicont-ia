@@ -104,6 +104,164 @@ export interface AuditListFilters {
   limit?: number;
 }
 
+// ── Helpers de clasificación estructural (client-safe) ───────────────────────
+
+/**
+ * Conjunto cerrado de entityTypes que actúan como cabecera de un comprobante.
+ * Refleja el mismo conjunto que REQ-AUDIT.3 usa para clasificación contable,
+ * pero con semántica estructural: "este evento es la fila padre del grupo".
+ */
+const HEADER_ENTITY_TYPES = new Set<AuditEntityType>([
+  "journal_entries",
+  "sales",
+  "purchases",
+  "payments",
+  "dispatches",
+]);
+
+/**
+ * Retorna `true` si el entityType corresponde a un evento de cabecera de
+ * comprobante (vs. evento de línea/detalle). Helper centralizado para todos
+ * los consumers (REQ-AUDIT.11).
+ */
+export function isHeaderEvent(entityType: AuditEntityType): boolean {
+  return HEADER_ENTITY_TYPES.has(entityType);
+}
+
+// ── AuditGroupSummary — shape derivado client-side (Decision 3) ───────────────
+
+/** Resumen agregado de un AuditGroup para renderizar la operation card. */
+export interface AuditGroupSummary {
+  /** Evento de cabecera más reciente del grupo, si existe. */
+  headerEvent: AuditEvent | null;
+  /** Contadores agregados de eventos de detalle. */
+  detailCounts: { created: number; updated: number; deleted: number };
+  /** Total de eventos de detalle (suma de detailCounts) — atajo para render condicional. */
+  detailTotal: number;
+  /** Transición de status en la cabecera, si la hubo. null si no aplica. */
+  statusTransition: { from: string | null; to: string | null } | null;
+  /** Indica si el grupo carece de identidad de comprobante (parentVoucherId vacío/desconocido). */
+  isOrphan: boolean;
+}
+
+/**
+ * Deriva un `AuditGroupSummary` a partir de un `AuditGroup` completo.
+ * Complejidad O(N) sobre `group.events`. Sin side-effects, sin I/O.
+ */
+export function buildGroupSummary(group: AuditGroup): AuditGroupSummary {
+  const detailCounts = { created: 0, updated: 0, deleted: 0 };
+  let headerEvent: AuditEvent | null = null;
+  let statusTransition: { from: string | null; to: string | null } | null = null;
+
+  for (const event of group.events) {
+    if (isHeaderEvent(event.entityType)) {
+      // Tomamos el primero (los eventos vienen ordenados DESC por createdAt).
+      if (headerEvent === null) {
+        headerEvent = event;
+      }
+      // Derivar transición de status desde el headerEvent.
+      if (
+        event.action === "STATUS_CHANGE" ||
+        (event.oldValues?.["status"] !== undefined &&
+          event.newValues?.["status"] !== undefined &&
+          event.oldValues["status"] !== event.newValues["status"])
+      ) {
+        statusTransition = {
+          from: event.oldValues?.["status"] != null
+            ? String(event.oldValues["status"])
+            : null,
+          to: event.newValues?.["status"] != null
+            ? String(event.newValues["status"])
+            : null,
+        };
+      }
+    } else {
+      // Evento de detalle — acumular contadores.
+      switch (event.action) {
+        case "CREATE":
+          detailCounts.created += 1;
+          break;
+        case "UPDATE":
+          detailCounts.updated += 1;
+          break;
+        case "DELETE":
+          detailCounts.deleted += 1;
+          break;
+        // STATUS_CHANGE en detalle no se cuenta.
+      }
+    }
+  }
+
+  const detailTotal =
+    detailCounts.created + detailCounts.updated + detailCounts.deleted;
+
+  const isOrphan = !group.parentVoucherId;
+
+  return {
+    headerEvent,
+    detailCounts,
+    detailTotal,
+    statusTransition,
+    isOrphan,
+  };
+}
+
+// ── getVoucherDetailUrl — mapping CTA (Decision 6) ────────────────────────────
+
+/**
+ * Retorna la URL del detail page del comprobante para el orgSlug dado.
+ * Retorna `null` para entityTypes de detalle (nunca son padre lógico del grupo)
+ * y para cualquier entityType desconocido (exhaustiveness check).
+ */
+export function getVoucherDetailUrl(
+  orgSlug: string,
+  parentVoucherType: AuditEntityType,
+  parentVoucherId: string,
+): string | null {
+  switch (parentVoucherType) {
+    case "journal_entries":
+      return `/${orgSlug}/accounting/journal/${parentVoucherId}`;
+    case "sales":
+      return `/${orgSlug}/sales/${parentVoucherId}`;
+    case "purchases":
+      return `/${orgSlug}/purchases/${parentVoucherId}`;
+    case "payments":
+      return `/${orgSlug}/payments/${parentVoucherId}`;
+    case "dispatches":
+      return `/${orgSlug}/dispatches/${parentVoucherId}`;
+    // Los detail types no deberían aparecer como parentVoucherType —
+    // el repository los mapea a su padre. Retornamos null de forma defensiva.
+    case "sale_details":
+    case "purchase_details":
+    case "journal_lines":
+      return null;
+    default: {
+      const _exhaustive: never = parentVoucherType;
+      void _exhaustive;
+      return null;
+    }
+  }
+}
+
+// ── STATUS_BADGE_LABELS — etiquetas de estado (promovida desde audit-diff-viewer) ──
+
+/**
+ * Mapa de valores de status (inglés, DB) a etiquetas en español para la UI.
+ * Promovida desde `audit-diff-viewer.tsx` (era privada `STATUS_BADGE`) para
+ * que pueda ser reutilizada por la operation card sin duplicar (Decision 4).
+ */
+export const STATUS_BADGE_LABELS: Record<string, string> = {
+  DRAFT: "Borrador",
+  POSTED: "Contabilizado",
+  VOIDED: "Anulado",
+  PENDING: "Pendiente",
+  PARTIAL: "Parcial",
+  PAID: "Pagado",
+  CANCELLED: "Cancelado",
+};
+
+// ── Whitelist de campos a renderizar en el diff, por entityType. ──────────────
+
 /** Whitelist de campos a renderizar en el diff, por entityType. */
 export interface DiffField {
   key: string;
