@@ -2,20 +2,11 @@
 
 import {
   DIFF_FIELDS,
+  STATUS_BADGE_LABELS,
   type AuditEvent,
   type DiffField,
 } from "@/features/audit";
 import { formatDateBO } from "@/lib/date-utils";
-
-const STATUS_BADGE: Record<string, string> = {
-  DRAFT: "Borrador",
-  POSTED: "Contabilizado",
-  VOIDED: "Anulado",
-  PENDING: "Pendiente",
-  PARTIAL: "Parcial",
-  PAID: "Pagado",
-  CANCELLED: "Cancelado",
-};
 
 const MISSING = "—";
 
@@ -111,7 +102,7 @@ function formatValue(value: unknown, field: DiffField): string {
     case "date":
       return formatDateBO(value as string);
     case "status":
-      return STATUS_BADGE[String(value)] ?? String(value);
+      return STATUS_BADGE_LABELS[String(value)] ?? String(value);
     case "reference":
       return `Ref. ${String(value)}`;
     default:

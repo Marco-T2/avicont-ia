@@ -10,6 +10,7 @@ export type {
   AuditEntityType,
   AuditEvent,
   AuditGroup,
+  AuditGroupSummary,
   AuditListFilters,
   DiffField,
 } from "./audit.types";
@@ -20,4 +21,8 @@ export {
   AUDITED_ENTITY_TYPES,
   DIFF_FIELDS,
   ENTITY_TYPE_LABELS,
+  STATUS_BADGE_LABELS,
+  buildGroupSummary,
+  getVoucherDetailUrl,
+  isHeaderEvent,
 } from "./audit.types";
