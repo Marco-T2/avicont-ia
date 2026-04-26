@@ -163,14 +163,22 @@ export class AccountsRepository extends BaseRepository {
     parentCodes: string[],
   ): Promise<Account[]> {
     const scope = this.requireOrg(organizationId);
+    // Devuelve cuentas de detalle bajo los parent codes Y los parent codes
+    // mismos cuando ya son detail. El chart seedeado deja códigos como "1.1.1"
+    // (Caja) como leaves directas — sin esto, orgs con el chart por defecto
+    // sin sub-cuentas reciben listas vacías y los flujos que dependen de este
+    // método (IA, pagos) muestran error de configuración.
     return this.db.account.findMany({
       where: {
         ...scope,
         isDetail: true,
         isActive: true,
-        OR: parentCodes.map((code) => ({
-          code: { startsWith: `${code}.` },
-        })),
+        OR: [
+          ...parentCodes.map((code) => ({
+            code: { startsWith: `${code}.` },
+          })),
+          { code: { in: parentCodes } },
+        ],
       },
       orderBy: { code: "asc" },
     });
