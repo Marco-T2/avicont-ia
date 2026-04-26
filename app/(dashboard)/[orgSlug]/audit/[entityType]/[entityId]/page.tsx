@@ -1,9 +1,12 @@
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import {
   AuditService,
   voucherHistoryParamsSchema,
 } from "@/features/audit/server";
+import { Button } from "@/components/ui/button";
 import { AuditDetailTimeline } from "@/components/audit/audit-detail-timeline";
 
 interface AuditDetailPageProps {
@@ -46,6 +49,13 @@ export default async function AuditDetailPage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/${raw.orgSlug}/audit`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Auditoría
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">
           Auditoría · {entityType} · {entityId}

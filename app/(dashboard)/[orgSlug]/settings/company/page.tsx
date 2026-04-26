@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { OrgProfileService } from "@/features/org-profile/server";
 import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
+import { Button } from "@/components/ui/button";
 import { CompanyProfileForm } from "@/components/settings/company/company-profile-form";
 
 const orgProfileService = new OrgProfileService();
@@ -42,6 +45,13 @@ export default async function CompanyProfilePage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/${orgSlug}/settings`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Configuración
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Perfil de Empresa</h1>
         <p className="text-muted-foreground mt-1">

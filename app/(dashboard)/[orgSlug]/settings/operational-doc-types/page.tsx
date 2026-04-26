@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
+import { Button } from "@/components/ui/button";
 import OperationalDocTypesManager from "@/components/settings/operational-doc-types-manager";
 
 interface OperationalDocTypesPageProps {
@@ -31,6 +34,13 @@ export default async function OperationalDocTypesPage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/${orgSlug}/settings`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Configuración
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Tipos de Documento Operativo</h1>
         <p className="text-muted-foreground mt-1">
