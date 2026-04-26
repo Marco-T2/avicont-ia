@@ -29,7 +29,15 @@ export default async function EntryDetailPage({
   let entry;
   try {
     entry = await journalService.getById(orgId, entryId);
-  } catch {
+  } catch (err) {
+    // Loggeamos antes de mapear a 404 para no esconder fallos de infra
+    // (Prisma down, columnas faltantes, etc.) como "not found". Sin esto
+    // un error real se manifestaba al usuario como página inexistente y
+    // dejaba al desarrollador sin pista de qué falló.
+    console.error(
+      `[journal/[entryId]] getById falló para orgId=${orgId} entryId=${entryId}:`,
+      err,
+    );
     notFound();
   }
 
