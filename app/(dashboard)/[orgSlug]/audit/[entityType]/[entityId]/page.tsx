@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
+import { ENTITY_TYPE_LABELS } from "@/features/audit";
 import {
   AuditService,
   voucherHistoryParamsSchema,
@@ -58,7 +59,7 @@ export default async function AuditDetailPage({
 
       <div>
         <h1 className="text-3xl font-bold">
-          Auditoría · {entityType} · {entityId}
+          Auditoría · {ENTITY_TYPE_LABELS[entityType]} · {entityId}
         </h1>
         <p className="mt-1 text-muted-foreground">Historial completo del comprobante</p>
       </div>

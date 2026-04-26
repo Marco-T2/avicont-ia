@@ -1,7 +1,11 @@
 "use client";
 
 import { Badge } from "@/components/ui/badge";
-import type { AuditAction, AuditClassification } from "@/features/audit";
+import {
+  ACTION_LABELS,
+  type AuditAction,
+  type AuditClassification,
+} from "@/features/audit";
 
 // ── ClassificationBadge ──────────────────────────────────────────────────────
 
@@ -30,24 +34,12 @@ export function ClassificationBadge({ classification }: ClassificationBadgeProps
 
 // ── ActionBadge ──────────────────────────────────────────────────────────────
 
-const ACTION_CONFIG: Record<AuditAction, { label: string; className: string }> = {
-  CREATE: {
-    label: "Creación",
-    className: "bg-info/10 text-info dark:bg-info/20",
-  },
-  UPDATE: {
-    label: "Actualización",
-    className: "bg-warning/10 text-warning dark:bg-warning/20",
-  },
-  DELETE: {
-    label: "Eliminación",
-    className: "bg-destructive/10 text-destructive dark:bg-destructive/20",
-  },
-  STATUS_CHANGE: {
-    label: "Cambio de estado",
-    className:
-      "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200",
-  },
+const ACTION_CLASS_NAMES: Record<AuditAction, string> = {
+  CREATE: "bg-info/10 text-info dark:bg-info/20",
+  UPDATE: "bg-warning/10 text-warning dark:bg-warning/20",
+  DELETE: "bg-destructive/10 text-destructive dark:bg-destructive/20",
+  STATUS_CHANGE:
+    "bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-200",
 };
 
 interface ActionBadgeProps {
@@ -55,6 +47,7 @@ interface ActionBadgeProps {
 }
 
 export function ActionBadge({ action }: ActionBadgeProps) {
-  const config = ACTION_CONFIG[action];
-  return <Badge className={config.className}>{config.label}</Badge>;
+  return (
+    <Badge className={ACTION_CLASS_NAMES[action]}>{ACTION_LABELS[action]}</Badge>
+  );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { AuditEvent } from "@/features/audit";
+import { ENTITY_TYPE_LABELS, type AuditEvent } from "@/features/audit";
 import { formatDateBO } from "@/lib/date-utils";
 import { ActionBadge, ClassificationBadge } from "./audit-event-badges";
 import { AuditDiffViewer } from "./audit-diff-viewer";
@@ -29,7 +29,9 @@ export function AuditDetailTimeline({ events }: AuditDetailTimelineProps) {
             <div className="flex items-center gap-2">
               <ActionBadge action={ev.action} />
               <ClassificationBadge classification={ev.classification} />
-              <span className="text-sm font-medium">{ev.entityType}</span>
+              <span className="text-sm font-medium">
+                {ENTITY_TYPE_LABELS[ev.entityType]}
+              </span>
             </div>
             <div className="text-xs text-muted-foreground">
               <span>{formatDateBO(ev.createdAt)}</span>

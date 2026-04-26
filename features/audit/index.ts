@@ -15,7 +15,9 @@ export type {
 } from "./audit.types";
 
 export {
+  ACTION_LABELS,
   AUDIT_ACTIONS,
   AUDITED_ENTITY_TYPES,
   DIFF_FIELDS,
+  ENTITY_TYPE_LABELS,
 } from "./audit.types";
