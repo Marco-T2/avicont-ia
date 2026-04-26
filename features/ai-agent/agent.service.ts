@@ -138,6 +138,7 @@ export class AgentService {
     let usage: TokenUsage | undefined;
     let toolCalls: readonly ToolCall[] = [];
     let errorMessage: string | undefined;
+    let errorStack: string | undefined;
 
     try {
       const tools = getToolsForRole(normalizedRole);
@@ -243,7 +244,7 @@ export class AgentService {
     } catch (error) {
       outcome = "error";
       errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Agent query error:", error);
+      errorStack = error instanceof Error ? error.stack : undefined;
       return {
         message:
           "Ocurrió un error al procesar tu solicitud. Intenta de nuevo.",
@@ -265,6 +266,7 @@ export class AgentService {
         toolNames: toolCalls.map((c) => c.name),
         outcome,
         ...(errorMessage ? { errorMessage } : {}),
+        ...(errorStack ? { errorStack } : {}),
       });
     }
   }
@@ -288,6 +290,7 @@ export class AgentService {
     let usage: TokenUsage | undefined;
     let trivialCode: string | undefined;
     let errorMessage: string | undefined;
+    let errorStack: string | undefined;
 
     try {
       const triviality = checkBalanceTriviality(balance);
@@ -326,7 +329,7 @@ export class AgentService {
     } catch (error) {
       outcome = "error";
       errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Agent analyzeBalanceSheet error:", error);
+      errorStack = error instanceof Error ? error.stack : undefined;
       return {
         status: "error",
         reason:
@@ -347,6 +350,7 @@ export class AgentService {
         outcome,
         ...(trivialCode ? { trivialCode } : {}),
         ...(errorMessage ? { errorMessage } : {}),
+        ...(errorStack ? { errorStack } : {}),
       });
     }
   }
@@ -377,6 +381,7 @@ export class AgentService {
     let usage: TokenUsage | undefined;
     let trivialCode: string | undefined;
     let errorMessage: string | undefined;
+    let errorStack: string | undefined;
 
     try {
       const triviality = checkIncomeStatementTriviality(is, bg);
@@ -415,7 +420,7 @@ export class AgentService {
     } catch (error) {
       outcome = "error";
       errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Agent analyzeIncomeStatement error:", error);
+      errorStack = error instanceof Error ? error.stack : undefined;
       return {
         status: "error",
         reason:
@@ -436,6 +441,7 @@ export class AgentService {
         outcome,
         ...(trivialCode ? { trivialCode } : {}),
         ...(errorMessage ? { errorMessage } : {}),
+        ...(errorStack ? { errorStack } : {}),
       });
     }
   }
@@ -463,6 +469,7 @@ export class AgentService {
     let usage: TokenUsage | undefined;
     let toolCalls: readonly ToolCall[] = [];
     let errorMessage: string | undefined;
+    let errorStack: string | undefined;
     let parsedTemplate: string | undefined;
 
     const hints = coerceContextHints(rawContextHints);
@@ -608,7 +615,7 @@ export class AgentService {
     } catch (error) {
       outcome = "error";
       errorMessage = error instanceof Error ? error.message : String(error);
-      console.error("Agent journal-entry-ai error:", error);
+      errorStack = error instanceof Error ? error.stack : undefined;
       return {
         message: "Ocurrió un error al procesar la operación. Intentá de nuevo.",
         suggestion: null,
@@ -632,6 +639,7 @@ export class AgentService {
         isCorrection,
         ...(parsedTemplate ? { template: parsedTemplate } : {}),
         ...(errorMessage ? { errorMessage } : {}),
+        ...(errorStack ? { errorStack } : {}),
       });
     }
   }
@@ -808,7 +816,15 @@ export class AgentService {
         },
       };
     } catch (error) {
-      console.error(`Error executing read action ${call.name}:`, error);
+      logStructured({
+        event: "agent_read_action_error",
+        level: "error",
+        orgId,
+        role,
+        action: call.name,
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStack: error instanceof Error ? error.stack : undefined,
+      });
       return {
         outcome: "error",
         response: {
