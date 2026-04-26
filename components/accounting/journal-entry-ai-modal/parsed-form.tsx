@@ -166,7 +166,7 @@ export function ParsedForm({ orgSlug, data, catalog, onChange, disabled }: Parse
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <Label htmlFor="ai-date">Fecha</Label>
           <Input
             id="ai-date"
@@ -176,7 +176,7 @@ export function ParsedForm({ orgSlug, data, catalog, onChange, disabled }: Parse
             disabled={disabled}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <Label htmlFor="ai-amount">Monto (Bs.)</Label>
           <Input
             id="ai-amount"
@@ -202,7 +202,7 @@ export function ParsedForm({ orgSlug, data, catalog, onChange, disabled }: Parse
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <Label>{debitLabel}</Label>
           <Select
             value={debitAccountId}
@@ -222,7 +222,7 @@ export function ParsedForm({ orgSlug, data, catalog, onChange, disabled }: Parse
             </SelectContent>
           </Select>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-1 min-w-0">
           <Label>{creditLabel}</Label>
           <Select
             value={creditAccountId}
