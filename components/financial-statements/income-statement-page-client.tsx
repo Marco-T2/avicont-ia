@@ -1,7 +1,8 @@
 "use client";
 
 // Cliente de la página de Estado de Resultados — estilo QuickBooks.
-// Orquesta: filtros → fetch → toolbar + tabla TanStack + banner preliminar.
+// Orquesta: filtros → fetch → toolbar + tabla TanStack + banner preliminar
+// + análisis IA (con ratios cruzados sobre el BG al cierre del período).
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
@@ -10,6 +11,10 @@ import type { QuickBooksFilterParams } from "./statement-filters";
 import { StatementTable } from "./statement-table";
 import { StatementToolbar } from "./statement-toolbar";
 import { PreliminaryBanner } from "./preliminary-banner";
+import {
+  IncomeStatementAnalysisCard,
+  type AnalyzeIncomeStatementResult,
+} from "./income-statement-analysis-card";
 import {
   buildIncomeStatementTableRows,
 } from "@/features/accounting/financial-statements/statement-table-rows.utils";
@@ -31,10 +36,14 @@ export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementP
   const [compact, setCompact] = useState(false);
   const [lastParams, setLastParams] = useState<QuickBooksFilterParams | null>(null);
   const [exportQueryParams, setExportQueryParams] = useState<Record<string, string>>({});
+  // Análisis IA — efímero, se reinicia al re-fetch del estado.
+  const [analysis, setAnalysis] = useState<AnalyzeIncomeStatementResult | null>(null);
+  const [analyzing, setAnalyzing] = useState(false);
 
   const fetchStatement = useCallback(async (params: QuickBooksFilterParams) => {
     setLoading(true);
     setError(null);
+    setAnalysis(null);
 
     // Construir query params para la API
     const queryParams: Record<string, string> = {};
@@ -105,6 +114,56 @@ export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementP
     }
   }
 
+  async function handleAnalyze() {
+    if (!statement || analyzing) return;
+
+    setAnalyzing(true);
+    setAnalysis(null);
+
+    try {
+      const res = await fetch(
+        `/api/organizations/${orgSlug}/financial-statements/income-statement/analyze`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(exportQueryParams),
+        },
+      );
+
+      if (res.status === 429) {
+        const body = await res.json().catch(() => ({}));
+        setAnalysis({
+          status: "error",
+          reason:
+            body.message ??
+            "Excediste el límite de consultas por hora. Intentá de nuevo más tarde.",
+        });
+        return;
+      }
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setAnalysis({
+          status: "error",
+          reason:
+            body.error ??
+            `Error al generar el análisis (${res.status}).`,
+        });
+        return;
+      }
+
+      const data = (await res.json()) as AnalyzeIncomeStatementResult;
+      setAnalysis(data);
+    } catch {
+      setAnalysis({
+        status: "error",
+        reason: "Error de conexión. Intentá de nuevo.",
+      });
+    } finally {
+      setAnalyzing(false);
+    }
+  }
+
   const tableRows = statement ? buildIncomeStatementTableRows(statement) : [];
   const tableColumns: SerializedColumn[] = statement?.columns ?? [];
 
@@ -133,6 +192,8 @@ export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementP
           onRefresh={handleRefresh}
           refreshing={loading}
           hasStatement={!!statement}
+          onAnalyze={handleAnalyze}
+          analyzing={analyzing}
         />
       )}
 
@@ -172,6 +233,9 @@ export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementP
               />
             </CardContent>
           </Card>
+
+          {/* Análisis IA — render inline debajo de la tabla, efímero */}
+          <IncomeStatementAnalysisCard result={analysis} loading={analyzing} />
         </div>
       )}
     </div>

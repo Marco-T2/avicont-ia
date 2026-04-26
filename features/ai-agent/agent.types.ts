@@ -1,5 +1,6 @@
 import type { ExpenseCategory } from "@/generated/prisma/client";
 import type { TrivialityCode } from "./balance-sheet-analysis.prompt";
+import type { IncomeStatementTrivialityCode } from "./income-statement-analysis.prompt";
 
 // ── Agent response types ──
 
@@ -14,6 +15,13 @@ export interface AgentResponse {
 export type AnalyzeBalanceSheetResponse =
   | { status: "ok"; analysis: string }
   | { status: "trivial"; code: TrivialityCode; reason: string }
+  | { status: "error"; reason: string };
+
+// ── Income-statement analysis response ──
+
+export type AnalyzeIncomeStatementResponse =
+  | { status: "ok"; analysis: string }
+  | { status: "trivial"; code: IncomeStatementTrivialityCode; reason: string }
   | { status: "error"; reason: string };
 
 // ── Suggestion types for each action ──
