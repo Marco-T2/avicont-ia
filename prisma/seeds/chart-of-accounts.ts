@@ -2,7 +2,7 @@ import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient, AccountType, AccountNature, AccountSubtype } from "../../generated/prisma/client";
 
-interface AccountDef {
+export interface AccountDef {
   code: string;
   name: string;
   type: AccountType;
@@ -20,7 +20,7 @@ interface AccountDef {
   isContraAccount?: boolean;
 }
 
-function deriveNature(type: AccountType, isContraAccount = false): AccountNature {
+export function deriveNature(type: AccountType, isContraAccount = false): AccountNature {
   const defaultNature = type === AccountType.ACTIVO || type === AccountType.GASTO
     ? AccountNature.DEUDORA
     : AccountNature.ACREEDORA;
@@ -130,52 +130,44 @@ export const ACCOUNTS: AccountDef[] = [
   { code: "5.3.3", name: "IT (Impuesto a las Transacciones)", type: AccountType.GASTO, level: 3, parentCode: "5.3", isDetail: true, requiresContact: false, subtype: AccountSubtype.GASTO_FINANCIERO },
 ];
 
+type PrismaLike = Pick<PrismaClient, "account" | "$disconnect">;
+
 /**
- * Sembrar el plan de cuentas boliviano (PCGA/NIIF) para una organización dada.
- * Idempotente: omite cuentas que ya existen (por organizationId + code).
+ * Sembrar el plan de cuentas para una organización (uso CLI / scripts).
+ * Idempotente por construcción: cada cuenta se upsertea sobre la unique
+ * compuesta {organizationId, code}. Acepta un Prisma client opcional para
+ * tests; si no se inyecta, instancia uno propio con PrismaPg.
+ *
+ * En el flujo de creación de organización (transaccional) se usa
+ * `AccountsService.seedChartOfAccounts` — esta función standalone existe
+ * solo para reseed manual desde `prisma/seed.ts`.
  */
-export async function seedChartOfAccounts(organizationId: string): Promise<void> {
-  const connectionString = `${process.env.DATABASE_URL}`;
-  const adapter = new PrismaPg({ connectionString });
-  const prisma = new PrismaClient({ adapter });
+export async function seedChartOfAccounts(
+  organizationId: string,
+  client?: PrismaLike,
+): Promise<void> {
+  const ownsClient = !client;
+  const prisma: PrismaLike = client ?? buildDefaultClient();
 
   try {
-    // Verificar qué cuentas ya existen para esta organización
-    const existing = await prisma.account.findMany({
-      where: { organizationId },
-      select: { code: true },
-    });
-    const existingCodes = new Set(existing.map((a) => a.code));
-
-    // Construir mapa de código → id para resolución de padres
     const codeToId = new Map<string, string>();
 
-    // Poblar con cuentas existentes
-    if (existing.length > 0) {
-      const existingFull = await prisma.account.findMany({
-        where: { organizationId },
-        select: { code: true, id: true },
-      });
-      for (const acc of existingFull) {
-        codeToId.set(acc.code, acc.id);
-      }
-    }
-
-    // Insertar cuentas en orden (padres antes que hijos, garantizado por el orden del array)
     for (const acct of ACCOUNTS) {
-      if (existingCodes.has(acct.code)) {
-        continue;
-      }
-
-      const parentId = acct.parentCode ? codeToId.get(acct.parentCode) ?? null : null;
+      const parentId = acct.parentCode
+        ? codeToId.get(acct.parentCode) ?? null
+        : null;
       const isContraAccount = acct.isContraAccount ?? false;
+      const nature = deriveNature(acct.type, isContraAccount);
 
-      const created = await prisma.account.create({
-        data: {
+      const created = await prisma.account.upsert({
+        where: {
+          organizationId_code: { organizationId, code: acct.code },
+        },
+        create: {
           code: acct.code,
           name: acct.name,
           type: acct.type,
-          nature: deriveNature(acct.type, isContraAccount),
+          nature,
           subtype: acct.subtype,
           level: acct.level,
           isDetail: acct.isDetail,
@@ -185,16 +177,20 @@ export async function seedChartOfAccounts(organizationId: string): Promise<void>
           isActive: true,
           isContraAccount,
         },
+        update: {},
       });
 
       codeToId.set(acct.code, created.id);
     }
-
-    const newCount = ACCOUNTS.length - existingCodes.size;
-    console.log(
-      `[seed] Plan de cuentas para org ${organizationId}: ${newCount} creadas, ${existingCodes.size} ya existían.`
-    );
   } finally {
-    await prisma.$disconnect();
+    if (ownsClient) {
+      await prisma.$disconnect();
+    }
   }
+}
+
+function buildDefaultClient(): PrismaLike {
+  const connectionString = `${process.env.DATABASE_URL}`;
+  const adapter = new PrismaPg({ connectionString });
+  return new PrismaClient({ adapter });
 }

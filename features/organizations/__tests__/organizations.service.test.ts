@@ -62,15 +62,21 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
       findOrCreate: vi.fn().mockResolvedValue(CREATED_USER),
     } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[2]>;
 
+    const accountsService = {
+      seedChartOfAccounts: vi.fn().mockResolvedValue(undefined),
+    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[3]>;
+
     return {
       service: new OrganizationsService(
         repo,
         voucherTypesService,
         usersService,
+        accountsService,
       ),
       repo,
       voucherTypesService,
       usersService,
+      accountsService,
       txClient,
     };
   }
@@ -131,5 +137,16 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
     expect(
       (prisma.customRole.createMany as unknown as ReturnType<typeof vi.fn>),
     ).not.toHaveBeenCalled();
+  });
+
+  it("F-1-S6 — accountsService.seedChartOfAccounts receives the tx client from the transaction callback", async () => {
+    const { service, accountsService, txClient } = buildService();
+
+    await service.syncOrganization(INPUT, CLERK_USER_ID);
+
+    expect(accountsService.seedChartOfAccounts).toHaveBeenCalledWith(
+      CREATED_ORG.id,
+      txClient,
+    );
   });
 });

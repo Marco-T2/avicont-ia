@@ -1,5 +1,9 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
+import {
+  type AccountDef,
+  deriveNature,
+} from "@/prisma/seeds/chart-of-accounts";
 import type { Prisma, Account, AccountType, AccountSubtype } from "@/generated/prisma/client";
 import type { ResolvedCreateAccountData, UpdateAccountInput, AccountWithChildren } from "./accounts.types";
 
@@ -123,6 +127,58 @@ export class AccountsRepository extends BaseRepository {
         organizationId: scope.organizationId,
       },
     });
+  }
+
+  /**
+   * Sembrar un plan de cuentas para la organización. Idempotente: usa upsert
+   * por la unique compuesta (organizationId, code), por lo que reintentos no
+   * duplican. Resuelve `parentId` con un `Map<code, id>` poblado en orden
+   * topológico — el array de entrada DEBE estar ordenado padres antes que
+   * hijos (FK violations si no, fail-loud por design).
+   */
+  async seedChartOfAccounts(
+    organizationId: string,
+    accounts: readonly AccountDef[],
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    const scope = this.requireOrg(organizationId);
+    const client = tx ?? this.db;
+
+    const codeToId = new Map<string, string>();
+
+    for (const acct of accounts) {
+      const parentId = acct.parentCode
+        ? codeToId.get(acct.parentCode) ?? null
+        : null;
+      const isContraAccount = acct.isContraAccount ?? false;
+      const nature = deriveNature(acct.type, isContraAccount);
+
+      const created = await client.account.upsert({
+        where: {
+          organizationId_code: {
+            organizationId: scope.organizationId,
+            code: acct.code,
+          },
+        },
+        create: {
+          code: acct.code,
+          name: acct.name,
+          type: acct.type,
+          nature,
+          subtype: acct.subtype,
+          level: acct.level,
+          isDetail: acct.isDetail,
+          requiresContact: acct.requiresContact,
+          parentId,
+          organizationId: scope.organizationId,
+          isActive: true,
+          isContraAccount,
+        },
+        update: {},
+      });
+
+      codeToId.set(acct.code, created.id);
+    }
   }
 
   async update(
