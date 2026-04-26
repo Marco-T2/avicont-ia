@@ -43,6 +43,15 @@ export class AccountsRepository extends BaseRepository {
     });
   }
 
+  async findManyByIds(organizationId: string, ids: string[]): Promise<Account[]> {
+    if (ids.length === 0) return [];
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.account.findMany({
+      where: { id: { in: ids }, ...scope },
+    });
+  }
+
   async findTree(organizationId: string): Promise<AccountWithChildren[]> {
     const scope = this.requireOrg(organizationId);
 

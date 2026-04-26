@@ -82,6 +82,7 @@ function makeEntry(overrides: Partial<JournalEntry> = {}): JournalEntryWithLines
     contactId: null,
     sourceType: null,
     sourceId: null,
+    aiOriginalText: null,
     organizationId: "org-1",
     createdById: "user-1",
     updatedById: null,

@@ -70,6 +70,12 @@ export class OrgSettingsRepository extends BaseRepository {
         ...(data.polloFaenadoCOGSAccountCode !== undefined && {
           polloFaenadoCOGSAccountCode: data.polloFaenadoCOGSAccountCode,
         }),
+        ...(data.defaultCashAccountIds !== undefined && {
+          defaultCashAccountIds: data.defaultCashAccountIds,
+        }),
+        ...(data.defaultBankAccountIds !== undefined && {
+          defaultBankAccountIds: data.defaultBankAccountIds,
+        }),
       },
     });
   }

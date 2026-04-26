@@ -163,6 +163,11 @@ export const SLUG_TAKEN = "SLUG_TAKEN";
 export const RESERVED_SLUG = "RESERVED_SLUG";
 export const ROLE_HAS_MEMBERS = "ROLE_HAS_MEMBERS";
 
+// OrgSettings — validación de listas de cuentas default (caja/banco) para captura asistida por IA
+export const ORG_SETTINGS_ACCOUNT_NOT_FOUND = "ORG_SETTINGS_ACCOUNT_NOT_FOUND";
+export const ORG_SETTINGS_ACCOUNT_NOT_USABLE = "ORG_SETTINGS_ACCOUNT_NOT_USABLE";
+export const ORG_SETTINGS_ACCOUNT_WRONG_PARENT = "ORG_SETTINGS_ACCOUNT_WRONG_PARENT";
+
 // Auditoría (módulo de auditoría)
 export const AUDIT_DATE_RANGE_INVALID = "AUDIT_DATE_RANGE_INVALID"; // 422 — ValidationError
 export const AUDIT_CURSOR_INVALID = "AUDIT_CURSOR_INVALID"; // 422 — ValidationError
