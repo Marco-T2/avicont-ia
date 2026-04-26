@@ -55,26 +55,6 @@ export class OrganizationsRepository extends BaseRepository {
     return org as OrganizationWithMembers;
   }
 
-  async getOrgWithDocStats(organizationId: string) {
-    const scope = this.requireOrg(organizationId);
-    const [org, analyzedCount] = await Promise.all([
-      this.db.organization.findUniqueOrThrow({
-        where: { id: scope.organizationId },
-        include: {
-          _count: { select: { documents: true, members: { where: { deactivatedAt: null } } } },
-          documents: { take: 5, orderBy: { createdAt: "desc" } },
-        },
-      }),
-      this.db.document.count({
-        where: {
-          organizationId: scope.organizationId,
-          aiSummary: { not: null },
-        },
-      }),
-    ]);
-    return { org, analyzedCount };
-  }
-
   async findMember(
     organizationId: string,
     userId: string,

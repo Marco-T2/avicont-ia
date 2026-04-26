@@ -143,22 +143,6 @@ export class OrganizationsService {
     return { organization, membership };
   }
 
-  async getDashboardData(orgId: string, clerkUserId: string) {
-    const [{ org, analyzedCount }, membership] = await Promise.all([
-      this.repo.getOrgWithDocStats(orgId),
-      this.repo.findMemberByClerkUserId(orgId, clerkUserId),
-    ]);
-
-    if (!membership) throw new ForbiddenError();
-
-    return {
-      organization: org,
-      recentDocs: org.documents,
-      analyzedCount,
-      membership,
-    };
-  }
-
   async getMemberByClerkUserId(
     orgId: string,
     clerkUserId: string,

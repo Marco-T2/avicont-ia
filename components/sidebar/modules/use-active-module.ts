@@ -25,6 +25,9 @@ import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import type { ClientMatrix } from "@/components/common/roles-matrix-provider";
 import { MODULES } from "./registry";
 import type { Module, ModuleId } from "./registry";
+import { getRoleDefaultModule } from "./get-role-default-module";
+
+export { getRoleDefaultModule };
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -60,41 +63,6 @@ export const ROUTE_MODULE_MAP: Record<string, ModuleId> = {
   farms: "granjas",
   lots: "granjas",
 };
-
-// ---------------------------------------------------------------------------
-// Pure helper: accounting resources that determine default module
-// ---------------------------------------------------------------------------
-
-const ACCOUNTING_RESOURCES: string[] = [
-  "sales",
-  "purchases",
-  "payments",
-  "journal",
-  "dispatches",
-  "reports",
-  "contacts",
-  "accounting-config",
-];
-
-/**
- * Derives the role-based default module from a ClientMatrix.
- *
- * Logic:
- * 1. If any of the accounting resources is accessible → "contabilidad"
- * 2. Else if farms is accessible → "granjas"
- * 3. Else → null
- *
- * Exported for direct unit testing.
- */
-export function getRoleDefaultModule(matrix: ClientMatrix | null): ModuleId | null {
-  if (!matrix) return null;
-  const hasAccounting = ACCOUNTING_RESOURCES.some((r) =>
-    matrix.canAccess(r as Parameters<ClientMatrix["canAccess"]>[0], "read")
-  );
-  if (hasAccounting) return "contabilidad";
-  if (matrix.canAccess("farms", "read")) return "granjas";
-  return null;
-}
 
 // ---------------------------------------------------------------------------
 // Internal helper: validate that a persisted ModuleId is still accessible
