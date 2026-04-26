@@ -11,7 +11,8 @@ import {
 import { AccountsRepository, type AccountListFilters } from "./accounts.repository";
 import { getNextCode } from "./account-code.utils";
 import { resolveAccountSubtype } from "./account-subtype.resolve";
-import type { Account, AccountType, AccountNature } from "@/generated/prisma/client";
+import { ACCOUNTS } from "@/prisma/seeds/chart-of-accounts";
+import type { Account, AccountType, AccountNature, Prisma } from "@/generated/prisma/client";
 import type {
   CreateAccountInput,
   ResolvedCreateAccountData,
@@ -52,6 +53,15 @@ export class AccountsService {
     const account = await this.repo.findById(organizationId, id);
     if (!account) throw new NotFoundError("Cuenta");
     return account;
+  }
+
+  // ── Sembrar plan de cuentas inicial (al crear la organización) ──
+
+  async seedChartOfAccounts(
+    organizationId: string,
+    tx?: Prisma.TransactionClient,
+  ): Promise<void> {
+    return this.repo.seedChartOfAccounts(organizationId, ACCOUNTS, tx);
   }
 
   // ── Crear una cuenta ──

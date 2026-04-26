@@ -6,6 +6,7 @@ import {
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/users/server";
 import { VoucherTypesService } from "@/features/voucher-types/server";
+import { AccountsService } from "@/features/accounting/accounts.service";
 import { buildSystemRolePayloads } from "@/prisma/seed-system-roles";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";
 import type {
@@ -16,14 +17,17 @@ import type {
 export class OrganizationsService {
   private readonly voucherTypesService: VoucherTypesService;
   private readonly usersService: UsersService;
+  private readonly accountsService: AccountsService;
 
   constructor(
     private readonly repo: OrganizationsRepository = new OrganizationsRepository(),
     voucherTypesService?: VoucherTypesService,
     usersService?: UsersService,
+    accountsService?: AccountsService,
   ) {
     this.voucherTypesService = voucherTypesService ?? new VoucherTypesService();
     this.usersService = usersService ?? new UsersService();
+    this.accountsService = accountsService ?? new AccountsService();
   }
 
   // -----------------------------------------------------------------------
@@ -49,9 +53,10 @@ export class OrganizationsService {
       name: "User",
     });
 
-    // Inicialización atómica: org + owner member + voucher types + system roles.
-    // Si cualquiera falla, rollback completo — no quedan orgs huérfanas con
-    // seeds parciales que romperían la creación de comprobantes después.
+    // Inicialización atómica: org + owner member + voucher types + plan de
+    // cuentas + system roles. Si cualquiera falla, rollback completo — no
+    // quedan orgs huérfanas con seeds parciales que romperían la creación de
+    // comprobantes o asientos después.
     const organization = await this.repo.transaction(async (tx) => {
       const org = await this.repo.create(input, tx);
 
@@ -65,6 +70,8 @@ export class OrganizationsService {
       );
 
       await this.voucherTypesService.seedForOrg(org.id, tx);
+
+      await this.accountsService.seedChartOfAccounts(org.id, tx);
 
       await tx.customRole.createMany({
         data: buildSystemRolePayloads(org.id),
