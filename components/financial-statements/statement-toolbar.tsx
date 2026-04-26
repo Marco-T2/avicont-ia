@@ -157,7 +157,11 @@ export function StatementToolbar({
           size="sm"
           onClick={onAnalyze}
           disabled={!hasStatement || analyzing}
-          aria-label="Generar análisis IA del Balance General"
+          aria-label={
+            endpoint === "balance-sheet"
+              ? "Generar análisis IA del Balance General"
+              : "Generar análisis IA del Estado de Resultados"
+          }
         >
           {analyzing ? (
             <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />

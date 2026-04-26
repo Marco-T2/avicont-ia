@@ -9,6 +9,7 @@ import type {
   AgentResponse,
   AgentSuggestion,
   AnalyzeBalanceSheetResponse,
+  AnalyzeIncomeStatementResponse,
 } from "./agent.types";
 import {
   BALANCE_SHEET_ANALYSIS_SYSTEM_PROMPT,
@@ -16,7 +17,17 @@ import {
   curateBalanceSheetForLLM,
   formatBalanceSheetUserMessage,
 } from "./balance-sheet-analysis.prompt";
-import type { BalanceSheet } from "@/features/accounting/financial-statements/financial-statements.types";
+import {
+  INCOME_STATEMENT_ANALYSIS_SYSTEM_PROMPT,
+  checkIncomeStatementTriviality,
+  curateIncomeStatementForLLM,
+  formatIncomeStatementUserMessage,
+} from "./income-statement-analysis.prompt";
+import type {
+  BalanceSheet,
+  BalanceSheetCurrent,
+  IncomeStatementCurrent,
+} from "@/features/accounting/financial-statements/financial-statements.types";
 
 type InvocationOutcome =
   | "ok"
@@ -264,6 +275,95 @@ export class AgentService {
         event: "agent_invocation",
         level: outcome === "error" ? "warn" : "info",
         mode: "balance-sheet-analysis",
+        orgId,
+        userId,
+        role: normalizedRole,
+        durationMs: Math.round(performance.now() - startedAt),
+        inputTokens: usage?.inputTokens ?? null,
+        outputTokens: usage?.outputTokens ?? null,
+        totalTokens: usage?.totalTokens ?? null,
+        outcome,
+        ...(trivialCode ? { trivialCode } : {}),
+        ...(errorMessage ? { errorMessage } : {}),
+      });
+    }
+  }
+
+  /**
+   * Analiza un Estado de Resultados con su Balance General cruzado al cierre,
+   * produciendo cálculo + interpretación de seis ratios financieros (tres
+   * puros sobre el IS y tres cruzados IS × BG). One-shot: sin tools, sin RAG,
+   * sin historial. Comparte la capa de telemetría `agent_invocation` con
+   * `query()` y `analyzeBalanceSheet()`, distinguiéndose por
+   * `mode: "income-statement-analysis"`.
+   *
+   * A diferencia del análisis del Balance General, los ratios vienen
+   * pre-calculados en el JSON curado (single source of truth) y el LLM se
+   * limita a interpretarlos.
+   */
+  async analyzeIncomeStatement(
+    orgId: string,
+    userId: string,
+    role: string,
+    is: IncomeStatementCurrent,
+    bg: BalanceSheetCurrent,
+  ): Promise<AnalyzeIncomeStatementResponse> {
+    const startedAt = performance.now();
+    const normalizedRole = this.normalizeRole(role);
+
+    let outcome: "ok" | "trivial" | "error" = "ok";
+    let usage: TokenUsage | undefined;
+    let trivialCode: string | undefined;
+    let errorMessage: string | undefined;
+
+    try {
+      const triviality = checkIncomeStatementTriviality(is, bg);
+      if (triviality.trivial) {
+        outcome = "trivial";
+        trivialCode = triviality.code;
+        return {
+          status: "trivial",
+          code: triviality.code,
+          reason: triviality.reason,
+        };
+      }
+
+      const curated = curateIncomeStatementForLLM(is, bg);
+      const userMessage = formatIncomeStatementUserMessage(curated);
+
+      const result = await llmClient.query({
+        systemPrompt: INCOME_STATEMENT_ANALYSIS_SYSTEM_PROMPT,
+        userMessage,
+        tools: [],
+      });
+
+      usage = result.usage;
+
+      const text = result.text.trim();
+      if (!text) {
+        outcome = "error";
+        errorMessage = "empty_llm_response";
+        return {
+          status: "error",
+          reason: "El modelo no devolvió un análisis. Intente nuevamente.",
+        };
+      }
+
+      return { status: "ok", analysis: text };
+    } catch (error) {
+      outcome = "error";
+      errorMessage = error instanceof Error ? error.message : String(error);
+      console.error("Agent analyzeIncomeStatement error:", error);
+      return {
+        status: "error",
+        reason:
+          "Ocurrió un error al generar el análisis. Intente nuevamente.",
+      };
+    } finally {
+      logStructured({
+        event: "agent_invocation",
+        level: outcome === "error" ? "warn" : "info",
+        mode: "income-statement-analysis",
         orgId,
         userId,
         role: normalizedRole,
