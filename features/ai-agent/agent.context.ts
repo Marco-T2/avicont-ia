@@ -1,6 +1,7 @@
 import type { Role } from "@/features/permissions";
 import { getRagScopes } from "@/features/permissions";
 import { RagService } from "@/features/rag/server";
+import { logStructured } from "@/lib/logging/structured";
 import { AgentContextRepository } from "./agent-context.repository";
 
 const ragService = new RagService();
@@ -58,7 +59,14 @@ export async function buildRagContext(
 
     return lines.join("\n");
   } catch (err) {
-    console.error("RAG context error:", err);
+    logStructured({
+      event: "agent_rag_context_error",
+      level: "error",
+      orgId,
+      role,
+      errorMessage: err instanceof Error ? err.message : String(err),
+      errorStack: err instanceof Error ? err.stack : undefined,
+    });
     return "";
   }
 }
