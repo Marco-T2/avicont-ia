@@ -72,6 +72,44 @@ const farmsService = new FarmsService();
 const lotsService = new LotsService();
 const pricingService = new PricingService();
 
+// ── Helpers de telemetría para journal-entry-ai parse failures ──
+
+interface ZodIssueShape {
+  path?: ReadonlyArray<string | number>;
+  message?: string;
+  code?: string;
+}
+
+// Serializa hasta 5 issues como objetos chicos (path/code/message). El payload
+// completo de Zod es ruidoso (contiene `received`, `expected`, schemas
+// anidados); 5 issues * 3 campos alcanza para diagnóstico sin inflar logs.
+function formatZodIssues(raw: unknown): Array<{ path: string; code?: string; message?: string }> {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 5).map((i) => {
+    const issue = (i ?? {}) as ZodIssueShape;
+    return {
+      path: Array.isArray(issue.path) ? issue.path.join(".") : "",
+      ...(issue.code ? { code: issue.code } : {}),
+      ...(issue.message ? { message: issue.message } : {}),
+    };
+  });
+}
+
+// Stringifica el input del LLM con guardas: nunca tira por circulares, recorta
+// strings >300 chars (originalText puede ser largo), trunca el output total a
+// 2KB. Devuelve "[unserializable]" si todo falla.
+function safeJson(value: unknown): string {
+  try {
+    const json = JSON.stringify(value, (_k, v) =>
+      typeof v === "string" && v.length > 300 ? `${v.slice(0, 300)}…` : v,
+    );
+    if (!json) return "[empty]";
+    return json.length > 2000 ? `${json.slice(0, 2000)}…` : json;
+  } catch {
+    return "[unserializable]";
+  }
+}
+
 export class AgentService {
   /**
    * Procesar un mensaje en lenguaje natural del usuario y retornar una respuesta estructurada.
@@ -496,8 +534,28 @@ export class AgentService {
       // Builder: valida con Zod, hace lookup batch, construye lines, devuelve
       // CreateJournalEntrySuggestion. Errores tipados (ValidationError) son
       // esperables — vuelven al usuario como mensaje sin tirar la respuesta.
+      //
+      // `originalText` se inyecta server-side, NO viene del LLM. Razón: es el
+      // texto crudo del usuario para audit/display — el servidor lo conoce
+      // (prompt actual o formState.originalText en correcciones), el LLM no
+      // tiene incentivo natural para copiarlo byte por byte y tampoco sabe
+      // distinguir entre "primer pedido" y "corrección" para preservarlo.
+      // Override final: lo que sea que el LLM mandara en originalText queda
+      // ignorado.
+      const formStateOriginalText =
+        hints?.formState && typeof hints.formState === "object"
+          ? (hints.formState as Record<string, unknown>).originalText
+          : undefined;
+      const inheritedOriginalText =
+        typeof formStateOriginalText === "string" && formStateOriginalText.length > 0
+          ? formStateOriginalText
+          : prompt;
+      const enrichedInput: Record<string, unknown> = {
+        ...((call.input ?? {}) as Record<string, unknown>),
+        originalText: inheritedOriginalText,
+      };
       try {
-        const suggestion = await executeParseAccountingOperation(orgId, call.input);
+        const suggestion = await executeParseAccountingOperation(orgId, enrichedInput);
         parsedTemplate = suggestion.data.template;
         logStructured({
           event: "journal_ai_parsed",
@@ -519,7 +577,26 @@ export class AgentService {
         if (error instanceof AppError) {
           // ValidationError esperable — el LLM proveyó algo inválido (ID inexistente,
           // cuenta sin requiresContact, etc.). Devolvemos el mensaje al usuario.
+          // Para diagnóstico: serializamos las Zod issues (path + message) + un dump
+          // del input que el LLM mandó. Útil para detectar patrones de alucinación
+          // (IDs inventados, campos extra, formato de fecha, etc.) sin filtrar PII
+          // al usuario — todo va al log estructurado, no a la respuesta. Mantenemos
+          // `errorMessage` en agent_invocation con el code corto (backward compat
+          // con dashboards y tests existentes); el detalle vive en el evento nuevo.
           errorMessage = error.code ?? error.message;
+          const issues = formatZodIssues(error.details?.issues);
+          logStructured({
+            event: "journal_ai_parse_failed",
+            level: "warn",
+            mode: "journal-entry-ai",
+            orgId,
+            userId,
+            role: normalizedRole,
+            errorCode: error.code ?? null,
+            errorMessage: error.message,
+            issues,
+            llmInput: safeJson(call.input),
+          });
           return {
             message: error.message,
             suggestion: null,

@@ -271,10 +271,120 @@ describe("AgentService.query — tool call parseAccountingOperationToSuggestion 
       "journal-entry-ai",
     );
 
-    expect(mockExecuteParse).toHaveBeenCalledWith("org-1", toolCall.input);
+    // Server inyecta originalText desde el prompt (el LLM no lo manda).
+    expect(mockExecuteParse).toHaveBeenCalledWith("org-1", {
+      ...toolCall.input,
+      originalText: "compra de alimento",
+    });
     expect(response.requiresConfirmation).toBe(true);
     expect(response.suggestion).toEqual(suggestion);
     expect(response.message).toBe("Listo, revisá el asiento.");
+  });
+
+  it("inyecta originalText desde prompt cuando no hay formState (primer call)", async () => {
+    // Reproduce el bug del 2026-04-26: el LLM omitía originalText (no tiene
+    // contexto sobre por qué debería copiarlo) → ValidationError "expected
+    // string, received undefined". El servidor lo inyecta explícitamente.
+    mockLLMQuery.mockResolvedValueOnce({
+      text: "",
+      toolCalls: [
+        {
+          id: "c",
+          name: "parseAccountingOperationToSuggestion",
+          input: { template: "bank_deposit", amount: 500 },
+        },
+      ],
+      usage: undefined,
+    });
+    mockExecuteParse.mockResolvedValueOnce(makeSuggestion());
+
+    const service = new AgentService();
+    await service.query(
+      "org-1",
+      "user-1",
+      "contador",
+      "Deposito Bs500 al Banco desde Caja",
+      undefined,
+      "journal-entry-ai",
+    );
+
+    expect(mockExecuteParse).toHaveBeenCalledWith("org-1", {
+      template: "bank_deposit",
+      amount: 500,
+      originalText: "Deposito Bs500 al Banco desde Caja",
+    });
+  });
+
+  it("inyecta originalText desde formState en correcciones (preserva el original)", async () => {
+    mockLLMQuery.mockResolvedValueOnce({
+      text: "",
+      toolCalls: [
+        {
+          id: "c",
+          name: "parseAccountingOperationToSuggestion",
+          input: { template: "bank_deposit", amount: 500 },
+        },
+      ],
+      usage: undefined,
+    });
+    mockExecuteParse.mockResolvedValueOnce(makeSuggestion());
+
+    const service = new AgentService();
+    await service.query(
+      "org-1",
+      "user-1",
+      "contador",
+      "el monto era 5000",
+      undefined,
+      "journal-entry-ai",
+      {
+        formState: {
+          template: "bank_deposit",
+          originalText: "Deposito Bs500 al Banco desde Caja",
+        },
+      },
+    );
+
+    // El prompt actual ("el monto era 5000") es la corrección — NO debe
+    // pisar el originalText. El audit trail preserva el primer pedido.
+    expect(mockExecuteParse).toHaveBeenCalledWith("org-1", {
+      template: "bank_deposit",
+      amount: 500,
+      originalText: "Deposito Bs500 al Banco desde Caja",
+    });
+  });
+
+  it("override: lo que el LLM mande en originalText se ignora (server es source of truth)", async () => {
+    mockLLMQuery.mockResolvedValueOnce({
+      text: "",
+      toolCalls: [
+        {
+          id: "c",
+          name: "parseAccountingOperationToSuggestion",
+          input: {
+            template: "bank_deposit",
+            originalText: "el LLM resumió esto a su gusto",
+          },
+        },
+      ],
+      usage: undefined,
+    });
+    mockExecuteParse.mockResolvedValueOnce(makeSuggestion());
+
+    const service = new AgentService();
+    await service.query(
+      "org-1",
+      "user-1",
+      "contador",
+      "Deposito Bs500 al Banco desde Caja",
+      undefined,
+      "journal-entry-ai",
+    );
+
+    expect(mockExecuteParse).toHaveBeenCalledWith("org-1", {
+      template: "bank_deposit",
+      originalText: "Deposito Bs500 al Banco desde Caja",
+    });
   });
 
   it("emite journal_ai_parsed con el template detectado", async () => {
