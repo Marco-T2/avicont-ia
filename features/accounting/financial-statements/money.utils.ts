@@ -34,6 +34,27 @@ export function sumDecimals(xs: Decimal[]): Decimal {
 }
 
 /**
+ * Formato numérico boliviano: punto como separador de miles y coma como
+ * separador de decimales (siempre 2 decimales). Pre-formatear en la frontera
+ * de salida (ej. JSON curado para LLM) cumple dos funciones: (a) ancla el
+ * formato exacto que el consumidor debe replicar literalmente, (b) elimina
+ * la inconsistencia tabla-vs-texto que aparece cuando un LLM elige formato
+ * inglés por defecto (1,234.50) en una celda y "ES" (1.234,50) en otra.
+ *
+ * Ejemplos:
+ *   0           → "0,00"
+ *   1234.5      → "1.234,50"
+ *   -30000      → "-30.000,00"
+ *   1000000     → "1.000.000,00"
+ */
+export function formatBolivianAmount(d: Decimal): string {
+  const negative = d.isNegative();
+  const [intPart, decPart] = d.abs().toFixed(2).split(".");
+  const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return `${negative ? "-" : ""}${withThousands},${decPart}`;
+}
+
+/**
  * Compara dos Decimals con tolerancia ±0.01 BOB.
  * Usado para verificar la ecuación contable (REQ-6).
  */
