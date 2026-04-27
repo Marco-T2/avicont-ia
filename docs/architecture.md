@@ -1,6 +1,6 @@
 # Arquitectura — avicont-ia
 
-> **Estado**: v0.2 — POC de `mortality` validado (17/17 tests, tsc limpio). Lint enforcement activo.
+> **Estado**: v0.2 — POC de `mortality` validado (17/17 tests, tsc limpio). Lint enforcement activo. Addenda incremental por POC subsiguientes (ver §11 para política de `modules/shared/`).
 > **Última actualización**: 2026-04-27.
 
 ## TL;DR
@@ -365,19 +365,48 @@ Cuando migrás un módulo a esta arquitectura, verificar:
 
 ---
 
-## 11. Lo que NO está en este documento (todavía)
+## 11. Promoción a `modules/shared/`
+
+`modules/shared/` aloja value objects, errores y tipos que cruzan fronteras de feature dentro del dominio hexagonal. Aplica las mismas reglas R1-R5 que cualquier otro módulo (es un peer estructural de `modules/<feature>/`). La diferencia es semántica: shared kernel.
+
+### 11.1. Cuándo promover (rule of three)
+
+NO promover preventivamente. Esperar **tres consumidores reales** con semántica idéntica:
+
+- 2 consumidores → mantener duplicados (no hay evidencia de patrón).
+- 3 consumidores con **misma semántica** → promover a `modules/shared/domain/...`.
+- 3 consumidores con **semántica divergente** (multi-moneda, redondeo distinto, signos permitidos, etc.) → mantener separados. Son tres cosas distintas, no una repetida.
+
+Pregunta antes de promover: ¿esto es UNA cosa que aparece en tres lugares, o son TRES cosas que casualmente se parecen? Si dudás, no promovés.
+
+**Precedente**: commit `5977e6f` promovió `MonetaryAmount` a `modules/shared/domain/value-objects/` tras confirmarse rule of three con receivables, payables y payment (POC #8). Las tres impls eran byte-equivalentes (no negativo, max 9.9M, redondeo a 2 decimales).
+
+### 11.2. Co-promoción de errores con VOs
+
+**Cuando promovés un value object, los errores que ese VO instancia viajan con él al mismo nivel.**
+
+Ejemplo: al promover `MonetaryAmount` a `modules/shared/domain/value-objects/`, también se promovió `InvalidMonetaryAmount` (subclass de `ValidationError`) a `modules/shared/domain/errors/monetary-errors.ts`. Razón: el VO en shared no puede importar errores de un feature module — sería dependencia inversa (shared → feature). La única forma limpia es mover el error al mismo nivel que el VO.
+
+**Anti-patterns rechazados**:
+- (a) Mantener cada error feature-local + shared importando uno de los dos → asimétrico, opaco.
+- (b) Re-export shim en los archivos feature-local de errors para back-compat → deuda equivalente a la duplicación que estamos eliminando.
+
+**Test mental**: si el VO en shared lanza `throw new InvalidX(...)`, ¿de dónde importa `InvalidX`? Si la respuesta es "de un feature module", la promoción está incompleta — falta co-promover el error.
+
+---
+
+## 12. Lo que NO está en este documento (todavía)
 
 - Estrategia de testing detallada por capa
 - Composition root completo (DI)
 - Cómo manejar transacciones que cruzan módulos
 - Migración de la audit-context a port
-- Reglas para módulos compartidos (`shared/`)
 
 Esos quedan abiertos para iterar **después** del POC en `mortality`. Si los definimos ahora, los definimos mal — la POC nos va a mostrar qué falta de verdad.
 
 ---
 
-## 12. Referencias
+## 13. Referencias
 
 - Cockburn, Alistair. "Hexagonal Architecture" (2005)
 - Vernon, Vaughn. "Domain-Driven Design Distilled" (2016)
