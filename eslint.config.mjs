@@ -24,6 +24,55 @@ const banServerBarrels = {
   })),
 };
 
+// ── Hexagonal Architecture boundary enforcement (modules/**) ──
+// Source of truth: docs/architecture.md (R1, R2, R4, R5).
+// These rules apply ONLY to files under modules/** so that legacy code in
+// features/** is unaffected and migration can proceed incrementally.
+
+const banPrismaInDomain = [
+  {
+    group: ["@prisma/client", "@/generated/prisma/*", "@/lib/prisma"],
+    message:
+      "R5 violated: domain/application/presentation must NOT import Prisma. Define a port in domain/ and implement it in infrastructure/. See docs/architecture.md.",
+  },
+];
+
+const banDomainCrossLayer = [
+  {
+    group: [
+      "**/infrastructure/*",
+      "**/infrastructure",
+      "**/application/*",
+      "**/application",
+      "**/presentation/*",
+      "**/presentation",
+    ],
+    message:
+      "R1 violated: domain/ must NOT depend on application/, infrastructure/, or presentation/. The dependency arrows point INWARD toward domain.",
+  },
+];
+
+const banAppCrossLayer = [
+  {
+    group: [
+      "**/infrastructure/*",
+      "**/infrastructure",
+      "**/presentation/*",
+      "**/presentation",
+    ],
+    message:
+      "R2 violated: application/ must only depend on domain/. infrastructure and presentation are off-limits.",
+  },
+];
+
+const banPresInfra = [
+  {
+    group: ["**/infrastructure/*", "**/infrastructure"],
+    message:
+      "R4 violated: presentation/ must talk to application/, not infrastructure/. composition-root.ts is the ONE legitimate exception.",
+  },
+];
+
 const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
@@ -73,6 +122,39 @@ const eslintConfig = defineConfig([
     ],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
+    },
+  },
+  // ── Hexagonal R1, R5 — domain/ layer ──
+  {
+    files: ["modules/*/domain/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [...banPrismaInDomain, ...banDomainCrossLayer] },
+      ],
+    },
+  },
+  // ── Hexagonal R2, R5 — application/ layer ──
+  {
+    files: ["modules/*/application/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [...banPrismaInDomain, ...banAppCrossLayer] },
+      ],
+    },
+  },
+  // ── Hexagonal R4, R5 — presentation/ layer ──
+  // composition-root.ts is the single legitimate exception: it MUST wire
+  // concrete infrastructure adapters into the application service.
+  {
+    files: ["modules/*/presentation/**/*.{ts,tsx}"],
+    ignores: ["modules/*/presentation/composition-root.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        { patterns: [...banPrismaInDomain, ...banPresInfra] },
+      ],
     },
   },
 ]);
