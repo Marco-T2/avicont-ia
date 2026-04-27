@@ -35,7 +35,8 @@ export const updateVoucherTypeSchema = z
     name: nameField.optional(),
     prefix: prefixField.optional(),
     description: descriptionField,
-    isActive: z.boolean({ message: "El estado debe ser verdadero o falso" }).optional(),
+    isActive: z
+      .boolean({ message: "El estado debe ser verdadero o falso" })
+      .optional(),
   })
   .strict();
-

@@ -110,7 +110,7 @@ beforeAll(async () => {
     data: {
       organizationId: orgId,
       code: "CD",
-      prefix: "CD",
+      prefix: "D",
       name: "Comprobante Despacho Int",
     },
   });
