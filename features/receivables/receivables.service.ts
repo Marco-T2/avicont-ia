@@ -1,154 +1,147 @@
 import "server-only";
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
 import {
-  NotFoundError,
-  ValidationError,
-  INVALID_STATUS_TRANSITION,
-  RECEIVABLE_AMOUNT_IMMUTABLE,
-} from "@/features/shared/errors";
-import type { ContactsService } from "@/features/contacts/server";
-import { ReceivablesRepository } from "./receivables.repository";
+  makeReceivablesService,
+  type ReceivablesService as InnerReceivablesService,
+  type Receivable,
+} from "@/modules/receivables/presentation/server";
 import type {
   ReceivableWithContact,
-  ReceivableStatus,
+  OpenAggregate,
   CreateReceivableInput,
   UpdateReceivableInput,
   UpdateReceivableStatusInput,
   ReceivableFilters,
-  OpenAggregate,
 } from "./receivables.types";
 
-// ── Transiciones de estado válidas ──
-
-const STATUS_TRANSITIONS: Record<ReceivableStatus, ReceivableStatus[]> = {
-  PENDING: ["PARTIAL", "PAID", "VOIDED", "OVERDUE"],
-  PARTIAL: ["PAID", "VOIDED", "OVERDUE"],
-  OVERDUE: ["PARTIAL", "PAID", "VOIDED"],
-  PAID: [],
-  VOIDED: [],
-  CANCELLED: [], // mantenido por compatibilidad hacia atrás — la app usa VOIDED
-};
-
+/**
+ * Backward-compat shim. Delegates business logic to the hexagonal
+ * `modules/receivables/` and re-attaches `contact` for legacy consumers
+ * that expect the Prisma `ReceivableWithContact` shape.
+ */
 export class ReceivablesService {
-  private readonly repo: ReceivablesRepository;
+  private readonly inner: InnerReceivablesService;
 
-  constructor(
-    private readonly contactsService: ContactsService,
-    repo?: ReceivablesRepository,
-  ) {
-    this.repo = repo ?? new ReceivablesRepository();
+  constructor(_contactsService?: unknown, _repo?: unknown) {
+    this.inner = makeReceivablesService();
   }
-
-  // ── Listar cuentas por cobrar ──
 
   async list(
     organizationId: string,
     filters?: ReceivableFilters,
   ): Promise<ReceivableWithContact[]> {
-    return this.repo.findAll(organizationId, filters);
+    const items = await this.inner.list(organizationId, filters);
+    return this.attachContacts(organizationId, items);
   }
-
-  // ── Obtener una cuenta por cobrar individual ──
 
   async getById(
     organizationId: string,
     id: string,
   ): Promise<ReceivableWithContact> {
-    const receivable = await this.repo.findById(organizationId, id);
-    if (!receivable) throw new NotFoundError("Cuenta por cobrar");
-    return receivable;
+    const r = await this.inner.getById(organizationId, id);
+    return this.attachContact(organizationId, r);
   }
-
-  // ── Crear una cuenta por cobrar ──
 
   async create(
     organizationId: string,
     input: CreateReceivableInput,
   ): Promise<ReceivableWithContact> {
-    await this.contactsService.getActiveById(organizationId, input.contactId);
-
-    return this.repo.create(organizationId, input);
+    const r = await this.inner.create(organizationId, {
+      ...input,
+      amount: typeof input.amount === "number" || typeof input.amount === "string"
+        ? input.amount
+        : input.amount.toString(),
+    });
+    return this.attachContact(organizationId, r);
   }
-
-  // ── Actualizar una cuenta por cobrar (solo campos no monetarios) ──
 
   async update(
     organizationId: string,
     id: string,
     input: UpdateReceivableInput & { amount?: unknown },
   ): Promise<ReceivableWithContact> {
-    if ("amount" in input && input.amount !== undefined) {
-      throw new ValidationError(
-        "El monto de una cuenta por cobrar no puede modificarse",
-        RECEIVABLE_AMOUNT_IMMUTABLE,
-      );
-    }
-
-    await this.getById(organizationId, id);
-
-    return this.repo.update(organizationId, id, input);
+    const r = await this.inner.update(organizationId, id, input);
+    return this.attachContact(organizationId, r);
   }
-
-  // ── Actualizar estado de la cuenta por cobrar ──
 
   async updateStatus(
     organizationId: string,
     id: string,
     input: UpdateReceivableStatusInput,
   ): Promise<ReceivableWithContact> {
-    const receivable = await this.getById(organizationId, id);
-
-    const allowed = STATUS_TRANSITIONS[receivable.status];
-    if (!allowed.includes(input.status)) {
-      throw new ValidationError(
-        `La transición de estado de ${receivable.status} a ${input.status} no está permitida`,
-        INVALID_STATUS_TRANSITION,
-      );
-    }
-
-    const amount = receivable.amount;
-    let paid: string;
-    let balance: string;
-
-    if (input.status === "PAID") {
-      paid = amount.toString();
-      balance = "0";
-    } else if (input.status === "PARTIAL") {
-      if (input.paidAmount === undefined) {
-        throw new ValidationError(
-          "Debe indicar el monto pagado para el estado PARTIAL",
-          INVALID_STATUS_TRANSITION,
-        );
-      }
-      paid = input.paidAmount.toString();
-      balance = amount.minus(paid).toString();
-    } else if (input.status === "VOIDED") {
-      // VOIDED — mantener pagado actual, saldo = 0
-      paid = receivable.paid.toString();
-      balance = "0";
-    } else {
-      // OVERDUE — solo cambio de estado, sin cambio financiero
-      paid = receivable.paid.toString();
-      balance = receivable.balance.toString();
-    }
-
-    return this.repo.updateStatus(organizationId, id, input.status, paid, balance);
+    const r = await this.inner.transitionStatus(organizationId, id, {
+      status: input.status,
+      paidAmount: input.paidAmount === undefined
+        ? undefined
+        : typeof input.paidAmount === "number" || typeof input.paidAmount === "string"
+          ? input.paidAmount
+          : input.paidAmount.toString(),
+    });
+    return this.attachContact(organizationId, r);
   }
-
-  // ── Anular una cuenta por cobrar ──
 
   async void(
     organizationId: string,
     id: string,
   ): Promise<ReceivableWithContact> {
-    return this.updateStatus(organizationId, id, { status: "VOIDED" });
+    const r = await this.inner.void(organizationId, id);
+    return this.attachContact(organizationId, r);
   }
-
-  // ── Agregado de cuentas abiertas ──
 
   async aggregateOpen(
     organizationId: string,
     contactId?: string,
   ): Promise<OpenAggregate> {
-    return this.repo.aggregateOpen(organizationId, contactId);
+    return this.inner.aggregateOpen(organizationId, contactId);
+  }
+
+  // ── helpers ──
+
+  private async attachContacts(
+    organizationId: string,
+    items: Receivable[],
+  ): Promise<ReceivableWithContact[]> {
+    if (items.length === 0) return [];
+    const ids = [...new Set(items.map((r) => r.contactId))];
+    const rows = await prisma.contact.findMany({
+      where: { organizationId, id: { in: ids } },
+    });
+    const byId = new Map(rows.map((c) => [c.id, c]));
+    return items.map((r) => this.toReceivableWithContact(r, byId.get(r.contactId)!));
+  }
+
+  private async attachContact(
+    organizationId: string,
+    r: Receivable,
+  ): Promise<ReceivableWithContact> {
+    const contact = await prisma.contact.findFirst({
+      where: { id: r.contactId, organizationId },
+    });
+    return this.toReceivableWithContact(r, contact!);
+  }
+
+  private toReceivableWithContact(
+    r: Receivable,
+    contact: ReceivableWithContact["contact"],
+  ): ReceivableWithContact {
+    return {
+      id: r.id,
+      organizationId: r.organizationId,
+      contactId: r.contactId,
+      description: r.description,
+      amount: new Prisma.Decimal(r.amount.value),
+      paid: new Prisma.Decimal(r.paid.value),
+      balance: new Prisma.Decimal(r.balance.value),
+      dueDate: r.dueDate,
+      status: r.status as ReceivableWithContact["status"],
+      sourceType: r.sourceType,
+      sourceId: r.sourceId,
+      journalEntryId: r.journalEntryId,
+      notes: r.notes,
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+      contact,
+    };
   }
 }

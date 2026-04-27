@@ -5,17 +5,11 @@ import type {
 } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
-// ── Re-export Prisma types for convenience ──
-
 export type { AccountsReceivable, ReceivableStatus };
-
-// ── Composite types ──
 
 export type ReceivableWithContact = AccountsReceivable & {
   contact: Contact;
 };
-
-// ── Input types ──
 
 export interface CreateReceivableInput {
   contactId: string;
@@ -50,6 +44,6 @@ export interface ReceivableFilters {
 }
 
 export interface OpenAggregate {
-  totalBalance: Prisma.Decimal;
+  totalBalance: number;
   count: number;
 }
