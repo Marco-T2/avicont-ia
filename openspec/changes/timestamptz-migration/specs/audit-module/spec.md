@@ -37,14 +37,11 @@ El fix es cambiar el cast a `::timestamptz`, que preserva el sufijo `Z` del stri
 
 #### Scenarios añadidos
 
-##### A1-S7 — cursor serializado en UTC se compara correctamente con columna TIMESTAMPTZ (sin shift expansivo)
-- **Given** la columna `audit_logs.createdAt` es `TIMESTAMPTZ(3)`
-- **AND** el cursor se serializa como `last.createdAt.toISOString()` (ej. `"2026-04-27T04:00:00.000Z"` — que corresponde a la medianoche de `2026-04-27` en `America/La_Paz`)
-- **AND** existen filas con `createdAt` entre `2026-04-27T04:00:00Z` y `2026-04-27T08:00:00Z` (el "rango shifted" — el rango que el bug `::timestamp` incluiría incorrectamente)
-- **When** el endpoint recibe ese cursor y construye la cláusula WHERE con `::timestamptz`
-- **Then** la comparación se realiza como `awp."createdAt" < '2026-04-27T04:00:00.000Z'::timestamptz` (UTC-to-UTC, sin coerción por session_timezone)
-- **AND** el resultado **NO contiene** las filas del rango shifted (porque sus `createdAt` no son `< 04:00Z`)
-- **AND** el resultado incluye exactamente las filas con `createdAt < 2026-04-27T04:00:00Z` (UTC), sin filas extra del rango shifted
+##### A1-S7 — descripción del invariante (consolidado en A1-S8 a nivel de test)
+> **CONSOLIDADO**: este scenario describe el invariante general "cursor ISO-Z se compara UTC-to-UTC sin shift expansivo", pero **no genera un test diferencial independiente**. Al intentar materializarlo como test (sembrar una fila en el "rango shifted" `[cursor, cursor+4h]`), colapsa geométricamente con A1-S8: una fila más reciente que el cursor en orden DESC ya fue entregada en una página previa, por lo que el bug se manifiesta como **duplicación cross-page**, no como "filas extra en la página posterior". El fenómeno físico es el mismo desde el punto de vista del WHERE clause, pero el ángulo testeable diferencial es el de A1-S8. Se preserva A1-S7 aquí solo como descripción del invariante para reviewers que busquen el principio antes que el assertion concreto.
+
+- **Invariante**: la comparación del cursor con `audit_logs.createdAt` (TIMESTAMPTZ post-migración) DEBE preservar el sufijo `Z` del string ISO y producir comparación UTC-to-UTC, sin coerción del cursor a `session_timezone`. El fix `::timestamptz` lo garantiza.
+- **Test diferencial correspondiente**: ver A1-S8 (manifestación cross-page del fenómeno) y A1-S9 (verificación negativa con cursor sintetizado).
 
 ##### A1-S8 — paginación cross-medianoche sin duplicados (con `::timestamptz`)
 - **Given** existen filas de audit_logs con `createdAt` que cruzan la medianoche UTC, incluyendo al menos una fila en el "rango shifted" (entre el instante del cursor y `cursor + 4h`)
@@ -62,7 +59,9 @@ El fix es cambiar el cast a `::timestamptz`, que preserva el sufijo `Z` del stri
 - **AND** la fila `06:00Z` (que NO debería estar antes del cursor `04:00Z`) **es incluida incorrectamente** en el resultado porque `06:00Z < 08:00Z` evalúa true
 - **AND** en una paginación multi-página, esa misma fila puede aparecer **duplicada** en páginas adyacentes (en la página actual via el cursor shifted, y en una página posterior via su cursor real)
 
-> **Nota**: el Scenario A1-S9 documenta el bug observado empíricamente — el shift es **expansivo** (incluye filas extra) y produce **duplicados**, no omisiones. El fix `::timestamptz` preserva el sufijo `Z` y elimina la coerción por session_timezone, garantizando comparación UTC-to-UTC. El test de regresión correspondiente debe sembrar al menos una fila en el rango shifted y verificar `.not.toContain()` de esa fila en la página de "antes del cursor".
+> **Nota**: los Scenarios A1-S8 y A1-S9 documentan el bug observado empíricamente — el shift es **expansivo** (incluye filas extra) y produce **duplicados**, no omisiones. El fix `::timestamptz` preserva el sufijo `Z` y elimina la coerción por session_timezone, garantizando comparación UTC-to-UTC.
+>
+> **Tests diferenciales (2, no 3)**: solo A1-S8 y A1-S9 generan tests diferenciales independientes. A1-S7 quedó consolidado en A1-S8 (ver nota en A1-S7 arriba). Los tests deben sembrar al menos una fila en el rango shifted `[cursor, cursor+4h]` y verificar `.not.toContain()` (A1-S9) o ausencia de duplicación cross-page (A1-S8).
 
 ---
 
