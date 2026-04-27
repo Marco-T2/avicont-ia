@@ -304,14 +304,22 @@ export function AuditEventList({
                   </section>
                 )}
 
-                {/* CTA al detalle del comprobante */}
+                {/* CTAs: detalle del comprobante + timeline completo de auditoría */}
                 {ctaHref && (
-                  <Link
-                    href={ctaHref}
-                    className="text-sm text-primary hover:underline"
-                  >
-                    Ver comprobante
-                  </Link>
+                  <div className="flex items-center gap-4">
+                    <Link
+                      href={ctaHref}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Ver comprobante
+                    </Link>
+                    <Link
+                      href={`/${orgSlug}/audit/${group.parentVoucherType}/${group.parentVoucherId}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Ver auditoría completa
+                    </Link>
+                  </div>
                 )}
               </CardContent>
             </Card>

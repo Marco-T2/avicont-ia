@@ -276,6 +276,40 @@ describe("AuditEventList — operation card render (REQ-AUDIT.11)", () => {
   });
 
   /**
+   * A11-S6 — CTA secundaria al timeline de auditoría completa.
+   *
+   * Failure mode esperado: TestingLibraryElementError —
+   * "Unable to find an accessible element with the role 'link'
+   *  and name matching /ver.*auditor[ií]a/i"
+   * porque el componente actual no expone link a la página
+   * `/{orgSlug}/audit/{entityType}/{entityId}` (huérfana hasta este cambio).
+   */
+  it("A11-S6: incluye CTA al timeline completo de auditoría", () => {
+    const group = makeGroup({
+      parentVoucherType: "journal_entries",
+      parentVoucherId: "je_007",
+      eventCount: 9,
+      events: [
+        makeEvent({
+          id: "e0",
+          entityType: "journal_entries",
+          action: "UPDATE",
+          parentVoucherType: "journal_entries",
+          parentVoucherId: "je_007",
+        }),
+      ],
+    });
+
+    renderList([group], "acme");
+
+    const auditLink = screen.getByRole("link", { name: /ver.*auditor[ií]a/i });
+    expect(auditLink).toBeInTheDocument();
+    expect(auditLink.getAttribute("href")).toBe(
+      "/acme/audit/journal_entries/je_007",
+    );
+  });
+
+  /**
    * A11-S5 — Card minimalista sin CTA cuando el grupo es huérfano.
    *
    * Failure mode esperado: TestingLibraryElementError —
@@ -312,6 +346,11 @@ describe("AuditEventList — operation card render (REQ-AUDIT.11)", () => {
     // No debe haber CTA al comprobante.
     expect(
       screen.queryByRole("link", { name: /ver.*comprobante/i }),
+    ).toBeNull();
+
+    // Tampoco CTA a la auditoría — sin parentVoucherId no hay timeline válido.
+    expect(
+      screen.queryByRole("link", { name: /ver.*auditor[ií]a/i }),
     ).toBeNull();
   });
 });
