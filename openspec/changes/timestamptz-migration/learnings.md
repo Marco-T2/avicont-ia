@@ -69,12 +69,79 @@ Para refactors triviales, fixes evidentes, o features green-field, el gate puede
 
 ---
 
+## Aprendizaje #3 — La causa raíz era el adapter de Prisma, no el cursor ni la falta de TIMESTAMPTZ
+
+### Hallazgo
+
+El SDD nació de un síntoma visible: `/audit` mostraba timestamps con offset -4h del instante real. La hipótesis inicial atribuyó el bug al cursor `::timestamp` y a la falta de TIMESTAMPTZ en el schema. Después de aplicar la migración a TIMESTAMPTZ y antes de aplicar el cursor fix, se descubrió empíricamente que **el síntoma persistía idéntico** (verificación visual del usuario, commit `6fe4eef` pre-fix).
+
+Investigación empírica reveló que el bug raíz NO era el cursor ni la falta de TIMESTAMPTZ. **Era el adapter `@prisma/adapter-pg@7.7.0`** que descarta información de zona en ambas direcciones del wire:
+
+**Escritura** (`formatDateTime()` en `dist/index.js:389-393`):
+```js
+function formatDateTime(date) {
+  return ... + " " + pad(date.getUTCHours()) + ...;
+  // Manda "YYYY-MM-DD HH:MM:SS" naive — sin Z, sin +00
+}
+```
+Postgres con `session_timezone='America/La_Paz'` interpretaba ese string naive como BO-local y almacenaba +4h del instante UTC real.
+
+**Lectura** (`normalize_timestamptz()` en `dist/index.js:310-312`):
+```js
+function normalize_timestamptz(time) {
+  return time.replace(" ", "T")
+             .replace(/[+-]\d{2}(:\d{2})?$/, "+00:00");
+  // El regex BORRA el offset real ('-04', etc.) y lo reemplaza por '+00:00'
+}
+```
+Postgres devolvía correctamente `'YYYY-MM-DD HH:MM:SS-04'`, pero el adapter destruía el `-04` reemplazándolo por `+00:00` antes de pasarlo a `new Date()`.
+
+**Las dos manifestaciones son la misma raíz**: el adapter ignora TZ y delega 100% al `session_timezone` de Postgres, asumiendo implícitamente UTC.
+
+### El fix de una línea
+
+```typescript
+// lib/prisma.ts (commit 6fe4eef):
+const adapter = new PrismaPg({ connectionString, options: '-c timezone=UTC' });
+```
+
+Forzar `session_timezone='UTC'` en cada conexión del pool **alinea la asunción implícita del adapter (UTC) con la realidad explícita de la sesión**. Con eso:
+- Escritura: adapter manda string naive → Postgres interpreta como UTC → almacena UTC real ✓
+- Lectura: Postgres devuelve `+00` real → regex del adapter lo confirma como `+00:00` (no-op semántico) → instante real preservado ✓
+
+### El cursor fix queda como cleanup, no solución
+
+El fix `::timestamp` → `::timestamptz` (commit `6c862bc`) sigue siendo correcto en aislado:
+- ANSI-conforme
+- Defensa contra cambios futuros de `session_timezone`
+- Preserva info del sufijo Z del cursor
+
+Pero **no era la solución al síntoma visible**. Bajo session UTC, `::timestamp` y `::timestamptz` producen resultados idénticos. El cursor fix es defensivo, no urgente.
+
+### La migración a TIMESTAMPTZ era condición necesaria pero no suficiente
+
+Sin la migración, el regex del adapter no encontraría offset en TIMESTAMP sin TZ y agregaría `+00:00` a un dato que era naive BO. La migración hizo que `+00` venga semánticamente correcto en la lectura (una vez session UTC).
+
+### Recomendación accionable
+
+Para SDDs futuros donde el síntoma involucra valores que cruzan **varias capas** (DB → driver → ORM → app → display), aplicar este checklist antes de finalizar la fase explore:
+
+1. **Trazar el dato extremo a extremo con queries y logs reales**. No asumir comportamiento de capas intermedias.
+2. **Identificar todos los puntos de transformación** (ORM serialization, driver normalization, formatter de display).
+3. **Verificar empíricamente cada punto** — un script de 20 líneas vale por 5 horas de razonamiento.
+
+En este SDD se asumió que el problema era SQL (TIMESTAMPTZ + cursor cast) cuando realmente era una capa más alta (adapter del driver). Sin verificación empírica end-to-end, la migración por sí sola **no habría arreglado nada visible**.
+
+---
+
 ## Para incluir en el PR description (T-18)
 
 Versión condensada de los aprendizajes para el PR body:
 
 > ### Aprendizajes del cambio
 >
-> 1. **Specs de bugs timezone/paginación requieren verificación empírica**. Modelarlos "desde afuera" llevó a 2 errores (shift contractivo vs expansivo, cardinalidad de scenarios) que el gate TDD detectó pero costó re-trabajo. Recomendación para SDDs futuros con tags `timezone`/`pagination`/`cursor`: incluir query empírica antes de redactar scenarios.
+> 1. **La causa raíz era el adapter Prisma, no el cursor ni la falta de TIMESTAMPTZ**. El bug raíz no era `::timestamp` ni columnas TIMESTAMP sin TZ. Era el adapter `@prisma/adapter-pg@7.7.0` que descarta info de zona en ambas direcciones (`formatDateTime` no incluye Z al escribir, `normalize_timestamptz` borra el offset al leer con un regex). La migración a TIMESTAMPTZ era condición necesaria pero no suficiente. El fix de una línea (`options: '-c timezone=UTC'`) corrige ambos bugs simultáneamente porque alinea el comportamiento implícito del adapter (asume UTC) con el comportamiento explícito de la sesión (forzada UTC). El cursor fix queda como cleanup ANSI-conforme, no como solución al síntoma visible.
 >
-> 2. **El gate TDD detectó problemas en specs, no en código**. En ambos casos, sin el gate, los tests "pasarían" siendo no-diferenciales y la spec quedaría con descripción incorrecta del bug. Mantener el gate como invariante para fixes de bugs sutiles.
+> 2. **Specs de bugs timezone/paginación requieren verificación empírica**. Modelarlos "desde afuera" llevó a 2 errores (shift contractivo vs expansivo, cardinalidad de scenarios) que el gate TDD detectó pero costó re-trabajo. Recomendación para SDDs futuros con tags `timezone`/`pagination`/`cursor`: trazar el dato extremo a extremo (DB → driver → ORM → app → display) con queries y logs reales antes de redactar scenarios.
+>
+> 3. **El gate TDD detectó problemas en specs, no en código**. En 2 iteraciones consecutivas, sin el gate, los tests "pasarían" siendo no-diferenciales y la spec quedaría con descripción incorrecta del bug. Mantener el gate como invariante para fixes de bugs sutiles.
