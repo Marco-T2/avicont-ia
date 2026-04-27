@@ -61,8 +61,8 @@ La exploration.md lista una tabla con 65 entradas pero su resumen declara 43+14+
 
 **Decisión del design**: la fuente canónica es el schema actual. Este design cataloga las **65 columnas** y el SQL de migración debe tener exactamente 65 `ALTER COLUMN`. El split correcto (post decisiones humanas) es:
 
-- **TIMESTAMP-AFFECTED**: 48 columnas → `USING "col" AT TIME ZONE 'America/La_Paz'`
-- **UTC-NOON**: 17 columnas → `USING "col" AT TIME ZONE 'UTC'`
+- **TIMESTAMP-AFFECTED**: 49 columnas → `USING "col" AT TIME ZONE 'America/La_Paz'`
+- **UTC-NOON**: 16 columnas → `USING "col" AT TIME ZONE 'UTC'`
 - **Total**: 65
 
 Las 5 columnas adicionales respecto al conteo original del exploration (todas TIMESTAMP-AFFECTED) son:
@@ -150,8 +150,8 @@ Las 5 columnas adicionales respecto al conteo original del exploration (todas TI
 
 | Categoría USING | Count | Columnas representativas |
 |-----------------|-------|--------------------------|
-| TIMESTAMP-AFFECTED (`AT TIME ZONE 'America/La_Paz'`) | **48** | Todos los `createdAt`, `updatedAt`, `closedAt`, `windowStart`, `deactivatedAt` |
-| UTC-NOON (`AT TIME ZONE 'UTC'`) | **17** | `Sale.date`, `Purchase.date`, `JournalEntry.date`, `FiscalPeriod.startDate/endDate`, `ChickenLot.startDate/endDate`, `Expense.date`, `MortalityLog.date`, `Dispatch.date`, `Payment.date`, `PurchaseDetail.fecha`, `AccountsReceivable.dueDate`, `AccountsPayable.dueDate`, `IvaPurchaseBook.fechaFactura`, `IvaSalesBook.fechaFactura` |
+| TIMESTAMP-AFFECTED (`AT TIME ZONE 'America/La_Paz'`) | **49** | Todos los `createdAt`, `updatedAt`, `closedAt`, `windowStart`, `deactivatedAt` |
+| UTC-NOON (`AT TIME ZONE 'UTC'`) | **16** | `Sale.date`, `Purchase.date`, `JournalEntry.date`, `FiscalPeriod.startDate/endDate`, `ChickenLot.startDate/endDate`, `Expense.date`, `MortalityLog.date`, `Dispatch.date`, `Payment.date`, `PurchaseDetail.fecha`, `AccountsReceivable.dueDate`, `AccountsPayable.dueDate`, `IvaPurchaseBook.fechaFactura`, `IvaSalesBook.fechaFactura` |
 | **TOTAL** | **65** | |
 
 > **IMPORTANTE**: La exploration.md y la proposal.md citaban "60 columnas" por un error en el resumen del explore (las filas de OrgProfile y DocumentSignatureConfig y User.createdAt no se sumaron correctamente). El schema actual tiene 65 campos DateTime. El SQL debe tener exactamente **65 ALTER COLUMN**. Esta tabla es la fuente canónica — `sdd-apply` la usa directamente para generar el SQL.
@@ -198,7 +198,7 @@ Esto crea `prisma/migrations/<timestamp>_timestamptz_migration/migration.sql` co
 ALTER TABLE "organization_members" ALTER COLUMN "deactivatedAt" TYPE TIMESTAMPTZ(3);
 ```
 
-El SQL generado es **incorrecto** para las 48 columnas TIMESTAMP-AFFECTED: Postgres aplica un casting implícito `TIMESTAMP → TIMESTAMPTZ` que asume UTC, pero los datos son naive BO-local. Este paso solo genera la base — NO aplicar todavía.
+El SQL generado es **incorrecto** para las 49 columnas TIMESTAMP-AFFECTED: Postgres aplica un casting implícito `TIMESTAMP → TIMESTAMPTZ` que asume UTC, pero los datos son naive BO-local. Este paso solo genera la base — NO aplicar todavía.
 
 **Nombre tentativo de migración**: `<timestamp>_timestamptz_migration`
 (donde `<timestamp>` se autogenera al correr `--create-only`, ej. `20260427120000_timestamptz_migration`)
@@ -207,7 +207,7 @@ El SQL generado es **incorrecto** para las 48 columnas TIMESTAMP-AFFECTED: Postg
 
 Abrir el archivo `.sql` generado y agregar la cláusula `USING` correcta en cada `ALTER COLUMN`.
 
-#### Template para columnas TIMESTAMP-AFFECTED (48 columnas)
+#### Template para columnas TIMESTAMP-AFFECTED (49 columnas)
 
 ```sql
 ALTER TABLE "<table_name>"
@@ -215,7 +215,7 @@ ALTER TABLE "<table_name>"
   USING "<column_name>" AT TIME ZONE 'America/La_Paz';
 ```
 
-#### Template para columnas UTC-NOON (17 columnas)
+#### Template para columnas UTC-NOON (16 columnas)
 
 ```sql
 ALTER TABLE "<table_name>"
@@ -230,7 +230,7 @@ El archivo DEBE estar organizado por tabla, con comentarios de categoría para f
 ```sql
 -- ============================================================
 -- TIMESTAMP-AFFECTED: datos naive BO-local → USING 'America/La_Paz'
--- (48 columnas — representan instantes reales en el tiempo)
+-- (49 columnas — representan instantes reales en el tiempo)
 -- ============================================================
 
 -- organizations
@@ -250,7 +250,7 @@ ALTER TABLE "custom_roles"
 
 -- ============================================================
 -- UTC-NOON: datos ya en UTC vía toNoonUtc() → USING 'UTC'
--- (17 columnas — representan fechas calendario como TIMESTAMPTZ)
+-- (16 columnas — representan fechas calendario como TIMESTAMPTZ)
 -- ============================================================
 
 -- chicken_lots
@@ -387,19 +387,19 @@ Checklist para el archivo `.sql` antes de aplicar:
   grep "TYPE TIMESTAMPTZ" prisma/migrations/*_timestamptz_migration/migration.sql | grep -v "USING"
   # Esperado: 0 líneas
   ```
-- [ ] **Count USING La_Paz**: exactamente 48
+- [ ] **Count USING La_Paz**: exactamente 49
   ```bash
   grep -c "AT TIME ZONE 'America/La_Paz'" prisma/migrations/*_timestamptz_migration/migration.sql
-  # Esperado: 48
+  # Esperado: 49
   ```
-- [ ] **Count USING UTC**: exactamente 17
+- [ ] **Count USING UTC**: exactamente 16
   ```bash
   grep -c "AT TIME ZONE 'UTC'" prisma/migrations/*_timestamptz_migration/migration.sql
-  # Esperado: 17
+  # Esperado: 16
   ```
-- [ ] **Suma**: 48 + 17 = 65 ✓
-- [ ] **Revisión visual de las 17 UTC-NOON**: confirmar que ninguna columna TIMESTAMP-AFFECTED está listada en la sección UTC.
-- [ ] **Revisión visual de las 48 TIMESTAMP-AFFECTED**: confirmar que ninguna columna UTC-NOON está en la sección BO-local.
+- [ ] **Suma**: 49 + 16 = 65 ✓
+- [ ] **Revisión visual de las 16 UTC-NOON**: confirmar que ninguna columna TIMESTAMP-AFFECTED está listada en la sección UTC.
+- [ ] **Revisión visual de las 49 TIMESTAMP-AFFECTED**: confirmar que ninguna columna UTC-NOON está en la sección BO-local.
 
 ### 3. Dry-run
 
@@ -552,7 +552,7 @@ Ninguna. Todas las ambigüedades del explore fueron resueltas por el usuario y s
 
 Para uso en la revisión final del `.sql` editado, esta es la lista completa de (tabla, columna, USING):
 
-### TIMESTAMP-AFFECTED (48) — `AT TIME ZONE 'America/La_Paz'`
+### TIMESTAMP-AFFECTED (49) — `AT TIME ZONE 'America/La_Paz'`
 
 | Tabla SQL | Columna |
 |-----------|---------|
@@ -606,7 +606,7 @@ Para uso en la revisión final del `.sql` editado, esta es la lista completa de 
 | document_signature_configs | createdAt |
 | document_signature_configs | updatedAt |
 
-### UTC-NOON (17) — `AT TIME ZONE 'UTC'`
+### UTC-NOON (16) — `AT TIME ZONE 'UTC'`
 
 | Tabla SQL | Columna |
 |-----------|---------|

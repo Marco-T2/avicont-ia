@@ -12,9 +12,9 @@ El sistema almacena timestamps en columnas `TIMESTAMP(3)` (sin timezone). Cuando
 
 El impacto más visible es en el módulo de auditoría: `AuditLog.createdAt` registra cada operación contable con un timestamp 4 horas adelantado respecto a la hora real del usuario. El cursor de paginación del audit (`::timestamp` cast en `audit.repository.ts`) agrava el problema: comparar una columna TIMESTAMP con un cursor ISO-8601 produce resultados incorrectos en rangos de fecha que crucen la medianoche local, lo que significa que en producción ciertas páginas de auditoría omitirán registros o los duplicarán silenciosamente.
 
-Más allá del audit, el mismo bug afecta a 43 columnas en 20 modelos: `createdAt`, `updatedAt`, `closedAt`, `windowStart`, y otras que representan instantes reales en el tiempo. Toda observabilidad, trazabilidad, y eventual exportación de datos queda distorsionada en 4 horas. La corrección es migrar todas esas columnas a `TIMESTAMPTZ(3)` con la cláusula `USING ... AT TIME ZONE 'America/La_Paz'` para reinterpretar correctamente los datos históricos.
+Más allá del audit, el mismo bug afecta a 49 columnas en distintos modelos: `createdAt`, `updatedAt`, `closedAt`, `windowStart`, `deactivatedAt`, y otras que representan instantes reales en el tiempo. Toda observabilidad, trazabilidad, y eventual exportación de datos queda distorsionada en 4 horas. La corrección es migrar todas esas columnas a `TIMESTAMPTZ(3)` con la cláusula `USING ... AT TIME ZONE 'America/La_Paz'` para reinterpretar correctamente los datos históricos.
 
-Adicionalmente, el usuario ha decidido aprovechar este cambio para unificar el schema completo: las 17 columnas que actualmente usan el patrón UTC-noon (fechas de comprobantes escritas via `toNoonUtc()`) también migrarán a `TIMESTAMPTZ(3)`, usando `USING "col" AT TIME ZONE 'UTC'` para preservar su semántica sin alterarla. La justificación es pragmática: la base está en desarrollo sin datos productivos, y un schema uniforme elimina la ambigüedad de tener columnas `TIMESTAMP` con semánticas diferentes según el modelo.
+Adicionalmente, el usuario ha decidido aprovechar este cambio para unificar el schema completo: las 16 columnas que actualmente usan el patrón UTC-noon (fechas de comprobantes escritas via `toNoonUtc()`) también migrarán a `TIMESTAMPTZ(3)`, usando `USING "col" AT TIME ZONE 'UTC'` para preservar su semántica sin alterarla. La justificación es pragmática: la base está en desarrollo sin datos productivos, y un schema uniforme elimina la ambigüedad de tener columnas `TIMESTAMP` con semánticas diferentes según el modelo.
 
 ---
 
@@ -22,10 +22,10 @@ Adicionalmente, el usuario ha decidido aprovechar este cambio para unificar el s
 
 Lo que entra en este cambio:
 
-- **Migración de schema**: las 60 columnas `DateTime` del `schema.prisma` pasan a `DateTime @db.Timestamptz(3)`. Sin exenciones.
+- **Migración de schema**: las 65 columnas `DateTime` del `schema.prisma` pasan a `DateTime @db.Timestamptz(3)`. Sin exenciones.
 - **Migración SQL manual**: un único archivo de migración Prisma (generado con `--create-only` y editado a mano) con dos categorías de cláusula `USING`:
-  - `USING "col" AT TIME ZONE 'America/La_Paz'` para las ~43 columnas TIMESTAMP-AFFECTED (datos naive BO-local).
-  - `USING "col" AT TIME ZONE 'UTC'` para las ~17 columnas UTC-noon (datos ya en UTC vía `toNoonUtc()`).
+  - `USING "col" AT TIME ZONE 'America/La_Paz'` para las 49 columnas TIMESTAMP-AFFECTED (datos naive BO-local).
+  - `USING "col" AT TIME ZONE 'UTC'` para las 16 columnas UTC-noon (datos ya en UTC vía `toNoonUtc()`).
 - **Fix de cursor en `audit.repository.ts`**: cambiar el cast `::timestamp` a `::timestamptz` en la cláusula WHERE de la paginación del audit. Este fix es atómico con la migración — sin él, el módulo de audit queda funcionalmente roto post-migración.
 - **Documentación en el PR**: un párrafo explícito en el cuerpo del PR indicando que se omitió `pg_dump` porque la base sólo contiene datos de ejemplo, y que esta excepción NO aplica a futuras migraciones cuando haya datos productivos.
 
@@ -35,7 +35,7 @@ Lo que entra en este cambio:
 
 La estrategia es una **migración única atómica con SQL editado manualmente**, siguiendo el proceso `--create-only` ya establecido en el proyecto (precedente en `cierre-periodo` y `voucher-types`).
 
-**Paso 1 — Schema Prisma**: agregar `@db.Timestamptz(3)` a cada uno de los 60 campos `DateTime` en `prisma/schema.prisma`. Esto requiere que el datasource tenga activada la extensión `postgresqlExtensions` o que el provider soporte el tipo directamente — el proyecto ya usa `postgresql` como provider, y `@db.Timestamptz` es nativo de `prisma-client-js` con Postgres.
+**Paso 1 — Schema Prisma**: agregar `@db.Timestamptz(3)` a cada uno de los 65 campos `DateTime` en `prisma/schema.prisma`. Esto requiere que el datasource tenga activada la extensión `postgresqlExtensions` o que el provider soporte el tipo directamente — el proyecto ya usa `postgresql` como provider, y `@db.Timestamptz` es nativo de `prisma-client-js` con Postgres.
 
 **Paso 2 — Generación del SQL base**: ejecutar `prisma migrate dev --create-only --name timestamptz_migration`. Prisma genera un archivo `.sql` con `ALTER TABLE ... ALTER COLUMN ... TYPE TIMESTAMPTZ(3)` para cada columna modificada. El SQL generado es incorrecto por defecto: Postgres aplica un casting implícito `TIMESTAMP → TIMESTAMPTZ` que asume UTC, pero los datos históricos son naive BO-local. Este es el riesgo R1 crítico identificado en el explore.
 
@@ -49,12 +49,12 @@ El approach es intencionalmente simple y conservador: una transacción, un PR, u
 
 ### Invariante técnico crítico (debe heredarse a design y tasks)
 
-El SQL de migración requiere **dos cláusulas `USING` diferentes** aunque las 60 columnas terminen todas como `TIMESTAMPTZ(3)`:
+El SQL de migración requiere **dos cláusulas `USING` diferentes** aunque las 65 columnas terminen todas como `TIMESTAMPTZ(3)`:
 
 | Categoría | Columnas | Cláusula USING | Razón |
 |-----------|----------|----------------|-------|
-| TIMESTAMP-AFFECTED | ~43 (createdAt, updatedAt, closedAt, windowStart, etc.) | `USING "col" AT TIME ZONE 'America/La_Paz'` | Datos almacenados como naive BO-local; reinterpretar como instantes reales en BO-local |
-| UTC-NOON | ~17 (Sale.date, Purchase.date, dueDate, ChickenLot.startDate/endDate, Expense.date, MortalityLog.date, JournalEntry.date, FiscalPeriod.startDate/endDate, Dispatch.date, Payment.date, PurchaseDetail.fecha, IvaPurchaseBook.fechaFactura, IvaSalesBook.fechaFactura) | `USING "col" AT TIME ZONE 'UTC'` | Datos ya en UTC vía `toNoonUtc()`; preservar sin modificación |
+| TIMESTAMP-AFFECTED | 49 (createdAt, updatedAt, closedAt, windowStart, deactivatedAt) | `USING "col" AT TIME ZONE 'America/La_Paz'` | Datos almacenados como naive BO-local; reinterpretar como instantes reales en BO-local |
+| UTC-NOON | 16 (Sale.date, Purchase.date, Dispatch.date, Payment.date, JournalEntry.date, FiscalPeriod.startDate/endDate, ChickenLot.startDate/endDate, Expense.date, MortalityLog.date, PurchaseDetail.fecha, IvaPurchaseBook.fechaFactura, IvaSalesBook.fechaFactura, AccountsReceivable.dueDate, AccountsPayable.dueDate) | `USING "col" AT TIME ZONE 'UTC'` | Datos ya en UTC vía `toNoonUtc()`; preservar sin modificación |
 
 Aplicar `AT TIME ZONE 'America/La_Paz'` sobre la categoría UTC-NOON restaría 4 horas a cada valor, rompiendo el patrón UTC-noon. Esta es la corrupción de datos más probable si el SQL se aplica sin clasificar columnas. El design y las tasks deben enumerar explícitamente qué columna va en qué categoría.
 
@@ -68,7 +68,7 @@ Aplicar `AT TIME ZONE 'America/La_Paz'` sobre la categoría UTC-NOON restaría 4
 | **B — Migración por batch** | Dividir en 2-3 migraciones: audit_logs primero, luego resto | Estado intermedio inconsistente: audit correcto pero otros modelos aún con bug. Peor que el estado buggy uniforme. Descartada. |
 | **C — Corrección en el cliente** | Mantener `TIMESTAMP(3)`, sumar +4h en `formatDateTimeBO` | Hack de compensación. La fuente sigue incorrecta. Queries server-side con `NOW()`, serialización ISO a APIs externas, y el cursor de audit siguen mal. Descartada definitivamente. |
 | **D — Cambiar TZ de sesión de Postgres a UTC** | `postgresql.conf` `TimeZone = UTC` o `options=-c timezone=UTC` en DATABASE_URL | No corrige datos históricos: las filas existentes tienen naive-BO-local bytes que con TZ=UTC se leerían como UTC, produciendo un bug diferente (+4h en lugar de -4h). Sin migración de datos, el problema cambia de signo pero no se resuelve. Descartada. |
-| **E — Scope parcial (sólo TIMESTAMP-AFFECTED, excluir UTC-NOON)** | Migrar sólo las 43 columnas TIMESTAMP-AFFECTED; dejar las 17 UTC-NOON como `TIMESTAMP(3)` | Técnicamente correcto dado que las UTC-NOON no presentan el bug. Descartado por decisión del usuario: base en desarrollo, sin datos productivos, se prefiere schema uniforme. Elimina ambigüedad para nuevos desarrolladores. |
+| **E — Scope parcial (sólo TIMESTAMP-AFFECTED, excluir UTC-NOON)** | Migrar sólo las 49 columnas TIMESTAMP-AFFECTED; dejar las 16 UTC-NOON como `TIMESTAMP(3)` | Técnicamente correcto dado que las UTC-NOON no presentan el bug. Descartado por decisión del usuario: base en desarrollo, sin datos productivos, se prefiere schema uniforme. Elimina ambigüedad para nuevos desarrolladores. |
 
 ---
 
