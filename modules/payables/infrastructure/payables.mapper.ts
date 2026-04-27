@@ -1,6 +1,6 @@
 import { Prisma, type AccountsPayable } from "@/generated/prisma/client";
 import { Payable } from "../domain/payable.entity";
-import { MonetaryAmount } from "../domain/value-objects/monetary-amount";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import {
   parsePayableStatus,
   type PayableStatus,

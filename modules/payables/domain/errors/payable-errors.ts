@@ -4,15 +4,11 @@ import {
   PAYABLE_AMOUNT_IMMUTABLE,
 } from "@/features/shared/errors";
 
-export const INVALID_MONETARY_AMOUNT = "INVALID_MONETARY_AMOUNT";
+// InvalidMonetaryAmount + INVALID_MONETARY_AMOUNT viven en
+// modules/shared/domain/errors/monetary-errors (rule-of-three: receivables,
+// payables, payment). Importar desde allí.
 export const INVALID_PAYABLE_STATUS = "INVALID_PAYABLE_STATUS";
 export const PARTIAL_PAYMENT_AMOUNT_REQUIRED = "PARTIAL_PAYMENT_AMOUNT_REQUIRED";
-
-export class InvalidMonetaryAmount extends ValidationError {
-  constructor(message: string) {
-    super(message, INVALID_MONETARY_AMOUNT);
-  }
-}
 
 export class InvalidPayableStatus extends ValidationError {
   constructor(value: string) {

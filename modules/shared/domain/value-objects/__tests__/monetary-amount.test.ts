@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { MonetaryAmount } from "../monetary-amount";
-import { InvalidMonetaryAmount } from "../../errors/receivable-errors";
+import { InvalidMonetaryAmount } from "../../errors/monetary-errors";
 
 describe("MonetaryAmount VO", () => {
   describe("of()", () => {

@@ -1,4 +1,4 @@
-import { MonetaryAmount } from "./value-objects/monetary-amount";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import {
   type PayableStatus,
   canTransition,

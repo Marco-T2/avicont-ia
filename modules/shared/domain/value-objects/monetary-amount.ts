@@ -1,4 +1,4 @@
-import { InvalidMonetaryAmount } from "../errors/receivable-errors";
+import { InvalidMonetaryAmount } from "../errors/monetary-errors";
 
 const MAX_VALUE = 9_999_999_999.99;
 

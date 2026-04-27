@@ -30,7 +30,11 @@ export type {
 } from "../domain/receivable.repository";
 export type { ReceivableStatus } from "../domain/value-objects/receivable-status";
 export { RECEIVABLE_STATUSES } from "../domain/value-objects/receivable-status";
-export { MonetaryAmount } from "../domain/value-objects/monetary-amount";
+export { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+export {
+  InvalidMonetaryAmount,
+  INVALID_MONETARY_AMOUNT,
+} from "@/modules/shared/domain/errors/monetary-errors";
 export {
   ReceivablesService,
   type CreateReceivableServiceInput,
@@ -38,12 +42,10 @@ export {
 } from "../application/receivables.service";
 export type { ContactExistencePort } from "../domain/ports/contact-existence.port";
 export {
-  InvalidMonetaryAmount,
   InvalidReceivableStatus,
   InvalidReceivableStatusTransition,
   PartialPaymentAmountRequired,
   ReceivableAmountImmutable,
-  INVALID_MONETARY_AMOUNT,
   INVALID_RECEIVABLE_STATUS,
   PARTIAL_PAYMENT_AMOUNT_REQUIRED,
 } from "../domain/errors/receivable-errors";

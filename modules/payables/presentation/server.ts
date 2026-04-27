@@ -30,7 +30,11 @@ export type {
 } from "../domain/payable.repository";
 export type { PayableStatus } from "../domain/value-objects/payable-status";
 export { PAYABLE_STATUSES } from "../domain/value-objects/payable-status";
-export { MonetaryAmount } from "../domain/value-objects/monetary-amount";
+export { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+export {
+  InvalidMonetaryAmount,
+  INVALID_MONETARY_AMOUNT,
+} from "@/modules/shared/domain/errors/monetary-errors";
 export {
   PayablesService,
   type CreatePayableServiceInput,
@@ -38,12 +42,10 @@ export {
 } from "../application/payables.service";
 export type { ContactExistencePort } from "../domain/ports/contact-existence.port";
 export {
-  InvalidMonetaryAmount,
   InvalidPayableStatus,
   InvalidPayableStatusTransition,
   PartialPaymentAmountRequired,
   PayableAmountImmutable,
-  INVALID_MONETARY_AMOUNT,
   INVALID_PAYABLE_STATUS,
   PARTIAL_PAYMENT_AMOUNT_REQUIRED,
 } from "../domain/errors/payable-errors";

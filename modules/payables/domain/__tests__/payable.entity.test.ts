@@ -1,10 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { Payable } from "../payable.entity";
-import { MonetaryAmount } from "../value-objects/monetary-amount";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import { InvalidMonetaryAmount } from "@/modules/shared/domain/errors/monetary-errors";
 import {
   InvalidPayableStatusTransition,
   PartialPaymentAmountRequired,
-  InvalidMonetaryAmount,
 } from "../errors/payable-errors";
 
 const baseInput = {
