@@ -5,17 +5,11 @@ import type {
 } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
-// ── Re-export Prisma types for convenience ──
-
 export type { AccountsPayable, PayableStatus };
-
-// ── Composite types ──
 
 export type PayableWithContact = AccountsPayable & {
   contact: Contact;
 };
-
-// ── Input types ──
 
 export interface CreatePayableInput {
   contactId: string;
@@ -50,6 +44,6 @@ export interface PayableFilters {
 }
 
 export interface OpenAggregate {
-  totalBalance: Prisma.Decimal;
+  totalBalance: number;
   count: number;
 }
