@@ -14,7 +14,16 @@ El cursor de paginación en `audit.repository.ts` serializa el cursor como `last
 awp."createdAt" < ${cursorCreatedAt}::timestamp
 ```
 
-Con la columna `createdAt` como `TIMESTAMP(3)` (sin timezone), el cast `::timestamp` era compatible porque ambos lados eran naive. Post-migración a `TIMESTAMPTZ(3)`, el cast `::timestamp` descarta la información de timezone del string ISO-8601 antes de la comparación, produciendo comparaciones incorrectas en rangos que crucen la medianoche local (`America/La_Paz`). El fix es cambiar el cast a `::timestamptz`.
+Con la columna `createdAt` como `TIMESTAMP(3)` (sin timezone), el cast `::timestamp` era compatible porque ambos lados eran naive. Post-migración a `TIMESTAMPTZ(3)`, el comportamiento real (verificado empíricamente contra Postgres) es:
+
+1. El cast `::timestamp` descarta el sufijo `Z` del string ISO. El cursor `'2026-04-27T04:00:00.000Z'::timestamp` produce el TIMESTAMP naive `2026-04-27T04:00:00.000` (sin TZ).
+2. Postgres compara `timestamptz_col < timestamp_value` coerce-ando el TIMESTAMP a TIMESTAMPTZ usando `current_setting('TimeZone')` (la sesión de Postgres corre en `America/La_Paz`).
+3. El cursor `04:00:00` naive se interpreta como `04:00 BO-local` = **`08:00:00Z`** efectivos para la comparación.
+4. La comparación queda `awp."createdAt" < '2026-04-27T08:00:00Z'` en lugar de `< '2026-04-27T04:00:00Z'`.
+
+**Failure mode**: el shift de +4h **expande el rango** efectivo de la comparación. Filas con `createdAt` entre `04:00Z` y `08:00Z` (que NO deberían estar antes del cursor) son incluidas incorrectamente. En una paginación cursor-based, esto produce **filas duplicadas** entre páginas adyacentes (una fila en el rango shifted aparece tanto en la página de "antes del cursor" como en la página que la generó como cursor).
+
+El fix es cambiar el cast a `::timestamptz`, que preserva el sufijo `Z` del string ISO y produce comparación UTC-to-UTC sin depender de `session_timezone`.
 
 ---
 
@@ -28,24 +37,32 @@ Con la columna `createdAt` como `TIMESTAMP(3)` (sin timezone), el cast `::timest
 
 #### Scenarios añadidos
 
-##### A1-S7 — cursor serializado en UTC se compara correctamente con columna TIMESTAMPTZ
+##### A1-S7 — cursor serializado en UTC se compara correctamente con columna TIMESTAMPTZ (sin shift expansivo)
 - **Given** la columna `audit_logs.createdAt` es `TIMESTAMPTZ(3)`
 - **AND** el cursor se serializa como `last.createdAt.toISOString()` (ej. `"2026-04-27T04:00:00.000Z"` — que corresponde a la medianoche de `2026-04-27` en `America/La_Paz`)
-- **When** el endpoint recibe ese cursor y construye la cláusula WHERE
-- **Then** la comparación se realiza como `awp."createdAt" < '2026-04-27T04:00:00.000Z'::timestamptz`
-- **AND** el resultado incluye exactamente las filas con `createdAt < 2026-04-27T04:00:00Z` (UTC) sin omisiones ni duplicados
+- **AND** existen filas con `createdAt` entre `2026-04-27T04:00:00Z` y `2026-04-27T08:00:00Z` (el "rango shifted" — el rango que el bug `::timestamp` incluiría incorrectamente)
+- **When** el endpoint recibe ese cursor y construye la cláusula WHERE con `::timestamptz`
+- **Then** la comparación se realiza como `awp."createdAt" < '2026-04-27T04:00:00.000Z'::timestamptz` (UTC-to-UTC, sin coerción por session_timezone)
+- **AND** el resultado **NO contiene** las filas del rango shifted (porque sus `createdAt` no son `< 04:00Z`)
+- **AND** el resultado incluye exactamente las filas con `createdAt < 2026-04-27T04:00:00Z` (UTC), sin filas extra del rango shifted
 
-##### A1-S8 — paginación cross-medianoche mantiene orden estable con TIMESTAMPTZ
-- **Given** existen filas de audit_logs con `createdAt` en el rango `2026-04-26T23:50:00Z` a `2026-04-27T00:10:00Z` (UTC), que en `America/La_Paz` corresponden al rango `19:50:00` del 26 al `20:10:00` del 26 — es decir, cruzan la medianoche UTC pero NO la medianoche local
+##### A1-S8 — paginación cross-medianoche sin duplicados (con `::timestamptz`)
+- **Given** existen filas de audit_logs con `createdAt` que cruzan la medianoche UTC, incluyendo al menos una fila en el "rango shifted" (entre el instante del cursor y `cursor + 4h`)
 - **When** se pagina sobre ese rango con cursor-based pagination usando `::timestamptz`
-- **Then** todas las filas aparecen exactamente una vez, en orden `createdAt DESC`, sin duplicados ni omisiones entre páginas consecutivas
+- **Then** todas las filas aparecen exactamente una vez en orden `createdAt DESC`
+- **AND** las filas del rango shifted aparecen sólo en su página correcta (la de "después del cursor"), NO duplicadas en la página anterior (esto es lo que el bug `::timestamp` haría: incluirlas en ambas páginas porque el cursor efectivo se desplaza +4h)
 
-##### A1-S9 — cast `::timestamp` produce resultado incorrecto (verificación negativa)
-- **Given** la columna `audit_logs.createdAt` es `TIMESTAMPTZ(3)` y existe una fila con `createdAt = '2026-04-27T04:00:00.000+00'`
-- **When** se compara usando `::timestamp` en lugar de `::timestamptz` (comportamiento incorrecto — este scenario documenta el bug que se corrige)
-- **Then** Postgres convierte el string ISO al timezone de sesión antes de comparar, produciendo un offset de -4h que hace que la comparación evalúe contra `2026-04-27T00:00:00` local en lugar del instante UTC correcto — resultado: filas pueden duplicarse o perderse entre páginas
+##### A1-S9 — cast `::timestamp` produce shift expansivo de +4h (verificación negativa, comportamiento que el fix elimina)
+- **Given** la columna `audit_logs.createdAt` es `TIMESTAMPTZ(3)`
+- **AND** la sesión de Postgres corre con `TimeZone = 'America/La_Paz'` (UTC-4)
+- **AND** existe una fila con `createdAt = '2026-04-27T06:00:00.000Z'` (en el "rango shifted" entre `04:00Z` y `08:00Z`)
+- **When** se compara usando `::timestamp` (comportamiento incorrecto — este scenario documenta el bug que el fix corrige) con cursor `'2026-04-27T04:00:00.000Z'`
+- **Then** Postgres descarta el sufijo `Z` del string ISO y obtiene el TIMESTAMP naive `2026-04-27T04:00:00.000`
+- **AND** al comparar `timestamptz_col < timestamp_value`, Postgres coerce el TIMESTAMP a TIMESTAMPTZ usando `session_timezone = 'America/La_Paz'`, transformando el cursor en `'2026-04-27T08:00:00.000Z'` efectivo
+- **AND** la fila `06:00Z` (que NO debería estar antes del cursor `04:00Z`) **es incluida incorrectamente** en el resultado porque `06:00Z < 08:00Z` evalúa true
+- **AND** en una paginación multi-página, esa misma fila puede aparecer **duplicada** en páginas adyacentes (en la página actual via el cursor shifted, y en una página posterior via su cursor real)
 
-> **Nota**: el Scenario A1-S9 documenta el comportamiento incorrecto para referencia y para que el test de regresión pueda verificar que el bug NO reproduce con el fix aplicado.
+> **Nota**: el Scenario A1-S9 documenta el bug observado empíricamente — el shift es **expansivo** (incluye filas extra) y produce **duplicados**, no omisiones. El fix `::timestamptz` preserva el sufijo `Z` y elimina la coerción por session_timezone, garantizando comparación UTC-to-UTC. El test de regresión correspondiente debe sembrar al menos una fila en el rango shifted y verificar `.not.toContain()` de esa fila en la página de "antes del cursor".
 
 ---
 
