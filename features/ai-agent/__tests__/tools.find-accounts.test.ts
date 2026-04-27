@@ -20,7 +20,7 @@ vi.hoisted(() => {
 
 import { executeFindAccountsByPurpose } from "../tools/find-accounts";
 import type { AccountsRepository } from "@/features/accounting/accounts.repository";
-import type { OrgSettingsService } from "@/features/org-settings/org-settings.service";
+import type { OrgSettingsService } from "@/features/org-settings/server";
 import type { Account, OrgSettings } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 
