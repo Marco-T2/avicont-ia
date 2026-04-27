@@ -292,6 +292,30 @@ describe("PurchaseService — Phase 2 correlationId emission", () => {
     expect((result as { correlationId: string }).correlationId).toMatch(UUID_V4_REGEX);
   });
 
+  // ── W-1.d: update() DRAFT branch ──────────────────────────────────────────
+  it("W-1.d: update() DRAFT branch calls setAuditContext with the returned correlationId (REQ-CORR.2)", async () => {
+    const { service } = buildService(makeDraftPurchase() as never); // status = DRAFT
+
+    const result = await service.update(
+      ORG_ID,
+      PURCHASE_ID,
+      { description: "editado draft" },
+      USER_ID,
+    );
+
+    expect(result).toHaveProperty("correlationId");
+    const cid = (result as { correlationId: string }).correlationId;
+    expect(cid).toMatch(UUID_V4_REGEX);
+
+    expect(setAuditContextSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      USER_ID,
+      ORG_ID,
+      undefined, // no justification for DRAFT
+      cid,
+    );
+  });
+
   // ── D17: regenerateJournalForIvaChange() standalone ──────────────────────────
   it("D17: regenerateJournalForIvaChange() standalone returns result with UUID v4 correlationId", async () => {
     const { service } = buildService(makePostedPurchase() as never);

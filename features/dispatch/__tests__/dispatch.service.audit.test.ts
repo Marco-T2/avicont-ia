@@ -379,4 +379,33 @@ describe("DispatchService — Phase 2 correlationId emission", () => {
     expect(result).toHaveProperty("correlationId");
     expect((result as { correlationId: string }).correlationId).toMatch(UUID_V4_REGEX);
   });
+
+  // ── W-1.a: update() DRAFT branch ──────────────────────────────────────────
+  it("W-1.a: update() DRAFT branch calls setAuditContext with the returned correlationId (REQ-CORR.2)", async () => {
+    const { service } = buildService(makePostedDraft()); // status = DRAFT
+
+    const result = await service.update(
+      ORG_ID,
+      DISPATCH_ID,
+      { description: "editado draft" },
+      undefined,
+      undefined,
+      USER_ID,
+    );
+
+    expect(result).toHaveProperty("correlationId");
+    const cid = (result as { correlationId: string }).correlationId;
+    expect(cid).toMatch(UUID_V4_REGEX);
+
+    // The REAL invariant: setAuditContext must have been called with the exact
+    // correlationId that was returned — proving withAuditTx was used, not a
+    // fabricated crypto.randomUUID() AFTER the fact.
+    expect(setAuditContextSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      USER_ID,
+      ORG_ID,
+      undefined, // no justification for DRAFT
+      cid,
+    );
+  });
 });

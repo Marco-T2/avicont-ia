@@ -528,14 +528,21 @@ export class DispatchService {
       return { ...withDisplayCode(result), correlationId };
     }
 
-    const row = await this.repo.update(
-      organizationId,
-      id,
-      dataWithoutDetails,
-      computedDetails,
-      bcSummary,
+    // DRAFT branch — wrapped in withAuditTx so audit_logs rows share the same
+    // correlationId that is returned to the caller (REQ-CORR.2 / INV-2).
+    const { result: row, correlationId } = await withAuditTx(
+      this.repo,
+      { userId: userId ?? "unknown", organizationId },
+      async (tx) => this.repo.updateTx(
+        tx,
+        organizationId,
+        id,
+        dataWithoutDetails,
+        computedDetails,
+        bcSummary,
+      ),
     );
-    return { ...withDisplayCode(row), correlationId: crypto.randomUUID() };
+    return { ...withDisplayCode(row), correlationId };
   }
 
   // ── Actualizar un despacho POSTED (reversión-modificación-reaplicación atómica) ──

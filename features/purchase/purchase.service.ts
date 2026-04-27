@@ -751,14 +751,21 @@ export class PurchaseService {
       return { ...withDisplayCode(row), correlationId };
     }
 
-    const row = await this.repo.update(
-      organizationId,
-      id,
-      dataWithoutDetails,
-      computedDetails,
-      pfSummary,
+    // DRAFT branch — wrapped in withAuditTx so audit_logs rows share the same
+    // correlationId that is returned to the caller (REQ-CORR.2 / INV-2).
+    const { result: row, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => this.repo.updateTx(
+        tx,
+        organizationId,
+        id,
+        dataWithoutDetails,
+        computedDetails,
+        pfSummary,
+      ),
     );
-    return { ...withDisplayCode(row), correlationId: crypto.randomUUID() };
+    return { ...withDisplayCode(row), correlationId };
   }
 
   // ── Preview de recorte de asignaciones (dryRun / pre-flight) ────────────────

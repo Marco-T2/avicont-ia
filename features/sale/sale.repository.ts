@@ -248,6 +248,43 @@ export class SaleRepository extends BaseRepository {
     return toSaleWithDetails(row);
   }
 
+  async updateTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+    data: Omit<UpdateSaleInput, "details">,
+    computedDetails?: ComputedSaleDetail[],
+  ): Promise<SaleWithDetails> {
+    const scope = this.requireOrg(organizationId);
+
+    const updated = await tx.sale.update({
+      where: { id, ...scope },
+      data: buildUpdateData(data),
+      include: saleInclude,
+    });
+
+    if (computedDetails !== undefined) {
+      await tx.saleDetail.deleteMany({ where: { saleId: id } });
+      if (computedDetails.length > 0) {
+        await tx.saleDetail.createMany({
+          data: computedDetails.map((d): Prisma.SaleDetailCreateManyInput => ({
+            saleId: id,
+            ...buildDetailData(d),
+          })),
+        });
+      }
+
+      const refreshed = await tx.sale.findFirst({
+        where: { id, ...scope },
+        include: saleInclude,
+      });
+      if (!refreshed) throw new Error(`Sale ${id} not found after update`);
+      return toSaleWithDetails(refreshed);
+    }
+
+    return toSaleWithDetails(updated);
+  }
+
   async updateStatusTx(
     tx: Prisma.TransactionClient,
     organizationId: string,

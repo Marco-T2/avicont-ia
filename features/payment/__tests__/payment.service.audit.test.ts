@@ -431,6 +431,32 @@ describe("PaymentService — Phase 2 correlationId emission", () => {
     expect((result as { correlationId: string }).correlationId).toMatch(UUID_V4_REGEX);
   });
 
+  // ── W-1.b: update() DRAFT branch ──────────────────────────────────────────
+  it("W-1.b: update() DRAFT branch calls setAuditContext with the returned correlationId (REQ-CORR.2)", async () => {
+    const { service } = buildService(makeDraftPayment()); // status = DRAFT
+
+    const result = await service.update(
+      ORG_ID,
+      PAYMENT_ID,
+      { description: "editado draft" },
+      undefined,
+      undefined,
+      USER_ID,
+    );
+
+    expect(result).toHaveProperty("correlationId");
+    const cid = (result as { correlationId: string }).correlationId;
+    expect(cid).toMatch(UUID_V4_REGEX);
+
+    expect(setAuditContextSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      USER_ID,
+      ORG_ID,
+      undefined, // no justification for DRAFT
+      cid,
+    );
+  });
+
   // ── D30: applyCreditOnly() ─────────────────────────────────────────────────
   it("D30: applyCreditOnly() returns a result with a UUID v4 correlationId", async () => {
     const sourcePay = makeSourcePayment();

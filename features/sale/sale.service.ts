@@ -637,13 +637,20 @@ export class SaleService {
       return { ...withDisplayCode(result), correlationId };
     }
 
-    const row = await this.repo.update(
-      organizationId,
-      id,
-      dataWithoutDetails,
-      computedDetails,
+    // DRAFT branch — wrapped in withAuditTx so audit_logs rows share the same
+    // correlationId that is returned to the caller (REQ-CORR.2 / INV-2).
+    const { result: row, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => this.repo.updateTx(
+        tx,
+        organizationId,
+        id,
+        dataWithoutDetails,
+        computedDetails,
+      ),
     );
-    return { ...withDisplayCode(row), correlationId: crypto.randomUUID() };
+    return { ...withDisplayCode(row), correlationId };
   }
 
   // ── Editar una venta POSTED (revertir-modificar-reaplicar de forma atómica) ──

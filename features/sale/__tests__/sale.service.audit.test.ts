@@ -117,6 +117,7 @@ function buildService(initial: ReturnType<typeof makeDraftSale>) {
     createPostedTx: vi.fn().mockResolvedValue({ ...initial, id: SALE_ID }),
     linkJournalAndReceivable: vi.fn().mockResolvedValue(undefined),
     update: vi.fn().mockResolvedValue(initial),
+    updateTx: vi.fn().mockResolvedValue(initial),
   };
 
   const orgSettingsService = {
@@ -271,5 +272,29 @@ describe("SaleService — Phase 2 correlationId emission", () => {
 
     expect(result).toHaveProperty("correlationId");
     expect((result as { correlationId: string }).correlationId).toMatch(UUID_V4_REGEX);
+  });
+
+  // ── W-1.c: update() DRAFT branch ──────────────────────────────────────────
+  it("W-1.c: update() DRAFT branch calls setAuditContext with the returned correlationId (REQ-CORR.2)", async () => {
+    const { service } = buildService(makeDraftSale() as never); // status = DRAFT
+
+    const result = await service.update(
+      ORG_ID,
+      SALE_ID,
+      { description: "editado draft" },
+      USER_ID,
+    );
+
+    expect(result).toHaveProperty("correlationId");
+    const cid = (result as { correlationId: string }).correlationId;
+    expect(cid).toMatch(UUID_V4_REGEX);
+
+    expect(setAuditContextSpy).toHaveBeenCalledWith(
+      expect.any(Object),
+      USER_ID,
+      ORG_ID,
+      undefined, // no justification for DRAFT
+      cid,
+    );
   });
 });
