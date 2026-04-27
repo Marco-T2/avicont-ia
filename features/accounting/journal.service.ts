@@ -24,6 +24,7 @@ import {
   type DocumentStatus,
 } from "./document-lifecycle.service";
 import { setAuditContext } from "@/features/shared/audit-context";
+import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
@@ -193,7 +194,7 @@ export class JournalService {
     organizationId: string,
     input: CreateJournalEntryInput,
     context: { userId: string; role: string },
-  ): Promise<JournalEntryWithLines> {
+  ): Promise<WithCorrelation<JournalEntryWithLines>> {
     // 0. RBAC: canPost (PR3.3 / P.6 / D.7) — matrix-backed async check
     if (!(await canPost(context.role, "journal", organizationId))) {
       throw new ForbiddenError(
@@ -275,31 +276,34 @@ export class JournalService {
     }
 
     // Transacción atómica única: crear DRAFT (número asignado con retry) y contabilizar
-    return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
+        const created = await this.repo.createWithRetryTx(
+          tx,
+          organizationId,
+          entryData,
+          lines,
+          "DRAFT",
+        );
 
-      const created = await this.repo.createWithRetryTx(
-        tx,
-        organizationId,
-        entryData,
-        lines,
-        "DRAFT",
-      );
+        // Transicionar a POSTED
+        const posted = await this.repo.updateStatusTx(
+          tx,
+          organizationId,
+          created.id,
+          "POSTED",
+          userId,
+        );
 
-      // Transicionar a POSTED
-      const posted = await this.repo.updateStatusTx(
-        tx,
-        organizationId,
-        created.id,
-        "POSTED",
-        userId,
-      );
+        // Aplicar los saldos de cuentas
+        await this.balancesService.applyPost(tx, posted);
 
-      // Aplicar los saldos de cuentas
-      await this.balancesService.applyPost(tx, posted);
-
-      return posted;
-    });
+        return posted;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   // ── Actualizar un asiento DRAFT (o LOCKED con justificación) ──
@@ -310,7 +314,7 @@ export class JournalService {
     input: UpdateJournalEntryInput,
     role?: string,
     justification?: string,
-  ): Promise<JournalEntryWithLines> {
+  ): Promise<WithCorrelation<JournalEntryWithLines>> {
     const entry = await this.repo.findById(organizationId, id);
     if (!entry) throw new NotFoundError("Asiento contable");
 
@@ -401,18 +405,22 @@ export class JournalService {
     try {
       // Para ediciones en LOCKED, envolver en transacción con contexto de auditoría
       if (status === "LOCKED") {
-        return await this.repo.transaction(async (tx) => {
-          await setAuditContext(tx, updatedById, organizationId, justification);
-          return this.repo.updateTx(tx, organizationId, id, data, lines, updatedById);
-        });
+        const { result, correlationId } = await withAuditTx(
+          this.repo,
+          { userId: updatedById, organizationId, justification },
+          async (tx) => this.repo.updateTx(tx, organizationId, id, data, lines, updatedById),
+        );
+        return { ...result, correlationId };
       }
 
-      // DRAFT branch — Phase 1 setAuditContext coverage (D1.b Option A).
-      // Wrap in a transaction so the audit trigger sees app.current_user_id.
-      return await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, updatedById, organizationId);
-        return this.repo.updateTx(tx, organizationId, id, data, lines, updatedById);
-      });
+      // DRAFT branch — Phase 1 setAuditContext coverage (D1.b Option A) +
+      // Phase 2 correlationId emission via withAuditTx.
+      const { result, correlationId } = await withAuditTx(
+        this.repo,
+        { userId: updatedById, organizationId },
+        async (tx) => this.repo.updateTx(tx, organizationId, id, data, lines, updatedById),
+      );
+      return { ...result, correlationId };
     } catch (error) {
       if (
         error instanceof Error &&
@@ -434,23 +442,26 @@ export class JournalService {
     organizationId: string,
     entry: JournalEntryWithLines,
     input: UpdateJournalEntryInput,
-  ): Promise<JournalEntryWithLines> {
+  ): Promise<WithCorrelation<JournalEntryWithLines>> {
     const { lines, updatedById, ...data } = input;
 
-    return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, updatedById ?? "unknown", organizationId);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId: updatedById ?? "unknown", organizationId },
+      async (tx) => {
+        // Paso 1: Revertir los efectos del saldo anterior
+        await this.balancesService.applyVoid(tx, entry);
 
-      // Paso 1: Revertir los efectos del saldo anterior
-      await this.balancesService.applyVoid(tx, entry);
+        // Paso 2: Actualizar encabezado + líneas del asiento (eliminar y recrear líneas vía repo.updateTx)
+        const updated = await this.repo.updateTx(tx, organizationId, entry.id, data, lines, updatedById ?? "unknown");
 
-      // Paso 2: Actualizar encabezado + líneas del asiento (eliminar y recrear líneas vía repo.updateTx)
-      const updated = await this.repo.updateTx(tx, organizationId, entry.id, data, lines, updatedById ?? "unknown");
+        // Paso 3: Aplicar los nuevos efectos de saldo
+        await this.balancesService.applyPost(tx, updated);
 
-      // Paso 3: Aplicar los nuevos efectos de saldo
-      await this.balancesService.applyPost(tx, updated);
-
-      return updated;
-    });
+        return updated;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   // ── Validar requiresContact en las líneas del asiento ──
@@ -542,7 +553,7 @@ export class JournalService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<JournalEntryWithLines> {
+  ): Promise<WithCorrelation<JournalEntryWithLines>> {
     const entry = await this.repo.findById(organizationId, id);
     if (!entry) throw new NotFoundError("Asiento contable");
 
@@ -603,25 +614,28 @@ export class JournalService {
       }
     }
 
-    return this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId, justification);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId, justification },
+      async (tx) => {
+        const updated = await this.repo.updateStatusTx(
+          tx,
+          organizationId,
+          id,
+          targetStatus,
+          userId,
+        );
 
-      const updated = await this.repo.updateStatusTx(
-        tx,
-        organizationId,
-        id,
-        targetStatus,
-        userId,
-      );
+        if (targetStatus === "POSTED") {
+          await this.balancesService.applyPost(tx, updated);
+        } else if (targetStatus === "VOIDED") {
+          await this.balancesService.applyVoid(tx, updated);
+        }
 
-      if (targetStatus === "POSTED") {
-        await this.balancesService.applyPost(tx, updated);
-      } else if (targetStatus === "VOIDED") {
-        await this.balancesService.applyVoid(tx, updated);
-      }
-
-      return updated;
-    });
+        return updated;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   // ── Exportar a PDF ──

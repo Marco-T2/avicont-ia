@@ -181,7 +181,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       await mocks.service.createSale(ORG_ID, USER_ID, baseSaleCreateInput);
 
       expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, SALE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          saleId: SALE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });
@@ -199,7 +205,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       });
 
       expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, SALE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          saleId: SALE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });
@@ -214,7 +226,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       await mocks.service.voidSale(ORG_ID, USER_ID, "iva-sale-book-id");
 
       expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, SALE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          saleId: SALE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });
@@ -229,7 +247,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       await mocks.service.reactivateSale(ORG_ID, USER_ID, "iva-sale-book-id");
 
       expect(mocks.saleService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, SALE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          saleId: SALE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });
@@ -292,7 +316,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       await mocks.service.createPurchase(ORG_ID, USER_ID, basePurchaseCreateInput);
 
       expect(mocks.purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, PURCHASE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          purchaseId: PURCHASE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });
@@ -309,7 +339,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       });
 
       expect(mocks.purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, PURCHASE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          purchaseId: PURCHASE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });
@@ -324,7 +360,13 @@ describe("IvaBooksService — editPosted bridge (SPEC-6)", () => {
       await mocks.service.voidPurchase(ORG_ID, USER_ID, "iva-purchase-book-id");
 
       expect(mocks.purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-        ORG_ID, PURCHASE_ID, USER_ID, expect.anything(),
+        expect.objectContaining({
+          organizationId: ORG_ID,
+          purchaseId: PURCHASE_ID,
+          userId: USER_ID,
+          externalTx: expect.anything(),
+          correlationId: expect.any(String),
+        }),
       );
     });
   });

@@ -418,7 +418,7 @@ describe("SaleService — IVA journal integration", () => {
         return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
-      await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);
+      await mocks.service.regenerateJournalForIvaChange({ organizationId: ORG_ID, saleId: SALE_ID, userId: USER_ID });
 
       // El asiento debe haber sido actualizado con líneas IVA + IT (5 líneas)
       expect(vi.mocked(mocks.journalRepo.updateTx)).toHaveBeenCalled();
@@ -453,7 +453,7 @@ describe("SaleService — IVA journal integration", () => {
       });
 
       await expect(
-        mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID),
+        mocks.service.regenerateJournalForIvaChange({ organizationId: ORG_ID, saleId: SALE_ID, userId: USER_ID }),
       ).rejects.toThrow();
 
       // journalRepo.updateTx NO debe haber sido llamado
@@ -506,7 +506,7 @@ describe("SaleService — IVA journal integration", () => {
         return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
-      await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);
+      await mocks.service.regenerateJournalForIvaChange({ organizationId: ORG_ID, saleId: SALE_ID, userId: USER_ID });
 
       expect(vi.mocked(mocks.journalRepo.updateTx)).toHaveBeenCalled();
        
@@ -570,7 +570,7 @@ describe("SaleService — IVA journal integration", () => {
         return fn(mockTx as unknown as Prisma.TransactionClient);
       });
 
-      await mocks.service.regenerateJournalForIvaChange(ORG_ID, SALE_ID, USER_ID);
+      await mocks.service.regenerateJournalForIvaChange({ organizationId: ORG_ID, saleId: SALE_ID, userId: USER_ID });
 
       // LOOP GUARD: regenerateJournalForIvaChange NUNCA debe escribir en ivaSalesBook
       expect(ivaSalesBookUpdateMock).not.toHaveBeenCalled();

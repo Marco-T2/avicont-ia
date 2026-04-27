@@ -12,6 +12,7 @@ import {
 } from "@/features/shared/errors";
 import { canPost } from "@/features/permissions/server";
 import { setAuditContext } from "@/features/shared/audit-context";
+import { withAuditTx, assertAuditContextSet, type WithCorrelation } from "@/features/shared/audit-tx";
 import { Prisma } from "@/generated/prisma/client";
 import { SaleRepository } from "./sale.repository";
 import type { ComputedSaleDetail } from "./sale.repository";
@@ -251,7 +252,7 @@ export class SaleService {
     organizationId: string,
     id: string,
     userId: string,
-  ): Promise<SaleWithDetails> {
+  ): Promise<WithCorrelation<SaleWithDetails>> {
     const sale = await this.getById(organizationId, id);
 
     // Validar la transición del ciclo de vida
@@ -299,74 +300,76 @@ export class SaleService {
 
     let saleId = "";
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
+        const sequenceNumber = await this.repo.getNextSequenceNumber(
+          tx,
+          organizationId,
+        );
 
-      const sequenceNumber = await this.repo.getNextSequenceNumber(
-        tx,
-        organizationId,
-      );
+        saleId = sale.id;
 
-      saleId = sale.id;
+        // Actualizar el estado, totalAmount y sequenceNumber de la venta
+        await this.repo.updateStatusTx(
+          tx,
+          organizationId,
+          id,
+          "POSTED",
+          totalAmount,
+          sequenceNumber,
+        );
 
-      // Actualizar el estado, totalAmount y sequenceNumber de la venta
-      await this.repo.updateStatusTx(
-        tx,
-        organizationId,
-        id,
-        "POSTED",
-        totalAmount,
-        sequenceNumber,
-      );
+        const displayCode = getDisplayCode(sequenceNumber);
 
-      const displayCode = getDisplayCode(sequenceNumber);
+        const journalDescription = sale.notes
+          ? `${displayCode} - ${sale.description} | ${sale.notes}`
+          : `${displayCode} - ${sale.description}`;
 
-      const journalDescription = sale.notes
-        ? `${displayCode} - ${sale.description} | ${sale.notes}`
-        : `${displayCode} - ${sale.description}`;
+        // Construir y generar el asiento contable (CI — Comprobante de Ingreso)
+        const entry = await this.autoEntryGenerator.generate(tx, {
+          organizationId,
+          voucherTypeCode: "CI",
+          contactId: sale.contactId,
+          date: sale.date,
+          periodId: sale.periodId,
+          description: journalDescription,
+          sourceType: "sale",
+          sourceId: sale.id,
+          createdById: userId,
+          lines: entryLines.map((l) => ({
+            accountCode: l.accountCode,
+            side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+            amount: l.debit > 0 ? l.debit : l.credit,
+            contactId: l.contactId,
+            description: l.description,
+          })),
+        });
 
-      // Construir y generar el asiento contable (CI — Comprobante de Ingreso)
-      const entry = await this.autoEntryGenerator.generate(tx, {
-        organizationId,
-        voucherTypeCode: "CI",
-        contactId: sale.contactId,
-        date: sale.date,
-        periodId: sale.periodId,
-        description: journalDescription,
-        sourceType: "sale",
-        sourceId: sale.id,
-        createdById: userId,
-        lines: entryLines.map((l) => ({
-          accountCode: l.accountCode,
-          side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
-          amount: l.debit > 0 ? l.debit : l.credit,
-          contactId: l.contactId,
-          description: l.description,
-        })),
-      });
+        await this.balancesService.applyPost(tx, entry);
 
-      await this.balancesService.applyPost(tx, entry);
+        const dueDate = new Date(
+          sale.date.getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
+        );
 
-      const dueDate = new Date(
-        sale.date.getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
-      );
+        const receivable = await this.receivablesRepo.createTx(tx, {
+          organizationId,
+          contactId: sale.contactId,
+          description: journalDescription,
+          amount: totalAmount,
+          dueDate,
+          sourceType: "sale",
+          sourceId: sale.id,
+          journalEntryId: entry.id,
+        });
 
-      const receivable = await this.receivablesRepo.createTx(tx, {
-        organizationId,
-        contactId: sale.contactId,
-        description: journalDescription,
-        amount: totalAmount,
-        dueDate,
-        sourceType: "sale",
-        sourceId: sale.id,
-        journalEntryId: entry.id,
-      });
-
-      await this.repo.linkJournalAndReceivable(tx, organizationId, sale.id, entry.id, receivable.id);
-    });
+        await this.repo.linkJournalAndReceivable(tx, organizationId, sale.id, entry.id, receivable.id);
+      },
+    );
 
     const result = await this.repo.findById(organizationId, saleId);
-    return withDisplayCode(result!);
+    return { ...withDisplayCode(result!), correlationId };
   }
 
   // ── Crear y contabilizar una venta en una sola transacción atómica ──
@@ -375,7 +378,7 @@ export class SaleService {
     organizationId: string,
     input: CreateSaleInput,
     context: { userId: string; role: string },
-  ): Promise<SaleWithDetails> {
+  ): Promise<WithCorrelation<SaleWithDetails>> {
     // 0. RBAC: canPost (PR3.1 / P.6 / D.7) — matrix-backed async check
     if (!(await canPost(context.role, "sales", organizationId))) {
       throw new ForbiddenError(
@@ -441,72 +444,74 @@ export class SaleService {
 
     let saleId = "";
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
+        const sequenceNumber = await this.repo.getNextSequenceNumber(
+          tx,
+          organizationId,
+        );
 
-      const sequenceNumber = await this.repo.getNextSequenceNumber(
-        tx,
-        organizationId,
-      );
+        const sale = await this.repo.createPostedTx(
+          tx,
+          organizationId,
+          input,
+          userId,
+          sequenceNumber,
+          computedDetails,
+          totalAmount,
+        );
+        saleId = sale.id;
 
-      const sale = await this.repo.createPostedTx(
-        tx,
-        organizationId,
-        input,
-        userId,
-        sequenceNumber,
-        computedDetails,
-        totalAmount,
-      );
-      saleId = sale.id;
+        const displayCode = getDisplayCode(sequenceNumber);
 
-      const displayCode = getDisplayCode(sequenceNumber);
+        const journalDescription = input.notes
+          ? `${displayCode} - ${input.description} | ${input.notes}`
+          : `${displayCode} - ${input.description}`;
 
-      const journalDescription = input.notes
-        ? `${displayCode} - ${input.description} | ${input.notes}`
-        : `${displayCode} - ${input.description}`;
+        const entry = await this.autoEntryGenerator.generate(tx, {
+          organizationId,
+          voucherTypeCode: "CI",
+          contactId: input.contactId,
+          date: new Date(input.date),
+          periodId: input.periodId,
+          description: journalDescription,
+          sourceType: "sale",
+          sourceId: sale.id,
+          createdById: userId,
+          lines: entryLines.map((l) => ({
+            accountCode: l.accountCode,
+            side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+            amount: l.debit > 0 ? l.debit : l.credit,
+            contactId: l.contactId,
+            description: l.description,
+          })),
+        });
 
-      const entry = await this.autoEntryGenerator.generate(tx, {
-        organizationId,
-        voucherTypeCode: "CI",
-        contactId: input.contactId,
-        date: new Date(input.date),
-        periodId: input.periodId,
-        description: journalDescription,
-        sourceType: "sale",
-        sourceId: sale.id,
-        createdById: userId,
-        lines: entryLines.map((l) => ({
-          accountCode: l.accountCode,
-          side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
-          amount: l.debit > 0 ? l.debit : l.credit,
-          contactId: l.contactId,
-          description: l.description,
-        })),
-      });
+        await this.balancesService.applyPost(tx, entry);
 
-      await this.balancesService.applyPost(tx, entry);
+        const dueDate = new Date(
+          new Date(input.date).getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
+        );
 
-      const dueDate = new Date(
-        new Date(input.date).getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
-      );
+        const receivable = await this.receivablesRepo.createTx(tx, {
+          organizationId,
+          contactId: input.contactId,
+          description: journalDescription,
+          amount: totalAmount,
+          dueDate,
+          sourceType: "sale",
+          sourceId: sale.id,
+          journalEntryId: entry.id,
+        });
 
-      const receivable = await this.receivablesRepo.createTx(tx, {
-        organizationId,
-        contactId: input.contactId,
-        description: journalDescription,
-        amount: totalAmount,
-        dueDate,
-        sourceType: "sale",
-        sourceId: sale.id,
-        journalEntryId: entry.id,
-      });
-
-      await this.repo.linkJournalAndReceivable(tx, organizationId, sale.id, entry.id, receivable.id);
-    });
+        await this.repo.linkJournalAndReceivable(tx, organizationId, sale.id, entry.id, receivable.id);
+      },
+    );
 
     const result = await this.repo.findById(organizationId, saleId);
-    return withDisplayCode(result!);
+    return { ...withDisplayCode(result!), correlationId };
   }
 
   // ── Preview de recorte de asignaciones (dryRun / pre-flight) ────────────────
@@ -563,7 +568,7 @@ export class SaleService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<SaleWithDetails> {
+  ): Promise<WithCorrelation<SaleWithDetails>> {
     const sale = await this.getById(organizationId, id);
     const status = sale.status as DocumentStatus;
 
@@ -611,21 +616,25 @@ export class SaleService {
 
     // Para ediciones en LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
-      const row = await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, sale.createdById ?? "unknown", organizationId, justification);
-        return tx.sale.update({
-          where: { id, organizationId },
-          data: {
-            ...(dataWithoutDetails.date !== undefined && { date: new Date(dataWithoutDetails.date) }),
-            ...(dataWithoutDetails.contactId !== undefined && { contactId: dataWithoutDetails.contactId }),
-            ...(dataWithoutDetails.description !== undefined && { description: dataWithoutDetails.description }),
-            ...(dataWithoutDetails.referenceNumber !== undefined && { referenceNumber: dataWithoutDetails.referenceNumber }),
-            ...(dataWithoutDetails.notes !== undefined && { notes: dataWithoutDetails.notes }),
-          },
-          include: { contact: true, period: true, createdBy: true, details: { orderBy: { order: "asc" } } },
-        });
-      });
-      return withDisplayCode(row as unknown as SaleWithDetails);
+      const { result, correlationId } = await withAuditTx(
+        this.repo,
+        { userId: sale.createdById ?? "unknown", organizationId, justification },
+        async (tx) => {
+          const row = await tx.sale.update({
+            where: { id, organizationId },
+            data: {
+              ...(dataWithoutDetails.date !== undefined && { date: new Date(dataWithoutDetails.date) }),
+              ...(dataWithoutDetails.contactId !== undefined && { contactId: dataWithoutDetails.contactId }),
+              ...(dataWithoutDetails.description !== undefined && { description: dataWithoutDetails.description }),
+              ...(dataWithoutDetails.referenceNumber !== undefined && { referenceNumber: dataWithoutDetails.referenceNumber }),
+              ...(dataWithoutDetails.notes !== undefined && { notes: dataWithoutDetails.notes }),
+            },
+            include: { contact: true, period: true, createdBy: true, details: { orderBy: { order: "asc" } } },
+          });
+          return row as unknown as SaleWithDetails;
+        },
+      );
+      return { ...withDisplayCode(result), correlationId };
     }
 
     const row = await this.repo.update(
@@ -634,7 +643,7 @@ export class SaleService {
       dataWithoutDetails,
       computedDetails,
     );
-    return withDisplayCode(row);
+    return { ...withDisplayCode(row), correlationId: crypto.randomUUID() };
   }
 
   // ── Editar una venta POSTED (revertir-modificar-reaplicar de forma atómica) ──
@@ -645,7 +654,7 @@ export class SaleService {
     input: UpdateSaleInput,
     computedDetails: ComputedSaleDetail[] | undefined,
     userId: string,
-  ): Promise<SaleWithDetails> {
+  ): Promise<WithCorrelation<SaleWithDetails>> {
     if (computedDetails !== undefined && computedDetails.length === 0) {
       throw new ValidationError(
         "La venta debe tener al menos una línea de detalle para ser contabilizada",
@@ -760,9 +769,10 @@ export class SaleService {
       });
     }
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       // a. Revertir los saldos del asiento contable anterior
       if (sale.journalEntryId) {
         const oldEntry = await tx.journalEntry.findFirst({
@@ -913,10 +923,13 @@ export class SaleService {
           new Prisma.Decimal(effectiveNewTotal),
         );
       }
-    });
+
+      return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, sale.id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Anular una venta (POSTED → VOIDED) ──
@@ -927,7 +940,7 @@ export class SaleService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<SaleWithDetails> {
+  ): Promise<WithCorrelation<SaleWithDetails>> {
     const sale = await this.getById(organizationId, id);
     const status = sale.status as DocumentStatus;
 
@@ -943,13 +956,17 @@ export class SaleService {
       );
     }
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId, justification);
-      await this.voidCascadeTx(tx, organizationId, sale, userId);
-    });
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId, justification },
+      async (tx) => {
+        await this.voidCascadeTx(tx, organizationId, sale, userId);
+        return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Eliminar físicamente una venta en DRAFT ──
@@ -975,13 +992,29 @@ export class SaleService {
   //   IvaBooksService → regenerateJournalForIvaChange → IvaBooksService.
   //
   //   GREP ENFORCEMENT: no debe existir `tx.ivaSalesBook.update` en este método.
+  //
+  // SIGNATURE (D2.d): discriminated union. externalTx + correlationId are
+  // paired — passing one without the other is a compile-time error.
 
   async regenerateJournalForIvaChange(
-    organizationId: string,
-    saleId: string,
-    userId: string,
-    externalTx?: Prisma.TransactionClient,
-  ): Promise<SaleWithDetails> {
+    opts:
+      | {
+          organizationId: string;
+          saleId: string;
+          userId: string;
+          externalTx: Prisma.TransactionClient;
+          correlationId: string;
+        }
+      | {
+          organizationId: string;
+          saleId: string;
+          userId: string;
+          externalTx?: undefined;
+          correlationId?: undefined;
+        },
+  ): Promise<WithCorrelation<SaleWithDetails>> {
+    const { organizationId, saleId, userId } = opts;
+    const externalTx = opts.externalTx;
     // 1. Cargar la venta actualizada (incluye ivaSalesBook fresco).
     //    Si hay externalTx, la lectura DEBE ir por esa tx para ver datos
     //    recién escritos en el mismo callback (Audit F #4/#5 — IvaBooks
@@ -1041,8 +1074,6 @@ export class SaleService {
     // 5. Ejecutar el body atómico. Si hay externalTx, usarla directamente
     //    (Prisma NO soporta tx interactivas anidadas). Si no, abrir una propia.
     const body = async (tx: Prisma.TransactionClient) => {
-      await setAuditContext(tx, userId, organizationId);
-
       // Re-chequear que el período sigue ABIERTO dentro de la tx (cierra race condition)
       await tx.fiscalPeriod.findFirstOrThrow({
         where: { id: sale.periodId, status: "OPEN" },
@@ -1086,14 +1117,24 @@ export class SaleService {
       await this.balancesService.applyPost(tx, updatedEntry);
     };
 
-    if (externalTx) {
-      await body(externalTx);
+    let resolvedCorrelationId: string;
+    if (opts.externalTx) {
+      // INV-1 runtime assertion (REQ-CORR.4 anti-scenario): the caller MUST
+      // have installed setAuditContext on the outer tx before delegating to us.
+      await assertAuditContextSet(opts.externalTx, "regenerateJournalForIvaChange (sale)");
+      resolvedCorrelationId = opts.correlationId;
+      await body(opts.externalTx);
     } else {
-      await this.repo.transaction(body);
+      resolvedCorrelationId = crypto.randomUUID();
+      const standaloneCid = resolvedCorrelationId;
+      await this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, userId, organizationId, undefined, standaloneCid);
+        await body(tx);
+      });
     }
 
-    const updated = await this.repo.findById(organizationId, saleId, externalTx);
-    return withDisplayCode(updated!);
+    const updated = await this.repo.findById(organizationId, saleId, opts.externalTx);
+    return { ...withDisplayCode(updated!), correlationId: resolvedCorrelationId };
   }
 
   // ── Interno: anulación en cascada dentro de una transacción ──

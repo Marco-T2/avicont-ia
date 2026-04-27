@@ -244,6 +244,16 @@ function lastArg(call: unknown[]): unknown {
   return call[call.length - 1];
 }
 
+/**
+ * Phase 2: regenerateJournalForIvaChange takes a single options object
+ * `{ organizationId, ...Id, userId, externalTx, correlationId }`.
+ * This helper extracts the externalTx for tx-threading assertions.
+ */
+function regenExternalTx(call: unknown[]): unknown {
+  const opts = call[0] as { externalTx?: unknown };
+  return opts?.externalTx;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -264,7 +274,7 @@ describe("IvaBooksService — transaction boundary (Audit F #4/#5)", () => {
 
     expect(h.purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledTimes(1);
     const regenCall = h.purchaseService.regenerateJournalForIvaChange.mock.calls.at(-1)!;
-    expect(lastArg(regenCall)).toBe(h.txClient);
+    expect(regenExternalTx(regenCall)).toBe(h.txClient);
   });
 
   // ── F-4-S2 ──────────────────────────────────────────────────────────────
@@ -280,7 +290,7 @@ describe("IvaBooksService — transaction boundary (Audit F #4/#5)", () => {
 
     expect(h.purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledTimes(1);
     const regenCall = h.purchaseService.regenerateJournalForIvaChange.mock.calls.at(-1)!;
-    expect(lastArg(regenCall)).toBe(h.txClient);
+    expect(regenExternalTx(regenCall)).toBe(h.txClient);
   });
 
   // ── F-4-S3 ──────────────────────────────────────────────────────────────
@@ -296,7 +306,7 @@ describe("IvaBooksService — transaction boundary (Audit F #4/#5)", () => {
 
     expect(h.purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledTimes(1);
     const regenCall = h.purchaseService.regenerateJournalForIvaChange.mock.calls.at(-1)!;
-    expect(lastArg(regenCall)).toBe(h.txClient);
+    expect(regenExternalTx(regenCall)).toBe(h.txClient);
   });
 
   // ── F-4-S4 ──────────────────────────────────────────────────────────────
@@ -314,7 +324,7 @@ describe("IvaBooksService — transaction boundary (Audit F #4/#5)", () => {
 
     expect(h.saleService.regenerateJournalForIvaChange).toHaveBeenCalledTimes(1);
     const regenCall = h.saleService.regenerateJournalForIvaChange.mock.calls.at(-1)!;
-    expect(lastArg(regenCall)).toBe(h.txClient);
+    expect(regenExternalTx(regenCall)).toBe(h.txClient);
   });
 
   // ── F-4-S5 ──────────────────────────────────────────────────────────────

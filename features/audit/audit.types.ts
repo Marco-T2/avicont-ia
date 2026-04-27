@@ -206,6 +206,46 @@ export function buildGroupSummary(group: AuditGroup): AuditGroupSummary {
   };
 }
 
+// ── buildTimelineSummary — correlation group header string (D3.c) ─────────────
+
+/**
+ * Derives a Spanish one-liner summary for a correlation group, e.g.
+ * "1 cabecera modificada · 3 líneas creadas · 2 líneas eliminadas".
+ *
+ * Used by `groupByCorrelation` in `audit-detail-timeline.tsx` to populate the
+ * card header for multi-event groups (REQ-CORR.5, D3.c).
+ */
+export function buildTimelineSummary(events: AuditEvent[]): string {
+  const counts = { created: 0, updated: 0, deleted: 0, header: 0 };
+  for (const ev of events) {
+    if (isHeaderEvent(ev.entityType)) {
+      counts.header += 1;
+    } else if (ev.action === "CREATE") {
+      counts.created += 1;
+    } else if (ev.action === "DELETE") {
+      counts.deleted += 1;
+    } else {
+      // UPDATE, STATUS_CHANGE → modified
+      counts.updated += 1;
+    }
+  }
+  const parts: string[] = [];
+  if (counts.header > 0) parts.push(`${counts.header} cabecera modificada`);
+  if (counts.created > 0)
+    parts.push(
+      `${counts.created} ${counts.created === 1 ? "línea creada" : "líneas creadas"}`,
+    );
+  if (counts.updated > 0)
+    parts.push(
+      `${counts.updated} ${counts.updated === 1 ? "línea modificada" : "líneas modificadas"}`,
+    );
+  if (counts.deleted > 0)
+    parts.push(
+      `${counts.deleted} ${counts.deleted === 1 ? "línea eliminada" : "líneas eliminadas"}`,
+    );
+  return parts.join(" · ");
+}
+
 // ── getVoucherDetailUrl — mapping CTA (Decision 6) ────────────────────────────
 
 /**

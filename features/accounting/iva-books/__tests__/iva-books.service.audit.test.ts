@@ -224,10 +224,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     );
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -246,10 +251,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     });
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -268,10 +278,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     await service.voidPurchase(ORG_ID, USER_ID, "purchase-book-id");
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -306,10 +321,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     );
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -328,10 +348,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     });
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -348,10 +373,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     await service.voidSale(ORG_ID, USER_ID, "sale-book-id");
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -370,10 +400,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     await service.reactivateSale(ORG_ID, USER_ID, "sale-book-id");
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];
@@ -392,10 +427,15 @@ describe("IvaBooksService — Phase 1 setAuditContext coverage", () => {
     await service.reactivatePurchase(ORG_ID, USER_ID, "purchase-book-id");
 
     expect(setAuditContextSpy).toHaveBeenCalledTimes(1);
+    // Phase 2: withAuditTx invokes setAuditContext with 5 args
+    // (tx, userId, orgId, justification|undefined, correlationId).
+    // Phase 1 contract — userId + orgId in slots 2/3 — remains intact.
     expect(setAuditContextSpy).toHaveBeenCalledWith(
       expect.any(Object),
       USER_ID,
       ORG_ID,
+      undefined,
+      expect.any(String),
     );
 
     const auditOrder = setAuditContextSpy.mock.invocationCallOrder[0];

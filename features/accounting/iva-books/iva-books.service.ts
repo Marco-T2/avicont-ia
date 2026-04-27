@@ -1,7 +1,7 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { ValidationError, FISCAL_PERIOD_CLOSED } from "@/features/shared/errors";
-import { setAuditContext } from "@/features/shared/audit-context";
+import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { calcTotales } from "./iva-calc.utils";
 import { IvaBooksRepository, type ListIvaBooksFilter } from "./iva-books.repository";
 import type {
@@ -83,10 +83,21 @@ interface SaleServiceForBridge {
     period: { id: string; status: string };
   }>;
   regenerateJournalForIvaChange(
-    organizationId: string,
-    saleId: string,
-    userId: string,
-    tx?: Prisma.TransactionClient,
+    opts:
+      | {
+          organizationId: string;
+          saleId: string;
+          userId: string;
+          externalTx: Prisma.TransactionClient;
+          correlationId: string;
+        }
+      | {
+          organizationId: string;
+          saleId: string;
+          userId: string;
+          externalTx?: undefined;
+          correlationId?: undefined;
+        },
   ): Promise<unknown>;
 }
 
@@ -105,10 +116,21 @@ interface PurchaseServiceForBridge {
     period: { id: string; status: string };
   }>;
   regenerateJournalForIvaChange(
-    organizationId: string,
-    purchaseId: string,
-    userId: string,
-    tx?: Prisma.TransactionClient,
+    opts:
+      | {
+          organizationId: string;
+          purchaseId: string;
+          userId: string;
+          externalTx: Prisma.TransactionClient;
+          correlationId: string;
+        }
+      | {
+          organizationId: string;
+          purchaseId: string;
+          userId: string;
+          externalTx?: undefined;
+          correlationId?: undefined;
+        },
   ): Promise<unknown>;
 }
 
@@ -159,7 +181,8 @@ export class IvaBooksService {
     entityId: string,
     orgId: string,
     userId: string,
-    tx?: Prisma.TransactionClient,
+    tx: Prisma.TransactionClient,
+    correlationId: string,
   ): Promise<void> {
     if (entityType === "sale" && this.saleService) {
       const sale = await this.saleService.getById(orgId, entityId, tx);
@@ -172,7 +195,13 @@ export class IvaBooksService {
             FISCAL_PERIOD_CLOSED,
           );
         }
-        await this.saleService.regenerateJournalForIvaChange(orgId, entityId, userId, tx);
+        await this.saleService.regenerateJournalForIvaChange({
+          organizationId: orgId,
+          saleId: entityId,
+          userId,
+          externalTx: tx,
+          correlationId,
+        });
       }
     } else if (entityType === "purchase" && this.purchaseService) {
       const purchase = await this.purchaseService.getById(orgId, entityId, tx);
@@ -185,7 +214,13 @@ export class IvaBooksService {
             FISCAL_PERIOD_CLOSED,
           );
         }
-        await this.purchaseService.regenerateJournalForIvaChange(orgId, entityId, userId, tx);
+        await this.purchaseService.regenerateJournalForIvaChange({
+          organizationId: orgId,
+          purchaseId: entityId,
+          userId,
+          externalTx: tx,
+          correlationId,
+        });
       }
     }
   }
@@ -196,7 +231,7 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     input: CreatePurchaseInput,
-  ): Promise<IvaPurchaseBookDTO> {
+  ): Promise<WithCorrelation<IvaPurchaseBookDTO>> {
 
     // SPEC-6: Si hay purchaseId y período CERRADO → lanzar antes de persistir.
     // Si POSTED + OPEN → regenerar después de crear. Todo el chequeo ocurre en maybeRegenerateJournal.
@@ -219,36 +254,48 @@ export class IvaBooksService {
       // falla, la escritura IVA se revierte — audit trail consistente.
       const purchaseId = input.purchaseId;
       const purchaseServiceRef = this.purchaseService;
-      return await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, userId, orgId);
-        const result = await this.repo.createPurchase(
-          orgId,
-          { ...input, ...computed },
-          tx,
-        );
-
-        // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
-        if (purchase.status === "POSTED" && periodStatus === "OPEN") {
-          await purchaseServiceRef.regenerateJournalForIvaChange(
+      const { result, correlationId } = await withAuditTx(
+        this.repo,
+        { userId, organizationId: orgId },
+        async (tx, cid) => {
+          const created = await this.repo.createPurchase(
             orgId,
-            purchaseId,
-            userId,
+            { ...input, ...computed },
             tx,
           );
-        }
 
-        return result;
-      });
+          // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
+          if (purchase.status === "POSTED" && periodStatus === "OPEN") {
+            await purchaseServiceRef.regenerateJournalForIvaChange({
+              organizationId: orgId,
+              purchaseId,
+              userId,
+              externalTx: tx,
+              correlationId: cid,
+            });
+          }
+
+          return created;
+        },
+      );
+      return { ...result, correlationId };
     }
 
     const computed = computeIvaFields(input);
 
-    const result = await this.repo.createPurchase(orgId, {
-      ...input,
-      ...computed,
-    });
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx) => {
+        return this.repo.createPurchase(
+          orgId,
+          { ...input, ...computed },
+          tx,
+        );
+      },
+    );
 
-    return result;
+    return { ...result, correlationId };
   }
 
   async findPurchaseById(orgId: string, id: string): Promise<IvaPurchaseBookDTO | null> {
@@ -267,7 +314,7 @@ export class IvaBooksService {
     userId: string,
     id: string,
     input: UpdatePurchaseInput,
-  ): Promise<IvaPurchaseBookDTO> {
+  ): Promise<WithCorrelation<IvaPurchaseBookDTO>> {
 
     // Si el update incluye algún campo monetario, recomputamos IVA con la base actual + cambios
     const hasMonetaryChange =
@@ -283,66 +330,74 @@ export class IvaBooksService {
       input.importeGiftCard !== undefined;
 
     // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
-    return await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, orgId);
-      let result: IvaPurchaseBookDTO;
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx, cid) => {
+        let inner: IvaPurchaseBookDTO;
 
-      if (hasMonetaryChange) {
-        // Obtener los valores actuales para combinar con el patch
-        const current = await this.repo.findPurchaseById(orgId, id);
+        if (hasMonetaryChange) {
+          // Obtener los valores actuales para combinar con el patch
+          const current = await this.repo.findPurchaseById(orgId, id);
 
-        const D = (v: string | number) => new Prisma.Decimal(String(v));
-        const ZERO = D("0");
+          const D = (v: string | number) => new Prisma.Decimal(String(v));
+          const ZERO = D("0");
 
-        const merged = {
-          importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
-          importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
-          importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
-          importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
-          tasas: input.tasas ?? current?.tasas ?? ZERO,
-          otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
-          exentos: input.exentos ?? current?.exentos ?? ZERO,
-          tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
-          codigoDescuentoAdicional:
-            input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
-          importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
-        };
+          const merged = {
+            importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
+            importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
+            importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
+            importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
+            tasas: input.tasas ?? current?.tasas ?? ZERO,
+            otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
+            exentos: input.exentos ?? current?.exentos ?? ZERO,
+            tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
+            codigoDescuentoAdicional:
+              input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
+            importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
+          };
 
-        const computed = computeIvaFields(merged);
-        result = await this.repo.updatePurchase(orgId, id, { ...input, ...computed }, tx);
-      } else {
-        result = await this.repo.updatePurchase(orgId, id, input, tx);
-      }
+          const computed = computeIvaFields(merged);
+          inner = await this.repo.updatePurchase(orgId, id, { ...input, ...computed }, tx);
+        } else {
+          inner = await this.repo.updatePurchase(orgId, id, input, tx);
+        }
 
-      // SPEC-6: bridge regeneración si hay purchaseId y userId
-      const purchaseId = result.purchaseId;
-      if (purchaseId && userId) {
-        await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx);
-      }
+        // SPEC-6: bridge regeneración si hay purchaseId y userId
+        const purchaseId = inner.purchaseId;
+        if (purchaseId && userId) {
+          await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx, cid);
+        }
 
-      return result;
-    });
+        return inner;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   async voidPurchase(
     orgId: string,
     userId: string,
     id: string,
-  ): Promise<IvaPurchaseBookDTO> {
+  ): Promise<WithCorrelation<IvaPurchaseBookDTO>> {
 
     // Audit F #4/#5: void IVA + regen journal bajo la misma tx.
-    return await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, orgId);
-      const result = await this.repo.voidPurchase(orgId, id, tx);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx, cid) => {
+        const inner = await this.repo.voidPurchase(orgId, id, tx);
 
-      // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
-      const purchaseId = result.purchaseId;
-      if (purchaseId && userId) {
-        await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx);
-      }
+        // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
+        const purchaseId = inner.purchaseId;
+        if (purchaseId && userId) {
+          await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx, cid);
+        }
 
-      return result;
-    });
+        return inner;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   // ── Ventas ─────────────────────────────────────────────────────────────────
@@ -351,7 +406,7 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     input: CreateSaleInput,
-  ): Promise<IvaSalesBookDTO> {
+  ): Promise<WithCorrelation<IvaSalesBookDTO>> {
 
     // SPEC-6: Pre-check de período cerrado + regeneración post-create (un solo getById).
     // NOTA (Audit F #4/#5): el pre-check es READ-ONLY y se mantiene FUERA de la tx
@@ -371,36 +426,48 @@ export class IvaBooksService {
       // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
       const saleId = input.saleId;
       const saleServiceRef = this.saleService;
-      return await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, userId, orgId);
-        const result = await this.repo.createSale(
-          orgId,
-          { ...input, ...computed },
-          tx,
-        );
-
-        // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
-        if (sale.status === "POSTED" && periodStatus === "OPEN") {
-          await saleServiceRef.regenerateJournalForIvaChange(
+      const { result, correlationId } = await withAuditTx(
+        this.repo,
+        { userId, organizationId: orgId },
+        async (tx, cid) => {
+          const created = await this.repo.createSale(
             orgId,
-            saleId,
-            userId,
+            { ...input, ...computed },
             tx,
           );
-        }
 
-        return result;
-      });
+          // Regenerar si POSTED + OPEN (ya validamos que no es CLOSED arriba)
+          if (sale.status === "POSTED" && periodStatus === "OPEN") {
+            await saleServiceRef.regenerateJournalForIvaChange({
+              organizationId: orgId,
+              saleId,
+              userId,
+              externalTx: tx,
+              correlationId: cid,
+            });
+          }
+
+          return created;
+        },
+      );
+      return { ...result, correlationId };
     }
 
     const computed = computeIvaFields(input);
 
-    const result = await this.repo.createSale(orgId, {
-      ...input,
-      ...computed,
-    });
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx) => {
+        return this.repo.createSale(
+          orgId,
+          { ...input, ...computed },
+          tx,
+        );
+      },
+    );
 
-    return result;
+    return { ...result, correlationId };
   }
 
   async findSaleById(orgId: string, id: string): Promise<IvaSalesBookDTO | null> {
@@ -416,7 +483,7 @@ export class IvaBooksService {
     userId: string,
     id: string,
     input: UpdateSaleInput,
-  ): Promise<IvaSalesBookDTO> {
+  ): Promise<WithCorrelation<IvaSalesBookDTO>> {
 
     const hasMonetaryChange =
       input.importeTotal !== undefined ||
@@ -431,44 +498,48 @@ export class IvaBooksService {
       input.importeGiftCard !== undefined;
 
     // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
-    return await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, orgId);
-      let result: IvaSalesBookDTO;
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx, cid) => {
+        let inner: IvaSalesBookDTO;
 
-      if (hasMonetaryChange) {
-        const current = await this.repo.findSaleById(orgId, id);
+        if (hasMonetaryChange) {
+          const current = await this.repo.findSaleById(orgId, id);
 
-        const D = (v: string | number) => new Prisma.Decimal(String(v));
-        const ZERO = D("0");
+          const D = (v: string | number) => new Prisma.Decimal(String(v));
+          const ZERO = D("0");
 
-        const merged = {
-          importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
-          importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
-          importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
-          importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
-          tasas: input.tasas ?? current?.tasas ?? ZERO,
-          otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
-          exentos: input.exentos ?? current?.exentos ?? ZERO,
-          tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
-          codigoDescuentoAdicional:
-            input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
-          importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
-        };
+          const merged = {
+            importeTotal: input.importeTotal ?? current?.importeTotal ?? ZERO,
+            importeIce: input.importeIce ?? current?.importeIce ?? ZERO,
+            importeIehd: input.importeIehd ?? current?.importeIehd ?? ZERO,
+            importeIpj: input.importeIpj ?? current?.importeIpj ?? ZERO,
+            tasas: input.tasas ?? current?.tasas ?? ZERO,
+            otrosNoSujetos: input.otrosNoSujetos ?? current?.otrosNoSujetos ?? ZERO,
+            exentos: input.exentos ?? current?.exentos ?? ZERO,
+            tasaCero: input.tasaCero ?? current?.tasaCero ?? ZERO,
+            codigoDescuentoAdicional:
+              input.codigoDescuentoAdicional ?? current?.codigoDescuentoAdicional ?? ZERO,
+            importeGiftCard: input.importeGiftCard ?? current?.importeGiftCard ?? ZERO,
+          };
 
-        const computed = computeIvaFields(merged);
-        result = await this.repo.updateSale(orgId, id, { ...input, ...computed }, tx);
-      } else {
-        result = await this.repo.updateSale(orgId, id, input, tx);
-      }
+          const computed = computeIvaFields(merged);
+          inner = await this.repo.updateSale(orgId, id, { ...input, ...computed }, tx);
+        } else {
+          inner = await this.repo.updateSale(orgId, id, input, tx);
+        }
 
-      // SPEC-6: bridge regeneración si hay saleId y userId
-      const saleId = result.saleId;
-      if (saleId && userId) {
-        await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx);
-      }
+        // SPEC-6: bridge regeneración si hay saleId y userId
+        const saleId = inner.saleId;
+        if (saleId && userId) {
+          await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx, cid);
+        }
 
-      return result;
-    });
+        return inner;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   // ── Cascade desde SaleService.editPosted ─────────────────────────────────
@@ -591,63 +662,75 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     id: string,
-  ): Promise<IvaSalesBookDTO> {
+  ): Promise<WithCorrelation<IvaSalesBookDTO>> {
 
     // SOLO status = VOIDED — estadoSIN NO se toca (eje ortogonal, design decision)
     // Audit F #4/#5: void IVA + regen journal bajo la misma tx.
-    return await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, orgId);
-      const result = await this.repo.voidSale(orgId, id, tx);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx, cid) => {
+        const inner = await this.repo.voidSale(orgId, id, tx);
 
-      // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
-      const saleId = result.saleId;
-      if (saleId && userId) {
-        await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx);
-      }
+        // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
+        const saleId = inner.saleId;
+        if (saleId && userId) {
+          await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx, cid);
+        }
 
-      return result;
-    });
+        return inner;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   async reactivateSale(
     orgId: string,
     userId: string,
     id: string,
-  ): Promise<IvaSalesBookDTO> {
+  ): Promise<WithCorrelation<IvaSalesBookDTO>> {
     // status = ACTIVE — estadoSIN NO se toca (eje ortogonal, design decision)
     // Audit F #4/#5: reactivate IVA + regen journal bajo la misma tx.
-    return await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, orgId);
-      const result = await this.repo.reactivateSale(orgId, id, tx);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx, cid) => {
+        const inner = await this.repo.reactivateSale(orgId, id, tx);
 
-      // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
-      const saleId = result.saleId;
-      if (saleId && userId) {
-        await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx);
-      }
+        // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
+        const saleId = inner.saleId;
+        if (saleId && userId) {
+          await this.maybeRegenerateJournal("sale", saleId, orgId, userId, tx, cid);
+        }
 
-      return result;
-    });
+        return inner;
+      },
+    );
+    return { ...result, correlationId };
   }
 
   async reactivatePurchase(
     orgId: string,
     userId: string,
     id: string,
-  ): Promise<IvaPurchaseBookDTO> {
+  ): Promise<WithCorrelation<IvaPurchaseBookDTO>> {
     // status = ACTIVE — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
     // Audit F #4/#5: reactivate IVA + regen journal bajo la misma tx.
-    return await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, orgId);
-      const result = await this.repo.reactivatePurchase(orgId, id, tx);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId: orgId },
+      async (tx, cid) => {
+        const inner = await this.repo.reactivatePurchase(orgId, id, tx);
 
-      // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
-      const purchaseId = result.purchaseId;
-      if (purchaseId && userId) {
-        await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx);
-      }
+        // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
+        const purchaseId = inner.purchaseId;
+        if (purchaseId && userId) {
+          await this.maybeRegenerateJournal("purchase", purchaseId, orgId, userId, tx, cid);
+        }
 
-      return result;
-    });
+        return inner;
+      },
+    );
+    return { ...result, correlationId };
   }
 }

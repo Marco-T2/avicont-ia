@@ -66,9 +66,13 @@ function makePurchase(overrides: Record<string, unknown> = {}) {
 
 function makeHarness() {
   // Sentinel tx client — identity-compared in assertions.
+  // assertAuditContextSet uses $queryRaw to read app.current_user_id; the mock
+  // returns a non-empty user_id so the runtime assertion passes (these tests
+  // focus on tx-threading, not the INV-1 guard itself).
   const externalTx = {
     __externalTx: true,
     $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+    $queryRaw: vi.fn().mockResolvedValue([{ user_id: USER_ID }]),
     fiscalPeriod: { findFirstOrThrow: vi.fn().mockResolvedValue({ id: PERIOD_ID, status: "OPEN" }) },
     journalEntry: {
       findFirst: vi.fn().mockResolvedValue({
@@ -82,6 +86,7 @@ function makeHarness() {
   const internalTx = {
     __internalTx: true,
     $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+    $queryRaw: vi.fn().mockResolvedValue([{ user_id: USER_ID }]),
     fiscalPeriod: { findFirstOrThrow: vi.fn().mockResolvedValue({ id: PERIOD_ID, status: "OPEN" }) },
     journalEntry: {
       findFirst: vi.fn().mockResolvedValue({
@@ -156,15 +161,13 @@ describe("PurchaseService.regenerateJournalForIvaChange — tx threading (Audit 
   it("F-4-S6 when caller passes tx, repo.transaction is NOT called (no nested tx)", async () => {
     const h = makeHarness();
 
-    // Signature must accept optional tx as 4th param (GREEN goal).
-    await (h.service as unknown as {
-      regenerateJournalForIvaChange: (
-        org: string,
-        id: string,
-        user: string,
-        tx?: Prisma.TransactionClient,
-      ) => Promise<unknown>;
-    }).regenerateJournalForIvaChange(ORG_ID, PURCHASE_ID, USER_ID, h.externalTx);
+    await h.service.regenerateJournalForIvaChange({
+      organizationId: ORG_ID,
+      purchaseId: PURCHASE_ID,
+      userId: USER_ID,
+      externalTx: h.externalTx,
+      correlationId: "00000000-0000-4000-8000-000000000001",
+    });
 
     // CRITICAL: Prisma does not support nested interactive transactions.
     expect(h.repo.transaction).toHaveBeenCalledTimes(0);
@@ -179,7 +182,11 @@ describe("PurchaseService.regenerateJournalForIvaChange — tx threading (Audit 
   it("F-4-S7 when caller omits tx, repo.transaction is called exactly once (backwards-compat)", async () => {
     const h = makeHarness();
 
-    await h.service.regenerateJournalForIvaChange(ORG_ID, PURCHASE_ID, USER_ID);
+    await h.service.regenerateJournalForIvaChange({
+      organizationId: ORG_ID,
+      purchaseId: PURCHASE_ID,
+      userId: USER_ID,
+    });
 
     expect(h.repo.transaction).toHaveBeenCalledTimes(1);
     // Internal tx is used for the journal write:

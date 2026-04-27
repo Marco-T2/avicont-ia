@@ -38,3 +38,31 @@ export async function withAuditTx<R>(
   }, options);
   return { result, correlationId };
 }
+
+/**
+ * Runtime guard for INV-1: asserts that `app.current_user_id` is set on the
+ * given transaction. Methods that accept an `externalTx` from a caller MUST
+ * call this BEFORE any audited mutation — it is the canonical detection of
+ * the anti-scenario described in REQ-CORR.4 (caller forgot to install audit
+ * context on the outer tx before delegating).
+ *
+ * The error message identifies the caller-side fix path explicitly so that
+ * the failure becomes self-explanatory in production logs.
+ */
+export async function assertAuditContextSet(
+  tx: Prisma.TransactionClient,
+  callerName: string,
+): Promise<void> {
+  const result = await tx.$queryRaw<Array<{ user_id: string | null }>>`
+    SELECT current_setting('app.current_user_id', true) AS user_id
+  `;
+  const userId = result[0]?.user_id;
+  if (!userId || userId === "") {
+    throw new Error(
+      `INV-1 violation: ${callerName} invoked with externalTx but setAuditContext ` +
+        "was not called on the outer transaction. " +
+        "Caller MUST call setAuditContext(externalTx, userId, organizationId, justification, correlationId) " +
+        "before delegating to this method.",
+    );
+  }
+}

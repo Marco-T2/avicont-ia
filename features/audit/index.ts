@@ -23,6 +23,7 @@ export {
   ENTITY_TYPE_LABELS,
   STATUS_BADGE_LABELS,
   buildGroupSummary,
+  buildTimelineSummary,
   getVoucherDetailUrl,
   isHeaderEvent,
 } from "./audit.types";

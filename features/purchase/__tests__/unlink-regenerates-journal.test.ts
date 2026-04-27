@@ -124,9 +124,13 @@ describe("Regression T8.2 — voidPurchase service bridge triggers journal regen
       voidPurchase: vi.fn().mockResolvedValue(makePurchaseDTO({ status: "VOIDED" })),
       findPurchaseById: vi.fn().mockResolvedValue(makePurchaseDTO()),
       // Audit F #4/#5: voidPurchase now wraps in repo.transaction.
+      // Phase 2 (correlation-id-coverage): setAuditContext (via withAuditTx)
+      // invokes tx.$executeRawUnsafe — stub it here.
       transaction: vi
         .fn()
-        .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+        .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+          cb({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) }),
+        ),
     } as unknown as IvaBooksRepository;
 
     const purchaseService = {
@@ -145,10 +149,13 @@ describe("Regression T8.2 — voidPurchase service bridge triggers journal regen
 
     expect(purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledTimes(1);
     expect(purchaseService.regenerateJournalForIvaChange).toHaveBeenCalledWith(
-      ORG_ID,
-      PURCHASE_ID,
-      USER_ID,
-      expect.anything(),
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        purchaseId: PURCHASE_ID,
+        userId: USER_ID,
+        externalTx: expect.anything(),
+        correlationId: expect.any(String),
+      }),
     );
   });
 });

@@ -12,6 +12,7 @@ import {
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
 } from "@/features/shared/errors";
 import { setAuditContext } from "@/features/shared/audit-context";
+import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { PaymentRepository } from "./payment.repository";
 import { OrgSettingsService } from "@/features/org-settings/server";
 import {
@@ -107,7 +108,7 @@ export class PaymentService {
     organizationId: string,
     input: CreatePaymentInput,
     userId: string,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<WithCorrelation<PaymentWithRelations>> {
     // 1. Validar asignaciones
     validateAllocations(input.allocations, input.amount);
 
@@ -120,9 +121,10 @@ export class PaymentService {
 
     let paymentId = "";
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       // Resolver dirección dentro de la transacción (puede necesitar consultar Contact.type)
       const direction = await resolveDirection(
         tx,
@@ -264,11 +266,13 @@ export class PaymentService {
         );
       }
 
-    });
+      return undefined;
+      },
+    );
 
     const result = await this.repo.findById(organizationId, paymentId);
     if (!result) throw new NotFoundError("Pago");
-    return result;
+    return { ...result, correlationId };
   }
 
   // ── Actualizar un pago en DRAFT (o LOCKED con justificación, o POSTED) ──
@@ -280,7 +284,7 @@ export class PaymentService {
     role?: string,
     justification?: string,
     userId?: string,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<WithCorrelation<PaymentWithRelations>> {
     const payment = await this.getById(organizationId, id);
     const status = payment.status as DocumentStatus;
 
@@ -314,13 +318,16 @@ export class PaymentService {
 
     // Para ediciones LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
-      return this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, payment.createdById ?? "unknown", organizationId, justification);
-        return this.repo.updateTx(tx, organizationId, id, input);
-      });
+      const { result, correlationId } = await withAuditTx(
+        this.repo,
+        { userId: payment.createdById ?? "unknown", organizationId, justification },
+        async (tx) => this.repo.updateTx(tx, organizationId, id, input),
+      );
+      return { ...result, correlationId };
     }
 
-    return this.repo.update(organizationId, id, input);
+    const row = await this.repo.update(organizationId, id, input);
+    return { ...row, correlationId: crypto.randomUUID() };
   }
 
   // ── Eliminar un pago en DRAFT ──
@@ -337,7 +344,7 @@ export class PaymentService {
     organizationId: string,
     id: string,
     userId: string,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<WithCorrelation<PaymentWithRelations>> {
     const payment = await this.getById(organizationId, id);
 
     // Validar la transición del ciclo de vida
@@ -353,8 +360,10 @@ export class PaymentService {
     // Obtener configuración de la organización para los códigos de cuenta (fuera de la transacción — solo lectura)
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       // Resolver dirección dentro de la transacción (puede necesitar consultar Contact.type)
       const direction = await resolveDirection(
         tx,
@@ -484,12 +493,15 @@ export class PaymentService {
           );
         }
       }
-    });
+
+      return undefined;
+      },
+    );
 
     // Volver a obtener con todos los vínculos poblados
     const updated = await this.repo.findById(organizationId, id);
     if (!updated) throw new NotFoundError("Pago");
-    return updated;
+    return { ...updated, correlationId };
   }
 
   // ── Anular un pago (POSTED → VOIDED) ──
@@ -500,7 +512,7 @@ export class PaymentService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<WithCorrelation<PaymentWithRelations>> {
     const payment = await this.getById(organizationId, id);
     const status = payment.status as DocumentStatus;
 
@@ -514,9 +526,10 @@ export class PaymentService {
       validateLockedEdit(status, role, period.status as "OPEN" | "CLOSED", justification);
     }
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId, justification);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId, justification },
+      async (tx) => {
       // 1. Actualizar estado del pago a VOIDED
       await this.repo.updateStatusTx(tx, organizationId, id, "VOIDED");
 
@@ -582,11 +595,13 @@ export class PaymentService {
         }
       }
 
-    });
+      return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, id);
     if (!updated) throw new NotFoundError("Pago");
-    return updated;
+    return { ...updated, correlationId };
   }
 
   // ── Actualizar asignaciones en un pago POSTED/LOCKED (asiento contable sin cambios) ──
@@ -598,7 +613,7 @@ export class PaymentService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<WithCorrelation<PaymentWithRelations>> {
     const payment = await this.getById(organizationId, id);
     const status = payment.status as DocumentStatus;
 
@@ -620,9 +635,10 @@ export class PaymentService {
     // Validar nuevas asignaciones contra el monto del pago
     validateAllocations(newAllocations, payment.amount);
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId, justification);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId, justification },
+      async (tx) => {
       // 1. Revertir asignaciones antiguas — restaurar saldos CxC/CxP
       for (const alloc of payment.allocations) {
         if (alloc.receivableId) {
@@ -747,11 +763,13 @@ export class PaymentService {
       }
 
       // 6. El asiento contable NO se modifica — intencional según especificación (REQ-5.4)
-    });
+      return undefined;
+      },
+    );
 
     const result = await this.repo.findById(organizationId, id);
     if (!result) throw new NotFoundError("Pago");
-    return result;
+    return { ...result, correlationId };
   }
 
   // ── Revertir asignaciones (restaurar saldos CxC/CxP) ──
@@ -837,7 +855,7 @@ export class PaymentService {
     payment: PaymentWithRelations,
     input: UpdatePaymentInput,
     userId: string,
-  ): Promise<PaymentWithRelations> {
+  ): Promise<WithCorrelation<PaymentWithRelations>> {
     const newAmount = input.amount ?? payment.amount;
     const oldAmount = payment.amount;
 
@@ -860,10 +878,10 @@ export class PaymentService {
     // Pre-obtener configuración para reconstrucción del asiento contable
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
-    await this.repo.transaction(async (tx) => {
-      // a. Establecer contexto de auditoría
-      await setAuditContext(tx, userId, organizationId);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       // b. Revertir asignaciones antiguas
       await this.reverseAllocations(tx, organizationId, payment.allocations);
 
@@ -1051,9 +1069,11 @@ export class PaymentService {
           })),
         );
       }
-    });
+      return undefined;
+      },
+    );
 
-    return (await this.repo.findById(organizationId, payment.id))!;
+    return { ...(await this.repo.findById(organizationId, payment.id))!, correlationId };
   }
 
   // ── Aplicar crédito de un pago existente a una factura (helper Modo B) ──
@@ -1221,7 +1241,7 @@ export class PaymentService {
     userId: string,
     contactId: string,
     creditSources: CreditAllocationSource[],
-  ): Promise<void> {
+  ): Promise<{ correlationId: string }> {
     // Validar que todos los pagos origen pertenezcan al mismo contacto
     for (const source of creditSources) {
       const payment = await this.repo.findById(organizationId, source.sourcePaymentId);
@@ -1234,18 +1254,24 @@ export class PaymentService {
       }
     }
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-      for (const source of creditSources) {
-        await this.applyCreditToInvoice(
-          tx,
-          organizationId,
-          source.sourcePaymentId,
-          source.receivableId,
-          source.amount,
-        );
-      }
-    });
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
+        for (const source of creditSources) {
+          await this.applyCreditToInvoice(
+            tx,
+            organizationId,
+            source.sourcePaymentId,
+            source.receivableId,
+            source.amount,
+          );
+        }
+        return undefined;
+      },
+    );
+
+    return { correlationId };
   }
 
   // ── Obtener resumen del saldo del cliente ──

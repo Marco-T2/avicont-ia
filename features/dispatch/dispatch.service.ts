@@ -10,6 +10,7 @@ import {
   INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
 import { setAuditContext } from "@/features/shared/audit-context";
+import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
 import type { ComputedDetail, BcSummary } from "./dispatch.repository";
@@ -259,7 +260,7 @@ export class DispatchService {
     organizationId: string,
     input: CreateDispatchInput,
     userId: string,
-  ): Promise<DispatchWithDetails> {
+  ): Promise<WithCorrelation<DispatchWithDetails>> {
     // 1. Validar que el contacto exista y sea de tipo CLIENTE
     const contact = await this.contactsService.getActiveById(organizationId, input.contactId);
     if (contact.type !== "CLIENTE") {
@@ -324,8 +325,10 @@ export class DispatchService {
     // 7. Transacción atómica única
     let dispatchId = "";
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
 
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
@@ -399,10 +402,13 @@ export class DispatchService {
         entry.id,
         receivable.id,
       );
-    });
+
+      return undefined;
+      },
+    );
 
     const result = await this.repo.findById(organizationId, dispatchId);
-    return withDisplayCode(result!);
+    return { ...withDisplayCode(result!), correlationId };
   }
 
   // ── Actualizar un despacho DRAFT (o LOCKED con justificación) ──
@@ -414,7 +420,7 @@ export class DispatchService {
     role?: string,
     justification?: string,
     userId?: string,
-  ): Promise<DispatchWithDetails> {
+  ): Promise<WithCorrelation<DispatchWithDetails>> {
     const dispatch = await this.getById(organizationId, id);
     const status = dispatch.status as DocumentStatus;
 
@@ -507,18 +513,19 @@ export class DispatchService {
 
     // Para ediciones LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
-      const row = await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, dispatch.createdById ?? "unknown", organizationId, justification);
-        return this.repo.updateTx(
+      const { result, correlationId } = await withAuditTx(
+        this.repo,
+        { userId: dispatch.createdById ?? "unknown", organizationId, justification },
+        async (tx) => this.repo.updateTx(
           tx,
           organizationId,
           id,
           dataWithoutDetails,
           computedDetails,
           bcSummary,
-        );
-      });
-      return withDisplayCode(row);
+        ),
+      );
+      return { ...withDisplayCode(result), correlationId };
     }
 
     const row = await this.repo.update(
@@ -528,7 +535,7 @@ export class DispatchService {
       computedDetails,
       bcSummary,
     );
-    return withDisplayCode(row);
+    return { ...withDisplayCode(row), correlationId: crypto.randomUUID() };
   }
 
   // ── Actualizar un despacho POSTED (reversión-modificación-reaplicación atómica) ──
@@ -540,7 +547,7 @@ export class DispatchService {
     computedDetails: ComputedDetail[] | undefined,
     bcSummary: BcSummary | undefined,
     userId: string,
-  ): Promise<DispatchWithDetails> {
+  ): Promise<WithCorrelation<DispatchWithDetails>> {
     // 1. Validar que haya al menos 1 línea de detalle si se están cambiando los detalles
     if (computedDetails !== undefined && computedDetails.length === 0) {
       throw new ValidationError(
@@ -607,9 +614,10 @@ export class DispatchService {
     }
 
     // 5. Ejecutar transacción atómica
-    await this.repo.transaction(async (tx) => {
-      // a. Establecer contexto de auditoría
-      await setAuditContext(tx, userId, organizationId);
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
 
       // b. Revertir saldos del asiento contable anterior
       if (dispatch.journalEntryId) {
@@ -752,10 +760,13 @@ export class DispatchService {
           },
         });
       }
-    });
+
+      return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, dispatch.id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Eliminar un despacho DRAFT ──
@@ -772,7 +783,7 @@ export class DispatchService {
     organizationId: string,
     id: string,
     userId: string,
-  ): Promise<DispatchWithDetails> {
+  ): Promise<WithCorrelation<DispatchWithDetails>> {
     const dispatch = await this.getById(organizationId, id);
 
     // Validar la transición del ciclo de vida
@@ -807,8 +818,10 @@ export class DispatchService {
       dispatch.dispatchType === "NOTA_DESPACHO" ? "4.1.2" : "4.1.1";
 
     // Obtener el siguiente número de secuencia y ejecutar todo dentro de una sola transacción
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       // 1. Asignar número de secuencia dentro de la transacción
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
@@ -888,11 +901,14 @@ export class DispatchService {
         entry.id,
         receivable.id,
       );
-    });
+
+      return undefined;
+      },
+    );
 
     // Volver a buscar con todos los vínculos cargados
     const updated = await this.repo.findById(organizationId, id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Anular un despacho (POSTED → VOIDED) ──
@@ -903,7 +919,7 @@ export class DispatchService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<DispatchWithDetails> {
+  ): Promise<WithCorrelation<DispatchWithDetails>> {
     const dispatch = await this.getById(organizationId, id);
     const status = dispatch.status as DocumentStatus;
 
@@ -924,13 +940,17 @@ export class DispatchService {
       );
     }
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId, justification);
-      await this.voidCascadeTx(tx, organizationId, dispatch, userId);
-    });
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId, justification },
+      async (tx) => {
+        await this.voidCascadeTx(tx, organizationId, dispatch, userId);
+        return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Eliminación definitiva de un despacho DRAFT ──
@@ -961,7 +981,7 @@ export class DispatchService {
     organizationId: string,
     id: string,
     userId: string,
-  ): Promise<{ voidedId: string; newDraftId: string }> {
+  ): Promise<WithCorrelation<{ voidedId: string; newDraftId: string }>> {
     const dispatch = await this.getById(organizationId, id);
 
     if (dispatch.status !== "POSTED") {
@@ -971,18 +991,21 @@ export class DispatchService {
       );
     }
 
-    const result = await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-      // 1. Cascade de anulación: estado, asiento contable, CxC, saldos
-      await this.voidCascadeTx(tx, organizationId, dispatch, userId);
+    const { result, correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
+        // 1. Cascade de anulación: estado, asiento contable, CxC, saldos
+        await this.voidCascadeTx(tx, organizationId, dispatch, userId);
 
-      // 2. Clonar a nuevo DRAFT
-      const newDraft = await this.repo.cloneToDraft(tx, organizationId, dispatch);
+        // 2. Clonar a nuevo DRAFT
+        const newDraft = await this.repo.cloneToDraft(tx, organizationId, dispatch);
 
-      return { voidedId: dispatch.id, newDraftId: newDraft.id };
-    });
+        return { voidedId: dispatch.id, newDraftId: newDraft.id };
+      },
+    );
 
-    return result;
+    return { ...result, correlationId };
   }
 
   // ── Interno: cascade de anulación dentro de una transacción ──

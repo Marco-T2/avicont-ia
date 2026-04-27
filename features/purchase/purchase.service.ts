@@ -12,6 +12,7 @@ import {
 } from "@/features/shared/errors";
 import { canPost } from "@/features/permissions/server";
 import { setAuditContext } from "@/features/shared/audit-context";
+import { withAuditTx, assertAuditContextSet, type WithCorrelation } from "@/features/shared/audit-tx";
 import { Prisma } from "@/generated/prisma/client";
 import { PurchaseRepository } from "./purchase.repository";
 import type { ComputedPurchaseDetail, PfSummary } from "./purchase.repository";
@@ -373,7 +374,7 @@ export class PurchaseService {
     organizationId: string,
     id: string,
     userId: string,
-  ): Promise<PurchaseWithDetails> {
+  ): Promise<WithCorrelation<PurchaseWithDetails>> {
     const purchase = await this.getById(organizationId, id);
 
     // Validar la transición del ciclo de vida
@@ -423,9 +424,10 @@ export class PurchaseService {
 
     let purchaseId = "";
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
         organizationId,
@@ -490,10 +492,12 @@ export class PurchaseService {
       });
 
       await this.repo.linkJournalAndPayable(tx, organizationId, purchase.id, entry.id, payable.id);
-    });
+      return undefined;
+      },
+    );
 
     const result = await this.repo.findById(organizationId, purchaseId);
-    return withDisplayCode(result!);
+    return { ...withDisplayCode(result!), correlationId };
   }
 
   // ── Crear y contabilizar una compra en una sola transacción atómica ──
@@ -502,7 +506,7 @@ export class PurchaseService {
     organizationId: string,
     input: CreatePurchaseInput,
     context: { userId: string; role: string },
-  ): Promise<PurchaseWithDetails> {
+  ): Promise<WithCorrelation<PurchaseWithDetails>> {
     // 0. RBAC: canPost (PR3.2 / P.6 / D.7) — matrix-backed async check
     if (!(await canPost(context.role, "purchases", organizationId))) {
       throw new ForbiddenError(
@@ -587,9 +591,10 @@ export class PurchaseService {
 
     let purchaseId = "";
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
         organizationId,
@@ -651,10 +656,12 @@ export class PurchaseService {
       });
 
       await this.repo.linkJournalAndPayable(tx, organizationId, purchase.id, entry.id, payable.id);
-    });
+      return undefined;
+      },
+    );
 
     const result = await this.repo.findById(organizationId, purchaseId);
-    return withDisplayCode(result!);
+    return { ...withDisplayCode(result!), correlationId };
   }
 
   // ── Actualizar una compra (DRAFT directamente, POSTED mediante editPosted) ──
@@ -666,7 +673,7 @@ export class PurchaseService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<PurchaseWithDetails> {
+  ): Promise<WithCorrelation<PurchaseWithDetails>> {
     const purchase = await this.getById(organizationId, id);
     const status = purchase.status as DocumentStatus;
 
@@ -729,18 +736,19 @@ export class PurchaseService {
 
     // Para ediciones en LOCKED, envolver en transacción con contexto de auditoría
     if (status === "LOCKED") {
-      const row = await this.repo.transaction(async (tx) => {
-        await setAuditContext(tx, purchase.createdById ?? "unknown", organizationId, justification);
-        return this.repo.updateTx(
+      const { result: row, correlationId } = await withAuditTx(
+        this.repo,
+        { userId: purchase.createdById ?? "unknown", organizationId, justification },
+        async (tx) => this.repo.updateTx(
           tx,
           organizationId,
           id,
           dataWithoutDetails,
           computedDetails,
           pfSummary,
-        );
-      });
-      return withDisplayCode(row);
+        ),
+      );
+      return { ...withDisplayCode(row), correlationId };
     }
 
     const row = await this.repo.update(
@@ -750,7 +758,7 @@ export class PurchaseService {
       computedDetails,
       pfSummary,
     );
-    return withDisplayCode(row);
+    return { ...withDisplayCode(row), correlationId: crypto.randomUUID() };
   }
 
   // ── Preview de recorte de asignaciones (dryRun / pre-flight) ────────────────
@@ -806,7 +814,7 @@ export class PurchaseService {
     computedDetails: ComputedPurchaseDetail[] | undefined,
     pfSummary: PfSummary | undefined,
     userId: string,
-  ): Promise<PurchaseWithDetails> {
+  ): Promise<WithCorrelation<PurchaseWithDetails>> {
     // 1. Validar que haya al menos 1 línea de detalle si los detalles están cambiando
     if (computedDetails !== undefined && computedDetails.length === 0) {
       throw new ValidationError(
@@ -929,9 +937,10 @@ export class PurchaseService {
     }
 
     // 7. Ejecutar la transacción atómica
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId);
-
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId },
+      async (tx) => {
       // a. Revertir los saldos del asiento contable anterior
       if (purchase.journalEntryId) {
         const oldEntry = await tx.journalEntry.findFirst({
@@ -1066,10 +1075,12 @@ export class PurchaseService {
           new Prisma.Decimal(effectiveNewTotal),
         );
       }
-    });
+      return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, purchase.id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Anular una compra (POSTED → VOIDED) ──
@@ -1080,7 +1091,7 @@ export class PurchaseService {
     userId: string,
     role?: string,
     justification?: string,
-  ): Promise<PurchaseWithDetails> {
+  ): Promise<WithCorrelation<PurchaseWithDetails>> {
     const purchase = await this.getById(organizationId, id);
     const status = purchase.status as DocumentStatus;
 
@@ -1096,13 +1107,17 @@ export class PurchaseService {
       );
     }
 
-    await this.repo.transaction(async (tx) => {
-      await setAuditContext(tx, userId, organizationId, justification);
-      await this.voidCascadeTx(tx, organizationId, purchase, userId);
-    });
+    const { correlationId } = await withAuditTx(
+      this.repo,
+      { userId, organizationId, justification },
+      async (tx) => {
+        await this.voidCascadeTx(tx, organizationId, purchase, userId);
+        return undefined;
+      },
+    );
 
     const updated = await this.repo.findById(organizationId, id);
-    return withDisplayCode(updated!);
+    return { ...withDisplayCode(updated!), correlationId };
   }
 
   // ── Eliminar físicamente una compra en DRAFT ──
@@ -1128,13 +1143,29 @@ export class PurchaseService {
   //   IvaBooksService → regenerateJournalForIvaChange → IvaBooksService.
   //
   //   GREP ENFORCEMENT: no debe existir `tx.ivaPurchaseBook.update` en este método.
+  //
+  // SIGNATURE (D2.d): discriminated union. externalTx + correlationId are
+  // paired — passing one without the other is a compile-time error.
 
   async regenerateJournalForIvaChange(
-    organizationId: string,
-    purchaseId: string,
-    userId: string,
-    externalTx?: Prisma.TransactionClient,
-  ): Promise<PurchaseWithDetails> {
+    opts:
+      | {
+          organizationId: string;
+          purchaseId: string;
+          userId: string;
+          externalTx: Prisma.TransactionClient;
+          correlationId: string;
+        }
+      | {
+          organizationId: string;
+          purchaseId: string;
+          userId: string;
+          externalTx?: undefined;
+          correlationId?: undefined;
+        },
+  ): Promise<WithCorrelation<PurchaseWithDetails>> {
+    const { organizationId, purchaseId, userId } = opts;
+    const externalTx = opts.externalTx;
     // 1. Cargar la compra actualizada (incluye ivaPurchaseBook fresco).
     //    Si hay externalTx, la lectura DEBE ir por esa tx para ver datos
     //    recién escritos en el mismo callback (Audit F #4/#5 — IvaBooks
@@ -1196,8 +1227,6 @@ export class PurchaseService {
     // 5. Ejecutar el body atómico. Si hay externalTx, usarla directamente
     //    (Prisma NO soporta tx interactivas anidadas). Si no, abrir una propia.
     const body = async (tx: Prisma.TransactionClient) => {
-      await setAuditContext(tx, userId, organizationId);
-
       // Re-chequear que el período sigue ABIERTO dentro de la tx
       await tx.fiscalPeriod.findFirstOrThrow({
         where: { id: purchase.periodId, status: "OPEN" },
@@ -1244,14 +1273,24 @@ export class PurchaseService {
       await this.balancesService.applyPost(tx, updatedEntry);
     };
 
-    if (externalTx) {
-      await body(externalTx);
+    let resolvedCorrelationId: string;
+    if (opts.externalTx) {
+      // INV-1 runtime assertion (REQ-CORR.4 anti-scenario): the caller MUST
+      // have installed setAuditContext on the outer tx before delegating to us.
+      await assertAuditContextSet(opts.externalTx, "regenerateJournalForIvaChange (purchase)");
+      resolvedCorrelationId = opts.correlationId;
+      await body(opts.externalTx);
     } else {
-      await this.repo.transaction(body);
+      resolvedCorrelationId = crypto.randomUUID();
+      const standaloneCid = resolvedCorrelationId;
+      await this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, userId, organizationId, undefined, standaloneCid);
+        await body(tx);
+      });
     }
 
-    const updated = await this.repo.findById(organizationId, purchaseId, externalTx);
-    return withDisplayCode(updated!);
+    const updated = await this.repo.findById(organizationId, purchaseId, opts.externalTx);
+    return { ...withDisplayCode(updated!), correlationId: resolvedCorrelationId };
   }
 
   // ── Interno: anulación en cascada dentro de una transacción ──
