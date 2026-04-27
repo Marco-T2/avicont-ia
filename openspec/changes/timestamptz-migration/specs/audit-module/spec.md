@@ -62,6 +62,8 @@ El fix es cambiar el cast a `::timestamptz`, que preserva el sufijo `Z` del stri
 > **Nota**: los Scenarios A1-S8 y A1-S9 documentan el bug observado empíricamente — el shift es **expansivo** (incluye filas extra) y produce **duplicados**, no omisiones. El fix `::timestamptz` preserva el sufijo `Z` y elimina la coerción por session_timezone, garantizando comparación UTC-to-UTC.
 >
 > **Tests diferenciales (2, no 3)**: solo A1-S8 y A1-S9 generan tests diferenciales independientes. A1-S7 quedó consolidado en A1-S8 (ver nota en A1-S7 arriba). Los tests deben sembrar al menos una fila en el rango shifted `[cursor, cursor+4h]` y verificar `.not.toContain()` (A1-S9) o ausencia de duplicación cross-page (A1-S8).
+>
+> **Estado de implementación de los tests A1-S8 y A1-S9**: NO IMPLEMENTADOS en este SDD. Razón técnica: el cambio incluye fix del adapter Prisma (`options: '-c timezone=UTC'` en commit `6fe4eef`) que fuerza `session_timezone='UTC'` en cada conexión del pool. Bajo session UTC, los casts `::timestamp` y `::timestamptz` producen resultados idénticos en comparaciones contra TIMESTAMPTZ — los tests serían no-diferenciales (pasarían tanto con `::timestamp` como con `::timestamptz`). Reproducir el bug requeriría infraestructura de test que permita cambiar `session_timezone` (ej. `SET LOCAL timezone='America/La_Paz'` dentro de transacción de test) — complejidad desproporcionada para un fix de 3 líneas ya protegido por la config del adapter. Si en el futuro se observa regresión en cursor pagination del audit, este scenario sirve como guía para escribir el test diferencial bajo el contexto adecuado (session no-UTC).
 
 ---
 
