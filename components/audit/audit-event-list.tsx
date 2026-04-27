@@ -76,11 +76,13 @@ export function AuditEventList({
     if (filters.entityType) sp.set("entityType", filters.entityType);
     if (filters.changedById) sp.set("changedById", filters.changedById);
     if (filters.action) sp.set("action", filters.action);
-    // El cursor viaja como el base64url original — pero acá solo tenemos el
-    // objeto AuditCursor. Lo re-encodeamos.
-    const encoded = Buffer.from(JSON.stringify(initialData.nextCursor)).toString(
-      "base64url",
-    );
+    // El cursor viaja como base64url. `Buffer` polyfilled del browser no soporta
+    // "base64url" — usamos `btoa` (base64 nativo) y transformamos al alfabeto
+    // url-safe (RFC 4648 §5).
+    const encoded = btoa(JSON.stringify(initialData.nextCursor))
+      .replace(/\+/g, "-")
+      .replace(/\//g, "_")
+      .replace(/=+$/, "");
     sp.set("cursor", encoded);
     router.push(`?${sp.toString()}`);
   };
