@@ -40,7 +40,7 @@ const ONBOARDING_KEY = "sidebar-onboarding-seen";
  * Segments that represent cross-module routes — absent from ROUTE_MODULE_MAP
  * by design. These routes do NOT trigger a dev-mode warn.
  */
-const CROSS_MODULE_SEGMENTS = new Set(["members", "documents", ""]);
+const CROSS_MODULE_SEGMENTS = new Set(["members", "documents", "audit", ""]);
 
 
 /**
