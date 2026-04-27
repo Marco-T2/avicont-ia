@@ -14,6 +14,8 @@ import { vi } from "vitest";
 import {
   todayLocal,
   formatDateBO,
+  formatDateTimeBO,
+  formatTimeBO,
   toNoonUtc,
   lastDayOfUTCMonth,
   addUTCDays,
@@ -111,6 +113,94 @@ describe("formatDateBO", () => {
 
   it("(f) invalid Date instance → empty string", () => {
     expect(formatDateBO(new Date("invalid"))).toBe("");
+  });
+});
+
+// ── formatDateTimeBO() ────────────────────────────────────────────────────────
+
+describe("formatDateTimeBO", () => {
+  it("(a) ISO timestamp at 18:32 UTC → 14:32 BO same day", () => {
+    expect(formatDateTimeBO("2026-04-17T18:32:00.000Z")).toBe(
+      "17/04/2026 14:32",
+    );
+  });
+
+  it("(b) ISO timestamp at 03:00 UTC → 23:00 BO previous day (TZ shift)", () => {
+    expect(formatDateTimeBO("2026-04-18T03:00:00.000Z")).toBe(
+      "17/04/2026 23:00",
+    );
+  });
+
+  it("(c) ISO timestamp at midnight UTC → 20:00 BO previous day", () => {
+    expect(formatDateTimeBO("2026-04-17T00:00:00.000Z")).toBe(
+      "16/04/2026 20:00",
+    );
+  });
+
+  it("(d) Date instance → DD/MM/YYYY HH:mm in BO", () => {
+    expect(formatDateTimeBO(new Date("2026-04-17T18:32:00.000Z"))).toBe(
+      "17/04/2026 14:32",
+    );
+  });
+
+  it("(e) midnight BO (04:00 UTC) → 00:00 same day, not 24:00", () => {
+    expect(formatDateTimeBO("2026-04-17T04:00:00.000Z")).toBe(
+      "17/04/2026 00:00",
+    );
+  });
+
+  it("(f) single-digit minute is zero-padded", () => {
+    expect(formatDateTimeBO("2026-04-17T18:05:00.000Z")).toBe(
+      "17/04/2026 14:05",
+    );
+  });
+
+  it("(g) null → empty string", () => {
+    expect(formatDateTimeBO(null)).toBe("");
+  });
+
+  it("(g) undefined → empty string", () => {
+    expect(formatDateTimeBO(undefined)).toBe("");
+  });
+
+  it("(g) empty string → empty string", () => {
+    expect(formatDateTimeBO("")).toBe("");
+  });
+
+  it("(g) garbage string → empty string", () => {
+    expect(formatDateTimeBO("not-a-date")).toBe("");
+  });
+
+  it("(g) invalid Date instance → empty string", () => {
+    expect(formatDateTimeBO(new Date("invalid"))).toBe("");
+  });
+});
+
+// ── formatTimeBO() ────────────────────────────────────────────────────────────
+
+describe("formatTimeBO", () => {
+  it("(a) ISO timestamp at 18:32 UTC → 14:32 BO", () => {
+    expect(formatTimeBO("2026-04-17T18:32:00.000Z")).toBe("14:32");
+  });
+
+  it("(b) midnight BO (04:00 UTC) → 00:00", () => {
+    expect(formatTimeBO("2026-04-17T04:00:00.000Z")).toBe("00:00");
+  });
+
+  it("(c) Date instance → HH:mm in BO", () => {
+    expect(formatTimeBO(new Date("2026-04-17T18:05:00.000Z"))).toBe("14:05");
+  });
+
+  it("(d) null → empty string", () => {
+    expect(formatTimeBO(null)).toBe("");
+  });
+
+  it("(d) undefined → empty string", () => {
+    expect(formatTimeBO(undefined)).toBe("");
+  });
+
+  it("(d) garbage string → empty string", () => {
+    expect(formatTimeBO("not-a-date")).toBe("");
   });
 });
 

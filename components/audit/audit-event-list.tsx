@@ -27,7 +27,7 @@ import {
   type AuditEntityType,
   type AuditGroup,
 } from "@/features/audit";
-import { formatDateBO } from "@/lib/date-utils";
+import { formatDateTimeBO, formatTimeBO } from "@/lib/date-utils";
 import { ActionBadge, ClassificationBadge } from "./audit-event-badges";
 import { AuditDiffViewer } from "./audit-diff-viewer";
 
@@ -210,7 +210,7 @@ export function AuditEventList({
                   {fallbackEvent && (
                     <p className="text-xs text-muted-foreground">
                       {fallbackEvent.changedBy?.name ?? "Usuario eliminado"} ·{" "}
-                      {formatDateBO(fallbackEvent.createdAt)}
+                      {formatDateTimeBO(fallbackEvent.createdAt)}
                     </p>
                   )}
                 </CardHeader>
@@ -248,7 +248,7 @@ export function AuditEventList({
                   )}
                 </div>
                 <span className="text-xs text-muted-foreground">
-                  {formatDateBO(group.lastActivityAt)} · {group.eventCount}{" "}
+                  {formatDateTimeBO(group.lastActivityAt)} · {group.eventCount}{" "}
                   {group.eventCount === 1 ? "evento" : "eventos"}
                 </span>
               </CardHeader>
@@ -263,7 +263,7 @@ export function AuditEventList({
                         {summary.headerEvent.changedBy?.name ?? "Usuario eliminado"}
                       </span>
                       <span className="text-muted-foreground">
-                        {formatDateBO(summary.headerEvent.createdAt)}
+                        {formatTimeBO(summary.headerEvent.createdAt)}
                       </span>
                       <button
                         type="button"

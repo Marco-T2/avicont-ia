@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { ENTITY_TYPE_LABELS, type AuditEvent } from "@/features/audit";
-import { formatDateBO } from "@/lib/date-utils";
+import { formatDateTimeBO } from "@/lib/date-utils";
 import { ActionBadge, ClassificationBadge } from "./audit-event-badges";
 import { AuditDiffViewer } from "./audit-diff-viewer";
 
@@ -34,7 +34,7 @@ export function AuditDetailTimeline({ events }: AuditDetailTimelineProps) {
               </span>
             </div>
             <div className="text-xs text-muted-foreground">
-              <span>{formatDateBO(ev.createdAt)}</span>
+              <span>{formatDateTimeBO(ev.createdAt)}</span>
               {" · "}
               <span>{ev.changedBy?.name ?? "Usuario eliminado"}</span>
             </div>
