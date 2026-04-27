@@ -228,9 +228,11 @@ function createMockRepo(): IvaBooksRepository {
     reactivateSale: vi.fn(),
     reactivatePurchase: vi.fn(),
     // Audit F #4/#5: reactivatePurchase now wraps writes in repo.transaction.
-    transaction: vi
-      .fn()
-      .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    // Phase-1 (correlation-id-coverage): tx callback now invokes setAuditContext,
+    // which calls tx.$executeRawUnsafe. Stub it as a no-op.
+    transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) }),
+    ),
   } as unknown as IvaBooksRepository;
 }
 

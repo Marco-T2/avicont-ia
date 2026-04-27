@@ -22,12 +22,12 @@ export async function POST(
 ) {
   try {
     const { orgSlug } = await params;
-    const { orgId } = await requirePermission("payments", "write", orgSlug);
+    const { orgId, session } = await requirePermission("payments", "write", orgSlug);
 
     const body = await request.json();
     const { contactId, creditSources } = applyCreditSchema.parse(body);
 
-    await paymentService.applyCreditOnly(orgId, contactId, creditSources);
+    await paymentService.applyCreditOnly(orgId, session.userId, contactId, creditSources);
 
     return Response.json({ success: true });
   } catch (error) {

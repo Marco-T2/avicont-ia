@@ -183,7 +183,13 @@ type Harness = ReturnType<typeof buildHarness>;
 
 function buildHarness() {
   // Sentinel tx client — identity-compared in assertions.
-  const txClient = { __tx: true } as unknown as Prisma.TransactionClient;
+  // Phase-1 (correlation-id-coverage): tx callback now invokes setAuditContext,
+  // which calls tx.$executeRawUnsafe. Stub it as a no-op so this test continues
+  // to assert the SAME tx instance flows through to repo writes + regen.
+  const txClient = {
+    __tx: true,
+    $executeRawUnsafe: vi.fn().mockResolvedValue(undefined),
+  } as unknown as Prisma.TransactionClient;
 
   const repo = {
     createPurchase: vi.fn().mockResolvedValue(makePurchaseDTO()),

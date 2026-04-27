@@ -354,6 +354,7 @@ export class PaymentService {
     const settings = await this.orgSettingsService.getOrCreate(organizationId);
 
     await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, organizationId);
       // Resolver dirección dentro de la transacción (puede necesitar consultar Contact.type)
       const direction = await resolveDirection(
         tx,
@@ -1217,6 +1218,7 @@ export class PaymentService {
 
   async applyCreditOnly(
     organizationId: string,
+    userId: string,
     contactId: string,
     creditSources: CreditAllocationSource[],
   ): Promise<void> {
@@ -1233,6 +1235,7 @@ export class PaymentService {
     }
 
     await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, organizationId);
       for (const source of creditSources) {
         await this.applyCreditToInvoice(
           tx,

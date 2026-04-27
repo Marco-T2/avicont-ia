@@ -103,9 +103,12 @@ function createMockRepo(): IvaBooksRepository {
     // Audit F #4/#5: IvaBooks methods now wrap writes in repo.transaction.
     // Mock passes a sentinel tx through to the callback so assertions
     // observing the tx arg continue to work.
-    transaction: vi
-      .fn()
-      .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) => cb({})),
+    // Phase-1 (correlation-id-coverage): tx now also receives setAuditContext()
+    // which calls tx.$executeRawUnsafe. Stub it as a no-op so existing tests
+    // that only care about repo-method delegation keep passing.
+    transaction: vi.fn().mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
+      cb({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) }),
+    ),
   } as unknown as IvaBooksRepository;
 }
 
@@ -195,7 +198,7 @@ describe("IvaBooksService", () => {
       const expectedDTO = makePurchaseDTO();
       vi.mocked(repo.createPurchase).mockResolvedValueOnce(expectedDTO);
 
-      await service.createPurchase(orgId, basePurchaseInput);
+      await service.createPurchase(orgId, "test-user", basePurchaseInput);
 
       // Verificar que el repo recibió los campos IVA recomputados, no los zeros del input
       const [calledOrgId, calledInput] = vi.mocked(repo.createPurchase).mock.calls[0];
@@ -215,7 +218,7 @@ describe("IvaBooksService", () => {
       const expectedDTO = makePurchaseDTO();
       vi.mocked(repo.createPurchase).mockResolvedValueOnce(expectedDTO);
 
-      await service.createPurchase(orgId, basePurchaseInput);
+      await service.createPurchase(orgId, "test-user", basePurchaseInput);
 
       const [, calledInput] = vi.mocked(repo.createPurchase).mock.calls[0];
       // dfIva y dfCfIva deben coincidir
@@ -235,7 +238,7 @@ describe("IvaBooksService", () => {
       });
       vi.mocked(repo.createPurchase).mockResolvedValueOnce(expectedDTO);
 
-      await expect(service.createPurchase(orgId, exentoInput)).resolves.not.toThrow();
+      await expect(service.createPurchase(orgId, "test-user", exentoInput)).resolves.not.toThrow();
 
       const [, calledInput] = vi.mocked(repo.createPurchase).mock.calls[0];
       expect(new Prisma.Decimal(calledInput.subtotal).toFixed(2)).toBe("0.00");
@@ -250,7 +253,7 @@ describe("IvaBooksService", () => {
       const expectedDTO = makeSaleDTO();
       vi.mocked(repo.createSale).mockResolvedValueOnce(expectedDTO);
 
-      await service.createSale(orgId, baseSaleInput);
+      await service.createSale(orgId, "test-user", baseSaleInput);
 
       const [calledOrgId, calledInput] = vi.mocked(repo.createSale).mock.calls[0];
       expect(calledOrgId).toBe(orgId);
@@ -264,7 +267,7 @@ describe("IvaBooksService", () => {
       const expectedDTO = makeSaleDTO({ estadoSIN: "C" });
       vi.mocked(repo.createSale).mockResolvedValueOnce(expectedDTO);
 
-      await service.createSale(orgId, { ...baseSaleInput, estadoSIN: "C" });
+      await service.createSale(orgId, "test-user", { ...baseSaleInput, estadoSIN: "C" });
 
       const [, calledInput] = vi.mocked(repo.createSale).mock.calls[0];
       expect(calledInput.estadoSIN).toBe("C");
@@ -278,7 +281,7 @@ describe("IvaBooksService", () => {
       const voidedDTO = makePurchaseDTO({ status: "VOIDED" });
       vi.mocked(repo.voidPurchase).mockResolvedValueOnce(voidedDTO);
 
-      const result = await service.voidPurchase(orgId, "purchase-book-id");
+      const result = await service.voidPurchase(orgId, "test-user", "purchase-book-id");
 
       expect(repo.voidPurchase).toHaveBeenCalledWith(orgId, "purchase-book-id", expect.anything());
       expect(result.status).toBe("VOIDED");
@@ -290,7 +293,7 @@ describe("IvaBooksService", () => {
       const voidedDTO = makeSaleDTO({ status: "VOIDED", estadoSIN: "A" });
       vi.mocked(repo.voidSale).mockResolvedValueOnce(voidedDTO);
 
-      const result = await service.voidSale(orgId, "sale-book-id");
+      const result = await service.voidSale(orgId, "test-user", "sale-book-id");
 
       expect(result.status).toBe("VOIDED");
       // estadoSIN permanece "A" — el void no lo toca
@@ -366,7 +369,7 @@ describe("IvaBooksService", () => {
       // Primero findById para obtener los datos actuales
       vi.mocked(repo.findPurchaseById).mockResolvedValueOnce(makePurchaseDTO());
 
-      await service.updatePurchase(orgId, "purchase-book-id", {
+      await service.updatePurchase(orgId, "test-user", "purchase-book-id", {
         importeTotal: D("500.00"),
       });
 

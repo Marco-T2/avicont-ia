@@ -407,7 +407,12 @@ export class JournalService {
         });
       }
 
-      return await this.repo.update(organizationId, id, data, lines, updatedById);
+      // DRAFT branch — Phase 1 setAuditContext coverage (D1.b Option A).
+      // Wrap in a transaction so the audit trigger sees app.current_user_id.
+      return await this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, updatedById, organizationId);
+        return this.repo.updateTx(tx, organizationId, id, data, lines, updatedById);
+      });
     } catch (error) {
       if (
         error instanceof Error &&

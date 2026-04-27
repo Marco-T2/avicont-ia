@@ -808,6 +808,7 @@ export class DispatchService {
 
     // Obtener el siguiente número de secuencia y ejecutar todo dentro de una sola transacción
     await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, organizationId);
       // 1. Asignar número de secuencia dentro de la transacción
       const sequenceNumber = await this.repo.getNextSequenceNumber(
         tx,
@@ -971,6 +972,7 @@ export class DispatchService {
     }
 
     const result = await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, organizationId);
       // 1. Cascade de anulación: estado, asiento contable, CxC, saldos
       await this.voidCascadeTx(tx, organizationId, dispatch, userId);
 

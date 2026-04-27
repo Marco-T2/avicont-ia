@@ -1,6 +1,7 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
 import { ValidationError, FISCAL_PERIOD_CLOSED } from "@/features/shared/errors";
+import { setAuditContext } from "@/features/shared/audit-context";
 import { calcTotales } from "./iva-calc.utils";
 import { IvaBooksRepository, type ListIvaBooksFilter } from "./iva-books.repository";
 import type {
@@ -195,25 +196,7 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     input: CreatePurchaseInput,
-  ): Promise<IvaPurchaseBookDTO>;
-  /** @deprecated Use createPurchase(orgId, userId, input) */
-  async createPurchase(orgId: string, input: CreatePurchaseInput): Promise<IvaPurchaseBookDTO>;
-  async createPurchase(
-    orgId: string,
-    userIdOrInput: string | CreatePurchaseInput,
-    maybeInput?: CreatePurchaseInput,
   ): Promise<IvaPurchaseBookDTO> {
-    // Soporte para la firma original (orgId, input) y la nueva (orgId, userId, input)
-    let userId: string | undefined;
-    let input: CreatePurchaseInput;
-
-    if (typeof userIdOrInput === "string") {
-      userId = userIdOrInput;
-      input = maybeInput!;
-    } else {
-      userId = undefined;
-      input = userIdOrInput;
-    }
 
     // SPEC-6: Si hay purchaseId y período CERRADO → lanzar antes de persistir.
     // Si POSTED + OPEN → regenerar después de crear. Todo el chequeo ocurre en maybeRegenerateJournal.
@@ -237,6 +220,7 @@ export class IvaBooksService {
       const purchaseId = input.purchaseId;
       const purchaseServiceRef = this.purchaseService;
       return await this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, userId, orgId);
         const result = await this.repo.createPurchase(
           orgId,
           { ...input, ...computed },
@@ -283,32 +267,7 @@ export class IvaBooksService {
     userId: string,
     id: string,
     input: UpdatePurchaseInput,
-  ): Promise<IvaPurchaseBookDTO>;
-  /** @deprecated Use updatePurchase(orgId, userId, id, input) */
-  async updatePurchase(
-    orgId: string,
-    id: string,
-    input: UpdatePurchaseInput,
-  ): Promise<IvaPurchaseBookDTO>;
-  async updatePurchase(
-    orgId: string,
-    arg2: string,
-    arg3: string | UpdatePurchaseInput,
-    maybeInput?: UpdatePurchaseInput,
   ): Promise<IvaPurchaseBookDTO> {
-    let userId: string | undefined;
-    let id: string;
-    let input: UpdatePurchaseInput;
-
-    if (typeof arg3 === "string") {
-      userId = arg2;
-      id = arg3;
-      input = maybeInput!;
-    } else {
-      userId = undefined;
-      id = arg2;
-      input = arg3;
-    }
 
     // Si el update incluye algún campo monetario, recomputamos IVA con la base actual + cambios
     const hasMonetaryChange =
@@ -325,6 +284,7 @@ export class IvaBooksService {
 
     // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
     return await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, orgId);
       let result: IvaPurchaseBookDTO;
 
       if (hasMonetaryChange) {
@@ -368,27 +328,11 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     id: string,
-  ): Promise<IvaPurchaseBookDTO>;
-  /** @deprecated Use voidPurchase(orgId, userId, id) */
-  async voidPurchase(orgId: string, id: string): Promise<IvaPurchaseBookDTO>;
-  async voidPurchase(
-    orgId: string,
-    arg2: string,
-    maybeId?: string,
   ): Promise<IvaPurchaseBookDTO> {
-    let userId: string | undefined;
-    let id: string;
-
-    if (maybeId !== undefined) {
-      userId = arg2;
-      id = maybeId;
-    } else {
-      userId = undefined;
-      id = arg2;
-    }
 
     // Audit F #4/#5: void IVA + regen journal bajo la misma tx.
     return await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, orgId);
       const result = await this.repo.voidPurchase(orgId, id, tx);
 
       // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
@@ -407,24 +351,7 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     input: CreateSaleInput,
-  ): Promise<IvaSalesBookDTO>;
-  /** @deprecated Use createSale(orgId, userId, input) */
-  async createSale(orgId: string, input: CreateSaleInput): Promise<IvaSalesBookDTO>;
-  async createSale(
-    orgId: string,
-    userIdOrInput: string | CreateSaleInput,
-    maybeInput?: CreateSaleInput,
   ): Promise<IvaSalesBookDTO> {
-    let userId: string | undefined;
-    let input: CreateSaleInput;
-
-    if (typeof userIdOrInput === "string") {
-      userId = userIdOrInput;
-      input = maybeInput!;
-    } else {
-      userId = undefined;
-      input = userIdOrInput;
-    }
 
     // SPEC-6: Pre-check de período cerrado + regeneración post-create (un solo getById).
     // NOTA (Audit F #4/#5): el pre-check es READ-ONLY y se mantiene FUERA de la tx
@@ -445,6 +372,7 @@ export class IvaBooksService {
       const saleId = input.saleId;
       const saleServiceRef = this.saleService;
       return await this.repo.transaction(async (tx) => {
+        await setAuditContext(tx, userId, orgId);
         const result = await this.repo.createSale(
           orgId,
           { ...input, ...computed },
@@ -488,28 +416,7 @@ export class IvaBooksService {
     userId: string,
     id: string,
     input: UpdateSaleInput,
-  ): Promise<IvaSalesBookDTO>;
-  /** @deprecated Use updateSale(orgId, userId, id, input) */
-  async updateSale(orgId: string, id: string, input: UpdateSaleInput): Promise<IvaSalesBookDTO>;
-  async updateSale(
-    orgId: string,
-    arg2: string,
-    arg3: string | UpdateSaleInput,
-    maybeInput?: UpdateSaleInput,
   ): Promise<IvaSalesBookDTO> {
-    let userId: string | undefined;
-    let id: string;
-    let input: UpdateSaleInput;
-
-    if (typeof arg3 === "string") {
-      userId = arg2;
-      id = arg3;
-      input = maybeInput!;
-    } else {
-      userId = undefined;
-      id = arg2;
-      input = arg3;
-    }
 
     const hasMonetaryChange =
       input.importeTotal !== undefined ||
@@ -525,6 +432,7 @@ export class IvaBooksService {
 
     // Audit F #4/#5: write IVA + regen journal bajo la misma tx.
     return await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, orgId);
       let result: IvaSalesBookDTO;
 
       if (hasMonetaryChange) {
@@ -683,28 +591,12 @@ export class IvaBooksService {
     orgId: string,
     userId: string,
     id: string,
-  ): Promise<IvaSalesBookDTO>;
-  /** @deprecated Use voidSale(orgId, userId, id) */
-  async voidSale(orgId: string, id: string): Promise<IvaSalesBookDTO>;
-  async voidSale(
-    orgId: string,
-    arg2: string,
-    maybeId?: string,
   ): Promise<IvaSalesBookDTO> {
-    let userId: string | undefined;
-    let id: string;
-
-    if (maybeId !== undefined) {
-      userId = arg2;
-      id = maybeId;
-    } else {
-      userId = undefined;
-      id = arg2;
-    }
 
     // SOLO status = VOIDED — estadoSIN NO se toca (eje ortogonal, design decision)
     // Audit F #4/#5: void IVA + regen journal bajo la misma tx.
     return await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, orgId);
       const result = await this.repo.voidSale(orgId, id, tx);
 
       // SPEC-6: bridge regeneración (non-IVA path — IvaBook ya tiene status VOIDED)
@@ -725,6 +617,7 @@ export class IvaBooksService {
     // status = ACTIVE — estadoSIN NO se toca (eje ortogonal, design decision)
     // Audit F #4/#5: reactivate IVA + regen journal bajo la misma tx.
     return await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, orgId);
       const result = await this.repo.reactivateSale(orgId, id, tx);
 
       // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
@@ -745,6 +638,7 @@ export class IvaBooksService {
     // status = ACTIVE — IvaPurchaseBook no tiene estadoSIN (campo exclusivo de ventas)
     // Audit F #4/#5: reactivate IVA + regen journal bajo la misma tx.
     return await this.repo.transaction(async (tx) => {
+      await setAuditContext(tx, userId, orgId);
       const result = await this.repo.reactivatePurchase(orgId, id, tx);
 
       // SPEC-6: bridge regeneración (IVA path — IvaBook ya tiene status ACTIVE)
