@@ -152,11 +152,50 @@ Los triggers PostgreSQL existentes que usan `NOW()` para poblar `audit_logs.crea
 
 ---
 
+### REQ-TZ.6 — `session_timezone` forzado a `UTC` en el adapter Prisma
+
+El adapter `@prisma/adapter-pg` DEBE configurarse para que cada conexión del pool inicialice `session_timezone='UTC'`. Esta invariante es **crítica para la correctness de las escrituras y lecturas de TIMESTAMPTZ desde código JS**: el adapter `@prisma/adapter-pg@7.7.0` y versiones similares descartan información de zona horaria en ambas direcciones del wire (escritura: `formatDateTime` envía string naive sin sufijo `Z` ni `+00`; lectura: `normalize_timestamptz` reemplaza el offset real por `+00:00` mediante regex). Con `session_timezone` distinto de `UTC`, esos comportamientos producen un shift sistemático del instante real igual al offset de la zona de sesión.
+
+Esta invariante NO es decorativa — su ausencia reintroduce los bugs originales del SDD aunque las columnas sean `TIMESTAMPTZ` y el adapter no haya cambiado.
+
+#### Scenarios
+
+##### S1 — `lib/prisma.ts` configura el adapter con `options: '-c timezone=UTC'`
+- **Given** el archivo `lib/prisma.ts` instancia `new PrismaPg({ ... })`
+- **When** se inspecciona el constructor del adapter
+- **Then** las opciones del pool incluyen `options: '-c timezone=UTC'` (o equivalente como `?options=-c%20timezone=UTC` en `DATABASE_URL`) para forzar `session_timezone='UTC'` en cada conexión inicializada
+
+##### S2 — `SHOW TimeZone` retorna `UTC` en cualquier conexión Prisma
+- **Given** una operación cualquiera contra la DB vía Prisma (`prisma.$queryRaw`, `prisma.X.findMany`, etc.)
+- **When** se ejecuta `SHOW TimeZone` en la misma sesión
+- **Then** el resultado es `UTC`
+
+##### S3 — Nuevas escrituras desde código JS preservan el instante UTC real
+- **Given** la config del adapter con `options: '-c timezone=UTC'` aplicada
+- **When** se ejecuta `prisma.X.create({ data: { dateField: new Date("2026-04-27T06:00:00.000Z") } })` con cualquier modelo que tenga columna TIMESTAMPTZ
+- **Then** la columna almacena `2026-04-27 06:00:00.000+00` (UTC real, sin shift de +4h)
+- **AND** el comportamiento se aplica también a `@updatedAt` (que internamente usa `new Date()` en JS) — los UPDATE preservan el instante real
+
+##### S4 — Lecturas desde código JS reconstruyen el instante UTC real
+- **Given** la columna almacena `2026-04-27 06:00:00.000+00` (UTC real)
+- **When** Prisma la lee y la entrega como `Date` JS
+- **Then** `date.toISOString()` retorna `"2026-04-27T06:00:00.000Z"` (sin shift de -4h del adapter `normalize_timestamptz`)
+- **AND** `formatDateTimeBO(date)` muestra la hora correcta en `America/La_Paz` (= `02:00` el 27/04)
+
+##### S5 — Reversión del adapter config reintroduce los bugs (verificación negativa, NO testear)
+- **Given** la config del adapter SIN `options: '-c timezone=UTC'` y `session_timezone` de la DB en cualquier valor distinto de UTC (ej. `'America/La_Paz'`)
+- **When** se ejecuta `prisma.X.create({ data: { dateField: new Date("...Z") } })`
+- **Then** el dato almacenado sufre un shift sistemático igual al offset de la zona de sesión (ej. +4h con La_Paz)
+- **AND** las lecturas posteriores producen Date 4h antes del instante real
+- **Nota**: este scenario documenta la condición de regresión. NO debe convertirse en un test automatizado — la fix es la invariante S1, no un test que reproduzca el bug
+
+---
+
 ## Out of Scope (no speccable en este cambio)
 
 | Item | Justificación |
 |------|---------------|
-| Cambio del TZ de sesión de Postgres | No es necesario: `TIMESTAMPTZ` es inmune al timezone de sesión para el almacenamiento |
+| Cambio del TZ a nivel de DB con `ALTER DATABASE ... SET timezone` | No se aplica a nivel de servidor; el cambio se hace a nivel de adapter Prisma vía `options: '-c timezone=UTC'` (REQ-TZ.6). Esto contiene el alcance al pool de conexiones de la app sin afectar otros consumidores (CLI psql, scripts externos, futuros servicios) |
 | Refactor de `toNoonUtc()` | La función sigue siendo válida para nuevas escrituras de fechas calendario |
 | Normalización de `dueDate` en `receivables.repository.ts` (agregar `toNoonUtc()`) | Deuda técnica separada; no es parte de la migración de tipo |
 | Eliminación del patrón UTC-noon | Cambio de semántica que requiere su propio SDD |
