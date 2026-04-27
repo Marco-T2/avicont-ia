@@ -226,7 +226,7 @@ audit_logs               → createdAt
 iva_purchase_books       → createdAt, updatedAt
 iva_sales_books          → createdAt, updatedAt
 org_profile              → createdAt, updatedAt
-document_signature_configs → createdAt, updatedAt
+document_signature_config → createdAt, updatedAt
 ```
 
 **Referencia de nombres de tabla**: ver tabla "Mapeo tabla SQL → modelo Prisma" en `design.md`.
@@ -787,7 +787,7 @@ WHERE data_type = 'timestamp with time zone'
     'accounts_receivable','accounts_payable','org_settings','dispatches',
     'product_types','payments','operational_doc_types','purchases',
     'purchase_details','sales','audit_logs','iva_purchase_books',
-    'iva_sales_books','org_profile','document_signature_configs'
+    'iva_sales_books','org_profile','document_signature_config'
   );
 -- Esperado: 65
 ```

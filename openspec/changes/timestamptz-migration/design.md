@@ -296,7 +296,7 @@ ALTER TABLE "chicken_lots"
 | IvaPurchaseBook | `iva_purchase_books` |
 | IvaSalesBook | `iva_sales_books` |
 | OrgProfile | `org_profile` |
-| DocumentSignatureConfig | `document_signature_configs` |
+| DocumentSignatureConfig | `document_signature_config` |
 
 > **Nota**: los nombres exactos de las tablas SQL se pueden verificar con los decoradores `@@map()` en `schema.prisma`. Si alguna tabla no tiene `@@map`, Prisma usa el nombre en snake_case plural por default.
 
@@ -603,8 +603,8 @@ Para uso en la revisión final del `.sql` editado, esta es la lista completa de 
 | iva_sales_books | updatedAt |
 | org_profile | createdAt |
 | org_profile | updatedAt |
-| document_signature_configs | createdAt |
-| document_signature_configs | updatedAt |
+| document_signature_config | createdAt |
+| document_signature_config | updatedAt |
 
 ### UTC-NOON (16) — `AT TIME ZONE 'UTC'`
 
