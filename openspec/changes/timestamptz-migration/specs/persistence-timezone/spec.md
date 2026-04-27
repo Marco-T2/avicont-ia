@@ -14,8 +14,8 @@ La migración lleva las 65 columnas `DateTime` del schema a `TIMESTAMPTZ(3)`. El
 
 | Categoría | Columnas | Cláusula USING |
 |-----------|----------|----------------|
-| **TIMESTAMP-AFFECTED** | 48 columnas (todos los `createdAt`, `updatedAt`, `closedAt`, `windowStart`, `deactivatedAt`) | `USING "col" AT TIME ZONE 'America/La_Paz'` |
-| **UTC-NOON** | 17 columnas (`Sale.date`, `Purchase.date`, `Dispatch.date`, `Payment.date`, `JournalEntry.date`, `FiscalPeriod.startDate/endDate`, `ChickenLot.startDate/endDate`, `Expense.date`, `MortalityLog.date`, `PurchaseDetail.fecha`, `IvaPurchaseBook.fechaFactura`, `IvaSalesBook.fechaFactura`, `AccountsReceivable.dueDate`, `AccountsPayable.dueDate`) | `USING "col" AT TIME ZONE 'UTC'` |
+| **TIMESTAMP-AFFECTED** | 49 columnas (todos los `createdAt`, `updatedAt`, `closedAt`, `windowStart`, `deactivatedAt`) | `USING "col" AT TIME ZONE 'America/La_Paz'` |
+| **UTC-NOON** | 16 columnas (`Sale.date`, `Purchase.date`, `Dispatch.date`, `Payment.date`, `JournalEntry.date`, `FiscalPeriod.startDate/endDate`, `ChickenLot.startDate/endDate`, `Expense.date`, `MortalityLog.date`, `PurchaseDetail.fecha`, `IvaPurchaseBook.fechaFactura`, `IvaSalesBook.fechaFactura`, `AccountsReceivable.dueDate`, `AccountsPayable.dueDate`) | `USING "col" AT TIME ZONE 'UTC'` |
 
 > **Nota**: la lista exhaustiva de las 65 columnas con su categoría está en `design.md` (Inventario columna-por-columna — Tabla canónica). Esa tabla es la fuente canónica para la generación del SQL.
 
@@ -97,12 +97,12 @@ El archivo SQL de migración generado DEBE distinguir visualmente y estructuralm
 ##### S1 — Columnas TIMESTAMP-AFFECTED usan `AT TIME ZONE 'America/La_Paz'`
 - **Given** el archivo SQL de migración `timestamptz_migration`
 - **When** se grep por `AT TIME ZONE 'America/La_Paz'`
-- **Then** se obtienen exactamente los `ALTER` correspondientes a las 48 columnas TIMESTAMP-AFFECTED — no más, no menos
+- **Then** se obtienen exactamente los `ALTER` correspondientes a las 49 columnas TIMESTAMP-AFFECTED — no más, no menos
 
 ##### S2 — Columnas UTC-NOON usan `AT TIME ZONE 'UTC'`
 - **Given** el archivo SQL de migración `timestamptz_migration`
 - **When** se grep por `AT TIME ZONE 'UTC'`
-- **Then** se obtienen exactamente los `ALTER` correspondientes a las 17 columnas UTC-NOON — no más, no menos
+- **Then** se obtienen exactamente los `ALTER` correspondientes a las 16 columnas UTC-NOON — no más, no menos
 
 ##### S3 — Ningún ALTER carece de cláusula USING
 - **Given** el archivo SQL de migración

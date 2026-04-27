@@ -94,6 +94,8 @@
 
 > **Nota sobre las 43 TIMESTAMP-AFFECTED**: incluye todos los `createdAt` generados por `CURRENT_TIMESTAMP` en el server-side (DB defaults vía `NOW()`) y todos los `updatedAt` manejados por Prisma con `@updatedAt`. Ambos tipos tienen el mismo bug TZ confirmado en diagnóstico previo.
 
+> **Nota correctiva (post-decisiones del usuario)**: el resumen original 43+14+3=60 contenía error aritmético — la tabla detallada arriba lista 65 filas, no 60. Las 5 columnas que faltaban en el resumen (todas TIMESTAMP-AFFECTED) son: `User.createdAt`, `OrgProfile.createdAt`, `OrgProfile.updatedAt`, `DocumentSignatureConfig.createdAt`, `DocumentSignatureConfig.updatedAt`. Tras las decisiones del usuario (todas migran, sin exenciones por categoría), el split final canónico es **49 TIMESTAMP-AFFECTED + 16 UTC-NOON = 65**. Ver `design.md` (tabla canónica líneas 81-147) como fuente de verdad.
+
 ---
 
 ## 2. Opciones técnicas

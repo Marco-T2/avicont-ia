@@ -13,8 +13,8 @@ Este cambio migra 65 columnas `DateTime` de Prisma de `TIMESTAMP(3)` a `TIMESTAM
 
 **Conteo canónico (NO RE-DEBATIR)**:
 - **Total**: 65 columnas `DateTime`
-- **TIMESTAMP-AFFECTED** (`USING "col" AT TIME ZONE 'America/La_Paz'`): 48 columnas
-- **UTC-NOON** (`USING "col" AT TIME ZONE 'UTC'`): 17 columnas
+- **TIMESTAMP-AFFECTED** (`USING "col" AT TIME ZONE 'America/La_Paz'`): 49 columnas
+- **UTC-NOON** (`USING "col" AT TIME ZONE 'UTC'`): 16 columnas
 
 ---
 
@@ -186,9 +186,9 @@ pnpm prisma migrate dev --create-only --name timestamptz_migration
 
 ---
 
-### T-4: Editar el SQL — agregar `USING AT TIME ZONE 'America/La_Paz'` a las 48 columnas TIMESTAMP-AFFECTED
+### T-4: Editar el SQL — agregar `USING AT TIME ZONE 'America/La_Paz'` a las 49 columnas TIMESTAMP-AFFECTED
 
-**Qué hacer**: Abrir `prisma/migrations/*_timestamptz_migration/migration.sql` y reescribir cada `ALTER COLUMN` de las 48 columnas TIMESTAMP-AFFECTED para que tenga el formato correcto:
+**Qué hacer**: Abrir `prisma/migrations/*_timestamptz_migration/migration.sql` y reescribir cada `ALTER COLUMN` de las 49 columnas TIMESTAMP-AFFECTED para que tenga el formato correcto:
 
 ```sql
 ALTER TABLE "<table_name>"
@@ -196,7 +196,7 @@ ALTER TABLE "<table_name>"
   USING "<column_name>" AT TIME ZONE 'America/La_Paz';
 ```
 
-**Lista completa de las 48 columnas TIMESTAMP-AFFECTED** (tabla SQL → columna):
+**Lista completa de las 49 columnas TIMESTAMP-AFFECTED** (tabla SQL → columna):
 
 ```
 organizations            → createdAt
@@ -235,9 +235,9 @@ document_signature_configs → createdAt, updatedAt
 
 ---
 
-### T-5: Editar el SQL — agregar `USING AT TIME ZONE 'UTC'` a las 17 columnas UTC-NOON
+### T-5: Editar el SQL — agregar `USING AT TIME ZONE 'UTC'` a las 16 columnas UTC-NOON
 
-**Qué hacer**: En el mismo archivo `migration.sql`, reescribir cada `ALTER COLUMN` de las 17 columnas UTC-NOON:
+**Qué hacer**: En el mismo archivo `migration.sql`, reescribir cada `ALTER COLUMN` de las 16 columnas UTC-NOON:
 
 ```sql
 ALTER TABLE "<table_name>"
@@ -245,7 +245,7 @@ ALTER TABLE "<table_name>"
   USING "<column_name>" AT TIME ZONE 'UTC';
 ```
 
-**Lista completa de las 17 columnas UTC-NOON** (tabla SQL → columna):
+**Lista completa de las 16 columnas UTC-NOON** (tabla SQL → columna):
 
 ```
 chicken_lots          → startDate, endDate
@@ -277,7 +277,7 @@ iva_sales_books       → fechaFactura
 ```sql
 -- ============================================================
 -- TIMESTAMP-AFFECTED: datos naive BO-local → USING 'America/La_Paz'
--- (48 columnas — representan instantes reales en el tiempo)
+-- (49 columnas — representan instantes reales en el tiempo)
 -- ============================================================
 
 -- organizations
@@ -297,7 +297,7 @@ ALTER TABLE "custom_roles"
 
 -- ============================================================
 -- UTC-NOON: datos ya en UTC vía toNoonUtc() → USING 'UTC'
--- (17 columnas — representan fechas calendario como TIMESTAMPTZ)
+-- (16 columnas — representan fechas calendario como TIMESTAMPTZ)
 -- ============================================================
 
 -- chicken_lots
@@ -342,48 +342,57 @@ grep -c "ALTER COLUMN" prisma/migrations/*_timestamptz_migration/migration.sql
 
 ### T-8: Grep #2 — Ningún `ALTER COLUMN` sin cláusula `USING` (BLOQUEANTE)
 
-**Comando exacto**:
+> ⚠️ **DEFECTO CONOCIDO DEL COMANDO ORIGINAL** (descubierto en apply 2026-04-27): el comando "exacto" descrito abajo asume `TYPE TIMESTAMPTZ` y `USING` en la misma línea, pero el SQL editado por T-6 los pone en líneas separadas (formato multi-línea más legible). Como resultado, el método 1 reporta TODOS los ALTER como falsos positivos (= 65 cuando esperaba 0). **Usar el método 2 (awk multi-línea) como gate real**.
+
+**Comando original (DEFECTUOSO con SQL multi-línea — NO usar como gate)**:
 ```bash
 grep "TYPE TIMESTAMPTZ" prisma/migrations/*_timestamptz_migration/migration.sql | grep -v "USING"
+# DEFECTO: si TYPE y USING están en líneas separadas, este comando reporta TODOS los ALTER como falsos positivos.
 ```
 
-**Resultado esperado**: `0 líneas` (salida vacía — el comando no imprime nada)
+**Comando correcto (multi-línea — gate real)**:
+```bash
+awk '/TYPE TIMESTAMPTZ/{type_ln=NR; getline next_line; if (next_line !~ /USING/) print "FALTA USING después de línea", type_ln, ":", next_line}' \
+  prisma/migrations/*_timestamptz_migration/migration.sql
+```
 
-> **BLOQUEANTE** — Si este grep imprime cualquier línea, existe al menos un `ALTER COLUMN ... TYPE TIMESTAMPTZ` sin su cláusula `USING`. Esas líneas permiten el casting implícito de Postgres que asume UTC, lo cual corrompería los datos naive BO-local. NO ejecutar T-11. Agregar la cláusula `USING` correcta a cada línea reportada.
+**Resultado esperado**: `0 líneas` (salida vacía — el awk no imprime nada). El awk recorre el archivo, en cada `TYPE TIMESTAMPTZ` mira la línea siguiente, y solo imprime si NO contiene `USING`.
 
-**Criterio de completion**: el comando no produce output (salida vacía), exit code 1 es aceptable (grep devuelve 1 cuando no hay matches).
+> **BLOQUEANTE** — Si el awk imprime cualquier línea, existe al menos un `ALTER COLUMN ... TYPE TIMESTAMPTZ` sin su cláusula `USING` en la línea siguiente. Esas filas permitirían el casting implícito de Postgres que asume UTC, lo cual corrompería los datos naive BO-local. NO ejecutar T-11. Agregar la cláusula `USING` correcta a cada ALTER reportado.
+
+**Criterio de completion**: el awk no produce output (salida vacía).
 
 ---
 
-### T-9: Grep #3 — Count `USING 'America/La_Paz'` debe ser exactamente 48 (BLOQUEANTE)
+### T-9: Grep #3 — Count `USING 'America/La_Paz'` debe ser exactamente 49 (BLOQUEANTE)
 
 **Comando exacto**:
 ```bash
 grep -c "AT TIME ZONE 'America/La_Paz'" prisma/migrations/*_timestamptz_migration/migration.sql
 ```
 
-**Resultado esperado**: `48`
+**Resultado esperado**: `49`
 
-> **BLOQUEANTE** — Si este grep reporta cualquier número distinto de `48`, la distribución de cláusulas TIMESTAMP-AFFECTED está incorrecta. Puede significar que alguna columna TIMESTAMP-AFFECTED quedó con `USING 'UTC'` (error grave: corrompería datos) o viceversa. NO ejecutar T-11. Auditar las 48 columnas contra la lista canónica de T-4.
+> **BLOQUEANTE** — Si este grep reporta cualquier número distinto de `49`, la distribución de cláusulas TIMESTAMP-AFFECTED está incorrecta. Puede significar que alguna columna TIMESTAMP-AFFECTED quedó con `USING 'UTC'` (error grave: corrompería datos) o viceversa. NO ejecutar T-11. Auditar las 49 columnas contra la lista canónica de T-4.
 
-**Criterio de completion**: el comando imprime `48` y termina con exit code 0.
+**Criterio de completion**: el comando imprime `49` y termina con exit code 0.
 
 ---
 
-### T-10: Grep #4 — Count `USING 'UTC'` debe ser exactamente 17 (BLOQUEANTE)
+### T-10: Grep #4 — Count `USING 'UTC'` debe ser exactamente 16 (BLOQUEANTE)
 
 **Comando exacto**:
 ```bash
 grep -c "AT TIME ZONE 'UTC'" prisma/migrations/*_timestamptz_migration/migration.sql
 ```
 
-**Resultado esperado**: `17`
+**Resultado esperado**: `16`
 
-> **BLOQUEANTE** — Si este grep reporta cualquier número distinto de `17`, la distribución de cláusulas UTC-NOON está incorrecta. NO ejecutar T-11. Auditar las 17 columnas contra la lista canónica de T-5.
+> **BLOQUEANTE** — Si este grep reporta cualquier número distinto de `16`, la distribución de cláusulas UTC-NOON está incorrecta. NO ejecutar T-11. Auditar las 16 columnas contra la lista canónica de T-5.
 
-**Verificación cruzada adicional** (suma): los resultados de T-9 y T-10 deben sumar 65. Si `48 + 17 ≠ 65`, hay un error de conteo que debe resolverse antes de continuar.
+**Verificación cruzada adicional** (suma): los resultados de T-9 y T-10 deben sumar 65. Si `49 + 16 ≠ 65`, hay un error de conteo que debe resolverse antes de continuar.
 
-**Criterio de completion**: el comando imprime `17` y termina con exit code 0, y la suma con T-9 es 65.
+**Criterio de completion**: el comando imprime `16` y termina con exit code 0, y la suma con T-9 es 65.
 
 ---
 
@@ -392,8 +401,8 @@ grep -c "AT TIME ZONE 'UTC'" prisma/migrations/*_timestamptz_migration/migration
 > **PRE-CONDICIÓN BLOQUEANTE**: Fase 3 completada con los 4 greps reportando OK:
 > - T-7: `65`
 > - T-8: `0 líneas` (salida vacía)
-> - T-9: `48`
-> - T-10: `17`
+> - T-9: `49`
+> - T-10: `16`
 >
 > **Sin esta pre-condición, T-11 NO se ejecuta bajo ninguna circunstancia.**
 >
@@ -432,9 +441,9 @@ feat(db): migrate DateTime columns to TIMESTAMPTZ(3)
 Applies timestamptz_migration: 65 ALTER TABLE statements converting
 all DateTime columns from TIMESTAMP(3) to TIMESTAMPTZ(3).
 
-- 48 TIMESTAMP-AFFECTED columns use USING AT TIME ZONE 'America/La_Paz'
+- 49 TIMESTAMP-AFFECTED columns use USING AT TIME ZONE 'America/La_Paz'
   (naive BO-local data → correct UTC instant)
-- 17 UTC-NOON columns use USING AT TIME ZONE 'UTC'
+- 16 UTC-NOON columns use USING AT TIME ZONE 'UTC'
   (dates stored as UTC-noon via toNoonUtc() → preserved without shift)
 
 Fixes a -4h display bug caused by node-postgres misreading naive-local
@@ -911,7 +920,7 @@ T-1 → T-2 → [T-2 OK?] → T-3 → T-4 → T-5 → T-6
 |------|--------|------|
 | Fase 1 — Schema Prisma | T-1, T-2 | T-2: 0 líneas sin anotación, 65 anotadas |
 | Fase 2 — Generación SQL | T-3, T-4, T-5, T-6 | SQL editado con USING en todos los ALTER |
-| Fase 3 — Gate pre-apply | T-7, T-8, T-9, T-10 | **BLOQUEANTE**: 65 / 0 líneas / 48 / 17 |
+| Fase 3 — Gate pre-apply | T-7, T-8, T-9, T-10 | **BLOQUEANTE**: 65 / 0 líneas / 49 / 16 |
 | Fase 4 — Apply | T-11 | `pnpm prisma migrate dev` con exit code 0 |
 | Fase 5 — Tests TDD (RED) | T-12 | 3 tests nuevos fallan en RED (razón correcta) |
 | Fase 6 — Fix cursor | T-13 | Tests pasan en GREEN |
