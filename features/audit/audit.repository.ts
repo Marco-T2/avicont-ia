@@ -92,9 +92,9 @@ export class AuditRepository extends BaseRepository {
           ON awp."parentEntityType" = 'journal_entries'
          AND awp."parentEntityId"   = je.id
         WHERE (
-          ${cursorCreatedAt}::timestamp IS NULL
-          OR awp."createdAt" <  ${cursorCreatedAt}::timestamp
-          OR (awp."createdAt" = ${cursorCreatedAt}::timestamp AND awp.id < ${cursorId}::text)
+          ${cursorCreatedAt}::timestamptz IS NULL
+          OR awp."createdAt" <  ${cursorCreatedAt}::timestamptz
+          OR (awp."createdAt" = ${cursorCreatedAt}::timestamptz AND awp.id < ${cursorId}::text)
         )
         ORDER BY awp."createdAt" DESC, awp.id DESC
         LIMIT ${fetchLimit}::int
