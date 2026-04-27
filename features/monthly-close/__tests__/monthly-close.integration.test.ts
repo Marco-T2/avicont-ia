@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { MonthlyCloseRepository } from "../monthly-close.repository";
 import { MonthlyCloseService } from "../monthly-close.service";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/fiscal-periods.service";
+import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { setAuditContext } from "@/features/shared/audit-context";
 
 let orgId: string;

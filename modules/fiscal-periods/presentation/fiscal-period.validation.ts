@@ -13,4 +13,3 @@ export const createFiscalPeriodSchema = z.object({
   startDate: z.coerce.date({ message: "Fecha de inicio inválida" }),
   endDate: z.coerce.date({ message: "Fecha de cierre inválida" }),
 });
-

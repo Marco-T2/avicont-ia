@@ -24,7 +24,7 @@ import {
 } from "@/features/shared/errors";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/fiscal-periods.service";
+import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { CloseRequest } from "../monthly-close.types";
 
 // ── Shared mock factory ──────────────────────────────────────────────────────

@@ -18,7 +18,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/fiscal-periods.service";
+import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 
 // ── Shared mock factory ──────────────────────────────────────────────────────
 

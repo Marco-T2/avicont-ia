@@ -15,7 +15,7 @@ import { expectTypeOf } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/fiscal-periods.service";
+import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { MonthlyCloseSummary } from "../monthly-close.types";
 
 // ── Shared mock factory ──────────────────────────────────────────────────────
