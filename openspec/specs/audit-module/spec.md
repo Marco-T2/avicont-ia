@@ -24,6 +24,8 @@ El sistema MUST exponer `GET /api/organizations/[orgSlug]/audit` que retorna eve
 
 El rango de fechas es obligatorio; si el cliente no envía `dateFrom`/`dateTo`, el server resuelve el default a **mes en curso** (`dateFrom = startOfMonth(today)`, `dateTo = endOfMonth(today)`).
 
+El cursor de paginación DEBE comparar la columna `audit_logs.createdAt` (`TIMESTAMPTZ(3)`) usando un cast `::timestamptz` (no `::timestamp`). La comparación DEBE preservar la información de timezone del cursor serializado para garantizar orden estable en cualquier rango de fechas, incluyendo rangos que crucen la medianoche local.
+
 #### Scenario: A1-S1 — default mes en curso
 
 - GIVEN una sesión autenticada de usuario con rol `admin` en org `alpha` y `today = 2026-04-15`
@@ -62,6 +64,37 @@ El rango de fechas es obligatorio; si el cliente no envía `dateFrom`/`dateTo`, 
 - GIVEN no existen filas de audit en el rango para org `alpha`
 - WHEN el admin llama `GET /api/organizations/alpha/audit`
 - THEN responde 200 con `{ rows: [], nextCursor: null }`
+
+#### Scenario: A1-S7 — invariante cursor UTC-to-UTC sin shift expansivo
+
+> **Consolidado**: este scenario describe el invariante general "cursor ISO-Z se compara UTC-to-UTC sin shift expansivo", pero **no genera un test diferencial independiente**. Al intentar materializarlo como test (sembrar una fila en el "rango shifted" `[cursor, cursor+4h]`), colapsa geométricamente con A1-S8: una fila más reciente que el cursor en orden DESC ya fue entregada en una página previa, por lo que el bug se manifiesta como **duplicación cross-page**, no como "filas extra en la página posterior". El fenómeno físico es el mismo desde el punto de vista del WHERE clause, pero el ángulo testeable diferencial es el de A1-S8. Se preserva A1-S7 aquí solo como descripción del invariante para reviewers que busquen el principio antes que el assertion concreto.
+
+- **Invariante**: la comparación del cursor con `audit_logs.createdAt` (TIMESTAMPTZ post-migración) DEBE preservar el sufijo `Z` del string ISO y producir comparación UTC-to-UTC, sin coerción del cursor a `session_timezone`. El fix `::timestamptz` lo garantiza.
+- **Test diferencial correspondiente**: ver A1-S8 (manifestación cross-page del fenómeno) y A1-S9 (verificación negativa con cursor sintetizado).
+
+#### Scenario: A1-S8 — paginación cross-medianoche sin duplicados (con `::timestamptz`)
+
+- GIVEN existen filas de audit_logs con `createdAt` que cruzan la medianoche UTC, incluyendo al menos una fila en el "rango shifted" (entre el instante del cursor y `cursor + 4h`)
+- WHEN se pagina sobre ese rango con cursor-based pagination usando `::timestamptz`
+- THEN todas las filas aparecen exactamente una vez en orden `createdAt DESC`
+- AND las filas del rango shifted aparecen sólo en su página correcta (la de "después del cursor"), NO duplicadas en la página anterior
+
+#### Scenario: A1-S9 — cast `::timestamp` produce shift expansivo de +4h (verificación negativa)
+
+- GIVEN la columna `audit_logs.createdAt` es `TIMESTAMPTZ(3)`
+- AND la sesión de Postgres corre con `TimeZone = 'America/La_Paz'` (UTC-4)
+- AND existe una fila con `createdAt = '2026-04-27T06:00:00.000Z'` (en el "rango shifted" entre `04:00Z` y `08:00Z`)
+- WHEN se compara usando `::timestamp` (comportamiento incorrecto — este scenario documenta el bug que el fix corrige) con cursor `'2026-04-27T04:00:00.000Z'`
+- THEN Postgres descarta el sufijo `Z` del string ISO y obtiene el TIMESTAMP naive `2026-04-27T04:00:00.000`
+- AND al comparar `timestamptz_col < timestamp_value`, Postgres coerce el TIMESTAMP a TIMESTAMPTZ usando `session_timezone = 'America/La_Paz'`, transformando el cursor en `'2026-04-27T08:00:00.000Z'` efectivo
+- AND la fila `06:00Z` (que NO debería estar antes del cursor `04:00Z`) **es incluida incorrectamente** en el resultado porque `06:00Z < 08:00Z` evalúa true
+- AND en una paginación multi-página, esa misma fila puede aparecer **duplicada** en páginas adyacentes
+
+> **Nota**: los Scenarios A1-S8 y A1-S9 documentan el bug observado empíricamente — el shift es **expansivo** (incluye filas extra) y produce **duplicados**, no omisiones. El fix `::timestamptz` preserva el sufijo `Z` y elimina la coerción por session_timezone, garantizando comparación UTC-to-UTC.
+>
+> **Tests diferenciales (2, no 3)**: solo A1-S8 y A1-S9 generan tests diferenciales independientes. A1-S7 quedó consolidado en A1-S8. Los tests deben sembrar al menos una fila en el rango shifted `[cursor, cursor+4h]` y verificar `.not.toContain()` (A1-S9) o ausencia de duplicación cross-page (A1-S8).
+>
+> **Estado de implementación**: A1-S8 y A1-S9 NO IMPLEMENTADOS en este SDD. Razón técnica: el cambio incluye fix del adapter Prisma (`options: '-c timezone=UTC'` en `lib/prisma.ts`) que fuerza `session_timezone='UTC'` en cada conexión del pool. Bajo session UTC, los casts `::timestamp` y `::timestamptz` producen resultados idénticos en comparaciones contra TIMESTAMPTZ — los tests serían no-diferenciales. Reproducir el bug requiere infraestructura de test que permita cambiar `session_timezone` (ej. `SET LOCAL timezone='America/La_Paz'` dentro de transacción de test) — complejidad desproporcionada para un fix de 3 líneas ya protegido por la config del adapter.
 
 ---
 
