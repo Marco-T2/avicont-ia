@@ -85,6 +85,90 @@ export function formatDateBO(value: string | Date | null | undefined): string {
   return `${dd}/${mm}/${yyyy}`;
 }
 
+// ── formatDateTimeBO / formatTimeBO ───────────────────────────────────────────
+
+/**
+ * Formatter compartido — TZ Bolivia, 24h, sin locale-dependent separators.
+ * Usar con `formatToParts` para armar el output a mano y evitar quirks de
+ * Intl entre versiones de Node (ej. "24:00" vs "00:00" según runtime).
+ */
+const BO_DATETIME_FORMATTER = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "America/La_Paz",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hourCycle: "h23",
+});
+
+interface BOParts {
+  day: string;
+  month: string;
+  year: string;
+  hour: string;
+  minute: string;
+}
+
+function toBOParts(value: string | Date | null | undefined): BOParts | null {
+  if (value == null) return null;
+  let date: Date;
+  if (value instanceof Date) {
+    if (isNaN(value.getTime())) return null;
+    date = value;
+  } else {
+    if (value.length === 0) return null;
+    date = new Date(value);
+    if (isNaN(date.getTime())) return null;
+  }
+  const parts = BO_DATETIME_FORMATTER.formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes): string =>
+    parts.find((p) => p.type === type)?.value ?? "";
+  return {
+    day: get("day"),
+    month: get("month"),
+    year: get("year"),
+    hour: get("hour"),
+    minute: get("minute"),
+  };
+}
+
+/**
+ * Format a real timestamp for display in es-BO locale as "DD/MM/YYYY HH:mm",
+ * converted to America/La_Paz (UTC-4).
+ *
+ * Use this for timestamps that represent an instant in time (e.g. `audit_logs.createdAt`,
+ * `now()` outputs from Postgres triggers). Do NOT use for "calendar day" values
+ * stored at UTC-midnight or UTC-noon — those should use `formatDateBO` instead.
+ *
+ * @param value  ISO string, Date, or nullish. Anything malformed → "".
+ * @returns "DD/MM/YYYY HH:mm" in BO local time, or "" for null/undefined/malformed.
+ */
+export function formatDateTimeBO(
+  value: string | Date | null | undefined,
+): string {
+  const p = toBOParts(value);
+  if (!p) return "";
+  return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`;
+}
+
+/**
+ * Format a real timestamp for display as "HH:mm" in BO local time.
+ *
+ * Useful when the date is already shown in a parent UI element and you only
+ * need the time-of-day to disambiguate events in the same day.
+ *
+ * @param value  ISO string, Date, or nullish. Anything malformed → "".
+ * @returns "HH:mm" in BO local time, or "" for null/undefined/malformed.
+ */
+export function formatTimeBO(
+  value: string | Date | null | undefined,
+): string {
+  const p = toBOParts(value);
+  if (!p) return "";
+  return `${p.hour}:${p.minute}`;
+}
+
 // ── lastDayOfUTCMonth ─────────────────────────────────────────────────────────
 
 /**
