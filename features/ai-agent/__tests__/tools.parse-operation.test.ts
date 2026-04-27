@@ -13,7 +13,7 @@ vi.hoisted(() => {
 
 import { executeParseAccountingOperation } from "../tools/parse-operation";
 import type { AccountsRepository } from "@/features/accounting/accounts.repository";
-import type { ContactsService } from "@/features/contacts/contacts.service";
+import type { ContactsService } from "@/features/contacts/server";
 import type { Account, Contact, ContactType } from "@/generated/prisma/client";
 import { NotFoundError, CONTACT_NOT_FOUND } from "@/features/shared/errors";
 

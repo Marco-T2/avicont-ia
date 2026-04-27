@@ -1,8 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesService } from "@/features/receivables/server";
-import { PayablesService } from "@/features/payables/server";
 import ContactList from "@/components/contacts/contact-list";
 
 interface ContactsPageProps {
@@ -21,10 +19,6 @@ export default async function ContactsPage({ params }: ContactsPageProps) {
   }
 
   const contactsService = new ContactsService();
-  const receivablesService = new ReceivablesService(contactsService);
-  const payablesService = new PayablesService(contactsService);
-  contactsService.setReceivablesService(receivablesService);
-  contactsService.setPayablesService(payablesService);
 
   const contacts = await contactsService.listWithBalances(orgId);
 

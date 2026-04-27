@@ -13,7 +13,7 @@ vi.hoisted(() => {
 });
 
 import { executeFindContact } from "../tools/find-contact";
-import type { ContactsService } from "@/features/contacts/contacts.service";
+import type { ContactsService } from "@/features/contacts/server";
 import type { Contact, ContactType } from "@/generated/prisma/client";
 
 // ── Fixtures ──
