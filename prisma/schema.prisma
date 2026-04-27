@@ -15,7 +15,7 @@ model Organization {
   clerkOrgId  String   @unique
   name        String
   slug        String   @unique
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @db.Timestamptz(3) @default(now())
   members        OrganizationMember[]
   documents      Document[]
   farms          Farm[]
@@ -57,8 +57,8 @@ model CustomRole {
   permissionsRead  String[]
   permissionsWrite String[]
   canPost          String[]
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt        DateTime @db.Timestamptz(3) @default(now())
+  updatedAt        DateTime @db.Timestamptz(3) @updatedAt
   organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
   @@unique([organizationId, slug])
@@ -71,7 +71,7 @@ model OrganizationMember {
   organizationId String
   userId         String
   role           String    @default("member")
-  deactivatedAt  DateTime?
+  deactivatedAt  DateTime? @db.Timestamptz(3)
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
   farms          Farm[]
@@ -86,7 +86,7 @@ model User {
   clerkUserId String   @unique
   email       String
   name        String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @db.Timestamptz(3) @default(now())
   memberships    OrganizationMember[]
   documents      Document[]
   expenses       Expense[]       @relation("ExpenseCreator")
@@ -118,7 +118,7 @@ model Document {
   user           User         @relation(fields: [userId], references: [id])
   chunks         DocumentChunk[]
 
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
 
   @@index([organizationId])
   @@index([userId])
@@ -147,7 +147,7 @@ model ChatMessage {
   userId         String
   role           String
   content        String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
 
   @@index([sessionId, createdAt])
   @@index([organizationId, userId])
@@ -163,9 +163,9 @@ model AgentRateLimit {
   id             String   @id @default(cuid())
   organizationId String
   userId         String
-  windowStart    DateTime
+  windowStart    DateTime @db.Timestamptz(3)
   count          Int      @default(0)
-  updatedAt      DateTime @updatedAt
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt
 
   @@unique([organizationId, userId, windowStart])
   @@index([windowStart])
@@ -197,8 +197,8 @@ model Farm {
   location       String?
   organizationId String
   memberId       String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt
   organization   Organization       @relation(fields: [organizationId], references: [id])
   member         OrganizationMember @relation(fields: [memberId], references: [id])
   lots           ChickenLot[]
@@ -213,13 +213,13 @@ model ChickenLot {
   name           String
   barnNumber     Int
   initialCount   Int
-  startDate      DateTime
-  endDate        DateTime?
+  startDate      DateTime @db.Timestamptz(3)
+  endDate        DateTime? @db.Timestamptz(3)
   status         LotStatus @default(ACTIVE)
   farmId         String
   organizationId String
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
+  createdAt      DateTime  @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime  @db.Timestamptz(3) @updatedAt
   farm           Farm         @relation(fields: [farmId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
   expenses       Expense[]
@@ -235,11 +235,11 @@ model Expense {
   amount         Decimal         @db.Decimal(12, 2)
   category       ExpenseCategory
   description    String?
-  date           DateTime
+  date           DateTime @db.Timestamptz(3)
   lotId          String
   organizationId String
   createdById    String
-  createdAt      DateTime        @default(now())
+  createdAt      DateTime        @db.Timestamptz(3) @default(now())
   lot            ChickenLot   @relation(fields: [lotId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdBy      User         @relation("ExpenseCreator", fields: [createdById], references: [id])
@@ -254,11 +254,11 @@ model MortalityLog {
   id             String   @id @default(cuid())
   count          Int
   cause          String?
-  date           DateTime
+  date           DateTime @db.Timestamptz(3)
   lotId          String
   organizationId String
   createdById    String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
   lot            ChickenLot   @relation(fields: [lotId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdBy      User         @relation("MortalityCreator", fields: [createdById], references: [id])
@@ -359,7 +359,7 @@ model JournalEntry {
   id              String             @id @default(cuid())
   number          Int
   referenceNumber Int?               // optional physical document number
-  date            DateTime
+  date            DateTime           @db.Timestamptz(3)
   description     String
   status          JournalEntryStatus @default(DRAFT)
   periodId        String
@@ -371,8 +371,8 @@ model JournalEntry {
   organizationId  String
   createdById     String
   updatedById     String?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  createdAt       DateTime           @db.Timestamptz(3) @default(now())
+  updatedAt       DateTime           @db.Timestamptz(3) @updatedAt
   organization    Organization       @relation(fields: [organizationId], references: [id])
   period          FiscalPeriod       @relation(fields: [periodId], references: [id])
   voucherType     VoucherTypeCfg     @relation(fields: [voucherTypeId], references: [id])
@@ -419,14 +419,14 @@ model FiscalPeriod {
   name           String
   year           Int
   month          Int                // 1..12 — calendar month (CHECK constraint in migration)
-  startDate      DateTime
-  endDate        DateTime
+  startDate      DateTime           @db.Timestamptz(3)
+  endDate        DateTime           @db.Timestamptz(3)
   status         FiscalPeriodStatus @default(OPEN)
-  closedAt       DateTime?
+  closedAt       DateTime?          @db.Timestamptz(3)
   closedBy       String?
   createdById    String
-  createdAt      DateTime           @default(now())
-  updatedAt      DateTime           @updatedAt
+  createdAt      DateTime           @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime           @db.Timestamptz(3) @updatedAt
   organization   Organization       @relation(fields: [organizationId], references: [id])
   closedByUser   User?              @relation("FiscalPeriodCloser", fields: [closedBy], references: [id])
   journalEntries JournalEntry[]
@@ -575,8 +575,8 @@ model Contact {
   paymentTermsDays Int         @default(30)
   creditLimit      Decimal?    @db.Decimal(12, 2)
   isActive         Boolean     @default(true)
-  createdAt        DateTime    @default(now())
-  updatedAt        DateTime    @updatedAt
+  createdAt        DateTime    @db.Timestamptz(3) @default(now())
+  updatedAt        DateTime    @db.Timestamptz(3) @updatedAt
   organization     Organization         @relation(fields: [organizationId], references: [id])
   journalEntries   JournalEntry[]
   journalLines     JournalLine[]
@@ -601,14 +601,14 @@ model AccountsReceivable {
   amount         Decimal          @db.Decimal(12, 2)
   paid           Decimal          @default(0) @db.Decimal(12, 2)
   balance        Decimal          @db.Decimal(12, 2)
-  dueDate        DateTime
+  dueDate        DateTime         @db.Timestamptz(3)
   status         ReceivableStatus @default(PENDING)
   sourceType     String?
   sourceId       String?
   journalEntryId String?
   notes          String?
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+  createdAt      DateTime         @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime         @db.Timestamptz(3) @updatedAt
   organization   Organization  @relation(fields: [organizationId], references: [id])
   contact        Contact       @relation(fields: [contactId], references: [id])
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
@@ -630,14 +630,14 @@ model AccountsPayable {
   amount         Decimal       @db.Decimal(12, 2)
   paid           Decimal       @default(0) @db.Decimal(12, 2)
   balance        Decimal       @db.Decimal(12, 2)
-  dueDate        DateTime
+  dueDate        DateTime      @db.Timestamptz(3)
   status         PayableStatus @default(PENDING)
   sourceType     String?
   sourceId       String?
   journalEntryId String?
   notes          String?
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
+  createdAt      DateTime      @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime      @db.Timestamptz(3) @updatedAt
   organization   Organization  @relation(fields: [organizationId], references: [id])
   contact        Contact       @relation(fields: [contactId], references: [id])
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
@@ -672,8 +672,8 @@ model OrgSettings {
   polloFaenadoCOGSAccountCode  String @default("5.1.1")
   itExpenseAccountCode         String @default("5.3.3")
   itPayableAccountCode         String @default("2.1.7")
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
+  createdAt              DateTime     @db.Timestamptz(3) @default(now())
+  updatedAt              DateTime     @db.Timestamptz(3) @updatedAt
   organization           Organization @relation(fields: [organizationId], references: [id])
 
   @@map("org_settings")
@@ -686,7 +686,7 @@ model Dispatch {
   status          DispatchStatus @default(DRAFT)
   sequenceNumber  Int
   referenceNumber Int?
-  date            DateTime
+  date            DateTime       @db.Timestamptz(3)
   contactId       String
   periodId        String
   description     String
@@ -704,8 +704,8 @@ model Dispatch {
   receivableId    String?        @unique
   notes           String?
   createdById     String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @db.Timestamptz(3) @default(now())
+  updatedAt       DateTime       @db.Timestamptz(3) @updatedAt
   organization    Organization         @relation(fields: [organizationId], references: [id])
   contact         Contact              @relation(fields: [contactId], references: [id])
   period          FiscalPeriod         @relation(fields: [periodId], references: [id])
@@ -751,8 +751,8 @@ model ProductType {
   code           String
   isActive       Boolean  @default(true)
   sortOrder      Int      @default(0)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt
   organization      Organization     @relation(fields: [organizationId], references: [id])
   dispatchDetails   DispatchDetail[]
   purchaseDetails   PurchaseDetail[]
@@ -767,7 +767,7 @@ model Payment {
   organizationId        String
   status                PaymentStatus @default(DRAFT)
   method                PaymentMethod
-  date                  DateTime
+  date                  DateTime      @db.Timestamptz(3)
   amount                Decimal       @db.Decimal(12, 2)
   description           String
   periodId              String
@@ -778,8 +778,8 @@ model Payment {
   accountCode           String?
   operationalDocTypeId  String?
   createdById           String
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
+  createdAt             DateTime      @db.Timestamptz(3) @default(now())
+  updatedAt             DateTime      @db.Timestamptz(3) @updatedAt
   organization          Organization         @relation(fields: [organizationId], references: [id])
   contact               Contact              @relation(fields: [contactId], references: [id])
   period                FiscalPeriod         @relation(fields: [periodId], references: [id])
@@ -801,8 +801,8 @@ model OperationalDocType {
   name           String
   direction      OperationalDocDirection
   isActive       Boolean                 @default(true)
-  createdAt      DateTime                @default(now())
-  updatedAt      DateTime                @updatedAt
+  createdAt      DateTime                @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime                @db.Timestamptz(3) @updatedAt
 
   organization   Organization            @relation(fields: [organizationId], references: [id])
   payments       Payment[]
@@ -818,7 +818,7 @@ model Purchase {
   purchaseType    PurchaseType
   status          PurchaseStatus @default(DRAFT)
   sequenceNumber  Int
-  date            DateTime
+  date            DateTime       @db.Timestamptz(3)
   contactId       String
   periodId        String
   description     String
@@ -839,8 +839,8 @@ model Purchase {
   journalEntryId  String?        @unique
   payableId       String?        @unique
   createdById     String
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
+  createdAt       DateTime       @db.Timestamptz(3) @default(now())
+  updatedAt       DateTime       @db.Timestamptz(3) @updatedAt
   organization    Organization         @relation(fields: [organizationId], references: [id])
   contact         Contact              @relation(fields: [contactId], references: [id])
   period          FiscalPeriod         @relation(fields: [periodId], references: [id])
@@ -864,7 +864,7 @@ model PurchaseDetail {
   lineAmount       Decimal  @db.Decimal(12, 2)
   order            Int      @default(0)
   // FLETE columns
-  fecha            DateTime?
+  fecha            DateTime? @db.Timestamptz(3)
   docRef           String?
   chickenQty       Int?
   pricePerChicken  Decimal? @db.Decimal(12, 4)
@@ -912,7 +912,7 @@ model Sale {
   organizationId  String
   status          SaleStatus   @default(DRAFT)
   sequenceNumber  Int
-  date            DateTime
+  date            DateTime     @db.Timestamptz(3)
   contactId       String
   periodId        String
   description     String
@@ -922,8 +922,8 @@ model Sale {
   journalEntryId  String?      @unique
   receivableId    String?      @unique
   createdById     String
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  createdAt       DateTime     @db.Timestamptz(3) @default(now())
+  updatedAt       DateTime     @db.Timestamptz(3) @updatedAt
   organization    Organization         @relation(fields: [organizationId], references: [id])
   contact         Contact              @relation(fields: [contactId], references: [id])
   period          FiscalPeriod         @relation(fields: [periodId], references: [id])
@@ -967,7 +967,7 @@ model AuditLog {
   changedById     String?
   justification   String?
   correlationId   String?  // Groups all audit rows emitted by a single close/reopen operation
-  createdAt       DateTime @default(now())
+  createdAt       DateTime @db.Timestamptz(3) @default(now())
   organization    Organization @relation(fields: [organizationId], references: [id])
 
   @@index([organizationId, entityType, entityId])
@@ -985,7 +985,7 @@ model IvaPurchaseBook {
   organizationId           String
   fiscalPeriodId           String
   purchaseId               String?        @unique
-  fechaFactura             DateTime
+  fechaFactura             DateTime       @db.Timestamptz(3)
   nitProveedor             String
   razonSocial              String
   numeroFactura            String
@@ -1009,8 +1009,8 @@ model IvaPurchaseBook {
   tipoCompra               Int            @default(1)
   status                   IvaBookStatus  @default(ACTIVE)
   notes                    String?
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  createdAt                DateTime       @db.Timestamptz(3) @default(now())
+  updatedAt                DateTime       @db.Timestamptz(3) @updatedAt
   organization             Organization   @relation(fields: [organizationId], references: [id])
   fiscalPeriod             FiscalPeriod   @relation(fields: [fiscalPeriodId], references: [id])
   purchase                 Purchase?      @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
@@ -1025,7 +1025,7 @@ model IvaSalesBook {
   organizationId           String
   fiscalPeriodId           String
   saleId                   String?             @unique
-  fechaFactura             DateTime
+  fechaFactura             DateTime            @db.Timestamptz(3)
   nitCliente               String
   razonSocial              String
   numeroFactura            String
@@ -1049,8 +1049,8 @@ model IvaSalesBook {
   estadoSIN                IvaSalesEstadoSIN
   status                   IvaBookStatus       @default(ACTIVE)
   notes                    String?
-  createdAt                DateTime            @default(now())
-  updatedAt                DateTime            @updatedAt
+  createdAt                DateTime            @db.Timestamptz(3) @default(now())
+  updatedAt                DateTime            @db.Timestamptz(3) @updatedAt
   organization             Organization        @relation(fields: [organizationId], references: [id])
   fiscalPeriod             FiscalPeriod        @relation(fields: [fiscalPeriodId], references: [id])
   sale                     Sale?               @relation(fields: [saleId], references: [id], onDelete: SetNull)
@@ -1094,8 +1094,8 @@ model OrgProfile {
   representanteLegal String   @default("")
   nroPatronal        String?
   logoUrl        String?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime @db.Timestamptz(3) @updatedAt
   organization   Organization @relation(fields: [organizationId], references: [id])
 
   @@map("org_profile")
@@ -1107,8 +1107,8 @@ model DocumentSignatureConfig {
   documentType    DocumentPrintType
   labels          SignatureLabel[]
   showReceiverRow Boolean           @default(false)
-  createdAt       DateTime          @default(now())
-  updatedAt       DateTime          @updatedAt
+  createdAt       DateTime          @db.Timestamptz(3) @default(now())
+  updatedAt       DateTime          @db.Timestamptz(3) @updatedAt
   organization    Organization      @relation(fields: [organizationId], references: [id])
 
   @@unique([organizationId, documentType])
