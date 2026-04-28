@@ -3,10 +3,12 @@ import {
   NotFoundError,
   POST_NOT_ALLOWED_FOR_ROLE,
 } from "@/features/shared/errors";
+import { validateLockedEdit } from "@/features/accounting/server";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 import {
   JournalAccountInactive,
   JournalAccountNotPostable,
+  JournalAutoEntryVoidForbidden,
   JournalContactRequiredForAccount,
   JournalFiscalPeriodClosed,
   JournalLineBothSides,
@@ -18,6 +20,7 @@ import type { AccountingUnitOfWork } from "../domain/ports/unit-of-work";
 import type { AccountsReadPort } from "../domain/ports/accounts-read.port";
 import type { ContactsReadPort } from "../domain/ports/contacts-read.port";
 import type { FiscalPeriodsReadPort } from "../domain/ports/fiscal-periods-read.port";
+import type { JournalEntriesReadPort } from "../domain/ports/journal-entries-read.port";
 import type { PermissionsPort } from "../domain/ports/permissions.port";
 import type { VoucherTypesReadPort } from "../domain/ports/voucher-types-read.port";
 
@@ -61,6 +64,7 @@ export class JournalsService {
     private readonly periods: FiscalPeriodsReadPort,
     private readonly voucherTypes: VoucherTypesReadPort,
     private readonly permissions: PermissionsPort,
+    private readonly journalEntriesRead: JournalEntriesReadPort,
   ) {}
 
   async createEntry(
@@ -103,6 +107,69 @@ export class JournalsService {
       async (scope) => {
         const persisted = await scope.journalEntries.create(posted);
         await scope.accountBalances.applyPost(persisted);
+        return persisted;
+      },
+    );
+
+    return { journal: result, correlationId };
+  }
+
+  async transitionStatus(
+    organizationId: string,
+    entryId: string,
+    target: "POSTED" | "LOCKED" | "VOIDED",
+    context: { userId: string; role: string; justification?: string },
+  ): Promise<{ journal: Journal; correlationId: string }> {
+    const current = await this.journalEntriesRead.findById(
+      organizationId,
+      entryId,
+    );
+    if (!current) {
+      throw new NotFoundError("Asiento contable");
+    }
+    if (target === "VOIDED" && current.sourceType !== null) {
+      throw new JournalAutoEntryVoidForbidden();
+    }
+    if (current.status === "LOCKED" && target === "VOIDED") {
+      const period = await this.periods.getById(
+        organizationId,
+        current.periodId,
+      );
+      validateLockedEdit(
+        current.status,
+        context.role,
+        period.status,
+        context.justification,
+      );
+    }
+    if (target === "POSTED") {
+      const period = await this.periods.getById(
+        organizationId,
+        current.periodId,
+      );
+      if (period.status !== "OPEN") {
+        throw new JournalFiscalPeriodClosed();
+      }
+    }
+    const transitioned =
+      target === "POSTED"
+        ? current.post()
+        : target === "LOCKED"
+          ? current.lock()
+          : current.void();
+
+    const { result, correlationId } = await this.uow.run(
+      { userId: context.userId, organizationId },
+      async (scope) => {
+        const persisted = await scope.journalEntries.updateStatus(
+          transitioned,
+          context.userId,
+        );
+        if (target === "POSTED") {
+          await scope.accountBalances.applyPost(persisted);
+        } else if (target === "VOIDED") {
+          await scope.accountBalances.applyVoid(persisted);
+        }
         return persisted;
       },
     );

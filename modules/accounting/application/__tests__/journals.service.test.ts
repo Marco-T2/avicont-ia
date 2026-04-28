@@ -5,20 +5,31 @@ import {
   POST_NOT_ALLOWED_FOR_ROLE,
 } from "@/features/shared/errors";
 import {
+  CannotModifyVoidedJournal,
+  InvalidJournalStatusTransition,
   JournalAccountInactive,
   JournalAccountNotPostable,
+  JournalAutoEntryVoidForbidden,
   JournalContactRequiredForAccount,
   JournalFiscalPeriodClosed,
   JournalLineBothSides,
   JournalLineZeroAmount,
   JournalNotBalanced,
 } from "../../domain/errors/journal-errors";
+import {
+  AUTO_ENTRY_VOID_FORBIDDEN,
+  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+} from "@/features/shared/errors";
+import { Journal } from "../../domain/journal.entity";
+import { LineSide } from "../../domain/value-objects/line-side";
+import { Money } from "@/modules/shared/domain/value-objects/money";
 import { JournalsService } from "../journals.service";
 import {
   InMemoryAccountingUnitOfWork,
   InMemoryAccountsReadPort,
   InMemoryContactsReadPort,
   InMemoryFiscalPeriodsReadPort,
+  InMemoryJournalEntriesReadPort,
   InMemoryPermissionsPort,
   InMemoryVoucherTypesReadPort,
 } from "./fakes/in-memory-accounting-uow";
@@ -31,6 +42,7 @@ describe("JournalsService.createEntry", () => {
     const periods = new InMemoryFiscalPeriodsReadPort();
     const voucherTypes = new InMemoryVoucherTypesReadPort();
     const permissions = new InMemoryPermissionsPort();
+    const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const service = new JournalsService(
       uow,
       accounts,
@@ -38,6 +50,7 @@ describe("JournalsService.createEntry", () => {
       periods,
       voucherTypes,
       permissions,
+      journalEntriesRead,
     );
     return {
       service,
@@ -47,6 +60,7 @@ describe("JournalsService.createEntry", () => {
       periods,
       voucherTypes,
       permissions,
+      journalEntriesRead,
     };
   }
 
@@ -496,6 +510,7 @@ describe("JournalsService.createAndPost", () => {
     const periods = new InMemoryFiscalPeriodsReadPort();
     const voucherTypes = new InMemoryVoucherTypesReadPort();
     const permissions = new InMemoryPermissionsPort();
+    const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const service = new JournalsService(
       uow,
       accounts,
@@ -503,6 +518,7 @@ describe("JournalsService.createAndPost", () => {
       periods,
       voucherTypes,
       permissions,
+      journalEntriesRead,
     );
     return {
       service,
@@ -512,6 +528,7 @@ describe("JournalsService.createAndPost", () => {
       periods,
       voucherTypes,
       permissions,
+      journalEntriesRead,
     };
   }
 
@@ -1103,5 +1120,464 @@ describe("JournalsService.createAndPost", () => {
         { userId: "user-1", role: "admin" },
       ),
     ).rejects.toBe(sentinel);
+  });
+});
+
+describe("JournalsService.transitionStatus", () => {
+  function setup() {
+    const uow = new InMemoryAccountingUnitOfWork();
+    const accounts = new InMemoryAccountsReadPort();
+    const contacts = new InMemoryContactsReadPort();
+    const periods = new InMemoryFiscalPeriodsReadPort();
+    const voucherTypes = new InMemoryVoucherTypesReadPort();
+    const permissions = new InMemoryPermissionsPort();
+    const journalEntriesRead = new InMemoryJournalEntriesReadPort();
+    const service = new JournalsService(
+      uow,
+      accounts,
+      contacts,
+      periods,
+      voucherTypes,
+      permissions,
+      journalEntriesRead,
+    );
+    return {
+      service,
+      uow,
+      accounts,
+      contacts,
+      periods,
+      voucherTypes,
+      permissions,
+      journalEntriesRead,
+    };
+  }
+
+  // Helper — builds a balanced DRAFT Journal aggregate suitable for priming
+  // the read port. Lives inside this describe (not promoted) to keep the test
+  // file self-contained; promotes only if a third describe needs it.
+  function makeDraft(overrides: Partial<{
+    organizationId: string;
+    periodId: string;
+    voucherTypeId: string;
+  }> = {}): Journal {
+    return Journal.create({
+      organizationId: overrides.organizationId ?? "org-1",
+      date: new Date("2026-04-28"),
+      description: "Existing entry",
+      periodId: overrides.periodId ?? "period-1",
+      voucherTypeId: overrides.voucherTypeId ?? "voucher-1",
+      createdById: "user-creator",
+      lines: [
+        { accountId: "acc-1", side: LineSide.debit(Money.of(100)) },
+        { accountId: "acc-2", side: LineSide.credit(Money.of(100)) },
+      ],
+    });
+  }
+
+  // Failure mode declarado: the stub throws Error("JournalsService.
+  // transitionStatus not implemented") before any read/write happens. RED
+  // surfaces this as `Expected resolution { journal, correlationId },
+  // received throw 'not implemented'`. GREEN implements Plan B (aggregate-
+  // driven, parity pre-tx): journalEntriesRead.findById → current.post()
+  // (delegates I1/I5/I7 to aggregate via assertBalanced + canTransition) →
+  // uow.run(scope.journalEntries.updateStatus(transitioned, ctx.userId) +
+  // scope.accountBalances.applyPost(persisted)) → return { journal: result,
+  // correlationId }. NotFound, AUTO_ENTRY_VOID, period CLOSED, I8 and
+  // LOCKED/VOIDED branches all defer to their respective ciclos.
+  it("happy DRAFT → POSTED: persists POSTED + applyPost called + correlationId emitted", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const draft = makeDraft();
+    journalEntriesRead.entriesById.set(draft.id, draft);
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+
+    const { journal, correlationId } = await service.transitionStatus(
+      "org-1",
+      draft.id,
+      "POSTED",
+      { userId: "user-1", role: "admin" },
+    );
+
+    expect(journal.status).toBe("POSTED");
+    expect(journal.id).toBe(draft.id);
+    expect(uow.runCount).toBe(1);
+    expect(uow.journalEntries.updateStatusCalls).toHaveLength(1);
+    expect(uow.journalEntries.updateStatusCalls[0].userId).toBe("user-1");
+    expect(uow.journalEntries.updateStatusCalls[0].journal.status).toBe(
+      "POSTED",
+    );
+    expect(uow.accountBalances.applyPostCalls).toHaveLength(1);
+    expect(uow.accountBalances.applyPostCalls[0].id).toBe(draft.id);
+    expect(typeof correlationId).toBe("string");
+    expect(correlationId.length).toBeGreaterThan(0);
+  });
+
+  // Failure mode declarado: current GREEN reads `current = await
+  // journalEntriesRead.findById(...)` but does NOT null-check. With an
+  // unprimed entryId, `current` is null and `current!.post()` throws
+  // `TypeError: Cannot read properties of null (reading 'post')`. RED
+  // surfaces this as `Expected NotFoundError, received TypeError`. GREEN
+  // inserts `if (!current) throw new NotFoundError("Asiento contable")`
+  // immediately after findById, BEFORE any uow.run (parity legacy
+  // `journal.service.ts:558`). The pre-tx assertion `runCount === 0`
+  // guarantees the UoW is NOT opened — this is the "Plan B parity pre-tx"
+  // contract: no Postgres tx, no audit ctx for an entry that does not exist.
+  it("rejects with NotFoundError pre-tx when entry does not exist", async () => {
+    const { service, uow } = setup();
+    // entriesById intentionally NOT primed → findById returns null.
+
+    await expect(
+      service.transitionStatus("org-1", "entry-missing", "POSTED", {
+        userId: "user-1",
+        role: "admin",
+      }),
+    ).rejects.toBeInstanceOf(NotFoundError);
+
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: current GREEN does NOT inspect `current.sourceType`
+  // and does NOT branch on `target` — it hardcodes `current.post()`. With a
+  // primed POSTED auto-entry (sourceType='sale') and target='VOIDED', the use
+  // case calls `current.post()`, which delegates to `Journal.transitionTo
+  // ('POSTED')`. The aggregate sees POSTED→POSTED and throws
+  // `InvalidJournalStatusTransition`. RED surfaces this as `Expected
+  // JournalAutoEntryVoidForbidden, received InvalidJournalStatusTransition`.
+  // GREEN inserts the auto-void guard pre-tx (parity legacy l563-568): if
+  // target='VOIDED' && current.sourceType !== null throw new
+  // JournalAutoEntryVoidForbidden(). The guard runs BEFORE any aggregate
+  // transition because it depends on target+sourceType from the use-case
+  // context. uow.runCount remains 0 — pre-tx contract.
+  //
+  // I9 in the aggregate (`assertMutable`) does NOT fire here because
+  // `transitionTo` does NOT call `assertMutable` — auto-entries can transition
+  // freely via post/lock/void at the aggregate level. The auto-void guard
+  // lives ONLY in the use case (parity legacy: a use-case-only invariant).
+  it("rejects with JournalAutoEntryVoidForbidden when auto-entry target is VOIDED", async () => {
+    const { service, uow, journalEntriesRead } = setup();
+    const auto = Journal.create({
+      organizationId: "org-1",
+      date: new Date("2026-04-28"),
+      description: "Auto entry",
+      periodId: "period-1",
+      voucherTypeId: "voucher-1",
+      createdById: "user-creator",
+      sourceType: "sale",
+      sourceId: "sale-001",
+      lines: [
+        { accountId: "acc-1", side: LineSide.debit(Money.of(100)) },
+        { accountId: "acc-2", side: LineSide.credit(Money.of(100)) },
+      ],
+    }).post();
+    journalEntriesRead.entriesById.set(auto.id, auto);
+
+    const err = await service
+      .transitionStatus("org-1", auto.id, "VOIDED", {
+        userId: "user-1",
+        role: "admin",
+      })
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(JournalAutoEntryVoidForbidden);
+    expect((err as { code?: string }).code).toBe(AUTO_ENTRY_VOID_FORBIDDEN);
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: REGRESSION HARNESS, not RED→GREEN. The aggregate
+  // `Journal.transitionTo` already rejects every transition out of VOIDED via
+  // `CannotModifyVoidedJournal` (`journal.entity.ts:289-291`). The current
+  // GREEN of `transitionStatus` invokes `current.post()` for target=POSTED,
+  // which delegates to `transitionTo("POSTED")` and throws
+  // CannotModifyVoidedJournal without any extra delta in the use case. This
+  // test passes de una, BUT catches a regression if a future refactor bypasses
+  // the aggregate (e.g., implements a manual transition path). Marco's
+  // directive: "ciclos 4, 5, 7 son regression harness — si tenés que agregar
+  // lógica en GREEN, algo está mal". Cost is one O(1) test — value is
+  // explicit aggregate↔use case integration coverage.
+  it("rejects with CannotModifyVoidedJournal when current is VOIDED (I7, regression)", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const voided = makeDraft().post().void();
+    journalEntriesRead.entriesById.set(voided.id, voided);
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+
+    await expect(
+      service.transitionStatus("org-1", voided.id, "POSTED", {
+        userId: "user-1",
+        role: "admin",
+      }),
+    ).rejects.toBeInstanceOf(CannotModifyVoidedJournal);
+
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: REGRESSION HARNESS. The aggregate
+  // `Journal.transitionTo("LOCKED")` rejects DRAFT → LOCKED via
+  // `canTransition` (returns false because `VALID_TRANSITIONS[DRAFT] =
+  // ["POSTED"]`) → throws `InvalidJournalStatusTransition('DRAFT', 'LOCKED')`
+  // (`journal.entity.ts:292-294`). Current GREEN calls `current.lock()` for
+  // target=LOCKED, which delegates to the aggregate. Test passes without
+  // GREEN delta. uow.runCount === 0 — pre-tx contract preserved because the
+  // aggregate throws before `uow.run` is called. Marco's directive: "regression
+  // harness — si tenés que agregar lógica en GREEN, algo está mal".
+  it("rejects with InvalidJournalStatusTransition when DRAFT → LOCKED (I5, regression)", async () => {
+    const { service, uow, journalEntriesRead } = setup();
+    const draft = makeDraft();
+    journalEntriesRead.entriesById.set(draft.id, draft);
+
+    await expect(
+      service.transitionStatus("org-1", draft.id, "LOCKED", {
+        userId: "user-1",
+        role: "admin",
+      }),
+    ).rejects.toBeInstanceOf(InvalidJournalStatusTransition);
+
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: current GREEN does NOT call `periods.getById` and
+  // does NOT inspect period status. With a DRAFT entry whose periodId points
+  // to a CLOSED period and target=POSTED, the use case proceeds to
+  // `current.post()` (which only validates I1/I5/I7 in the aggregate; period
+  // status is collaboration-required, not aggregate-intrinsic), then enters
+  // `uow.run` and calls `updateStatus + applyPost`. RED surfaces this as
+  // `Expected JournalFiscalPeriodClosed, received resolved value`. GREEN
+  // inserts the period read + status guard for target=POSTED pre-tx (parity
+  // legacy l597-604): if target='POSTED' { const period = await
+  // this.periods.getById(orgId, current.periodId); if (period.status !==
+  // 'OPEN') throw new JournalFiscalPeriodClosed(); }. The guard runs after
+  // the auto-void check and BEFORE `current.post()` so the period is
+  // validated before the aggregate transitions; uow.runCount stays at 0 in
+  // the failure path — pre-tx contract preserved.
+  it("rejects with JournalFiscalPeriodClosed when target POSTED and period CLOSED (I6)", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const draft = makeDraft({ periodId: "period-closed" });
+    journalEntriesRead.entriesById.set(draft.id, draft);
+    periods.periodsById.set("period-closed", {
+      id: "period-closed",
+      status: "CLOSED",
+    });
+
+    await expect(
+      service.transitionStatus("org-1", draft.id, "POSTED", {
+        userId: "user-1",
+        role: "admin",
+      }),
+    ).rejects.toBeInstanceOf(JournalFiscalPeriodClosed);
+
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: REGRESSION HARNESS. The aggregate
+  // `Journal.transitionTo("POSTED")` calls `assertBalanced` (`journal.entity
+  // .ts:298-320`) which throws `JournalNotBalanced` when sum(debits) !==
+  // sum(credits) using `Money.equals` bit-perfect (divergence vs legacy
+  // `Math.round(*100)`, declared in C2-B). Current GREEN flow for
+  // target=POSTED: period read OPEN → current.post() → aggregate throws
+  // BEFORE uow.run is called. Test passes without GREEN delta in the use
+  // case. uow.runCount === 0 — pre-tx contract preserved. Marco's directive
+  // for ciclos 4, 5, 7: "regression harness, sin código nuevo en GREEN".
+  it("rejects with JournalNotBalanced when DRAFT desbalanceado → POSTED (I1, regression)", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const draft = Journal.create({
+      organizationId: "org-1",
+      date: new Date("2026-04-28"),
+      description: "Unbalanced",
+      periodId: "period-1",
+      voucherTypeId: "voucher-1",
+      createdById: "user-creator",
+      lines: [
+        { accountId: "acc-1", side: LineSide.debit(Money.of(100)) },
+        { accountId: "acc-2", side: LineSide.credit(Money.of(50)) },
+      ],
+    });
+    journalEntriesRead.entriesById.set(draft.id, draft);
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+
+    await expect(
+      service.transitionStatus("org-1", draft.id, "POSTED", {
+        userId: "user-1",
+        role: "admin",
+      }),
+    ).rejects.toBeInstanceOf(JournalNotBalanced);
+
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: current GREEN inside `uow.run` always calls
+  // `scope.accountBalances.applyPost(persisted)` — does NOT branch on
+  // `target`. With a primed POSTED manual entry (sourceType=null) and
+  // target=VOIDED, the use case skips the auto-void guard (sourceType=null),
+  // skips the period guard (target=VOIDED, period read gated to POSTED),
+  // calls `current.void()` (POSTED→VOIDED is in canTransition), enters
+  // `uow.run` and calls `scope.accountBalances.applyPost(persisted)` instead
+  // of `applyVoid`. RED surfaces this as `Expected applyVoidCalls.length === 1
+  // && applyPostCalls.length === 0, received applyVoidCalls.length === 0 &&
+  // applyPostCalls.length === 1`. GREEN branches on target inside `uow.run`:
+  // if target=POSTED applyPost, else if target=VOIDED applyVoid, else (LOCKED)
+  // no balance side-effect. uow.runCount === 1 (happy path), period.getById
+  // NOT called for target=VOIDED (no period read primed in setup → would
+  // throw if called).
+  it("happy POSTED → VOIDED (manual): applyVoid called, applyPost NOT, no period read", async () => {
+    const { service, uow, journalEntriesRead } = setup();
+    // periods intentionally NOT primed → fake throws on getById, so any
+    // call would surface as `Fiscal period period-1 not found`. The test
+    // assertion proves the use case did NOT read the period for VOIDED.
+    const posted = makeDraft().post();
+    journalEntriesRead.entriesById.set(posted.id, posted);
+
+    const { journal, correlationId } = await service.transitionStatus(
+      "org-1",
+      posted.id,
+      "VOIDED",
+      { userId: "user-1", role: "admin" },
+    );
+
+    expect(journal.status).toBe("VOIDED");
+    expect(uow.runCount).toBe(1);
+    expect(uow.journalEntries.updateStatusCalls).toHaveLength(1);
+    expect(uow.journalEntries.updateStatusCalls[0].journal.status).toBe(
+      "VOIDED",
+    );
+    expect(uow.accountBalances.applyVoidCalls).toHaveLength(1);
+    expect(uow.accountBalances.applyVoidCalls[0].id).toBe(posted.id);
+    expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
+    expect(typeof correlationId).toBe("string");
+    expect(correlationId.length).toBeGreaterThan(0);
+  });
+
+  // Failure mode declarado: current GREEN already handles LOCKED implicitly —
+  // the auto-void guard skips (target !== VOIDED), the period read is gated
+  // to target=POSTED (skip), the ternary picks `current.lock()` (POSTED→LOCKED
+  // is in canTransition), `uow.run` calls `updateStatus` + the if/else branches
+  // pick NEITHER applyPost nor applyVoid for LOCKED (no balance side-effect).
+  // Test passes de una WITHOUT GREEN delta. Value: pins the LOCKED contract
+  // explicitly — no balance side-effect, no period read, no RBAC required for
+  // POSTED→LOCKED (parity legacy: RBAC only fires for LOCKED→VOIDED via
+  // validateLockedEdit, ciclos 10-11). Catches regression if a future change
+  // adds RBAC or balance side-effect to POSTED→LOCKED by accident.
+  it("happy POSTED → LOCKED: persists LOCKED + no balance side-effect + no period read", async () => {
+    const { service, uow, journalEntriesRead } = setup();
+    // periods intentionally NOT primed — any period read would throw.
+    const posted = makeDraft().post();
+    journalEntriesRead.entriesById.set(posted.id, posted);
+
+    const { journal, correlationId } = await service.transitionStatus(
+      "org-1",
+      posted.id,
+      "LOCKED",
+      { userId: "user-1", role: "member" },
+    );
+
+    expect(journal.status).toBe("LOCKED");
+    expect(uow.runCount).toBe(1);
+    expect(uow.journalEntries.updateStatusCalls).toHaveLength(1);
+    expect(uow.journalEntries.updateStatusCalls[0].journal.status).toBe(
+      "LOCKED",
+    );
+    expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
+    expect(uow.accountBalances.applyVoidCalls).toHaveLength(0);
+    expect(typeof correlationId).toBe("string");
+    expect(correlationId.length).toBeGreaterThan(0);
+  });
+
+  // Failure mode declarado: current GREEN does NOT invoke `validateLockedEdit`
+  // anywhere. With a primed LOCKED entry (sourceType=null), target=VOIDED,
+  // role=admin, justification omitted, the use case skips the auto-void guard
+  // (sourceType=null), skips the period guard (target=VOIDED, period read
+  // gated to POSTED), calls `current.void()` (LOCKED→VOIDED is in
+  // canTransition), enters `uow.run`, applyVoid is called, resolves OK. RED
+  // surfaces this as `Expected ValidationError code
+  // LOCKED_EDIT_REQUIRES_JUSTIFICATION, received resolved value`. GREEN
+  // inserts the I8 guard pre-tx for `current.status === 'LOCKED' && target
+  // === 'VOIDED'` (parity legacy `journal.service.ts:586-594`): read the
+  // period and call `validateLockedEdit(current.status, ctx.role,
+  // period.status, ctx.justification)` which throws ValidationError code
+  // LOCKED_EDIT_REQUIRES_JUSTIFICATION when justification is missing or
+  // shorter than the period-conditional minimum (10 chars OPEN / 50 chars
+  // CLOSED). uow.runCount === 0 — pre-tx contract preserved.
+  it("rejects with LOCKED_EDIT_REQUIRES_JUSTIFICATION when LOCKED → VOIDED missing justification (I8)", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const locked = makeDraft().post().lock();
+    journalEntriesRead.entriesById.set(locked.id, locked);
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+
+    const err = await service
+      .transitionStatus("org-1", locked.id, "VOIDED", {
+        userId: "user-1",
+        role: "admin",
+        // justification intentionally omitted → LOCKED edit guard fires.
+      })
+      .catch((e: unknown) => e);
+
+    expect((err as { code?: string }).code).toBe(
+      LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+    );
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: REGRESSION-LIKE / EXPLICIT COVERAGE — current
+  // GREEN already calls validateLockedEdit (added in ciclo 10), and the helper
+  // checks role BEFORE justification (`document-lifecycle.service.ts:104-106`).
+  // With role='member' (not owner/admin) the helper throws ForbiddenError
+  // without code (parity legacy — second occurrence of "errores legacy sin
+  // code", contador 3/3). Test passes de una WITHOUT GREEN delta. Cost: pins
+  // the role-denial path explicitly so a future change to validateLockedEdit
+  // semantics surfaces here. uow.runCount === 0 — pre-tx contract preserved.
+  it("rejects with ForbiddenError when LOCKED → VOIDED with denied role (I8)", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const locked = makeDraft().post().lock();
+    journalEntriesRead.entriesById.set(locked.id, locked);
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+
+    await expect(
+      service.transitionStatus("org-1", locked.id, "VOIDED", {
+        userId: "user-1",
+        role: "member",
+        justification:
+          "razón válida con suficiente longitud para período abierto",
+      }),
+    ).rejects.toBeInstanceOf(ForbiddenError);
+
+    expect(uow.runCount).toBe(0);
+  });
+
+  // Failure mode declarado: current GREEN handles LOCKED → VOIDED happy path
+  // implicitly. With LOCKED entry, role=admin, justification ≥ 10 chars and
+  // period OPEN, validateLockedEdit succeeds (role OK, justification length
+  // OK for OPEN period). Then `current.void()` (LOCKED→VOIDED is in
+  // canTransition), `uow.run` calls `updateStatus` + `applyVoid` (target=
+  // VOIDED branch), resolves with { journal: VOIDED, correlationId }. Test
+  // passes de una WITHOUT GREEN delta. Pins the LOCKED → VOIDED admin happy
+  // path: applyVoid invoked, applyPost NOT, period read once for the I8
+  // guard.
+  it("happy LOCKED → VOIDED (admin + justification + period OPEN): applyVoid called", async () => {
+    const { service, uow, periods, journalEntriesRead } = setup();
+    const locked = makeDraft().post().lock();
+    journalEntriesRead.entriesById.set(locked.id, locked);
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+
+    const { journal, correlationId } = await service.transitionStatus(
+      "org-1",
+      locked.id,
+      "VOIDED",
+      {
+        userId: "user-1",
+        role: "admin",
+        justification:
+          "Justificación con longitud suficiente para período OPEN",
+      },
+    );
+
+    expect(journal.status).toBe("VOIDED");
+    expect(uow.runCount).toBe(1);
+    expect(uow.journalEntries.updateStatusCalls).toHaveLength(1);
+    expect(uow.journalEntries.updateStatusCalls[0].journal.status).toBe(
+      "VOIDED",
+    );
+    expect(uow.accountBalances.applyVoidCalls).toHaveLength(1);
+    expect(uow.accountBalances.applyVoidCalls[0].id).toBe(locked.id);
+    expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
+    expect(typeof correlationId).toBe("string");
+    expect(correlationId.length).toBeGreaterThan(0);
   });
 });

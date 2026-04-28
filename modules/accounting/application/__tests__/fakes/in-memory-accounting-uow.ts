@@ -5,6 +5,7 @@ import type {
 import { FakeFiscalPeriodsTxRepo } from "@/modules/shared/application/__tests__/fakes/in-memory-unit-of-work";
 import { Journal } from "../../../domain/journal.entity";
 import type { AccountBalancesRepository } from "../../../domain/ports/account-balances.repo";
+import type { JournalEntriesReadPort } from "../../../domain/ports/journal-entries-read.port";
 import type { JournalEntriesRepository } from "../../../domain/ports/journal-entries.repo";
 import type {
   AccountingScope,
@@ -41,6 +42,7 @@ export class InMemoryJournalEntriesRepository
   implements JournalEntriesRepository
 {
   created: Journal[] = [];
+  updateStatusCalls: { journal: Journal; userId: string }[] = [];
   private nextNumber = 1;
 
   async create(journal: Journal): Promise<Journal> {
@@ -67,6 +69,31 @@ export class InMemoryJournalEntriesRepository
     });
     this.created.push(hydrated);
     return hydrated;
+  }
+
+  async updateStatus(journal: Journal, userId: string): Promise<Journal> {
+    this.updateStatusCalls.push({ journal, userId });
+    return journal;
+  }
+}
+
+/**
+ * In-memory read port for journal entries. Tests prime `entriesById` with
+ * `Journal` aggregates that should resolve from the read; `findById` returns
+ * the aggregate or null when missing — null lets the use case surface
+ * `NotFoundError("Asiento contable")` parity-true with legacy l558.
+ *
+ * Defaults to "no entries primed" so a test forgetting to prime the id fails
+ * with a NotFound-style assertion instead of a phantom resolution.
+ */
+export class InMemoryJournalEntriesReadPort implements JournalEntriesReadPort {
+  entriesById = new Map<string, Journal>();
+
+  async findById(
+    _organizationId: string,
+    entryId: string,
+  ): Promise<Journal | null> {
+    return this.entriesById.get(entryId) ?? null;
   }
 }
 
@@ -179,9 +206,14 @@ export class InMemoryAccountBalancesRepository
   implements AccountBalancesRepository
 {
   applyPostCalls: Journal[] = [];
+  applyVoidCalls: Journal[] = [];
 
   async applyPost(entry: Journal): Promise<void> {
     this.applyPostCalls.push(entry);
+  }
+
+  async applyVoid(entry: Journal): Promise<void> {
+    this.applyVoidCalls.push(entry);
   }
 }
 

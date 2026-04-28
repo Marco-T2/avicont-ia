@@ -19,4 +19,16 @@ export interface JournalEntriesRepository {
    * with the auto-generated `number` populated by the adapter.
    */
   create(journal: Journal): Promise<Journal>;
+
+  /**
+   * Persists a status transition for an existing aggregate. The aggregate is
+   * already transitioned in-memory by the use case (`current.post()/lock()/
+   * void()`), so the adapter only writes the new `status` (plus `updatedById`
+   * = `userId`) — it does NOT re-validate I5/I7/I1, those live in the
+   * aggregate. Returns the persisted aggregate hydrated from DB so the caller
+   * can pass it to `accountBalances.applyPost` / `applyVoid` with `lines`,
+   * `account.nature` etc populated by the adapter (parity with legacy
+   * `updateStatusTx` returning `JournalEntryWithLines`).
+   */
+  updateStatus(journal: Journal, userId: string): Promise<Journal>;
 }
