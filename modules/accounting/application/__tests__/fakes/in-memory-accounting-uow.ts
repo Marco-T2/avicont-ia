@@ -4,6 +4,7 @@ import type {
 } from "@/modules/shared/domain/ports/unit-of-work";
 import { FakeFiscalPeriodsTxRepo } from "@/modules/shared/application/__tests__/fakes/in-memory-unit-of-work";
 import { Journal } from "../../../domain/journal.entity";
+import type { AccountBalancesRepository } from "../../../domain/ports/account-balances.repo";
 import type { JournalEntriesRepository } from "../../../domain/ports/journal-entries.repo";
 import type {
   AccountingScope,
@@ -18,6 +19,10 @@ import type {
   AccountingFiscalPeriod,
   FiscalPeriodsReadPort,
 } from "../../../domain/ports/fiscal-periods-read.port";
+import type {
+  PermissionScope,
+  PermissionsPort,
+} from "../../../domain/ports/permissions.port";
 import type {
   AccountingVoucherType,
   VoucherTypesReadPort,
@@ -143,11 +148,50 @@ export class InMemoryVoucherTypesReadPort implements VoucherTypesReadPort {
 }
 
 /**
+ * In-memory RBAC port. Tests prime `allowedKeys` with
+ * `${role}:${scope}:${organizationId}` tuples that should resolve as allowed.
+ * `canPost` returns `true` iff the tuple is present, `false` otherwise.
+ *
+ * Defaults to deny-all so a test forgetting to prime the role fails closed
+ * (matches legacy `canPost` semantics: missing matrix entry → denied).
+ */
+export class InMemoryPermissionsPort implements PermissionsPort {
+  allowedKeys = new Set<string>();
+
+  async canPost(
+    role: string,
+    scope: PermissionScope,
+    organizationId: string,
+  ): Promise<boolean> {
+    return this.allowedKeys.has(`${role}:${scope}:${organizationId}`);
+  }
+}
+
+/**
+ * In-memory write port for account_balances. Records every `applyPost`
+ * invocation so tests can assert that balances were applied for a given
+ * Journal aggregate. Real production semantics (debit/credit math against
+ * AccountBalance aggregates, sign rules) live in the Prisma adapter (C3) —
+ * the fake intentionally only records, mirroring the precedent set by
+ * `InMemoryJournalEntriesRepository` for `create`.
+ */
+export class InMemoryAccountBalancesRepository
+  implements AccountBalancesRepository
+{
+  applyPostCalls: Journal[] = [];
+
+  async applyPost(entry: Journal): Promise<void> {
+    this.applyPostCalls.push(entry);
+  }
+}
+
+/**
  * In-memory `AccountingUnitOfWork` used by application-layer tests.
  *
  * Mirrors the contract of `InMemoryUnitOfWork` from shared — generates
  * `correlationId` BEFORE invoking fn, does NOT simulate a real DB tx — but
- * exposes the accounting-specific scope (`journalEntries` repo).
+ * exposes the accounting-specific scope (`journalEntries` + `accountBalances`
+ * repos).
  *
  * NOTE: this does NOT replace the integration test against Postgres — the
  * SET LOCAL + audit trigger semantics are exercised by the Prisma adapter
@@ -160,6 +204,7 @@ export class InMemoryAccountingUnitOfWork implements AccountingUnitOfWork {
 
   fiscalPeriods = new FakeFiscalPeriodsTxRepo();
   journalEntries = new InMemoryJournalEntriesRepository();
+  accountBalances = new InMemoryAccountBalancesRepository();
 
   async run<T>(
     ctx: AuditContext,
@@ -173,6 +218,7 @@ export class InMemoryAccountingUnitOfWork implements AccountingUnitOfWork {
       correlationId,
       fiscalPeriods: this.fiscalPeriods,
       journalEntries: this.journalEntries,
+      accountBalances: this.accountBalances,
     };
     const result = await fn(scope);
     return { result, correlationId };
