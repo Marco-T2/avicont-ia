@@ -1669,8 +1669,8 @@ describe("JournalsService.updateEntry", () => {
     expect(journal.description).toBe("Editado");
     expect(uow.runCount).toBe(1);
     expect(uow.journalEntries.updateCalls).toHaveLength(1);
-    expect(uow.journalEntries.updateCalls[0].id).toBe(draft.id);
-    expect(uow.journalEntries.updateCalls[0].description).toBe("Editado");
+    expect(uow.journalEntries.updateCalls[0].journal.id).toBe(draft.id);
+    expect(uow.journalEntries.updateCalls[0].journal.description).toBe("Editado");
     expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
     expect(uow.accountBalances.applyVoidCalls).toHaveLength(0);
     expect(typeof correlationId).toBe("string");
@@ -1829,12 +1829,12 @@ describe("JournalsService.updateEntry", () => {
     expect(journal.referenceNumber).toBe(42);
     expect(uow.runCount).toBe(1);
     expect(uow.journalEntries.updateCalls).toHaveLength(1);
-    expect(uow.journalEntries.updateCalls[0].description).toBe(
+    expect(uow.journalEntries.updateCalls[0].journal.description).toBe(
       "Editado completo",
     );
-    expect(uow.journalEntries.updateCalls[0].date).toEqual(newDate);
-    expect(uow.journalEntries.updateCalls[0].contactId).toBe("contact-99");
-    expect(uow.journalEntries.updateCalls[0].referenceNumber).toBe(42);
+    expect(uow.journalEntries.updateCalls[0].journal.date).toEqual(newDate);
+    expect(uow.journalEntries.updateCalls[0].journal.contactId).toBe("contact-99");
+    expect(uow.journalEntries.updateCalls[0].journal.referenceNumber).toBe(42);
     expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
     expect(uow.accountBalances.applyVoidCalls).toHaveLength(0);
   });
@@ -1900,9 +1900,9 @@ describe("JournalsService.updateEntry", () => {
     expect(journal.lines[1].side.credit?.equals(Money.of(200))).toBe(true);
     expect(uow.runCount).toBe(1);
     expect(uow.journalEntries.updateCalls).toHaveLength(1);
-    expect(uow.journalEntries.updateCalls[0].lines).toHaveLength(2);
-    expect(uow.journalEntries.updateCalls[0].lines[0].accountId).toBe("acc-3");
-    expect(uow.journalEntries.updateCalls[0].lines[1].accountId).toBe("acc-4");
+    expect(uow.journalEntries.updateCalls[0].journal.lines).toHaveLength(2);
+    expect(uow.journalEntries.updateCalls[0].journal.lines[0].accountId).toBe("acc-3");
+    expect(uow.journalEntries.updateCalls[0].journal.lines[1].accountId).toBe("acc-4");
     expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
     expect(uow.accountBalances.applyVoidCalls).toHaveLength(0);
     expect(typeof correlationId).toBe("string");
@@ -2393,8 +2393,8 @@ describe("JournalsService.updateEntry", () => {
     expect(journal.description).toBe("Editado LOCKED por admin");
     expect(uow.runCount).toBe(1);
     expect(uow.journalEntries.updateCalls).toHaveLength(1);
-    expect(uow.journalEntries.updateCalls[0].id).toBe(locked.id);
-    expect(uow.journalEntries.updateCalls[0].description).toBe(
+    expect(uow.journalEntries.updateCalls[0].journal.id).toBe(locked.id);
+    expect(uow.journalEntries.updateCalls[0].journal.description).toBe(
       "Editado LOCKED por admin",
     );
     expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
@@ -2483,8 +2483,8 @@ describe("JournalsService.updateEntry", () => {
       "Existing entry",
     );
     expect(uow.journalEntries.updateCalls).toHaveLength(1);
-    expect(uow.journalEntries.updateCalls[0].id).toBe(posted.id);
-    expect(uow.journalEntries.updateCalls[0].description).toBe(
+    expect(uow.journalEntries.updateCalls[0].journal.id).toBe(posted.id);
+    expect(uow.journalEntries.updateCalls[0].journal.description).toBe(
       "Editado POSTED manual",
     );
     expect(uow.accountBalances.applyPostCalls).toHaveLength(1);
@@ -2644,10 +2644,10 @@ describe("JournalsService.updateEntry", () => {
       "acc-1",
     );
     expect(uow.journalEntries.updateCalls).toHaveLength(1);
-    expect(uow.journalEntries.updateCalls[0].description).toBe(
+    expect(uow.journalEntries.updateCalls[0].journal.description).toBe(
       "Solo cambio header",
     );
-    expect(uow.journalEntries.updateCalls[0].lines[0].accountId).toBe("acc-1");
+    expect(uow.journalEntries.updateCalls[0].journal.lines[0].accountId).toBe("acc-1");
     expect(uow.accountBalances.applyPostCalls).toHaveLength(1);
     expect(uow.accountBalances.applyPostCalls[0].description).toBe(
       "Solo cambio header",

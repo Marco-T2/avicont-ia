@@ -43,7 +43,7 @@ export class InMemoryJournalEntriesRepository
 {
   created: Journal[] = [];
   updateStatusCalls: { journal: Journal; userId: string }[] = [];
-  updateCalls: Journal[] = [];
+  updateCalls: { journal: Journal; options: { replaceLines: boolean } }[] = [];
   private nextNumber = 1;
 
   async create(journal: Journal): Promise<Journal> {
@@ -77,8 +77,11 @@ export class InMemoryJournalEntriesRepository
     return journal;
   }
 
-  async update(journal: Journal): Promise<Journal> {
-    this.updateCalls.push(journal);
+  async update(
+    journal: Journal,
+    options: { replaceLines: boolean },
+  ): Promise<Journal> {
+    this.updateCalls.push({ journal, options });
     return journal;
   }
 }

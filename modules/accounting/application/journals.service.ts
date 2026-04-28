@@ -237,7 +237,9 @@ export class JournalsService {
         { userId: context.userId, organizationId },
         async (scope) => {
           await scope.accountBalances.applyVoid(current);
-          const updated = await scope.journalEntries.update(mutated);
+          const updated = await scope.journalEntries.update(mutated, {
+            replaceLines: input.lines !== undefined,
+          });
           await scope.accountBalances.applyPost(updated);
           return updated;
         },
@@ -272,7 +274,10 @@ export class JournalsService {
 
     const { result, correlationId } = await this.uow.run(
       { userId: context.userId, organizationId },
-      async (scope) => scope.journalEntries.update(mutated),
+      async (scope) =>
+        scope.journalEntries.update(mutated, {
+          replaceLines: input.lines !== undefined,
+        }),
     );
 
     return { journal: result, correlationId };
