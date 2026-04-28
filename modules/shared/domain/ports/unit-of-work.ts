@@ -23,7 +23,12 @@ export interface AuditContext {
   justification?: string;
 }
 
-export interface UnitOfWorkScope {
+/**
+ * Minimum scope every UoW exposes. Modules extend this with their own
+ * tx-bound repos by declaring `XxxScope extends BaseScope { ... }` and
+ * specialising the port as `UnitOfWork<XxxScope>`.
+ */
+export interface BaseScope {
   /**
    * Correlation id for this run. Generated BEFORE the tx opens, so it is
    * stable across the entire fn execution and remains accessible to the
@@ -39,9 +44,15 @@ export interface UnitOfWorkScope {
   readonly fiscalPeriods: FiscalPeriodsTxRepo;
 }
 
-export interface UnitOfWork {
+/**
+ * Backward-compat alias. Pre-POC-10 callers reference `UnitOfWorkScope`;
+ * keeping the alias means POC #9 code is unaffected by the generic refactor.
+ */
+export type UnitOfWorkScope = BaseScope;
+
+export interface UnitOfWork<TScope extends BaseScope = BaseScope> {
   run<T>(
     ctx: AuditContext,
-    fn: (scope: UnitOfWorkScope) => Promise<T>,
+    fn: (scope: TScope) => Promise<T>,
   ): Promise<{ result: T; correlationId: string }>;
 }
