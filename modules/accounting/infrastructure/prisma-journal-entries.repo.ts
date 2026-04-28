@@ -2,15 +2,13 @@ import { Prisma } from "@/generated/prisma/client";
 import { JournalRepository as LegacyJournalRepository } from "@/features/accounting/journal.repository";
 import type {
   CreateJournalEntryInput,
-  JournalEntryWithLines,
   JournalLineInput,
   UpdateJournalEntryInput,
 } from "@/features/accounting/journal.types";
-import { Money } from "@/modules/shared/domain/value-objects/money";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
-import { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
-import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
+import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
+import { hydrateJournalFromRow } from "./journal-mapping";
 
 /**
  * Tx-aware Prisma adapter for `JournalEntriesRepository` (POC #10 C3-B).
@@ -114,42 +112,5 @@ function mapLinesToInputs(lines: JournalLine[]): JournalLineInput[] {
   }));
 }
 
-// Hidratación legacy `JournalEntryWithLines` → `Journal` aggregate.
-// Function declaration privada al módulo (convention 9 lockeada en C3-A:
-// helpers privados al archivo, NO métodos del adapter — la class expone solo
-// los métodos del port). Compartido entre `create`, `updateStatus` y `update`.
-function hydrateJournalFromRow(row: JournalEntryWithLines): Journal {
-  return Journal.fromPersistence({
-    id: row.id,
-    organizationId: row.organizationId,
-    status: row.status,
-    number: row.number,
-    referenceNumber: row.referenceNumber,
-    date: row.date,
-    description: row.description,
-    periodId: row.periodId,
-    voucherTypeId: row.voucherTypeId,
-    contactId: row.contactId,
-    sourceType: row.sourceType,
-    sourceId: row.sourceId,
-    aiOriginalText: row.aiOriginalText,
-    createdById: row.createdById,
-    updatedById: row.updatedById,
-    createdAt: row.createdAt,
-    updatedAt: row.updatedAt,
-    lines: row.lines.map((line) => {
-      const side = !line.debit.isZero()
-        ? LineSide.debit(Money.of(line.debit.toString()))
-        : LineSide.credit(Money.of(line.credit.toString()));
-      return JournalLine.fromPersistence({
-        id: line.id,
-        journalEntryId: line.journalEntryId,
-        accountId: line.accountId,
-        side,
-        description: line.description,
-        contactId: line.contactId,
-        order: line.order,
-      });
-    }),
-  });
-}
+// `hydrateJournalFromRow` extraído a `./journal-mapping.ts` en C3-C REFACTOR
+// 1 (segundo call-site materializado por `LegacyJournalEntriesReadAdapter`).
