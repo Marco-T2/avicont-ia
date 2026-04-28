@@ -261,6 +261,13 @@ export class Journal {
         order: index,
       }),
     );
+    // I1 — balance enforzado solo en POSTED. Parity legacy
+    // `journal.service.ts:352-358`. DRAFT y LOCKED conservan parity (no
+    // re-balancean) — el chequeo previo al pasar a POSTED garantiza la
+    // partida doble en estados terminales.
+    if (this.props.status === "POSTED") {
+      this.assertLinesBalanced(lines);
+    }
     return new Journal({
       ...this.props,
       lines,
@@ -306,11 +313,15 @@ export class Journal {
   }
 
   private assertBalanced(): void {
-    const totalDebit = this.props.lines.reduce(
+    this.assertLinesBalanced(this.props.lines);
+  }
+
+  private assertLinesBalanced(lines: JournalLine[]): void {
+    const totalDebit = lines.reduce(
       (acc, l) => acc.plus(l.side.debit ?? Money.zero()),
       Money.zero(),
     );
-    const totalCredit = this.props.lines.reduce(
+    const totalCredit = lines.reduce(
       (acc, l) => acc.plus(l.side.credit ?? Money.zero()),
       Money.zero(),
     );
