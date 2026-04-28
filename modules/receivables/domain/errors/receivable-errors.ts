@@ -2,18 +2,18 @@ import {
   ValidationError,
   INVALID_STATUS_TRANSITION,
   RECEIVABLE_AMOUNT_IMMUTABLE,
+  PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+  PAYMENT_ALLOCATION_TARGET_VOIDED,
 } from "@/features/shared/errors";
+import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 // InvalidMonetaryAmount + INVALID_MONETARY_AMOUNT viven en
 // modules/shared/domain/errors/monetary-errors (rule-of-three: receivables,
 // payables, payment). Importar desde allí.
 export const INVALID_RECEIVABLE_STATUS = "INVALID_RECEIVABLE_STATUS";
-export const PARTIAL_PAYMENT_AMOUNT_REQUIRED = "PARTIAL_PAYMENT_AMOUNT_REQUIRED";
 export const ALLOCATION_MUST_BE_POSITIVE = "ALLOCATION_MUST_BE_POSITIVE";
 export const REVERT_MUST_BE_POSITIVE = "REVERT_MUST_BE_POSITIVE";
-export const ALLOCATION_EXCEEDS_BALANCE = "ALLOCATION_EXCEEDS_BALANCE";
 export const REVERT_EXCEEDS_PAID = "REVERT_EXCEEDS_PAID";
-export const CANNOT_APPLY_TO_VOIDED_RECEIVABLE = "CANNOT_APPLY_TO_VOIDED_RECEIVABLE";
 export const CANNOT_REVERT_ON_VOIDED_RECEIVABLE = "CANNOT_REVERT_ON_VOIDED_RECEIVABLE";
 
 export class InvalidReceivableStatus extends ValidationError {
@@ -68,10 +68,10 @@ export class RevertMustBePositive extends ValidationError {
 }
 
 export class AllocationExceedsBalance extends ValidationError {
-  constructor() {
+  constructor(amount: MonetaryAmount, balance: MonetaryAmount) {
     super(
-      "La aplicación excede el saldo disponible de la cuenta por cobrar",
-      ALLOCATION_EXCEEDS_BALANCE,
+      `La asignación (${amount.value}) excede el saldo disponible (${balance.value}) de la CxC`,
+      PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
     );
   }
 }
@@ -88,8 +88,8 @@ export class RevertExceedsPaid extends ValidationError {
 export class CannotApplyToVoidedReceivable extends ValidationError {
   constructor() {
     super(
-      "No se puede aplicar un pago a una cuenta por cobrar anulada",
-      CANNOT_APPLY_TO_VOIDED_RECEIVABLE,
+      "No se puede aplicar pago a una cuenta por cobrar anulada",
+      PAYMENT_ALLOCATION_TARGET_VOIDED,
     );
   }
 }
@@ -106,4 +106,6 @@ export class CannotRevertOnVoidedReceivable extends ValidationError {
 export {
   INVALID_STATUS_TRANSITION,
   RECEIVABLE_AMOUNT_IMMUTABLE,
+  PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+  PAYMENT_ALLOCATION_TARGET_VOIDED,
 };

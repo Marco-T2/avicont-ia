@@ -31,27 +31,14 @@ export interface ReceivablesPort {
   ): Promise<ReceivableStatusValue | null>;
 
   /**
-   * Read the receivable's current balance inside the tx. Returns null when
-   * the receivable does not exist. Used by the payment orchestrator to emit
-   * the legacy `PAYMENT_ALLOCATION_EXCEEDS_BALANCE` error code BEFORE
-   * delegating to the receivables-module `applyAllocation` use case (which
-   * throws its own `ALLOCATION_EXCEEDS_BALANCE` — different code, different
-   * message). Legacy reference:
-   *   features/payment/payment.service.ts ~line 156 (createAndPost),
-   *   ~line 401 (post), ~line 703 (updateAllocations),
-   *   ~line 1037 (updatePostedPaymentTx), ~line 1138 (applyCreditToInvoice).
-   */
-  getBalanceByIdTx(
-    tx: unknown,
-    organizationId: string,
-    id: string,
-  ): Promise<number | null>;
-
-  /**
    * Apply an allocation: increases paid by amount, decreases balance, and
    * advances status (PENDING → PARTIAL/PAID). Throws domain errors from the
-   * receivables entity (CannotApplyToVoidedReceivable, AllocationExceedsBalance,
-   * AllocationMustBePositive) and NotFoundError when the target is missing.
+   * receivables entity — `PAYMENT_ALLOCATION_TARGET_VOIDED` (shared) when the
+   * target is VOIDED, `PAYMENT_ALLOCATION_EXCEEDS_BALANCE` (shared) when the
+   * amount exceeds the available balance, `ALLOCATION_MUST_BE_POSITIVE`
+   * (module-local) when amount ≤ 0, and `NotFoundError` when the target is
+   * missing. The payment orchestrator does NOT pre-check — invariants live in
+   * the entity (R9), the entity is the only guard.
    */
   applyAllocation(
     tx: unknown,

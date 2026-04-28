@@ -1,4 +1,10 @@
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import {
+  NotFoundError,
+  ValidationError,
+  PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+  PAYMENT_ALLOCATION_TARGET_VOIDED,
+} from "@/features/shared/errors";
 import type {
   ReceivablesPort,
   ReceivableStatusValue,
@@ -32,15 +38,14 @@ import type {
 // ─────────────────────────── Receivables / Payables ─────────────────────────
 
 export class FakeReceivablesPort implements ReceivablesPort {
-  /** Fixture map: id → status. Use `null` (delete the entry) to simulate a
-   * missing receivable. */
+  /** Fixture map: id → status. Unset → applyAllocation throws NotFoundError. */
   status = new Map<string, ReceivableStatusValue>();
   /**
-   * Fixture map: id → current balance (legacy parity pre-check uses this to
-   * emit PAYMENT_ALLOCATION_EXCEEDS_BALANCE before delegating to the
-   * cross-feature apply use case). When unset, balance defaults to
-   * Number.POSITIVE_INFINITY so existing tests that don't configure it are
-   * unaffected.
+   * Fixture map: id → current balance. Consumed by `applyAllocation` to
+   * mirror the receivables-entity invariant (throws shared
+   * PAYMENT_ALLOCATION_EXCEEDS_BALANCE when amount exceeds balance). When
+   * unset for a tracked id, the fake skips the balance check so existing
+   * tests that don't configure it are unaffected.
    */
   balance = new Map<string, number>();
   applyCalls: Array<{ id: string; amount: number }> = [];
@@ -56,15 +61,6 @@ export class FakeReceivablesPort implements ReceivablesPort {
     return this.status.get(id) ?? null;
   }
 
-  async getBalanceByIdTx(
-    _tx: unknown,
-    _orgId: string,
-    id: string,
-  ): Promise<number | null> {
-    if (!this.status.has(id)) return null;
-    return this.balance.get(id) ?? Number.POSITIVE_INFINITY;
-  }
-
   async applyAllocation(
     _tx: unknown,
     _orgId: string,
@@ -73,6 +69,21 @@ export class FakeReceivablesPort implements ReceivablesPort {
   ): Promise<void> {
     const err = this.applyShouldThrow.get(id);
     if (err) throw err;
+    const status = this.status.get(id);
+    if (status === undefined) throw new NotFoundError("Cuenta por cobrar");
+    if (status === "VOIDED") {
+      throw new ValidationError(
+        "No se puede aplicar pago a una cuenta por cobrar anulada",
+        PAYMENT_ALLOCATION_TARGET_VOIDED,
+      );
+    }
+    const bal = this.balance.get(id);
+    if (bal !== undefined && amount.value > bal) {
+      throw new ValidationError(
+        `La asignación (${amount.value}) excede el saldo disponible (${bal}) de la CxC`,
+        PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+      );
+    }
     this.applyCalls.push({ id, amount: amount.value });
   }
 
@@ -105,15 +116,6 @@ export class FakePayablesPort implements PayablesPort {
     return this.status.get(id) ?? null;
   }
 
-  async getBalanceByIdTx(
-    _tx: unknown,
-    _orgId: string,
-    id: string,
-  ): Promise<number | null> {
-    if (!this.status.has(id)) return null;
-    return this.balance.get(id) ?? Number.POSITIVE_INFINITY;
-  }
-
   async applyAllocation(
     _tx: unknown,
     _orgId: string,
@@ -122,6 +124,21 @@ export class FakePayablesPort implements PayablesPort {
   ): Promise<void> {
     const err = this.applyShouldThrow.get(id);
     if (err) throw err;
+    const status = this.status.get(id);
+    if (status === undefined) throw new NotFoundError("Cuenta por pagar");
+    if (status === "VOIDED") {
+      throw new ValidationError(
+        "No se puede aplicar pago a una cuenta por pagar anulada",
+        PAYMENT_ALLOCATION_TARGET_VOIDED,
+      );
+    }
+    const bal = this.balance.get(id);
+    if (bal !== undefined && amount.value > bal) {
+      throw new ValidationError(
+        `La asignación (${amount.value}) excede el saldo disponible (${bal}) de la CxP`,
+        PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
+      );
+    }
     this.applyCalls.push({ id, amount: amount.value });
   }
 

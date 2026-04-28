@@ -47,5 +47,4 @@ export {
   PartialPaymentAmountRequired,
   PayableAmountImmutable,
   INVALID_PAYABLE_STATUS,
-  PARTIAL_PAYMENT_AMOUNT_REQUIRED,
 } from "../domain/errors/payable-errors";

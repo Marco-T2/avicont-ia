@@ -47,5 +47,4 @@ export {
   PartialPaymentAmountRequired,
   ReceivableAmountImmutable,
   INVALID_RECEIVABLE_STATUS,
-  PARTIAL_PAYMENT_AMOUNT_REQUIRED,
 } from "../domain/errors/receivable-errors";

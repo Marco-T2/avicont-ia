@@ -494,7 +494,29 @@ Ejemplo: al promover `MonetaryAmount` a `modules/shared/domain/value-objects/`, 
 
 ---
 
-## 12. Lo que NO está en este documento (todavía)
+## 12. Auditoría retroactiva de POCs
+
+Cuando un POC revela un **problema sistémico de fidelidad o consistencia** (drift de codes/contratos, antipattern recurrente, parity gap), auditar retroactivamente los POCs anteriores que pudieron tener el mismo problema es **práctica estándar** — no una decisión caso por caso.
+
+**Por qué**: la Stop rule v4 (legacy-behavior-parity gap como categoría STOP de máxima precedencia) sólo detecta el patrón en el POC en curso. Para los POCs hechos antes de existir la regla, el mismo patrón pudo entrar silenciosamente. La auditoría retroactiva extiende el alcance de la regla hacia atrás.
+
+**Cómo**:
+
+1. Identificar el patrón en el POC actual (Stop rule v4 surfacea el primer caso).
+2. Listar POCs anteriores que tocaron el mismo dominio o usaron la misma técnica.
+3. Hacer **inventario read-only** (Stop rule cat 1: surfacear, no fixear silenciosamente). Construir tabla de hallazgos con clasificación: drift real / dead code / módulo-local legítimo / observación.
+4. Reportar y dejar que el usuario decida scope de fix.
+5. Si el fix se conoce y se está auditando justamente para arreglarlo, **no documentar como deuda formal**: documentar deuda que sabemos arreglar HOY es procrastinación con disfraz de prudencia. Genera carga cognitiva en cada lectura futura.
+
+**Cuándo NO auditar retroactivamente**: si el "problema" es una mejora estética, una preferencia de estilo, o algo que no afecta contrato externo (API surface, error codes, behaviors observables). El criterio es **fidelidad/consistencia**, no perfeccionismo.
+
+**Precedente**: post POC #8 (payment), la auditoría retroactiva de receivables (POC #6) y payables (POC #7) surfaceó dos drifts reales de error codes — `PAYMENT_ALLOCATION_EXCEEDS_BALANCE` y `PAYMENT_ALLOCATION_TARGET_VOIDED` (shared) coexistían con codes módulo-locales en receivables/payables, y payment los compensaba con pre-checks defensivos. La Opción C aplicada eliminó el drift en la fuente y borró los pre-checks, devolviendo la invariante a un solo lugar (R9 — invariantes en entity).
+
+**Cross-ref**: la regla complementa Stop rule v4 (engram `feedback/sub-agent-stop-rule`); ambas evitan que parity gaps lleguen a master.
+
+---
+
+## 13. Lo que NO está en este documento (todavía)
 
 - Estrategia de testing detallada por capa
 - Composition root completo (DI)
@@ -505,7 +527,7 @@ Esos quedan abiertos para iterar **después** del POC en `mortality`. Si los def
 
 ---
 
-## 13. Referencias
+## 14. Referencias
 
 - Cockburn, Alistair. "Hexagonal Architecture" (2005)
 - Vernon, Vaughn. "Domain-Driven Design Distilled" (2016)

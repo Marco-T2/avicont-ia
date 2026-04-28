@@ -23,19 +23,6 @@ export interface PayablesPort {
     id: string,
   ): Promise<PayableStatusValue | null>;
 
-  /**
-   * Read the payable's current balance inside the tx. Returns null when the
-   * payable does not exist. Used by the payment orchestrator to emit the
-   * legacy `PAYMENT_ALLOCATION_EXCEEDS_BALANCE` error code BEFORE delegating
-   * to the payables-module `applyAllocation` use case. Symmetric mirror of
-   * `ReceivablesPort.getBalanceByIdTx`.
-   */
-  getBalanceByIdTx(
-    tx: unknown,
-    organizationId: string,
-    id: string,
-  ): Promise<number | null>;
-
   applyAllocation(
     tx: unknown,
     organizationId: string,

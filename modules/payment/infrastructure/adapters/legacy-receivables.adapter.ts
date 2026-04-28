@@ -31,20 +31,6 @@ export class LegacyReceivablesAdapter implements ReceivablesPort {
     return (row?.status as ReceivableStatusValue | undefined) ?? null;
   }
 
-  async getBalanceByIdTx(
-    tx: unknown,
-    organizationId: string,
-    id: string,
-  ): Promise<number | null> {
-    const row = await (tx as Prisma.TransactionClient).accountsReceivable.findFirst(
-      {
-        where: { id, organizationId },
-        select: { balance: true },
-      },
-    );
-    return row ? Number(row.balance) : null;
-  }
-
   async applyAllocation(
     tx: unknown,
     organizationId: string,

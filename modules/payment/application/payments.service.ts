@@ -52,17 +52,10 @@ import { PaymentAllocation } from "../domain/payment-allocation.entity";
 import { AllocationTarget } from "../domain/value-objects/allocation-target";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import {
-  PAYMENT_ALLOCATION_TARGET_VOIDED,
-  PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
   FISCAL_PERIOD_CLOSED,
   INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
-// Note: INVALID_STATUS_TRANSITION + PAYMENT_ALLOCATION_EXCEEDS_BALANCE
-// are kept imported above; the latter is used by the pre-check guards
-// inside applyAllocationTx / applyCreditToInvoiceTx to surface the legacy
-// shared code instead of the receivables/payables module's own
-// ALLOCATION_EXCEEDS_BALANCE (C2-FIX-2 parity audit).
 import {
   resolveDirection,
   type AllocationDirectionInput,
@@ -893,39 +886,8 @@ export class PaymentsService {
       );
     }
 
-    // 4. Validate receivable existence + status + balance via the receivables
-    //    port. Legacy parity (C2-FIX-2): the cxc-balance pre-check must run
-    //    BEFORE calling the receivables module's apply, because legacy emits
-    //    PAYMENT_ALLOCATION_EXCEEDS_BALANCE with the
-    //    "(X) excede el saldo disponible (Y) de la CxC" message stem at this
-    //    point (features/payment/payment.service.ts:1138-1143). Relying on
-    //    the receivables module to throw `ALLOCATION_EXCEEDS_BALANCE` breaks
-    //    legacy parity for shim consumers.
-    const targetStatus = await this.receivables.getStatusByIdTx(
-      tx,
-      organizationId,
-      receivableId,
-    );
-    if (targetStatus === null) throw new NotFoundError("Cuenta por cobrar");
-    if (targetStatus === "VOIDED") {
-      throw new ValidationError(
-        "No se puede aplicar crédito a una cuenta por cobrar anulada",
-        PAYMENT_ALLOCATION_TARGET_VOIDED,
-      );
-    }
-    const targetBalance = await this.receivables.getBalanceByIdTx(
-      tx,
-      organizationId,
-      receivableId,
-    );
-    if (targetBalance !== null && amount > targetBalance) {
-      throw new ValidationError(
-        `El monto (${amount}) excede el saldo disponible (${targetBalance}) de la CxC`,
-        PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
-      );
-    }
-
-    // 5. Append allocation to source aggregate + persist
+    // 4. Mutate source aggregate + persist (creates the credit-application
+    //    allocation pointing at the target receivable).
     const newAllocation = PaymentAllocation.create({
       paymentId: source.id,
       target: AllocationTarget.forReceivable(receivableId),
@@ -934,7 +896,10 @@ export class PaymentsService {
     const updated = source.applyCreditAllocation(newAllocation);
     await this.repo.updateTx(tx, updated);
 
-    // 6. Apply to receivable
+    // 5. Apply to receivable. Receivables entity is the only invariant guard:
+    //    throws NotFoundError on missing target, PAYMENT_ALLOCATION_TARGET_VOIDED
+    //    when target is VOIDED, PAYMENT_ALLOCATION_EXCEEDS_BALANCE when amount
+    //    exceeds available balance. Tx rollback handles atomicity for step 4.
     await this.receivables.applyAllocation(
       tx,
       organizationId,
@@ -942,7 +907,7 @@ export class PaymentsService {
       requested,
     );
 
-    // 7. Update source payment's journal entry: append the credit-application
+    // 6. Update source payment's journal entry: append the credit-application
     //    line pair (DEBIT cxc / CREDIT cxc with proper contact ids).
     if (source.journalEntryId) {
       const settings = await this.orgSettings.getOrCreate(organizationId);
@@ -1014,36 +979,6 @@ export class PaymentsService {
     alloc: { receivableId: string | null; payableId: string | null; amount: MonetaryAmount },
   ): Promise<void> {
     if (alloc.receivableId) {
-      const status = await this.receivables.getStatusByIdTx(
-        tx,
-        organizationId,
-        alloc.receivableId,
-      );
-      if (status === null) throw new NotFoundError("Cuenta por cobrar");
-      if (status === "VOIDED") {
-        throw new ValidationError(
-          "No se puede aplicar pago a una cuenta por cobrar anulada",
-          PAYMENT_ALLOCATION_TARGET_VOIDED,
-        );
-      }
-      // Legacy parity (C2-FIX-2): balance pre-check BEFORE delegating to the
-      // receivables-module apply use case. Legacy emits
-      // PAYMENT_ALLOCATION_EXCEEDS_BALANCE with the
-      // "(X) excede el saldo disponible (Y) de la CxC" message stem at this
-      // point (features/payment/payment.service.ts:157-161, 401-405,
-      // 703-707, 1037-1041). The receivables module's apply throws its own
-      // ALLOCATION_EXCEEDS_BALANCE — different code, breaks shim consumers.
-      const balance = await this.receivables.getBalanceByIdTx(
-        tx,
-        organizationId,
-        alloc.receivableId,
-      );
-      if (balance !== null && alloc.amount.value > balance) {
-        throw new ValidationError(
-          `La asignación (${alloc.amount.value}) excede el saldo disponible (${balance}) de la CxC`,
-          PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
-        );
-      }
       await this.receivables.applyAllocation(
         tx,
         organizationId,
@@ -1051,30 +986,6 @@ export class PaymentsService {
         alloc.amount,
       );
     } else if (alloc.payableId) {
-      const status = await this.payables.getStatusByIdTx(
-        tx,
-        organizationId,
-        alloc.payableId,
-      );
-      if (status === null) throw new NotFoundError("Cuenta por pagar");
-      if (status === "VOIDED") {
-        throw new ValidationError(
-          "No se puede aplicar pago a una cuenta por pagar anulada",
-          PAYMENT_ALLOCATION_TARGET_VOIDED,
-        );
-      }
-      // Legacy parity (C2-FIX-2): symmetric balance pre-check for payables.
-      const balance = await this.payables.getBalanceByIdTx(
-        tx,
-        organizationId,
-        alloc.payableId,
-      );
-      if (balance !== null && alloc.amount.value > balance) {
-        throw new ValidationError(
-          `La asignación (${alloc.amount.value}) excede el saldo disponible (${balance}) de la CxP`,
-          PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
-        );
-      }
       await this.payables.applyAllocation(
         tx,
         organizationId,

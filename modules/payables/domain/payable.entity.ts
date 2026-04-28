@@ -170,7 +170,7 @@ export class Payable {
     }
     const newPaid = this.props.paid.plus(amount);
     if (newPaid.isGreaterThan(this.props.amount)) {
-      throw new AllocationExceedsBalance();
+      throw new AllocationExceedsBalance(amount, this.props.balance);
     }
     const newBalance = this.props.amount.minus(newPaid);
     const newStatus: PayableStatus = newPaid.equals(this.props.amount) ? "PAID" : "PARTIAL";
