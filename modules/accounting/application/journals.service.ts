@@ -4,18 +4,17 @@ import {
   POST_NOT_ALLOWED_FOR_ROLE,
 } from "@/features/shared/errors";
 import { validateLockedEdit } from "@/features/accounting/server";
-import { Money } from "@/modules/shared/domain/value-objects/money";
 import {
-  JournalAccountInactive,
-  JournalAccountNotPostable,
   JournalAutoEntryVoidForbidden,
-  JournalContactRequiredForAccount,
   JournalFiscalPeriodClosed,
-  JournalLineBothSides,
-  JournalLineZeroAmount,
 } from "../domain/errors/journal-errors";
-import { Journal, type JournalLineDraft } from "../domain/journal.entity";
-import { LineSide } from "../domain/value-objects/line-side";
+import { Journal } from "../domain/journal.entity";
+import {
+  type JournalLineRawInput,
+  mapLinesToDrafts,
+  validateLineRules,
+} from "../domain/journal-line-rules";
+import { validateLinesAgainstPorts } from "./journal-line-port-checks";
 import type { AccountingUnitOfWork } from "../domain/ports/unit-of-work";
 import type { AccountsReadPort } from "../domain/ports/accounts-read.port";
 import type { ContactsReadPort } from "../domain/ports/contacts-read.port";
@@ -24,13 +23,10 @@ import type { JournalEntriesReadPort } from "../domain/ports/journal-entries-rea
 import type { PermissionsPort } from "../domain/ports/permissions.port";
 import type { VoucherTypesReadPort } from "../domain/ports/voucher-types-read.port";
 
-export interface CreateJournalEntryLineInput {
-  accountId: string;
-  debit: number;
-  credit: number;
-  description?: string | null;
-  contactId?: string | null;
-}
+// Alias kept for API ergonomics — the use case names its line input
+// `CreateJournalEntryLineInput` to mirror the legacy public surface, but
+// structurally it IS the domain `JournalLineRawInput`. Single shared shape.
+export type CreateJournalEntryLineInput = JournalLineRawInput;
 
 export interface CreateJournalEntryInput {
   date: Date;
@@ -41,6 +37,15 @@ export interface CreateJournalEntryInput {
   contactId?: string | null;
   referenceNumber?: number | null;
   lines: CreateJournalEntryLineInput[];
+}
+
+export interface UpdateJournalEntryInput {
+  date?: Date;
+  description?: string;
+  contactId?: string | null;
+  referenceNumber?: number | null;
+  updatedById: string;
+  lines?: CreateJournalEntryLineInput[];
 }
 
 export interface AuditUserContext {
@@ -177,6 +182,51 @@ export class JournalsService {
     return { journal: result, correlationId };
   }
 
+  async updateEntry(
+    organizationId: string,
+    entryId: string,
+    input: UpdateJournalEntryInput,
+    context: { userId: string; role?: string; justification?: string },
+  ): Promise<{ journal: Journal; correlationId: string }> {
+    const current = await this.journalEntriesRead.findById(
+      organizationId,
+      entryId,
+    );
+    if (!current) {
+      throw new NotFoundError("Asiento contable");
+    }
+    if (current.status === "LOCKED") {
+      const period = await this.periods.getById(
+        organizationId,
+        current.periodId,
+      );
+      validateLockedEdit(
+        current.status,
+        context.role ?? "",
+        period.status,
+        context.justification,
+      );
+    }
+    let mutated = current.update(input);
+    if (input.lines !== undefined) {
+      validateLineRules(input.lines);
+      await validateLinesAgainstPorts(
+        organizationId,
+        input.lines,
+        this.accounts,
+        this.contacts,
+      );
+      mutated = mutated.replaceLines(mapLinesToDrafts(input.lines));
+    }
+
+    const { result, correlationId } = await this.uow.run(
+      { userId: context.userId, organizationId },
+      async (scope) => scope.journalEntries.update(mutated),
+    );
+
+    return { journal: result, correlationId };
+  }
+
   // Cross-feature validation + DRAFT aggregate construction shared by
   // createEntry and createAndPost. Order is parity-locked with legacy
   // `journal.service.ts` (period → voucherType → line pre-loop → accounts/
@@ -194,46 +244,13 @@ export class JournalsService {
     }
     await this.voucherTypes.getById(organizationId, input.voucherTypeId);
 
-    for (const line of input.lines) {
-      if (line.debit > 0 && line.credit > 0) {
-        throw new JournalLineBothSides();
-      }
-      if (line.debit === 0 && line.credit === 0) {
-        throw new JournalLineZeroAmount();
-      }
-    }
-
-    for (const line of input.lines) {
-      const account = await this.accounts.findById(
-        organizationId,
-        line.accountId,
-      );
-      if (!account) {
-        throw new NotFoundError(`Cuenta ${line.accountId}`);
-      }
-      if (!account.isActive) {
-        throw new JournalAccountInactive(account.name);
-      }
-      if (!account.isDetail) {
-        throw new JournalAccountNotPostable();
-      }
-      if (account.requiresContact) {
-        if (!line.contactId) {
-          throw new JournalContactRequiredForAccount(account.name);
-        }
-        await this.contacts.getActiveById(organizationId, line.contactId);
-      }
-    }
-
-    const drafts: JournalLineDraft[] = input.lines.map((line) => ({
-      accountId: line.accountId,
-      side:
-        line.debit > 0
-          ? LineSide.debit(Money.of(line.debit))
-          : LineSide.credit(Money.of(line.credit)),
-      description: line.description ?? null,
-      contactId: line.contactId ?? null,
-    }));
+    validateLineRules(input.lines);
+    await validateLinesAgainstPorts(
+      organizationId,
+      input.lines,
+      this.accounts,
+      this.contacts,
+    );
 
     return Journal.create({
       organizationId,
@@ -244,7 +261,7 @@ export class JournalsService {
       createdById: input.createdById,
       contactId: input.contactId ?? null,
       referenceNumber: input.referenceNumber ?? null,
-      lines: drafts,
+      lines: mapLinesToDrafts(input.lines),
     });
   }
 }
