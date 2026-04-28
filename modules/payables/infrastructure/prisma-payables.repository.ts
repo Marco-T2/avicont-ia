@@ -9,6 +9,8 @@ import type {
   CreatePayableTxData,
 } from "../domain/payable.repository";
 import { Payable } from "../domain/payable.entity";
+import type { PayableStatus } from "../domain/value-objects/payable-status";
+import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { toDomain, toPersistence } from "./payables.mapper";
 
 type DbClient = Pick<PrismaClient, "accountsPayable">;
@@ -151,6 +153,56 @@ export class PrismaPayablesRepository implements PayableRepository {
     await txClient.accountsPayable.update({
       where: { id, organizationId },
       data: { status: "VOIDED", balance: new Prisma.Decimal(0) },
+    });
+  }
+
+  async findByIdTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+  ): Promise<Payable | null> {
+    const txClient = tx as Prisma.TransactionClient;
+    const row = await txClient.accountsPayable.findFirst({
+      where: { id, organizationId },
+    });
+    return row ? toDomain(row) : null;
+  }
+
+  async applyAllocationTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: PayableStatus,
+  ): Promise<void> {
+    const txClient = tx as Prisma.TransactionClient;
+    await txClient.accountsPayable.update({
+      where: { id, organizationId },
+      data: {
+        paid: new Prisma.Decimal(paid.value),
+        balance: new Prisma.Decimal(balance.value),
+        status,
+      },
+    });
+  }
+
+  async revertAllocationTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: PayableStatus,
+  ): Promise<void> {
+    const txClient = tx as Prisma.TransactionClient;
+    await txClient.accountsPayable.update({
+      where: { id, organizationId },
+      data: {
+        paid: new Prisma.Decimal(paid.value),
+        balance: new Prisma.Decimal(balance.value),
+        status,
+      },
     });
   }
 }

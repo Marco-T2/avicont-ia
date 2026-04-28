@@ -9,6 +9,12 @@ import {
 // payables, payment). Importar desde allí.
 export const INVALID_RECEIVABLE_STATUS = "INVALID_RECEIVABLE_STATUS";
 export const PARTIAL_PAYMENT_AMOUNT_REQUIRED = "PARTIAL_PAYMENT_AMOUNT_REQUIRED";
+export const ALLOCATION_MUST_BE_POSITIVE = "ALLOCATION_MUST_BE_POSITIVE";
+export const REVERT_MUST_BE_POSITIVE = "REVERT_MUST_BE_POSITIVE";
+export const ALLOCATION_EXCEEDS_BALANCE = "ALLOCATION_EXCEEDS_BALANCE";
+export const REVERT_EXCEEDS_PAID = "REVERT_EXCEEDS_PAID";
+export const CANNOT_APPLY_TO_VOIDED_RECEIVABLE = "CANNOT_APPLY_TO_VOIDED_RECEIVABLE";
+export const CANNOT_REVERT_ON_VOIDED_RECEIVABLE = "CANNOT_REVERT_ON_VOIDED_RECEIVABLE";
 
 export class InvalidReceivableStatus extends ValidationError {
   constructor(value: string) {
@@ -39,6 +45,60 @@ export class ReceivableAmountImmutable extends ValidationError {
     super(
       "El monto de una cuenta por cobrar no puede modificarse",
       RECEIVABLE_AMOUNT_IMMUTABLE,
+    );
+  }
+}
+
+export class AllocationMustBePositive extends ValidationError {
+  constructor() {
+    super(
+      "El monto a aplicar debe ser mayor que cero",
+      ALLOCATION_MUST_BE_POSITIVE,
+    );
+  }
+}
+
+export class RevertMustBePositive extends ValidationError {
+  constructor() {
+    super(
+      "El monto a revertir debe ser mayor que cero",
+      REVERT_MUST_BE_POSITIVE,
+    );
+  }
+}
+
+export class AllocationExceedsBalance extends ValidationError {
+  constructor() {
+    super(
+      "La aplicación excede el saldo disponible de la cuenta por cobrar",
+      ALLOCATION_EXCEEDS_BALANCE,
+    );
+  }
+}
+
+export class RevertExceedsPaid extends ValidationError {
+  constructor() {
+    super(
+      "La reversión excede el monto pagado de la cuenta por cobrar",
+      REVERT_EXCEEDS_PAID,
+    );
+  }
+}
+
+export class CannotApplyToVoidedReceivable extends ValidationError {
+  constructor() {
+    super(
+      "No se puede aplicar un pago a una cuenta por cobrar anulada",
+      CANNOT_APPLY_TO_VOIDED_RECEIVABLE,
+    );
+  }
+}
+
+export class CannotRevertOnVoidedReceivable extends ValidationError {
+  constructor() {
+    super(
+      "No se puede revertir un pago sobre una cuenta por cobrar anulada",
+      CANNOT_REVERT_ON_VOIDED_RECEIVABLE,
     );
   }
 }

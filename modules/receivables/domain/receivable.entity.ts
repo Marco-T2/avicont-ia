@@ -6,6 +6,12 @@ import {
 import {
   InvalidReceivableStatusTransition,
   PartialPaymentAmountRequired,
+  AllocationMustBePositive,
+  RevertMustBePositive,
+  AllocationExceedsBalance,
+  RevertExceedsPaid,
+  CannotApplyToVoidedReceivable,
+  CannotRevertOnVoidedReceivable,
 } from "./errors/receivable-errors";
 
 export interface ReceivableProps {
@@ -153,6 +159,50 @@ export class Receivable {
 
   void(): Receivable {
     return this.transitionTo("VOIDED");
+  }
+
+  applyAllocation(amount: MonetaryAmount): Receivable {
+    if (!amount.isGreaterThan(MonetaryAmount.zero())) {
+      throw new AllocationMustBePositive();
+    }
+    if (this.props.status === "VOIDED") {
+      throw new CannotApplyToVoidedReceivable();
+    }
+    const newPaid = this.props.paid.plus(amount);
+    if (newPaid.isGreaterThan(this.props.amount)) {
+      throw new AllocationExceedsBalance();
+    }
+    const newBalance = this.props.amount.minus(newPaid);
+    const newStatus: ReceivableStatus = newPaid.equals(this.props.amount) ? "PAID" : "PARTIAL";
+    return new Receivable({
+      ...this.props,
+      paid: newPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
+  }
+
+  revertAllocation(amount: MonetaryAmount): Receivable {
+    if (!amount.isGreaterThan(MonetaryAmount.zero())) {
+      throw new RevertMustBePositive();
+    }
+    if (this.props.status === "VOIDED") {
+      throw new CannotRevertOnVoidedReceivable();
+    }
+    if (amount.isGreaterThan(this.props.paid)) {
+      throw new RevertExceedsPaid();
+    }
+    const newPaid = this.props.paid.minus(amount);
+    const newBalance = this.props.amount.minus(newPaid);
+    const newStatus: ReceivableStatus = newPaid.equals(MonetaryAmount.zero()) ? "PENDING" : "PARTIAL";
+    return new Receivable({
+      ...this.props,
+      paid: newPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
   }
 
   toSnapshot(): ReceivableSnapshot {

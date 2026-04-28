@@ -1,6 +1,6 @@
 # Arquitectura — avicont-ia
 
-> **Estado**: v0.2 — POC de `mortality` validado (17/17 tests, tsc limpio). Lint enforcement activo. Addenda incremental por POC subsiguientes (ver §11 para política de `modules/shared/`).
+> **Estado**: v0.4 — POC #8 Fase B aplicada: primer entity con métodos de mutación de estado (`Receivable.applyAllocation` / `revertAllocation`, espejo en `Payable`). Patrón canónico documentado en R9 + §5.5. Aclaración orquestación vs cálculo en §8.6.
 > **Última actualización**: 2026-04-27.
 
 ## TL;DR
@@ -65,6 +65,7 @@ modules/mortality/
 | **R6** | Repositorios devuelven **entidades de dominio**, no rows de Prisma. La conversión la hace el `mapper`. | Review |
 | **R7** | Use cases / services tienen UN propósito claro. Si el archivo pasa de ~200 líneas o tiene >5 dependencias inyectadas, se parte. | Review |
 | **R8** | Errores de dominio son explícitos (`MortalityCountExceedsAlive`), no `throw new Error("...")`. Reutilizar la jerarquía existente (`AppError`, `ValidationError`, etc.). | Review |
+| **R9** | Entities con métodos de transición de estado son **inmutables** — el método retorna nueva instancia, nunca muta in-place. **Invariantes enforzadas dentro del método** (no afuera). Sobre estados terminales (VOIDED, etc.) los métodos arrojan `DomainError`. El use case filtra entities en estado terminal **antes** de invocar (orquestación legítima, no lógica de negocio — ver §8.6). | Review |
 
 **Las flechas SIEMPRE van hacia `domain/`.** Si una flecha apunta hacia afuera, está mal.
 
@@ -266,6 +267,86 @@ export async function logMortalityAction(input: unknown) {
 
 El frontend importa server actions, **nunca** repos ni services directos.
 
+### 5.5. Mutación de estado: `Receivable.applyAllocation` (Fase B de POC #8)
+
+A partir del POC #8 Fase B aparece el primer entity con métodos de **transición de estado** (`applyAllocation` / `revertAllocation`). Los 7 POCs anteriores los entities eran "data containers con factory methods". A partir de acá son "objetos con comportamiento". Esto sienta el patrón canónico (codificado en R9) que se aplica a TODOS los módulos siguientes que necesiten mutar estado.
+
+**Tres reglas operativas**:
+
+1. **Inmutabilidad**: el método retorna una nueva instancia. NUNCA muta in-place.
+2. **Invariantes en el entity**: el método valida y arroja `DomainError`. El cliente NO puede dejar el entity en estado inválido.
+3. **Use cases orquestan, no calculan**: `findByIdTx → entity.transition() → repo.persistTx`. Cero lógica de cálculo en application.
+
+**Entity** (invariantes adentro):
+
+```ts
+// modules/receivables/domain/receivable.entity.ts
+applyAllocation(amount: MonetaryAmount): Receivable {
+  if (!amount.isGreaterThan(MonetaryAmount.zero())) {
+    throw new AllocationMustBePositive();
+  }
+  if (this.props.status === "VOIDED") {
+    throw new CannotApplyToVoidedReceivable();   // simetría apply/revert sobre terminal
+  }
+  const newPaid = this.props.paid.plus(amount);
+  if (newPaid.isGreaterThan(this.props.amount)) {
+    throw new AllocationExceedsBalance();
+  }
+  const newBalance = this.props.amount.minus(newPaid);
+  const newStatus: ReceivableStatus = newPaid.equals(this.props.amount) ? "PAID" : "PARTIAL";
+  return new Receivable({
+    ...this.props,
+    paid: newPaid,
+    balance: newBalance,
+    status: newStatus,
+    updatedAt: new Date(),
+  });
+}
+```
+
+**Use case** (orquesta — load → mutate → persist, sin cálculo):
+
+```ts
+// modules/receivables/application/receivables.service.ts
+async applyAllocation(
+  tx: unknown,
+  organizationId: string,
+  id: string,
+  amount: MonetaryAmount,
+): Promise<void> {
+  const target = await this.repo.findByIdTx(tx, organizationId, id);
+  if (!target) throw new NotFoundError("Cuenta por cobrar");
+  const next = target.applyAllocation(amount);
+  await this.repo.applyAllocationTx(
+    tx, organizationId, id,
+    next.paid, next.balance, next.status,    // ← estado COMPUTADO, no `amount`
+  );
+}
+```
+
+**Port** (primitiva dumb — recibe estado computado, no calcula):
+
+```ts
+// modules/receivables/domain/receivable.repository.ts
+applyAllocationTx(
+  tx: unknown,
+  organizationId: string,
+  id: string,
+  paid: MonetaryAmount,        // ← computado por el entity
+  balance: MonetaryAmount,     // ← computado por el entity
+  status: ReceivableStatus,    // ← computado por el entity
+): Promise<void>;
+```
+
+**Por qué el port recibe estado computado y no `amount`**: si el adapter recibiera `amount`, el adapter (o un futuro adapter alternativo) tendría que recalcular `paid`, `balance` y `status`. Eso duplicaría la lógica del entity en infraestructura. Manteniendo el port primitivo, el cálculo vive en UN solo lugar (el entity) y todos los adapters quedan dumb.
+
+**Estado terminal (VOIDED) — simetría apply/revert** (decisión de Fase B):
+- Tanto `applyAllocation` como `revertAllocation` arrojan sobre `VOIDED`. Una sola regla: "sobre estado terminal no se opera". Se descartaron alternativas no-op idempotente y asimétrica porque debilitaban la invariante o introducían conceptos nuevos (Result type, comparación `updated === target`) que no eran necesarios.
+- El use case que necesite saltar VOIDED hace `if (target.status === 'VOIDED') continue;` ANTES de invocar el método del entity. Esa filtración es **orquestación**, no lógica de negocio (ver §8.6).
+- Espejo limpio en `modules/payables/`: `Payable.applyAllocation` / `revertAllocation` con la misma forma y los errores espejo (`CannotApplyToVoidedPayable`, etc.).
+
+Cross-ref: commit de POC #8 Fase B introduce este patrón. R9 codifica la regla. §8.6 codifica la distinción orquestación vs cálculo.
+
 ---
 
 ## 6. Ejemplo de leak que ELIMINAMOS
@@ -325,6 +406,24 @@ Si en `mortality.service.ts` ves un `if (input.count > ...) throw ...`, esa lóg
 
 ### 8.5. Premature abstraction
 Crear `IEmailService` con un solo `SendgridEmailService` "por si cambiamos de proveedor". Eso es deuda preventiva. Cuando aparezca el segundo proveedor, recién ahí extraés la interface.
+
+### 8.6. Filtrar input ≠ lógica de negocio
+
+El principio "use cases orquestan, no calculan" (R7, §8.4) NO significa "use cases no condicionan". Filtrar QUÉ entities procesar es **orquestación legítima**, no lógica de negocio.
+
+`if (target.status === 'VOIDED') continue` en un use case es **orquestación legítima** — decidir QUÉ entities procesar es parte del rol del use case. Lo prohibido es **CÁLCULO de negocio** (aritmética sobre estado, transición de estado, derivación de campos).
+
+| Permitido en use case (orquestación) | Prohibido en use case (cálculo — va al entity) |
+|--------------------------------------|------------------------------------------------|
+| `if (!target) continue`              | `newPaid = currentPaid + amount`               |
+| `if (target.status === 'VOIDED') continue` | `newStatus = newPaid === total ? 'PAID' : 'PARTIAL'` |
+| `if (input.dryRun) return preview`   | `if (newPaid > total) throw`                   |
+| Loop con skip condicional            | `total = items.reduce(...)`                    |
+| Componer load → mutate → persist     | Cualquier cambio en propiedades del entity     |
+
+**Test mental**: si el código del use case toca propiedades calculadas del entity (`paid`, `balance`, `status`, `total`) para SETEARLAS, es cálculo y debe ir al entity. Si solo las LEE para decidir si invoca o no al entity, es orquestación.
+
+Esta distinción aparece por primera vez en POC #8 Fase B (revert sobre receivable VOIDED). Se documenta acá para que no vuelva a discutirse en POCs futuros.
 
 ---
 

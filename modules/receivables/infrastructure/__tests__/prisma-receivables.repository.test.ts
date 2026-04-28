@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { PrismaReceivablesRepository } from "../prisma-receivables.repository";
 import { Receivable } from "../../domain/receivable.entity";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const dbWith = (overrides: Record<string, unknown>): PrismaClient =>
   ({ accountsReceivable: overrides }) as unknown as PrismaClient;
@@ -279,6 +280,81 @@ describe("PrismaReceivablesRepository", () => {
       });
       const callArg = update.mock.calls[0]?.[0];
       expect(callArg.data.balance.toString()).toBe("0");
+    });
+  });
+
+  describe("findByIdTx", () => {
+    it("scopes by id+organizationId via the supplied tx and returns null when missing", async () => {
+      const findFirst = vi.fn().mockResolvedValueOnce(null);
+      const tx = { accountsReceivable: { findFirst } };
+      const repo = new PrismaReceivablesRepository(dbWith({}));
+
+      const result = await repo.findByIdTx(tx, "org-1", "rec-missing");
+
+      expect(findFirst).toHaveBeenCalledWith({
+        where: { id: "rec-missing", organizationId: "org-1" },
+      });
+      expect(result).toBeNull();
+    });
+
+    it("returns a Receivable when found", async () => {
+      const findFirst = vi.fn().mockResolvedValueOnce(buildRow());
+      const tx = { accountsReceivable: { findFirst } };
+      const repo = new PrismaReceivablesRepository(dbWith({}));
+
+      const result = await repo.findByIdTx(tx, "org-1", "rec-1");
+
+      expect(result?.id).toBe("rec-1");
+    });
+  });
+
+  describe("applyAllocationTx", () => {
+    it("updates inside tx with computed paid+balance+status (no business logic in adapter)", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = { accountsReceivable: { update } };
+      const repo = new PrismaReceivablesRepository(dbWith({}));
+
+      await repo.applyAllocationTx(
+        tx,
+        "org-1",
+        "rec-1",
+        MonetaryAmount.of(700),
+        MonetaryAmount.of(300),
+        "PARTIAL",
+      );
+
+      expect(update).toHaveBeenCalledTimes(1);
+      const callArg = update.mock.calls[0]?.[0];
+      expect(callArg.where).toEqual({ id: "rec-1", organizationId: "org-1" });
+      expect(callArg.data.status).toBe("PARTIAL");
+      expect(callArg.data.paid).toBeInstanceOf(Prisma.Decimal);
+      expect(callArg.data.balance).toBeInstanceOf(Prisma.Decimal);
+      expect(callArg.data.paid.toString()).toBe("700");
+      expect(callArg.data.balance.toString()).toBe("300");
+    });
+  });
+
+  describe("revertAllocationTx", () => {
+    it("updates inside tx with computed paid+balance+status (no business logic in adapter)", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = { accountsReceivable: { update } };
+      const repo = new PrismaReceivablesRepository(dbWith({}));
+
+      await repo.revertAllocationTx(
+        tx,
+        "org-1",
+        "rec-1",
+        MonetaryAmount.zero(),
+        MonetaryAmount.of(1000),
+        "PENDING",
+      );
+
+      expect(update).toHaveBeenCalledTimes(1);
+      const callArg = update.mock.calls[0]?.[0];
+      expect(callArg.where).toEqual({ id: "rec-1", organizationId: "org-1" });
+      expect(callArg.data.status).toBe("PENDING");
+      expect(callArg.data.paid.toString()).toBe("0");
+      expect(callArg.data.balance.toString()).toBe("1000");
     });
   });
 

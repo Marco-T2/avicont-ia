@@ -6,6 +6,12 @@ import {
 import {
   InvalidPayableStatusTransition,
   PartialPaymentAmountRequired,
+  AllocationMustBePositive,
+  RevertMustBePositive,
+  AllocationExceedsBalance,
+  RevertExceedsPaid,
+  CannotApplyToVoidedPayable,
+  CannotRevertOnVoidedPayable,
 } from "./errors/payable-errors";
 
 export interface PayableProps {
@@ -153,6 +159,50 @@ export class Payable {
 
   void(): Payable {
     return this.transitionTo("VOIDED");
+  }
+
+  applyAllocation(amount: MonetaryAmount): Payable {
+    if (!amount.isGreaterThan(MonetaryAmount.zero())) {
+      throw new AllocationMustBePositive();
+    }
+    if (this.props.status === "VOIDED") {
+      throw new CannotApplyToVoidedPayable();
+    }
+    const newPaid = this.props.paid.plus(amount);
+    if (newPaid.isGreaterThan(this.props.amount)) {
+      throw new AllocationExceedsBalance();
+    }
+    const newBalance = this.props.amount.minus(newPaid);
+    const newStatus: PayableStatus = newPaid.equals(this.props.amount) ? "PAID" : "PARTIAL";
+    return new Payable({
+      ...this.props,
+      paid: newPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
+  }
+
+  revertAllocation(amount: MonetaryAmount): Payable {
+    if (!amount.isGreaterThan(MonetaryAmount.zero())) {
+      throw new RevertMustBePositive();
+    }
+    if (this.props.status === "VOIDED") {
+      throw new CannotRevertOnVoidedPayable();
+    }
+    if (amount.isGreaterThan(this.props.paid)) {
+      throw new RevertExceedsPaid();
+    }
+    const newPaid = this.props.paid.minus(amount);
+    const newBalance = this.props.amount.minus(newPaid);
+    const newStatus: PayableStatus = newPaid.equals(MonetaryAmount.zero()) ? "PENDING" : "PARTIAL";
+    return new Payable({
+      ...this.props,
+      paid: newPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
   }
 
   toSnapshot(): PayableSnapshot {

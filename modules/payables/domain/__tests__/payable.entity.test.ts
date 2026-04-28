@@ -5,6 +5,12 @@ import { InvalidMonetaryAmount } from "@/modules/shared/domain/errors/monetary-e
 import {
   InvalidPayableStatusTransition,
   PartialPaymentAmountRequired,
+  AllocationMustBePositive,
+  RevertMustBePositive,
+  AllocationExceedsBalance,
+  RevertExceedsPaid,
+  CannotApplyToVoidedPayable,
+  CannotRevertOnVoidedPayable,
 } from "../errors/payable-errors";
 
 const baseInput = {
@@ -224,6 +230,147 @@ describe("Payable entity", () => {
     it("respects terminal-state guards", () => {
       const p = Payable.create(baseInput).transitionTo("PAID");
       expect(() => p.void()).toThrow(InvalidPayableStatusTransition);
+    });
+  });
+
+  describe("applyAllocation()", () => {
+    // Failure mode declarado: AllocationMustBePositive (validation, ALLOCATION_MUST_BE_POSITIVE).
+    it("rejects amount of zero with AllocationMustBePositive", () => {
+      const p = Payable.create(baseInput);
+      expect(() => p.applyAllocation(MonetaryAmount.zero())).toThrow(AllocationMustBePositive);
+    });
+
+    // Failure mode declarado: CannotApplyToVoidedPayable (validation, CANNOT_APPLY_TO_VOIDED_PAYABLE).
+    it("rejects on VOIDED payable with CannotApplyToVoidedPayable", () => {
+      const p = Payable.create(baseInput).transitionTo("VOIDED");
+      expect(() => p.applyAllocation(MonetaryAmount.of(100))).toThrow(CannotApplyToVoidedPayable);
+    });
+
+    // Failure mode declarado: AllocationExceedsBalance (validation, ALLOCATION_EXCEEDS_BALANCE).
+    it("rejects when paid + amount exceeds total with AllocationExceedsBalance", () => {
+      const p = Payable.create(baseInput); // total=1000, paid=0
+      expect(() => p.applyAllocation(MonetaryAmount.of(1000.01))).toThrow(AllocationExceedsBalance);
+    });
+
+    // Failure mode declarado: AllocationExceedsBalance también desde estado PARTIAL.
+    it("rejects when current paid + amount > total from PARTIAL", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 800); // paid=800
+      expect(() => p.applyAllocation(MonetaryAmount.of(201))).toThrow(AllocationExceedsBalance);
+    });
+
+    it("PENDING + full amount → PAID with paid=total and balance=0", () => {
+      const p = Payable.create(baseInput);
+      const next = p.applyAllocation(MonetaryAmount.of(1000));
+      expect(next.status).toBe("PAID");
+      expect(next.paid.value).toBe(1000);
+      expect(next.balance.value).toBe(0);
+    });
+
+    it("PENDING + partial amount → PARTIAL with paid=amount and balance=remaining", () => {
+      const p = Payable.create(baseInput);
+      const next = p.applyAllocation(MonetaryAmount.of(300));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(300);
+      expect(next.balance.value).toBe(700);
+    });
+
+    it("PARTIAL + closing amount → PAID", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 600);
+      const next = p.applyAllocation(MonetaryAmount.of(400));
+      expect(next.status).toBe("PAID");
+      expect(next.paid.value).toBe(1000);
+      expect(next.balance.value).toBe(0);
+    });
+
+    it("PARTIAL + further partial → PARTIAL with accumulated paid", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300);
+      const next = p.applyAllocation(MonetaryAmount.of(200));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(500);
+      expect(next.balance.value).toBe(500);
+    });
+
+    it("returns a new instance (immutable)", () => {
+      const p = Payable.create(baseInput);
+      const next = p.applyAllocation(MonetaryAmount.of(100));
+      expect(next).not.toBe(p);
+      expect(p.paid.value).toBe(0);
+      expect(p.status).toBe("PENDING");
+    });
+
+    it("bumps updatedAt", async () => {
+      const p = Payable.create(baseInput);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const next = p.applyAllocation(MonetaryAmount.of(100));
+      expect(next.updatedAt.getTime()).toBeGreaterThan(p.updatedAt.getTime());
+    });
+  });
+
+  describe("revertAllocation()", () => {
+    // Failure mode declarado: RevertMustBePositive (validation, REVERT_MUST_BE_POSITIVE).
+    it("rejects amount of zero with RevertMustBePositive", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300);
+      expect(() => p.revertAllocation(MonetaryAmount.zero())).toThrow(RevertMustBePositive);
+    });
+
+    // Failure mode declarado: CannotRevertOnVoidedPayable (validation, CANNOT_REVERT_ON_VOIDED_PAYABLE).
+    // Decisión arquitectónica: simetría apply/revert sobre VOIDED — ambos arrojan.
+    it("rejects on VOIDED payable with CannotRevertOnVoidedPayable", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300).transitionTo("VOIDED");
+      expect(() => p.revertAllocation(MonetaryAmount.of(100))).toThrow(CannotRevertOnVoidedPayable);
+    });
+
+    // Failure mode declarado: RevertExceedsPaid (validation, REVERT_EXCEEDS_PAID).
+    it("rejects when amount > current paid with RevertExceedsPaid", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300);
+      expect(() => p.revertAllocation(MonetaryAmount.of(300.01))).toThrow(RevertExceedsPaid);
+    });
+
+    it("PARTIAL + full revert (paid → 0) → OPEN (PENDING)", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300);
+      const next = p.revertAllocation(MonetaryAmount.of(300));
+      expect(next.status).toBe("PENDING");
+      expect(next.paid.value).toBe(0);
+      expect(next.balance.value).toBe(1000);
+    });
+
+    it("PARTIAL + partial revert → PARTIAL with reduced paid", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 700);
+      const next = p.revertAllocation(MonetaryAmount.of(200));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(500);
+      expect(next.balance.value).toBe(500);
+    });
+
+    it("PAID + full revert → OPEN (PENDING) when paid → 0", () => {
+      const p = Payable.create(baseInput).transitionTo("PAID");
+      const next = p.revertAllocation(MonetaryAmount.of(1000));
+      expect(next.status).toBe("PENDING");
+      expect(next.paid.value).toBe(0);
+      expect(next.balance.value).toBe(1000);
+    });
+
+    it("PAID + partial revert → PARTIAL with reduced paid", () => {
+      const p = Payable.create(baseInput).transitionTo("PAID");
+      const next = p.revertAllocation(MonetaryAmount.of(400));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(600);
+      expect(next.balance.value).toBe(400);
+    });
+
+    it("returns a new instance (immutable)", () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300);
+      const next = p.revertAllocation(MonetaryAmount.of(100));
+      expect(next).not.toBe(p);
+      expect(p.paid.value).toBe(300);
+      expect(p.status).toBe("PARTIAL");
+    });
+
+    it("bumps updatedAt", async () => {
+      const p = Payable.create(baseInput).transitionTo("PARTIAL", 300);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const next = p.revertAllocation(MonetaryAmount.of(100));
+      expect(next.updatedAt.getTime()).toBeGreaterThan(p.updatedAt.getTime());
     });
   });
 

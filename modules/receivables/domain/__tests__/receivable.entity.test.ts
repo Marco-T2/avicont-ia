@@ -5,6 +5,12 @@ import { InvalidMonetaryAmount } from "@/modules/shared/domain/errors/monetary-e
 import {
   InvalidReceivableStatusTransition,
   PartialPaymentAmountRequired,
+  AllocationMustBePositive,
+  RevertMustBePositive,
+  AllocationExceedsBalance,
+  RevertExceedsPaid,
+  CannotApplyToVoidedReceivable,
+  CannotRevertOnVoidedReceivable,
 } from "../errors/receivable-errors";
 
 const baseInput = {
@@ -224,6 +230,147 @@ describe("Receivable entity", () => {
     it("respects terminal-state guards", () => {
       const r = Receivable.create(baseInput).transitionTo("PAID");
       expect(() => r.void()).toThrow(InvalidReceivableStatusTransition);
+    });
+  });
+
+  describe("applyAllocation()", () => {
+    // Failure mode declarado: AllocationMustBePositive (validation, ALLOCATION_MUST_BE_POSITIVE).
+    it("rejects amount of zero with AllocationMustBePositive", () => {
+      const r = Receivable.create(baseInput);
+      expect(() => r.applyAllocation(MonetaryAmount.zero())).toThrow(AllocationMustBePositive);
+    });
+
+    // Failure mode declarado: CannotApplyToVoidedReceivable (validation, CANNOT_APPLY_TO_VOIDED_RECEIVABLE).
+    it("rejects on VOIDED receivable with CannotApplyToVoidedReceivable", () => {
+      const r = Receivable.create(baseInput).transitionTo("VOIDED");
+      expect(() => r.applyAllocation(MonetaryAmount.of(100))).toThrow(CannotApplyToVoidedReceivable);
+    });
+
+    // Failure mode declarado: AllocationExceedsBalance (validation, ALLOCATION_EXCEEDS_BALANCE).
+    it("rejects when paid + amount exceeds total with AllocationExceedsBalance", () => {
+      const r = Receivable.create(baseInput); // total=1000, paid=0
+      expect(() => r.applyAllocation(MonetaryAmount.of(1000.01))).toThrow(AllocationExceedsBalance);
+    });
+
+    // Failure mode declarado: AllocationExceedsBalance también desde estado PARTIAL.
+    it("rejects when current paid + amount > total from PARTIAL", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 800); // paid=800
+      expect(() => r.applyAllocation(MonetaryAmount.of(201))).toThrow(AllocationExceedsBalance);
+    });
+
+    it("PENDING + full amount → PAID with paid=total and balance=0", () => {
+      const r = Receivable.create(baseInput);
+      const next = r.applyAllocation(MonetaryAmount.of(1000));
+      expect(next.status).toBe("PAID");
+      expect(next.paid.value).toBe(1000);
+      expect(next.balance.value).toBe(0);
+    });
+
+    it("PENDING + partial amount → PARTIAL with paid=amount and balance=remaining", () => {
+      const r = Receivable.create(baseInput);
+      const next = r.applyAllocation(MonetaryAmount.of(300));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(300);
+      expect(next.balance.value).toBe(700);
+    });
+
+    it("PARTIAL + closing amount → PAID", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 600);
+      const next = r.applyAllocation(MonetaryAmount.of(400));
+      expect(next.status).toBe("PAID");
+      expect(next.paid.value).toBe(1000);
+      expect(next.balance.value).toBe(0);
+    });
+
+    it("PARTIAL + further partial → PARTIAL with accumulated paid", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300);
+      const next = r.applyAllocation(MonetaryAmount.of(200));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(500);
+      expect(next.balance.value).toBe(500);
+    });
+
+    it("returns a new instance (immutable)", () => {
+      const r = Receivable.create(baseInput);
+      const next = r.applyAllocation(MonetaryAmount.of(100));
+      expect(next).not.toBe(r);
+      expect(r.paid.value).toBe(0);
+      expect(r.status).toBe("PENDING");
+    });
+
+    it("bumps updatedAt", async () => {
+      const r = Receivable.create(baseInput);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const next = r.applyAllocation(MonetaryAmount.of(100));
+      expect(next.updatedAt.getTime()).toBeGreaterThan(r.updatedAt.getTime());
+    });
+  });
+
+  describe("revertAllocation()", () => {
+    // Failure mode declarado: RevertMustBePositive (validation, REVERT_MUST_BE_POSITIVE).
+    it("rejects amount of zero with RevertMustBePositive", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300);
+      expect(() => r.revertAllocation(MonetaryAmount.zero())).toThrow(RevertMustBePositive);
+    });
+
+    // Failure mode declarado: CannotRevertOnVoidedReceivable (validation, CANNOT_REVERT_ON_VOIDED_RECEIVABLE).
+    // Decisión arquitectónica: simetría apply/revert sobre VOIDED — ambos arrojan.
+    it("rejects on VOIDED receivable with CannotRevertOnVoidedReceivable", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300).transitionTo("VOIDED");
+      expect(() => r.revertAllocation(MonetaryAmount.of(100))).toThrow(CannotRevertOnVoidedReceivable);
+    });
+
+    // Failure mode declarado: RevertExceedsPaid (validation, REVERT_EXCEEDS_PAID).
+    it("rejects when amount > current paid with RevertExceedsPaid", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300);
+      expect(() => r.revertAllocation(MonetaryAmount.of(300.01))).toThrow(RevertExceedsPaid);
+    });
+
+    it("PARTIAL + full revert (paid → 0) → OPEN (PENDING)", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300);
+      const next = r.revertAllocation(MonetaryAmount.of(300));
+      expect(next.status).toBe("PENDING");
+      expect(next.paid.value).toBe(0);
+      expect(next.balance.value).toBe(1000);
+    });
+
+    it("PARTIAL + partial revert → PARTIAL with reduced paid", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 700);
+      const next = r.revertAllocation(MonetaryAmount.of(200));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(500);
+      expect(next.balance.value).toBe(500);
+    });
+
+    it("PAID + full revert → OPEN (PENDING) when paid → 0", () => {
+      const r = Receivable.create(baseInput).transitionTo("PAID");
+      const next = r.revertAllocation(MonetaryAmount.of(1000));
+      expect(next.status).toBe("PENDING");
+      expect(next.paid.value).toBe(0);
+      expect(next.balance.value).toBe(1000);
+    });
+
+    it("PAID + partial revert → PARTIAL with reduced paid", () => {
+      const r = Receivable.create(baseInput).transitionTo("PAID");
+      const next = r.revertAllocation(MonetaryAmount.of(400));
+      expect(next.status).toBe("PARTIAL");
+      expect(next.paid.value).toBe(600);
+      expect(next.balance.value).toBe(400);
+    });
+
+    it("returns a new instance (immutable)", () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300);
+      const next = r.revertAllocation(MonetaryAmount.of(100));
+      expect(next).not.toBe(r);
+      expect(r.paid.value).toBe(300);
+      expect(r.status).toBe("PARTIAL");
+    });
+
+    it("bumps updatedAt", async () => {
+      const r = Receivable.create(baseInput).transitionTo("PARTIAL", 300);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      const next = r.revertAllocation(MonetaryAmount.of(100));
+      expect(next.updatedAt.getTime()).toBeGreaterThan(r.updatedAt.getTime());
     });
   });
 

@@ -1,3 +1,4 @@
+import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import type { Receivable } from "./receivable.entity";
 import type { ReceivableStatus } from "./value-objects/receivable-status";
 
@@ -51,4 +52,37 @@ export interface ReceivableRepository {
   createTx(tx: unknown, data: CreateReceivableTxData): Promise<{ id: string }>;
   /** Tx-aware void used by dispatch/sale orchestration. */
   voidTx(tx: unknown, organizationId: string, id: string): Promise<void>;
+
+  /** Tx-aware load used by payment orchestration (allocation use cases). */
+  findByIdTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+  ): Promise<Receivable | null>;
+
+  /**
+   * Tx-aware allocation persister. Receives the COMPUTED state (paid, balance,
+   * status) from the entity — the repo is a dumb persister, no calculation here.
+   */
+  applyAllocationTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: ReceivableStatus,
+  ): Promise<void>;
+
+  /**
+   * Tx-aware revert persister. Receives the COMPUTED state (paid, balance,
+   * status) from the entity — the repo is a dumb persister, no calculation here.
+   */
+  revertAllocationTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: ReceivableStatus,
+  ): Promise<void>;
 }

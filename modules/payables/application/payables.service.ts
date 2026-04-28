@@ -13,6 +13,7 @@ import {
 import { PayableAmountImmutable } from "../domain/errors/payable-errors";
 import type { PayableStatus } from "../domain/value-objects/payable-status";
 import type { ContactExistencePort } from "../domain/ports/contact-existence.port";
+import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 export type CreatePayableServiceInput = Omit<CreatePayableInput, "organizationId">;
 
@@ -91,5 +92,43 @@ export class PayablesService {
     contactId: string,
   ): Promise<PendingDocumentSnapshot[]> {
     return this.repo.findPendingByContact(organizationId, contactId);
+  }
+
+  async applyAllocation(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    amount: MonetaryAmount,
+  ): Promise<void> {
+    const target = await this.repo.findByIdTx(tx, organizationId, id);
+    if (!target) throw new NotFoundError("Cuenta por pagar");
+    const next = target.applyAllocation(amount);
+    await this.repo.applyAllocationTx(
+      tx,
+      organizationId,
+      id,
+      next.paid,
+      next.balance,
+      next.status,
+    );
+  }
+
+  async revertAllocation(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    amount: MonetaryAmount,
+  ): Promise<void> {
+    const target = await this.repo.findByIdTx(tx, organizationId, id);
+    if (!target) throw new NotFoundError("Cuenta por pagar");
+    const next = target.revertAllocation(amount);
+    await this.repo.revertAllocationTx(
+      tx,
+      organizationId,
+      id,
+      next.paid,
+      next.balance,
+      next.status,
+    );
   }
 }

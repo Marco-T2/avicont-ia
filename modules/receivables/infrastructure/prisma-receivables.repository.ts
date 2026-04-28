@@ -9,6 +9,8 @@ import type {
   CreateReceivableTxData,
 } from "../domain/receivable.repository";
 import { Receivable } from "../domain/receivable.entity";
+import type { ReceivableStatus } from "../domain/value-objects/receivable-status";
+import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { toDomain, toPersistence } from "./receivables.mapper";
 
 type DbClient = Pick<PrismaClient, "accountsReceivable">;
@@ -151,6 +153,56 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     await txClient.accountsReceivable.update({
       where: { id, organizationId },
       data: { status: "VOIDED", balance: new Prisma.Decimal(0) },
+    });
+  }
+
+  async findByIdTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+  ): Promise<Receivable | null> {
+    const txClient = tx as Prisma.TransactionClient;
+    const row = await txClient.accountsReceivable.findFirst({
+      where: { id, organizationId },
+    });
+    return row ? toDomain(row) : null;
+  }
+
+  async applyAllocationTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: ReceivableStatus,
+  ): Promise<void> {
+    const txClient = tx as Prisma.TransactionClient;
+    await txClient.accountsReceivable.update({
+      where: { id, organizationId },
+      data: {
+        paid: new Prisma.Decimal(paid.value),
+        balance: new Prisma.Decimal(balance.value),
+        status,
+      },
+    });
+  }
+
+  async revertAllocationTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: ReceivableStatus,
+  ): Promise<void> {
+    const txClient = tx as Prisma.TransactionClient;
+    await txClient.accountsReceivable.update({
+      where: { id, organizationId },
+      data: {
+        paid: new Prisma.Decimal(paid.value),
+        balance: new Prisma.Decimal(balance.value),
+        status,
+      },
     });
   }
 }

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PayablesService } from "../payables.service";
 import { Payable } from "../../domain/payable.entity";
 import type {
@@ -8,6 +8,7 @@ import type {
   PendingDocumentSnapshot,
   CreatePayableTxData,
 } from "../../domain/payable.repository";
+import type { PayableStatus } from "../../domain/value-objects/payable-status";
 import type { ContactExistencePort } from "../../domain/ports/contact-existence.port";
 import {
   NotFoundError,
@@ -16,7 +17,12 @@ import {
 import {
   InvalidPayableStatusTransition,
   PartialPaymentAmountRequired,
+  CannotApplyToVoidedPayable,
+  CannotRevertOnVoidedPayable,
+  AllocationExceedsBalance,
+  RevertExceedsPaid,
 } from "../../domain/errors/payable-errors";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 class InMemoryPayableRepository implements PayableRepository {
   private readonly store = new Map<string, Payable>();
@@ -94,6 +100,51 @@ class InMemoryPayableRepository implements PayableRepository {
 
   async voidTx(_tx: unknown, _orgId: string, _id: string): Promise<void> {
     /* no-op */
+  }
+
+  async findByIdTx(_tx: unknown, orgId: string, id: string): Promise<Payable | null> {
+    // NOTE: independent path (does NOT delegate to findById) so service tests
+    // can assert that allocation use cases load via findByIdTx, not findById.
+    const p = this.store.get(id);
+    return p && p.organizationId === orgId ? p : null;
+  }
+
+  applyAllocationTxCalls: Array<{
+    orgId: string;
+    id: string;
+    paid: number;
+    balance: number;
+    status: PayableStatus;
+  }> = [];
+
+  revertAllocationTxCalls: Array<{
+    orgId: string;
+    id: string;
+    paid: number;
+    balance: number;
+    status: PayableStatus;
+  }> = [];
+
+  async applyAllocationTx(
+    _tx: unknown,
+    orgId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: PayableStatus,
+  ): Promise<void> {
+    this.applyAllocationTxCalls.push({ orgId, id, paid: paid.value, balance: balance.value, status });
+  }
+
+  async revertAllocationTx(
+    _tx: unknown,
+    orgId: string,
+    id: string,
+    paid: MonetaryAmount,
+    balance: MonetaryAmount,
+    status: PayableStatus,
+  ): Promise<void> {
+    this.revertAllocationTxCalls.push({ orgId, id, paid: paid.value, balance: balance.value, status });
   }
 }
 
@@ -294,6 +345,130 @@ describe("PayablesService", () => {
       const agg = await svc.aggregateOpen(ORG, CONTACT);
       expect(agg.totalBalance).toBe(100);
       expect(agg.count).toBe(1);
+    });
+  });
+
+  describe("applyAllocation (use case)", () => {
+    const TX = { __tx: true } as unknown;
+
+    // Failure mode declarado: NotFoundError ("Cuenta por pagar")
+    it("throws NotFoundError when payable missing", async () => {
+      await expect(
+        svc.applyAllocation(TX, ORG, "missing", MonetaryAmount.of(100)),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    // Failure mode declarado: CannotApplyToVoidedPayable propagada desde entity.
+    // Use case NO filtra VOIDED — el caller filtra antes.
+    it("propagates CannotApplyToVoidedPayable from entity", async () => {
+      const p = await svc.create(ORG, baseInput());
+      const voided = await svc.void(ORG, p.id);
+      repo.preload(voided);
+      await expect(
+        svc.applyAllocation(TX, ORG, voided.id, MonetaryAmount.of(100)),
+      ).rejects.toThrow(CannotApplyToVoidedPayable);
+    });
+
+    // Failure mode declarado: AllocationExceedsBalance propagada desde entity.
+    it("propagates AllocationExceedsBalance from entity", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 500 }));
+      await expect(
+        svc.applyAllocation(TX, ORG, p.id, MonetaryAmount.of(501)),
+      ).rejects.toThrow(AllocationExceedsBalance);
+    });
+
+    it("orchestrates findByIdTx → entity.applyAllocation → applyAllocationTx with computed state", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 1000 }));
+      await svc.applyAllocation(TX, ORG, p.id, MonetaryAmount.of(300));
+      expect(repo.applyAllocationTxCalls).toEqual([
+        { orgId: ORG, id: p.id, paid: 300, balance: 700, status: "PARTIAL" },
+      ]);
+      expect(repo.revertAllocationTxCalls).toHaveLength(0);
+    });
+
+    it("computes PAID + balance=0 when allocation closes the payable", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 1000 }));
+      await svc.applyAllocation(TX, ORG, p.id, MonetaryAmount.of(1000));
+      expect(repo.applyAllocationTxCalls).toEqual([
+        { orgId: ORG, id: p.id, paid: 1000, balance: 0, status: "PAID" },
+      ]);
+    });
+
+    it("does not call applyAllocationTx when entity throws", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 100 }));
+      await expect(
+        svc.applyAllocation(TX, ORG, p.id, MonetaryAmount.of(101)),
+      ).rejects.toThrow(AllocationExceedsBalance);
+      expect(repo.applyAllocationTxCalls).toHaveLength(0);
+    });
+
+    it("uses findByIdTx (not findById) so the load happens inside the tx", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 1000 }));
+      const findByIdTxSpy = vi.spyOn(repo, "findByIdTx");
+      const findByIdSpy = vi.spyOn(repo, "findById");
+      await svc.applyAllocation(TX, ORG, p.id, MonetaryAmount.of(100));
+      expect(findByIdTxSpy).toHaveBeenCalledWith(TX, ORG, p.id);
+      expect(findByIdSpy).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("revertAllocation (use case)", () => {
+    const TX = { __tx: true } as unknown;
+
+    // Failure mode declarado: NotFoundError ("Cuenta por pagar")
+    it("throws NotFoundError when payable missing", async () => {
+      await expect(
+        svc.revertAllocation(TX, ORG, "missing", MonetaryAmount.of(100)),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    // Failure mode declarado: CannotRevertOnVoidedPayable propagada desde entity.
+    // Decisión arquitectónica: simetría apply/revert, ambos arrojan sobre VOIDED.
+    it("propagates CannotRevertOnVoidedPayable from entity", async () => {
+      const p = await svc.create(ORG, baseInput());
+      const partial = await svc.transitionStatus(ORG, p.id, { status: "PARTIAL", paidAmount: 300 });
+      const voided = partial.transitionTo("VOIDED");
+      repo.preload(voided);
+      await expect(
+        svc.revertAllocation(TX, ORG, voided.id, MonetaryAmount.of(100)),
+      ).rejects.toThrow(CannotRevertOnVoidedPayable);
+    });
+
+    // Failure mode declarado: RevertExceedsPaid propagada desde entity.
+    it("propagates RevertExceedsPaid from entity", async () => {
+      const p = await svc.create(ORG, baseInput());
+      await svc.transitionStatus(ORG, p.id, { status: "PARTIAL", paidAmount: 200 });
+      await expect(
+        svc.revertAllocation(TX, ORG, p.id, MonetaryAmount.of(201)),
+      ).rejects.toThrow(RevertExceedsPaid);
+    });
+
+    it("orchestrates findByIdTx → entity.revertAllocation → revertAllocationTx with computed state", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 1000 }));
+      await svc.transitionStatus(ORG, p.id, { status: "PARTIAL", paidAmount: 700 });
+      await svc.revertAllocation(TX, ORG, p.id, MonetaryAmount.of(200));
+      expect(repo.revertAllocationTxCalls).toEqual([
+        { orgId: ORG, id: p.id, paid: 500, balance: 500, status: "PARTIAL" },
+      ]);
+      expect(repo.applyAllocationTxCalls).toHaveLength(0);
+    });
+
+    it("computes PENDING + balance=amount when revert clears paid", async () => {
+      const p = await svc.create(ORG, baseInput({ amount: 1000 }));
+      await svc.transitionStatus(ORG, p.id, { status: "PARTIAL", paidAmount: 300 });
+      await svc.revertAllocation(TX, ORG, p.id, MonetaryAmount.of(300));
+      expect(repo.revertAllocationTxCalls).toEqual([
+        { orgId: ORG, id: p.id, paid: 0, balance: 1000, status: "PENDING" },
+      ]);
+    });
+
+    it("does not call revertAllocationTx when entity throws", async () => {
+      const p = await svc.create(ORG, baseInput());
+      await svc.transitionStatus(ORG, p.id, { status: "PARTIAL", paidAmount: 200 });
+      await expect(
+        svc.revertAllocation(TX, ORG, p.id, MonetaryAmount.of(201)),
+      ).rejects.toThrow(RevertExceedsPaid);
+      expect(repo.revertAllocationTxCalls).toHaveLength(0);
     });
   });
 
