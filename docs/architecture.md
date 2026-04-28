@@ -87,26 +87,39 @@ El repo ya tiene piezas que son **arquitectónicamente correctas**. NO se tiran.
 
 ### 4.3. Auditoría con `withAuditTx` + `setAuditContext`
 
-Crítica para el dominio contable. Pero como hoy expone `Prisma.TransactionClient`, hay que **encapsularla detrás de un port**:
+Crítica para el dominio contable. Como el legacy `withAuditTx` expone `Prisma.TransactionClient`, queda **encapsulado detrás de un port** (POC #9):
 
 ```ts
-// shared/domain/ports/unit-of-work.ts
-export interface UnitOfWork {
-  run<T>(ctx: AuditContext, fn: (uow: UnitOfWorkScope) => Promise<T>): Promise<{ result: T; correlationId: string }>;
+// modules/shared/domain/ports/unit-of-work.ts
+export interface AuditContext {
+  userId: string;
+  organizationId: string;
+  justification?: string;
 }
 
 export interface UnitOfWorkScope {
-  // métodos abstractos que las features necesitan dentro de la transacción
-  // — NO expone Prisma.TransactionClient
+  readonly correlationId: string;
+  readonly fiscalPeriods: FiscalPeriodsTxRepo;
+  // los repos de negocio crecen a medida que más módulos migran
 }
 
-// shared/infrastructure/prisma-unit-of-work.ts
+export interface UnitOfWork {
+  run<T>(
+    ctx: AuditContext,
+    fn: (scope: UnitOfWorkScope) => Promise<T>,
+  ): Promise<{ result: T; correlationId: string }>;
+}
+
+// modules/shared/infrastructure/prisma-unit-of-work.ts
 export class PrismaUnitOfWork implements UnitOfWork {
-  // delega a withAuditTx + setAuditContext (Postgres-specific)
+  // delega a withAuditTx (legacy) — preserva orden exacto:
+  //   1) correlationId pre-tx, 2) tx open, 3) setAuditContext, 4) fn(scope).
 }
 ```
 
-El uso de session vars de Postgres (`SET LOCAL app.current_user_id`) y los triggers PL/pgSQL **siguen exactamente como están**. Son detalles de infraestructura — viven en `shared/infrastructure/`. El dominio no los conoce.
+El uso de session vars de Postgres (`SET LOCAL app.current_user_id`) y los triggers PL/pgSQL **siguen exactamente como están** — los triggers escriben rows en `audit_logs` automáticamente cuando hay mutación dentro de la tx. Son detalles de infraestructura, viven en `shared/infrastructure/`. El dominio no los conoce.
+
+**No existe `recordAudit(event)`** en el scope. La primitiva legacy es `setAuditContext`, llamada UNA vez al abrir la tx — los triggers hacen el resto. Inventar una primitiva write explícita sería drift contra el legacy (Stop rule v4).
 
 ### 4.4. Middleware HTTP (`requireAuth`, `requireOrgAccess`, `requirePermission`, `handleError`)
 
@@ -516,18 +529,36 @@ Cuando un POC revela un **problema sistémico de fidelidad o consistencia** (dri
 
 ---
 
-## 13. Lo que NO está en este documento (todavía)
+## 13. Componente mínimo de una decisión arquitectónica
+
+Una decisión arquitectónica que **depende de un componente mínimo para ser ejercitable** debe incluir ese componente en el mismo POC. Diferirlo NO respeta la regla "una decisión arquitectónica por POC" — la fragmenta.
+
+**Por qué**: una decisión sin su componente mínimo no está terminada — es la **firma** de la decisión, no la decisión. Cerrar un POC en ese estado deja un esqueleto no-ejercitable; el bug estructural no desaparece, sólo se traslada al POC siguiente, donde aparece **mezclado** con la complejidad propia de ese POC.
+
+**Cómo aplicar**: antes de cerrar un POC arquitectónico, validá que la decisión tiene al menos un test de integración real que la ejercite end-to-end. Si para escribir ese test necesitás agregar un componente "extra", agregalo — es ejecución de la decisión original, no decisión adicional.
+
+**Precedente — POC #9 (UnitOfWork)**: la decisión "introducir UoW Shape A" se descubrió no-ejercitable contra Postgres real sin ≥1 repo en `UnitOfWorkScope`. Sin un repo del scope, los consumers no podían mutar dentro de la tx del UoW (el `tx` token está oculto). El primer repo (`fiscalPeriods.markClosed`) se incluyó en el mismo POC como ejecución de la decisión, no como decisión nueva.
+
+**Análogo**: cuando se decidió `MonetaryAmount` como VO, no fue "decisión 1: hacer el VO" + "decisión 2: agregar constructor". Era UNA decisión — el constructor es ejecución. Mismo patrón.
+
+**Cuándo NO aplicar**: si el componente "extra" introduce decisiones nuevas (eligir librería, definir invariantes nuevos, abrir contratos cross-feature), no es ejecución — es decisión nueva. Ahí sí, POC separado.
+
+**Cross-ref**: complementa la regla "una decisión arquitectónica por POC" (engram `architecture/migration-ladder`). Junto con Stop rule v4 y la auditoría retroactiva (§12), forman el triángulo de validación de POCs: surfacear drift en curso, completar la decisión actual, auditar POCs anteriores.
+
+---
+
+## 14. Lo que NO está en este documento (todavía)
 
 - Estrategia de testing detallada por capa
 - Composition root completo (DI)
 - Cómo manejar transacciones que cruzan módulos
-- Migración de la audit-context a port
+- ~~Migración de la audit-context a port~~ — cerrado en POC #9 (§4.3).
 
 Esos quedan abiertos para iterar **después** del POC en `mortality`. Si los definimos ahora, los definimos mal — la POC nos va a mostrar qué falta de verdad.
 
 ---
 
-## 14. Referencias
+## 15. Referencias
 
 - Cockburn, Alistair. "Hexagonal Architecture" (2005)
 - Vernon, Vaughn. "Domain-Driven Design Distilled" (2016)
