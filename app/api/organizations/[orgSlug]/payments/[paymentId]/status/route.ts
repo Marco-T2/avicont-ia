@@ -18,7 +18,7 @@ export async function PATCH(
 ) {
   try {
     const { orgSlug, paymentId } = await params;
-    const { session, orgId } = await requirePermission(
+    const { session, orgId, role } = await requirePermission(
       "payments",
       "write",
       orgSlug,
@@ -34,7 +34,7 @@ export async function PATCH(
     if (status === "POSTED") {
       payment = await paymentService.post(orgId, paymentId, user.id);
     } else {
-      payment = await paymentService.void(orgId, paymentId, user.id, justification);
+      payment = await paymentService.void(orgId, paymentId, user.id, role, justification);
     }
 
     return Response.json(payment);

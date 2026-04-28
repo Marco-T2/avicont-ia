@@ -9,43 +9,25 @@ import type {
   FiscalPeriod,
   JournalEntry,
 } from "@/generated/prisma/client";
+import type { UnappliedPaymentSnapshot } from "@/modules/payment/presentation/server";
 
 // ── Re-export Prisma types for convenience ──
 
 export type { PaymentMethod, PaymentStatus };
 
-// ── Credit source types ──
+// ── Re-exports from the module (shim is a thin wrapper) ──
 
-/** Input to specify which credit payment to use as source for a new allocation */
-export interface CreditAllocationSource {
-  sourcePaymentId: string;
-  receivableId: string;
-  amount: number;
-}
+export type {
+  PaymentDirection,
+  CreditAllocationSource,
+  AllocationInput,
+} from "@/modules/payment/presentation/server";
 
-/** Unapplied payment available as credit for a contact */
-export interface UnappliedPayment {
-  id: string;
-  date: Date;
-  amount: number;
-  description: string;
-  totalAllocated: number;
-  available: number;
-}
+// ── Alias: module's UnappliedPaymentSnapshot is the legacy UnappliedPayment ──
 
-// ── Allocation types ──
+export type UnappliedPayment = UnappliedPaymentSnapshot;
 
-/** Allocation input for create/update */
-export interface AllocationInput {
-  receivableId?: string;
-  payableId?: string;
-  amount: number;
-}
-
-/** Payment type inferred from allocations */
-export type PaymentDirection = "COBRO" | "PAGO";
-
-// ── Composite types ──
+// ── Composite types (legacy Prisma shape — preserved for shim consumers) ──
 
 export type PaymentWithRelations = Omit<Payment, "amount"> & {
   amount: number;
@@ -66,17 +48,17 @@ export interface CreatePaymentInput {
   method: PaymentMethod;
   date: Date;
   amount: number;
-  direction?: PaymentDirection;
+  direction?: import("@/modules/payment/presentation/server").PaymentDirection;
   description: string;
   periodId: string;
   contactId: string;
   referenceNumber?: number;
   operationalDocTypeId?: string;
   accountCode?: string;
-  allocations: AllocationInput[];
+  allocations: import("@/modules/payment/presentation/server").AllocationInput[];
   notes?: string;
   createdById: string;
-  creditSources?: CreditAllocationSource[];
+  creditSources?: import("@/modules/payment/presentation/server").CreditAllocationSource[];
 }
 
 export interface UpdatePaymentInput {
@@ -87,7 +69,7 @@ export interface UpdatePaymentInput {
   referenceNumber?: number;
   operationalDocTypeId?: string | null;
   accountCode?: string | null;
-  allocations?: AllocationInput[];
+  allocations?: import("@/modules/payment/presentation/server").AllocationInput[];
   notes?: string;
 }
 
@@ -99,4 +81,3 @@ export interface PaymentFilters {
   dateTo?: Date;
   periodId?: string;
 }
-

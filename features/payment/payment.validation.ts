@@ -56,4 +56,3 @@ export const updateAllocationsSchema = z.object({
   allocations: z.array(allocationInputSchema),
   justification: z.string().min(1).optional(),
 });
-
