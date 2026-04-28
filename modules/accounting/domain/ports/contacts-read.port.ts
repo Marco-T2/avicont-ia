@@ -12,7 +12,7 @@
 export interface ContactsReadPort {
   /**
    * Resolves the contact and asserts it exists + is active. Adapters MUST
-   * throw `ValidationError` with code `CONTACT_NOT_FOUND` (parity with
+   * throw `NotFoundError` with code `CONTACT_NOT_FOUND` (parity with
    * legacy `contactsService.getActiveById`) when the contact is missing or
    * inactive. Returns void on success — the use case just needs the
    * existence assertion, not the contact data.
