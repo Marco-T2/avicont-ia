@@ -54,8 +54,14 @@ export interface SaleRepository {
   /**
    * Tx-aware sequence allocator. Returns the next `sequenceNumber` for the
    * org, monotonically increasing. Mirrors legacy
-   * `sale.repository.getNextSequenceNumber(tx, orgId)`. Adapter implementation
-   * (A3) uses SELECT FOR UPDATE / native sequence to avoid contention.
+   * `sale.repository.getNextSequenceNumber(tx, orgId)` bit-exact: `MAX
+   * (sequenceNumber) + 1` SIN row lock. La unicidad por org está garantizada
+   * por `@@unique([organizationId, sequenceNumber])` en el schema —
+   * concurrencia se manifiesta como `P2002` y aborta la tx (el legacy NO
+   * tiene retry; el adapter tampoco). El JSDoc original (POC #11.0a A2)
+   * anticipaba SELECT FOR UPDATE como mejora deferida; revisado a la
+   * realidad legacy en A3 Ciclo 3 (Opción A — fidelidad regla #1, mejora a
+   * POC dedicado con tests de concurrencia).
    */
   getNextSequenceNumberTx(organizationId: string): Promise<number>;
 }
