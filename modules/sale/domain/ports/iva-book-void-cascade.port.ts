@@ -7,7 +7,8 @@
  * **Temporal §5.5** — sale-hex writing the IVA book directly is the legacy
  * shape, not the target architecture. Retired in POC #11.0c when IVA-hex
  * owns the status update via event subscription or projection. Until then
- * the adapter wraps the legacy `IvaBooksService.markVoidedFromSale` path.
+ * the adapter writes `ivaSalesBook` directly via Prisma (legacy
+ * `voidCascadeTx:1205-1211` parity, no service-level cascade method exists).
  */
 export interface IvaBookVoidCascadePort {
   markVoidedFromSale(
