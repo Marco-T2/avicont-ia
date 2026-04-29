@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
 import type { ContactRepository } from "@/modules/contacts/domain/contact.repository";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
 import type { ReceivableRepository } from "@/modules/receivables/domain/receivable.repository";
@@ -6,8 +6,12 @@ import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/acco
 import type { FiscalPeriodsReadPort } from "@/modules/accounting/domain/ports/fiscal-periods-read.port";
 import {
   Sale,
+  type ApplySaleEditInput,
+  type CreateSaleDraftDetailInput,
   type CreateSaleDraftInput,
 } from "../domain/sale.entity";
+import { SaleDetail } from "../domain/sale-detail.entity";
+import { SaleVoidedImmutable } from "../domain/errors/sale-errors";
 import type {
   SaleFilters,
   SaleRepository,
@@ -29,6 +33,7 @@ import {
   SaleAccountNotFound,
   SaleContactInactive,
   SaleContactNotClient,
+  SaleLockedEditMissingJustification,
   SalePeriodClosed,
   SalePostNotAllowedForRole,
 } from "./errors/sale-orchestration-errors";
@@ -49,6 +54,21 @@ export interface CreateDraftResult {
 }
 
 export interface PostSaleResult {
+  sale: Sale;
+  correlationId: string;
+}
+
+export interface UpdateSaleInput extends ApplySaleEditInput {
+  details?: CreateSaleDraftDetailInput[];
+}
+
+export interface UpdateSaleContext {
+  userId: string;
+  role?: string;
+  justification?: string;
+}
+
+export interface UpdateSaleResult {
   sale: Sale;
   correlationId: string;
 }
@@ -299,6 +319,113 @@ export class SaleService {
         const linked = numbered.linkJournal(journal.id).linkReceivable(receivable.id);
         return scope.sales.updateTx(linked, { replaceDetails: false });
       },
+    );
+
+    return { sale: result, correlationId };
+  }
+
+  /**
+   * Updates a sale. Mirrors legacy `sale.service.ts:564-654` (fidelidad regla
+   * #1) for DRAFT + LOCKED branches; POSTED branch lands in Ciclo 6b.
+   *
+   * - DRAFT: header + optional details replace.
+   * - LOCKED: header only (details ignored, legacy parity). Gates role
+   *   (`owner`/`admin`) + period status (CLOSED → 50 char justification min;
+   *   OPEN → 10 char min).
+   * - VOIDED: rejected via `SaleVoidedImmutable` (domain).
+   */
+  async update(
+    organizationId: string,
+    saleId: string,
+    input: UpdateSaleInput,
+    context: UpdateSaleContext,
+  ): Promise<UpdateSaleResult> {
+    if (!this.deps.contacts) {
+      throw new Error("SaleService.update requires ContactRepository");
+    }
+    if (!this.deps.uow) {
+      throw new Error("SaleService.update requires SaleUnitOfWork");
+    }
+
+    const sale = await this.getById(organizationId, saleId);
+
+    if (sale.status === "VOIDED") throw new SaleVoidedImmutable();
+    if (sale.status === "POSTED") {
+      throw new Error("SaleService.update POSTED branch lands in Ciclo 6b");
+    }
+
+    if (sale.status === "LOCKED") {
+      if (!this.deps.fiscalPeriods) {
+        throw new Error("SaleService.update LOCKED branch requires FiscalPeriodsReadPort");
+      }
+      if (context.role !== "owner" && context.role !== "admin") {
+        throw new ForbiddenError(
+          "Solo administradores pueden modificar documentos bloqueados",
+        );
+      }
+      const period = await this.deps.fiscalPeriods.getById(
+        organizationId,
+        sale.periodId,
+      );
+      const requiredMin = period.status === "CLOSED" ? 50 : 10;
+      if (
+        !context.justification ||
+        context.justification.trim().length < requiredMin
+      ) {
+        throw new SaleLockedEditMissingJustification(requiredMin);
+      }
+    }
+
+    if (input.contactId !== undefined) {
+      const contact = await this.deps.contacts.findById(
+        organizationId,
+        input.contactId,
+      );
+      if (!contact) throw new ContactNotFound();
+      if (!contact.isActive) throw new SaleContactInactive(input.contactId);
+      if (contact.type !== "CLIENTE") {
+        throw new SaleContactNotClient(contact.type);
+      }
+    }
+
+    let edited = sale.applyEdit({
+      date: input.date,
+      description: input.description,
+      contactId: input.contactId,
+      referenceNumber: input.referenceNumber,
+      notes: input.notes,
+    });
+
+    const replaceDetails =
+      sale.status === "DRAFT" && input.details !== undefined;
+
+    if (replaceDetails) {
+      const newDetails = input.details!.map((d, idx) =>
+        SaleDetail.create({
+          saleId: edited.id,
+          description: d.description,
+          lineAmount: d.lineAmount,
+          order: d.order ?? idx,
+          quantity: d.quantity,
+          unitPrice: d.unitPrice,
+          incomeAccountId: d.incomeAccountId,
+        }),
+      );
+      edited = edited.replaceDetails(newDetails);
+    }
+
+    const auditContext =
+      sale.status === "LOCKED"
+        ? {
+            userId: context.userId,
+            organizationId,
+            justification: context.justification,
+          }
+        : { userId: context.userId, organizationId };
+
+    const { result, correlationId } = await this.deps.uow.run(
+      auditContext,
+      (scope) => scope.sales.updateTx(edited, { replaceDetails }),
     );
 
     return { sale: result, correlationId };

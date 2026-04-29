@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Contact } from "@/modules/contacts/domain/contact.entity";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
@@ -12,9 +12,11 @@ import {
   SaleAccountNotFound,
   SaleContactInactive,
   SaleContactNotClient,
+  SaleLockedEditMissingJustification,
   SalePeriodClosed,
   SalePostNotAllowedForRole,
 } from "../errors/sale-orchestration-errors";
+import { SaleVoidedImmutable } from "../../domain/errors/sale-errors";
 import { Sale } from "../../domain/sale.entity";
 import type { SaleStatus } from "../../domain/value-objects/sale-status";
 import { SaleService } from "../sale.service";
@@ -946,5 +948,327 @@ describe("SaleService.createAndPost", () => {
 
     const expected = new Date("2025-01-15").getTime() + 30 * 86400000;
     expect(capturedDueDate?.getTime()).toBe(expected);
+  });
+});
+
+describe("SaleService.update — DRAFT branch", () => {
+  let saleRepo: InMemorySaleRepository;
+  let contactRepo: InMemoryContactRepository;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  function buildDraftSale(overrides: { contactId?: string } = {}): Sale {
+    return Sale.createDraft({
+      organizationId: ORG,
+      contactId: overrides.contactId ?? "c-1",
+      periodId: "period-1",
+      date: new Date("2025-01-15"),
+      description: "Original",
+      createdById: "user-1",
+      details: [
+        {
+          description: "Línea original",
+          lineAmount: MonetaryAmount.of(500),
+          incomeAccountId: "acc-income-1",
+        },
+      ],
+    });
+  }
+
+  function buildContact(overrides: {
+    id?: string;
+    type?: ContactType;
+    isActive?: boolean;
+  } = {}): Contact {
+    return Contact.fromPersistence({
+      id: overrides.id ?? "c-2",
+      organizationId: ORG,
+      type: overrides.type ?? "CLIENTE",
+      name: "Cliente Nuevo",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: overrides.isActive ?? true,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    contactRepo = new InMemoryContactRepository();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    uow = new InMemorySaleUnitOfWork({ sales: saleRepo });
+    service = new SaleService({
+      repo: saleRepo,
+      contacts: contactRepo,
+      uow,
+      fiscalPeriods,
+    });
+  });
+
+  it("updates header only without replaceDetails", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+
+    const result = await service.update(
+      ORG,
+      draft.id,
+      { description: "Editada" },
+      { userId: "user-1" },
+    );
+
+    expect(result.sale.description).toBe("Editada");
+    expect(saleRepo.updateTxCalls).toHaveLength(1);
+    expect(saleRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: false });
+  });
+
+  it("replaces details when input.details is present", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+
+    const result = await service.update(
+      ORG,
+      draft.id,
+      {
+        details: [
+          {
+            description: "Nueva línea",
+            lineAmount: MonetaryAmount.of(750),
+            incomeAccountId: "acc-income-1",
+          },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(result.sale.totalAmount.value).toBe(750);
+    expect(saleRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: true });
+  });
+
+  it("validates contact when changing contactId — happy path CLIENTE", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    contactRepo.preload(buildContact({ id: "c-2" }));
+
+    const result = await service.update(
+      ORG,
+      draft.id,
+      { contactId: "c-2" },
+      { userId: "user-1" },
+    );
+
+    expect(result.sale.contactId).toBe("c-2");
+  });
+
+  it("throws SaleContactInactive when changing to inactive contact", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    contactRepo.preload(buildContact({ id: "c-2", isActive: false }));
+
+    await expect(
+      service.update(ORG, draft.id, { contactId: "c-2" }, { userId: "user-1" }),
+    ).rejects.toThrow(SaleContactInactive);
+    expect(saleRepo.updateTxCalls).toEqual([]);
+  });
+
+  it("throws SaleContactNotClient when changing to non-CLIENTE contact", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    contactRepo.preload(buildContact({ id: "c-2", type: "PROVEEDOR" }));
+
+    await expect(
+      service.update(ORG, draft.id, { contactId: "c-2" }, { userId: "user-1" }),
+    ).rejects.toThrow(SaleContactNotClient);
+    expect(saleRepo.updateTxCalls).toEqual([]);
+  });
+
+  it("throws SaleVoidedImmutable when sale is VOIDED", async () => {
+    const voided = Sale.fromPersistence({
+      id: "voided-sale",
+      organizationId: ORG,
+      status: "VOIDED",
+      sequenceNumber: 1,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Anulada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(500),
+      journalEntryId: "journal-1",
+      receivableId: null,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      receivable: null,
+    });
+    saleRepo.preload(voided);
+
+    await expect(
+      service.update(ORG, "voided-sale", { description: "x" }, { userId: "user-1" }),
+    ).rejects.toThrow(SaleVoidedImmutable);
+  });
+});
+
+describe("SaleService.update — LOCKED branch", () => {
+  let saleRepo: InMemorySaleRepository;
+  let contactRepo: InMemoryContactRepository;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  function buildLockedSale(): Sale {
+    return Sale.fromPersistence({
+      id: "locked-sale",
+      organizationId: ORG,
+      status: "LOCKED",
+      sequenceNumber: 1,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Bloqueada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(500),
+      journalEntryId: "journal-1",
+      receivableId: "receivable-1",
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      receivable: null,
+    });
+  }
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    contactRepo = new InMemoryContactRepository();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    fiscalPeriods.preload("period-1", "OPEN");
+    uow = new InMemorySaleUnitOfWork({ sales: saleRepo });
+    service = new SaleService({
+      repo: saleRepo,
+      contacts: contactRepo,
+      uow,
+      fiscalPeriods,
+    });
+  });
+
+  it("succeeds for admin role + period OPEN + 10+ char justification", async () => {
+    saleRepo.preload(buildLockedSale());
+
+    const result = await service.update(
+      ORG,
+      "locked-sale",
+      { description: "Editada bloqueada" },
+      { userId: "user-1", role: "admin", justification: "Corrección de descripción" },
+    );
+
+    expect(result.sale.description).toBe("Editada bloqueada");
+    expect(uow.ranContexts).toEqual([
+      {
+        userId: "user-1",
+        organizationId: ORG,
+        justification: "Corrección de descripción",
+      },
+    ]);
+  });
+
+  it("throws ForbiddenError when role is not admin/owner", async () => {
+    saleRepo.preload(buildLockedSale());
+
+    await expect(
+      service.update(
+        ORG,
+        "locked-sale",
+        { description: "Editada bloqueada" },
+        { userId: "user-1", role: "OPERADOR", justification: "1234567890" },
+      ),
+    ).rejects.toThrow(ForbiddenError);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleLockedEditMissingJustification with requiredMin=10 when period OPEN + justification < 10", async () => {
+    saleRepo.preload(buildLockedSale());
+
+    const error = await service
+      .update(
+        ORG,
+        "locked-sale",
+        { description: "x" },
+        { userId: "user-1", role: "admin", justification: "corto" },
+      )
+      .catch((e) => e);
+
+    expect(error).toBeInstanceOf(SaleLockedEditMissingJustification);
+    expect(error.details).toEqual({ requiredMin: 10 });
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("requires justification ≥50 chars when period CLOSED", async () => {
+    saleRepo.preload(buildLockedSale());
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    const error = await service
+      .update(
+        ORG,
+        "locked-sale",
+        { description: "x" },
+        {
+          userId: "user-1",
+          role: "owner",
+          justification: "Tres veces diez chars exactamente",
+        },
+      )
+      .catch((e) => e);
+
+    expect(error).toBeInstanceOf(SaleLockedEditMissingJustification);
+    expect(error.details).toEqual({ requiredMin: 50 });
+  });
+
+  it("succeeds for owner role + period CLOSED + 50+ char justification", async () => {
+    saleRepo.preload(buildLockedSale());
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    const long =
+      "Justificación muy completa que supera los cincuenta caracteres requeridos por compliance";
+
+    const result = await service.update(
+      ORG,
+      "locked-sale",
+      { description: "Editada en CLOSED" },
+      { userId: "user-1", role: "owner", justification: long },
+    );
+
+    expect(result.sale.description).toBe("Editada en CLOSED");
+  });
+
+  it("ignores input.details on LOCKED (legacy parity — header only)", async () => {
+    saleRepo.preload(buildLockedSale());
+
+    const result = await service.update(
+      ORG,
+      "locked-sale",
+      {
+        description: "Solo header",
+        details: [
+          {
+            description: "Detalle ignorado",
+            lineAmount: MonetaryAmount.of(999),
+            incomeAccountId: "acc-x",
+          },
+        ],
+      },
+      { userId: "user-1", role: "admin", justification: "Cambio menor de descripción" },
+    );
+
+    expect(saleRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: false });
+    expect(result.sale.totalAmount.value).toBe(500);
   });
 });

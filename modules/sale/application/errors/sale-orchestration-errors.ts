@@ -86,10 +86,15 @@ export class SalePeriodClosed extends ValidationError {
 }
 
 export class SaleLockedEditMissingJustification extends ValidationError {
-  constructor() {
+  constructor(requiredMin?: number) {
+    const message =
+      requiredMin === undefined
+        ? "La edición de una venta bloqueada requiere justificación"
+        : `Se requiere una justificación de al menos ${requiredMin} caracteres para modificar una venta bloqueada`;
     super(
-      "La edición de una venta bloqueada requiere justificación",
+      message,
       LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+      requiredMin === undefined ? undefined : { requiredMin },
     );
     this.name = "SaleLockedEditMissingJustification";
   }
