@@ -402,4 +402,54 @@ describe("Receivable entity", () => {
       expect(snap.dueDate.getTime()).toBe(baseInput.dueDate.getTime());
     });
   });
+
+  describe("recomputeForSaleEdit()", () => {
+    it("lowers amount with paid capped → status PAID when paid was full", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(1000),
+      );
+
+      const updated = r.recomputeForSaleEdit(MonetaryAmount.of(600));
+
+      expect(updated.amount.value).toBe(600);
+      expect(updated.paid.value).toBe(600);
+      expect(updated.balance.value).toBe(0);
+      expect(updated.status).toBe("PAID");
+    });
+
+    it("lowers amount with partial paid → status PARTIAL", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(400),
+      );
+
+      const updated = r.recomputeForSaleEdit(MonetaryAmount.of(700));
+
+      expect(updated.amount.value).toBe(700);
+      expect(updated.paid.value).toBe(400);
+      expect(updated.balance.value).toBe(300);
+      expect(updated.status).toBe("PARTIAL");
+    });
+
+    it("raises amount above current paid → status PARTIAL with bigger balance", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(500),
+      );
+
+      const updated = r.recomputeForSaleEdit(MonetaryAmount.of(1500));
+
+      expect(updated.amount.value).toBe(1500);
+      expect(updated.paid.value).toBe(500);
+      expect(updated.balance.value).toBe(1000);
+      expect(updated.status).toBe("PARTIAL");
+    });
+
+    it("returns a new instance — original is not mutated", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 });
+
+      const updated = r.recomputeForSaleEdit(MonetaryAmount.of(500));
+
+      expect(updated).not.toBe(r);
+      expect(r.amount.value).toBe(1000);
+    });
+  });
 });

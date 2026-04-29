@@ -10,6 +10,7 @@ import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { OrgSettings } from "@/modules/org-settings/domain/org-settings.entity";
 import {
   SaleAccountNotFound,
+  SaleContactChangeWithAllocations,
   SaleContactInactive,
   SaleContactNotClient,
   SaleLockedEditMissingJustification,
@@ -18,6 +19,7 @@ import {
 } from "../errors/sale-orchestration-errors";
 import { SaleVoidedImmutable } from "../../domain/errors/sale-errors";
 import { Sale } from "../../domain/sale.entity";
+import { SaleDetail } from "../../domain/sale-detail.entity";
 import type { SaleStatus } from "../../domain/value-objects/sale-status";
 import { SaleService } from "../sale.service";
 import { InMemoryContactRepository } from "./fakes/in-memory-contact.repository";
@@ -31,6 +33,7 @@ import { InMemoryIvaBookReader } from "./fakes/in-memory-iva-book-reader";
 import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
 import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
 import { InMemorySalePermissions } from "./fakes/in-memory-sale-permissions";
+import { InMemoryIvaBookRegenNotifier } from "./fakes/in-memory-iva-book-regen-notifier";
 
 const ORG = "org-1";
 const OTHER_ORG = "org-2";
@@ -1270,5 +1273,377 @@ describe("SaleService.update — LOCKED branch", () => {
 
     expect(saleRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: false });
     expect(result.sale.totalAmount.value).toBe(500);
+  });
+});
+
+describe("SaleService.update — POSTED branch", () => {
+  let saleRepo: InMemorySaleRepository;
+  let receivableRepo: InMemoryReceivableRepository;
+  let contactRepo: InMemoryContactRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let ivaBookRegen: InMemoryIvaBookRegenNotifier;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  function buildPostedSale(overrides: { receivableId?: string | null } = {}): Sale {
+    return Sale.fromPersistence({
+      id: "posted-sale",
+      organizationId: ORG,
+      status: "POSTED",
+      sequenceNumber: 7,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Venta posteada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(1000),
+      journalEntryId: "journal-1",
+      receivableId: overrides.receivableId === undefined ? "receivable-1" : overrides.receivableId,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [
+        SaleDetailFactory("acc-income-1", 1000),
+      ],
+      receivable: null,
+    });
+  }
+
+  function SaleDetailFactory(incomeAccountId: string, amount: number) {
+    return SaleDetail.fromPersistence({
+      id: `det-${Math.random().toString(36).slice(2, 8)}`,
+      saleId: "posted-sale",
+      description: "Línea original",
+      lineAmount: MonetaryAmount.of(amount),
+      order: 0,
+      incomeAccountId,
+    });
+  }
+
+  function buildJournalStub(id: string): Journal {
+    return Journal.fromPersistence({
+      id,
+      organizationId: ORG,
+      status: "POSTED",
+      number: 7,
+      referenceNumber: null,
+      date: new Date("2025-01-15"),
+      description: "VG-007 - Venta posteada",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CI",
+      contactId: "c-1",
+      sourceType: "sale",
+      sourceId: "posted-sale",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      lines: [],
+    });
+  }
+
+  function buildExistingReceivable(paid: number): Receivable {
+    return Receivable.fromPersistence({
+      id: "receivable-1",
+      organizationId: ORG,
+      contactId: "c-1",
+      description: "CxC",
+      amount: MonetaryAmount.of(1000),
+      paid: MonetaryAmount.of(paid),
+      balance: MonetaryAmount.of(1000 - paid),
+      dueDate: new Date("2025-02-15"),
+      status: paid === 0 ? "PENDING" : paid === 1000 ? "PAID" : "PARTIAL",
+      sourceType: "sale",
+      sourceId: "posted-sale",
+      journalEntryId: "journal-1",
+      notes: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+    });
+  }
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    receivableRepo = new InMemoryReceivableRepository();
+    contactRepo = new InMemoryContactRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+    ivaBookRegen = new InMemoryIvaBookRegenNotifier();
+
+    contactRepo.preload(
+      Contact.fromPersistence({
+        id: "c-1",
+        organizationId: ORG,
+        type: "CLIENTE",
+        name: "Cliente Original",
+        nit: null,
+        email: null,
+        phone: null,
+        address: null,
+        paymentTermsDays: PaymentTermsDays.of(30),
+        creditLimit: null,
+        isActive: true,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+    orgSettings.preload(
+      ORG,
+      OrgSettings.createDefault({
+        id: "settings-1",
+        organizationId: ORG,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+    accountLookup.preload({
+      id: "acc-income-1",
+      code: "4.1.1",
+      isDetail: true,
+      isActive: true,
+    });
+    fiscalPeriods.preload("period-1", "OPEN");
+
+    uow = new InMemorySaleUnitOfWork({
+      sales: saleRepo,
+      accountBalances,
+      receivables: receivableRepo,
+      ivaBookRegenNotifier: ivaBookRegen,
+    });
+
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      journalEntryFactory,
+    });
+  });
+
+  it("regenerates journal + applies void/post + persists sale on POSTED edit (header only)", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    const oldJ = buildJournalStub("journal-1");
+    const newJ = buildJournalStub("journal-1");
+    journalEntryFactory.enqueueRegen({ old: oldJ, new: newJ });
+    receivableRepo.preloadReceivable(buildExistingReceivable(0));
+
+    const result = await service.update(
+      ORG,
+      sale.id,
+      { description: "Header editada" },
+      { userId: "user-1" },
+    );
+
+    expect(result.sale.description).toBe("Header editada");
+    expect(journalEntryFactory.regenCalls).toHaveLength(1);
+    expect(journalEntryFactory.regenCalls[0]!.oldJournalId).toBe("journal-1");
+    expect(accountBalances.applyVoidCalls).toHaveLength(1);
+    expect(accountBalances.applyPostCalls).toHaveLength(1);
+    expect(saleRepo.updateTxCalls).toHaveLength(1);
+  });
+
+  it("recomputes receivable amount/paid/balance and updates when receivable exists", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+    receivableRepo.preloadReceivable(buildExistingReceivable(400));
+
+    await service.update(
+      ORG,
+      sale.id,
+      {
+        details: [
+          {
+            description: "Línea menor",
+            lineAmount: MonetaryAmount.of(700),
+            incomeAccountId: "acc-income-1",
+          },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(receivableRepo.updateCalls).toHaveLength(1);
+    const updated = receivableRepo.updateCalls[0]!;
+    expect(updated.amount.value).toBe(700);
+    expect(updated.paid.value).toBe(400);
+    expect(updated.balance.value).toBe(300);
+    expect(updated.status).toBe("PARTIAL");
+    expect(receivableRepo.applyTrimPlanCalls).toEqual([]);
+  });
+
+  it("trims allocations LIFO when paid > newTotal", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+    receivableRepo.preloadReceivable(buildExistingReceivable(900));
+    receivableRepo.preloadAllocations("receivable-1", [
+      { id: "a-newest", amount: 500, payment: { date: new Date("2025-03-01") } },
+      { id: "a-mid", amount: 400, payment: { date: new Date("2025-02-01") } },
+    ]);
+
+    await service.update(
+      ORG,
+      sale.id,
+      {
+        details: [
+          {
+            description: "Total reducido",
+            lineAmount: MonetaryAmount.of(500),
+            incomeAccountId: "acc-income-1",
+          },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(receivableRepo.applyTrimPlanCalls).toHaveLength(1);
+    const trim = receivableRepo.applyTrimPlanCalls[0]!;
+    expect(trim.items.map((i) => i.allocationId)).toEqual(["a-newest"]);
+    expect(trim.items[0]!.newAmount).toBeCloseTo(100, 2);
+  });
+
+  it("emits IVA-aware entry lines when ivaBookRegenNotifier returns a snapshot", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+    ivaBookRegen.respondWith(sale.id, {
+      baseIvaSujetoCf: 1000,
+      dfCfIva: 130,
+      importeTotal: 1000,
+    });
+
+    await service.update(
+      ORG,
+      sale.id,
+      { description: "Con IVA" },
+      { userId: "user-1" },
+    );
+
+    const lines = journalEntryFactory.regenCalls[0]!.template.lines;
+    expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
+  });
+
+  it("throws SalePeriodClosed when period is CLOSED", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    await expect(
+      service.update(ORG, sale.id, { description: "x" }, { userId: "user-1" }),
+    ).rejects.toThrow(SalePeriodClosed);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleContactChangeWithAllocations when contactId changes and receivable has active allocations", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    receivableRepo.preloadAllocations("receivable-1", [
+      { id: "a-1", amount: 500, payment: { date: new Date("2025-02-01") } },
+    ]);
+    contactRepo.preload(
+      Contact.fromPersistence({
+        id: "c-2",
+        organizationId: ORG,
+        type: "CLIENTE",
+        name: "Otro",
+        nit: null,
+        email: null,
+        phone: null,
+        address: null,
+        paymentTermsDays: PaymentTermsDays.of(30),
+        creditLimit: null,
+        isActive: true,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+
+    await expect(
+      service.update(ORG, sale.id, { contactId: "c-2" }, { userId: "user-1" }),
+    ).rejects.toThrow(SaleContactChangeWithAllocations);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleAccountNotFound when income account is not in lookup", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    accountLookup = new InMemoryAccountLookup();
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      journalEntryFactory,
+    });
+
+    await expect(
+      service.update(ORG, sale.id, { description: "x" }, { userId: "user-1" }),
+    ).rejects.toThrow(SaleAccountNotFound);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("propagates AuditContext into the UoW", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+
+    await service.update(
+      ORG,
+      sale.id,
+      { description: "x" },
+      { userId: "user-99" },
+    );
+
+    expect(uow.ranContexts).toEqual([
+      { userId: "user-99", organizationId: ORG },
+    ]);
+  });
+
+  it("skips receivable update when sale.receivableId is null", async () => {
+    const sale = buildPostedSale({ receivableId: null });
+    saleRepo.preload(sale);
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+
+    await service.update(
+      ORG,
+      sale.id,
+      { description: "x" },
+      { userId: "user-1" },
+    );
+
+    expect(receivableRepo.updateCalls).toEqual([]);
+    expect(receivableRepo.applyTrimPlanCalls).toEqual([]);
   });
 });

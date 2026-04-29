@@ -1,3 +1,5 @@
+import type { IvaBookForEntry } from "../build-sale-entry-lines";
+
 /**
  * IVA cascade outbound port — sale → IVA. Notifies the IVA-side book to
  * recompute totals when a posted sale's totalAmount changes (legacy
@@ -9,11 +11,16 @@
  * Retired in POC #11.0c when IVA-hex subscribes to a sale event or reads from
  * a projected snapshot owned by IVA. Until then the adapter wraps the legacy
  * service directly.
+ *
+ * Returns the recomputed `IvaBookForEntry` so sale-hex can rebuild journal
+ * lines reflecting the new IVA shape (legacy `editPosted:717-740` uses
+ * `calcTotales` to derive base/dfCfIva/exentos for the new total). Returns
+ * `null` when no active IVA book exists for the sale.
  */
 export interface IvaBookRegenNotifierPort {
   recomputeFromSale(
     organizationId: string,
     saleId: string,
     newTotal: number,
-  ): Promise<void>;
+  ): Promise<IvaBookForEntry | null>;
 }

@@ -205,6 +205,37 @@ export class Receivable {
     });
   }
 
+  /**
+   * Recomputes amount + paid (capped at newTotal) + balance + status when the
+   * underlying sale's total changes via editPosted. Mirrors legacy
+   * `sale.service.ts:869-919` derivation. The aggregate emits the new state;
+   * the LIFO trim of allocations whose paid > newTotal is orchestrated outside
+   * the aggregate (sale-hex use case + `applyTrimPlanTx`).
+   */
+  recomputeForSaleEdit(newTotal: MonetaryAmount): Receivable {
+    const cappedPaid =
+      this.props.paid.value > newTotal.value ? newTotal : this.props.paid;
+    const newBalance = newTotal.minus(cappedPaid);
+
+    let newStatus: ReceivableStatus;
+    if (cappedPaid.equals(newTotal)) {
+      newStatus = "PAID";
+    } else if (cappedPaid.value > 0) {
+      newStatus = "PARTIAL";
+    } else {
+      newStatus = "PENDING";
+    }
+
+    return new Receivable({
+      ...this.props,
+      amount: newTotal,
+      paid: cappedPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
+  }
+
   toSnapshot(): ReceivableSnapshot {
     return {
       id: this.props.id,

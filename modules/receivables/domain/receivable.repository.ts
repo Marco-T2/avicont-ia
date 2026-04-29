@@ -38,6 +38,17 @@ export interface AllocationLifoSnapshot {
   payment: { date: Date };
 }
 
+/**
+ * Trim plan item — concept reuses `TrimPreviewItem` from sale-hex (Ciclo 3) but
+ * defines a port-local DTO with only the fields the persister needs:
+ * `allocationId` (target row) + `newAmount` (post-trim amount; if 0 → delete).
+ * Caller (sale-hex) maps the preview output to this shape before invoking.
+ */
+export interface ReceivableTrimItem {
+  allocationId: string;
+  newAmount: number;
+}
+
 export interface CreateReceivableTxData {
   organizationId: string;
   contactId: string;
@@ -70,6 +81,19 @@ export interface ReceivableRepository {
     organizationId: string,
     receivableId: string,
   ): Promise<AllocationLifoSnapshot[]>;
+
+  /**
+   * Tx-aware persister for the LIFO trim plan computed by sale-hex
+   * `computeTrimPlan`. For each item: if `newAmount === 0` deletes the
+   * allocation row, otherwise updates `amount`. Mirrors legacy
+   * `sale.service.ts:891-906` (in-line LIFO loop).
+   */
+  applyTrimPlanTx(
+    tx: unknown,
+    organizationId: string,
+    receivableId: string,
+    items: ReceivableTrimItem[],
+  ): Promise<void>;
 
   /** Tx-aware creation used by dispatch/sale orchestration. */
   createTx(tx: unknown, data: CreateReceivableTxData): Promise<{ id: string }>;

@@ -2,6 +2,7 @@ import type { Receivable } from "@/modules/receivables/domain/receivable.entity"
 import type {
   AllocationLifoSnapshot,
   ReceivableRepository,
+  ReceivableTrimItem,
 } from "@/modules/receivables/domain/receivable.repository";
 
 /**
@@ -47,14 +48,45 @@ export class InMemoryReceivableRepository implements ReceivableRepository {
     return this.allocationsByReceivable.get(receivableId) ?? [];
   }
 
+  applyTrimPlanCalls: {
+    organizationId: string;
+    receivableId: string;
+    items: ReceivableTrimItem[];
+  }[] = [];
+
+  async applyTrimPlanTx(
+    _tx: unknown,
+    organizationId: string,
+    receivableId: string,
+    items: ReceivableTrimItem[],
+  ): Promise<void> {
+    this.applyTrimPlanCalls.push({ organizationId, receivableId, items });
+    const current = this.allocationsByReceivable.get(receivableId) ?? [];
+    const itemMap = new Map(items.map((i) => [i.allocationId, i.newAmount]));
+    const filtered: AllocationLifoSnapshot[] = [];
+    for (const a of current) {
+      if (!itemMap.has(a.id)) {
+        filtered.push(a);
+        continue;
+      }
+      const newAmt = itemMap.get(a.id)!;
+      if (newAmt > 0) filtered.push({ ...a, amount: newAmt });
+    }
+    this.allocationsByReceivable.set(receivableId, filtered);
+  }
+
   async findAll(): Promise<Receivable[]> {
     throw new Error("InMemoryReceivableRepository.findAll not implemented (sale-hex does not consume)");
   }
   async save(): Promise<void> {
     throw new Error("InMemoryReceivableRepository.save not implemented");
   }
-  async update(): Promise<void> {
-    throw new Error("InMemoryReceivableRepository.update not implemented");
+
+  updateCalls: Receivable[] = [];
+
+  async update(receivable: Receivable): Promise<void> {
+    this.updateCalls.push(receivable);
+    this.receivables.set(receivable.id, receivable);
   }
   async aggregateOpen(): Promise<{ totalBalance: number; count: number }> {
     throw new Error("InMemoryReceivableRepository.aggregateOpen not implemented");

@@ -36,6 +36,35 @@ export interface SaleJournalTemplate {
  * cross-module domain entity (already imported by sale-hex via
  * `JournalEntriesRepository` in `SaleScope`). No infrastructure leak.
  */
+export interface RegenerateJournalResult {
+  /** Old journal aggregate (POSTED) — passed to `accountBalances.applyVoid`. */
+  old: Journal;
+  /** New journal aggregate (POSTED, hydrated from DB) — passed to `accountBalances.applyPost`. */
+  new: Journal;
+}
+
 export interface JournalEntryFactoryPort {
   generateForSale(template: SaleJournalTemplate): Promise<Journal>;
+
+  /**
+   * Edit-flow counterpart to `generateForSale`. Encapsulates the
+   * load-mutate-persist cycle for a sale's journal entry when sale's totals,
+   * details, or header change. The A3 adapter:
+   *
+   *   1. Loads the old `Journal` (via internal `JournalEntriesReadPort`).
+   *   2. Resolves code → id for the new lines (via internal AccountLookupPort).
+   *   3. Mutates the aggregate (`update().replaceLines()`).
+   *   4. Persists via `JournalEntriesRepository.update(journal, {replaceLines:true})`.
+   *
+   * Returns both `old` and `new` so the sale-hex use case can drive the
+   * accountBalances cascade (`applyVoid(old)` then `applyPost(new)`) without
+   * importing the accounting domain `Journal` aggregate, `LineSide`, or
+   * `Money` VOs. Refactor §13 emergente Ciclo 6b — same philosophy as
+   * generate (Ciclo 5b decision #1 Opción B): adapter encapsulates accounting
+   * complexity; sale-hex stays clean.
+   */
+  regenerateForSaleEdit(
+    oldJournalId: string,
+    template: SaleJournalTemplate,
+  ): Promise<RegenerateJournalResult>;
 }

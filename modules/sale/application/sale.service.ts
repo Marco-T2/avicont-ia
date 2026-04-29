@@ -31,6 +31,7 @@ import type { JournalEntryFactoryPort } from "../domain/ports/journal-entry-fact
 import type { SalePermissionsPort } from "../domain/ports/sale-permissions.port";
 import {
   SaleAccountNotFound,
+  SaleContactChangeWithAllocations,
   SaleContactInactive,
   SaleContactNotClient,
   SaleLockedEditMissingJustification,
@@ -350,8 +351,9 @@ export class SaleService {
     const sale = await this.getById(organizationId, saleId);
 
     if (sale.status === "VOIDED") throw new SaleVoidedImmutable();
+
     if (sale.status === "POSTED") {
-      throw new Error("SaleService.update POSTED branch lands in Ciclo 6b");
+      return this.updatePosted(organizationId, sale, input, context);
     }
 
     if (sale.status === "LOCKED") {
@@ -426,6 +428,202 @@ export class SaleService {
     const { result, correlationId } = await this.deps.uow.run(
       auditContext,
       (scope) => scope.sales.updateTx(edited, { replaceDetails }),
+    );
+
+    return { sale: result, correlationId };
+  }
+
+  /**
+   * POSTED edit flow. Mirrors legacy `sale.service.ts:611-614 + editPosted
+   * 658-940` (fidelidad regla #1). Atomic revert-modify-reapply cascade:
+   * IVA recompute → load+regenerate journal → applyVoid old + applyPost new
+   * → receivable amount mutate → LIFO trim allocations.
+   */
+  private async updatePosted(
+    organizationId: string,
+    sale: Sale,
+    input: UpdateSaleInput,
+    context: UpdateSaleContext,
+  ): Promise<UpdateSaleResult> {
+    const required = {
+      uow: this.deps.uow,
+      contacts: this.deps.contacts,
+      accountLookup: this.deps.accountLookup,
+      orgSettings: this.deps.orgSettings,
+      fiscalPeriods: this.deps.fiscalPeriods,
+      journalEntryFactory: this.deps.journalEntryFactory,
+      receivables: this.deps.receivables,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) {
+        throw new Error(`SaleService.update POSTED branch requires ${name}`);
+      }
+    }
+
+    const period = await this.deps.fiscalPeriods!.getById(
+      organizationId,
+      sale.periodId,
+    );
+    if (period.status === "CLOSED") {
+      throw new SalePeriodClosed(sale.periodId);
+    }
+
+    if (
+      input.contactId !== undefined &&
+      input.contactId !== sale.contactId &&
+      sale.receivableId
+    ) {
+      const allocations =
+        await this.deps.receivables!.findAllocationsForReceivable(
+          organizationId,
+          sale.receivableId,
+        );
+      if (allocations.length > 0) {
+        throw new SaleContactChangeWithAllocations();
+      }
+    }
+
+    if (input.contactId !== undefined) {
+      const contact = await this.deps.contacts!.findById(
+        organizationId,
+        input.contactId,
+      );
+      if (!contact) throw new ContactNotFound();
+      if (!contact.isActive) throw new SaleContactInactive(input.contactId);
+      if (contact.type !== "CLIENTE") {
+        throw new SaleContactNotClient(contact.type);
+      }
+    }
+
+    let edited = sale.applyEdit({
+      date: input.date,
+      description: input.description,
+      contactId: input.contactId,
+      referenceNumber: input.referenceNumber,
+      notes: input.notes,
+    });
+    const replaceDetails = input.details !== undefined;
+    if (replaceDetails) {
+      const newDetails = input.details!.map((d, idx) =>
+        SaleDetail.create({
+          saleId: edited.id,
+          description: d.description,
+          lineAmount: d.lineAmount,
+          order: d.order ?? idx,
+          quantity: d.quantity,
+          unitPrice: d.unitPrice,
+          incomeAccountId: d.incomeAccountId,
+        }),
+      );
+      edited = edited.replaceDetails(newDetails);
+    }
+
+    const incomeAccountIds = edited.details.map((d) => d.incomeAccountId);
+    const accounts = await this.deps.accountLookup!.findManyByIds(
+      organizationId,
+      incomeAccountIds,
+    );
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+    for (const id of incomeAccountIds) {
+      if (!accountById.has(id)) throw new SaleAccountNotFound(id);
+    }
+
+    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
+    const settingsSnapshot = settings.toSnapshot();
+
+    const detailsForEntry: SaleEntryDetail[] = edited.details.map((d) => ({
+      lineAmount: d.lineAmount.value,
+      incomeAccountCode: accountById.get(d.incomeAccountId)!.code,
+      description: d.description,
+    }));
+
+    const { result, correlationId } = await this.deps.uow!.run(
+      { userId: context.userId, organizationId },
+      async (scope) => {
+        const newIvaBook = await scope.ivaBookRegenNotifier.recomputeFromSale(
+          organizationId,
+          edited.id,
+          edited.totalAmount.value,
+        );
+
+        const entryLines = buildSaleEntryLines(
+          edited.totalAmount.value,
+          detailsForEntry,
+          {
+            cxcAccountCode: settingsSnapshot.cxcAccountCode,
+            itExpenseAccountCode: settingsSnapshot.itExpenseAccountCode,
+            itPayableAccountCode: settingsSnapshot.itPayableAccountCode,
+          },
+          edited.contactId,
+          newIvaBook ?? undefined,
+        );
+
+        const displayCode = `VG-${String(edited.sequenceNumber).padStart(3, "0")}`;
+        const journalDescription = edited.notes
+          ? `${displayCode} - ${edited.description} | ${edited.notes}`
+          : `${displayCode} - ${edited.description}`;
+
+        const { old, new: newJournal } =
+          await this.deps.journalEntryFactory!.regenerateForSaleEdit(
+            edited.journalEntryId!,
+            {
+              organizationId,
+              contactId: edited.contactId,
+              date: edited.date,
+              periodId: edited.periodId,
+              description: journalDescription,
+              sourceType: "sale",
+              sourceId: edited.id,
+              createdById: context.userId,
+              lines: entryLines.map((l) => ({
+                accountCode: l.accountCode,
+                side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+                amount: l.debit > 0 ? l.debit : l.credit,
+                contactId: l.contactId,
+                description: l.description,
+              })),
+            },
+          );
+
+        await scope.accountBalances.applyVoid(old);
+        const persistedSale = await scope.sales.updateTx(edited, { replaceDetails });
+        await scope.accountBalances.applyPost(newJournal);
+
+        if (edited.receivableId) {
+          const receivable = await scope.receivables.findById(
+            organizationId,
+            edited.receivableId,
+          );
+          if (receivable && receivable.status !== "VOIDED") {
+            const updatedReceivable = receivable.recomputeForSaleEdit(
+              edited.totalAmount,
+            );
+            await scope.receivables.update(updatedReceivable);
+
+            if (receivable.paid.value > edited.totalAmount.value) {
+              const allocations =
+                await scope.receivables.findAllocationsForReceivable(
+                  organizationId,
+                  edited.receivableId,
+                );
+              const excess = receivable.paid.value - edited.totalAmount.value;
+              const trimPlan = computeTrimPlan(allocations, excess);
+              const trimItems = trimPlan.map((p) => ({
+                allocationId: p.allocationId,
+                newAmount: parseFloat(p.trimmedTo),
+              }));
+              await scope.receivables.applyTrimPlanTx(
+                undefined,
+                organizationId,
+                edited.receivableId,
+                trimItems,
+              );
+            }
+          }
+        }
+
+        return persistedSale;
+      },
     );
 
     return { sale: result, correlationId };

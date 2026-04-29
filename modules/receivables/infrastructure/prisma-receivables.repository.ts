@@ -5,6 +5,7 @@ import type {
   AllocationLifoSnapshot,
   ReceivableRepository,
   ReceivableFilters,
+  ReceivableTrimItem,
   OpenAggregate,
   PendingDocumentSnapshot,
   CreateReceivableTxData,
@@ -111,6 +112,27 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
       amount: Number(r.amount),
       payment: { date: r.payment.date },
     }));
+  }
+
+  async applyTrimPlanTx(
+    tx: unknown,
+    _organizationId: string,
+    _receivableId: string,
+    items: ReceivableTrimItem[],
+  ): Promise<void> {
+    const txClient = tx as Prisma.TransactionClient;
+    for (const item of items) {
+      if (item.newAmount <= 0) {
+        await txClient.paymentAllocation.delete({
+          where: { id: item.allocationId },
+        });
+      } else {
+        await txClient.paymentAllocation.update({
+          where: { id: item.allocationId },
+          data: { amount: new Prisma.Decimal(item.newAmount) },
+        });
+      }
+    }
   }
 
   async findPendingByContact(

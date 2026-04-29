@@ -146,6 +146,14 @@ class InMemoryReceivableRepository implements ReceivableRepository {
   ): Promise<void> {
     this.revertAllocationTxCalls.push({ orgId, id, paid: paid.value, balance: balance.value, status });
   }
+
+  async findAllocationsForReceivable(): Promise<never> {
+    throw new Error("InMemoryReceivableRepository.findAllocationsForReceivable not used in receivables-hex service tests (sale-hex consumer)");
+  }
+
+  async applyTrimPlanTx(): Promise<void> {
+    throw new Error("InMemoryReceivableRepository.applyTrimPlanTx not used in receivables-hex service tests (sale-hex consumer)");
+  }
 }
 
 class StubContactExistencePort implements ContactExistencePort {

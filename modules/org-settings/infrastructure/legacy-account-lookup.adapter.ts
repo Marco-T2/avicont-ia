@@ -26,4 +26,18 @@ export class LegacyAccountLookupAdapter implements AccountLookupPort {
       isActive: row.isActive,
     }));
   }
+
+  async findManyByCodes(
+    organizationId: string,
+    codes: string[],
+  ): Promise<AccountReference[]> {
+    const results = await Promise.all(
+      codes.map((code) => this.repo.findByCode(organizationId, code)),
+    );
+    return results.flatMap((row) =>
+      row
+        ? [{ id: row.id, code: row.code, isDetail: row.isDetail, isActive: row.isActive }]
+        : [],
+    );
+  }
 }

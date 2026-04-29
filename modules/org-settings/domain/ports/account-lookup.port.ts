@@ -16,4 +16,15 @@ export interface AccountLookupPort {
     organizationId: string,
     ids: string[],
   ): Promise<AccountReference[]>;
+
+  /**
+   * Symmetrical lookup by `code`. Used by sale-hex `update` POSTED branch to
+   * resolve `accountCode` → `id` for journal line replacement (legacy
+   * `editPosted` line 760-777 calls `accountsRepo.findByCode` per line; sale-hex
+   * batches with this method). Returns only accounts that exist for the org.
+   */
+  findManyByCodes(
+    organizationId: string,
+    codes: string[],
+  ): Promise<AccountReference[]>;
 }
