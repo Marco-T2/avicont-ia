@@ -2,6 +2,19 @@ import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-a
 import type { SaleStatus } from "./value-objects/sale-status";
 import { SaleDetail } from "./sale-detail.entity";
 import type { ReceivableSummary } from "./value-objects/receivable-summary";
+import {
+  SaleNoDetails,
+  SaleNotDraft,
+  InvalidSaleStatusTransition,
+  SaleVoidedImmutable,
+} from "./errors/sale-errors";
+
+const VALID_TRANSITIONS: Record<SaleStatus, SaleStatus[]> = {
+  DRAFT: ["POSTED"],
+  POSTED: ["LOCKED", "VOIDED"],
+  LOCKED: ["VOIDED"],
+  VOIDED: [],
+};
 
 export interface SaleProps {
   id: string;
@@ -145,5 +158,65 @@ export class Sale {
   }
   get receivable(): ReceivableSummary | null {
     return this.props.receivable;
+  }
+
+  post(): Sale {
+    this.assertCurrentNotVoided();
+    if (!this.canTransitionTo("POSTED")) {
+      throw new InvalidSaleStatusTransition(this.props.status, "POSTED");
+    }
+    if (this.props.details.length === 0) {
+      throw new SaleNoDetails();
+    }
+    const totalAmount = this.props.details.reduce(
+      (sum, d) => sum.plus(d.lineAmount),
+      MonetaryAmount.zero(),
+    );
+    return new Sale({
+      ...this.props,
+      status: "POSTED",
+      totalAmount,
+      updatedAt: new Date(),
+    });
+  }
+
+  void(): Sale {
+    this.assertCurrentNotVoided();
+    if (!this.canTransitionTo("VOIDED")) {
+      throw new InvalidSaleStatusTransition(this.props.status, "VOIDED");
+    }
+    return new Sale({
+      ...this.props,
+      status: "VOIDED",
+      updatedAt: new Date(),
+    });
+  }
+
+  lock(): Sale {
+    this.assertCurrentNotVoided();
+    if (!this.canTransitionTo("LOCKED")) {
+      throw new InvalidSaleStatusTransition(this.props.status, "LOCKED");
+    }
+    return new Sale({
+      ...this.props,
+      status: "LOCKED",
+      updatedAt: new Date(),
+    });
+  }
+
+  assertCanDelete(): void {
+    if (this.props.status !== "DRAFT") {
+      throw new SaleNotDraft();
+    }
+  }
+
+  private assertCurrentNotVoided(): void {
+    if (this.props.status === "VOIDED") {
+      throw new SaleVoidedImmutable();
+    }
+  }
+
+  private canTransitionTo(target: SaleStatus): boolean {
+    return VALID_TRANSITIONS[this.props.status].includes(target);
   }
 }

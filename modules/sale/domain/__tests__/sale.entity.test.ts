@@ -1,8 +1,50 @@
 import { describe, it, expect } from "vitest";
-import { Sale } from "../sale.entity";
+import { Sale, type SaleProps } from "../sale.entity";
 import { SaleDetail } from "../sale-detail.entity";
 import { ReceivableSummary } from "../value-objects/receivable-summary";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import {
+  SaleNoDetails,
+  SaleNotDraft,
+  InvalidSaleStatusTransition,
+  SaleVoidedImmutable,
+} from "../errors/sale-errors";
+
+function buildSaleProps(overrides: Partial<SaleProps> = {}): SaleProps {
+  const now = new Date();
+  return {
+    id: "sale-1",
+    organizationId: "org-1",
+    status: "DRAFT",
+    sequenceNumber: null,
+    date: now,
+    contactId: "contact-1",
+    periodId: "period-1",
+    description: "Venta",
+    referenceNumber: null,
+    notes: null,
+    totalAmount: MonetaryAmount.zero(),
+    journalEntryId: null,
+    receivableId: null,
+    createdById: "user-1",
+    createdAt: now,
+    updatedAt: now,
+    details: [],
+    receivable: null,
+    ...overrides,
+  };
+}
+
+function buildDetail(saleId: string, lineAmount: number, order = 0): SaleDetail {
+  return SaleDetail.fromPersistence({
+    id: `det-${order}`,
+    saleId,
+    description: `L${order}`,
+    lineAmount: MonetaryAmount.of(lineAmount),
+    order,
+    incomeAccountId: "acc-1",
+  });
+}
 
 describe("Sale aggregate", () => {
   describe("createDraft", () => {
@@ -225,6 +267,132 @@ describe("Sale aggregate", () => {
       });
       expect(sale.receivable?.id).toBe("rcv-1");
       expect(sale.receivable?.balance.value).toBe(500);
+    });
+  });
+
+  describe("post (DRAFT → POSTED)", () => {
+    it("transiciona DRAFT a POSTED y recomputa totalAmount desde details", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "DRAFT",
+          totalAmount: MonetaryAmount.zero(),
+          details: [
+            buildDetail("sale-1", 100, 0),
+            buildDetail("sale-1", 50, 1),
+          ],
+        }),
+      );
+      const posted = sale.post();
+      expect(posted.status).toBe("POSTED");
+      expect(posted.totalAmount.value).toBe(150);
+    });
+
+    it("retorna nueva instancia sin mutar el original", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "DRAFT",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      const posted = sale.post();
+      expect(posted).not.toBe(sale);
+      expect(sale.status).toBe("DRAFT");
+    });
+
+    it("rechaza post desde DRAFT con 0 details", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({ status: "DRAFT", details: [] }),
+      );
+      expect(() => sale.post()).toThrow(SaleNoDetails);
+    });
+
+    it("rechaza post desde POSTED (transición inválida)", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "POSTED",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      expect(() => sale.post()).toThrow(InvalidSaleStatusTransition);
+    });
+
+    it("rechaza post desde VOIDED (terminal)", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "VOIDED",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      expect(() => sale.post()).toThrow(SaleVoidedImmutable);
+    });
+  });
+
+  describe("void", () => {
+    it("transiciona POSTED a VOIDED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "POSTED" }));
+      const voided = sale.void();
+      expect(voided.status).toBe("VOIDED");
+    });
+
+    it("transiciona LOCKED a VOIDED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "LOCKED" }));
+      const voided = sale.void();
+      expect(voided.status).toBe("VOIDED");
+    });
+
+    it("rechaza void desde DRAFT", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "DRAFT" }));
+      expect(() => sale.void()).toThrow(InvalidSaleStatusTransition);
+    });
+
+    it("rechaza void desde VOIDED (terminal)", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "VOIDED" }));
+      expect(() => sale.void()).toThrow(SaleVoidedImmutable);
+    });
+  });
+
+  describe("lock", () => {
+    it("transiciona POSTED a LOCKED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "POSTED" }));
+      const locked = sale.lock();
+      expect(locked.status).toBe("LOCKED");
+    });
+
+    it("rechaza lock desde DRAFT", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "DRAFT" }));
+      expect(() => sale.lock()).toThrow(InvalidSaleStatusTransition);
+    });
+
+    it("rechaza lock desde LOCKED (no idempotente)", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "LOCKED" }));
+      expect(() => sale.lock()).toThrow(InvalidSaleStatusTransition);
+    });
+
+    it("rechaza lock desde VOIDED (terminal)", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "VOIDED" }));
+      expect(() => sale.lock()).toThrow(SaleVoidedImmutable);
+    });
+  });
+
+  describe("assertCanDelete", () => {
+    it("permite eliminar venta en DRAFT", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "DRAFT" }));
+      expect(() => sale.assertCanDelete()).not.toThrow();
+    });
+
+    it("rechaza eliminar venta en POSTED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "POSTED" }));
+      expect(() => sale.assertCanDelete()).toThrow(SaleNotDraft);
+    });
+
+    it("rechaza eliminar venta en LOCKED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "LOCKED" }));
+      expect(() => sale.assertCanDelete()).toThrow(SaleNotDraft);
+    });
+
+    it("rechaza eliminar venta en VOIDED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "VOIDED" }));
+      expect(() => sale.assertCanDelete()).toThrow(SaleNotDraft);
     });
   });
 });
