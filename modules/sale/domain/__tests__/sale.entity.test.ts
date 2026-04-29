@@ -536,4 +536,40 @@ describe("Sale aggregate", () => {
       expect(sale.totalAmount.value).toBe(0);
     });
   });
+
+  describe("assignSequenceNumber", () => {
+    it("returns a new instance with sequenceNumber set", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "POSTED" }));
+
+      const numbered = sale.assignSequenceNumber(42);
+
+      expect(numbered).not.toBe(sale);
+      expect(numbered.sequenceNumber).toBe(42);
+      expect(sale.sequenceNumber).toBeNull();
+    });
+  });
+
+  describe("linkJournal", () => {
+    it("returns a new instance with journalEntryId set", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "POSTED" }));
+
+      const linked = sale.linkJournal("journal-99");
+
+      expect(linked).not.toBe(sale);
+      expect(linked.journalEntryId).toBe("journal-99");
+      expect(sale.journalEntryId).toBeNull();
+    });
+  });
+
+  describe("linkReceivable", () => {
+    it("returns a new instance with receivableId set", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "POSTED" }));
+
+      const linked = sale.linkReceivable("receivable-99");
+
+      expect(linked).not.toBe(sale);
+      expect(linked.receivableId).toBe("receivable-99");
+      expect(sale.receivableId).toBeNull();
+    });
+  });
 });

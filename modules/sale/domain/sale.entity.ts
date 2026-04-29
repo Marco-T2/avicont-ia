@@ -113,6 +113,18 @@ export class Sale {
     return new Sale(props);
   }
 
+  assignSequenceNumber(sequenceNumber: number): Sale {
+    return new Sale({ ...this.props, sequenceNumber, updatedAt: new Date() });
+  }
+
+  linkJournal(journalEntryId: string): Sale {
+    return new Sale({ ...this.props, journalEntryId, updatedAt: new Date() });
+  }
+
+  linkReceivable(receivableId: string): Sale {
+    return new Sale({ ...this.props, receivableId, updatedAt: new Date() });
+  }
+
   get id(): string {
     return this.props.id;
   }

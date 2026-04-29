@@ -50,4 +50,12 @@ export interface SaleRepository {
 
   /** Tx-aware delete — only valid for DRAFT (caller enforces via aggregate). */
   deleteTx(organizationId: string, id: string): Promise<void>;
+
+  /**
+   * Tx-aware sequence allocator. Returns the next `sequenceNumber` for the
+   * org, monotonically increasing. Mirrors legacy
+   * `sale.repository.getNextSequenceNumber(tx, orgId)`. Adapter implementation
+   * (A3) uses SELECT FOR UPDATE / native sequence to avoid contention.
+   */
+  getNextSequenceNumberTx(organizationId: string): Promise<number>;
 }
