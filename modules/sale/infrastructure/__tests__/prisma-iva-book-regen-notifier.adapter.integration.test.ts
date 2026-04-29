@@ -1,0 +1,232 @@
+import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+
+import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
+import { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+
+import { PrismaIvaBookRegenNotifierAdapter } from "../prisma-iva-book-regen-notifier.adapter";
+
+/**
+ * Postgres-real integration test for PrismaIvaBookRegenNotifierAdapter
+ * (POC #11.0a A3 Ciclo 5c). Tx-bound write port: adapter recibe
+ * `Prisma.TransactionClient` por c2 DI vía SaleScope (Ciclo 4 D-2) +
+ * `IvaBooksService` legacy para delegar `recomputeFromSaleCascade`.
+ *
+ * §13 emergente E-5.b locked Marco: Opción β híbrida tx-aware. Drift
+ * contract real — port `recomputeFromSale` retorna `IvaBookForEntry | null`,
+ * legacy `recomputeFromSaleCascade` retorna void. Adapter ejecuta legacy
+ * call (side-effect Decimal mutation in-tx) + post-call
+ * `tx.ivaSalesBook.findFirst({where:{saleId, organizationId, status:"ACTIVE"}})`
+ * y narrow al shape `IvaBookForEntry` (4 fields, mirror
+ * `extractIvaBookForEntry:132-137`).
+ *
+ * Filter `status === "ACTIVE"` post-call descarta rows VOIDED — defensive
+ * vs flujo consumer que SOLO invoca para Sale POSTED + IvaBook ACTIVE
+ * (`editPosted` parity).
+ */
+
+describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
+  let testUserId: string;
+  let testOrgId: string;
+  let testPeriodId: string;
+  let testContactId: string;
+
+  beforeAll(async () => {
+    const stamp = Date.now();
+
+    const user = await prisma.user.create({
+      data: {
+        clerkUserId: `pibrn-test-clerk-user-${stamp}`,
+        email: `pibrn-test-${stamp}@test.local`,
+        name: "PrismaIvaBookRegenNotifierAdapter Integration Test User",
+      },
+    });
+    testUserId = user.id;
+
+    const org = await prisma.organization.create({
+      data: {
+        clerkOrgId: `pibrn-test-clerk-org-${stamp}`,
+        name: `PrismaIvaBookRegenNotifierAdapter Integration Test Org ${stamp}`,
+        slug: `pibrn-test-org-${stamp}`,
+      },
+    });
+    testOrgId = org.id;
+
+    const period = await prisma.fiscalPeriod.create({
+      data: {
+        organizationId: testOrgId,
+        name: "pibrn-integration-period",
+        year: 2099,
+        month: 1,
+        startDate: new Date("2099-01-01T00:00:00Z"),
+        endDate: new Date("2099-01-31T23:59:59Z"),
+        createdById: testUserId,
+      },
+    });
+    testPeriodId = period.id;
+
+    const contact = await prisma.contact.create({
+      data: {
+        organizationId: testOrgId,
+        name: "Test Customer",
+        type: "CLIENTE",
+        nit: "1234567",
+      },
+    });
+    testContactId = contact.id;
+  });
+
+  afterEach(async () => {
+    await prisma.ivaSalesBook.deleteMany({ where: { organizationId: testOrgId } });
+    await prisma.sale.deleteMany({ where: { organizationId: testOrgId } });
+  });
+
+  afterAll(async () => {
+    await prisma.ivaSalesBook.deleteMany({ where: { organizationId: testOrgId } });
+    await prisma.sale.deleteMany({ where: { organizationId: testOrgId } });
+    await prisma.contact.deleteMany({ where: { organizationId: testOrgId } });
+    await prisma.fiscalPeriod.delete({ where: { id: testPeriodId } });
+    await prisma.auditLog.deleteMany({ where: { organizationId: testOrgId } });
+    await prisma.organization.delete({ where: { id: testOrgId } });
+    await prisma.user.delete({ where: { id: testUserId } });
+  });
+
+  async function seedSaleDirect(sequenceNumber: number): Promise<string> {
+    const id = crypto.randomUUID();
+    await prisma.sale.create({
+      data: {
+        id,
+        organizationId: testOrgId,
+        status: "DRAFT",
+        sequenceNumber,
+        date: new Date("2099-01-15T12:00:00Z"),
+        contactId: testContactId,
+        periodId: testPeriodId,
+        description: "pibrn seeded sale",
+        totalAmount: new Prisma.Decimal("120.00"),
+        createdById: testUserId,
+      },
+    });
+    return id;
+  }
+
+  async function seedIvaSalesBook(opts: {
+    saleId: string;
+    status: "ACTIVE" | "VOIDED";
+    sequenceTag: string;
+    importeTotal?: string;
+    exentos?: string;
+  }): Promise<string> {
+    const id = crypto.randomUUID();
+    await prisma.ivaSalesBook.create({
+      data: {
+        id,
+        organizationId: testOrgId,
+        fiscalPeriodId: testPeriodId,
+        saleId: opts.saleId,
+        fechaFactura: new Date("2099-01-15T12:00:00Z"),
+        nitCliente: "1234567",
+        razonSocial: "Test Customer",
+        numeroFactura: `pibrn-${opts.sequenceTag}`,
+        codigoAutorizacion: `pibrn-auth-${opts.sequenceTag}`,
+        importeTotal: new Prisma.Decimal(opts.importeTotal ?? "120.00"),
+        exentos: new Prisma.Decimal(opts.exentos ?? "0"),
+        estadoSIN: "V",
+        status: opts.status,
+      },
+    });
+    return id;
+  }
+
+  it("recomputeFromSale: ACTIVE book + newTotal change — side-effect on row + IvaBookForEntry mapping", async () => {
+    // RED honesty preventivo: FAILS pre-implementación por module resolution
+    // failure (`PrismaIvaBookRegenNotifierAdapter` no existe). Post-GREEN:
+    // PASSES porque adapter ejecuta `legacyService.recomputeFromSaleCascade
+    // (tx, ...)` que muta importeTotal/baseIvaSujetoCf/dfCfIva via
+    // `calcTotales`, y luego findFirst+narrow retorna IvaBookForEntry.
+    //
+    // Discriminantes: pre-set exentos=15.50 (non-zero) para validar
+    // preservación across recompute (legacy `recomputeFromSaleCascade:582`
+    // preserva exentos). Initial baseIvaSujetoCf=0/dfCfIva=0 → post-recompute
+    // > 0 confirma side-effect (no chequea valor exacto — eso es legacy
+    // responsibility, no del adapter).
+    const saleId = await seedSaleDirect(1);
+    await seedIvaSalesBook({
+      saleId,
+      status: "ACTIVE",
+      sequenceTag: "active",
+      importeTotal: "120.00",
+      exentos: "15.50",
+    });
+
+    const result = await prisma.$transaction(async (tx) => {
+      const adapter = new PrismaIvaBookRegenNotifierAdapter(
+        tx,
+        new IvaBooksService(),
+      );
+      return adapter.recomputeFromSale(testOrgId, saleId, 113);
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.importeTotal).toBe(113);
+    expect(result!.exentos).toBe(15.5); // preserved across recompute
+    expect(typeof result!.baseIvaSujetoCf).toBe("number");
+    expect(typeof result!.dfCfIva).toBe("number");
+    expect(result!.baseIvaSujetoCf).toBeGreaterThan(0); // side-effect confirmed
+    expect(result!.dfCfIva).toBeGreaterThan(0); // side-effect confirmed
+
+    // Verify post-commit row mutation (legacy recompute side-effect).
+    const post = await prisma.ivaSalesBook.findUnique({
+      where: { saleId },
+    });
+    expect(post!.importeTotal.toString()).toBe("113");
+  });
+
+  it("recomputeFromSale: no book exists for saleId — returns null + no insert side-effect", async () => {
+    // RED honesty: FAILS pre-implementación por module resolution failure.
+    // Post-GREEN: legacy recomputeFromSaleCascade:569 early-return cuando
+    // findFirst null → adapter findFirst post-call también null → return null.
+    // Sin throw, sin insert side-effect.
+    const arbitrarySaleId = "00000000-0000-0000-0000-000000000000";
+
+    const result = await prisma.$transaction(async (tx) => {
+      const adapter = new PrismaIvaBookRegenNotifierAdapter(
+        tx,
+        new IvaBooksService(),
+      );
+      return adapter.recomputeFromSale(testOrgId, arbitrarySaleId, 200);
+    });
+
+    expect(result).toBeNull();
+
+    const count = await prisma.ivaSalesBook.count({
+      where: { organizationId: testOrgId },
+    });
+    expect(count).toBe(0);
+  });
+
+  it("recomputeFromSale: VOIDED book — returns null (filter status === 'ACTIVE')", async () => {
+    // RED honesty: FAILS pre-implementación por module resolution failure.
+    // Post-GREEN: legacy recomputeFromSaleCascade:565 SIN status filter
+    // muta el VOIDED row (importeTotal cambia). Adapter post-call findFirst
+    // con `status:"ACTIVE"` filter descarta el row → null. Defensive vs
+    // flujo consumer que SOLO invoca para IvaBook ACTIVE (`editPosted`).
+    const saleId = await seedSaleDirect(2);
+    await seedIvaSalesBook({
+      saleId,
+      status: "VOIDED",
+      sequenceTag: "voided",
+      importeTotal: "120.00",
+    });
+
+    const result = await prisma.$transaction(async (tx) => {
+      const adapter = new PrismaIvaBookRegenNotifierAdapter(
+        tx,
+        new IvaBooksService(),
+      );
+      return adapter.recomputeFromSale(testOrgId, saleId, 200);
+    });
+
+    expect(result).toBeNull();
+  });
+});
