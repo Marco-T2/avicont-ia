@@ -507,7 +507,55 @@ Ejemplo: al promover `MonetaryAmount` a `modules/shared/domain/value-objects/`, 
 
 ---
 
-## 12. Auditoría retroactiva de POCs
+## 12. Convención naming infrastructure adapters
+
+Convención **emergente** — descubierta inspeccionando los archivos existentes en `modules/*/infrastructure/` durante POC #10 C3-C, no inventada. Cumple retroactivamente sin excepciones en los 32 archivos de scope (3 `.repo.ts` + 8 `.repository.ts` + 21 `.adapter.ts`). Aplica a adapters y repositories; mappers, unit-of-work y tests siguen patrones propios fuera de este scope (ver §12.5).
+
+### 12.1. Regla — owner vs consumer
+
+| Rol | Sufijo de archivo | Cuándo aplicar |
+|---|---|---|
+| **Owner** del aggregate del módulo (persiste sus filas) | `.repo.ts` o `.repository.ts` | El módulo posee el aggregate y lo persiste |
+| **Consumer** de un concept externo (legacy, otro módulo, lookup) | `.adapter.ts` | Wrappea concept ajeno o consume port de otro módulo |
+
+La distinción **NO es DB vs no-DB**. `prisma-payment-credit.adapter.ts` y `prisma-lot-inquiry.adapter.ts` tocan Prisma directo y aún así son `.adapter.ts` porque el módulo no posee ese aggregate — son consumers que leen/agregan datos de otros módulos.
+
+### 12.2. Sub-prefijos para `.adapter.ts`
+
+| Prefijo | Significado | Ejemplo |
+|---|---|---|
+| `legacy-` | Wrappea código de `features/` (era pre-modularización) | `legacy-journal-entries-read.adapter.ts` |
+| `prisma-` | Toca Prisma directo, sin wrapper legacy intermediario | `prisma-payment-credit.adapter.ts` |
+| (sin prefijo) | Wrappea port de otro módulo ya migrado | `contacts-read.adapter.ts` |
+
+Distribución actual de los 21 `.adapter.ts`: 11 `legacy-`, 2 `prisma-`, 8 sin prefijo.
+
+Para `.repo.ts` / `.repository.ts` de owner: siempre con prefijo `prisma-` — es la única implementación productiva en el repo a la fecha.
+
+### 12.3. Sub-convención `.repo.ts` vs `.repository.ts`
+
+Coexisten dos sub-convenciones para owner-aggregate; **ambas válidas**. NO se uniforma retroactivamente.
+
+| Sufijo | Origen | Módulos |
+|---|---|---|
+| `.repository.ts` | Convención anterior (módulos pre-`shared/`) | `contacts`, `fiscal-periods`, `mortality`, `org-settings`, `payables`, `payment`, `receivables`, `voucher-types` |
+| `.repo.ts` | Convención posterior (`accounting` + `shared/`) | `accounting/prisma-account-balances`, `accounting/prisma-journal-entries`, `shared/prisma-fiscal-periods-tx` |
+
+Distribución actual: 8 `.repository.ts`, 3 `.repo.ts`. Adoptar `.repo.ts` para módulos nuevos; mantener `.repository.ts` en los 8 existentes.
+
+### 12.5. Out of scope
+
+La convención cubre **solo adapters y repositories** en `modules/*/infrastructure/`. Los siguientes archivos del mismo directorio quedan fuera del scope (siguen patrones propios):
+
+- **Mappers** (`*.mapper.ts`) — lógica de mapeo entre tipos de dominio y rows de Prisma. Anomalía menor de naming: `accounting/journal-mapping.ts` (no `.mapper.ts`).
+- **Unit of Work** (`*-unit-of-work.ts`) — `shared/prisma-unit-of-work.ts`, `accounting/prisma-accounting-unit-of-work.ts`.
+- **Tests** (`__tests__/*.{test,integration.test}.ts`) — sufijo derivado del archivo testeado.
+
+Si se introduce un archivo nuevo en `modules/*/infrastructure/` que no encaja en las categorías de §12.1, documentar la categoría nueva explícitamente antes de adoptarla.
+
+---
+
+## 13. Auditoría retroactiva de POCs
 
 Cuando un POC revela un **problema sistémico de fidelidad o consistencia** (drift de codes/contratos, antipattern recurrente, parity gap), auditar retroactivamente los POCs anteriores que pudieron tener el mismo problema es **práctica estándar** — no una decisión caso por caso.
 
@@ -529,7 +577,7 @@ Cuando un POC revela un **problema sistémico de fidelidad o consistencia** (dri
 
 ---
 
-## 13. Componente mínimo de una decisión arquitectónica
+## 14. Componente mínimo de una decisión arquitectónica
 
 Una decisión arquitectónica que **depende de un componente mínimo para ser ejercitable** debe incluir ese componente en el mismo POC. Diferirlo NO respeta la regla "una decisión arquitectónica por POC" — la fragmenta.
 
@@ -543,11 +591,11 @@ Una decisión arquitectónica que **depende de un componente mínimo para ser ej
 
 **Cuándo NO aplicar**: si el componente "extra" introduce decisiones nuevas (eligir librería, definir invariantes nuevos, abrir contratos cross-feature), no es ejecución — es decisión nueva. Ahí sí, POC separado.
 
-**Cross-ref**: complementa la regla "una decisión arquitectónica por POC" (engram `architecture/migration-ladder`). Junto con Stop rule v4 y la auditoría retroactiva (§12), forman el triángulo de validación de POCs: surfacear drift en curso, completar la decisión actual, auditar POCs anteriores.
+**Cross-ref**: complementa la regla "una decisión arquitectónica por POC" (engram `architecture/migration-ladder`). Junto con Stop rule v4 y la auditoría retroactiva (§13), forman el triángulo de validación de POCs: surfacear drift en curso, completar la decisión actual, auditar POCs anteriores.
 
 ---
 
-## 14. Lo que NO está en este documento (todavía)
+## 15. Lo que NO está en este documento (todavía)
 
 - Estrategia de testing detallada por capa
 - Composition root completo (DI)
@@ -558,7 +606,7 @@ Esos quedan abiertos para iterar **después** del POC en `mortality`. Si los def
 
 ---
 
-## 15. Referencias
+## 16. Referencias
 
 - Cockburn, Alistair. "Hexagonal Architecture" (2005)
 - Vernon, Vaughn. "Domain-Driven Design Distilled" (2016)
