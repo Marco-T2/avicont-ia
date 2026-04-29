@@ -708,3 +708,54 @@ La cita es **auditable**: cualquier import cross-module concreto en `infrastruct
 - **Cierra**: §15 ítem abierto "Cómo manejar transacciones que cruzan módulos".
 - **Complementa**: R3 (dirección de dependencia), §11.1 (rule of three para promoción a `shared/`).
 - **NO debilita**: R1, R2, R4 — `domain/`, `application/`, `presentation/` siguen sin importar cross-module infrastructure (ESLint §9 lo enforça).
+
+---
+
+## 18. Reducción de scope en cutover por dependencia con decisiones lockeadas
+
+Cuando un POC de cutover (sustitución de un módulo legacy por su equivalente hex) descubre que parte del scope original depende de un **bridge o interface cuya forma viola una decisión arquitectónica lockeada en POCs anteriores** (e.g., un path que ya fue retirado intencionalmente), la respuesta correcta es **reducir scope y diferir la parte afectada** al POC donde la decisión deje de aplicar — NO forzar el cutover.
+
+**Por qué**: forzar el cutover en presencia de esta colisión deja sólo tres caminos, todos malos:
+
+- **(α) Adaptador wrap-thin que ignora la decisión** — el bridge re-implementa el path retirado en el adapter (e.g., reabre tx interna por shape, hidrata entidades cross-aggregate por loop). Resultado: decisión lockeada queda viva en infraestructura, contradiciendo la decisión documentada. Suele también violar fidelidad regla #1 (atomicidad, performance, consistencia observable).
+- **(β) Revertir la decisión lockeada** — re-codificar el path retirado en `application/` o `domain/`. Pierde el progreso del POC anterior; descalibra la conversación arquitectónica.
+- **(δ) Path lateral compensatorio** (saga, eventual consistency, N+1 hidratación) — introduce un patrón nuevo sin precedente que va a propagar.
+
+La opción correcta — **(γ) reducir scope y diferir** — preserva la decisión lockeada y deja la deuda explícita, con destino y forma de cierre conocidos.
+
+### 18.1. Cuándo aplicar
+
+Aplica cuando se cumplen los tres criterios:
+
+1. **Decisión lockeada anterior**: el cutover de la parte afectada requeriría revivir un path que un POC anterior retiró intencionalmente (con cita en commit, JSDoc, o §X de este documento).
+2. **Bridge inevitable**: el legacy consumer expone una interface (`*ServiceForBridge`, `*ServiceForHub`, etc.) cuyo contrato sólo se cumple revivendo ese path.
+3. **POC futuro identificable**: existe un POC en el roadmap donde la interface deja de existir (porque su consumer migra a hex también) o se rediseña.
+
+Si el criterio 3 falla — no hay POC futuro donde el bloqueador desaparezca — entonces la opción γ no resuelve, sólo posterga. En ese caso, el problema es la decisión lockeada, no el cutover; reabrir la decisión.
+
+### 18.2. Cómo documentar
+
+Toda reducción de scope cubierta por §18 debe registrar **en el commit y en el bookmark del POC**:
+
+1. **Scope original** (lo que el bookmark prometió): "POC #X cutover N consumers".
+2. **Scope reducido** (lo que se entrega): "POC #X cutover M consumers; (N − M) diferidos a POC #Y".
+3. **Razón estructural concreta** — qué decisión lockeada bloquea, con cita: "§5.5 retired Ciclo 6 elimina `externalTx` en `regenerateJournalForIvaChange`; bridge `SaleServiceForBridge` requiere `externalTx` para atomicidad write-IVA + regen".
+4. **POC destino** + **acceptance del cierre**: "POC #Y debe cutover los (N − M) diferidos como pre-condición de cierre. El bridge se rediseña en POC #Y porque su consumer (IVA) migra a hex y el contrato deja de necesitar `externalTx`".
+
+Sin los 4 puntos, la deuda se vuelve invisible y se transmite como "el scope era distinto al bookmark, no me acuerdo por qué".
+
+### 18.3. Direccionalidad — el POC destino hereda la deuda explícita
+
+El POC destino **NO** es libre de cerrar sin honrar el cutover diferido. La deuda `(N − M)` es pre-condición. El bookmark del POC destino debe abrir con esa deuda en su lista de scope, no descubrirla al cerrarlo.
+
+### 18.4. Precedentes
+
+| POC | Bookmark scope | Scope entregado | Diferido a | Razón estructural |
+|---|---|---|---|---|
+| #11.0a A4 | Cutover 12 consumers de legacy `SaleService` (3 core API + 8 iva-books + 1 dispatches-hub) | Cutover 3 consumers (A4-a: 3 core API) | POC #11.0c | Bridges `SaleServiceForBridge` (8 iva-books) y `SaleServiceForHub` (1 hub) requieren shape y contracts que sólo hacen sentido cuando IVA migre a hex y los bridges se rediseñen sin `externalTx` (§5.5 retired Ciclo 6 hex `regenerateJournalForIvaChange`) ni shape-adapter (`Sale` aggregate hex no expone `period` hidratado ni `displayCode`/`contact` hidratado para hub). En POC #11.0c, el consumer (IVA) migra a hex; los bridges legacy desaparecen y los 9 consumers diferidos hacen cutover atómico contra puertos hex equivalentes. |
+
+### 18.5. Cross-ref
+
+- **Complementa**: §13 (auditoría retroactiva — surface drift hacia atrás), §14 (componente mínimo — completar la decisión actual). §18 cubre el caso simétrico hacia adelante: cuando la decisión actual choca con scope prometido, mover el scope, no la decisión.
+- **NO debilita**: regla #1 fidelidad legacy (la deuda explícita no es atajo — es el costo conocido y declarado de la decisión lockeada anterior).
+- **Pre-condición POC destino**: el POC que herede la deuda diferida la lista en su bookmark de apertura como scope obligatorio. Sin eso, el patrón se rompe.

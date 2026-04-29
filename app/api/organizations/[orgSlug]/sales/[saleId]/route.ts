@@ -1,23 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { SaleService } from "@/features/sale/server";
 import { updateSaleSchema } from "@/features/sale";
 import { UsersService } from "@/features/users/server";
-import { IvaBooksService } from "@/features/accounting/iva-books/server";
+import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 
-const ivaBooksService = new IvaBooksService();
-const saleService = new SaleService(
-  undefined, // repo
-  undefined, // orgSettingsService
-  undefined, // autoEntryGenerator
-  undefined, // contactsService
-  undefined, // receivablesRepo
-  undefined, // balancesService
-  undefined, // periodsService
-  undefined, // accountsRepo
-  undefined, // journalRepo
-  ivaBooksService,
-);
+const saleService = makeSaleService();
 const usersService = new UsersService();
 
 export async function GET(
@@ -63,14 +50,14 @@ export async function PATCH(
     // dryRun: true → return preview without executing any writes
     if (dryRun === true) {
       const newTotal = computeNewTotal(input);
-      const { trimPreview } = await saleService.getEditPreview(saleId, orgId, newTotal);
+      const { trimPreview } = await saleService.getEditPreview(orgId, saleId, newTotal);
       return Response.json({ dryRun: true, trimPreview });
     }
 
     // No confirmTrim → run a preview; if trim is needed, require confirmation
     if (!confirmTrim) {
       const newTotal = computeNewTotal(input);
-      const { trimPreview } = await saleService.getEditPreview(saleId, orgId, newTotal);
+      const { trimPreview } = await saleService.getEditPreview(orgId, saleId, newTotal);
       if (trimPreview.length > 0) {
         return Response.json({ requiresConfirmation: true, trimPreview });
       }
@@ -78,9 +65,13 @@ export async function PATCH(
 
     // confirmTrim: true OR no trim needed → proceed with normal edit
     const user = await usersService.resolveByClerkId(clerkUserId);
-    const sale = await saleService.update(orgId, saleId, input, user.id, role, justification);
+    const result = await saleService.update(orgId, saleId, input, {
+      userId: user.id,
+      role,
+      justification,
+    });
 
-    return Response.json(sale);
+    return Response.json(result);
   } catch (error) {
     return handleError(error);
   }

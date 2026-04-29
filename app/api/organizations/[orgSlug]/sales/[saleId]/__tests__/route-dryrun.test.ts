@@ -37,20 +37,8 @@ const mockSaleServiceInstance = {
   getEditPreview: vi.fn(),
 };
 
-vi.mock("@/features/sale/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/sale")>();
-  return {
-    ...actual,
-    SaleService: vi.fn().mockImplementation(function () {
-      return mockSaleServiceInstance;
-    }),
-  };
-});
-
-vi.mock("@/features/accounting/iva-books/server", () => ({
-  IvaBooksService: vi.fn().mockImplementation(function () {
-    return {};
-  }),
+vi.mock("@/modules/sale/presentation/composition-root", () => ({
+  makeSaleService: vi.fn(() => mockSaleServiceInstance),
 }));
 
 vi.mock("@/features/users/server", () => ({

@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { SaleService } from "@/features/sale/server";
 import { saleStatusSchema } from "@/features/sale";
+import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 
 const usersService = new UsersService();
-const saleService = new SaleService();
+const saleService = makeSaleService();
 
 export async function POST(
   request: Request,
@@ -25,14 +25,18 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    let sale;
+    let result;
     if (status === "POSTED") {
-      sale = await saleService.post(orgId, saleId, user.id);
+      result = await saleService.post(orgId, saleId, user.id);
     } else {
-      sale = await saleService.void(orgId, saleId, user.id, role, justification);
+      result = await saleService.void(orgId, saleId, {
+        userId: user.id,
+        role,
+        justification,
+      });
     }
 
-    return Response.json(sale);
+    return Response.json(result);
   } catch (error) {
     return handleError(error);
   }

@@ -1,13 +1,13 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { SaleService } from "@/features/sale/server";
 import {
   createSaleSchema,
   saleFiltersSchema,
 } from "@/features/sale";
 import { UsersService } from "@/features/users/server";
+import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 
-const saleService = new SaleService();
+const saleService = makeSaleService();
 const usersService = new UsersService();
 
 export async function GET(
@@ -53,14 +53,14 @@ export async function POST(
     const input = createSaleSchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(userId);
-    const sale = postImmediately
+    const result = postImmediately
       ? await saleService.createAndPost(orgId, input, {
           userId: user.id,
           role,
         })
       : await saleService.createDraft(orgId, input, user.id);
 
-    return Response.json(sale, { status: 201 });
+    return Response.json(result, { status: 201 });
   } catch (error) {
     return handleError(error);
   }
