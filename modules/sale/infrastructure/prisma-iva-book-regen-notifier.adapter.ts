@@ -15,10 +15,11 @@ import type { IvaBookRegenNotifierPort } from "@/modules/sale/domain/ports/iva-b
  * tx-aware con la lógica de cálculo IVA — preservar es asimetría justificada
  * vs ausencia método legacy en D-1/D-2.
  *
- * Filter `status === "ACTIVE"` post-call: defensive vs consumer (sale-hex
- * `editPosted` SOLO invoca para IvaBook ACTIVE). Legacy
- * `recomputeFromSaleCascade:565` SIN status filter mutaría rows VOIDED, que
- * el adapter descarta del retorno.
+ * Post-call findFirst SIN status filter — paridad bit-exact con legacy
+ * `recomputeFromSaleCascade:565` (que tampoco filtra). Decisión Marco POC
+ * #11.0a A5 β Ciclo 1 (b): adapter NO inventa "defensive" filter; legacy
+ * bug latente (mutate VOIDED) se arregla en POC dedicado, no via mejora
+ * unilateral del adapter. Precedente Ciclo 3 getNextSequenceNumber.
  *
  * Retirada §5.5 — POC #11.0c cuando IVA-hex se subscribe a sale event o
  * lee de projected snapshot.
@@ -41,7 +42,7 @@ export class PrismaIvaBookRegenNotifierAdapter implements IvaBookRegenNotifierPo
       new Prisma.Decimal(newTotal),
     );
     const recomputed = await this.tx.ivaSalesBook.findFirst({
-      where: { saleId, organizationId, status: "ACTIVE" },
+      where: { saleId, organizationId },
     });
     if (!recomputed) return null;
     return {

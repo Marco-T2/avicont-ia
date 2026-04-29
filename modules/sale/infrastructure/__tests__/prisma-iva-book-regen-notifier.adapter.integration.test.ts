@@ -16,13 +16,12 @@ import { PrismaIvaBookRegenNotifierAdapter } from "../prisma-iva-book-regen-noti
  * contract real — port `recomputeFromSale` retorna `IvaBookForEntry | null`,
  * legacy `recomputeFromSaleCascade` retorna void. Adapter ejecuta legacy
  * call (side-effect Decimal mutation in-tx) + post-call
- * `tx.ivaSalesBook.findFirst({where:{saleId, organizationId, status:"ACTIVE"}})`
- * y narrow al shape `IvaBookForEntry` (4 fields, mirror
- * `extractIvaBookForEntry:132-137`).
+ * `tx.ivaSalesBook.findFirst({where:{saleId, organizationId}})` y narrow al
+ * shape `IvaBookForEntry` (4 fields, mirror `extractIvaBookForEntry:132-137`).
  *
- * Filter `status === "ACTIVE"` post-call descarta rows VOIDED — defensive
- * vs flujo consumer que SOLO invoca para Sale POSTED + IvaBook ACTIVE
- * (`editPosted` parity).
+ * Post-call findFirst SIN status filter — paridad bit-exact con legacy
+ * `recomputeFromSaleCascade:565` (POC #11.0a A5 β Ciclo 1, decisión Marco
+ * (b) alinear paridad).
  */
 
 describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
@@ -205,14 +204,19 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     expect(count).toBe(0);
   });
 
-  it("recomputeFromSale: VOIDED book — returns null (filter status === 'ACTIVE')", async () => {
-    // RED honesty: FAILS pre-implementación por module resolution failure.
-    // Post-GREEN: legacy recomputeFromSaleCascade:565 SIN status filter
-    // muta el VOIDED row (importeTotal cambia). Adapter post-call findFirst
-    // con `status:"ACTIVE"` filter descarta el row → null. Defensive vs
-    // flujo consumer que SOLO invoca para IvaBook ACTIVE (`editPosted`).
+  it("recomputeFromSale: VOIDED book — returns mutated IvaBookForEntry (paridad bit-exact legacy)", async () => {
+    // RED honesty preventivo: FAILS pre-fix porque adapter filtra
+    // `status: "ACTIVE"` post-call → retorna null sobre VOIDED row aunque
+    // legacy lo mute. Post-GREEN: drop filter → adapter retorna
+    // `IvaBookForEntry` del VOIDED row mutado por legacy
+    // `recomputeFromSaleCascade:565` (SIN filter status).
+    //
+    // Decisión Marco lockeo (b) alinear paridad bit-exact: adapter NO
+    // inventa "defensive" filter; legacy bug (mutate VOIDED) se arregla
+    // en POC dedicado, no via mejora unilateral. Precedente Ciclo 3
+    // getNextSequenceNumber.
     const saleId = await seedSaleDirect(2);
-    await seedIvaSalesBook({
+    const ivaBookId = await seedIvaSalesBook({
       saleId,
       status: "VOIDED",
       sequenceTag: "voided",
@@ -227,6 +231,17 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
       return adapter.recomputeFromSale(testOrgId, saleId, 200);
     });
 
-    expect(result).toBeNull();
+    expect(result).not.toBeNull();
+    expect(result!.importeTotal).toBe(200);
+    expect(result!.exentos).toBe(0);
+    expect(typeof result!.baseIvaSujetoCf).toBe("number");
+    expect(typeof result!.dfCfIva).toBe("number");
+
+    // Verify side-effect: legacy mutates VOIDED row directly.
+    const post = await prisma.ivaSalesBook.findUnique({
+      where: { id: ivaBookId },
+    });
+    expect(post!.importeTotal.toString()).toBe("200");
+    expect(post!.status).toBe("VOIDED"); // status orthogonal — recompute does not flip
   });
 });
