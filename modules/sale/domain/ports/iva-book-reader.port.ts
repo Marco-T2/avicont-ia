@@ -17,6 +17,15 @@ export interface IvaBookSnapshot {
   ivaRate: number;
   ivaAmount: number;
   netAmount: number;
+  /**
+   * Importe exento/tasa-cero/no-sujeto residual proveniente del row
+   * `ivaSalesBook.exentos` (legacy `extractIvaBookForEntry:137` parity).
+   * Necesario para honrar la invariante `baseIvaSujetoCf + exentos =
+   * importeTotal` en `buildSaleEntryLines` — sin propagación, el helper
+   * derivaría exentos como fallback `importeTotal − baseIvaSujetoCf`,
+   * silenciando rows con invariante violada que legacy fail-loud.
+   */
+  exentos: number;
 }
 
 export interface IvaBookReaderPort {

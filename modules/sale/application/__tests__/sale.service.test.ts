@@ -629,12 +629,31 @@ describe("SaleService.post", () => {
       ivaRate: 0.13,
       ivaAmount: 130,
       netAmount: 1000,
+      exentos: 0,
     });
 
     await service.post(ORG, draft.id, "user-1");
 
     const lines = journalEntryFactory.calls[0]!.lines;
     expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
+  });
+
+  it("propagates ivaBookSnapshot.exentos to entry-line builder — throws balance invariant when explicit exentos contradicts importeTotal − baseIvaSujetoCf (legacy `extractIvaBookForEntry` parity)", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+    ivaBookReader.preload(draft.id, {
+      id: "iva-1",
+      saleId: draft.id,
+      ivaRate: 0.13,
+      ivaAmount: 130,
+      netAmount: 1000,
+      exentos: 50,
+    });
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      /Invariante de balance violado/,
+    );
   });
 });
 
@@ -2055,6 +2074,7 @@ describe("SaleService.regenerateJournalForIvaChange", () => {
       ivaRate: 0.13,
       ivaAmount: 130,
       netAmount: 1000,
+      exentos: 0,
     });
     journalEntryFactory.enqueueRegen({
       old: buildJournalStub("journal-iva"),
@@ -2087,6 +2107,27 @@ describe("SaleService.regenerateJournalForIvaChange", () => {
 
     const lines = journalEntryFactory.regenCalls[0]!.template.lines;
     expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(false);
+  });
+
+  it("propagates ivaBookSnapshot.exentos to entry-line builder — throws balance invariant when explicit exentos contradicts importeTotal − baseIvaSujetoCf (legacy `extractIvaBookForEntry` parity)", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    ivaBookReader.preload(sale.id, {
+      id: "iva-1",
+      saleId: sale.id,
+      ivaRate: 0.13,
+      ivaAmount: 130,
+      netAmount: 1000,
+      exentos: 50,
+    });
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-iva"),
+      new: buildJournalStub("journal-iva"),
+    });
+
+    await expect(
+      service.regenerateJournalForIvaChange(ORG, sale.id, "user-1"),
+    ).rejects.toThrow(/Invariante de balance violado/);
   });
 
   it("throws NotFoundError when sale has no journalEntryId", async () => {

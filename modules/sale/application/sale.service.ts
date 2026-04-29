@@ -247,6 +247,7 @@ export class SaleService {
           baseIvaSujetoCf: ivaSnapshot.netAmount,
           dfCfIva: ivaSnapshot.ivaAmount,
           importeTotal: posted.totalAmount.value,
+          exentos: ivaSnapshot.exentos,
         }
       : undefined;
 
@@ -975,6 +976,7 @@ export class SaleService {
           baseIvaSujetoCf: ivaSnapshot.netAmount,
           dfCfIva: ivaSnapshot.ivaAmount,
           importeTotal: sale.totalAmount.value,
+          exentos: ivaSnapshot.exentos,
         }
       : undefined;
 
