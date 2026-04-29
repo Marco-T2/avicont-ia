@@ -752,10 +752,43 @@ El POC destino **NO** es libre de cerrar sin honrar el cutover diferido. La deud
 
 | POC | Bookmark scope | Scope entregado | Diferido a | Razón estructural |
 |---|---|---|---|---|
-| #11.0a A4 | Cutover 12 consumers de legacy `SaleService` (3 core API + 8 iva-books + 1 dispatches-hub) | Cutover 3 consumers (A4-a: 3 core API) | POC #11.0c | Bridges `SaleServiceForBridge` (8 iva-books) y `SaleServiceForHub` (1 hub) requieren shape y contracts que sólo hacen sentido cuando IVA migre a hex y los bridges se rediseñen sin `externalTx` (§5.5 retired Ciclo 6 hex `regenerateJournalForIvaChange`) ni shape-adapter (`Sale` aggregate hex no expone `period` hidratado ni `displayCode`/`contact` hidratado para hub). En POC #11.0c, el consumer (IVA) migra a hex; los bridges legacy desaparecen y los 9 consumers diferidos hacen cutover atómico contra puertos hex equivalentes. |
+| #11.0a A4 | Cutover 12 consumers formales de legacy `SaleService` (3 core API + 8 iva-books + 1 dispatches-hub)¹ | Cutover 3 consumers (A4-a: 3 core API routes) | POC #11.0c | Bridges `SaleServiceForBridge` (8 iva-books) y `SaleServiceForHub` (1 hub) requieren shape y contracts que sólo hacen sentido cuando IVA migre a hex y los bridges se rediseñen sin `externalTx` (§5.5 retired Ciclo 6 hex `regenerateJournalForIvaChange`) ni shape-adapter (`Sale` aggregate hex no expone `period` hidratado ni `displayCode`/`contact` hidratado para hub). En POC #11.0c, el consumer (IVA) migra a hex; los bridges legacy desaparecen y los 10 consumers diferidos hacen cutover atómico contra puertos hex equivalentes. |
 
-### 18.5. Cross-ref
+¹ **Nota correctiva (POC #11.0a A5 β Step 0 D-Step0#2)**: pre-recon A5 β reveló 3 server components adicionales consumiendo `SaleService` legacy NO listados en el scope formal del bookmark histórico A4-a: `app/(dashboard)/[orgSlug]/sales/page.tsx`, `sales/[saleId]/page.tsx`, `dispatches/page.tsx`. POC #11.0c hereda **10 cutovers explícitos** (8 iva-books + 1 hub + `dispatches/page` — el surface nuevo que A5 β agrega al scope heredado), no 9. Los otros 2 server components (`sales/page` + `sales/[saleId]/page`) son consumers conocidos pre-existentes pero quedan para auditoría retroactiva POC #11.0c. El bookmark histórico se preserva sin reescribir — la corrección vive aquí (auditabilidad).
 
-- **Complementa**: §13 (auditoría retroactiva — surface drift hacia atrás), §14 (componente mínimo — completar la decisión actual). §18 cubre el caso simétrico hacia adelante: cuando la decisión actual choca con scope prometido, mover el scope, no la decisión.
+### 18.5. Cleanup parcial honesto — caso inverso
+
+§18.4 cubre el caso donde el cutover NO se puede hacer (bridge bloquea, scope se difiere). Hay un caso simétrico inverso: el cutover principal está bloqueado (parte del scope diferida a POC futuro), **pero porciones del legacy son fachada-presentation pura — cero consumers internos del propio legacy** y se pueden DELETE/migrar sin esperar el cutover completo.
+
+**Cuándo aplica**:
+
+1. El POC actual está cerrando con parte del scope diferida a POC futuro vía §18.4.
+2. Existen archivos o sub-modules legacy donde el pre-recon (grep cross-cutting **PROJECT-scope**) confirma cero consumers internos del propio legacy: schemas Zod no consumidos por el service, tipos DTO presentation no referenciados por dominio, helpers no llamados desde otras capas legacy.
+3. Los consumers cross-module se pueden re-rutear ahora (sin esperar al POC destino) porque el shape migrado es bit-exact.
+
+**Por qué entregarlo en el POC actual**:
+
+- Reduce surface legacy ahora — menos código que el POC destino tenga que tocar.
+- Entrega valor incremental observable: el POC actual no cierra "vacío" cuando hay cleanup factible.
+- Establece precedente: cleanup honesto sólo aplica donde el legacy NO es load-bearing. NO es atajo para evadir §18.4.
+
+**Cómo distinguir cleanup factible de scope creep**:
+
+- Pre-recon honesto **PROJECT-scope** (no sólo `app/`) — incluyendo `__tests__/` legacy y mocks. Excluir directorios da falsos negativos.
+- Validación post-GREEN con `tsc --noEmit` para cambios type-only. Las imports `import type` se elidan en runtime vitest — los smoke tests pasan trivialmente y NO producen RED genuino para tipos puros. La validación honesta es tsc.
+- Si surgen consumers no detectados, update in-place sólo si el shape migrado es bit-exact (regla #1) y el cambio es type-only.
+
+**Precedentes**:
+
+| POC | Cleanup entregado | Status del archivo |
+|---|---|---|
+| #11.0a A5 β Ciclo 1 | Drift A3 paridad bit-exact: `prisma-iva-book-regen-notifier.adapter.ts` drop `status: "ACTIVE"` filter (alinear con legacy SIN filter — adapter NO inventa "defensive" filter; precedente Ciclo 3 `getNextSequenceNumber`). | Adapter intacto, drift cerrado |
+| #11.0a A5 β Ciclo 2 | DELETE `features/sale/sale.validation.ts` (4 schemas Zod fachada-presentation pura, cero consumers internos legacy). 3 routes core re-routeadas a `modules/sale/presentation/schemas/`. | Archivo eliminado |
+| #11.0a A5 β Ciclo 3 | Migrate `SaleWithDetails` + 3 tipos (`PaymentAllocationSummary`, `ReceivableSummary`, `SaleDetailRow`) a `modules/sale/presentation/dto/`. ELIMINATE `IvaSalesBookDTO` re-export muerto. 8 imports re-routed (4 producción + 4 tests legacy). | `sale.types.ts` reducido a input types |
+| #11.0a A5 β (cleanup completo `features/sale/`) | — | Diferido POC #11.0c (load-bearing por runtime consumers heredados §18.4) |
+
+### 18.6. Cross-ref
+
+- **Complementa**: §13 (auditoría retroactiva — surface drift hacia atrás), §14 (componente mínimo — completar la decisión actual), §18.5 (cleanup parcial honesto — caso inverso). §18 cubre el caso simétrico hacia adelante: cuando la decisión actual choca con scope prometido, mover el scope, no la decisión.
 - **NO debilita**: regla #1 fidelidad legacy (la deuda explícita no es atajo — es el costo conocido y declarado de la decisión lockeada anterior).
 - **Pre-condición POC destino**: el POC que herede la deuda diferida la lista en su bookmark de apertura como scope obligatorio. Sin eso, el patrón se rompe.
