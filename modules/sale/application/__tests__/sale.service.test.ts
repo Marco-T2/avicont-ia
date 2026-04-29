@@ -13,6 +13,7 @@ import {
   SaleContactInactive,
   SaleContactNotClient,
   SalePeriodClosed,
+  SalePostNotAllowedForRole,
 } from "../errors/sale-orchestration-errors";
 import { Sale } from "../../domain/sale.entity";
 import type { SaleStatus } from "../../domain/value-objects/sale-status";
@@ -27,6 +28,7 @@ import { InMemoryFiscalPeriodsRead } from "./fakes/in-memory-fiscal-periods-read
 import { InMemoryIvaBookReader } from "./fakes/in-memory-iva-book-reader";
 import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
 import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
+import { InMemorySalePermissions } from "./fakes/in-memory-sale-permissions";
 
 const ORG = "org-1";
 const OTHER_ORG = "org-2";
@@ -625,5 +627,324 @@ describe("SaleService.post", () => {
 
     const lines = journalEntryFactory.calls[0]!.lines;
     expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
+  });
+});
+
+describe("SaleService.createAndPost", () => {
+  let saleRepo: InMemorySaleRepository;
+  let receivableRepo: InMemoryReceivableRepository;
+  let contactRepo: InMemoryContactRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let ivaBookReader: InMemoryIvaBookReader;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let salePermissions: InMemorySalePermissions;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  const ROLE_ADMIN = "ADMIN";
+  const ROLE_OPERADOR = "OPERADOR";
+
+  function buildPostContact(): Contact {
+    return Contact.fromPersistence({
+      id: "c-1",
+      organizationId: ORG,
+      type: "CLIENTE",
+      name: "Cliente",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: true,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  function buildJournalStub(): Journal {
+    return Journal.fromPersistence({
+      id: "journal-1",
+      organizationId: ORG,
+      status: "POSTED",
+      number: 1,
+      referenceNumber: null,
+      date: new Date("2025-01-15"),
+      description: "VG-001 - Venta nueva",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CI",
+      contactId: "c-1",
+      sourceType: "sale",
+      sourceId: "sale-new",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      lines: [],
+    });
+  }
+
+  const input = {
+    contactId: "c-1",
+    periodId: "period-1",
+    date: new Date("2025-01-15"),
+    description: "Venta nueva",
+    details: [
+      {
+        description: "Línea 1",
+        lineAmount: MonetaryAmount.of(1000),
+        incomeAccountId: "acc-income-1",
+      },
+    ],
+  };
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    receivableRepo = new InMemoryReceivableRepository();
+    contactRepo = new InMemoryContactRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    ivaBookReader = new InMemoryIvaBookReader();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+    salePermissions = new InMemorySalePermissions();
+
+    contactRepo.preload(buildPostContact());
+    orgSettings.preload(
+      ORG,
+      OrgSettings.createDefault({
+        id: "settings-1",
+        organizationId: ORG,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+    accountLookup.preload({
+      id: "acc-income-1",
+      code: "4.1.1",
+      isDetail: true,
+      isActive: true,
+    });
+    fiscalPeriods.preload("period-1", "OPEN");
+    salePermissions.allow(ROLE_ADMIN);
+
+    (receivableRepo as unknown as {
+      createTx: (tx: unknown, data: { sourceId: string; dueDate: Date }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => ({ id: `receivable-${data.sourceId}` });
+
+    uow = new InMemorySaleUnitOfWork({
+      sales: saleRepo,
+      accountBalances,
+      receivables: receivableRepo,
+    });
+
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      ivaBookReader,
+      journalEntryFactory,
+      salePermissions,
+    });
+  });
+
+  it("creates and posts atomically when role has permission", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    const result = await service.createAndPost(ORG, input, {
+      userId: "user-1",
+      role: ROLE_ADMIN,
+    });
+
+    expect(result.sale.status).toBe("POSTED");
+    expect(result.sale.sequenceNumber).toBe(1);
+    expect(result.sale.journalEntryId).toBe("journal-1");
+    expect(result.sale.receivableId).toMatch(/^receivable-/);
+    expect(saleRepo.saveTxCalls).toHaveLength(1);
+    expect(saleRepo.updateTxCalls).toHaveLength(0);
+  });
+
+  it("records SalePermissions canPost call with role + 'sales' scope + orgId", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.createAndPost(ORG, input, {
+      userId: "user-1",
+      role: ROLE_ADMIN,
+    });
+
+    expect(salePermissions.canPostCalls).toEqual([
+      { role: ROLE_ADMIN, scope: "sales", organizationId: ORG },
+    ]);
+  });
+
+  it("throws SalePostNotAllowedForRole when role is denied", async () => {
+    await expect(
+      service.createAndPost(ORG, input, {
+        userId: "user-1",
+        role: ROLE_OPERADOR,
+      }),
+    ).rejects.toThrow(SalePostNotAllowedForRole);
+
+    expect(uow.ranContexts).toEqual([]);
+    expect(saleRepo.saveTxCalls).toEqual([]);
+  });
+
+  it("throws ContactNotFound when contact does not exist", async () => {
+    contactRepo.reset();
+
+    await expect(
+      service.createAndPost(ORG, input, {
+        userId: "user-1",
+        role: ROLE_ADMIN,
+      }),
+    ).rejects.toThrow(ContactNotFound);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleContactInactive when contact is inactive", async () => {
+    contactRepo.reset();
+    contactRepo.preload(
+      Contact.fromPersistence({
+        id: "c-1",
+        organizationId: ORG,
+        type: "CLIENTE",
+        name: "Cliente",
+        nit: null,
+        email: null,
+        phone: null,
+        address: null,
+        paymentTermsDays: PaymentTermsDays.of(30),
+        creditLimit: null,
+        isActive: false,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+
+    await expect(
+      service.createAndPost(ORG, input, {
+        userId: "user-1",
+        role: ROLE_ADMIN,
+      }),
+    ).rejects.toThrow(SaleContactInactive);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleContactNotClient when contact type is not CLIENTE", async () => {
+    contactRepo.reset();
+    contactRepo.preload(
+      Contact.fromPersistence({
+        id: "c-1",
+        organizationId: ORG,
+        type: "PROVEEDOR",
+        name: "Proveedor",
+        nit: null,
+        email: null,
+        phone: null,
+        address: null,
+        paymentTermsDays: PaymentTermsDays.of(30),
+        creditLimit: null,
+        isActive: true,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+
+    await expect(
+      service.createAndPost(ORG, input, {
+        userId: "user-1",
+        role: ROLE_ADMIN,
+      }),
+    ).rejects.toThrow(SaleContactNotClient);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SalePeriodClosed when period is CLOSED", async () => {
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    await expect(
+      service.createAndPost(ORG, input, {
+        userId: "user-1",
+        role: ROLE_ADMIN,
+      }),
+    ).rejects.toThrow(SalePeriodClosed);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleAccountNotFound when income account is not in lookup", async () => {
+    accountLookup = new InMemoryAccountLookup();
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      ivaBookReader,
+      journalEntryFactory,
+      salePermissions,
+    });
+
+    await expect(
+      service.createAndPost(ORG, input, {
+        userId: "user-1",
+        role: ROLE_ADMIN,
+      }),
+    ).rejects.toThrow(SaleAccountNotFound);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("propagates AuditContext into the UoW", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.createAndPost(ORG, input, {
+      userId: "user-77",
+      role: ROLE_ADMIN,
+    });
+
+    expect(uow.ranContexts).toEqual([
+      { userId: "user-77", organizationId: ORG },
+    ]);
+  });
+
+  it("does NOT consult ivaBookReader (createAndPost is non-IVA fast path)", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.createAndPost(ORG, input, {
+      userId: "user-1",
+      role: ROLE_ADMIN,
+    });
+
+    expect(ivaBookReader.calls).toEqual([]);
+  });
+
+  it("uses paymentTermsDays from contact for receivable dueDate", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    let capturedDueDate: Date | undefined;
+    (receivableRepo as unknown as {
+      createTx: (tx: unknown, data: { dueDate: Date; sourceId: string }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => {
+      capturedDueDate = data.dueDate;
+      return { id: `receivable-${data.sourceId}` };
+    };
+
+    await service.createAndPost(ORG, input, {
+      userId: "user-1",
+      role: ROLE_ADMIN,
+    });
+
+    const expected = new Date("2025-01-15").getTime() + 30 * 86400000;
+    expect(capturedDueDate?.getTime()).toBe(expected);
   });
 });
