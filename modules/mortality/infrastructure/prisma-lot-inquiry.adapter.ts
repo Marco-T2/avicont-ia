@@ -3,7 +3,7 @@ import { LotsService } from "@/features/lots/server";
 import { NotFoundError } from "@/features/shared/errors";
 import type { LotInquiryPort, LotSnapshot } from "../domain/lot-inquiry.port";
 
-export class LotInquiryAdapter implements LotInquiryPort {
+export class PrismaLotInquiryAdapter implements LotInquiryPort {
   constructor(private readonly lots: LotsService = new LotsService()) {}
 
   async findById(organizationId: string, lotId: string): Promise<LotSnapshot | null> {

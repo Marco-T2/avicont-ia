@@ -543,6 +543,24 @@ Coexisten dos sub-convenciones para owner-aggregate; **ambas válidas**. NO se u
 
 Distribución actual: 8 `.repository.ts`, 3 `.repo.ts`. Adoptar `.repo.ts` para módulos nuevos; mantener `.repository.ts` en los 8 existentes.
 
+### 12.4. Class name match — sub-prefix
+
+El sub-prefix del filename (`prisma-`, `legacy-`, sin prefijo) se preserva en el prefix de la class. Regla determinística sin excepciones en los 32 archivos de scope.
+
+| Filename | Class |
+|---|---|
+| `prisma-foo.{adapter\|repo\|repository}.ts` | `PrismaFoo<Suffix>` |
+| `legacy-foo.adapter.ts` | `LegacyFoo<Suffix>` |
+| `foo.adapter.ts` (sin prefijo) | `Foo<Suffix>` (sin prefijo) |
+
+Ejemplos:
+
+- `prisma-payment-credit.adapter.ts` → `PrismaPaymentCreditAdapter`
+- `legacy-permissions.adapter.ts` → `LegacyPermissionsAdapter`
+- `contacts-read.adapter.ts` → `ContactsReadAdapter`
+
+El concept central de la class, la pluralidad y la translation del file-suffix (`.repo` → `Repo` vs `Repository`) **no son determinísticos** — siguen patrones heurísticos contextuales declarados en §12.5.
+
 ### 12.5. Out of scope
 
 La convención cubre **solo adapters y repositories** en `modules/*/infrastructure/`. Los siguientes archivos del mismo directorio quedan fuera del scope (siguen patrones propios):
@@ -552,6 +570,14 @@ La convención cubre **solo adapters y repositories** en `modules/*/infrastructu
 - **Tests** (`__tests__/*.{test,integration.test}.ts`) — sufijo derivado del archivo testeado.
 
 Si se introduce un archivo nuevo en `modules/*/infrastructure/` que no encaja en las categorías de §12.1, documentar la categoría nueva explícitamente antes de adoptarla.
+
+**Heurísticas contextuales (no normadas)**: el concept central de la class, la pluralidad y la translation del file-suffix tienen variabilidad legítima en el inventario actual:
+
+- **Concept central**: a veces alineado al filename (`legacy-fiscal-periods.adapter.ts` → `LegacyFiscalPeriodsAdapter`, descartando el `Read` del port `FiscalPeriodsReadPort`), a veces al port (`payables.adapter.ts` → `PayablesQueryAdapter`, agregando el `Query` del port).
+- **Pluralidad**: la class suele seguir el filename, no el port (`prisma-payables.repository.ts` con port `PayableRepository` singular → class `PrismaPayablesRepository` plural).
+- **File-suffix**: `.repo.ts` mapea a class suffix `Repo` en 2/3 casos (`PrismaAccountBalancesRepo`, `PrismaFiscalPeriodsTxRepo`) y a `Repository` en 1/3 (`PrismaJournalEntriesRepository`). Coexistencia válida — NO uniformizar retroactivamente.
+
+Estas heurísticas no son violaciones de §12.4 — la regla literal cristalizada (sub-prefix match) sigue determinística. Cuando un archivo nuevo presente ambigüedad de concept/pluralidad/suffix, decidir en contexto y documentar la elección en el commit body si la decisión no es obvia.
 
 ---
 
