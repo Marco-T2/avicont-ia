@@ -18,6 +18,14 @@ import { PrismaJournalEntriesRepository } from "./prisma-journal-entries.repo";
  * (correlationId pre-tx, SET LOCAL inside, fn invoke, return shape) are
  * inherited unchanged. Only the scope shape differs: AccountingScope adds
  * tx-bound `journalEntries` + `accountBalances` alongside `fiscalPeriods`.
+ *
+ * §17 carve-out: UoW construye adapters tx-bound dentro de `withAuditTx` —
+ * `Prisma.TransactionClient` no existe pre-tx, un singleton en composition
+ * root no puede capturar `tx` per-run. Cross-module concrete import cubierto:
+ * `shared/PrismaFiscalPeriodsTxRepo` (implementa
+ * `shared/domain/ports/fiscal-periods-tx.repo` — R3 vigente). Los otros 2
+ * imports (`PrismaJournalEntriesRepository`, `PrismaAccountBalancesRepo`) son
+ * same-module.
  */
 export class PrismaAccountingUnitOfWork implements AccountingUnitOfWork {
   constructor(private readonly repo: UnitOfWorkRepoLike) {}
