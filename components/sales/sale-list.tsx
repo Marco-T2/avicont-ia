@@ -41,7 +41,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { SaleWithDetails } from "@/features/sale";
+import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──

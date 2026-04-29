@@ -34,8 +34,8 @@ import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "@/features/receivables/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 import type {
-  SaleWithDetails,
   CreateSaleInput,
   UpdateSaleInput,
   SaleFilters,

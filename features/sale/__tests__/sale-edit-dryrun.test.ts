@@ -20,7 +20,7 @@ import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { JournalRepository } from "@/features/accounting/journal.repository";
 import { IvaBooksService } from "@/features/accounting/iva-books/server";
-import type { SaleWithDetails } from "../sale.types";
+import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

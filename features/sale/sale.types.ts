@@ -1,70 +1,8 @@
-import type {
-  Sale,
-  SaleDetail,
-  SaleStatus,
-} from "@/generated/prisma/client";
-import type { IvaSalesBookDTO } from "@/features/accounting/iva-books";
+import type { SaleStatus } from "@/generated/prisma/client";
 
 // ── Re-exportar tipos de Prisma para mayor comodidad ──
 
 export type { SaleStatus };
-export type { IvaSalesBookDTO };
-
-// ── Tipos compuestos ──
-
-export interface PaymentAllocationSummary {
-  id: string;
-  paymentId: string;
-  amount: number;
-  payment: {
-    id: string;
-    date: string;
-    description: string;
-  };
-}
-
-export interface ReceivableSummary {
-  id: string;
-  amount: number;
-  paid: number;
-  balance: number;
-  status: string;
-  dueDate: Date;
-  allocations: PaymentAllocationSummary[];
-}
-
-export interface SaleDetailRow
-  extends Omit<SaleDetail, "lineAmount" | "quantity" | "unitPrice"> {
-  lineAmount: number;
-  quantity: number | null;
-  unitPrice: number | null;
-}
-
-export interface SaleWithDetails
-  extends Omit<Sale, "totalAmount"> {
-  totalAmount: number;
-  contact: {
-    id: string;
-    name: string;
-    type: string;
-    nit?: string | null;
-    paymentTermsDays?: number | null;
-  };
-  period: {
-    id: string;
-    name: string;
-    status: string;
-  };
-  createdBy: {
-    id: string;
-    name: string;
-    email: string;
-  };
-  details: SaleDetailRow[];
-  receivable?: ReceivableSummary | null;
-  displayCode: string;
-  ivaSalesBook?: IvaSalesBookDTO | null;
-}
 
 // ── Tipos de entrada ──
 

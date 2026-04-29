@@ -17,7 +17,7 @@ import { SaleService } from "../sale.service";
 import { LOCKED_EDIT_REQUIRES_JUSTIFICATION } from "@/features/shared/errors";
 import type { SaleRepository } from "../sale.repository";
 import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import type { SaleWithDetails } from "../sale.types";
+import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 
 const ORG_ID = "org-locked-edit-sale";
 const SALE_ID = "sale-locked-001";

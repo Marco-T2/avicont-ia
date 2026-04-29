@@ -4,10 +4,12 @@ import { BaseRepository } from "@/features/shared/base.repository";
 import type { SaleStatus } from "@/generated/prisma/client";
 import type {
   SaleWithDetails,
+  SaleDetailRow,
+} from "@/modules/sale/presentation/dto/sale-with-details";
+import type {
   CreateSaleInput,
   UpdateSaleInput,
   SaleFilters,
-  SaleDetailRow,
 } from "./sale.types";
 import { getDisplayCode } from "./sale.utils";
 import { toNoonUtc } from "@/lib/date-utils";

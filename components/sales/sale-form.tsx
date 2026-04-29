@@ -33,7 +33,7 @@ import Link from "next/link";
 import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
-import type { SaleWithDetails } from "@/features/sale";
+import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
 import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { ConfirmTrimDialog } from "@/components/sales/confirm-trim-dialog";
