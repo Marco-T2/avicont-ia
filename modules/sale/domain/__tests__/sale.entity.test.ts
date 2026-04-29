@@ -395,4 +395,145 @@ describe("Sale aggregate", () => {
       expect(() => sale.assertCanDelete()).toThrow(SaleNotDraft);
     });
   });
+
+  describe("applyEdit", () => {
+    it("actualiza todos los campos editables provistos", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "DRAFT",
+          description: "Original",
+          contactId: "contact-orig",
+        }),
+      );
+      const newDate = new Date("2026-05-15");
+      const edited = sale.applyEdit({
+        date: newDate,
+        description: "Editado",
+        contactId: "contact-new",
+        referenceNumber: 100,
+        notes: "Nota agregada",
+      });
+      expect(edited.date).toEqual(newDate);
+      expect(edited.description).toBe("Editado");
+      expect(edited.contactId).toBe("contact-new");
+      expect(edited.referenceNumber).toBe(100);
+      expect(edited.notes).toBe("Nota agregada");
+    });
+
+    it("actualiza solo los campos provistos (partial input)", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          description: "Original",
+          contactId: "contact-orig",
+          notes: "Nota original",
+        }),
+      );
+      const edited = sale.applyEdit({ description: "Solo description" });
+      expect(edited.description).toBe("Solo description");
+      expect(edited.contactId).toBe("contact-orig");
+      expect(edited.notes).toBe("Nota original");
+    });
+
+    it("permite limpiar referenceNumber y notes con null", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({ referenceNumber: 42, notes: "Tenía nota" }),
+      );
+      const edited = sale.applyEdit({ referenceNumber: null, notes: null });
+      expect(edited.referenceNumber).toBeNull();
+      expect(edited.notes).toBeNull();
+    });
+
+    it("retorna nueva instancia sin mutar el original", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({ description: "Original" }),
+      );
+      const edited = sale.applyEdit({ description: "Cambiado" });
+      expect(edited).not.toBe(sale);
+      expect(sale.description).toBe("Original");
+    });
+
+    it("permite edit desde DRAFT, POSTED y LOCKED", () => {
+      for (const status of ["DRAFT", "POSTED", "LOCKED"] as const) {
+        const sale = Sale.fromPersistence(buildSaleProps({ status }));
+        expect(() => sale.applyEdit({ description: "X" })).not.toThrow();
+      }
+    });
+
+    it("rechaza edit desde VOIDED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "VOIDED" }));
+      expect(() => sale.applyEdit({ description: "X" })).toThrow(
+        SaleVoidedImmutable,
+      );
+    });
+  });
+
+  describe("replaceDetails", () => {
+    it("reemplaza details y recomputa totalAmount", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "DRAFT",
+          details: [buildDetail("sale-1", 100, 0)],
+          totalAmount: MonetaryAmount.of(100),
+        }),
+      );
+      const newDetails = [
+        buildDetail("sale-1", 50, 0),
+        buildDetail("sale-1", 75.5, 1),
+      ];
+      const updated = sale.replaceDetails(newDetails);
+      expect(updated.details).toHaveLength(2);
+      expect(updated.totalAmount.value).toBe(125.5);
+    });
+
+    it("permite replaceDetails con array vacío en DRAFT", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "DRAFT",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      const updated = sale.replaceDetails([]);
+      expect(updated.details).toEqual([]);
+      expect(updated.totalAmount.value).toBe(0);
+    });
+
+    it("rechaza replaceDetails con array vacío en POSTED", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "POSTED",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      expect(() => sale.replaceDetails([])).toThrow(SaleNoDetails);
+    });
+
+    it("rechaza replaceDetails con array vacío en LOCKED", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "LOCKED",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      expect(() => sale.replaceDetails([])).toThrow(SaleNoDetails);
+    });
+
+    it("rechaza replaceDetails desde VOIDED", () => {
+      const sale = Sale.fromPersistence(buildSaleProps({ status: "VOIDED" }));
+      expect(() =>
+        sale.replaceDetails([buildDetail("sale-1", 100, 0)]),
+      ).toThrow(SaleVoidedImmutable);
+    });
+
+    it("retorna nueva instancia sin mutar el original", () => {
+      const sale = Sale.fromPersistence(
+        buildSaleProps({
+          status: "DRAFT",
+          details: [buildDetail("sale-1", 100, 0)],
+        }),
+      );
+      const updated = sale.replaceDetails([buildDetail("sale-1", 200, 0)]);
+      expect(updated).not.toBe(sale);
+      expect(sale.totalAmount.value).toBe(0);
+    });
+  });
 });

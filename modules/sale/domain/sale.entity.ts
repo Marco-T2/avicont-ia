@@ -58,6 +58,14 @@ export interface CreateSaleDraftInput {
   details: CreateSaleDraftDetailInput[];
 }
 
+export interface ApplySaleEditInput {
+  date?: Date;
+  description?: string;
+  contactId?: string;
+  referenceNumber?: number | null;
+  notes?: string | null;
+}
+
 export class Sale {
   private constructor(private readonly props: SaleProps) {}
 
@@ -208,6 +216,40 @@ export class Sale {
     if (this.props.status !== "DRAFT") {
       throw new SaleNotDraft();
     }
+  }
+
+  applyEdit(input: ApplySaleEditInput): Sale {
+    this.assertCurrentNotVoided();
+    const next: SaleProps = { ...this.props };
+    if (input.date !== undefined) next.date = input.date;
+    if (input.description !== undefined) next.description = input.description;
+    if (input.contactId !== undefined) next.contactId = input.contactId;
+    if ("referenceNumber" in input) {
+      next.referenceNumber = input.referenceNumber ?? null;
+    }
+    if ("notes" in input) next.notes = input.notes ?? null;
+    next.updatedAt = new Date();
+    return new Sale(next);
+  }
+
+  replaceDetails(newDetails: SaleDetail[]): Sale {
+    this.assertCurrentNotVoided();
+    if (
+      newDetails.length === 0 &&
+      (this.props.status === "POSTED" || this.props.status === "LOCKED")
+    ) {
+      throw new SaleNoDetails();
+    }
+    const totalAmount = newDetails.reduce(
+      (sum, d) => sum.plus(d.lineAmount),
+      MonetaryAmount.zero(),
+    );
+    return new Sale({
+      ...this.props,
+      details: newDetails,
+      totalAmount,
+      updatedAt: new Date(),
+    });
   }
 
   private assertCurrentNotVoided(): void {
