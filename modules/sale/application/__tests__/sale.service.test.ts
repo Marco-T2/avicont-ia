@@ -506,6 +506,7 @@ describe("SaleService.post", () => {
       sales: saleRepo,
       accountBalances,
       receivables: receivableRepo,
+      journalEntryFactory,
     });
 
     service = new SaleService({
@@ -517,7 +518,6 @@ describe("SaleService.post", () => {
       orgSettings,
       fiscalPeriods,
       ivaBookReader,
-      journalEntryFactory,
     });
   });
 
@@ -581,7 +581,6 @@ describe("SaleService.post", () => {
       orgSettings,
       fiscalPeriods,
       ivaBookReader,
-      journalEntryFactory,
     });
 
     await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
@@ -768,6 +767,7 @@ describe("SaleService.createAndPost", () => {
       sales: saleRepo,
       accountBalances,
       receivables: receivableRepo,
+      journalEntryFactory,
     });
 
     service = new SaleService({
@@ -779,7 +779,6 @@ describe("SaleService.createAndPost", () => {
       orgSettings,
       fiscalPeriods,
       ivaBookReader,
-      journalEntryFactory,
       salePermissions,
     });
   });
@@ -918,7 +917,6 @@ describe("SaleService.createAndPost", () => {
       orgSettings,
       fiscalPeriods,
       ivaBookReader,
-      journalEntryFactory,
       salePermissions,
     });
 
@@ -1439,6 +1437,7 @@ describe("SaleService.update — POSTED branch", () => {
       sales: saleRepo,
       accountBalances,
       receivables: receivableRepo,
+      journalEntryFactory,
       ivaBookRegenNotifier: ivaBookRegen,
     });
 
@@ -1450,7 +1449,6 @@ describe("SaleService.update — POSTED branch", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      journalEntryFactory,
     });
   });
 
@@ -1658,7 +1656,6 @@ describe("SaleService.update — POSTED branch", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      journalEntryFactory,
     });
 
     await expect(
@@ -2090,6 +2087,7 @@ describe("SaleService.regenerateJournalForIvaChange", () => {
     uow = new InMemorySaleUnitOfWork({
       sales: saleRepo,
       accountBalances,
+      journalEntryFactory,
     });
 
     service = new SaleService({
@@ -2098,7 +2096,6 @@ describe("SaleService.regenerateJournalForIvaChange", () => {
       accountLookup,
       orgSettings,
       ivaBookReader,
-      journalEntryFactory,
     });
   });
 
@@ -2205,7 +2202,6 @@ describe("SaleService.regenerateJournalForIvaChange", () => {
       accountLookup,
       orgSettings,
       ivaBookReader,
-      journalEntryFactory,
     });
 
     await expect(

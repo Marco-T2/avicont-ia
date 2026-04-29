@@ -27,7 +27,6 @@ import {
 } from "../domain/build-sale-entry-lines";
 import type { OrgSettingsReaderPort } from "../domain/ports/org-settings-reader.port";
 import type { IvaBookReaderPort } from "../domain/ports/iva-book-reader.port";
-import type { JournalEntryFactoryPort } from "../domain/ports/journal-entry-factory.port";
 import type { SalePermissionsPort } from "../domain/ports/sale-permissions.port";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -85,7 +84,6 @@ export interface SaleServiceDeps {
   orgSettings?: OrgSettingsReaderPort;
   fiscalPeriods?: FiscalPeriodsReadPort;
   ivaBookReader?: IvaBookReaderPort;
-  journalEntryFactory?: JournalEntryFactoryPort;
   salePermissions?: SalePermissionsPort;
   journalEntriesRead?: JournalEntriesReadPort;
 }
@@ -207,7 +205,6 @@ export class SaleService {
       orgSettings: this.deps.orgSettings,
       fiscalPeriods: this.deps.fiscalPeriods,
       ivaBookReader: this.deps.ivaBookReader,
-      journalEntryFactory: this.deps.journalEntryFactory,
     };
     for (const [name, dep] of Object.entries(required)) {
       if (!dep) throw new Error(`SaleService.post requires ${name}`);
@@ -287,7 +284,7 @@ export class SaleService {
           ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
           : `${displayCode} - ${numbered.description}`;
 
-        const journal = await this.deps.journalEntryFactory!.generateForSale({
+        const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,
           contactId: numbered.contactId,
           date: numbered.date,
@@ -455,7 +452,6 @@ export class SaleService {
       accountLookup: this.deps.accountLookup,
       orgSettings: this.deps.orgSettings,
       fiscalPeriods: this.deps.fiscalPeriods,
-      journalEntryFactory: this.deps.journalEntryFactory,
       receivables: this.deps.receivables,
     };
     for (const [name, dep] of Object.entries(required)) {
@@ -568,7 +564,7 @@ export class SaleService {
           : `${displayCode} - ${edited.description}`;
 
         const { old, new: newJournal } =
-          await this.deps.journalEntryFactory!.regenerateForSaleEdit(
+          await scope.journalEntryFactory.regenerateForSaleEdit(
             edited.journalEntryId!,
             {
               organizationId,
@@ -656,7 +652,6 @@ export class SaleService {
       accountLookup: this.deps.accountLookup,
       orgSettings: this.deps.orgSettings,
       fiscalPeriods: this.deps.fiscalPeriods,
-      journalEntryFactory: this.deps.journalEntryFactory,
       salePermissions: this.deps.salePermissions,
     };
     for (const [name, dep] of Object.entries(required)) {
@@ -737,7 +732,7 @@ export class SaleService {
           ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
           : `${displayCode} - ${numbered.description}`;
 
-        const journal = await this.deps.journalEntryFactory!.generateForSale({
+        const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,
           contactId: numbered.contactId,
           date: numbered.date,
@@ -946,7 +941,6 @@ export class SaleService {
       accountLookup: this.deps.accountLookup,
       orgSettings: this.deps.orgSettings,
       ivaBookReader: this.deps.ivaBookReader,
-      journalEntryFactory: this.deps.journalEntryFactory,
     };
     for (const [name, dep] of Object.entries(required)) {
       if (!dep) {
@@ -1012,7 +1006,7 @@ export class SaleService {
       { userId, organizationId },
       async (scope) => {
         const { old, new: newJournal } =
-          await this.deps.journalEntryFactory!.regenerateForSaleEdit(
+          await scope.journalEntryFactory.regenerateForSaleEdit(
             sale.journalEntryId!,
             {
               organizationId,

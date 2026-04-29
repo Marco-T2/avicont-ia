@@ -8,6 +8,7 @@ import type { ReceivableRepository } from "@/modules/receivables/domain/receivab
 import type { SaleRepository } from "../../../domain/ports/sale.repository";
 import type { IvaBookRegenNotifierPort } from "../../../domain/ports/iva-book-regen-notifier.port";
 import type { IvaBookVoidCascadePort } from "../../../domain/ports/iva-book-void-cascade.port";
+import type { JournalEntryFactoryPort } from "../../../domain/ports/journal-entry-factory.port";
 import type {
   SaleScope,
   SaleUnitOfWork,
@@ -35,6 +36,7 @@ export interface InMemorySaleUnitOfWorkOptions {
   journalEntries?: JournalEntriesRepository;
   accountBalances?: AccountBalancesRepository;
   receivables?: ReceivableRepository;
+  journalEntryFactory?: JournalEntryFactoryPort;
   ivaBookRegenNotifier?: IvaBookRegenNotifierPort;
   ivaBookVoidCascade?: IvaBookVoidCascadePort;
 }
@@ -70,6 +72,8 @@ export class InMemorySaleUnitOfWork implements SaleUnitOfWork {
       accountBalances:
         this.options.accountBalances ?? unused("accountBalances"),
       receivables: this.options.receivables ?? unused("receivables"),
+      journalEntryFactory:
+        this.options.journalEntryFactory ?? unused("journalEntryFactory"),
       ivaBookRegenNotifier:
         this.options.ivaBookRegenNotifier ?? unused("ivaBookRegenNotifier"),
       ivaBookVoidCascade:
