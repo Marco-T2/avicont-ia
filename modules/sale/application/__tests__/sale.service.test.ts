@@ -1609,6 +1609,43 @@ describe("SaleService.update — POSTED branch", () => {
     expect(uow.ranContexts).toEqual([]);
   });
 
+  it("syncs receivable.contactId when sale.contactId changes without active allocations (legacy `editPosted:916` parity)", async () => {
+    const sale = buildPostedSale();
+    saleRepo.preload(sale);
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+    receivableRepo.preloadReceivable(buildExistingReceivable(0));
+    contactRepo.preload(
+      Contact.fromPersistence({
+        id: "c-2",
+        organizationId: ORG,
+        type: "CLIENTE",
+        name: "Nuevo Cliente",
+        nit: null,
+        email: null,
+        phone: null,
+        address: null,
+        paymentTermsDays: PaymentTermsDays.of(30),
+        creditLimit: null,
+        isActive: true,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+
+    await service.update(
+      ORG,
+      sale.id,
+      { contactId: "c-2" },
+      { userId: "user-1" },
+    );
+
+    expect(receivableRepo.updateCalls).toHaveLength(1);
+    expect(receivableRepo.updateCalls[0]!.contactId).toBe("c-2");
+  });
+
   it("throws SaleAccountNotFound when income account is not in lookup", async () => {
     const sale = buildPostedSale();
     saleRepo.preload(sale);

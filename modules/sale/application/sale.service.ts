@@ -599,9 +599,14 @@ export class SaleService {
             edited.receivableId,
           );
           if (receivable && receivable.status !== "VOIDED") {
-            const updatedReceivable = receivable.recomputeForSaleEdit(
+            let updatedReceivable = receivable.recomputeForSaleEdit(
               edited.totalAmount,
             );
+            if (receivable.contactId !== edited.contactId) {
+              updatedReceivable = updatedReceivable.changeContact(
+                edited.contactId,
+              );
+            }
             await scope.receivables.update(updatedReceivable);
 
             if (receivable.paid.value > edited.totalAmount.value) {

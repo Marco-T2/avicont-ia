@@ -498,4 +498,29 @@ describe("Receivable entity", () => {
       );
     });
   });
+
+  describe("changeContact()", () => {
+    it("returns a new receivable with updated contactId — preserves amount/paid/balance/status", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(400),
+      );
+
+      const updated = r.changeContact("contact-new");
+
+      expect(updated.contactId).toBe("contact-new");
+      expect(updated.amount.value).toBe(1000);
+      expect(updated.paid.value).toBe(400);
+      expect(updated.balance.value).toBe(600);
+      expect(updated.status).toBe("PARTIAL");
+    });
+
+    it("returns a new instance — original is not mutated", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 });
+
+      const updated = r.changeContact("contact-new");
+
+      expect(updated).not.toBe(r);
+      expect(r.contactId).toBe(baseInput.contactId);
+    });
+  });
 });

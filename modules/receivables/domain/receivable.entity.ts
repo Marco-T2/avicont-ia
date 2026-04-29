@@ -243,6 +243,22 @@ export class Receivable {
   }
 
   /**
+   * Updates the receivable's `contactId` — used when an underlying sale's
+   * contact is changed via editPosted (legacy `sale.service.ts:916` parity).
+   * Separation of concerns vs `recomputeForSaleEdit`: that method handles
+   * total mutation; this one handles identity mutation. Pre: receivable not
+   * VOIDED — gated by sale-hex orchestration (line 600 hex parity); the
+   * aggregate trusts the new id has been vetted (existence/active/CLIENTE).
+   */
+  changeContact(contactId: string): Receivable {
+    return new Receivable({
+      ...this.props,
+      contactId,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
    * Recomputes amount + paid (capped at newTotal) + balance + status when the
    * underlying sale's total changes via editPosted. Mirrors legacy
    * `sale.service.ts:869-919` derivation. The aggregate emits the new state;
