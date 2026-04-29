@@ -275,6 +275,64 @@ export class Journal {
     });
   }
 
+  /**
+   * Mutates header + replaces lines atomically, **skipping I9** (auto-generated
+   * inmutable). Named escape hatch γ7 §13 emergente Ciclo 4 lockeado Marco —
+   * único caller legítimo: sale-hex use case `regenerateJournalForIvaChange`
+   * via `JournalEntryFactoryPort.regenerateForSaleEdit`. Otros consumers DEBEN
+   * usar `update()` + `replaceLines()` y aceptar enforcement I9.
+   *
+   * **Conservados**: I7 (VOIDED inmutable siempre), I1 (partida doble solo
+   * POSTED, parity `replaceLines`), I2 (>= 2 líneas).
+   *
+   * **Skipped por diseño**: I9 (`sourceType !== null`) — la única divergencia
+   * vs `update()` + `replaceLines()`. Razón: el aggregate accounting hex eligió
+   * I9 "más conservador que legacy" sin considerar el flow sale-edit/regenerate
+   * (POC #11.0a A2 Ciclo 6b). Este método es la reconciliación nombrada:
+   * "I am the source-edit flow for this auto-entry" como statement explícito
+   * del caller.
+   */
+  regenerateFromSource(
+    input: UpdateJournalInput,
+    drafts: JournalLineDraft[],
+  ): Journal {
+    // I7 — VOIDED siempre inmutable (parity update/replaceLines).
+    if (this.props.status === "VOIDED") {
+      throw new CannotModifyVoidedJournal();
+    }
+    // (I9 skip por diseño γ7)
+    // I2 — >= 2 líneas (parity replaceLines).
+    if (drafts.length < 2) {
+      throw new JournalMinLines();
+    }
+
+    const next: JournalProps = { ...this.props, updatedAt: new Date() };
+    if (input.description !== undefined) next.description = input.description;
+    if (input.date !== undefined) next.date = input.date;
+    if ("referenceNumber" in input) {
+      next.referenceNumber = input.referenceNumber ?? null;
+    }
+    if ("contactId" in input) next.contactId = input.contactId ?? null;
+    if (input.updatedById !== undefined) next.updatedById = input.updatedById;
+
+    const lines = drafts.map((draft, index) =>
+      JournalLine.create({
+        journalEntryId: this.props.id,
+        accountId: draft.accountId,
+        side: draft.side,
+        description: draft.description ?? null,
+        contactId: draft.contactId ?? null,
+        order: index,
+      }),
+    );
+    // I1 — balance solo POSTED (parity replaceLines).
+    if (this.props.status === "POSTED") {
+      this.assertLinesBalanced(lines);
+    }
+
+    return new Journal({ ...next, lines });
+  }
+
   private assertMutable(): void {
     // I7 — VOIDED inmutable. C2-FIX-2 parity: surface ENTRY_VOIDED_IMMUTABLE.
     if (this.props.status === "VOIDED") {
