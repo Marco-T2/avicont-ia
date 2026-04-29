@@ -41,16 +41,20 @@ export class InMemorySaleRepository implements SaleRepository {
     });
   }
 
-  async findByIdTx(): Promise<Sale | null> {
-    throw new Error("InMemorySaleRepository.findByIdTx not implemented (lands in Ciclo 4+)");
+  saveTxCalls: Sale[] = [];
+
+  async findByIdTx(organizationId: string, id: string): Promise<Sale | null> {
+    return this.findById(organizationId, id);
   }
 
-  async saveTx(): Promise<Sale> {
-    throw new Error("InMemorySaleRepository.saveTx not implemented (lands in Ciclo 4+)");
+  async saveTx(sale: Sale): Promise<Sale> {
+    this.saveTxCalls.push(sale);
+    this.store.set(sale.id, sale);
+    return sale;
   }
 
   async updateTx(): Promise<Sale> {
-    throw new Error("InMemorySaleRepository.updateTx not implemented (lands in Ciclo 4+)");
+    throw new Error("InMemorySaleRepository.updateTx not implemented (lands in Ciclo 6)");
   }
 
   async deleteTx(): Promise<void> {

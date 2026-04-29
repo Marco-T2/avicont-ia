@@ -1,11 +1,21 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NotFoundError } from "@/features/shared/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import { Contact } from "@/modules/contacts/domain/contact.entity";
+import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
+import type { ContactType } from "@/modules/contacts/domain/value-objects/contact-type";
+import { PaymentTermsDays } from "@/modules/contacts/domain/value-objects/payment-terms-days";
 import { Receivable } from "@/modules/receivables/domain/receivable.entity";
+import {
+  SaleContactInactive,
+  SaleContactNotClient,
+} from "../errors/sale-orchestration-errors";
 import { Sale } from "../../domain/sale.entity";
 import type { SaleStatus } from "../../domain/value-objects/sale-status";
 import { SaleService } from "../sale.service";
+import { InMemoryContactRepository } from "./fakes/in-memory-contact.repository";
 import { InMemorySaleRepository } from "./fakes/in-memory-sale.repository";
+import { InMemorySaleUnitOfWork } from "./fakes/in-memory-sale-unit-of-work";
 import { InMemoryReceivableRepository } from "./fakes/in-memory-receivable.repository";
 
 const ORG = "org-1";
@@ -242,5 +252,121 @@ describe("SaleService.getEditPreview", () => {
     await expect(
       service.getEditPreview(ORG, "sale-1", 100),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("SaleService.createDraft", () => {
+  let saleRepo: InMemorySaleRepository;
+  let contactRepo: InMemoryContactRepository;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    contactRepo = new InMemoryContactRepository();
+    uow = new InMemorySaleUnitOfWork({ sales: saleRepo });
+    service = new SaleService(saleRepo, undefined, contactRepo, uow);
+  });
+
+  function buildContact(overrides: {
+    id?: string;
+    type?: ContactType;
+    isActive?: boolean;
+  } = {}): Contact {
+    return Contact.fromPersistence({
+      id: overrides.id ?? "c-1",
+      organizationId: ORG,
+      type: overrides.type ?? "CLIENTE",
+      name: "Cliente Test",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: overrides.isActive ?? true,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  const draftInput = {
+    contactId: "c-1",
+    periodId: "period-1",
+    date: new Date("2025-01-15"),
+    description: "Venta a Cliente Test",
+    details: [
+      {
+        description: "Línea 1",
+        lineAmount: MonetaryAmount.of(100),
+        incomeAccountId: "acc-income-1",
+      },
+    ],
+  };
+
+  it("persists a DRAFT sale and returns the aggregate + correlationId", async () => {
+    contactRepo.preload(buildContact());
+    uow.nextCorrelationId = "corr-fixed-42";
+
+    const result = await service.createDraft(ORG, draftInput, "user-1");
+
+    expect(result.correlationId).toBe("corr-fixed-42");
+    expect(result.sale.status).toBe("DRAFT");
+    expect(result.sale.organizationId).toBe(ORG);
+    expect(result.sale.contactId).toBe("c-1");
+    expect(result.sale.createdById).toBe("user-1");
+    expect(result.sale.totalAmount.value).toBe(100);
+    expect(result.sale.details).toHaveLength(1);
+    expect(saleRepo.saveTxCalls).toHaveLength(1);
+    expect(saleRepo.saveTxCalls[0]!.id).toBe(result.sale.id);
+  });
+
+  it("invokes the UoW with the AuditContext (userId + organizationId)", async () => {
+    contactRepo.preload(buildContact());
+
+    await service.createDraft(ORG, draftInput, "user-42");
+
+    expect(uow.ranContexts).toEqual([
+      { userId: "user-42", organizationId: ORG },
+    ]);
+  });
+
+  it("throws ContactNotFound when contact does not exist", async () => {
+    await expect(
+      service.createDraft(ORG, draftInput, "user-1"),
+    ).rejects.toThrow(ContactNotFound);
+
+    expect(saleRepo.saveTxCalls).toEqual([]);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleContactInactive when contact exists but is inactive", async () => {
+    contactRepo.preload(buildContact({ isActive: false }));
+
+    await expect(
+      service.createDraft(ORG, draftInput, "user-1"),
+    ).rejects.toThrow(SaleContactInactive);
+
+    expect(saleRepo.saveTxCalls).toEqual([]);
+  });
+
+  it("throws SaleContactNotClient when contact type is not CLIENTE", async () => {
+    contactRepo.preload(buildContact({ type: "PROVEEDOR" }));
+
+    await expect(
+      service.createDraft(ORG, draftInput, "user-1"),
+    ).rejects.toThrow(SaleContactNotClient);
+
+    expect(saleRepo.saveTxCalls).toEqual([]);
+  });
+
+  it("does not open the UoW when contact validation fails", async () => {
+    contactRepo.preload(buildContact({ isActive: false }));
+
+    await service
+      .createDraft(ORG, draftInput, "user-1")
+      .catch(() => undefined);
+
+    expect(uow.ranContexts).toEqual([]);
   });
 });

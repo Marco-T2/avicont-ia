@@ -4,6 +4,7 @@ import {
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   POST_NOT_ALLOWED_FOR_ROLE,
   SALE_CONTACT_CHANGE_BLOCKED,
+  SALE_CONTACT_INACTIVE,
   SALE_INCOME_ACCOUNT_REQUIRED,
   SALE_INVALID_CONTACT_TYPE,
   ValidationError,
@@ -14,6 +15,7 @@ export {
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   POST_NOT_ALLOWED_FOR_ROLE,
   SALE_CONTACT_CHANGE_BLOCKED,
+  SALE_CONTACT_INACTIVE,
   SALE_INCOME_ACCOUNT_REQUIRED,
   SALE_INVALID_CONTACT_TYPE,
 } from "@/features/shared/errors";
@@ -26,6 +28,17 @@ export class SaleContactNotClient extends ValidationError {
       { contactType },
     );
     this.name = "SaleContactNotClient";
+  }
+}
+
+export class SaleContactInactive extends ValidationError {
+  constructor(contactId: string) {
+    super(
+      "El contacto está inactivo y no puede usarse en una venta",
+      SALE_CONTACT_INACTIVE,
+      { contactId },
+    );
+    this.name = "SaleContactInactive";
   }
 }
 

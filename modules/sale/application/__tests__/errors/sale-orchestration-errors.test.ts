@@ -3,6 +3,7 @@ import { ForbiddenError, ValidationError } from "@/features/shared/errors";
 import {
   SaleAccountNotFound,
   SaleContactChangeWithAllocations,
+  SaleContactInactive,
   SaleContactNotClient,
   SaleLockedEditMissingJustification,
   SalePeriodClosed,
@@ -18,6 +19,18 @@ describe("SaleContactNotClient", () => {
     expect(err.name).toBe("SaleContactNotClient");
     expect(err.message).toContain("CLIENTE");
     expect(err.details).toEqual({ contactType: "PROVEEDOR" });
+  });
+});
+
+describe("SaleContactInactive", () => {
+  it("extends ValidationError with SALE_CONTACT_INACTIVE code and contactId context", () => {
+    const err = new SaleContactInactive("contact-99");
+
+    expect(err).toBeInstanceOf(ValidationError);
+    expect(err.code).toBe("SALE_CONTACT_INACTIVE");
+    expect(err.name).toBe("SaleContactInactive");
+    expect(err.message).toContain("inactivo");
+    expect(err.details).toEqual({ contactId: "contact-99" });
   });
 });
 
