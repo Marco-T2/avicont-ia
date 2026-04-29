@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+/**
+ * Validates sale presentation inputs (create, update, filter, status). Migrado
+ * bit-exact desde `features/sale/sale.validation.ts` (POC #11.0a A5 β Ciclo 2).
+ */
+
 const saleDetailSchema = z.object({
   description: z.string().min(1).max(500),
   lineAmount: z.number().optional(),
@@ -40,4 +45,3 @@ export const saleStatusSchema = z.object({
   status: z.enum(["POSTED", "VOIDED"]),
   justification: z.string().min(10).optional(),
 });
-

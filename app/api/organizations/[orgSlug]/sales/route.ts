@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import {
   createSaleSchema,
   saleFiltersSchema,
-} from "@/features/sale";
+} from "@/modules/sale/presentation/schemas/sale.schemas";
 import { UsersService } from "@/features/users/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 

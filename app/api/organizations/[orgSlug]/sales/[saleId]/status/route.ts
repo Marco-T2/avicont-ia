@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { saleStatusSchema } from "@/features/sale";
+import { saleStatusSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 
 const usersService = new UsersService();
