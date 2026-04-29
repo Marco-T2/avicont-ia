@@ -452,4 +452,50 @@ describe("Receivable entity", () => {
       expect(r.amount.value).toBe(1000);
     });
   });
+
+  describe("revertAllocations()", () => {
+    it("reverts paid by totalAmount and recomputes status PARTIAL", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(800),
+      );
+
+      const reverted = r.revertAllocations(MonetaryAmount.of(500));
+
+      expect(reverted.paid.value).toBe(300);
+      expect(reverted.balance.value).toBe(700);
+      expect(reverted.status).toBe("PARTIAL");
+    });
+
+    it("transitions to PENDING when full paid is reverted", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(700),
+      );
+
+      const reverted = r.revertAllocations(MonetaryAmount.of(700));
+
+      expect(reverted.paid.value).toBe(0);
+      expect(reverted.balance.value).toBe(1000);
+      expect(reverted.status).toBe("PENDING");
+    });
+
+    it("clamps at zero when totalAmount exceeds current paid", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).applyAllocation(
+        MonetaryAmount.of(300),
+      );
+
+      const reverted = r.revertAllocations(MonetaryAmount.of(500));
+
+      expect(reverted.paid.value).toBe(0);
+      expect(reverted.balance.value).toBe(1000);
+      expect(reverted.status).toBe("PENDING");
+    });
+
+    it("throws CannotRevertOnVoidedReceivable when receivable is VOIDED", () => {
+      const r = Receivable.create({ ...baseInput, amount: 1000 }).void();
+
+      expect(() => r.revertAllocations(MonetaryAmount.of(100))).toThrow(
+        CannotRevertOnVoidedReceivable,
+      );
+    });
+  });
 });

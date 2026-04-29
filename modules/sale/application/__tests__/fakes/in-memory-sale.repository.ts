@@ -64,8 +64,11 @@ export class InMemorySaleRepository implements SaleRepository {
     return sale;
   }
 
-  async deleteTx(): Promise<void> {
-    throw new Error("InMemorySaleRepository.deleteTx not implemented (lands in Ciclo 7)");
+  deleteTxCalls: { organizationId: string; id: string }[] = [];
+
+  async deleteTx(organizationId: string, id: string): Promise<void> {
+    this.deleteTxCalls.push({ organizationId, id });
+    this.store.delete(id);
   }
 
   private nextSequenceByOrg = new Map<string, number>();

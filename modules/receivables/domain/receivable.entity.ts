@@ -206,6 +206,43 @@ export class Receivable {
   }
 
   /**
+   * Bulk revert of allocations — used when sale void cascades into the
+   * receivable. Reduces `paid` by `totalAmount` (clamped at zero), recomputes
+   * `balance`, status: PAID/PARTIAL/PENDING. Mirrors legacy
+   * `sale.service.ts:1170-1188` derivation. Pre: receivable not VOIDED;
+   * `totalAmount > 0`. The deletion of the underlying allocation rows is
+   * orchestrated outside (sale-hex use case + `applyTrimPlanTx`).
+   */
+  revertAllocations(totalAmount: MonetaryAmount): Receivable {
+    if (this.props.status === "VOIDED") {
+      throw new CannotRevertOnVoidedReceivable();
+    }
+    if (!totalAmount.isGreaterThan(MonetaryAmount.zero())) {
+      throw new RevertMustBePositive();
+    }
+    const newPaidValue = Math.max(0, this.props.paid.value - totalAmount.value);
+    const newPaid = MonetaryAmount.of(newPaidValue);
+    const newBalance = this.props.amount.minus(newPaid);
+
+    let newStatus: ReceivableStatus;
+    if (newPaid.equals(this.props.amount)) {
+      newStatus = "PAID";
+    } else if (newPaid.value > 0) {
+      newStatus = "PARTIAL";
+    } else {
+      newStatus = "PENDING";
+    }
+
+    return new Receivable({
+      ...this.props,
+      paid: newPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
    * Recomputes amount + paid (capped at newTotal) + balance + status when the
    * underlying sale's total changes via editPosted. Mirrors legacy
    * `sale.service.ts:869-919` derivation. The aggregate emits the new state;

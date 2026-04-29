@@ -29,6 +29,8 @@ import type { OrgSettingsReaderPort } from "../domain/ports/org-settings-reader.
 import type { IvaBookReaderPort } from "../domain/ports/iva-book-reader.port";
 import type { JournalEntryFactoryPort } from "../domain/ports/journal-entry-factory.port";
 import type { SalePermissionsPort } from "../domain/ports/sale-permissions.port";
+import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import {
   SaleAccountNotFound,
   SaleContactChangeWithAllocations,
@@ -85,6 +87,7 @@ export interface SaleServiceDeps {
   ivaBookReader?: IvaBookReaderPort;
   journalEntryFactory?: JournalEntryFactoryPort;
   salePermissions?: SalePermissionsPort;
+  journalEntriesRead?: JournalEntriesReadPort;
 }
 
 export class SaleService {
@@ -770,5 +773,264 @@ export class SaleService {
     );
 
     return { sale: result, correlationId };
+  }
+
+  /**
+   * Voids a sale (DRAFT/POSTED/LOCKED → VOIDED). Mirrors legacy
+   * `sale.service.ts:944-977 + voidCascadeTx 1149-1242` (fidelidad regla #1).
+   * LOCKED gate replicates `validateLockedEdit` (role + period + justification
+   * 10/50). Cascade: revert receivable allocations → trim allocations to zero
+   * → void receivable → persist sale VOIDED → IVA book void → journal void
+   * + balances applyVoid.
+   */
+  async void(
+    organizationId: string,
+    saleId: string,
+    context: UpdateSaleContext,
+  ): Promise<UpdateSaleResult> {
+    const required = {
+      uow: this.deps.uow,
+      fiscalPeriods: this.deps.fiscalPeriods,
+      journalEntriesRead: this.deps.journalEntriesRead,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) throw new Error(`SaleService.void requires ${name}`);
+    }
+
+    const sale = await this.getById(organizationId, saleId);
+
+    if (sale.status === "LOCKED") {
+      if (context.role !== "owner" && context.role !== "admin") {
+        throw new ForbiddenError(
+          "Solo administradores pueden modificar documentos bloqueados",
+        );
+      }
+      const period = await this.deps.fiscalPeriods!.getById(
+        organizationId,
+        sale.periodId,
+      );
+      const requiredMin = period.status === "CLOSED" ? 50 : 10;
+      if (
+        !context.justification ||
+        context.justification.trim().length < requiredMin
+      ) {
+        throw new SaleLockedEditMissingJustification(requiredMin);
+      }
+    }
+
+    const voided = sale.void();
+
+    const auditContext =
+      sale.status === "LOCKED"
+        ? {
+            userId: context.userId,
+            organizationId,
+            justification: context.justification,
+          }
+        : { userId: context.userId, organizationId };
+
+    const { result, correlationId } = await this.deps.uow!.run(
+      auditContext,
+      async (scope) => {
+        if (sale.receivableId) {
+          const allocations =
+            await scope.receivables.findAllocationsForReceivable(
+              organizationId,
+              sale.receivableId,
+            );
+          const active = allocations.filter((a) => a.amount > 0);
+
+          if (active.length > 0) {
+            const trimItems = active.map((a) => ({
+              allocationId: a.id,
+              newAmount: 0,
+            }));
+            await scope.receivables.applyTrimPlanTx(
+              undefined,
+              organizationId,
+              sale.receivableId,
+              trimItems,
+            );
+
+            const receivable = await scope.receivables.findById(
+              organizationId,
+              sale.receivableId,
+            );
+            if (receivable && receivable.status !== "VOIDED") {
+              const totalReverted = active.reduce(
+                (sum, a) => sum + a.amount,
+                0,
+              );
+              const reverted = receivable.revertAllocations(
+                MonetaryAmount.of(totalReverted),
+              );
+              const finalReceivable = reverted.void();
+              await scope.receivables.update(finalReceivable);
+            }
+          } else {
+            const receivable = await scope.receivables.findById(
+              organizationId,
+              sale.receivableId,
+            );
+            if (receivable && receivable.status !== "VOIDED") {
+              await scope.receivables.update(receivable.void());
+            }
+          }
+        }
+
+        const persistedSale = await scope.sales.updateTx(voided, {
+          replaceDetails: false,
+        });
+
+        await scope.ivaBookVoidCascade.markVoidedFromSale(
+          organizationId,
+          saleId,
+        );
+
+        if (sale.journalEntryId) {
+          const oldJournal = await this.deps.journalEntriesRead!.findById(
+            organizationId,
+            sale.journalEntryId,
+          );
+          if (oldJournal && oldJournal.status !== "VOIDED") {
+            const voidedJournal = oldJournal.void();
+            const persistedJournal = await scope.journalEntries.updateStatus(
+              voidedJournal,
+              context.userId,
+            );
+            await scope.accountBalances.applyVoid(persistedJournal);
+          }
+        }
+
+        return persistedSale;
+      },
+    );
+
+    return { sale: result, correlationId };
+  }
+
+  /**
+   * Hard-deletes a DRAFT sale. Mirrors legacy `sale.service.ts:981-992`. No
+   * UoW — operation is single-row delete with no cascade. Domain enforces
+   * status === DRAFT via `Sale.assertCanDelete()` (A1).
+   */
+  async delete(organizationId: string, saleId: string): Promise<void> {
+    const sale = await this.getById(organizationId, saleId);
+    sale.assertCanDelete();
+    await this.deps.repo.deleteTx(organizationId, saleId);
+  }
+
+  /**
+   * Regenerates the journal entry of a posted sale when the IVA book changes.
+   * Mirrors legacy `sale.service.ts:1006-1145` (fidelidad regla #1) WITHOUT
+   * `externalTx + correlationId` delegation (legacy complexity §5.5 retired
+   * in POC #11.0c — caller invokes its own UoW if coordinated tx is needed).
+   *
+   * Flow: load sale + accounts + IVA snapshot + entry lines OUTSIDE UoW;
+   * factory.regenerateForSaleEdit → applyVoid old + applyPost new INSIDE.
+   * Sale aggregate unchanged — only the journal mutates.
+   */
+  async regenerateJournalForIvaChange(
+    organizationId: string,
+    saleId: string,
+    userId: string,
+  ): Promise<UpdateSaleResult> {
+    const required = {
+      uow: this.deps.uow,
+      accountLookup: this.deps.accountLookup,
+      orgSettings: this.deps.orgSettings,
+      ivaBookReader: this.deps.ivaBookReader,
+      journalEntryFactory: this.deps.journalEntryFactory,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) {
+        throw new Error(`SaleService.regenerateJournalForIvaChange requires ${name}`);
+      }
+    }
+
+    const sale = await this.getById(organizationId, saleId);
+    if (!sale.journalEntryId) {
+      throw new NotFoundError("Asiento contable");
+    }
+
+    const incomeAccountIds = sale.details.map((d) => d.incomeAccountId);
+    const accounts = await this.deps.accountLookup!.findManyByIds(
+      organizationId,
+      incomeAccountIds,
+    );
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+    for (const id of incomeAccountIds) {
+      if (!accountById.has(id)) throw new SaleAccountNotFound(id);
+    }
+
+    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
+    const settingsSnapshot = settings.toSnapshot();
+
+    const ivaSnapshot = await this.deps.ivaBookReader!.getActiveBookForSale(
+      organizationId,
+      saleId,
+    );
+    const ivaBook: IvaBookForEntry | undefined = ivaSnapshot
+      ? {
+          baseIvaSujetoCf: ivaSnapshot.netAmount,
+          dfCfIva: ivaSnapshot.ivaAmount,
+          importeTotal: sale.totalAmount.value,
+        }
+      : undefined;
+
+    const detailsForEntry: SaleEntryDetail[] = sale.details.map((d) => ({
+      lineAmount: d.lineAmount.value,
+      incomeAccountCode: accountById.get(d.incomeAccountId)!.code,
+      description: d.description,
+    }));
+
+    const entryLines = buildSaleEntryLines(
+      sale.totalAmount.value,
+      detailsForEntry,
+      {
+        cxcAccountCode: settingsSnapshot.cxcAccountCode,
+        itExpenseAccountCode: settingsSnapshot.itExpenseAccountCode,
+        itPayableAccountCode: settingsSnapshot.itPayableAccountCode,
+      },
+      sale.contactId,
+      ivaBook,
+    );
+
+    const displayCode = `VG-${String(sale.sequenceNumber).padStart(3, "0")}`;
+    const journalDescription = sale.notes
+      ? `${displayCode} - ${sale.description} | ${sale.notes}`
+      : `${displayCode} - ${sale.description}`;
+
+    const { correlationId } = await this.deps.uow!.run(
+      { userId, organizationId },
+      async (scope) => {
+        const { old, new: newJournal } =
+          await this.deps.journalEntryFactory!.regenerateForSaleEdit(
+            sale.journalEntryId!,
+            {
+              organizationId,
+              contactId: sale.contactId,
+              date: sale.date,
+              periodId: sale.periodId,
+              description: journalDescription,
+              sourceType: "sale",
+              sourceId: sale.id,
+              createdById: userId,
+              lines: entryLines.map((l) => ({
+                accountCode: l.accountCode,
+                side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+                amount: l.debit > 0 ? l.debit : l.credit,
+                contactId: l.contactId,
+                description: l.description,
+              })),
+            },
+          );
+
+        await scope.accountBalances.applyVoid(old);
+        await scope.accountBalances.applyPost(newJournal);
+      },
+    );
+
+    return { sale, correlationId };
   }
 }
