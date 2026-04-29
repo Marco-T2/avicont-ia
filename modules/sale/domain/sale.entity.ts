@@ -1,0 +1,149 @@
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import type { SaleStatus } from "./value-objects/sale-status";
+import { SaleDetail } from "./sale-detail.entity";
+import type { ReceivableSummary } from "./value-objects/receivable-summary";
+
+export interface SaleProps {
+  id: string;
+  organizationId: string;
+  status: SaleStatus;
+  sequenceNumber: number | null;
+  date: Date;
+  contactId: string;
+  periodId: string;
+  description: string;
+  referenceNumber: number | null;
+  notes: string | null;
+  totalAmount: MonetaryAmount;
+  journalEntryId: string | null;
+  receivableId: string | null;
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+  details: SaleDetail[];
+  receivable: ReceivableSummary | null;
+}
+
+export interface CreateSaleDraftDetailInput {
+  description: string;
+  lineAmount: MonetaryAmount;
+  order?: number;
+  quantity?: number;
+  unitPrice?: number;
+  incomeAccountId: string;
+}
+
+export interface CreateSaleDraftInput {
+  organizationId: string;
+  contactId: string;
+  periodId: string;
+  date: Date;
+  description: string;
+  createdById: string;
+  referenceNumber?: number;
+  notes?: string;
+  details: CreateSaleDraftDetailInput[];
+}
+
+export class Sale {
+  private constructor(private readonly props: SaleProps) {}
+
+  static createDraft(input: CreateSaleDraftInput): Sale {
+    const id = crypto.randomUUID();
+    const now = new Date();
+    const details = input.details.map((d, idx) =>
+      SaleDetail.create({
+        saleId: id,
+        description: d.description,
+        lineAmount: d.lineAmount,
+        order: d.order ?? idx,
+        quantity: d.quantity,
+        unitPrice: d.unitPrice,
+        incomeAccountId: d.incomeAccountId,
+      }),
+    );
+    const totalAmount = details.reduce(
+      (sum, d) => sum.plus(d.lineAmount),
+      MonetaryAmount.zero(),
+    );
+    return new Sale({
+      id,
+      organizationId: input.organizationId,
+      status: "DRAFT",
+      sequenceNumber: null,
+      date: input.date,
+      contactId: input.contactId,
+      periodId: input.periodId,
+      description: input.description,
+      referenceNumber: input.referenceNumber ?? null,
+      notes: input.notes ?? null,
+      totalAmount,
+      journalEntryId: null,
+      receivableId: null,
+      createdById: input.createdById,
+      createdAt: now,
+      updatedAt: now,
+      details,
+      receivable: null,
+    });
+  }
+
+  static fromPersistence(props: SaleProps): Sale {
+    return new Sale(props);
+  }
+
+  get id(): string {
+    return this.props.id;
+  }
+  get organizationId(): string {
+    return this.props.organizationId;
+  }
+  get status(): SaleStatus {
+    return this.props.status;
+  }
+  get sequenceNumber(): number | null {
+    return this.props.sequenceNumber;
+  }
+  get date(): Date {
+    return this.props.date;
+  }
+  get contactId(): string {
+    return this.props.contactId;
+  }
+  get periodId(): string {
+    return this.props.periodId;
+  }
+  get description(): string {
+    return this.props.description;
+  }
+  get referenceNumber(): number | null {
+    return this.props.referenceNumber;
+  }
+  get notes(): string | null {
+    return this.props.notes;
+  }
+  get totalAmount(): MonetaryAmount {
+    return this.props.totalAmount;
+  }
+  get journalEntryId(): string | null {
+    return this.props.journalEntryId;
+  }
+  get receivableId(): string | null {
+    return this.props.receivableId;
+  }
+  get createdById(): string {
+    return this.props.createdById;
+  }
+  get createdAt(): Date {
+    return this.props.createdAt;
+  }
+  get updatedAt(): Date {
+    return this.props.updatedAt;
+  }
+  get details(): SaleDetail[] {
+    return [...this.props.details];
+  }
+  get receivable(): ReceivableSummary | null {
+    return this.props.receivable;
+  }
+}
