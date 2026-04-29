@@ -17,18 +17,11 @@ import { VoucherTypesReadAdapter } from "../infrastructure/voucher-types-read.ad
  * concrete adapters are wired to JournalsService. The only file under
  * presentation/ allowed to import from infrastructure/ (architecture.md
  * R4 carve-out at L455).
- *
- * Re-exports `voucherTypesRead` as a singleton because route handlers need
- * it to hydrate `voucherType.prefix` for the displayNumber bridge inline.
- * Other adapters are NOT re-exported — anti-preventive: only what's
- * actually consumed (decisión Marco C3-D #3 pulida).
  */
 
 const repoLike: UnitOfWorkRepoLike = {
   transaction: (fn, options) => prisma.$transaction(fn, options),
 };
-
-export const voucherTypesRead = new VoucherTypesReadAdapter();
 
 export function makeJournalsService(): JournalsService {
   return new JournalsService(
@@ -36,7 +29,7 @@ export function makeJournalsService(): JournalsService {
     new LegacyAccountsReadAdapter(),
     new ContactsReadAdapter(),
     new FiscalPeriodsReadAdapter(),
-    voucherTypesRead,
+    new VoucherTypesReadAdapter(),
     new LegacyPermissionsAdapter(),
     new LegacyJournalEntriesReadAdapter(),
   );
