@@ -6,10 +6,12 @@ import {
   createJournalEntrySchema,
   journalFiltersSchema,
 } from "@/features/accounting/server";
-import { formatCorrelativeNumber } from "@/features/accounting/server";
+import { makeJournalsService } from "@/modules/accounting/presentation/composition-root";
 
 const usersService = new UsersService();
+// Legacy `service` retained for GET (`list` not migrated in C3-D).
 const service = new JournalService();
+const journalsService = makeJournalsService();
 
 export async function GET(
   request: Request,
@@ -55,21 +57,21 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    const entry = postImmediately
-      ? await service.createAndPost(
+    const journal = postImmediately
+      ? (
+          await journalsService.createAndPost(
+            orgId,
+            { ...input, createdById: user.id },
+            { userId: user.id, role },
+          )
+        ).journal
+      : await journalsService.createEntry(
           orgId,
           { ...input, createdById: user.id },
-          { userId: user.id, role },
-        )
-      : await service.createEntry(orgId, { ...input, createdById: user.id });
+          { userId: user.id },
+        );
 
-    const displayNumber = formatCorrelativeNumber(
-      entry.voucherType.prefix,
-      entry.date,
-      entry.number,
-    );
-
-    return Response.json({ ...entry, displayNumber }, { status: 201 });
+    return Response.json(journal.toSnapshot(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }
