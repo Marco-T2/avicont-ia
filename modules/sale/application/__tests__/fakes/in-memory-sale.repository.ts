@@ -53,8 +53,15 @@ export class InMemorySaleRepository implements SaleRepository {
     return sale;
   }
 
-  async updateTx(): Promise<Sale> {
-    throw new Error("InMemorySaleRepository.updateTx not implemented (lands in Ciclo 6)");
+  updateTxCalls: { sale: Sale; options: { replaceDetails: boolean } }[] = [];
+
+  async updateTx(
+    sale: Sale,
+    options: { replaceDetails: boolean },
+  ): Promise<Sale> {
+    this.updateTxCalls.push({ sale, options });
+    this.store.set(sale.id, sale);
+    return sale;
   }
 
   async deleteTx(): Promise<void> {

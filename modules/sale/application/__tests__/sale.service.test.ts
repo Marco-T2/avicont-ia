@@ -6,9 +6,13 @@ import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors
 import type { ContactType } from "@/modules/contacts/domain/value-objects/contact-type";
 import { PaymentTermsDays } from "@/modules/contacts/domain/value-objects/payment-terms-days";
 import { Receivable } from "@/modules/receivables/domain/receivable.entity";
+import { Journal } from "@/modules/accounting/domain/journal.entity";
+import { OrgSettings } from "@/modules/org-settings/domain/org-settings.entity";
 import {
+  SaleAccountNotFound,
   SaleContactInactive,
   SaleContactNotClient,
+  SalePeriodClosed,
 } from "../errors/sale-orchestration-errors";
 import { Sale } from "../../domain/sale.entity";
 import type { SaleStatus } from "../../domain/value-objects/sale-status";
@@ -17,6 +21,12 @@ import { InMemoryContactRepository } from "./fakes/in-memory-contact.repository"
 import { InMemorySaleRepository } from "./fakes/in-memory-sale.repository";
 import { InMemorySaleUnitOfWork } from "./fakes/in-memory-sale-unit-of-work";
 import { InMemoryReceivableRepository } from "./fakes/in-memory-receivable.repository";
+import { InMemoryAccountLookup } from "./fakes/in-memory-account-lookup";
+import { InMemoryAccountBalancesRepository } from "./fakes/in-memory-account-balances.repo";
+import { InMemoryFiscalPeriodsRead } from "./fakes/in-memory-fiscal-periods-read";
+import { InMemoryIvaBookReader } from "./fakes/in-memory-iva-book-reader";
+import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
+import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
 
 const ORG = "org-1";
 const OTHER_ORG = "org-2";
@@ -57,7 +67,7 @@ describe("SaleService.getById", () => {
 
   beforeEach(() => {
     repo = new InMemorySaleRepository();
-    service = new SaleService(repo);
+    service = new SaleService({ repo });
   });
 
   it("returns the sale when it exists in the org", async () => {
@@ -89,7 +99,7 @@ describe("SaleService.list", () => {
 
   beforeEach(() => {
     repo = new InMemorySaleRepository();
-    service = new SaleService(repo);
+    service = new SaleService({ repo });
   });
 
   it("returns all sales of the org with no filters", async () => {
@@ -160,7 +170,7 @@ describe("SaleService.getEditPreview", () => {
   beforeEach(() => {
     saleRepo = new InMemorySaleRepository();
     receivableRepo = new InMemoryReceivableRepository();
-    service = new SaleService(saleRepo, receivableRepo);
+    service = new SaleService({ repo: saleRepo, receivables: receivableRepo });
   });
 
   function buildReceivable(id: string, paid: number): Receivable {
@@ -265,7 +275,11 @@ describe("SaleService.createDraft", () => {
     saleRepo = new InMemorySaleRepository();
     contactRepo = new InMemoryContactRepository();
     uow = new InMemorySaleUnitOfWork({ sales: saleRepo });
-    service = new SaleService(saleRepo, undefined, contactRepo, uow);
+    service = new SaleService({
+      repo: saleRepo,
+      contacts: contactRepo,
+      uow,
+    });
   });
 
   function buildContact(overrides: {
@@ -368,5 +382,248 @@ describe("SaleService.createDraft", () => {
       .catch(() => undefined);
 
     expect(uow.ranContexts).toEqual([]);
+  });
+});
+
+describe("SaleService.post", () => {
+  let saleRepo: InMemorySaleRepository;
+  let receivableRepo: InMemoryReceivableRepository;
+  let contactRepo: InMemoryContactRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let ivaBookReader: InMemoryIvaBookReader;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  function buildPostContact(): Contact {
+    return Contact.fromPersistence({
+      id: "c-1",
+      organizationId: ORG,
+      type: "CLIENTE",
+      name: "Cliente",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: true,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  function buildDefaultSettings(): OrgSettings {
+    return OrgSettings.createDefault({
+      id: "settings-1",
+      organizationId: ORG,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  function buildDraftSale(): Sale {
+    return Sale.createDraft({
+      organizationId: ORG,
+      contactId: "c-1",
+      periodId: "period-1",
+      date: new Date("2025-01-15"),
+      description: "Venta test",
+      createdById: "user-1",
+      details: [
+        {
+          description: "Línea 1",
+          lineAmount: MonetaryAmount.of(1000),
+          incomeAccountId: "acc-income-1",
+        },
+      ],
+    });
+  }
+
+  function buildJournalStub(): Journal {
+    return Journal.fromPersistence({
+      id: "journal-1",
+      organizationId: ORG,
+      status: "POSTED",
+      number: 1,
+      referenceNumber: null,
+      date: new Date("2025-01-15"),
+      description: "VG-001 - Venta test",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CI",
+      contactId: "c-1",
+      sourceType: "sale",
+      sourceId: "sale-1",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      lines: [],
+    });
+  }
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    receivableRepo = new InMemoryReceivableRepository();
+    contactRepo = new InMemoryContactRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    ivaBookReader = new InMemoryIvaBookReader();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+
+    contactRepo.preload(buildPostContact());
+    orgSettings.preload(ORG, buildDefaultSettings());
+    accountLookup.preload({
+      id: "acc-income-1",
+      code: "4.1.1",
+      isDetail: true,
+      isActive: true,
+    });
+    fiscalPeriods.preload("period-1", "OPEN");
+
+    // Stub createTx in receivableRepo for post flow
+    (receivableRepo as unknown as {
+      createTx: (tx: unknown, data: { sourceId: string }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => ({ id: `receivable-${data.sourceId}` });
+
+    uow = new InMemorySaleUnitOfWork({
+      sales: saleRepo,
+      accountBalances,
+      receivables: receivableRepo,
+    });
+
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      ivaBookReader,
+      journalEntryFactory,
+    });
+  });
+
+  it("posts a DRAFT sale: sequence allocated, journal generated, balances applied, receivable created, sale linked", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    const result = await service.post(ORG, draft.id, "user-1");
+
+    expect(result.sale.status).toBe("POSTED");
+    expect(result.sale.sequenceNumber).toBe(1);
+    expect(result.sale.journalEntryId).toBe("journal-1");
+    expect(result.sale.receivableId).toBe(`receivable-${draft.id}`);
+    expect(journalEntryFactory.calls).toHaveLength(1);
+    expect(accountBalances.applyPostCalls).toHaveLength(1);
+    expect(saleRepo.updateTxCalls).toHaveLength(1);
+    expect(saleRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: false });
+  });
+
+  it("propagates AuditContext into the UoW", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-42");
+
+    expect(uow.ranContexts).toEqual([
+      { userId: "user-42", organizationId: ORG },
+    ]);
+  });
+
+  it("throws NotFoundError when sale does not exist", async () => {
+    await expect(service.post(ORG, "missing", "user-1")).rejects.toThrow(
+      NotFoundError,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SalePeriodClosed when period is CLOSED", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      SalePeriodClosed,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws SaleAccountNotFound when income account is not in lookup", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    accountLookup = new InMemoryAccountLookup();
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      ivaBookReader,
+      journalEntryFactory,
+    });
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      SaleAccountNotFound,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("uses paymentTermsDays from contact for receivable dueDate", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    let capturedDueDate: Date | undefined;
+    (receivableRepo as unknown as {
+      createTx: (tx: unknown, data: { dueDate: Date; sourceId: string }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => {
+      capturedDueDate = data.dueDate;
+      return { id: `receivable-${data.sourceId}` };
+    };
+
+    await service.post(ORG, draft.id, "user-1");
+
+    const expected = new Date("2025-01-15").getTime() + 30 * 86400000;
+    expect(capturedDueDate?.getTime()).toBe(expected);
+  });
+
+  it("invokes the journal factory with display code 'VG-001' in description", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-1");
+
+    expect(journalEntryFactory.calls[0]!.description).toBe("VG-001 - Venta test");
+  });
+
+  it("emits IVA-aware entry lines when ivaBookReader returns a snapshot", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+    ivaBookReader.preload(draft.id, {
+      id: "iva-1",
+      saleId: draft.id,
+      ivaRate: 0.13,
+      ivaAmount: 130,
+      netAmount: 1000,
+    });
+
+    await service.post(ORG, draft.id, "user-1");
+
+    const lines = journalEntryFactory.calls[0]!.lines;
+    expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
   });
 });
