@@ -4,11 +4,20 @@
  * PATCH /api/organizations/:orgSlug/journal/:entryId/status
  * with targetStatus=VOIDED on an auto-generated JE (sourceType="sale")
  * MUST return 422 with code=AUTO_ENTRY_VOID_FORBIDDEN.
+ *
+ * POC #10 C3-D Ciclo 5 — mock target migrado de `JournalService` legacy
+ * a `JournalsService` hexagonal vía composition root. Tests T2.5/b/c
+ * preservan su naturaleza (void-guard behavior); T2.5d nuevo cubre el
+ * contract del switch (hex called, legacy NOT called).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const { mockTransitionStatus } = vi.hoisted(() => ({
   mockTransitionStatus: vi.fn(),
+}));
+
+const { mockLegacyTransitionStatus } = vi.hoisted(() => ({
+  mockLegacyTransitionStatus: vi.fn(),
 }));
 
 vi.mock("@/features/shared/middleware", () => ({
@@ -39,8 +48,14 @@ vi.mock("@/features/users/server", () => ({
 vi.mock("@/features/accounting/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/features/accounting/server")>()),
   JournalService: vi.fn().mockImplementation(function () {
-    return { transitionStatus: mockTransitionStatus };
+    return { transitionStatus: mockLegacyTransitionStatus };
   }),
+}));
+
+vi.mock("@/modules/accounting/presentation/composition-root", () => ({
+  makeJournalsService: vi.fn(() => ({
+    transitionStatus: mockTransitionStatus,
+  })),
 }));
 
 import { requirePermission } from "@/features/permissions/server";
@@ -95,9 +110,14 @@ describe("PATCH /journal/[entryId]/status — void guard (REQ-E.1)", () => {
 
   it("T2.5b — VOIDED on manual JE (sourceType=null) → 200 success", async () => {
     mockTransitionStatus.mockResolvedValue({
-      id: ENTRY_ID,
-      status: "VOIDED",
-      sourceType: null,
+      journal: {
+        toSnapshot: () => ({
+          id: ENTRY_ID,
+          status: "VOIDED",
+          sourceType: null,
+        }),
+      },
+      correlationId: "corr-1",
     });
 
     const res = await PATCH(makeRequest({ status: "VOIDED" }), {
@@ -112,15 +132,37 @@ describe("PATCH /journal/[entryId]/status — void guard (REQ-E.1)", () => {
   it("T2.5c — POSTED on auto-JE → guard not triggered, 200 success", async () => {
     // statusTransitionSchema allows "POSTED" — this tests guard does NOT fire for non-VOIDED
     mockTransitionStatus.mockResolvedValue({
-      id: ENTRY_ID,
-      status: "POSTED",
-      sourceType: "sale",
+      journal: {
+        toSnapshot: () => ({
+          id: ENTRY_ID,
+          status: "POSTED",
+          sourceType: "sale",
+        }),
+      },
+      correlationId: "corr-1",
     });
 
     const res = await PATCH(makeRequest({ status: "POSTED" }), {
       params: makeParams(),
     });
 
+    expect(res.status).toBe(200);
+  });
+
+  it("T2.5d — switch hex: invokes hexagonal transitionStatus, NOT legacy", async () => {
+    mockTransitionStatus.mockResolvedValue({
+      journal: {
+        toSnapshot: () => ({ id: ENTRY_ID, status: "POSTED" }),
+      },
+      correlationId: "corr-1",
+    });
+
+    const res = await PATCH(makeRequest({ status: "POSTED" }), {
+      params: makeParams(),
+    });
+
+    expect(mockTransitionStatus).toHaveBeenCalledTimes(1);
+    expect(mockLegacyTransitionStatus).not.toHaveBeenCalled();
     expect(res.status).toBe(200);
   });
 });

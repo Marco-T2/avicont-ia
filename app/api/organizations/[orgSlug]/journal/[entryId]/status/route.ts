@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { JournalService } from "@/features/accounting/server";
 import { statusTransitionSchema } from "@/features/accounting/server";
+import { makeJournalsService } from "@/modules/accounting/presentation/composition-root";
 
 const usersService = new UsersService();
-const service = new JournalService();
+const journalsService = makeJournalsService();
 
 export async function PATCH(
   request: Request,
@@ -13,7 +13,7 @@ export async function PATCH(
 ) {
   try {
     const { orgSlug, entryId } = await params;
-    const { session, orgId } = await requirePermission(
+    const { session, orgId, role } = await requirePermission(
       "journal",
       "write",
       orgSlug,
@@ -25,9 +25,14 @@ export async function PATCH(
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    const updated = await service.transitionStatus(orgId, entryId, status, user.id, justification);
+    const result = await journalsService.transitionStatus(
+      orgId,
+      entryId,
+      status,
+      { userId: user.id, role, justification },
+    );
 
-    return Response.json(updated);
+    return Response.json(result.journal.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
