@@ -1,5 +1,6 @@
 import "server-only";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { toNoonUtc } from "@/lib/date-utils";
 import { prisma } from "@/lib/prisma";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Sale } from "@/modules/sale/domain/sale.entity";
@@ -21,6 +22,12 @@ import type {
  * `getNextSequenceNumberTx` mirror legacy `MAX+1` SIN row lock (D-Sale-Repo#2
  * Opción A locked Marco — fidelidad regla #1; `@@unique([organizationId,
  * sequenceNumber])` actúa como red de seguridad).
+ *
+ * `saveTx` / `updateTx` aplican `toNoonUtc(sale.date)` en write boundary
+ * (mirror legacy `:160,194,349`). El dominio (`Sale`) trata `date` como día
+ * de calendario; la normalización a 12:00 UTC es preparación para storage
+ * (boundary concern), no responsabilidad del entity (POC #11.0a A3 audit
+ * H-01/H-02 — fidelidad legacy regla #1).
  */
 
 type DbClient = Pick<PrismaClient, "sale" | "saleDetail">;
@@ -78,7 +85,7 @@ export class PrismaSaleRepository implements SaleRepository {
         organizationId: sale.organizationId,
         status: sale.status,
         sequenceNumber: sale.sequenceNumber ?? 0,
-        date: sale.date,
+        date: toNoonUtc(sale.date),
         contactId: sale.contactId,
         periodId: sale.periodId,
         description: sale.description,
@@ -106,7 +113,7 @@ export class PrismaSaleRepository implements SaleRepository {
       data: {
         status: sale.status,
         sequenceNumber: sale.sequenceNumber ?? 0,
-        date: sale.date,
+        date: toNoonUtc(sale.date),
         contactId: sale.contactId,
         description: sale.description,
         referenceNumber: sale.referenceNumber,

@@ -300,6 +300,42 @@ describe("PrismaSaleRepository — Postgres integration", () => {
     expect(Number(persisted!.totalAmount)).toBe(300);
   });
 
+  it("saveTx: normalizes date to noon UTC (legacy toNoonUtc parity)", async () => {
+    // RED honesty (POC #11.0a A3 audit H-01): pre-fix saveTx persiste
+    // `sale.date` directo (`prisma-sale.repository.ts:81`). Legacy
+    // `features/sale/sale.repository.ts:160,194 (create/createPostedTx)` aplica
+    // `toNoonUtc(input.date)` → toda row persistida garantiza 12:00 UTC. Sin
+    // fix, el row queda con la hora de input.
+    // Expected failure: `persisted.date.toISOString()` devuelve
+    // `"2099-01-15T14:30:00.000Z"` en vez de `"2099-01-15T12:00:00.000Z"`.
+    const draft = Sale.createDraft({
+      organizationId: testOrgId,
+      contactId: testContactId,
+      periodId: testPeriodId,
+      date: new Date("2099-01-15T14:30:00Z"),
+      description: "non-noon date sale",
+      createdById: testUserId,
+      details: [
+        {
+          description: "line 1",
+          lineAmount: MonetaryAmount.of(100),
+          order: 0,
+          incomeAccountId,
+        },
+      ],
+    });
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaSaleRepository(tx);
+      await repo.saveTx(draft);
+    });
+
+    const persisted = await prisma.sale.findFirstOrThrow({
+      where: { id: draft.id, organizationId: testOrgId },
+    });
+    expect(persisted.date.toISOString()).toBe("2099-01-15T12:00:00.000Z");
+  });
+
   it("updateTx: replaceDetails:false updates header only, details intact", async () => {
     // RED honesty: pre-GREEN module resolution failure. Post-GREEN: adapter
     // ejecuta UPDATE sale SET ... sin tocar sale_details. Details count
@@ -484,6 +520,68 @@ describe("PrismaSaleRepository — Postgres integration", () => {
     });
     expect(persisted.journalEntryId).toBeNull();
     expect(persisted.receivableId).toBeNull();
+  });
+
+  it("updateTx: normalizes date to noon UTC (legacy toNoonUtc parity)", async () => {
+    // RED honesty (POC #11.0a A3 audit H-02): pre-fix updateTx persiste
+    // `sale.date` directo (`prisma-sale.repository.ts:109`). Legacy
+    // `features/sale/sale.repository.ts:349 (buildUpdateData)` aplica
+    // `toNoonUtc(data.date)`. Sin fix, el path edición rompe la garantía 12:00
+    // UTC del row.
+    // Expected failure: `persisted.date.toISOString()` devuelve
+    // `"2099-02-20T08:15:00.000Z"` en vez de `"2099-02-20T12:00:00.000Z"`.
+    const id = await seedSaleDirect("DRAFT", 0);
+
+    const fetched = await prisma.sale.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+
+    const aggregate = Sale.fromPersistence({
+      id: fetched.id,
+      organizationId: fetched.organizationId,
+      status: fetched.status,
+      sequenceNumber: fetched.sequenceNumber,
+      date: fetched.date,
+      contactId: fetched.contactId,
+      periodId: fetched.periodId,
+      description: fetched.description,
+      referenceNumber: fetched.referenceNumber,
+      notes: fetched.notes,
+      totalAmount: MonetaryAmount.of(Number(fetched.totalAmount)),
+      journalEntryId: fetched.journalEntryId,
+      receivableId: fetched.receivableId,
+      createdById: fetched.createdById,
+      createdAt: fetched.createdAt,
+      updatedAt: fetched.updatedAt,
+      details: fetched.details.map((d) =>
+        SaleDetail.fromPersistence({
+          id: d.id,
+          saleId: d.saleId,
+          description: d.description,
+          lineAmount: MonetaryAmount.of(Number(d.lineAmount)),
+          order: d.order,
+          quantity: d.quantity ? Number(d.quantity) : undefined,
+          unitPrice: d.unitPrice ? Number(d.unitPrice) : undefined,
+          incomeAccountId: d.incomeAccountId,
+        }),
+      ),
+      receivable: null,
+    });
+
+    const edited = aggregate.applyEdit({
+      date: new Date("2099-02-20T08:15:00Z"),
+    });
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaSaleRepository(tx);
+      await repo.updateTx(edited, { replaceDetails: false });
+    });
+
+    const persisted = await prisma.sale.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+    });
+    expect(persisted.date.toISOString()).toBe("2099-02-20T12:00:00.000Z");
   });
 
   it("deleteTx: removes sale row + cascades sale_details", async () => {
