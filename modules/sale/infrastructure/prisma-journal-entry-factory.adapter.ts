@@ -43,6 +43,11 @@ import type {
  * case hace `findManyByIds` (id→code) PRE-tx para `buildSaleEntryLines`; este
  * adapter hace `findManyByCodes` (code→id) IN-tx para resolver
  * `JournalLine.accountId`.
+ *
+ * §17 carve-out: `hydrateJournalFromRow` importado de
+ * `accounting/infrastructure/journal-mapping` es helper puro row → entity
+ * (sin estado, sin efectos). Reutilizar evita duplicar el mapeo byte-equivalente
+ * de Prisma rows a `Journal` aggregate.
  */
 export class PrismaJournalEntryFactoryAdapter
   implements JournalEntryFactoryPort

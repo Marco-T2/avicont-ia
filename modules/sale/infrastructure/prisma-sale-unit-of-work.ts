@@ -35,6 +35,15 @@ import { PrismaSaleRepository } from "./prisma-sale.repository";
  *
  * `journalEntries` Prisma adapter se instancia una sola vez y se reusa como
  * `writeRepo` del `journalEntryFactory` (E-6.a α + paridad scope-bound POC #10).
+ *
+ * §17 carve-out: UoW construye adapters tx-bound dentro de `withAuditTx` —
+ * `Prisma.TransactionClient` no existe pre-tx, un singleton en composition
+ * root no puede capturar `tx` per-run. Cross-module concrete imports
+ * cubiertos: `accounting/PrismaAccountBalancesRepo`,
+ * `accounting/PrismaJournalEntriesRepository`,
+ * `receivables/PrismaReceivablesRepository`,
+ * `shared/PrismaFiscalPeriodsTxRepo`. Cada uno implementa un port definido
+ * en `domain/` del módulo dueño (R3 vigente — la flecha apunta al dominio).
  */
 export class PrismaSaleUnitOfWork implements SaleUnitOfWork {
   constructor(
