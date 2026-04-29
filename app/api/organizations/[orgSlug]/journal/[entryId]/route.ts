@@ -7,12 +7,15 @@ import {
   exportVoucherQuerySchema,
 } from "@/features/accounting/server";
 import { formatCorrelativeNumber } from "@/features/accounting/server";
+import { makeJournalsService } from "@/modules/accounting/presentation/composition-root";
 
 // PDF exporter usa pdfmake (Buffer/streams nativos) — requiere runtime Node.js.
 export const runtime = "nodejs";
 
 const usersService = new UsersService();
+// Legacy `service` retained for GET (`getById`, `exportVoucherPdf` not migrated in C3-D).
 const service = new JournalService();
+const journalsService = makeJournalsService();
 
 export async function GET(
   request: Request,
@@ -75,18 +78,14 @@ export async function PATCH(
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    const entry = await service.updateEntry(orgId, entryId, {
-      ...input,
-      updatedById: user.id,
-    }, role, justification);
-
-    const displayNumber = formatCorrelativeNumber(
-      entry.voucherType.prefix,
-      entry.date,
-      entry.number,
+    const result = await journalsService.updateEntry(
+      orgId,
+      entryId,
+      { ...input, updatedById: user.id },
+      { userId: user.id, role, justification },
     );
 
-    return Response.json({ ...entry, displayNumber });
+    return Response.json(result.journal.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
