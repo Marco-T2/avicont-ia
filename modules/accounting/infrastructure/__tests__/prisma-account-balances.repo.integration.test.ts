@@ -222,4 +222,93 @@ describe("PrismaAccountBalancesRepo — Postgres integration", () => {
     expect(balances[1].debitTotal.toString()).toBe("0");
     expect(balances[1].creditTotal.toString()).toBe("0");
   });
+
+  function buildOffsettingJournal(amount: string): Journal {
+    // Mirror of buildPostedJournal with reversed sides — asset receives
+    // credit, liability receives debit. Used by the characterization test
+    // to drive debitTotal AND creditTotal both non-zero per account.
+    const journalId = crypto.randomUUID();
+    const now = new Date();
+    return Journal.fromPersistence({
+      id: journalId,
+      organizationId: testOrgId,
+      status: "POSTED",
+      number: 2,
+      referenceNumber: null,
+      date: new Date("2099-01-15T00:00:00Z"),
+      description: "C5 P2 characterization offsetting entry",
+      periodId: testPeriodId,
+      voucherTypeId: "voucher-type-not-read-by-adapter",
+      contactId: null,
+      sourceType: null,
+      sourceId: null,
+      aiOriginalText: null,
+      createdById: testUserId,
+      updatedById: null,
+      createdAt: now,
+      updatedAt: now,
+      lines: [
+        JournalLine.fromPersistence({
+          id: crypto.randomUUID(),
+          journalEntryId: journalId,
+          accountId: assetAccountId,
+          side: LineSide.credit(Money.of(amount)),
+          description: null,
+          contactId: null,
+          order: 0,
+        }),
+        JournalLine.fromPersistence({
+          id: crypto.randomUUID(),
+          journalEntryId: journalId,
+          accountId: liabilityAccountId,
+          side: LineSide.debit(Money.of(amount)),
+          description: null,
+          contactId: null,
+          order: 1,
+        }),
+      ],
+    });
+  }
+
+  it("applyPost: balance recomputed from nature — DEUDORA = debit - credit, ACREEDORA = credit - debit (characterization, GREEN by legacy step 3)", async () => {
+    // Failure mode declarado (feedback/red-acceptance-failure-mode):
+    // PASS por caracterización del paso 3 (recálculo balance por nature) ya
+    // implementado en legacy `upsert` (account-balances.repository.ts:64-77).
+    // NO RED genuino — captura el contrato que el refactor C5 P2 (inline
+    // delta+sign+UPSERT) debe preservar al eliminar la delegación al legacy.
+    //
+    // Setup discriminante: dos journals balanced con direcciones opuestas por
+    // cuenta (J1 asset debit / liab credit; J2 asset credit / liab debit) →
+    // debitTotal Y creditTotal ambos no-cero por cuenta. Sin paso 3, balance
+    // queda 0 (default Prisma create); sin sign por nature, ACREEDORA daría
+    // -70 en lugar del esperado 70.
+
+    const j1 = buildPostedJournal();
+    const j2 = buildOffsettingJournal("30");
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaAccountBalancesRepo(tx);
+      await repo.applyPost(j1);
+      await repo.applyPost(j2);
+    });
+
+    const balances = await prisma.accountBalance.findMany({
+      where: { organizationId: testOrgId, periodId: testPeriodId },
+      orderBy: { account: { code: "asc" } },
+    });
+
+    expect(balances.length).toBe(2);
+
+    // Asset (DEUDORA): debitTotal=100, creditTotal=30 → balance = 100 - 30 = 70
+    expect(balances[0].accountId).toBe(assetAccountId);
+    expect(balances[0].debitTotal.toString()).toBe("100");
+    expect(balances[0].creditTotal.toString()).toBe("30");
+    expect(balances[0].balance.toString()).toBe("70");
+
+    // Liability (ACREEDORA): debitTotal=30, creditTotal=100 → balance = 100 - 30 = 70
+    expect(balances[1].accountId).toBe(liabilityAccountId);
+    expect(balances[1].debitTotal.toString()).toBe("30");
+    expect(balances[1].creditTotal.toString()).toBe("100");
+    expect(balances[1].balance.toString()).toBe("70");
+  });
 });

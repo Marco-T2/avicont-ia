@@ -1,6 +1,6 @@
 import "server-only";
 import { Prisma } from "@/generated/prisma/client";
-import { AccountBalancesRepository as LegacyAccountBalancesRepository } from "@/features/account-balances/account-balances.repository";
+import type { AccountNature } from "@/generated/prisma/client";
 import type { Money } from "@/modules/shared/domain/value-objects/money";
 import type { Journal } from "../domain/journal.entity";
 import type { AccountBalancesRepository } from "../domain/ports/account-balances.repo";
@@ -10,17 +10,12 @@ import type { AccountBalancesRepository } from "../domain/ports/account-balances
  * `Prisma.TransactionClient` at construction time so the use case never sees
  * the tx token (architecture.md §4.3, mirrors `PrismaUnitOfWork` POC #9).
  *
- * Shim §5.5 transitorio (lockeado en POC #10 C3-A): el adapter delega a
- * `LegacyAccountBalancesRepository.upsert` — el único source of truth de la
- * lógica de delta-por-cuenta + sign rules + UPSERT semantics. La firma del
- * port `applyPost(entry: Journal)` se sostiene como wrap+hydrate: el adapter
- * carga `accounts` desde DB para resolver `nature` (info que el aggregate
- * NO trae por diseño), después delega al legacy. C5 borra el legacy y
- * decide si el cómputo de deltas sube al aggregate
- * (`Journal.computeBalanceDeltas()`) o se inlinea acá.
+ * Owns delta computation + sign rules + UPSERT semantics directly over
+ * `account_balances` (POC #10 C5 P2 inline; cierra shim §5.5). El aggregate
+ * NO carga `nature` por diseño — adapter lo lee de `accounts` por entrada
+ * para recomputar `balance` (DEUDORA = debit - credit; ACREEDORA = credit -
+ * debit).
  */
-
-const legacyRepo = new LegacyAccountBalancesRepository();
 
 // `Money` is non-negative by construction (`money.ts:19-23, 43-48`); the
 // `applyVoid` flow needs signed deltas, so we drop down to `Prisma.Decimal`
@@ -51,8 +46,7 @@ export class PrismaAccountBalancesRepo implements AccountBalancesRepository {
           `Account ${line.accountId} not found during applyPost`,
         );
       }
-      await legacyRepo.upsert(
-        this.tx,
+      await this.upsertBalance(
         line.accountId,
         entry.periodId,
         entry.organizationId,
@@ -77,8 +71,7 @@ export class PrismaAccountBalancesRepo implements AccountBalancesRepository {
           `Account ${line.accountId} not found during applyVoid`,
         );
       }
-      await legacyRepo.upsert(
-        this.tx,
+      await this.upsertBalance(
         line.accountId,
         entry.periodId,
         entry.organizationId,
@@ -87,5 +80,49 @@ export class PrismaAccountBalancesRepo implements AccountBalancesRepository {
         nature,
       );
     }
+  }
+
+  private async upsertBalance(
+    accountId: string,
+    periodId: string,
+    orgId: string,
+    debitDelta: string,
+    creditDelta: string,
+    nature: AccountNature,
+  ): Promise<void> {
+    // Paso 1: upsert para incrementar totales atómicamente. Paridad legacy
+    // `account-balances.repository.ts:43-61` — Prisma devuelve los valores
+    // PREVIOS al increment, por eso paso 2 + 3 son obligatorios.
+    const record = await this.tx.accountBalance.upsert({
+      where: { accountId_periodId: { accountId, periodId } },
+      create: {
+        accountId,
+        periodId,
+        organizationId: orgId,
+        debitTotal: debitDelta,
+        creditTotal: creditDelta,
+        balance: new Prisma.Decimal(0),
+      },
+      update: {
+        debitTotal: { increment: debitDelta },
+        creditTotal: { increment: creditDelta },
+      },
+    });
+
+    // Paso 2: releer para obtener totales post-incremento.
+    const fresh = await this.tx.accountBalance.findUniqueOrThrow({
+      where: { id: record.id },
+    });
+
+    // Paso 3: recalcular balance por nature y persistir.
+    const balance =
+      nature === "DEUDORA"
+        ? fresh.debitTotal.minus(fresh.creditTotal)
+        : fresh.creditTotal.minus(fresh.debitTotal);
+
+    await this.tx.accountBalance.update({
+      where: { id: record.id },
+      data: { balance },
+    });
   }
 }
