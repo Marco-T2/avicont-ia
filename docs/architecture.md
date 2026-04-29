@@ -625,7 +625,7 @@ Una decisión arquitectónica que **depende de un componente mínimo para ser ej
 
 - Estrategia de testing detallada por capa
 - Composition root completo (DI)
-- Cómo manejar transacciones que cruzan módulos
+- ~~Cómo manejar transacciones que cruzan módulos~~ — cerrado en §17.
 - ~~Migración de la audit-context a port~~ — cerrado en POC #9 (§4.3).
 
 Esos quedan abiertos para iterar **después** del POC en `mortality`. Si los definimos ahora, los definimos mal — la POC nos va a mostrar qué falta de verdad.
@@ -637,3 +637,74 @@ Esos quedan abiertos para iterar **después** del POC en `mortality`. Si los def
 - Cockburn, Alistair. "Hexagonal Architecture" (2005)
 - Vernon, Vaughn. "Domain-Driven Design Distilled" (2016)
 - ADR existentes: `docs/adr/001`, `docs/adr/002`
+
+---
+
+## 17. Carve-out: cross-module imports en `infrastructure/`
+
+Excepción contextual a la convención implícita "`infrastructure/` no importa concretos cross-module". Cubre el caso documentado en §15 ("Cómo manejar transacciones que cruzan módulos") cuando R3 sigue vigente — la flecha apunta al dominio porque el adapter concreto importado implementa un port definido en `domain/` del módulo dueño.
+
+### 17.1. Scope acotado — qué cubre y qué NO
+
+El carve-out aplica **únicamente** a:
+
+| Categoría | Filename pattern | Razón estructural |
+|---|---|---|
+| **Unit of Work** | `*-unit-of-work.ts` | El UoW debe construir adapters tx-bound dentro del callback `withAuditTx`. La `Prisma.TransactionClient` no existe pre-tx — un singleton en composition-root no puede capturar el `tx` per-run. Sin esta excepción, el UoW pattern (§4.3) es inejecutable. |
+| **Helpers puros de mapping** | `*-mapping.ts`, `*.mapper.ts`, funciones `hydrate*FromRow` / `to*Persistence` | Funciones puras row ↔ entity, sin estado ni efectos. Reutilizar evita duplicar mapeos byte-equivalentes (mismo tradeoff que rule-of-three §11.1). |
+
+**NO aplica** a adapters generales (`*.adapter.ts`, `*.repository.ts`, `*.repo.ts`). Si un adapter regular necesita lógica de otro módulo, va vía port (R3 + R6) o wrap-thin de legacy (`features/`). El carve-out NO es justificación universal.
+
+### 17.2. Direccionalidad — R3 sigue vigente
+
+Los adapters concretos importados **implementan ports definidos en `domain/`** del módulo dueño:
+
+```
+sale/infrastructure/prisma-sale-unit-of-work.ts
+   ↓ imports concrete (carve-out §17)
+accounting/infrastructure/prisma-journal-entries.repo.ts
+   ↓ implements (R3)
+accounting/domain/ports/journal-entries.repo.ts (port)
+```
+
+El UoW de `sale` no acopla con la **lógica** de `accounting` — solo con la **construcción** de un adapter que ya respeta el contrato del port. Sustitución por test fake se hace inyectando otro `UnitOfWork` completo, no patcheando el UoW concreto.
+
+### 17.3. Cita obligatoria en JSDoc
+
+Todo import cross-module concreto cubierto por este carve-out **debe citar la regla en el JSDoc del archivo** con la forma:
+
+```
+§17 carve-out: <razón estructural concreta>
+```
+
+Ejemplo:
+
+```ts
+/**
+ * Postgres-backed adapter for the sale UnitOfWork port.
+ *
+ * §17 carve-out: UoW construye adapters tx-bound dentro de `withAuditTx` —
+ * `Prisma.TransactionClient` no existe pre-tx, singleton en composition root
+ * no puede capturar `tx` per-run. Cross-module concrete imports:
+ * `accounting/PrismaAccountBalancesRepo`,
+ * `accounting/PrismaJournalEntriesRepository`,
+ * `receivables/PrismaReceivablesRepository`,
+ * `shared/PrismaFiscalPeriodsTxRepo`.
+ */
+```
+
+La cita es **auditable**: cualquier import cross-module concreto en `infrastructure/` que no cite §17 es violación, no excepción.
+
+### 17.4. Precedentes
+
+| POC | Adapter | Cross-module imports cubiertos |
+|---|---|---|
+| #10 | `accounting/infrastructure/prisma-accounting-unit-of-work.ts` | `shared/PrismaFiscalPeriodsTxRepo` |
+| #11.0a Ciclo 6 | `sale/infrastructure/prisma-sale-unit-of-work.ts` | `shared/PrismaFiscalPeriodsTxRepo`, `accounting/PrismaAccountBalancesRepo`, `accounting/PrismaJournalEntriesRepository`, `receivables/PrismaReceivablesRepository` |
+| #11.0a Ciclo 4 | `sale/infrastructure/prisma-journal-entry-factory.adapter.ts` | `accounting/journal-mapping.hydrateJournalFromRow` (helper puro) |
+
+### 17.5. Cross-ref
+
+- **Cierra**: §15 ítem abierto "Cómo manejar transacciones que cruzan módulos".
+- **Complementa**: R3 (dirección de dependencia), §11.1 (rule of three para promoción a `shared/`).
+- **NO debilita**: R1, R2, R4 — `domain/`, `application/`, `presentation/` siguen sin importar cross-module infrastructure (ESLint §9 lo enforça).
