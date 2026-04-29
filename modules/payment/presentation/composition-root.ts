@@ -8,7 +8,7 @@ import { LegacyContactReadAdapter } from "../infrastructure/adapters/legacy-cont
 import { LegacyOrgSettingsAdapter } from "../infrastructure/adapters/legacy-org-settings.adapter";
 import { LegacyFiscalPeriodsAdapter } from "../infrastructure/adapters/legacy-fiscal-periods.adapter";
 import { LegacyAccountingAdapter } from "../infrastructure/adapters/legacy-accounting.adapter";
-import { LegacyAccountBalancesAdapter } from "../infrastructure/adapters/legacy-account-balances.adapter";
+import { PrismaAccountBalancesAdapter } from "../infrastructure/adapters/prisma-account-balances.adapter";
 
 export { PrismaPaymentsRepository };
 
@@ -21,7 +21,7 @@ export function makePaymentsService(): PaymentsService {
     orgSettings: new LegacyOrgSettingsAdapter(),
     fiscalPeriods: new LegacyFiscalPeriodsAdapter(),
     accounting: new LegacyAccountingAdapter(),
-    accountBalances: new LegacyAccountBalancesAdapter(),
+    accountBalances: new PrismaAccountBalancesAdapter(),
   });
 }
 
@@ -36,6 +36,6 @@ export function makePaymentsServiceForTx(
     orgSettings: new LegacyOrgSettingsAdapter(),
     fiscalPeriods: new LegacyFiscalPeriodsAdapter(),
     accounting: new LegacyAccountingAdapter(),
-    accountBalances: new LegacyAccountBalancesAdapter(),
+    accountBalances: new PrismaAccountBalancesAdapter(),
   });
 }
