@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import type {
+  AllocationLifoSnapshot,
   ReceivableRepository,
   ReceivableFilters,
   OpenAggregate,
@@ -13,7 +14,7 @@ import type { ReceivableStatus } from "../domain/value-objects/receivable-status
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { toDomain, toPersistence } from "./receivables.mapper";
 
-type DbClient = Pick<PrismaClient, "accountsReceivable">;
+type DbClient = Pick<PrismaClient, "accountsReceivable" | "paymentAllocation">;
 
 export class PrismaReceivablesRepository implements ReceivableRepository {
   constructor(private readonly db: DbClient = prisma) {}
@@ -91,6 +92,25 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
       totalBalance: result._sum.balance ? Number(result._sum.balance) : 0,
       count: result._count.id,
     };
+  }
+
+  async findAllocationsForReceivable(
+    _organizationId: string,
+    receivableId: string,
+  ): Promise<AllocationLifoSnapshot[]> {
+    const rows = await this.db.paymentAllocation.findMany({
+      where: {
+        receivableId,
+        payment: { status: { not: "VOIDED" } },
+      },
+      orderBy: { id: "desc" },
+      include: { payment: { select: { date: true } } },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      amount: Number(r.amount),
+      payment: { date: r.payment.date },
+    }));
   }
 
   async findPendingByContact(

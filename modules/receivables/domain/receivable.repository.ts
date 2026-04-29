@@ -26,6 +26,18 @@ export interface PendingDocumentSnapshot {
   createdAt: Date;
 }
 
+/**
+ * Allocation snapshot ordered LIFO (newest first). Carries the minimum data
+ * needed by the sale-hex `computeTrimPlan` helper for the editPosted preview
+ * use case. Excludes allocations whose underlying payment is VOIDED — those
+ * are not eligible for trimming (legacy `sale.service.ts:550` parity).
+ */
+export interface AllocationLifoSnapshot {
+  id: string;
+  amount: number;
+  payment: { date: Date };
+}
+
 export interface CreateReceivableTxData {
   organizationId: string;
   contactId: string;
@@ -47,6 +59,17 @@ export interface ReceivableRepository {
     organizationId: string,
     contactId: string,
   ): Promise<PendingDocumentSnapshot[]>;
+
+  /**
+   * Returns the allocations of `receivableId` ordered LIFO (newest first),
+   * excluding those whose payment is VOIDED. Used by the sale-hex
+   * `getEditPreview` use case to simulate the LIFO trim plan when the user
+   * proposes lowering a posted sale's total.
+   */
+  findAllocationsForReceivable(
+    organizationId: string,
+    receivableId: string,
+  ): Promise<AllocationLifoSnapshot[]>;
 
   /** Tx-aware creation used by dispatch/sale orchestration. */
   createTx(tx: unknown, data: CreateReceivableTxData): Promise<{ id: string }>;
