@@ -2,6 +2,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import { Purchase } from "@/modules/purchase/domain/purchase.entity";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 import { PrismaPurchaseRepository } from "../prisma-purchase.repository";
 
@@ -30,6 +32,7 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
   let testOrgId: string;
   let testPeriodId: string;
   let testContactId: string;
+  let testProductTypeId: string;
 
   beforeAll(async () => {
     const stamp = Date.now();
@@ -74,6 +77,15 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
       },
     });
     testContactId = contact.id;
+
+    const productType = await prisma.productType.create({
+      data: {
+        organizationId: testOrgId,
+        name: "Test Pollo Vivo",
+        code: "PV-01",
+      },
+    });
+    testProductTypeId = productType.id;
   });
 
   afterEach(async () => {
@@ -90,15 +102,17 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
     //   1. purchase_details (defensa explícita; Cascade existe pero paralelo
     //      sale C3 pattern por consistencia)
     //   2. purchases
-    //   3. contacts
-    //   4. fiscal_periods
-    //   5. audit_logs (paso 3 — captura audit_purchases + audit_purchase_details)
-    //   6. organization
-    //   7. user
+    //   3. product_types (después de purchase_details — FK productTypeId)
+    //   4. contacts
+    //   5. fiscal_periods
+    //   6. audit_logs (paso 3 — captura audit_purchases + audit_purchase_details)
+    //   7. organization
+    //   8. user
     await prisma.purchaseDetail.deleteMany({
       where: { purchase: { organizationId: testOrgId } },
     });
     await prisma.purchase.deleteMany({ where: { organizationId: testOrgId } });
+    await prisma.productType.deleteMany({ where: { organizationId: testOrgId } });
     await prisma.contact.deleteMany({ where: { organizationId: testOrgId } });
     await prisma.fiscalPeriod.delete({ where: { id: testPeriodId } });
     await prisma.auditLog.deleteMany({
@@ -232,5 +246,172 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].purchaseType).toBe("FLETE");
+  });
+
+  it("saveTx: persists DRAFT FLETE with header (ruta) + details (chickenQty + pricePerChicken)", async () => {
+    // RED honesty preventivo: pre-GREEN FAILS por stub `saveTx` throw "Not
+    // implemented yet — pending Cycle 3". Post-GREEN: adapter INSERT row +
+    // nested INSERT details, mirror legacy `create` (DRAFT path) + tx-bound.
+    const draft = Purchase.createDraft({
+      organizationId: testOrgId,
+      purchaseType: "FLETE",
+      contactId: testContactId,
+      periodId: testPeriodId,
+      date: new Date("2099-01-15T12:00:00Z"),
+      description: "ppr integration FLETE draft",
+      createdById: testUserId,
+      ruta: "Ruta 1",
+      details: [
+        {
+          description: "flete line 1",
+          lineAmount: MonetaryAmount.of(100),
+          order: 0,
+          chickenQty: 50,
+          pricePerChicken: 2,
+        },
+        {
+          description: "flete line 2",
+          lineAmount: MonetaryAmount.of(200),
+          order: 1,
+          chickenQty: 100,
+          pricePerChicken: 2,
+        },
+      ],
+    });
+    const aggregateId = draft.id;
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.saveTx(draft);
+    });
+
+    const persisted = await prisma.purchase.findFirst({
+      where: { id: aggregateId, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    expect(persisted).not.toBeNull();
+    expect(persisted!.purchaseType).toBe("FLETE");
+    expect(persisted!.status).toBe("DRAFT");
+    expect(persisted!.ruta).toBe("Ruta 1");
+    expect(Number(persisted!.totalAmount)).toBe(300);
+    expect(persisted!.details).toHaveLength(2);
+    expect(persisted!.details[0].chickenQty).toBe(50);
+    expect(Number(persisted!.details[0].pricePerChicken)).toBe(2);
+  });
+
+  it("saveTx: persists POSTED POLLO_FAENADO with pfSummary header + 17-col details + sequenceNumber + totalAmount", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: adapter persiste status
+    // POSTED + sequenceNumber>0 + totalAmount Decimal real + pfSummary 5
+    // header cols + 4 purchase-specific header (farmOrigin/chickenCount/
+    // shrinkagePct) + 17 detail cols (POLLO_FAENADO subset relevante:
+    // productTypeId/detailNote/boxes/grossWeight/tare/netWeight/unitPrice/
+    // shrinkage/shortage/realNetWeight). FLETE/COMPRA_GENERAL cols del detail
+    // quedan null en este test.
+    const draft = Purchase.createDraft({
+      organizationId: testOrgId,
+      purchaseType: "POLLO_FAENADO",
+      contactId: testContactId,
+      periodId: testPeriodId,
+      date: new Date("2099-01-15T12:00:00Z"),
+      description: "ppr integration POLLO_FAENADO draft",
+      createdById: testUserId,
+      farmOrigin: "Granja A",
+      chickenCount: 1000,
+      shrinkagePct: 3.5,
+      totalGrossKg: 5000,
+      totalNetKg: 4800,
+      totalShrinkKg: 100,
+      totalShortageKg: 100,
+      totalRealNetKg: 4800,
+      details: [
+        {
+          description: "pollo line 1",
+          lineAmount: MonetaryAmount.of(2400),
+          order: 0,
+          productTypeId: testProductTypeId,
+          detailNote: "lote A",
+          boxes: 50,
+          grossWeight: 2500,
+          tare: 50,
+          netWeight: 2400,
+          unitPrice: 1,
+          shrinkage: 50,
+          shortage: 50,
+          realNetWeight: 2400,
+        },
+      ],
+    });
+    const posted = draft.assignSequenceNumber(7).post();
+    const aggregateId = posted.id;
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.saveTx(posted);
+    });
+
+    const persisted = await prisma.purchase.findFirst({
+      where: { id: aggregateId, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    expect(persisted).not.toBeNull();
+    expect(persisted!.purchaseType).toBe("POLLO_FAENADO");
+    expect(persisted!.status).toBe("POSTED");
+    expect(persisted!.sequenceNumber).toBe(7);
+    expect(Number(persisted!.totalAmount)).toBe(2400);
+    expect(persisted!.farmOrigin).toBe("Granja A");
+    expect(persisted!.chickenCount).toBe(1000);
+    expect(Number(persisted!.shrinkagePct)).toBe(3.5);
+    expect(Number(persisted!.totalGrossKg)).toBe(5000);
+    expect(Number(persisted!.totalNetKg)).toBe(4800);
+    expect(Number(persisted!.totalShrinkKg)).toBe(100);
+    expect(Number(persisted!.totalShortageKg)).toBe(100);
+    expect(Number(persisted!.totalRealNetKg)).toBe(4800);
+    const d = persisted!.details[0];
+    expect(d.productTypeId).toBe(testProductTypeId);
+    expect(d.detailNote).toBe("lote A");
+    expect(d.boxes).toBe(50);
+    expect(Number(d.grossWeight)).toBe(2500);
+    expect(Number(d.tare)).toBe(50);
+    expect(Number(d.netWeight)).toBe(2400);
+    expect(Number(d.unitPrice)).toBe(1);
+    expect(Number(d.shrinkage)).toBe(50);
+    expect(Number(d.shortage)).toBe(50);
+    expect(Number(d.realNetWeight)).toBe(2400);
+  });
+
+  it("saveTx: normalizes header date to noon UTC (legacy toNoonUtc parity, detail.fecha NOT normalized)", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: header `purchase.date`
+    // pasa por `toNoonUtc` mirror legacy `:190,253` y row queda 12:00 UTC.
+    // Asimetría confirmada en pre-recon: legacy detail.fecha (`:432`) persiste
+    // raw — NO toNoonUtc. Este test verifica solo header (detail.fecha sin
+    // setear).
+    const draft = Purchase.createDraft({
+      organizationId: testOrgId,
+      purchaseType: "FLETE",
+      contactId: testContactId,
+      periodId: testPeriodId,
+      date: new Date("2099-01-15T14:30:00Z"),
+      description: "non-noon date purchase",
+      createdById: testUserId,
+      details: [
+        {
+          description: "line 1",
+          lineAmount: MonetaryAmount.of(100),
+          order: 0,
+        },
+      ],
+    });
+    const aggregateId = draft.id;
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.saveTx(draft);
+    });
+
+    const persisted = await prisma.purchase.findFirst({
+      where: { id: aggregateId, organizationId: testOrgId },
+    });
+    expect(persisted).not.toBeNull();
+    expect(persisted!.date.toISOString()).toBe("2099-01-15T12:00:00.000Z");
   });
 });

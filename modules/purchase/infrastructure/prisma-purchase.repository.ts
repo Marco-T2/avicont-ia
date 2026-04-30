@@ -1,5 +1,6 @@
 import "server-only";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
+import { toNoonUtc } from "@/lib/date-utils";
 import { prisma } from "@/lib/prisma";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Purchase, type PurchaseType } from "@/modules/purchase/domain/purchase.entity";
@@ -80,9 +81,58 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     return this.findById(organizationId, id);
   }
 
-  async saveTx(_purchase: Purchase): Promise<Purchase> {
-    // RED honesty scaffold — Cycle 3 pending (POC #11.0b A3 Ciclo 3).
-    throw new Error("Not implemented yet — pending Cycle 3 (POC #11.0b A3 Ciclo 3)");
+  async saveTx(purchase: Purchase): Promise<Purchase> {
+    const row = await this.db.purchase.create({
+      data: {
+        id: purchase.id,
+        organizationId: purchase.organizationId,
+        purchaseType: purchase.purchaseType,
+        status: purchase.status,
+        sequenceNumber: purchase.sequenceNumber ?? 0,
+        date: toNoonUtc(purchase.date),
+        contactId: purchase.contactId,
+        periodId: purchase.periodId,
+        description: purchase.description,
+        referenceNumber: purchase.referenceNumber,
+        notes: purchase.notes,
+        totalAmount: new Prisma.Decimal(purchase.totalAmount.value),
+        ruta: purchase.ruta,
+        farmOrigin: purchase.farmOrigin,
+        chickenCount: purchase.chickenCount,
+        shrinkagePct:
+          purchase.shrinkagePct !== null
+            ? new Prisma.Decimal(purchase.shrinkagePct)
+            : null,
+        totalGrossKg:
+          purchase.totalGrossKg !== null
+            ? new Prisma.Decimal(purchase.totalGrossKg)
+            : null,
+        totalNetKg:
+          purchase.totalNetKg !== null
+            ? new Prisma.Decimal(purchase.totalNetKg)
+            : null,
+        totalShrinkKg:
+          purchase.totalShrinkKg !== null
+            ? new Prisma.Decimal(purchase.totalShrinkKg)
+            : null,
+        totalShortageKg:
+          purchase.totalShortageKg !== null
+            ? new Prisma.Decimal(purchase.totalShortageKg)
+            : null,
+        totalRealNetKg:
+          purchase.totalRealNetKg !== null
+            ? new Prisma.Decimal(purchase.totalRealNetKg)
+            : null,
+        journalEntryId: purchase.journalEntryId,
+        payableId: purchase.payableId,
+        createdById: purchase.createdById,
+        details: {
+          create: purchase.details.map((d) => buildDetailCreate(d)),
+        },
+      },
+      include: purchaseInclude,
+    });
+    return hydratePurchaseFromRow(row);
   }
 
   async updateTx(
@@ -105,6 +155,44 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     // RED honesty scaffold — Cycle 6 pending (POC #11.0b A3 Ciclo 3).
     throw new Error("Not implemented yet — pending Cycle 6 (POC #11.0b A3 Ciclo 3)");
   }
+}
+
+function buildDetailCreate(
+  d: PurchaseDetail,
+): Prisma.PurchaseDetailUncheckedCreateWithoutPurchaseInput {
+  return {
+    description: d.description,
+    lineAmount: new Prisma.Decimal(d.lineAmount.value),
+    order: d.order,
+    fecha: d.fecha ?? null,
+    docRef: d.docRef ?? null,
+    chickenQty: d.chickenQty ?? null,
+    pricePerChicken:
+      d.pricePerChicken !== undefined
+        ? new Prisma.Decimal(d.pricePerChicken)
+        : null,
+    productTypeId: d.productTypeId ?? null,
+    detailNote: d.detailNote ?? null,
+    boxes: d.boxes ?? null,
+    grossWeight:
+      d.grossWeight !== undefined ? new Prisma.Decimal(d.grossWeight) : null,
+    tare: d.tare !== undefined ? new Prisma.Decimal(d.tare) : null,
+    netWeight:
+      d.netWeight !== undefined ? new Prisma.Decimal(d.netWeight) : null,
+    unitPrice:
+      d.unitPrice !== undefined ? new Prisma.Decimal(d.unitPrice) : null,
+    shrinkage:
+      d.shrinkage !== undefined ? new Prisma.Decimal(d.shrinkage) : null,
+    shortage:
+      d.shortage !== undefined ? new Prisma.Decimal(d.shortage) : null,
+    realNetWeight:
+      d.realNetWeight !== undefined
+        ? new Prisma.Decimal(d.realNetWeight)
+        : null,
+    quantity:
+      d.quantity !== undefined ? new Prisma.Decimal(d.quantity) : null,
+    expenseAccountId: d.expenseAccountId ?? null,
+  };
 }
 
 type PurchaseRow = Prisma.PurchaseGetPayload<{
