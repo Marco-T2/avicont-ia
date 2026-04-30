@@ -208,11 +208,15 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
   }
 
   async getNextSequenceNumberTx(
-    _organizationId: string,
-    _purchaseType: PurchaseType,
+    organizationId: string,
+    purchaseType: PurchaseType,
   ): Promise<number> {
-    // RED honesty scaffold — Cycle 6 pending (POC #11.0b A3 Ciclo 3).
-    throw new Error("Not implemented yet — pending Cycle 6 (POC #11.0b A3 Ciclo 3)");
+    const last = await this.db.purchase.findFirst({
+      where: { organizationId, purchaseType },
+      orderBy: { sequenceNumber: "desc" },
+      select: { sequenceNumber: true },
+    });
+    return (last?.sequenceNumber ?? 0) + 1;
   }
 }
 

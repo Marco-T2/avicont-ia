@@ -604,6 +604,51 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
     expect(details).toBe(0);
   });
 
+  it("getNextSequenceNumberTx: returns 1 first call for FLETE, N+1 after seed N", async () => {
+    // RED honesty preventivo: pre-GREEN FAILS por stub `getNextSequenceNumberTx`
+    // throw "Not implemented yet — pending Cycle 6". Post-GREEN: mirror legacy
+    // MAX+1 SIN row lock (`features/purchase/purchase.repository.ts:163-172`,
+    // fidelidad regla #1). Two calls: empty store → 1; tras seed sequenceNumber=5
+    // → 6.
+    const first = await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      return repo.getNextSequenceNumberTx(testOrgId, "FLETE");
+    });
+    expect(first).toBe(1);
+
+    await seedPurchaseDirect("POSTED", 5, "FLETE", 1);
+
+    const second = await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      return repo.getNextSequenceNumberTx(testOrgId, "FLETE");
+    });
+    expect(second).toBe(6);
+  });
+
+  it("getNextSequenceNumberTx: scoped FLETE-3 + COMPRA_GENERAL-1 conviven en misma org (audit-4 D-A3-1)", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: asimetría purchase vs
+    // sale-hex — sequence scoped por (organizationId, purchaseType). Schema
+    // `@@unique([organizationId, purchaseType, sequenceNumber])` permite
+    // FL-001/FL-002/FL-003 + CG-001 conviviendo. Adapter WHERE incluye
+    // purchaseType ANTES del MAX(sequenceNumber)+1.
+    await seedPurchaseDirect("POSTED", 1, "FLETE", 1);
+    await seedPurchaseDirect("POSTED", 2, "FLETE", 1);
+    await seedPurchaseDirect("POSTED", 3, "FLETE", 1);
+    await seedPurchaseDirect("POSTED", 1, "COMPRA_GENERAL", 1);
+
+    const nextFlete = await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      return repo.getNextSequenceNumberTx(testOrgId, "FLETE");
+    });
+    expect(nextFlete).toBe(4);
+
+    const nextCg = await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      return repo.getNextSequenceNumberTx(testOrgId, "COMPRA_GENERAL");
+    });
+    expect(nextCg).toBe(2);
+  });
+
   it("saveTx: normalizes header date to noon UTC (legacy toNoonUtc parity, detail.fecha NOT normalized)", async () => {
     // RED honesty: pre-GREEN stub throw. Post-GREEN: header `purchase.date`
     // pasa por `toNoonUtc` mirror legacy `:190,253` y row queda 12:00 UTC.
