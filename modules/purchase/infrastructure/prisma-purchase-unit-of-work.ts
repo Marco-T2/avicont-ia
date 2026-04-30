@@ -45,16 +45,17 @@ import { PrismaPurchaseRepository } from "./prisma-purchase.repository";
  * `writeRepo` del `journalEntryFactory` (paridad scope-bound POC #10 + sale
  * E-6.a α).
  *
- * §17.1 carve-out (5 cross-module concrete imports — UoW construye adapters
- * tx-bound dentro de `withAuditTx`; `Prisma.TransactionClient` no existe
- * pre-tx, un singleton en composition root no puede capturar `tx` per-run.
- * Cada uno implementa un port definido en `domain/` del módulo dueño — R3
- * vigente):
- *   - `accounting/PrismaJournalEntriesRepository` (port `accounting/domain/ports/journal-entries.repo`)
- *   - `accounting/PrismaAccountBalancesRepo`     (port `accounting/domain/ports/account-balances.repo`)
- *   - `payables/PrismaPayablesRepository`        (port `payables/domain/payable.repository` — sustituye Receivables del sale C6)
- *   - `shared/PrismaFiscalPeriodsTxRepo`         (port `shared/domain/ports/fiscal-periods-tx.repo`)
- *   - `sale/PrismaJournalEntryFactoryAdapter`    (port `sale/domain/ports/journal-entry-factory.port` — cross-module adicional vs sale C6; bookmark E-2 POC #11.0c reorg cross-module ports por dominio target)
+ * §17 carve-out: UoW construye adapters tx-bound dentro de `withAuditTx` —
+ * `Prisma.TransactionClient` no existe pre-tx, un singleton en composition
+ * root no puede capturar `tx` per-run. Cross-module concrete imports
+ * cubiertos: `accounting/PrismaAccountBalancesRepo`,
+ * `accounting/PrismaJournalEntriesRepository`,
+ * `payables/PrismaPayablesRepository` (sustituye Receivables del sale C6),
+ * `shared/PrismaFiscalPeriodsTxRepo`,
+ * `sale/PrismaJournalEntryFactoryAdapter` (cross-module adicional vs sale
+ * C6; bookmark E-2 POC #11.0c reorg cross-module ports por dominio target).
+ * Cada uno implementa un port definido en `domain/` del módulo dueño (R3
+ * vigente — la flecha apunta al dominio).
  */
 export class PrismaPurchaseUnitOfWork implements PurchaseUnitOfWork {
   constructor(

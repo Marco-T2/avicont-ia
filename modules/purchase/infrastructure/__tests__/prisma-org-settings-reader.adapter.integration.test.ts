@@ -9,10 +9,7 @@ import { PrismaOrgSettingsReaderAdapter } from "../prisma-org-settings-reader.ad
 
 /**
  * Postgres-real integration test for PrismaOrgSettingsReaderAdapter
- * (POC #11.0b A3 Ciclo 6a). Mirror byte-equivalent sale C2 (commit `a4c7c15`)
- * salvo path. Adapter propio purchase requerido por R4 (presentation/purchase
- * composition root no puede importar de sale/infrastructure). §17.1 NO aplica
- * (port cross-module sale-side, adapter same-module purchase).
+ * (POC #11.0b A3 Ciclo 6a). Mirror byte-equivalent sale C2 (commit `a4c7c15`).
  *
  * Paso 3 audit_logs cleanup NO necesario — heredado D-4.b sale C2: grep
  * pre-RED 2026-04-29 confirmó 0 triggers `audit_*` sobre

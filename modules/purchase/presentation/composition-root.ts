@@ -39,15 +39,6 @@ import { PrismaPurchaseUnitOfWork } from "../infrastructure/prisma-purchase-unit
  * `accountLookupPort`, `autoEntryGen`, `ivaBooksService`) — Ciclo 4 D-2 c2
  * DI per-tx via composition root.
  *
- * §17.1 cross-module concrete imports (composition root carve-out — wiring
- * autorizado a importar adapters concretos de otros módulos, cada uno
- * implementa un port en `domain/` del módulo dueño, R3 vigente):
- *   - `payables/PrismaPayablesRepository`         (port `payables/domain/payable.repository` — sustituye Receivables del sale C6)
- *   - `contacts/PrismaContactRepository`          (port `contacts/domain/contact.repository`)
- *   - `accounting/FiscalPeriodsReadAdapter`       (port `accounting/domain/ports/fiscal-periods-read.port`)
- *   - `accounting/LegacyJournalEntriesReadAdapter`(port `accounting/domain/ports/journal-entries-read.port` — reusado: dep UoW + spread service)
- *   - `org-settings/LegacyAccountLookupAdapter`   (port `org-settings/domain/ports/account-lookup.port` — reusado: dep UoW + spread service, `accountsRepo` shared via D-4 sale C6)
- *
  * `makeOrgSettingsService()` cross-module reuse (presentation → presentation
  * factory) NO viola R4. Bookmark E-2 POC #11.0c reorg cross-module ports por
  * dominio target.
