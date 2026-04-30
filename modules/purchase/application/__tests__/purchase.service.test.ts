@@ -1,12 +1,22 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { NotFoundError } from "@/features/shared/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import { Contact } from "@/modules/contacts/domain/contact.entity";
+import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
+import type { ContactType } from "@/modules/contacts/domain/value-objects/contact-type";
+import { PaymentTermsDays } from "@/modules/contacts/domain/value-objects/payment-terms-days";
 import { Payable } from "@/modules/payables/domain/payable.entity";
 import { Purchase, type PurchaseType } from "../../domain/purchase.entity";
 import type { PurchaseStatus } from "../../domain/value-objects/purchase-status";
+import {
+  PurchaseContactInactive,
+  PurchaseContactNotProvider,
+} from "../errors/purchase-orchestration-errors";
 import { PurchaseService } from "../purchase.service";
 import { InMemoryPurchaseRepository } from "./fakes/in-memory-purchase.repository";
 import { InMemoryPayableRepository } from "./fakes/in-memory-payable.repository";
+import { InMemoryContactRepository } from "./fakes/in-memory-contact.repository";
+import { InMemoryPurchaseUnitOfWork } from "./fakes/in-memory-purchase-unit-of-work";
 
 const ORG = "org-1";
 const OTHER_ORG = "org-2";
@@ -255,5 +265,126 @@ describe("PurchaseService.getEditPreview", () => {
     await expect(
       service.getEditPreview(ORG, "purchase-1", 100),
     ).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe("PurchaseService.createDraft", () => {
+  let purchaseRepo: InMemoryPurchaseRepository;
+  let contactRepo: InMemoryContactRepository;
+  let uow: InMemoryPurchaseUnitOfWork;
+  let service: PurchaseService;
+
+  beforeEach(() => {
+    purchaseRepo = new InMemoryPurchaseRepository();
+    contactRepo = new InMemoryContactRepository();
+    uow = new InMemoryPurchaseUnitOfWork({ purchases: purchaseRepo });
+    service = new PurchaseService({
+      repo: purchaseRepo,
+      contacts: contactRepo,
+      uow,
+    });
+  });
+
+  function buildContact(overrides: {
+    id?: string;
+    type?: ContactType;
+    isActive?: boolean;
+  } = {}): Contact {
+    return Contact.fromPersistence({
+      id: overrides.id ?? "c-1",
+      organizationId: ORG,
+      type: overrides.type ?? "PROVEEDOR",
+      name: "Proveedor Test",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: overrides.isActive ?? true,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  const draftInput = {
+    purchaseType: "COMPRA_GENERAL" as PurchaseType,
+    contactId: "c-1",
+    periodId: "period-1",
+    date: new Date("2025-01-15"),
+    description: "Compra a Proveedor Test",
+    details: [
+      {
+        description: "Línea 1",
+        lineAmount: MonetaryAmount.of(100),
+        expenseAccountId: "acc-expense-1",
+      },
+    ],
+  };
+
+  it("persists a DRAFT purchase and returns the aggregate + correlationId", async () => {
+    contactRepo.preload(buildContact());
+    uow.nextCorrelationId = "corr-fixed-42";
+
+    const result = await service.createDraft(ORG, draftInput, "user-1");
+
+    expect(result.correlationId).toBe("corr-fixed-42");
+    expect(result.purchase.status).toBe("DRAFT");
+    expect(result.purchase.organizationId).toBe(ORG);
+    expect(result.purchase.contactId).toBe("c-1");
+    expect(result.purchase.createdById).toBe("user-1");
+    expect(result.purchase.totalAmount.value).toBe(100);
+    expect(result.purchase.details).toHaveLength(1);
+    expect(purchaseRepo.saveTxCalls).toHaveLength(1);
+    expect(purchaseRepo.saveTxCalls[0]!.id).toBe(result.purchase.id);
+  });
+
+  it("invokes the UoW with the AuditContext (userId + organizationId)", async () => {
+    contactRepo.preload(buildContact());
+
+    await service.createDraft(ORG, draftInput, "user-42");
+
+    expect(uow.ranContexts).toEqual([
+      { userId: "user-42", organizationId: ORG },
+    ]);
+  });
+
+  it("throws ContactNotFound when contact does not exist", async () => {
+    await expect(
+      service.createDraft(ORG, draftInput, "user-1"),
+    ).rejects.toThrow(ContactNotFound);
+
+    expect(purchaseRepo.saveTxCalls).toEqual([]);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws PurchaseContactInactive when contact exists but is inactive", async () => {
+    contactRepo.preload(buildContact({ isActive: false }));
+
+    await expect(
+      service.createDraft(ORG, draftInput, "user-1"),
+    ).rejects.toThrow(PurchaseContactInactive);
+
+    expect(purchaseRepo.saveTxCalls).toEqual([]);
+  });
+
+  it("throws PurchaseContactNotProvider when contact type is not PROVEEDOR", async () => {
+    contactRepo.preload(buildContact({ type: "CLIENTE" }));
+
+    await expect(
+      service.createDraft(ORG, draftInput, "user-1"),
+    ).rejects.toThrow(PurchaseContactNotProvider);
+
+    expect(purchaseRepo.saveTxCalls).toEqual([]);
+  });
+
+  it("does not open the UoW when contact validation fails", async () => {
+    contactRepo.preload(buildContact({ isActive: false }));
+
+    await service
+      .createDraft(ORG, draftInput, "user-1")
+      .catch(() => undefined);
+
+    expect(uow.ranContexts).toEqual([]);
   });
 });
