@@ -2118,6 +2118,7 @@ describe("PurchaseService.regenerateJournalForIvaChange", () => {
   let ivaBookReader: InMemoryIvaBookReader;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
   let uow: InMemoryPurchaseUnitOfWork;
   let service: PurchaseService;
 
@@ -2193,6 +2194,8 @@ describe("PurchaseService.regenerateJournalForIvaChange", () => {
     ivaBookReader = new InMemoryIvaBookReader();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    fiscalPeriods.preload("period-1", "OPEN");
 
     accountLookup.preload({
       id: "acc-expense-1",
@@ -2222,6 +2225,7 @@ describe("PurchaseService.regenerateJournalForIvaChange", () => {
       accountLookup,
       orgSettings,
       ivaBookReader,
+      fiscalPeriods,
     });
   });
 
@@ -2318,10 +2322,21 @@ describe("PurchaseService.regenerateJournalForIvaChange", () => {
       accountLookup,
       orgSettings,
       ivaBookReader,
+      fiscalPeriods,
     });
 
     await expect(
       service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1"),
     ).rejects.toThrow(PurchaseAccountNotFound);
+  });
+
+  it("throws PurchasePeriodClosed when period is CLOSED (paridad legacy `:1238-1240` race protection)", async () => {
+    const purchase = buildPostedPurchase();
+    purchaseRepo.preload(purchase);
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    await expect(
+      service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1"),
+    ).rejects.toThrow(PurchasePeriodClosed);
   });
 });

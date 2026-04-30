@@ -1058,9 +1058,12 @@ export class PurchaseService {
    * si coordinated tx es needed). Espejo simétrico sale-hex
    * `regenerateJournalForIvaChange`.
    *
-   * Flow: load purchase + accounts + IVA snapshot + entry lines OUTSIDE UoW;
-   * factory.regenerateForPurchaseEdit → applyVoid old + applyPost new
-   * INSIDE. Purchase aggregate unchanged — solo el journal mutates.
+   * Flow: load purchase + period OPEN check + accounts + IVA snapshot +
+   * entry lines OUTSIDE UoW; factory.regenerateForPurchaseEdit → applyVoid
+   * old + applyPost new INSIDE. Purchase aggregate unchanged — solo el
+   * journal mutates. Period check outside-UoW (paridad sale-hex; legacy
+   * `:1238-1240` lo replica in-tx por race protection — replicación
+   * estricta diferida POC #11.0c con IVA service real).
    */
   async regenerateJournalForIvaChange(
     organizationId: string,
@@ -1072,6 +1075,7 @@ export class PurchaseService {
       accountLookup: this.deps.accountLookup,
       orgSettings: this.deps.orgSettings,
       ivaBookReader: this.deps.ivaBookReader,
+      fiscalPeriods: this.deps.fiscalPeriods,
     };
     for (const [name, dep] of Object.entries(required)) {
       if (!dep) {
@@ -1084,6 +1088,14 @@ export class PurchaseService {
     const purchase = await this.getById(organizationId, purchaseId);
     if (!purchase.journalEntryId) {
       throw new NotFoundError("Asiento contable");
+    }
+
+    const period = await this.deps.fiscalPeriods!.getById(
+      organizationId,
+      purchase.periodId,
+    );
+    if (period.status === "CLOSED") {
+      throw new PurchasePeriodClosed(purchase.periodId);
     }
 
     const expenseAccountIds =
