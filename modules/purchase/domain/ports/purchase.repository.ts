@@ -1,6 +1,14 @@
 import type { Purchase, PurchaseType } from "../purchase.entity";
 
 export interface PurchaseFilters {
+  /**
+   * Asimetría purchase vs sale-hex (audit-5 D-A3-2): purchase schema tiene
+   * discriminator `purchaseType` (4 valores). Legacy
+   * `features/purchase/purchase.repository.ts:124` filtra; consumer real
+   * `app/api/organizations/[orgSlug]/purchases/route.ts:23` (cutover POC
+   * #11.0c). Paralelo D-A3-1 (`getNextSequenceNumberTx` scoped).
+   */
+  purchaseType?: PurchaseType;
   contactId?: string;
   status?: string;
   dateFrom?: Date;
@@ -10,7 +18,9 @@ export interface PurchaseFilters {
 /**
  * Read/write port for the `Purchase` aggregate. Mirror simétrico a
  * `SaleRepository` (sale-hex) — la asimetría purchase vive en el aggregate
- * (4 purchaseTypes, polymorphic surface), no en el port shape.
+ * (4 purchaseTypes, polymorphic surface) + 2 puntos puntuales del port shape:
+ * filter `PurchaseFilters.purchaseType` (audit-5 D-A3-2) y sequence
+ * `getNextSequenceNumberTx` scoped por `purchaseType` (audit-4 D-A3-1).
  *
  *   - Non-tx (`findById`, `findAll`): read-only use cases que resuelven
  *     antes que la UoW abra.

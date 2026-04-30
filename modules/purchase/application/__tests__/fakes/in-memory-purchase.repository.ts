@@ -38,6 +38,7 @@ export class InMemoryPurchaseRepository implements PurchaseRepository {
   ): Promise<Purchase[]> {
     return [...this.store.values()].filter((purchase) => {
       if (purchase.organizationId !== organizationId) return false;
+      if (filters?.purchaseType && purchase.purchaseType !== filters.purchaseType) return false;
       if (filters?.contactId && purchase.contactId !== filters.contactId) return false;
       if (filters?.status && purchase.status !== filters.status) return false;
       if (filters?.dateFrom && purchase.date < filters.dateFrom) return false;

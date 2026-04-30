@@ -180,6 +180,43 @@ describe("PurchaseService.list", () => {
     expect(purchases[0].id).toBe("p2");
   });
 
+  /**
+   * Audit-5 D-A3-2 RED — paridad legacy regla #1 invariante D-A3-2.
+   *
+   * Schema Purchase tiene `purchaseType` discriminator (4 valores: FLETE,
+   * POLLO_FAENADO, COMPRA_GENERAL, SERVICIO). Legacy
+   * `features/purchase/purchase.repository.ts:124` aplica filtro `if
+   * (filters?.purchaseType) where.purchaseType = filters.purchaseType` antes
+   * del `findMany`. Consumer real:
+   * `app/api/organizations/[orgSlug]/purchases/route.ts:23` lee
+   * `searchParams.get("purchaseType")` y lo pasa vía
+   * `purchaseFiltersSchema.parse` → `purchaseService.list(orgId, filters)`
+   * (legacy hoy; cutover POC #11.0c → hex hex-routing dropea silente sin fix).
+   *
+   * El port `PurchaseFilters` actual NO acepta `purchaseType` — copy-paste
+   * shape sale-hex (sale schema sin discriminator) aplicado a purchase sin
+   * verificar asimetría legacy. Fake `findAll` honra el contrato del port
+   * (no filtra por purchaseType), por eso A2 pasó verde — match
+   * `feedback_aspirational_mock_signals_unimplemented_contract` + paralelo
+   * directo D-A3-1.
+   *
+   * Expected RED failure mode: tsc compile-time error TS2353 en
+   * `service.list(ORG, { purchaseType: "FLETE" })` porque `PurchaseFilters`
+   * no expone el campo. NO runtime assertion fail — el RED se manifiesta en
+   * tsc baseline 14 → 15.
+   */
+  it("filters by purchaseType (paridad legacy regla #1 — discriminator schema 4 PurchaseTypes)", async () => {
+    repo.preload(
+      buildPurchase({ id: "p1", purchaseType: "FLETE" }),
+      buildPurchase({ id: "p2", purchaseType: "FLETE" }),
+      buildPurchase({ id: "p3", purchaseType: "COMPRA_GENERAL" }),
+    );
+
+    const purchases = await service.list(ORG, { purchaseType: "FLETE" });
+
+    expect(purchases.map((p) => p.id).sort()).toEqual(["p1", "p2"]);
+  });
+
   it("returns empty array when nothing matches", async () => {
     const purchases = await service.list(ORG);
 
