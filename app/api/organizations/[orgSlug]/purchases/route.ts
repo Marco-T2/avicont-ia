@@ -1,13 +1,13 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { PurchaseService } from "@/features/purchase/server";
 import {
   createPurchaseSchema,
   purchaseFiltersSchema,
 } from "@/features/purchase";
 import { UsersService } from "@/features/users/server";
+import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 
-const purchaseService = new PurchaseService();
+const purchaseService = makePurchaseService();
 const usersService = new UsersService();
 
 export async function GET(
@@ -54,14 +54,14 @@ export async function POST(
     const input = createPurchaseSchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(userId);
-    const purchase = postImmediately
+    const result = postImmediately
       ? await purchaseService.createAndPost(orgId, input, {
           userId: user.id,
           role,
         })
       : await purchaseService.createDraft(orgId, input, user.id);
 
-    return Response.json(purchase, { status: 201 });
+    return Response.json(result, { status: 201 });
   } catch (error) {
     return handleError(error);
   }
