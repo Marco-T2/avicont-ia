@@ -115,6 +115,50 @@ export interface RecomputeIvaPurchaseBookResult {
   correlationId: string;
 }
 
+export interface VoidIvaSalesBookInput {
+  organizationId: string;
+  userId: string;
+  id: string;
+}
+
+export interface VoidIvaSalesBookResult {
+  entry: IvaSalesBookEntry;
+  correlationId: string;
+}
+
+export interface VoidIvaPurchaseBookInput {
+  organizationId: string;
+  userId: string;
+  id: string;
+}
+
+export interface VoidIvaPurchaseBookResult {
+  entry: IvaPurchaseBookEntry;
+  correlationId: string;
+}
+
+export interface ReactivateIvaSalesBookInput {
+  organizationId: string;
+  userId: string;
+  id: string;
+}
+
+export interface ReactivateIvaSalesBookResult {
+  entry: IvaSalesBookEntry;
+  correlationId: string;
+}
+
+export interface ReactivateIvaPurchaseBookInput {
+  organizationId: string;
+  userId: string;
+  id: string;
+}
+
+export interface ReactivateIvaPurchaseBookResult {
+  entry: IvaPurchaseBookEntry;
+  correlationId: string;
+}
+
 /**
  * IVA-hex application service. Orchestra los use cases inbound A2:
  * regenerate / recompute / void / reactivate / applyVoidCascade × {sale,
@@ -408,6 +452,238 @@ export class IvaBookService {
         if ("notes" in input) editInput.notes = input.notes ?? null;
 
         const updated = entry.applyEdit(editInput);
+        const persisted = await scope.ivaPurchaseBooks.updateTx(updated);
+        return { entry: persisted, purchase, period };
+      },
+    );
+
+    if (
+      result.purchase &&
+      result.purchase.status === "POSTED" &&
+      result.period?.status === "OPEN"
+    ) {
+      await this.deps.purchaseJournalRegenNotifier.regenerateJournalForIvaChange(
+        input.organizationId,
+        result.entry.purchaseId!,
+        input.userId,
+      );
+    }
+
+    return { entry: result.entry, correlationId };
+  }
+
+  async voidSale(
+    input: VoidIvaSalesBookInput,
+  ): Promise<VoidIvaSalesBookResult> {
+    const { result, correlationId } = await this.deps.uow.run(
+      { userId: input.userId, organizationId: input.organizationId },
+      async (scope) => {
+        const entry = await scope.ivaSalesBooks.findByIdTx(
+          input.organizationId,
+          input.id,
+        );
+        if (!entry) {
+          throw new IvaBookNotFound("sale");
+        }
+
+        let sale = null;
+        let period = null;
+        if (entry.saleId) {
+          sale = await this.deps.saleReader.getById(
+            input.organizationId,
+            entry.saleId,
+          );
+          period = await this.deps.fiscalPeriods.getById(
+            input.organizationId,
+            entry.fiscalPeriodId,
+          );
+          if (
+            sale &&
+            sale.status === "POSTED" &&
+            period.status !== "OPEN"
+          ) {
+            throw new IvaBookFiscalPeriodClosed({
+              entityType: "sale",
+              operation: "modify",
+            });
+          }
+        }
+
+        const updated = entry.void();
+        const persisted = await scope.ivaSalesBooks.updateTx(updated);
+        return { entry: persisted, sale, period };
+      },
+    );
+
+    if (
+      result.sale &&
+      result.sale.status === "POSTED" &&
+      result.period?.status === "OPEN"
+    ) {
+      await this.deps.saleJournalRegenNotifier.regenerateJournalForIvaChange(
+        input.organizationId,
+        result.entry.saleId!,
+        input.userId,
+      );
+    }
+
+    return { entry: result.entry, correlationId };
+  }
+
+  async voidPurchase(
+    input: VoidIvaPurchaseBookInput,
+  ): Promise<VoidIvaPurchaseBookResult> {
+    const { result, correlationId } = await this.deps.uow.run(
+      { userId: input.userId, organizationId: input.organizationId },
+      async (scope) => {
+        const entry = await scope.ivaPurchaseBooks.findByIdTx(
+          input.organizationId,
+          input.id,
+        );
+        if (!entry) {
+          throw new IvaBookNotFound("purchase");
+        }
+
+        let purchase = null;
+        let period = null;
+        if (entry.purchaseId) {
+          purchase = await this.deps.purchaseReader.getById(
+            input.organizationId,
+            entry.purchaseId,
+          );
+          period = await this.deps.fiscalPeriods.getById(
+            input.organizationId,
+            entry.fiscalPeriodId,
+          );
+          if (
+            purchase &&
+            purchase.status === "POSTED" &&
+            period.status !== "OPEN"
+          ) {
+            throw new IvaBookFiscalPeriodClosed({
+              entityType: "purchase",
+              operation: "modify",
+            });
+          }
+        }
+
+        const updated = entry.void();
+        const persisted = await scope.ivaPurchaseBooks.updateTx(updated);
+        return { entry: persisted, purchase, period };
+      },
+    );
+
+    if (
+      result.purchase &&
+      result.purchase.status === "POSTED" &&
+      result.period?.status === "OPEN"
+    ) {
+      await this.deps.purchaseJournalRegenNotifier.regenerateJournalForIvaChange(
+        input.organizationId,
+        result.entry.purchaseId!,
+        input.userId,
+      );
+    }
+
+    return { entry: result.entry, correlationId };
+  }
+
+  async reactivateSale(
+    input: ReactivateIvaSalesBookInput,
+  ): Promise<ReactivateIvaSalesBookResult> {
+    const { result, correlationId } = await this.deps.uow.run(
+      { userId: input.userId, organizationId: input.organizationId },
+      async (scope) => {
+        const entry = await scope.ivaSalesBooks.findByIdTx(
+          input.organizationId,
+          input.id,
+        );
+        if (!entry) {
+          throw new IvaBookNotFound("sale");
+        }
+
+        let sale = null;
+        let period = null;
+        if (entry.saleId) {
+          sale = await this.deps.saleReader.getById(
+            input.organizationId,
+            entry.saleId,
+          );
+          period = await this.deps.fiscalPeriods.getById(
+            input.organizationId,
+            entry.fiscalPeriodId,
+          );
+          if (
+            sale &&
+            sale.status === "POSTED" &&
+            period.status !== "OPEN"
+          ) {
+            throw new IvaBookFiscalPeriodClosed({
+              entityType: "sale",
+              operation: "modify",
+            });
+          }
+        }
+
+        const updated = entry.reactivate();
+        const persisted = await scope.ivaSalesBooks.updateTx(updated);
+        return { entry: persisted, sale, period };
+      },
+    );
+
+    if (
+      result.sale &&
+      result.sale.status === "POSTED" &&
+      result.period?.status === "OPEN"
+    ) {
+      await this.deps.saleJournalRegenNotifier.regenerateJournalForIvaChange(
+        input.organizationId,
+        result.entry.saleId!,
+        input.userId,
+      );
+    }
+
+    return { entry: result.entry, correlationId };
+  }
+
+  async reactivatePurchase(
+    input: ReactivateIvaPurchaseBookInput,
+  ): Promise<ReactivateIvaPurchaseBookResult> {
+    const { result, correlationId } = await this.deps.uow.run(
+      { userId: input.userId, organizationId: input.organizationId },
+      async (scope) => {
+        const entry = await scope.ivaPurchaseBooks.findByIdTx(
+          input.organizationId,
+          input.id,
+        );
+        if (!entry) {
+          throw new IvaBookNotFound("purchase");
+        }
+
+        let purchase = null;
+        let period = null;
+        if (entry.purchaseId) {
+          purchase = await this.deps.purchaseReader.getById(
+            input.organizationId,
+            entry.purchaseId,
+          );
+          period = await this.deps.fiscalPeriods.getById(
+            input.organizationId,
+            entry.fiscalPeriodId,
+          );
+          if (
+            purchase &&
+            purchase.status === "POSTED" &&
+            period.status !== "OPEN"
+          ) {
+            throw new IvaBookFiscalPeriodClosed({
+              entityType: "purchase",
+              operation: "modify",
+            });
+          }
+        }
+
+        const updated = entry.reactivate();
         const persisted = await scope.ivaPurchaseBooks.updateTx(updated);
         return { entry: persisted, purchase, period };
       },

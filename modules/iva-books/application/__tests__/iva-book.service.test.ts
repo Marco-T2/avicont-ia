@@ -1,7 +1,11 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { computeIvaTotals } from "../../domain/compute-iva-totals";
-import { IvaBookFiscalPeriodClosed } from "../../domain/errors/iva-book-errors";
+import {
+  IvaBookFiscalPeriodClosed,
+  IvaBookNotFound,
+  IvaBookReactivateNonVoided,
+} from "../../domain/errors/iva-book-errors";
 import { IvaSalesBookEntry } from "../../domain/iva-sales-book-entry.entity";
 import { IvaPurchaseBookEntry } from "../../domain/iva-purchase-book-entry.entity";
 import { IvaBookService } from "../iva-book.service";
@@ -742,5 +746,281 @@ describe("IvaBookService.recomputePurchase", () => {
     expect(persisted.calcResult.subtotal.equals(expected.subtotal)).toBe(true);
     expect(persisted.calcResult.baseImponible.equals(expected.baseImponible)).toBe(true);
     expect(persisted.calcResult.ivaAmount.equals(expected.ivaAmount)).toBe(true);
+  });
+});
+
+describe("IvaBookService.voidSale", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+    h.fiscalPeriods.preload(PERIOD, "OPEN");
+  });
+
+  it("happy POSTED+OPEN linked: status→VOIDED + invoca SaleJournalRegenNotifier", async () => {
+    const entry = seedSalesEntry(h, { saleId: "sale-v1" });
+    h.saleReader.preload({ id: "sale-v1", organizationId: ORG, status: "POSTED" });
+
+    const result = await h.service.voidSale({
+      organizationId: ORG,
+      userId: USER,
+      id: entry.id,
+    });
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+    const persisted = h.ivaSalesBooks.updateCalls[0];
+    expect(persisted.status).toBe("VOIDED");
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(1);
+    expect(h.saleJournalRegenNotifier.calls[0]).toEqual({
+      organizationId: ORG,
+      saleId: "sale-v1",
+      userId: USER,
+    });
+    expect(result.entry.status).toBe("VOIDED");
+    expect(result.correlationId).toMatch(/^corr-iva-test-/);
+  });
+
+  it("throws IvaBookFiscalPeriodClosed (operation=modify) cuando POSTED + period CLOSED", async () => {
+    h.fiscalPeriods.preload(PERIOD, "CLOSED");
+    const entry = seedSalesEntry(h, { saleId: "sale-v2" });
+    h.saleReader.preload({ id: "sale-v2", organizationId: ORG, status: "POSTED" });
+
+    await expect(
+      h.service.voidSale({
+        organizationId: ORG,
+        userId: USER,
+        id: entry.id,
+      }),
+    ).rejects.toBeInstanceOf(IvaBookFiscalPeriodClosed);
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(0);
+  });
+
+  it("throws IvaBookNotFound cuando entry no existe", async () => {
+    await expect(
+      h.service.voidSale({
+        organizationId: ORG,
+        userId: USER,
+        id: "missing-entry",
+      }),
+    ).rejects.toBeInstanceOf(IvaBookNotFound);
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(0);
+  });
+});
+
+describe("IvaBookService.voidPurchase", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+    h.fiscalPeriods.preload(PERIOD, "OPEN");
+  });
+
+  it("happy POSTED+OPEN linked: status→VOIDED + invoca PurchaseJournalRegenNotifier", async () => {
+    const entry = seedPurchaseEntry(h, { purchaseId: "purchase-v1" });
+    h.purchaseReader.preload({ id: "purchase-v1", organizationId: ORG, status: "POSTED" });
+
+    const result = await h.service.voidPurchase({
+      organizationId: ORG,
+      userId: USER,
+      id: entry.id,
+    });
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+    const persisted = h.ivaPurchaseBooks.updateCalls[0];
+    expect(persisted.status).toBe("VOIDED");
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(1);
+    expect(h.purchaseJournalRegenNotifier.calls[0]).toEqual({
+      organizationId: ORG,
+      purchaseId: "purchase-v1",
+      userId: USER,
+    });
+    expect(result.entry.status).toBe("VOIDED");
+    expect(result.correlationId).toMatch(/^corr-iva-test-/);
+  });
+
+  it("throws IvaBookFiscalPeriodClosed (operation=modify) cuando POSTED + period CLOSED", async () => {
+    h.fiscalPeriods.preload(PERIOD, "CLOSED");
+    const entry = seedPurchaseEntry(h, { purchaseId: "purchase-v2" });
+    h.purchaseReader.preload({ id: "purchase-v2", organizationId: ORG, status: "POSTED" });
+
+    await expect(
+      h.service.voidPurchase({
+        organizationId: ORG,
+        userId: USER,
+        id: entry.id,
+      }),
+    ).rejects.toBeInstanceOf(IvaBookFiscalPeriodClosed);
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(0);
+  });
+
+  it("throws IvaBookNotFound cuando entry no existe", async () => {
+    await expect(
+      h.service.voidPurchase({
+        organizationId: ORG,
+        userId: USER,
+        id: "missing-entry",
+      }),
+    ).rejects.toBeInstanceOf(IvaBookNotFound);
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(0);
+  });
+});
+
+describe("IvaBookService.reactivateSale", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+    h.fiscalPeriods.preload(PERIOD, "OPEN");
+  });
+
+  it("happy POSTED+OPEN+VOIDED: status→ACTIVE + invoca SaleJournalRegenNotifier", async () => {
+    const entry = seedSalesEntry(h, { saleId: "sale-rx1", status: "VOIDED" });
+    h.saleReader.preload({ id: "sale-rx1", organizationId: ORG, status: "POSTED" });
+
+    const result = await h.service.reactivateSale({
+      organizationId: ORG,
+      userId: USER,
+      id: entry.id,
+    });
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+    const persisted = h.ivaSalesBooks.updateCalls[0];
+    expect(persisted.status).toBe("ACTIVE");
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(1);
+    expect(h.saleJournalRegenNotifier.calls[0]).toEqual({
+      organizationId: ORG,
+      saleId: "sale-rx1",
+      userId: USER,
+    });
+    expect(result.entry.status).toBe("ACTIVE");
+    expect(result.correlationId).toMatch(/^corr-iva-test-/);
+  });
+
+  it("throws IvaBookFiscalPeriodClosed (operation=modify) cuando POSTED + period CLOSED", async () => {
+    h.fiscalPeriods.preload(PERIOD, "CLOSED");
+    const entry = seedSalesEntry(h, { saleId: "sale-rx2", status: "VOIDED" });
+    h.saleReader.preload({ id: "sale-rx2", organizationId: ORG, status: "POSTED" });
+
+    await expect(
+      h.service.reactivateSale({
+        organizationId: ORG,
+        userId: USER,
+        id: entry.id,
+      }),
+    ).rejects.toBeInstanceOf(IvaBookFiscalPeriodClosed);
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(0);
+  });
+
+  it("throws IvaBookReactivateNonVoided cuando entry status !== VOIDED (D-A1#6)", async () => {
+    const entry = seedSalesEntry(h, { saleId: "sale-rx3" });
+    h.saleReader.preload({ id: "sale-rx3", organizationId: ORG, status: "POSTED" });
+
+    await expect(
+      h.service.reactivateSale({
+        organizationId: ORG,
+        userId: USER,
+        id: entry.id,
+      }),
+    ).rejects.toBeInstanceOf(IvaBookReactivateNonVoided);
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(0);
+  });
+
+  it("throws IvaBookNotFound cuando entry no existe", async () => {
+    await expect(
+      h.service.reactivateSale({
+        organizationId: ORG,
+        userId: USER,
+        id: "missing-entry",
+      }),
+    ).rejects.toBeInstanceOf(IvaBookNotFound);
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+    expect(h.saleJournalRegenNotifier.calls).toHaveLength(0);
+  });
+});
+
+describe("IvaBookService.reactivatePurchase", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+    h.fiscalPeriods.preload(PERIOD, "OPEN");
+  });
+
+  it("happy POSTED+OPEN+VOIDED: status→ACTIVE + invoca PurchaseJournalRegenNotifier", async () => {
+    const entry = seedPurchaseEntry(h, { purchaseId: "purchase-rx1", status: "VOIDED" });
+    h.purchaseReader.preload({ id: "purchase-rx1", organizationId: ORG, status: "POSTED" });
+
+    const result = await h.service.reactivatePurchase({
+      organizationId: ORG,
+      userId: USER,
+      id: entry.id,
+    });
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+    const persisted = h.ivaPurchaseBooks.updateCalls[0];
+    expect(persisted.status).toBe("ACTIVE");
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(1);
+    expect(h.purchaseJournalRegenNotifier.calls[0]).toEqual({
+      organizationId: ORG,
+      purchaseId: "purchase-rx1",
+      userId: USER,
+    });
+    expect(result.entry.status).toBe("ACTIVE");
+    expect(result.correlationId).toMatch(/^corr-iva-test-/);
+  });
+
+  it("throws IvaBookFiscalPeriodClosed (operation=modify) cuando POSTED + period CLOSED", async () => {
+    h.fiscalPeriods.preload(PERIOD, "CLOSED");
+    const entry = seedPurchaseEntry(h, { purchaseId: "purchase-rx2", status: "VOIDED" });
+    h.purchaseReader.preload({ id: "purchase-rx2", organizationId: ORG, status: "POSTED" });
+
+    await expect(
+      h.service.reactivatePurchase({
+        organizationId: ORG,
+        userId: USER,
+        id: entry.id,
+      }),
+    ).rejects.toBeInstanceOf(IvaBookFiscalPeriodClosed);
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(0);
+  });
+
+  it("throws IvaBookReactivateNonVoided cuando entry status !== VOIDED (D-A1#6)", async () => {
+    const entry = seedPurchaseEntry(h, { purchaseId: "purchase-rx3" });
+    h.purchaseReader.preload({ id: "purchase-rx3", organizationId: ORG, status: "POSTED" });
+
+    await expect(
+      h.service.reactivatePurchase({
+        organizationId: ORG,
+        userId: USER,
+        id: entry.id,
+      }),
+    ).rejects.toBeInstanceOf(IvaBookReactivateNonVoided);
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(0);
+  });
+
+  it("throws IvaBookNotFound cuando entry no existe", async () => {
+    await expect(
+      h.service.reactivatePurchase({
+        organizationId: ORG,
+        userId: USER,
+        id: "missing-entry",
+      }),
+    ).rejects.toBeInstanceOf(IvaBookNotFound);
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+    expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(0);
   });
 });
