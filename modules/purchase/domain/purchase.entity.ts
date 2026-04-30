@@ -136,6 +136,7 @@ export class Purchase {
         realNetWeight: d.realNetWeight,
       }),
     );
+    Purchase.assertExpenseAccountsSetForType(input.purchaseType, details);
     const totalAmount = details.reduce(
       (sum, d) => sum.plus(d.lineAmount),
       MonetaryAmount.zero(),
@@ -281,7 +282,7 @@ export class Purchase {
     if (this.props.details.length === 0) {
       throw new PurchaseNoDetails();
     }
-    this.assertExpenseAccountsSetForType(this.props.details);
+    Purchase.assertExpenseAccountsSetForType(this.props.purchaseType, this.props.details);
     const totalAmount = this.props.details.reduce(
       (sum, d) => sum.plus(d.lineAmount),
       MonetaryAmount.zero(),
@@ -351,7 +352,7 @@ export class Purchase {
       throw new PurchaseNoDetails();
     }
     if (newDetails.length > 0) {
-      this.assertExpenseAccountsSetForType(newDetails);
+      Purchase.assertExpenseAccountsSetForType(this.props.purchaseType, newDetails);
     }
     const totalAmount = newDetails.reduce(
       (sum, d) => sum.plus(d.lineAmount),
@@ -375,11 +376,11 @@ export class Purchase {
     return VALID_TRANSITIONS[this.props.status].includes(target);
   }
 
-  private assertExpenseAccountsSetForType(details: PurchaseDetail[]): void {
-    if (
-      this.props.purchaseType !== "COMPRA_GENERAL" &&
-      this.props.purchaseType !== "SERVICIO"
-    ) {
+  private static assertExpenseAccountsSetForType(
+    purchaseType: PurchaseType,
+    details: PurchaseDetail[],
+  ): void {
+    if (purchaseType !== "COMPRA_GENERAL" && purchaseType !== "SERVICIO") {
       return;
     }
     for (const d of details) {

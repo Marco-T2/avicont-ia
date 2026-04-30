@@ -235,6 +235,75 @@ describe("Purchase aggregate", () => {
       exposed.pop();
       expect(purchase.details).toHaveLength(1);
     });
+
+    it("rechaza createDraft si COMPRA_GENERAL tiene detail sin expenseAccountId", () => {
+      expect(() =>
+        Purchase.createDraft({
+          organizationId: "org-1",
+          purchaseType: "COMPRA_GENERAL",
+          contactId: "contact-1",
+          periodId: "period-1",
+          date: new Date(),
+          description: "Compra general",
+          createdById: "user-1",
+          details: [
+            { description: "L1", lineAmount: MonetaryAmount.of(100), order: 0, expenseAccountId: "acc-1" },
+            { description: "L2", lineAmount: MonetaryAmount.of(50), order: 1 },
+          ],
+        }),
+      ).toThrow(PurchaseExpenseAccountsRequired);
+    });
+
+    it("rechaza createDraft si SERVICIO tiene detail sin expenseAccountId", () => {
+      expect(() =>
+        Purchase.createDraft({
+          organizationId: "org-1",
+          purchaseType: "SERVICIO",
+          contactId: "contact-1",
+          periodId: "period-1",
+          date: new Date(),
+          description: "Servicio",
+          createdById: "user-1",
+          details: [
+            { description: "L1", lineAmount: MonetaryAmount.of(100), order: 0 },
+          ],
+        }),
+      ).toThrow(PurchaseExpenseAccountsRequired);
+    });
+
+    it("permite createDraft FLETE sin expenseAccountId per detail", () => {
+      expect(() =>
+        Purchase.createDraft({
+          organizationId: "org-1",
+          purchaseType: "FLETE",
+          contactId: "contact-1",
+          periodId: "period-1",
+          date: new Date(),
+          description: "Flete",
+          createdById: "user-1",
+          details: [
+            { description: "L1", lineAmount: MonetaryAmount.of(100), order: 0 },
+          ],
+        }),
+      ).not.toThrow();
+    });
+
+    it("permite createDraft POLLO_FAENADO sin expenseAccountId per detail", () => {
+      expect(() =>
+        Purchase.createDraft({
+          organizationId: "org-1",
+          purchaseType: "POLLO_FAENADO",
+          contactId: "contact-1",
+          periodId: "period-1",
+          date: new Date(),
+          description: "Faena",
+          createdById: "user-1",
+          details: [
+            { description: "L1", lineAmount: MonetaryAmount.of(100), order: 0 },
+          ],
+        }),
+      ).not.toThrow();
+    });
   });
 
   describe("fromPersistence", () => {
