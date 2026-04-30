@@ -1,8 +1,10 @@
 import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import type { ContactRepository } from "@/modules/contacts/domain/contact.repository";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
 import type { FiscalPeriodsReadPort } from "@/modules/accounting/domain/ports/fiscal-periods-read.port";
+import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import type { OrgSettingsReaderPort } from "@/modules/sale/domain/ports/org-settings-reader.port";
 import {
   Purchase,
@@ -64,6 +66,7 @@ export interface PurchaseServiceDeps {
   orgSettings?: OrgSettingsReaderPort;
   fiscalPeriods?: FiscalPeriodsReadPort;
   ivaBookReader?: IvaBookReaderPort;
+  journalEntriesRead?: JournalEntriesReadPort;
 }
 
 export interface EditPreview {
@@ -893,5 +896,283 @@ export class PurchaseService {
     );
 
     return { purchase: result, correlationId };
+  }
+
+  /**
+   * Voids a purchase (DRAFT/POSTED/LOCKED → VOIDED). Mirrors legacy
+   * `purchase.service.ts:1095-1128 + voidCascadeTx 1280-1398` (fidelidad
+   * regla #1) — espejo simétrico a sale-hex `void`. LOCKED gate replicates
+   * `validateLockedEdit` (role + period + justification 10/50). Cascade:
+   * revert payable allocations → trim allocations to zero → void payable →
+   * persist purchase VOIDED → IVA book void → journal void + balances
+   * applyVoid.
+   */
+  async void(
+    organizationId: string,
+    purchaseId: string,
+    context: UpdatePurchaseContext,
+  ): Promise<UpdatePurchaseResult> {
+    const required = {
+      uow: this.deps.uow,
+      fiscalPeriods: this.deps.fiscalPeriods,
+      journalEntriesRead: this.deps.journalEntriesRead,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) throw new Error(`PurchaseService.void requires ${name}`);
+    }
+
+    const purchase = await this.getById(organizationId, purchaseId);
+
+    if (purchase.status === "LOCKED") {
+      if (context.role !== "owner" && context.role !== "admin") {
+        throw new ForbiddenError(
+          "Solo administradores pueden modificar documentos bloqueados",
+        );
+      }
+      const period = await this.deps.fiscalPeriods!.getById(
+        organizationId,
+        purchase.periodId,
+      );
+      const requiredMin = period.status === "CLOSED" ? 50 : 10;
+      if (
+        !context.justification ||
+        context.justification.trim().length < requiredMin
+      ) {
+        throw new PurchaseLockedEditMissingJustification(requiredMin);
+      }
+    }
+
+    const voided = purchase.void();
+
+    const auditContext =
+      purchase.status === "LOCKED"
+        ? {
+            userId: context.userId,
+            organizationId,
+            justification: context.justification,
+          }
+        : { userId: context.userId, organizationId };
+
+    const { result, correlationId } = await this.deps.uow!.run(
+      auditContext,
+      async (scope) => {
+        if (purchase.payableId) {
+          const allocations =
+            await scope.payables.findAllocationsForPayable(
+              organizationId,
+              purchase.payableId,
+            );
+          const active = allocations.filter((a) => a.amount > 0);
+
+          if (active.length > 0) {
+            const trimItems = active.map((a) => ({
+              allocationId: a.id,
+              newAmount: 0,
+            }));
+            await scope.payables.applyTrimPlanTx(
+              undefined,
+              organizationId,
+              purchase.payableId,
+              trimItems,
+            );
+
+            const payable = await scope.payables.findById(
+              organizationId,
+              purchase.payableId,
+            );
+            if (payable && payable.status !== "VOIDED") {
+              const totalReverted = active.reduce(
+                (sum, a) => sum + a.amount,
+                0,
+              );
+              const reverted = payable.revertAllocations(
+                MonetaryAmount.of(totalReverted),
+              );
+              const finalPayable = reverted.void();
+              await scope.payables.update(finalPayable);
+            }
+          } else {
+            const payable = await scope.payables.findById(
+              organizationId,
+              purchase.payableId,
+            );
+            if (payable && payable.status !== "VOIDED") {
+              await scope.payables.update(payable.void());
+            }
+          }
+        }
+
+        const persistedPurchase = await scope.purchases.updateTx(voided, {
+          replaceDetails: false,
+        });
+
+        await scope.ivaBookVoidCascade.markVoidedFromPurchase(
+          organizationId,
+          purchaseId,
+        );
+
+        if (purchase.journalEntryId) {
+          const oldJournal = await this.deps.journalEntriesRead!.findById(
+            organizationId,
+            purchase.journalEntryId,
+          );
+          if (oldJournal && oldJournal.status !== "VOIDED") {
+            const voidedJournal = oldJournal.void();
+            const persistedJournal = await scope.journalEntries.updateStatus(
+              voidedJournal,
+              context.userId,
+            );
+            await scope.accountBalances.applyVoid(persistedJournal);
+          }
+        }
+
+        return persistedPurchase;
+      },
+    );
+
+    return { purchase: result, correlationId };
+  }
+
+  /**
+   * Hard-deletes a DRAFT purchase. Mirrors legacy
+   * `purchase.service.ts:1132-1143`. No UoW — operación single-row delete
+   * sin cascade. Domain enforcea status === DRAFT vía
+   * `Purchase.assertCanDelete()` (A1).
+   */
+  async delete(organizationId: string, purchaseId: string): Promise<void> {
+    const purchase = await this.getById(organizationId, purchaseId);
+    purchase.assertCanDelete();
+    await this.deps.repo.deleteTx(organizationId, purchaseId);
+  }
+
+  /**
+   * Regenerates the journal entry of a posted purchase when the IVA book
+   * changes. Mirrors legacy `purchase.service.ts:1157-1278` (fidelidad
+   * regla #1) WITHOUT `externalTx + correlationId` delegation (legacy
+   * complexity §5.5 retired in POC #11.0c — caller invoca su propia UoW
+   * si coordinated tx es needed). Espejo simétrico sale-hex
+   * `regenerateJournalForIvaChange`.
+   *
+   * Flow: load purchase + accounts + IVA snapshot + entry lines OUTSIDE UoW;
+   * factory.regenerateForPurchaseEdit → applyVoid old + applyPost new
+   * INSIDE. Purchase aggregate unchanged — solo el journal mutates.
+   */
+  async regenerateJournalForIvaChange(
+    organizationId: string,
+    purchaseId: string,
+    userId: string,
+  ): Promise<UpdatePurchaseResult> {
+    const required = {
+      uow: this.deps.uow,
+      accountLookup: this.deps.accountLookup,
+      orgSettings: this.deps.orgSettings,
+      ivaBookReader: this.deps.ivaBookReader,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) {
+        throw new Error(
+          `PurchaseService.regenerateJournalForIvaChange requires ${name}`,
+        );
+      }
+    }
+
+    const purchase = await this.getById(organizationId, purchaseId);
+    if (!purchase.journalEntryId) {
+      throw new NotFoundError("Asiento contable");
+    }
+
+    const expenseAccountIds =
+      purchase.purchaseType === "COMPRA_GENERAL" ||
+      purchase.purchaseType === "SERVICIO"
+        ? purchase.details
+            .map((d) => d.expenseAccountId)
+            .filter((id): id is string => !!id)
+        : [];
+
+    const accounts = await this.deps.accountLookup!.findManyByIds(
+      organizationId,
+      expenseAccountIds,
+    );
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+    for (const id of expenseAccountIds) {
+      if (!accountById.has(id)) throw new PurchaseAccountNotFound(id);
+    }
+
+    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
+    const settingsSnapshot = settings.toSnapshot();
+
+    const ivaSnapshot = await this.deps.ivaBookReader!.getActiveBookForPurchase(
+      organizationId,
+      purchaseId,
+    );
+    const ivaBook: IvaBookForEntry | undefined = ivaSnapshot
+      ? {
+          baseIvaSujetoCf: ivaSnapshot.netAmount,
+          dfCfIva: ivaSnapshot.ivaAmount,
+          importeTotal: purchase.totalAmount.value,
+          exentos: ivaSnapshot.exentos,
+        }
+      : undefined;
+
+    const detailsForEntry: PurchaseDetailForEntry[] = purchase.details.map(
+      (d) => ({
+        lineAmount: d.lineAmount.value,
+        expenseAccountCode: d.expenseAccountId
+          ? accountById.get(d.expenseAccountId)?.code ?? null
+          : null,
+        description: d.description,
+      }),
+    );
+
+    const entryLines = buildPurchaseEntryLines(
+      purchase.purchaseType,
+      purchase.totalAmount.value,
+      detailsForEntry,
+      {
+        cxpAccountCode: settingsSnapshot.cxpAccountCode,
+        fleteExpenseAccountCode: settingsSnapshot.fleteExpenseAccountCode,
+        polloFaenadoCOGSAccountCode:
+          settingsSnapshot.polloFaenadoCOGSAccountCode,
+      },
+      purchase.contactId,
+      ivaBook,
+    );
+
+    const displayCode = `${TYPE_PREFIXES[purchase.purchaseType]}-${String(purchase.sequenceNumber).padStart(3, "0")}`;
+    const journalDescription = purchase.notes
+      ? `${displayCode} - ${purchase.description} | ${purchase.notes}`
+      : `${displayCode} - ${purchase.description}`;
+
+    const { correlationId } = await this.deps.uow!.run(
+      { userId, organizationId },
+      async (scope) => {
+        const { old, new: newJournal } =
+          await scope.journalEntryFactory.regenerateForPurchaseEdit(
+            purchase.journalEntryId!,
+            {
+              organizationId,
+              contactId: purchase.contactId,
+              date: purchase.date,
+              periodId: purchase.periodId,
+              description: journalDescription,
+              sourceType: "purchase",
+              sourceId: purchase.id,
+              createdById: userId,
+              lines: entryLines.map((l) => ({
+                accountCode: l.accountCode,
+                side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+                amount: l.debit > 0 ? l.debit : l.credit,
+                contactId: l.contactId,
+                description: l.description,
+              })),
+            },
+          );
+
+        await scope.accountBalances.applyVoid(old);
+        await scope.accountBalances.applyPost(newJournal);
+      },
+    );
+
+    return { purchase, correlationId };
   }
 }

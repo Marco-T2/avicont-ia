@@ -20,7 +20,10 @@ import {
   PurchasePostNotAllowedForRole,
 } from "../errors/purchase-orchestration-errors";
 import { ForbiddenError } from "@/features/shared/errors";
-import { PurchaseVoidedImmutable } from "../../domain/errors/purchase-errors";
+import {
+  PurchaseNotDraft,
+  PurchaseVoidedImmutable,
+} from "../../domain/errors/purchase-errors";
 import { PurchaseDetail } from "../../domain/purchase-detail.entity";
 import { PurchaseService } from "../purchase.service";
 import { InMemoryPurchaseRepository } from "./fakes/in-memory-purchase.repository";
@@ -35,6 +38,9 @@ import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-fac
 import { InMemoryAccountBalancesRepository } from "./fakes/in-memory-account-balances.repo";
 import { InMemoryPurchasePermissions } from "./fakes/in-memory-purchase-permissions";
 import { InMemoryIvaBookRegenNotifier } from "./fakes/in-memory-iva-book-regen-notifier";
+import { InMemoryIvaBookVoidCascade } from "./fakes/in-memory-iva-book-void-cascade";
+import { InMemoryJournalEntries } from "./fakes/in-memory-journal-entries.repo";
+import { InMemoryJournalEntriesRead } from "./fakes/in-memory-journal-entries-read";
 
 const ORG = "org-1";
 const OTHER_ORG = "org-2";
@@ -1738,5 +1744,555 @@ describe("PurchaseService.update — POSTED branch", () => {
     );
 
     expect(payableRepo.updateCalls).toEqual([]);
+  });
+});
+
+describe("PurchaseService.void", () => {
+  let purchaseRepo: InMemoryPurchaseRepository;
+  let payableRepo: InMemoryPayableRepository;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let journalEntriesRead: InMemoryJournalEntriesRead;
+  let journalEntries: InMemoryJournalEntries;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let ivaBookVoid: InMemoryIvaBookVoidCascade;
+  let uow: InMemoryPurchaseUnitOfWork;
+  let service: PurchaseService;
+
+  function buildPostedPurchase(payableId: string | null = "payable-1"): Purchase {
+    return Purchase.fromPersistence({
+      id: "purchase-void",
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      status: "POSTED",
+      sequenceNumber: 7,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Compra posteada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(1000),
+      ruta: null,
+      farmOrigin: null,
+      chickenCount: null,
+      shrinkagePct: null,
+      totalGrossKg: null,
+      totalNetKg: null,
+      totalShrinkKg: null,
+      totalShortageKg: null,
+      totalRealNetKg: null,
+      journalEntryId: "journal-1",
+      payableId,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      payable: null,
+    });
+  }
+
+  function buildLockedPurchase(): Purchase {
+    return Purchase.fromPersistence({
+      id: "purchase-locked",
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      status: "LOCKED",
+      sequenceNumber: 8,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Compra bloqueada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(1000),
+      ruta: null,
+      farmOrigin: null,
+      chickenCount: null,
+      shrinkagePct: null,
+      totalGrossKg: null,
+      totalNetKg: null,
+      totalShrinkKg: null,
+      totalShortageKg: null,
+      totalRealNetKg: null,
+      journalEntryId: "journal-1",
+      payableId: null,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      payable: null,
+    });
+  }
+
+  function buildJournalStub(): Journal {
+    return Journal.fromPersistence({
+      id: "journal-1",
+      organizationId: ORG,
+      status: "POSTED",
+      number: 7,
+      referenceNumber: null,
+      date: new Date("2025-01-15"),
+      description: "CG-007",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CE",
+      contactId: "c-1",
+      sourceType: "purchase",
+      sourceId: "purchase-void",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      lines: [],
+    });
+  }
+
+  beforeEach(() => {
+    purchaseRepo = new InMemoryPurchaseRepository();
+    payableRepo = new InMemoryPayableRepository();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    journalEntriesRead = new InMemoryJournalEntriesRead();
+    journalEntries = new InMemoryJournalEntries();
+    accountBalances = new InMemoryAccountBalancesRepository();
+    ivaBookVoid = new InMemoryIvaBookVoidCascade();
+
+    fiscalPeriods.preload("period-1", "OPEN");
+    journalEntriesRead.preload(buildJournalStub());
+
+    uow = new InMemoryPurchaseUnitOfWork({
+      purchases: purchaseRepo,
+      journalEntries,
+      accountBalances,
+      payables: payableRepo,
+      ivaBookVoidCascade: ivaBookVoid,
+    });
+
+    service = new PurchaseService({
+      repo: purchaseRepo,
+      payables: payableRepo,
+      uow,
+      fiscalPeriods,
+      journalEntriesRead,
+    });
+  });
+
+  it("voids a POSTED purchase with cascade journal+balances+IVA but no payable", async () => {
+    purchaseRepo.preload(buildPostedPurchase(null));
+
+    const result = await service.void(ORG, "purchase-void", { userId: "user-1" });
+
+    expect(result.purchase.status).toBe("VOIDED");
+    expect(purchaseRepo.updateTxCalls).toHaveLength(1);
+    expect(ivaBookVoid.calls).toEqual([
+      { organizationId: ORG, purchaseId: "purchase-void" },
+    ]);
+    expect(accountBalances.applyVoidCalls).toHaveLength(1);
+  });
+
+  it("reverts active allocations + voids payable + deletes allocations", async () => {
+    purchaseRepo.preload(buildPostedPurchase("payable-1"));
+    payableRepo.preloadPayable(
+      Payable.fromPersistence({
+        id: "payable-1",
+        organizationId: ORG,
+        contactId: "c-1",
+        description: "CxP",
+        amount: MonetaryAmount.of(1000),
+        paid: MonetaryAmount.of(700),
+        balance: MonetaryAmount.of(300),
+        dueDate: new Date("2025-02-15"),
+        status: "PARTIAL",
+        sourceType: "purchase",
+        sourceId: "purchase-void",
+        journalEntryId: "journal-1",
+        notes: null,
+        createdAt: new Date("2025-01-15"),
+        updatedAt: new Date("2025-01-15"),
+      }),
+    );
+    payableRepo.preloadAllocations("payable-1", [
+      { id: "a-1", amount: 400, payment: { date: new Date("2025-02-01") } },
+      { id: "a-2", amount: 300, payment: { date: new Date("2025-01-25") } },
+    ]);
+
+    await service.void(ORG, "purchase-void", { userId: "user-1" });
+
+    expect(payableRepo.applyTrimPlanCalls).toHaveLength(1);
+    const trim = payableRepo.applyTrimPlanCalls[0]!;
+    expect(trim.items.map((i) => i.newAmount)).toEqual([0, 0]);
+    expect(payableRepo.updateCalls).toHaveLength(1);
+    const finalPayable = payableRepo.updateCalls[0]!;
+    expect(finalPayable.status).toBe("VOIDED");
+  });
+
+  it("voids LOCKED purchase when role admin + period OPEN + 10+ char justification", async () => {
+    purchaseRepo.preload(buildLockedPurchase());
+
+    const result = await service.void(ORG, "purchase-locked", {
+      userId: "user-1",
+      role: "admin",
+      justification: "Anulación administrativa por error de captura",
+    });
+
+    expect(result.purchase.status).toBe("VOIDED");
+    expect(uow.ranContexts[0]!.justification).toBe(
+      "Anulación administrativa por error de captura",
+    );
+  });
+
+  it("throws ForbiddenError voiding LOCKED with non-admin role", async () => {
+    purchaseRepo.preload(buildLockedPurchase());
+
+    await expect(
+      service.void(ORG, "purchase-locked", {
+        userId: "user-1",
+        role: "OPERADOR",
+        justification: "Suficiente largo",
+      }),
+    ).rejects.toThrow(ForbiddenError);
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws PurchaseLockedEditMissingJustification with requiredMin=50 when LOCKED+CLOSED period", async () => {
+    purchaseRepo.preload(buildLockedPurchase());
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    const error = await service
+      .void(ORG, "purchase-locked", {
+        userId: "user-1",
+        role: "owner",
+        justification: "Justificación corta de menos de cincuenta",
+      })
+      .catch((e) => e);
+
+    expect(error).toBeInstanceOf(PurchaseLockedEditMissingJustification);
+    expect(error.details).toEqual({ requiredMin: 50 });
+  });
+
+  it("throws PurchaseVoidedImmutable when purchase already VOIDED (delegated to domain)", async () => {
+    const voided = Purchase.fromPersistence({
+      id: "purchase-already-voided",
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      status: "VOIDED",
+      sequenceNumber: 9,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Ya anulada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(1000),
+      ruta: null,
+      farmOrigin: null,
+      chickenCount: null,
+      shrinkagePct: null,
+      totalGrossKg: null,
+      totalNetKg: null,
+      totalShrinkKg: null,
+      totalShortageKg: null,
+      totalRealNetKg: null,
+      journalEntryId: "journal-1",
+      payableId: null,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      payable: null,
+    });
+    purchaseRepo.preload(voided);
+
+    await expect(
+      service.void(ORG, "purchase-already-voided", { userId: "user-1" }),
+    ).rejects.toThrow(PurchaseVoidedImmutable);
+  });
+});
+
+describe("PurchaseService.delete", () => {
+  let purchaseRepo: InMemoryPurchaseRepository;
+  let service: PurchaseService;
+
+  beforeEach(() => {
+    purchaseRepo = new InMemoryPurchaseRepository();
+    service = new PurchaseService({ repo: purchaseRepo });
+  });
+
+  it("hard-deletes a DRAFT purchase", async () => {
+    const draft = Purchase.createDraft({
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      contactId: "c-1",
+      periodId: "period-1",
+      date: new Date("2025-01-15"),
+      description: "DRAFT",
+      createdById: "user-1",
+      details: [
+        {
+          description: "Línea",
+          lineAmount: MonetaryAmount.of(100),
+          expenseAccountId: "acc-1",
+        },
+      ],
+    });
+    purchaseRepo.preload(draft);
+
+    await service.delete(ORG, draft.id);
+
+    expect(purchaseRepo.deleteTxCalls).toEqual([
+      { organizationId: ORG, id: draft.id },
+    ]);
+  });
+
+  it("throws PurchaseNotDraft when purchase is POSTED", async () => {
+    const posted = Purchase.fromPersistence({
+      id: "posted",
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      status: "POSTED",
+      sequenceNumber: 1,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Posteada",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(100),
+      ruta: null,
+      farmOrigin: null,
+      chickenCount: null,
+      shrinkagePct: null,
+      totalGrossKg: null,
+      totalNetKg: null,
+      totalShrinkKg: null,
+      totalShortageKg: null,
+      totalRealNetKg: null,
+      journalEntryId: null,
+      payableId: null,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      payable: null,
+    });
+    purchaseRepo.preload(posted);
+
+    await expect(service.delete(ORG, "posted")).rejects.toThrow(
+      PurchaseNotDraft,
+    );
+  });
+});
+
+describe("PurchaseService.regenerateJournalForIvaChange", () => {
+  let purchaseRepo: InMemoryPurchaseRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let ivaBookReader: InMemoryIvaBookReader;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let uow: InMemoryPurchaseUnitOfWork;
+  let service: PurchaseService;
+
+  function buildPostedPurchase(): Purchase {
+    return Purchase.fromPersistence({
+      id: "purchase-iva",
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      status: "POSTED",
+      sequenceNumber: 5,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Purchase con IVA",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(1000),
+      ruta: null,
+      farmOrigin: null,
+      chickenCount: null,
+      shrinkagePct: null,
+      totalGrossKg: null,
+      totalNetKg: null,
+      totalShrinkKg: null,
+      totalShortageKg: null,
+      totalRealNetKg: null,
+      journalEntryId: "journal-iva",
+      payableId: "payable-1",
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [
+        PurchaseDetail.fromPersistence({
+          id: "det-1",
+          purchaseId: "purchase-iva",
+          description: "Item",
+          lineAmount: MonetaryAmount.of(1000),
+          order: 0,
+          expenseAccountId: "acc-expense-1",
+        }),
+      ],
+      payable: null,
+    });
+  }
+
+  function buildJournalStub(id: string): Journal {
+    return Journal.fromPersistence({
+      id,
+      organizationId: ORG,
+      status: "POSTED",
+      number: 5,
+      referenceNumber: null,
+      date: new Date("2025-01-15"),
+      description: "CG-005",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CE",
+      contactId: "c-1",
+      sourceType: "purchase",
+      sourceId: "purchase-iva",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      lines: [],
+    });
+  }
+
+  beforeEach(() => {
+    purchaseRepo = new InMemoryPurchaseRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    ivaBookReader = new InMemoryIvaBookReader();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+
+    accountLookup.preload({
+      id: "acc-expense-1",
+      code: "5.1.5",
+      isDetail: true,
+      isActive: true,
+    });
+    orgSettings.preload(
+      ORG,
+      OrgSettings.createDefault({
+        id: "settings-1",
+        organizationId: ORG,
+        createdAt: new Date("2025-01-01"),
+        updatedAt: new Date("2025-01-01"),
+      }),
+    );
+
+    uow = new InMemoryPurchaseUnitOfWork({
+      purchases: purchaseRepo,
+      accountBalances,
+      journalEntryFactory,
+    });
+
+    service = new PurchaseService({
+      repo: purchaseRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      ivaBookReader,
+    });
+  });
+
+  it("regenerates journal with IVA snapshot lines + applyVoid old + applyPost new", async () => {
+    const purchase = buildPostedPurchase();
+    purchaseRepo.preload(purchase);
+    ivaBookReader.preload(purchase.id, {
+      id: "iva-1",
+      purchaseId: purchase.id,
+      ivaRate: 0.13,
+      ivaAmount: 130,
+      netAmount: 1000,
+      exentos: 0,
+    });
+    journalEntryFactory.enqueueRegenPurchase({
+      old: buildJournalStub("journal-iva"),
+      new: buildJournalStub("journal-iva"),
+    });
+
+    const result = await service.regenerateJournalForIvaChange(
+      ORG,
+      purchase.id,
+      "user-1",
+    );
+
+    expect(result.purchase.id).toBe(purchase.id);
+    expect(journalEntryFactory.regenPurchaseCalls).toHaveLength(1);
+    const lines = journalEntryFactory.regenPurchaseCalls[0]!.template.lines;
+    // IVA crédito fiscal account 1.1.8 (paridad legacy purchase)
+    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(true);
+    expect(accountBalances.applyVoidCalls).toHaveLength(1);
+    expect(accountBalances.applyPostCalls).toHaveLength(1);
+  });
+
+  it("regenerates journal without IVA when no active IVA snapshot", async () => {
+    const purchase = buildPostedPurchase();
+    purchaseRepo.preload(purchase);
+    journalEntryFactory.enqueueRegenPurchase({
+      old: buildJournalStub("journal-iva"),
+      new: buildJournalStub("journal-iva"),
+    });
+
+    await service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1");
+
+    const lines = journalEntryFactory.regenPurchaseCalls[0]!.template.lines;
+    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(false);
+  });
+
+  it("throws NotFoundError when purchase has no journalEntryId", async () => {
+    const purchase = Purchase.fromPersistence({
+      id: "no-journal",
+      organizationId: ORG,
+      purchaseType: "COMPRA_GENERAL",
+      status: "POSTED",
+      sequenceNumber: 1,
+      date: new Date("2025-01-15"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Sin journal",
+      referenceNumber: null,
+      notes: null,
+      totalAmount: MonetaryAmount.of(100),
+      ruta: null,
+      farmOrigin: null,
+      chickenCount: null,
+      shrinkagePct: null,
+      totalGrossKg: null,
+      totalNetKg: null,
+      totalShrinkKg: null,
+      totalShortageKg: null,
+      totalRealNetKg: null,
+      journalEntryId: null,
+      payableId: null,
+      createdById: "user-1",
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      details: [],
+      payable: null,
+    });
+    purchaseRepo.preload(purchase);
+
+    await expect(
+      service.regenerateJournalForIvaChange(ORG, "no-journal", "user-1"),
+    ).rejects.toThrow(NotFoundError);
+  });
+
+  it("throws PurchaseAccountNotFound when expense account not in lookup (CG)", async () => {
+    const purchase = buildPostedPurchase();
+    purchaseRepo.preload(purchase);
+    accountLookup = new InMemoryAccountLookup();
+    service = new PurchaseService({
+      repo: purchaseRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      ivaBookReader,
+    });
+
+    await expect(
+      service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1"),
+    ).rejects.toThrow(PurchaseAccountNotFound);
   });
 });

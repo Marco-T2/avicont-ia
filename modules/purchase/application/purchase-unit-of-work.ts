@@ -8,6 +8,7 @@ import type { PayableRepository } from "@/modules/payables/domain/payable.reposi
 import type { PurchaseRepository } from "../domain/ports/purchase.repository";
 import type { JournalEntryFactoryPort } from "@/modules/sale/domain/ports/journal-entry-factory.port";
 import type { IvaBookRegenNotifierPort } from "../domain/ports/iva-book-regen-notifier.port";
+import type { IvaBookVoidCascadePort } from "../domain/ports/iva-book-void-cascade.port";
 
 /**
  * Purchase-specific UoW scope. Tx-bound repos owned by purchase-hex use
@@ -36,6 +37,7 @@ export interface PurchaseScope extends BaseScope {
   readonly payables: PayableRepository;
   readonly journalEntryFactory: JournalEntryFactoryPort;
   readonly ivaBookRegenNotifier: IvaBookRegenNotifierPort;
+  readonly ivaBookVoidCascade: IvaBookVoidCascadePort;
 }
 
 export type PurchaseUnitOfWork = UnitOfWork<PurchaseScope>;

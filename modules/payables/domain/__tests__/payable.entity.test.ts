@@ -471,4 +471,46 @@ describe("Payable entity", () => {
       expect(p.amount.value).toBe(1000);
     });
   });
+
+  describe("revertAllocations() — purchase void cascade", () => {
+    it("reverts paid by totalAmount and recomputes balance/status PENDING", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(300));
+      const reverted = p.revertAllocations(MonetaryAmount.of(300));
+
+      expect(reverted.paid.value).toBe(0);
+      expect(reverted.balance.value).toBe(1000);
+      expect(reverted.status).toBe("PENDING");
+    });
+
+    it("clamps paid at zero when totalAmount > current paid", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(200));
+      const reverted = p.revertAllocations(MonetaryAmount.of(500));
+
+      expect(reverted.paid.value).toBe(0);
+      expect(reverted.status).toBe("PENDING");
+    });
+
+    it("status PARTIAL when partial revert", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(800));
+      const reverted = p.revertAllocations(MonetaryAmount.of(300));
+
+      expect(reverted.paid.value).toBe(500);
+      expect(reverted.balance.value).toBe(500);
+      expect(reverted.status).toBe("PARTIAL");
+    });
+
+    it("throws CannotRevertOnVoidedPayable on VOIDED payable", () => {
+      const p = Payable.create(baseInput).void();
+      expect(() => p.revertAllocations(MonetaryAmount.of(100))).toThrow(
+        CannotRevertOnVoidedPayable,
+      );
+    });
+
+    it("throws RevertMustBePositive when totalAmount is zero", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(300));
+      expect(() => p.revertAllocations(MonetaryAmount.zero())).toThrow(
+        RevertMustBePositive,
+      );
+    });
+  });
 });

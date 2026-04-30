@@ -184,6 +184,44 @@ export class Payable {
   }
 
   /**
+   * Bulk revert of allocations — used when purchase void cascades into the
+   * payable. Reduces `paid` by `totalAmount` (clamped at zero), recomputes
+   * `balance`, status: PAID/PARTIAL/PENDING. Mirrors legacy
+   * `purchase.service.ts:1322-1342` derivation. Pre: payable not VOIDED;
+   * `totalAmount > 0`. La eliminación de los allocation rows subyacentes
+   * se orquesta fuera (purchase-hex use case + `applyTrimPlanTx`).
+   * Espejo simétrico de sale-hex `Receivable.revertAllocations`.
+   */
+  revertAllocations(totalAmount: MonetaryAmount): Payable {
+    if (this.props.status === "VOIDED") {
+      throw new CannotRevertOnVoidedPayable();
+    }
+    if (!totalAmount.isGreaterThan(MonetaryAmount.zero())) {
+      throw new RevertMustBePositive();
+    }
+    const newPaidValue = Math.max(0, this.props.paid.value - totalAmount.value);
+    const newPaid = MonetaryAmount.of(newPaidValue);
+    const newBalance = this.props.amount.minus(newPaid);
+
+    let newStatus: PayableStatus;
+    if (newPaid.equals(this.props.amount)) {
+      newStatus = "PAID";
+    } else if (newPaid.value > 0) {
+      newStatus = "PARTIAL";
+    } else {
+      newStatus = "PENDING";
+    }
+
+    return new Payable({
+      ...this.props,
+      paid: newPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
    * Updates the payable's `contactId` — used when an underlying purchase's
    * contact is changed via editPosted (legacy `purchase.service.ts:914`
    * parity). Espejo simétrico de sale-hex `Receivable.changeContact`.
