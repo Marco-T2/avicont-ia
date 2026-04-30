@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
 import type { ContactRepository } from "@/modules/contacts/domain/contact.repository";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
@@ -6,9 +6,13 @@ import type { FiscalPeriodsReadPort } from "@/modules/accounting/domain/ports/fi
 import type { OrgSettingsReaderPort } from "@/modules/sale/domain/ports/org-settings-reader.port";
 import {
   Purchase,
+  type ApplyPurchaseEditInput,
+  type CreatePurchaseDraftDetailInput,
   type CreatePurchaseDraftInput,
   type PurchaseType,
 } from "../domain/purchase.entity";
+import { PurchaseDetail } from "../domain/purchase-detail.entity";
+import { PurchaseVoidedImmutable } from "../domain/errors/purchase-errors";
 import type {
   PurchaseFilters,
   PurchaseRepository,
@@ -28,8 +32,10 @@ import {
 } from "../domain/build-purchase-entry-lines";
 import {
   PurchaseAccountNotFound,
+  PurchaseContactChangeWithAllocations,
   PurchaseContactInactive,
   PurchaseContactNotProvider,
+  PurchaseLockedEditMissingJustification,
   PurchasePeriodClosed,
   PurchasePostNotAllowedForRole,
 } from "./errors/purchase-orchestration-errors";
@@ -75,6 +81,21 @@ export interface CreateDraftResult {
 }
 
 export interface PostPurchaseResult {
+  purchase: Purchase;
+  correlationId: string;
+}
+
+export interface UpdatePurchaseInput extends ApplyPurchaseEditInput {
+  details?: CreatePurchaseDraftDetailInput[];
+}
+
+export interface UpdatePurchaseContext {
+  userId: string;
+  role?: string;
+  justification?: string;
+}
+
+export interface UpdatePurchaseResult {
   purchase: Purchase;
   correlationId: string;
 }
@@ -520,6 +541,354 @@ export class PurchaseService {
           .linkJournal(journal.id)
           .linkPayable(payable.id);
         return scope.purchases.saveTx(linked);
+      },
+    );
+
+    return { purchase: result, correlationId };
+  }
+
+  /**
+   * Updates a purchase. Mirrors legacy `purchase.service.ts:669-769` (fidelidad
+   * regla #1) — espejo simétrico a sale-hex `update`.
+   *
+   * - DRAFT: header + optional details replace.
+   * - LOCKED: header only (details ignored, legacy parity). Gates role
+   *   (`owner`/`admin`) + period status (CLOSED → 50 char min; OPEN → 10).
+   * - POSTED: atomic revert-modify-reapply cascade (private updatePosted).
+   * - VOIDED: rejected via `PurchaseVoidedImmutable` (domain).
+   */
+  async update(
+    organizationId: string,
+    purchaseId: string,
+    input: UpdatePurchaseInput,
+    context: UpdatePurchaseContext,
+  ): Promise<UpdatePurchaseResult> {
+    if (!this.deps.contacts) {
+      throw new Error("PurchaseService.update requires ContactRepository");
+    }
+    if (!this.deps.uow) {
+      throw new Error("PurchaseService.update requires PurchaseUnitOfWork");
+    }
+
+    const purchase = await this.getById(organizationId, purchaseId);
+
+    if (purchase.status === "VOIDED") throw new PurchaseVoidedImmutable();
+
+    if (purchase.status === "POSTED") {
+      return this.updatePosted(organizationId, purchase, input, context);
+    }
+
+    if (purchase.status === "LOCKED") {
+      if (!this.deps.fiscalPeriods) {
+        throw new Error(
+          "PurchaseService.update LOCKED branch requires FiscalPeriodsReadPort",
+        );
+      }
+      if (context.role !== "owner" && context.role !== "admin") {
+        throw new ForbiddenError(
+          "Solo administradores pueden modificar documentos bloqueados",
+        );
+      }
+      const period = await this.deps.fiscalPeriods.getById(
+        organizationId,
+        purchase.periodId,
+      );
+      const requiredMin = period.status === "CLOSED" ? 50 : 10;
+      if (
+        !context.justification ||
+        context.justification.trim().length < requiredMin
+      ) {
+        throw new PurchaseLockedEditMissingJustification(requiredMin);
+      }
+    }
+
+    if (input.contactId !== undefined) {
+      const contact = await this.deps.contacts.findById(
+        organizationId,
+        input.contactId,
+      );
+      if (!contact) throw new ContactNotFound();
+      if (!contact.isActive) throw new PurchaseContactInactive(input.contactId);
+      if (contact.type !== "PROVEEDOR") {
+        throw new PurchaseContactNotProvider(contact.type);
+      }
+    }
+
+    let edited = purchase.applyEdit({
+      date: input.date,
+      description: input.description,
+      contactId: input.contactId,
+      referenceNumber: input.referenceNumber,
+      notes: input.notes,
+    });
+
+    const replaceDetails =
+      purchase.status === "DRAFT" && input.details !== undefined;
+
+    if (replaceDetails) {
+      const newDetails = input.details!.map((d, idx) =>
+        PurchaseDetail.create({
+          purchaseId: edited.id,
+          description: d.description,
+          lineAmount: d.lineAmount,
+          order: d.order ?? idx,
+          quantity: d.quantity,
+          unitPrice: d.unitPrice,
+          expenseAccountId: d.expenseAccountId,
+          fecha: d.fecha,
+          docRef: d.docRef,
+          chickenQty: d.chickenQty,
+          pricePerChicken: d.pricePerChicken,
+          productTypeId: d.productTypeId,
+          detailNote: d.detailNote,
+          boxes: d.boxes,
+          grossWeight: d.grossWeight,
+          tare: d.tare,
+          netWeight: d.netWeight,
+          shrinkage: d.shrinkage,
+          shortage: d.shortage,
+          realNetWeight: d.realNetWeight,
+        }),
+      );
+      edited = edited.replaceDetails(newDetails);
+    }
+
+    const auditContext =
+      purchase.status === "LOCKED"
+        ? {
+            userId: context.userId,
+            organizationId,
+            justification: context.justification,
+          }
+        : { userId: context.userId, organizationId };
+
+    const { result, correlationId } = await this.deps.uow.run(
+      auditContext,
+      (scope) => scope.purchases.updateTx(edited, { replaceDetails }),
+    );
+
+    return { purchase: result, correlationId };
+  }
+
+  /**
+   * POSTED edit flow. Mirrors legacy `purchase.service.ts:817-1093` (fidelidad
+   * regla #1) — espejo simétrico a sale-hex `updatePosted`. Atomic revert-
+   * modify-reapply cascade: pre-validar contact change + load+regenerate
+   * journal + applyVoid old + applyPost new + payable amount mutate + LIFO
+   * trim allocations.
+   */
+  private async updatePosted(
+    organizationId: string,
+    purchase: Purchase,
+    input: UpdatePurchaseInput,
+    context: UpdatePurchaseContext,
+  ): Promise<UpdatePurchaseResult> {
+    const required = {
+      uow: this.deps.uow,
+      contacts: this.deps.contacts,
+      accountLookup: this.deps.accountLookup,
+      orgSettings: this.deps.orgSettings,
+      fiscalPeriods: this.deps.fiscalPeriods,
+      payables: this.deps.payables,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) {
+        throw new Error(`PurchaseService.update POSTED branch requires ${name}`);
+      }
+    }
+
+    const period = await this.deps.fiscalPeriods!.getById(
+      organizationId,
+      purchase.periodId,
+    );
+    if (period.status === "CLOSED") {
+      throw new PurchasePeriodClosed(purchase.periodId);
+    }
+
+    if (
+      input.contactId !== undefined &&
+      input.contactId !== purchase.contactId &&
+      purchase.payableId
+    ) {
+      const allocations =
+        await this.deps.payables!.findAllocationsForPayable(
+          organizationId,
+          purchase.payableId,
+        );
+      if (allocations.length > 0) {
+        throw new PurchaseContactChangeWithAllocations();
+      }
+    }
+
+    if (input.contactId !== undefined) {
+      const contact = await this.deps.contacts!.findById(
+        organizationId,
+        input.contactId,
+      );
+      if (!contact) throw new ContactNotFound();
+      if (!contact.isActive) throw new PurchaseContactInactive(input.contactId);
+      if (contact.type !== "PROVEEDOR") {
+        throw new PurchaseContactNotProvider(contact.type);
+      }
+    }
+
+    let edited = purchase.applyEdit({
+      date: input.date,
+      description: input.description,
+      contactId: input.contactId,
+      referenceNumber: input.referenceNumber,
+      notes: input.notes,
+    });
+    const replaceDetails = input.details !== undefined;
+    if (replaceDetails) {
+      const newDetails = input.details!.map((d, idx) =>
+        PurchaseDetail.create({
+          purchaseId: edited.id,
+          description: d.description,
+          lineAmount: d.lineAmount,
+          order: d.order ?? idx,
+          quantity: d.quantity,
+          unitPrice: d.unitPrice,
+          expenseAccountId: d.expenseAccountId,
+          fecha: d.fecha,
+          docRef: d.docRef,
+          chickenQty: d.chickenQty,
+          pricePerChicken: d.pricePerChicken,
+          productTypeId: d.productTypeId,
+          detailNote: d.detailNote,
+          boxes: d.boxes,
+          grossWeight: d.grossWeight,
+          tare: d.tare,
+          netWeight: d.netWeight,
+          shrinkage: d.shrinkage,
+          shortage: d.shortage,
+          realNetWeight: d.realNetWeight,
+        }),
+      );
+      edited = edited.replaceDetails(newDetails);
+    }
+
+    const expenseAccountIds =
+      edited.purchaseType === "COMPRA_GENERAL" ||
+      edited.purchaseType === "SERVICIO"
+        ? edited.details
+            .map((d) => d.expenseAccountId)
+            .filter((id): id is string => !!id)
+        : [];
+
+    const accounts = await this.deps.accountLookup!.findManyByIds(
+      organizationId,
+      expenseAccountIds,
+    );
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+    for (const id of expenseAccountIds) {
+      if (!accountById.has(id)) throw new PurchaseAccountNotFound(id);
+    }
+
+    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
+    const settingsSnapshot = settings.toSnapshot();
+
+    const detailsForEntry: PurchaseDetailForEntry[] = edited.details.map((d) => ({
+      lineAmount: d.lineAmount.value,
+      expenseAccountCode: d.expenseAccountId
+        ? accountById.get(d.expenseAccountId)?.code ?? null
+        : null,
+      description: d.description,
+    }));
+
+    const { result, correlationId } = await this.deps.uow!.run(
+      { userId: context.userId, organizationId },
+      async (scope) => {
+        const newIvaBook = await scope.ivaBookRegenNotifier.recomputeFromPurchase(
+          organizationId,
+          edited.id,
+          edited.totalAmount.value,
+        );
+
+        const entryLines = buildPurchaseEntryLines(
+          edited.purchaseType,
+          edited.totalAmount.value,
+          detailsForEntry,
+          {
+            cxpAccountCode: settingsSnapshot.cxpAccountCode,
+            fleteExpenseAccountCode: settingsSnapshot.fleteExpenseAccountCode,
+            polloFaenadoCOGSAccountCode:
+              settingsSnapshot.polloFaenadoCOGSAccountCode,
+          },
+          edited.contactId,
+          newIvaBook ?? undefined,
+        );
+
+        const displayCode = `${TYPE_PREFIXES[edited.purchaseType]}-${String(edited.sequenceNumber).padStart(3, "0")}`;
+        const journalDescription = edited.notes
+          ? `${displayCode} - ${edited.description} | ${edited.notes}`
+          : `${displayCode} - ${edited.description}`;
+
+        const { old, new: newJournal } =
+          await scope.journalEntryFactory.regenerateForPurchaseEdit(
+            edited.journalEntryId!,
+            {
+              organizationId,
+              contactId: edited.contactId,
+              date: edited.date,
+              periodId: edited.periodId,
+              description: journalDescription,
+              sourceType: "purchase",
+              sourceId: edited.id,
+              createdById: context.userId,
+              lines: entryLines.map((l) => ({
+                accountCode: l.accountCode,
+                side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+                amount: l.debit > 0 ? l.debit : l.credit,
+                contactId: l.contactId,
+                description: l.description,
+              })),
+            },
+          );
+
+        await scope.accountBalances.applyVoid(old);
+        const persistedPurchase = await scope.purchases.updateTx(edited, {
+          replaceDetails,
+        });
+        await scope.accountBalances.applyPost(newJournal);
+
+        if (edited.payableId) {
+          const payable = await scope.payables.findById(
+            organizationId,
+            edited.payableId,
+          );
+          if (payable && payable.status !== "VOIDED") {
+            let updatedPayable = payable.recomputeForPurchaseEdit(
+              edited.totalAmount,
+            );
+            if (payable.contactId !== edited.contactId) {
+              updatedPayable = updatedPayable.changeContact(edited.contactId);
+            }
+            await scope.payables.update(updatedPayable);
+
+            if (payable.paid.value > edited.totalAmount.value) {
+              const allocations =
+                await scope.payables.findAllocationsForPayable(
+                  organizationId,
+                  edited.payableId,
+                );
+              const excess = payable.paid.value - edited.totalAmount.value;
+              const trimPlan = computeTrimPlan(allocations, excess);
+              const trimItems = trimPlan.map((p) => ({
+                allocationId: p.allocationId,
+                newAmount: parseFloat(p.trimmedTo),
+              }));
+              await scope.payables.applyTrimPlanTx(
+                undefined,
+                organizationId,
+                edited.payableId,
+                trimItems,
+              );
+            }
+          }
+        }
+
+        return persistedPurchase;
       },
     );
 

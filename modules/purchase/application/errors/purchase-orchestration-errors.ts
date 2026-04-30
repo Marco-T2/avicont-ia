@@ -1,8 +1,10 @@
 import {
   FISCAL_PERIOD_CLOSED,
   ForbiddenError,
+  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   POST_NOT_ALLOWED_FOR_ROLE,
   PURCHASE_ACCOUNT_NOT_FOUND,
+  PURCHASE_CONTACT_CHANGE_BLOCKED,
   PURCHASE_CONTACT_INACTIVE,
   PURCHASE_INVALID_CONTACT_TYPE,
   ValidationError,
@@ -10,8 +12,10 @@ import {
 
 export {
   FISCAL_PERIOD_CLOSED,
+  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   POST_NOT_ALLOWED_FOR_ROLE,
   PURCHASE_ACCOUNT_NOT_FOUND,
+  PURCHASE_CONTACT_CHANGE_BLOCKED,
   PURCHASE_CONTACT_INACTIVE,
   PURCHASE_INVALID_CONTACT_TYPE,
 } from "@/features/shared/errors";
@@ -68,5 +72,30 @@ export class PurchasePostNotAllowedForRole extends ForbiddenError {
     );
     this.name = "PurchasePostNotAllowedForRole";
     this.details = { role };
+  }
+}
+
+export class PurchaseLockedEditMissingJustification extends ValidationError {
+  constructor(requiredMin?: number) {
+    const message =
+      requiredMin === undefined
+        ? "La edición de una compra bloqueada requiere justificación"
+        : `Se requiere una justificación de al menos ${requiredMin} caracteres para modificar una compra bloqueada`;
+    super(
+      message,
+      LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+      requiredMin === undefined ? undefined : { requiredMin },
+    );
+    this.name = "PurchaseLockedEditMissingJustification";
+  }
+}
+
+export class PurchaseContactChangeWithAllocations extends ValidationError {
+  constructor() {
+    super(
+      "No se puede cambiar el contacto de la compra porque tiene pagos activos asociados",
+      PURCHASE_CONTACT_CHANGE_BLOCKED,
+    );
+    this.name = "PurchaseContactChangeWithAllocations";
   }
 }
