@@ -31,6 +31,7 @@ import {
   PurchaseContactInactive,
   PurchaseContactNotProvider,
   PurchasePeriodClosed,
+  PurchasePostNotAllowedForRole,
 } from "./errors/purchase-orchestration-errors";
 import type { PurchaseUnitOfWork } from "./purchase-unit-of-work";
 
@@ -351,6 +352,174 @@ export class PurchaseService {
 
         const linked = numbered.linkJournal(journal.id).linkPayable(payable.id);
         return scope.purchases.updateTx(linked, { replaceDetails: false });
+      },
+    );
+
+    return { purchase: result, correlationId };
+  }
+
+  /**
+   * Atomic create + post — DRAFT y POSTED en una sola tx. Mirrors legacy
+   * `purchase.service.ts:505-668` (fidelidad regla #1) y espejo simétrico
+   * sale-hex `createAndPost`. RBAC `canPost("purchases")` corre ANTES de
+   * entrar a la UoW (paridad legacy: requests denegados nunca abren tx
+   * Postgres). NO IVA snapshot lookup — sólo `post()` consulta el IVA book
+   * (createAndPost es fast path para compras no-IVA).
+   */
+  async createAndPost(
+    organizationId: string,
+    input: CreateDraftInput,
+    context: { userId: string; role: string },
+  ): Promise<PostPurchaseResult> {
+    const required = {
+      contacts: this.deps.contacts,
+      payables: this.deps.payables,
+      uow: this.deps.uow,
+      accountLookup: this.deps.accountLookup,
+      orgSettings: this.deps.orgSettings,
+      fiscalPeriods: this.deps.fiscalPeriods,
+      purchasePermissions: this.deps.purchasePermissions,
+    };
+    for (const [name, dep] of Object.entries(required)) {
+      if (!dep) throw new Error(`PurchaseService.createAndPost requires ${name}`);
+    }
+
+    const allowed = await this.deps.purchasePermissions!.canPost(
+      context.role,
+      "purchases",
+      organizationId,
+    );
+    if (!allowed) throw new PurchasePostNotAllowedForRole(context.role);
+
+    const contact = await this.deps.contacts!.findById(
+      organizationId,
+      input.contactId,
+    );
+    if (!contact) throw new ContactNotFound();
+    if (!contact.isActive) throw new PurchaseContactInactive(input.contactId);
+    if (contact.type !== "PROVEEDOR") {
+      throw new PurchaseContactNotProvider(contact.type);
+    }
+
+    const period = await this.deps.fiscalPeriods!.getById(
+      organizationId,
+      input.periodId,
+    );
+    if (period.status === "CLOSED") {
+      throw new PurchasePeriodClosed(input.periodId);
+    }
+
+    const pfSummary =
+      input.purchaseType === "POLLO_FAENADO"
+        ? computePfSummary(input.details)
+        : undefined;
+
+    const posted = Purchase.createDraft({
+      ...input,
+      organizationId,
+      createdById: context.userId,
+      ...(pfSummary
+        ? {
+            totalGrossKg: pfSummary.totalGrossKg,
+            totalNetKg: pfSummary.totalNetKg,
+            totalShrinkKg: pfSummary.totalShrinkKg,
+            totalShortageKg: pfSummary.totalShortageKg,
+            totalRealNetKg: pfSummary.totalRealNetKg,
+          }
+        : {}),
+    }).post();
+
+    const expenseAccountIds =
+      posted.purchaseType === "COMPRA_GENERAL" ||
+      posted.purchaseType === "SERVICIO"
+        ? posted.details
+            .map((d) => d.expenseAccountId)
+            .filter((id): id is string => !!id)
+        : [];
+
+    const accounts = await this.deps.accountLookup!.findManyByIds(
+      organizationId,
+      expenseAccountIds,
+    );
+    const accountById = new Map(accounts.map((a) => [a.id, a]));
+    for (const id of expenseAccountIds) {
+      if (!accountById.has(id)) throw new PurchaseAccountNotFound(id);
+    }
+
+    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
+    const settingsSnapshot = settings.toSnapshot();
+
+    const detailsForEntry: PurchaseDetailForEntry[] = posted.details.map((d) => ({
+      lineAmount: d.lineAmount.value,
+      expenseAccountCode: d.expenseAccountId
+        ? accountById.get(d.expenseAccountId)?.code ?? null
+        : null,
+      description: d.description,
+    }));
+
+    const entryLines = buildPurchaseEntryLines(
+      posted.purchaseType,
+      posted.totalAmount.value,
+      detailsForEntry,
+      {
+        cxpAccountCode: settingsSnapshot.cxpAccountCode,
+        fleteExpenseAccountCode: settingsSnapshot.fleteExpenseAccountCode,
+        polloFaenadoCOGSAccountCode: settingsSnapshot.polloFaenadoCOGSAccountCode,
+      },
+      posted.contactId,
+    );
+
+    const paymentTermsDays = contact.paymentTermsDays;
+
+    const { result, correlationId } = await this.deps.uow!.run(
+      { userId: context.userId, organizationId },
+      async (scope) => {
+        const seq = await scope.purchases.getNextSequenceNumberTx(organizationId);
+        const numbered = posted.assignSequenceNumber(seq);
+
+        const displayCode = `${TYPE_PREFIXES[numbered.purchaseType]}-${String(seq).padStart(3, "0")}`;
+        const journalDescription = numbered.notes
+          ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
+          : `${displayCode} - ${numbered.description}`;
+
+        const journal = await scope.journalEntryFactory.generateForPurchase({
+          organizationId,
+          contactId: numbered.contactId,
+          date: numbered.date,
+          periodId: numbered.periodId,
+          description: journalDescription,
+          sourceType: "purchase",
+          sourceId: numbered.id,
+          createdById: context.userId,
+          lines: entryLines.map((l) => ({
+            accountCode: l.accountCode,
+            side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
+            amount: l.debit > 0 ? l.debit : l.credit,
+            contactId: l.contactId,
+            description: l.description,
+          })),
+        });
+
+        await scope.accountBalances.applyPost(journal);
+
+        const dueDate = new Date(
+          numbered.date.getTime() + paymentTermsDays * 24 * 60 * 60 * 1000,
+        );
+        const payable = await scope.payables.createTx(undefined, {
+          organizationId,
+          contactId: numbered.contactId,
+          description: journalDescription,
+          amount: numbered.totalAmount.value,
+          dueDate,
+          sourceType: "purchase",
+          sourceId: numbered.id,
+          journalEntryId: journal.id,
+        });
+
+        const linked = numbered
+          .linkJournal(journal.id)
+          .linkPayable(payable.id);
+        return scope.purchases.saveTx(linked);
       },
     );
 

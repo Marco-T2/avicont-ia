@@ -1,5 +1,7 @@
 import {
   FISCAL_PERIOD_CLOSED,
+  ForbiddenError,
+  POST_NOT_ALLOWED_FOR_ROLE,
   PURCHASE_ACCOUNT_NOT_FOUND,
   PURCHASE_CONTACT_INACTIVE,
   PURCHASE_INVALID_CONTACT_TYPE,
@@ -8,6 +10,7 @@ import {
 
 export {
   FISCAL_PERIOD_CLOSED,
+  POST_NOT_ALLOWED_FOR_ROLE,
   PURCHASE_ACCOUNT_NOT_FOUND,
   PURCHASE_CONTACT_INACTIVE,
   PURCHASE_INVALID_CONTACT_TYPE,
@@ -54,5 +57,16 @@ export class PurchasePeriodClosed extends ValidationError {
       { periodId },
     );
     this.name = "PurchasePeriodClosed";
+  }
+}
+
+export class PurchasePostNotAllowedForRole extends ForbiddenError {
+  constructor(role: string) {
+    super(
+      "Tu rol no tiene permiso para contabilizar compras",
+      POST_NOT_ALLOWED_FOR_ROLE,
+    );
+    this.name = "PurchasePostNotAllowedForRole";
+    this.details = { role };
   }
 }
