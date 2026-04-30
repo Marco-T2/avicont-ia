@@ -1,4 +1,4 @@
-import type { Purchase } from "../purchase.entity";
+import type { Purchase, PurchaseType } from "../purchase.entity";
 
 export interface PurchaseFilters {
   contactId?: string;
@@ -53,12 +53,19 @@ export interface PurchaseRepository {
   deleteTx(organizationId: string, id: string): Promise<void>;
 
   /**
-   * Tx-aware sequence allocator. Devuelve el próximo `sequenceNumber` para la
-   * org. Espejo simétrico a sale-hex `SaleRepository.getNextSequenceNumberTx`
-   * — paridad legacy regla #1: `MAX(sequenceNumber) + 1` SIN row lock; la
-   * unicidad la garantiza el `@@unique([organizationId, sequenceNumber])` del
-   * schema. Concurrencia → `P2002` aborta tx (legacy no tiene retry; el
-   * adapter tampoco).
+   * Tx-aware sequence allocator scoped por (`organizationId`, `purchaseType`).
+   * Asimetría purchase vs sale-hex (audit-4 D-A3-1): purchase tiene 4
+   * secuencias INDEPENDIENTES por `PurchaseType` (FLETE, POLLO_FAENADO,
+   * COMPRA_GENERAL, SERVICIO) — paridad legacy regla #1 con
+   * `features/purchase/purchase.repository.ts:163-172` (`where: {
+   * organizationId, purchaseType }` antes del `MAX(sequenceNumber)+1`).
+   * Schema constraint `@@unique([organizationId, purchaseType, sequenceNumber])`
+   * + Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven en
+   * misma org sin colisión). Sin row lock; concurrencia → `P2002` aborta tx
+   * (legacy no tiene retry; el adapter tampoco).
    */
-  getNextSequenceNumberTx(organizationId: string): Promise<number>;
+  getNextSequenceNumberTx(
+    organizationId: string,
+    purchaseType: PurchaseType,
+  ): Promise<number>;
 }

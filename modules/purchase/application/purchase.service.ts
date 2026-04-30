@@ -332,7 +332,7 @@ export class PurchaseService {
     const { result, correlationId } = await this.deps.uow!.run(
       { userId, organizationId },
       async (scope) => {
-        const seq = await scope.purchases.getNextSequenceNumberTx(organizationId);
+        const seq = await scope.purchases.getNextSequenceNumberTx(organizationId, posted.purchaseType);
         const numbered = posted.assignSequenceNumber(seq);
 
         const displayCode = `${TYPE_PREFIXES[numbered.purchaseType]}-${String(seq).padStart(3, "0")}`;
@@ -498,7 +498,7 @@ export class PurchaseService {
     const { result, correlationId } = await this.deps.uow!.run(
       { userId: context.userId, organizationId },
       async (scope) => {
-        const seq = await scope.purchases.getNextSequenceNumberTx(organizationId);
+        const seq = await scope.purchases.getNextSequenceNumberTx(organizationId, posted.purchaseType);
         const numbered = posted.assignSequenceNumber(seq);
 
         const displayCode = `${TYPE_PREFIXES[numbered.purchaseType]}-${String(seq).padStart(3, "0")}`;

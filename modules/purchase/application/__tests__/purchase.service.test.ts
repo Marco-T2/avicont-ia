@@ -667,6 +667,40 @@ describe("PurchaseService.post", () => {
     // IVA crédito fiscal account 1.1.8 (paridad legacy purchase)
     expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(true);
   });
+
+  /**
+   * Audit-4 D-A3-1 RED — paridad legacy regla #1 invariante D-A3-1.
+   *
+   * Schema `@@unique([organizationId, purchaseType, sequenceNumber])` + legacy
+   * `features/purchase/purchase.repository.ts:163-172` (`where: { organizationId,
+   * purchaseType }` filter antes del `MAX(sequenceNumber)+1`) +
+   * Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven en la
+   * misma org sin colisión) imponen secuencias INDEPENDIENTES por purchaseType.
+   *
+   * El port `getNextSequenceNumberTx(orgId)` actual NO toma purchaseType — copy
+   * paste shape sale-hex (sale schema es `@@unique([orgId, sequenceNumber])` puro,
+   * 1 secuencia global). Fake stub honra el contrato del port (1 sequence map
+   * por-org), por eso A2 pasó verde — match `feedback_aspirational_mock_signals_unimplemented_contract`.
+   *
+   * Expected RED failure mode: dos posts de purchaseTypes distintos asignan
+   * `sequenceNumber=1` y `sequenceNumber=2` (port global) en vez de `1` y `1`
+   * (paridad legacy + schema). Aserto final falla con `expected 2 to be 1`.
+   */
+  it("aloca sequenceNumber independiente por purchaseType (paridad legacy regla #1 — schema @@unique([organizationId, purchaseType, sequenceNumber]))", async () => {
+    const flete = buildDraftPurchase({ purchaseType: "FLETE" });
+    const compra = buildDraftPurchase({ purchaseType: "COMPRA_GENERAL" });
+    purchaseRepo.preload(flete, compra);
+    journalEntryFactory.enqueuePurchase(buildJournalStub(), buildJournalStub());
+
+    const fleteResult = await service.post(ORG, flete.id, "user-1");
+    expect(fleteResult.purchase.purchaseType).toBe("FLETE");
+    expect(fleteResult.purchase.sequenceNumber).toBe(1);
+
+    const compraResult = await service.post(ORG, compra.id, "user-1");
+    expect(compraResult.purchase.purchaseType).toBe("COMPRA_GENERAL");
+    // CRITICAL: must be 1, NOT 2 — secuencias separadas por type
+    expect(compraResult.purchase.sequenceNumber).toBe(1);
+  });
 });
 
 describe("PurchaseService.createAndPost", () => {

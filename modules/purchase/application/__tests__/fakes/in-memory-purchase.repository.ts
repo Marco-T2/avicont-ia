@@ -1,16 +1,19 @@
-import type { Purchase } from "../../../domain/purchase.entity";
+import type { Purchase, PurchaseType } from "../../../domain/purchase.entity";
 import type {
   PurchaseFilters,
   PurchaseRepository,
 } from "../../../domain/ports/purchase.repository";
 
 /**
- * In-memory `PurchaseRepository` fake. Espejo simétrico a
- * `InMemorySaleRepository` (sale-hex). Read methods (`findById`, `findAll`)
+ * In-memory `PurchaseRepository` fake. Read methods (`findById`, `findAll`)
  * implementados desde C1; tx-aware writes (`saveTx`, `updateTx`, `deleteTx`,
- * `getNextSequenceNumberTx`) también implementados desde C1 con `*Calls`
- * recorders para que tests downstream (C4/C5/C6) puedan hacer assertions
- * sobre invocaciones.
+ * `getNextSequenceNumberTx`) implementados con `*Calls` recorders.
+ *
+ * Asimetría vs `InMemorySaleRepository` (audit-4 D-A3-1):
+ * `getNextSequenceNumberTx` scoped por (`organizationId`, `purchaseType`) —
+ * schema `@@unique([organizationId, purchaseType, sequenceNumber])` + paridad
+ * legacy regla #1 (`features/purchase/purchase.repository.ts:163-172`) +
+ * Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven).
  */
 export class InMemoryPurchaseRepository implements PurchaseRepository {
   private readonly store = new Map<string, Purchase>();
@@ -73,11 +76,15 @@ export class InMemoryPurchaseRepository implements PurchaseRepository {
     this.store.delete(id);
   }
 
-  private nextSequenceByOrg = new Map<string, number>();
+  private nextSequenceByOrgType = new Map<string, number>();
 
-  async getNextSequenceNumberTx(organizationId: string): Promise<number> {
-    const next = (this.nextSequenceByOrg.get(organizationId) ?? 0) + 1;
-    this.nextSequenceByOrg.set(organizationId, next);
+  async getNextSequenceNumberTx(
+    organizationId: string,
+    purchaseType: PurchaseType,
+  ): Promise<number> {
+    const key = `${organizationId}:${purchaseType}`;
+    const next = (this.nextSequenceByOrgType.get(key) ?? 0) + 1;
+    this.nextSequenceByOrgType.set(key, next);
     return next;
   }
 }
