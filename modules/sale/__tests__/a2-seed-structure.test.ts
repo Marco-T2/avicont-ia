@@ -31,10 +31,11 @@ describe("POC #11.0a A2 Ciclo 1 — seed structure", () => {
       journalEntries: true,
       accountBalances: true,
       receivables: true,
+      journalEntryFactory: true,
       ivaBookRegenNotifier: true,
       ivaBookVoidCascade: true,
     };
-    expect(Object.keys(wired)).toHaveLength(8);
+    expect(Object.keys(wired)).toHaveLength(9);
   });
 
   it("standalone read ports stay outside the SaleScope", () => {

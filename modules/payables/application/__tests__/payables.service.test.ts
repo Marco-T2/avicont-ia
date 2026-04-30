@@ -2,8 +2,10 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { PayablesService } from "../payables.service";
 import { Payable } from "../../domain/payable.entity";
 import type {
+  AllocationLifoSnapshot,
   PayableRepository,
   PayableFilters,
+  PayableTrimItem,
   OpenAggregate,
   PendingDocumentSnapshot,
   CreatePayableTxData,
@@ -145,6 +147,26 @@ class InMemoryPayableRepository implements PayableRepository {
     status: PayableStatus,
   ): Promise<void> {
     this.revertAllocationTxCalls.push({ orgId, id, paid: paid.value, balance: balance.value, status });
+  }
+
+  // Methods agregados al port en POC #11.0b A2 Ciclo 2 (findAllocationsForPayable
+  // §13 emergente E-1) y Ciclo 5a (applyTrimPlanTx). No usados por payables.service
+  // tests — purchase-hex orchestration consume estos en sus fakes propios. Stub
+  // mínimo para satisfacer tsc del contract.
+  async findAllocationsForPayable(
+    _orgId: string,
+    _payableId: string,
+  ): Promise<AllocationLifoSnapshot[]> {
+    return [];
+  }
+
+  async applyTrimPlanTx(
+    _tx: unknown,
+    _orgId: string,
+    _payableId: string,
+    _items: PayableTrimItem[],
+  ): Promise<void> {
+    /* no-op — purchase-hex orchestration only */
   }
 }
 
