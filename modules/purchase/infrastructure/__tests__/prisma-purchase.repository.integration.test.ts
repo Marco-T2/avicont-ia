@@ -573,6 +573,37 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
     expect(persisted.date.toISOString()).toBe("2099-02-20T12:00:00.000Z");
   });
 
+  it("deleteTx: removes purchase row + cascades purchase_details (FK onDelete:Cascade)", async () => {
+    // RED honesty preventivo: pre-GREEN FAILS por stub `deleteTx` throw "Not
+    // implemented yet — pending Cycle 5". Post-GREEN: adapter ejecuta
+    // db.purchase.delete; schema `:885` declara `onDelete:Cascade` en
+    // PurchaseDetail.purchase relation, los 3 details se eliminan automáticamente.
+    //
+    // SET LOCAL app.current_organization_id obligatorio antes de deleteTx
+    // (mirror sale C3:592-606): CASCADE DELETE de purchase_details dispara
+    // `audit_purchase_details` AFTER DELETE; el lookup de organizationId en
+    // parent `purchases` retorna NULL (parent ya borrado), trigger cae al
+    // fallback session var. Simula lo que `PurchaseUnitOfWork.run` hará en
+    // Ciclo 6 vía `setAuditContext()`. El adapter NO setea audit context por
+    // diseño — es responsabilidad del UoW (R2 §3 ports-only).
+    const id = await seedPurchaseDirect("DRAFT", 0, "FLETE", 3);
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$executeRawUnsafe(
+        `SET LOCAL app.current_organization_id = '${testOrgId}'`,
+      );
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.deleteTx(testOrgId, id);
+    });
+
+    const row = await prisma.purchase.findFirst({ where: { id } });
+    expect(row).toBeNull();
+    const details = await prisma.purchaseDetail.count({
+      where: { purchaseId: id },
+    });
+    expect(details).toBe(0);
+  });
+
   it("saveTx: normalizes header date to noon UTC (legacy toNoonUtc parity, detail.fecha NOT normalized)", async () => {
     // RED honesty: pre-GREEN stub throw. Post-GREEN: header `purchase.date`
     // pasa por `toNoonUtc` mirror legacy `:190,253` y row queda 12:00 UTC.

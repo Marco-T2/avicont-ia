@@ -203,9 +203,8 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     return hydratePurchaseFromRow(refreshed);
   }
 
-  async deleteTx(_organizationId: string, _id: string): Promise<void> {
-    // RED honesty scaffold — Cycle 5 pending (POC #11.0b A3 Ciclo 3).
-    throw new Error("Not implemented yet — pending Cycle 5 (POC #11.0b A3 Ciclo 3)");
+  async deleteTx(organizationId: string, id: string): Promise<void> {
+    await this.db.purchase.delete({ where: { id, organizationId } });
   }
 
   async getNextSequenceNumberTx(
