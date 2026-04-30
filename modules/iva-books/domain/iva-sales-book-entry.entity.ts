@@ -48,6 +48,19 @@ export interface CreateIvaSalesBookEntryInput extends IvaSalesBookEntryHeader {
   calcResult: IvaCalcResult;
 }
 
+export interface ApplyIvaSalesBookEntryEditInput {
+  fechaFactura?: Date;
+  nitCliente?: string;
+  razonSocial?: string;
+  numeroFactura?: string;
+  codigoAutorizacion?: string;
+  codigoControl?: string;
+  estadoSIN?: IvaSalesEstadoSIN;
+  notes?: string | null;
+  inputs?: IvaSalesBookEntryInputs;
+  calcResult?: IvaCalcResult;
+}
+
 export class IvaSalesBookEntry {
   private constructor(private readonly props: IvaSalesBookEntryProps) {}
 
@@ -148,5 +161,23 @@ export class IvaSalesBookEntry {
       status: "ACTIVE",
       updatedAt: new Date(),
     });
+  }
+
+  applyEdit(input: ApplyIvaSalesBookEntryEditInput): IvaSalesBookEntry {
+    const next: IvaSalesBookEntryProps = { ...this.props };
+    if (input.fechaFactura !== undefined) next.fechaFactura = input.fechaFactura;
+    if (input.nitCliente !== undefined) next.nitCliente = input.nitCliente;
+    if (input.razonSocial !== undefined) next.razonSocial = input.razonSocial;
+    if (input.numeroFactura !== undefined) next.numeroFactura = input.numeroFactura;
+    if (input.codigoAutorizacion !== undefined) {
+      next.codigoAutorizacion = input.codigoAutorizacion;
+    }
+    if (input.codigoControl !== undefined) next.codigoControl = input.codigoControl;
+    if (input.estadoSIN !== undefined) next.estadoSIN = input.estadoSIN;
+    if ("notes" in input) next.notes = input.notes ?? null;
+    if (input.inputs !== undefined) next.inputs = input.inputs;
+    if (input.calcResult !== undefined) next.calcResult = input.calcResult;
+    next.updatedAt = new Date();
+    return new IvaSalesBookEntry(next);
   }
 }

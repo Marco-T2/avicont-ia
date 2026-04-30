@@ -4,6 +4,7 @@ import {
   IvaSalesBookEntry,
   type IvaSalesBookEntryProps,
   type IvaSalesBookEntryInputs,
+  type ApplyIvaSalesBookEntryEditInput,
 } from "../iva-sales-book-entry.entity";
 import { IvaCalcResult } from "../value-objects/iva-calc-result";
 import { IvaBookReactivateNonVoided } from "../errors/iva-book-errors";
@@ -231,6 +232,109 @@ describe("IvaSalesBookEntry aggregate", () => {
       expect(reactivated.createdAt).toBe(original);
       expect(reactivated.updatedAt).toBeInstanceOf(Date);
       expect(reactivated.updatedAt).not.toBe(original);
+    });
+  });
+
+  describe("applyEdit()", () => {
+    it("aplica edit de single header field (fechaFactura)", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(buildProps());
+      const newDate = new Date("2026-05-15");
+      const edited = entry.applyEdit({ fechaFactura: newDate });
+      expect(edited.fechaFactura).toEqual(newDate);
+      expect(edited.nitCliente).toBe(entry.nitCliente);
+      expect(edited.numeroFactura).toBe(entry.numeroFactura);
+    });
+
+    it("aplica edit de multiple header fields a la vez", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(buildProps());
+      const edited = entry.applyEdit({
+        nitCliente: "9999999",
+        razonSocial: "Cliente Editado SA",
+        estadoSIN: "C",
+      });
+      expect(edited.nitCliente).toBe("9999999");
+      expect(edited.razonSocial).toBe("Cliente Editado SA");
+      expect(edited.estadoSIN).toBe("C");
+    });
+
+    it("aplica edit de inputs + calcResult juntos (recompute monetario)", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(buildProps());
+      const newInputs: IvaSalesBookEntryInputs = {
+        importeTotal: M(200),
+        importeIce: M(0),
+        importeIehd: M(0),
+        importeIpj: M(0),
+        tasas: M(0),
+        otrosNoSujetos: M(0),
+        exentos: M(0),
+        tasaCero: M(0),
+        codigoDescuentoAdicional: M(0),
+        importeGiftCard: M(0),
+      };
+      const newCalc = IvaCalcResult.of({
+        subtotal: M(200),
+        baseImponible: M(200),
+        ivaAmount: M(26),
+      });
+      const edited = entry.applyEdit({ inputs: newInputs, calcResult: newCalc });
+      expect(edited.inputs).toBe(newInputs);
+      expect(edited.calcResult).toBe(newCalc);
+    });
+
+    it("permite setear notes a null explícitamente", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(
+        buildProps({ notes: "old note" }),
+      );
+      const edited = entry.applyEdit({ notes: null });
+      expect(edited.notes).toBeNull();
+    });
+
+    it("§13 emergente D-A1#7 — NO guard VOIDED: permite edit sobre VOIDED (mirror legacy regla #1)", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(
+        buildProps({ status: "VOIDED" }),
+      );
+      const edited = entry.applyEdit({ nitCliente: "9999999" });
+      expect(edited.nitCliente).toBe("9999999");
+      expect(edited.status).toBe("VOIDED");
+    });
+
+    it("status preservado tras applyEdit (lifecycle ortogonal)", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(
+        buildProps({ status: "ACTIVE" }),
+      );
+      const edited = entry.applyEdit({ fechaFactura: new Date("2026-05-15") });
+      expect(edited.status).toBe("ACTIVE");
+    });
+
+    it("id, organizationId, fiscalPeriodId, saleId NO son mutables vía applyEdit", () => {
+      const entry = IvaSalesBookEntry.fromPersistence(
+        buildProps({
+          id: "fixed-id",
+          organizationId: "fixed-org",
+          fiscalPeriodId: "fixed-period",
+          saleId: "fixed-sale",
+        }),
+      );
+      const editInput = {
+        fechaFactura: new Date("2026-05-15"),
+      } satisfies ApplyIvaSalesBookEntryEditInput;
+      const edited = entry.applyEdit(editInput);
+      expect(edited.id).toBe("fixed-id");
+      expect(edited.organizationId).toBe("fixed-org");
+      expect(edited.fiscalPeriodId).toBe("fixed-period");
+      expect(edited.saleId).toBe("fixed-sale");
+    });
+
+    it("preserva createdAt; updatedAt es nueva Date instance; retorna nueva instancia", () => {
+      const original = new Date(2026, 0, 1);
+      const entry = IvaSalesBookEntry.fromPersistence(
+        buildProps({ createdAt: original, updatedAt: original }),
+      );
+      const edited = entry.applyEdit({ nitCliente: "edit" });
+      expect(edited.createdAt).toBe(original);
+      expect(edited.updatedAt).toBeInstanceOf(Date);
+      expect(edited.updatedAt).not.toBe(original);
+      expect(edited).not.toBe(entry);
     });
   });
 });

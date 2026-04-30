@@ -48,6 +48,19 @@ export interface CreateIvaPurchaseBookEntryInput
   calcResult: IvaCalcResult;
 }
 
+export interface ApplyIvaPurchaseBookEntryEditInput {
+  fechaFactura?: Date;
+  nitProveedor?: string;
+  razonSocial?: string;
+  numeroFactura?: string;
+  codigoAutorizacion?: string;
+  codigoControl?: string;
+  tipoCompra?: number;
+  notes?: string | null;
+  inputs?: IvaPurchaseBookEntryInputs;
+  calcResult?: IvaCalcResult;
+}
+
 export class IvaPurchaseBookEntry {
   private constructor(private readonly props: IvaPurchaseBookEntryProps) {}
 
@@ -150,5 +163,23 @@ export class IvaPurchaseBookEntry {
       status: "ACTIVE",
       updatedAt: new Date(),
     });
+  }
+
+  applyEdit(input: ApplyIvaPurchaseBookEntryEditInput): IvaPurchaseBookEntry {
+    const next: IvaPurchaseBookEntryProps = { ...this.props };
+    if (input.fechaFactura !== undefined) next.fechaFactura = input.fechaFactura;
+    if (input.nitProveedor !== undefined) next.nitProveedor = input.nitProveedor;
+    if (input.razonSocial !== undefined) next.razonSocial = input.razonSocial;
+    if (input.numeroFactura !== undefined) next.numeroFactura = input.numeroFactura;
+    if (input.codigoAutorizacion !== undefined) {
+      next.codigoAutorizacion = input.codigoAutorizacion;
+    }
+    if (input.codigoControl !== undefined) next.codigoControl = input.codigoControl;
+    if (input.tipoCompra !== undefined) next.tipoCompra = input.tipoCompra;
+    if ("notes" in input) next.notes = input.notes ?? null;
+    if (input.inputs !== undefined) next.inputs = input.inputs;
+    if (input.calcResult !== undefined) next.calcResult = input.calcResult;
+    next.updatedAt = new Date();
+    return new IvaPurchaseBookEntry(next);
   }
 }
