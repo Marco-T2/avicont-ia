@@ -26,6 +26,22 @@ export interface PendingDocumentSnapshot {
   createdAt: Date;
 }
 
+/**
+ * Allocation snapshot ordered LIFO (newest first). Carries the minimum data
+ * needed by the purchase-hex `computeTrimPlan` helper for the editPosted
+ * preview use case. Excludes allocations whose underlying payment is VOIDED
+ * — those are not eligible for trimming (legacy `purchase.service.ts:803`
+ * parity). Espejo simétrico de sale-hex `AllocationLifoSnapshot` en
+ * receivables/domain — promovido al port en POC #11.0b A2 Ciclo 2 (§13
+ * emergente E-1) cuando purchase-hex pasó a ser 2do consumer real, paridad
+ * con sale-hex Ciclo 3 (commit `c24224e`).
+ */
+export interface AllocationLifoSnapshot {
+  id: string;
+  amount: number;
+  payment: { date: Date };
+}
+
 export interface CreatePayableTxData {
   organizationId: string;
   contactId: string;
@@ -47,6 +63,18 @@ export interface PayableRepository {
     organizationId: string,
     contactId: string,
   ): Promise<PendingDocumentSnapshot[]>;
+
+  /**
+   * Returns the allocations of `payableId` ordered LIFO (newest first),
+   * excluding those whose payment is VOIDED. Used by purchase-hex
+   * `getEditPreview` use case to simulate the LIFO trim plan when the user
+   * proposes lowering a posted purchase's total. Espejo simétrico de
+   * sale-hex `findAllocationsForReceivable`.
+   */
+  findAllocationsForPayable(
+    organizationId: string,
+    payableId: string,
+  ): Promise<AllocationLifoSnapshot[]>;
 
   /** Tx-aware creation used by purchase orchestration. */
   createTx(tx: unknown, data: CreatePayableTxData): Promise<{ id: string }>;

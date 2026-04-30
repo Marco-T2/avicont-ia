@@ -1,18 +1,12 @@
+import type { AllocationLifoSnapshot } from "@/modules/payables/domain/payable.repository";
+
 /**
  * LIFO trim plan helper for purchase edit-cascade. Mirrors legacy
  * `purchase.service.ts:69-104` (fidelidad regla #1). Same algorithm as
- * sale-hex `compute-trim-plan.ts`, with purchase-side allocation snapshot.
- *
- * `AllocationLifoSnapshot` defined locally — payables-hex domain does not
- * yet expose this shape. §11.1 STICK on-arrival: keep local until a 3rd
- * consumer surfaces (precedente PaymentAllocationSummary C2).
+ * sale-hex `compute-trim-plan.ts`, con `AllocationLifoSnapshot` importado
+ * desde `payables/domain` — promovido en POC #11.0b A2 Ciclo 2 (§13
+ * emergente E-1, paridad con sale-hex Ciclo 3 commit `c24224e`).
  */
-
-export interface AllocationLifoSnapshot {
-  id: string;
-  amount: number;
-  payment: { date: Date };
-}
 
 export interface TrimPreviewItem {
   allocationId: string;

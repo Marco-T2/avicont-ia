@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  computeTrimPlan,
-  type AllocationLifoSnapshot,
-} from "../compute-trim-plan";
+import { computeTrimPlan } from "../compute-trim-plan";
+import type { AllocationLifoSnapshot } from "@/modules/payables/domain/payable.repository";
 
 function alloc(
   id: string,

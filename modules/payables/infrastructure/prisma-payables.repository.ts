@@ -7,13 +7,14 @@ import type {
   OpenAggregate,
   PendingDocumentSnapshot,
   CreatePayableTxData,
+  AllocationLifoSnapshot,
 } from "../domain/payable.repository";
 import { Payable } from "../domain/payable.entity";
 import type { PayableStatus } from "../domain/value-objects/payable-status";
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { toDomain, toPersistence } from "./payables.mapper";
 
-type DbClient = Pick<PrismaClient, "accountsPayable">;
+type DbClient = Pick<PrismaClient, "accountsPayable" | "paymentAllocation">;
 
 export class PrismaPayablesRepository implements PayableRepository {
   constructor(private readonly db: DbClient = prisma) {}
@@ -122,6 +123,25 @@ export class PrismaPayablesRepository implements PayableRepository {
       sourceType: r.sourceType,
       sourceId: r.sourceId,
       createdAt: r.createdAt,
+    }));
+  }
+
+  async findAllocationsForPayable(
+    _organizationId: string,
+    payableId: string,
+  ): Promise<AllocationLifoSnapshot[]> {
+    const rows = await this.db.paymentAllocation.findMany({
+      where: {
+        payableId,
+        payment: { status: { not: "VOIDED" } },
+      },
+      orderBy: { id: "desc" },
+      include: { payment: { select: { date: true } } },
+    });
+    return rows.map((r) => ({
+      id: r.id,
+      amount: Number(r.amount),
+      payment: { date: r.payment.date },
     }));
   }
 
