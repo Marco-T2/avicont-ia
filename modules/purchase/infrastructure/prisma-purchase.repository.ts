@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Purchase, type PurchaseType } from "@/modules/purchase/domain/purchase.entity";
 import { PurchaseDetail } from "@/modules/purchase/domain/purchase-detail.entity";
+import type { PurchaseStatus } from "@/modules/purchase/domain/value-objects/purchase-status";
 import type {
   PurchaseFilters,
   PurchaseRepository,
@@ -48,11 +49,28 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
   }
 
   async findAll(
-    _organizationId: string,
-    _filters?: PurchaseFilters,
+    organizationId: string,
+    filters?: PurchaseFilters,
   ): Promise<Purchase[]> {
-    // RED honesty scaffold — Cycle 2 pending (POC #11.0b A3 Ciclo 3).
-    throw new Error("Not implemented yet — pending Cycle 2 (POC #11.0b A3 Ciclo 3)");
+    const rows = await this.db.purchase.findMany({
+      where: {
+        organizationId,
+        ...(filters?.purchaseType ? { purchaseType: filters.purchaseType } : {}),
+        ...(filters?.status ? { status: filters.status as PurchaseStatus } : {}),
+        ...(filters?.contactId ? { contactId: filters.contactId } : {}),
+        ...(filters?.dateFrom || filters?.dateTo
+          ? {
+              date: {
+                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+              },
+            }
+          : {}),
+      },
+      include: purchaseInclude,
+      orderBy: { createdAt: "desc" },
+    });
+    return rows.map(hydratePurchaseFromRow);
   }
 
   async findByIdTx(

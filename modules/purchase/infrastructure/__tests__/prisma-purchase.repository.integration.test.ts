@@ -188,4 +188,49 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
     expect(result).not.toBeNull();
     expect(result!.id).toBe(id);
   });
+
+  it("findAll: no filters returns all purchases for org", async () => {
+    // RED honesty preventivo: pre-GREEN FAILS por stub `findAll` throw
+    // "Not implemented yet — pending Cycle 2". Post-GREEN: list por
+    // organizationId sin filtros adicionales, orderBy createdAt desc.
+    await seedPurchaseDirect("DRAFT", 0);
+    await seedPurchaseDirect("POSTED", 1);
+    const repo = new PrismaPurchaseRepository();
+
+    const result = await repo.findAll(testOrgId);
+
+    expect(result).toHaveLength(2);
+  });
+
+  it("findAll: filters status + contactId + dateFrom narrow correctly", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: WHERE compone status +
+    // contactId + date.gte como legacy `features/purchase/purchase.repository.ts:124-133`.
+    await seedPurchaseDirect("DRAFT", 0);
+    await seedPurchaseDirect("POSTED", 1);
+    const repo = new PrismaPurchaseRepository();
+
+    const result = await repo.findAll(testOrgId, {
+      status: "POSTED",
+      contactId: testContactId,
+      dateFrom: new Date("2099-01-01T00:00:00Z"),
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].status).toBe("POSTED");
+  });
+
+  it("findAll: filter purchaseType narrows FLETE-only when COMPRA_GENERAL also present (audit-5 D-A3-2)", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: asimetría purchase vs
+    // sale-hex — `PurchaseFilters.purchaseType?` extension audit-5 funcional
+    // (consumer real `app/api/.../purchases/route.ts:23`). WHERE include
+    // `purchaseType` cuando filter setteado, paralelo legacy `:124`.
+    await seedPurchaseDirect("DRAFT", 0, "FLETE");
+    await seedPurchaseDirect("POSTED", 1, "COMPRA_GENERAL");
+    const repo = new PrismaPurchaseRepository();
+
+    const result = await repo.findAll(testOrgId, { purchaseType: "FLETE" });
+
+    expect(result).toHaveLength(1);
+    expect(result[0].purchaseType).toBe("FLETE");
+  });
 });
