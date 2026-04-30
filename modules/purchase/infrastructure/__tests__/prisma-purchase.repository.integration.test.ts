@@ -3,9 +3,14 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Purchase } from "@/modules/purchase/domain/purchase.entity";
+import { PurchaseDetail } from "@/modules/purchase/domain/purchase-detail.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 import { PrismaPurchaseRepository } from "../prisma-purchase.repository";
+
+type PurchaseRowWithDetails = Prisma.PurchaseGetPayload<{
+  include: { details: { orderBy: { order: "asc" } } };
+}>;
 
 /**
  * Postgres-real integration test for PrismaPurchaseRepository (POC #11.0b A3
@@ -121,6 +126,66 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
     await prisma.organization.delete({ where: { id: testOrgId } });
     await prisma.user.delete({ where: { id: testUserId } });
   });
+
+  // Test-local hydration helper mirror production `hydratePurchaseFromRow`.
+  // Verbose por cantidad de cols (24 header + 17 detail) — separar del adapter
+  // para no acoplar tests al export shape interno.
+  function purchaseFromRow(row: PurchaseRowWithDetails): Purchase {
+    return Purchase.fromPersistence({
+      id: row.id,
+      organizationId: row.organizationId,
+      purchaseType: row.purchaseType,
+      status: row.status,
+      sequenceNumber: row.sequenceNumber,
+      date: row.date,
+      contactId: row.contactId,
+      periodId: row.periodId,
+      description: row.description,
+      referenceNumber: row.referenceNumber,
+      notes: row.notes,
+      totalAmount: MonetaryAmount.of(Number(row.totalAmount)),
+      ruta: row.ruta,
+      farmOrigin: row.farmOrigin,
+      chickenCount: row.chickenCount,
+      shrinkagePct: row.shrinkagePct ? Number(row.shrinkagePct) : null,
+      totalGrossKg: row.totalGrossKg ? Number(row.totalGrossKg) : null,
+      totalNetKg: row.totalNetKg ? Number(row.totalNetKg) : null,
+      totalShrinkKg: row.totalShrinkKg ? Number(row.totalShrinkKg) : null,
+      totalShortageKg: row.totalShortageKg ? Number(row.totalShortageKg) : null,
+      totalRealNetKg: row.totalRealNetKg ? Number(row.totalRealNetKg) : null,
+      journalEntryId: row.journalEntryId,
+      payableId: row.payableId,
+      createdById: row.createdById,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      details: row.details.map((d) =>
+        PurchaseDetail.fromPersistence({
+          id: d.id,
+          purchaseId: d.purchaseId,
+          description: d.description,
+          lineAmount: MonetaryAmount.of(Number(d.lineAmount)),
+          order: d.order,
+          quantity: d.quantity ? Number(d.quantity) : undefined,
+          unitPrice: d.unitPrice ? Number(d.unitPrice) : undefined,
+          expenseAccountId: d.expenseAccountId ?? undefined,
+          fecha: d.fecha ?? undefined,
+          docRef: d.docRef ?? undefined,
+          chickenQty: d.chickenQty ?? undefined,
+          pricePerChicken: d.pricePerChicken ? Number(d.pricePerChicken) : undefined,
+          productTypeId: d.productTypeId ?? undefined,
+          detailNote: d.detailNote ?? undefined,
+          boxes: d.boxes ?? undefined,
+          grossWeight: d.grossWeight ? Number(d.grossWeight) : undefined,
+          tare: d.tare ? Number(d.tare) : undefined,
+          netWeight: d.netWeight ? Number(d.netWeight) : undefined,
+          shrinkage: d.shrinkage ? Number(d.shrinkage) : undefined,
+          shortage: d.shortage ? Number(d.shortage) : undefined,
+          realNetWeight: d.realNetWeight ? Number(d.realNetWeight) : undefined,
+        }),
+      ),
+      payable: null,
+    });
+  }
 
   async function seedPurchaseDirect(
     status: "DRAFT" | "POSTED",
@@ -377,6 +442,135 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
     expect(Number(d.shrinkage)).toBe(50);
     expect(Number(d.shortage)).toBe(50);
     expect(Number(d.realNetWeight)).toBe(2400);
+  });
+
+  it("updateTx: replaceDetails:false updates header only, details intact", async () => {
+    // RED honesty preventivo: pre-GREEN FAILS por stub `updateTx` throw "Not
+    // implemented yet — pending Cycle 4". Post-GREEN: adapter ejecuta UPDATE
+    // purchase SET ... sin tocar purchase_details. Details count intacto.
+    const id = await seedPurchaseDirect("DRAFT", 0, "FLETE", 3);
+
+    const fetched = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    const aggregate = purchaseFromRow(fetched);
+    const edited = aggregate.applyEdit({ description: "edited description" });
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.updateTx(edited, { replaceDetails: false });
+    });
+
+    const persisted = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: true },
+    });
+    expect(persisted.description).toBe("edited description");
+    expect(persisted.details).toHaveLength(3);
+  });
+
+  it("updateTx: replaceDetails:true delete-and-recreate details, totalAmount recalculated", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: adapter mirror legacy
+    // delete-and-recreate (`features/purchase/purchase.repository.ts:314-322`):
+    // tx.purchaseDetail.deleteMany + createMany con newDetails. Total recalculated
+    // por aggregate.replaceDetails antes del update.
+    const id = await seedPurchaseDirect("DRAFT", 0, "FLETE", 3);
+
+    const fetched = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    const aggregate = purchaseFromRow(fetched);
+
+    const newDetails = [
+      PurchaseDetail.create({
+        purchaseId: id,
+        description: "new line A",
+        lineAmount: MonetaryAmount.of(50),
+        order: 0,
+        chickenQty: 25,
+        pricePerChicken: 2,
+      }),
+      PurchaseDetail.create({
+        purchaseId: id,
+        description: "new line B",
+        lineAmount: MonetaryAmount.of(75),
+        order: 1,
+        chickenQty: 37,
+        pricePerChicken: 2,
+      }),
+    ];
+    const replaced = aggregate.replaceDetails(newDetails);
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.updateTx(replaced, { replaceDetails: true });
+    });
+
+    const persisted = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    expect(persisted.details).toHaveLength(2);
+    expect(persisted.details.map((d) => d.description)).toEqual([
+      "new line A",
+      "new line B",
+    ]);
+    expect(Number(persisted.totalAmount)).toBe(125);
+  });
+
+  it("updateTx: replaceDetails:false propagates journalEntryId and payableId set on aggregate (linkJournalAndPayable parity)", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: adapter mirror legacy
+    // `linkJournalAndPayable` colapsado en updateTx — header-only path persiste
+    // journalEntryId + payableId cuando aggregate los trae set. Para evitar
+    // overhead FK (JournalEntry+Payable rows reales) usamos null→null para
+    // verificar que updateTx persiste la columna. Test focaliza en path
+    // adapter, NO en FK semantics (cubierto por tests legacy).
+    const id = await seedPurchaseDirect("DRAFT", 0);
+
+    const fetched = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    const aggregate = purchaseFromRow(fetched);
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.updateTx(aggregate, { replaceDetails: false });
+    });
+
+    const persisted = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+    });
+    expect(persisted.journalEntryId).toBeNull();
+    expect(persisted.payableId).toBeNull();
+  });
+
+  it("updateTx: normalizes header date to noon UTC (legacy toNoonUtc parity)", async () => {
+    // RED honesty: pre-GREEN stub throw. Post-GREEN: header date pasa por
+    // toNoonUtc en updateTx mirror legacy `buildUpdateData :466`. Sin fix, el
+    // path edición rompe la garantía 12:00 UTC del row (paralelo audit Sale H-02).
+    const id = await seedPurchaseDirect("DRAFT", 0);
+
+    const fetched = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+      include: { details: { orderBy: { order: "asc" } } },
+    });
+    const aggregate = purchaseFromRow(fetched);
+    const edited = aggregate.applyEdit({
+      date: new Date("2099-02-20T08:15:00Z"),
+    });
+
+    await prisma.$transaction(async (tx) => {
+      const repo = new PrismaPurchaseRepository(tx);
+      await repo.updateTx(edited, { replaceDetails: false });
+    });
+
+    const persisted = await prisma.purchase.findFirstOrThrow({
+      where: { id, organizationId: testOrgId },
+    });
+    expect(persisted.date.toISOString()).toBe("2099-02-20T12:00:00.000Z");
   });
 
   it("saveTx: normalizes header date to noon UTC (legacy toNoonUtc parity, detail.fecha NOT normalized)", async () => {

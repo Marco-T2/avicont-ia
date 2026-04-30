@@ -136,11 +136,71 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
   }
 
   async updateTx(
-    _purchase: Purchase,
-    _options: { replaceDetails: boolean },
+    purchase: Purchase,
+    options: { replaceDetails: boolean },
   ): Promise<Purchase> {
-    // RED honesty scaffold — Cycle 4 pending (POC #11.0b A3 Ciclo 3).
-    throw new Error("Not implemented yet — pending Cycle 4 (POC #11.0b A3 Ciclo 3)");
+    await this.db.purchase.update({
+      where: { id: purchase.id, organizationId: purchase.organizationId },
+      data: {
+        status: purchase.status,
+        sequenceNumber: purchase.sequenceNumber ?? 0,
+        date: toNoonUtc(purchase.date),
+        contactId: purchase.contactId,
+        description: purchase.description,
+        referenceNumber: purchase.referenceNumber,
+        notes: purchase.notes,
+        totalAmount: new Prisma.Decimal(purchase.totalAmount.value),
+        ruta: purchase.ruta,
+        farmOrigin: purchase.farmOrigin,
+        chickenCount: purchase.chickenCount,
+        shrinkagePct:
+          purchase.shrinkagePct !== null
+            ? new Prisma.Decimal(purchase.shrinkagePct)
+            : null,
+        totalGrossKg:
+          purchase.totalGrossKg !== null
+            ? new Prisma.Decimal(purchase.totalGrossKg)
+            : null,
+        totalNetKg:
+          purchase.totalNetKg !== null
+            ? new Prisma.Decimal(purchase.totalNetKg)
+            : null,
+        totalShrinkKg:
+          purchase.totalShrinkKg !== null
+            ? new Prisma.Decimal(purchase.totalShrinkKg)
+            : null,
+        totalShortageKg:
+          purchase.totalShortageKg !== null
+            ? new Prisma.Decimal(purchase.totalShortageKg)
+            : null,
+        totalRealNetKg:
+          purchase.totalRealNetKg !== null
+            ? new Prisma.Decimal(purchase.totalRealNetKg)
+            : null,
+        journalEntryId: purchase.journalEntryId,
+        payableId: purchase.payableId,
+      },
+    });
+
+    if (options.replaceDetails) {
+      await this.db.purchaseDetail.deleteMany({
+        where: { purchaseId: purchase.id },
+      });
+      if (purchase.details.length > 0) {
+        await this.db.purchaseDetail.createMany({
+          data: purchase.details.map((d) => ({
+            purchaseId: purchase.id,
+            ...buildDetailCreate(d),
+          })),
+        });
+      }
+    }
+
+    const refreshed = await this.db.purchase.findFirstOrThrow({
+      where: { id: purchase.id, organizationId: purchase.organizationId },
+      include: purchaseInclude,
+    });
+    return hydratePurchaseFromRow(refreshed);
   }
 
   async deleteTx(_organizationId: string, _id: string): Promise<void> {
