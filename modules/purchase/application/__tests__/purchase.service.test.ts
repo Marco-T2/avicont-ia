@@ -1171,7 +1171,9 @@ describe("PurchaseService.update — LOCKED branch", () => {
   let uow: InMemoryPurchaseUnitOfWork;
   let service: PurchaseService;
 
-  function buildLockedPurchase(): Purchase {
+  function buildLockedPurchase(
+    overrides: { createdById?: string } = {},
+  ): Purchase {
     return Purchase.fromPersistence({
       id: "locked-purchase",
       organizationId: ORG,
@@ -1196,7 +1198,7 @@ describe("PurchaseService.update — LOCKED branch", () => {
       totalRealNetKg: null,
       journalEntryId: "journal-1",
       payableId: "payable-1",
-      createdById: "user-1",
+      createdById: overrides.createdById ?? "user-1",
       createdAt: new Date("2025-01-15"),
       updatedAt: new Date("2025-01-15"),
       details: [],
@@ -1307,27 +1309,54 @@ describe("PurchaseService.update — LOCKED branch", () => {
     expect(result.purchase.description).toBe("Editada en CLOSED");
   });
 
-  it("ignores input.details on LOCKED (legacy parity — header only)", async () => {
+  it("replaces details on LOCKED when input.details is present (paridad legacy `purchase.service.ts:710-749`)", async () => {
     purchaseRepo.preload(buildLockedPurchase());
 
     const result = await service.update(
       ORG,
       "locked-purchase",
       {
-        description: "Solo header",
+        description: "Editada con nuevos detalles",
         details: [
           {
-            description: "Detalle ignorado",
+            description: "Nueva línea LOCKED",
             lineAmount: MonetaryAmount.of(999),
             expenseAccountId: "acc-x",
           },
         ],
       },
-      { userId: "user-1", role: "admin", justification: "Cambio menor de descripción" },
+      {
+        userId: "user-1",
+        role: "admin",
+        justification: "Edición LOCKED con cambio de detalles",
+      },
     );
 
-    expect(purchaseRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: false });
-    expect(result.purchase.totalAmount.value).toBe(500);
+    expect(purchaseRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: true });
+    expect(result.purchase.totalAmount.value).toBe(999);
+  });
+
+  it("uses purchase.createdById for audit userId on LOCKED edit (paridad legacy `:741`)", async () => {
+    purchaseRepo.preload(buildLockedPurchase({ createdById: "creator-original" }));
+
+    await service.update(
+      ORG,
+      "locked-purchase",
+      { description: "Editada por otro usuario" },
+      {
+        userId: "editor-current",
+        role: "admin",
+        justification: "Editor distinto al creador original",
+      },
+    );
+
+    expect(uow.ranContexts).toEqual([
+      {
+        userId: "creator-original",
+        organizationId: ORG,
+        justification: "Editor distinto al creador original",
+      },
+    ]);
   });
 });
 

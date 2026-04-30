@@ -555,8 +555,12 @@ export class PurchaseService {
    * regla #1) — espejo simétrico a sale-hex `update`.
    *
    * - DRAFT: header + optional details replace.
-   * - LOCKED: header only (details ignored, legacy parity). Gates role
-   *   (`owner`/`admin`) + period status (CLOSED → 50 char min; OPEN → 10).
+   * - LOCKED: header + optional details replace (paridad legacy
+   *   `purchase.service.ts:710-749` — pasa `computedDetails + pfSummary` al
+   *   `repo.updateTx`). Gates role (`owner`/`admin`) + period status
+   *   (CLOSED → 50 char min; OPEN → 10). Audit userId atribuye al creador
+   *   original (`purchase.createdById`), NO al editor actual (paridad
+   *   legacy `:741` `userId: purchase.createdById ?? "unknown"`).
    * - POSTED: atomic revert-modify-reapply cascade (private updatePosted).
    * - VOIDED: rejected via `PurchaseVoidedImmutable` (domain).
    */
@@ -626,7 +630,8 @@ export class PurchaseService {
     });
 
     const replaceDetails =
-      purchase.status === "DRAFT" && input.details !== undefined;
+      (purchase.status === "DRAFT" || purchase.status === "LOCKED") &&
+      input.details !== undefined;
 
     if (replaceDetails) {
       const newDetails = input.details!.map((d, idx) =>
@@ -659,7 +664,7 @@ export class PurchaseService {
     const auditContext =
       purchase.status === "LOCKED"
         ? {
-            userId: context.userId,
+            userId: purchase.createdById ?? "unknown",
             organizationId,
             justification: context.justification,
           }

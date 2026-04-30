@@ -18,6 +18,15 @@ import type { IvaBookForEntry } from "../build-purchase-entry-lines";
  * `editPosted:1063-1076` usa `calcTotales` para derivar
  * baseIvaSujetoCf/dfCfIva/exentos para el nuevo total). Returns `null`
  * cuando no hay IVA book activo para la compra.
+ *
+ * **Contrato port (D1.7 c audit A2)** — `newTotal` se pasa por argumento
+ * desde el use case que tiene el aggregate ya editado en memoria. El
+ * adapter NO debe leer `purchase.totalAmount` de DB — dentro de la tx el
+ * row está pre-edit hasta que `purchases.updateTx` commitee, y el orden
+ * del callback hex llama recompute ANTES de updateTx (defensa estructural
+ * vs paridad legacy `:1078` que llama al final por visibility tx). Si un
+ * adapter futuro necesita campos additional del purchase, agregarlos al
+ * signature explícitamente — NO hacer side-read de DB.
  */
 export interface IvaBookRegenNotifierPort {
   recomputeFromPurchase(
