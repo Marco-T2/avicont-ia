@@ -15,6 +15,7 @@ import { Money } from "@/modules/shared/domain/value-objects/money";
 
 import type {
   JournalEntryFactoryPort,
+  PurchaseJournalTemplate,
   RegenerateJournalResult,
   SaleJournalTemplate,
 } from "../domain/ports/journal-entry-factory.port";
@@ -64,6 +65,30 @@ export class PrismaJournalEntryFactoryAdapter
     const row = await this.autoEntryGen.generate(this.tx, {
       organizationId: template.organizationId,
       voucherTypeCode: "CI",
+      contactId: template.contactId,
+      date: template.date,
+      periodId: template.periodId,
+      description: template.description,
+      sourceType: template.sourceType,
+      sourceId: template.sourceId,
+      lines: template.lines.map((l) => ({
+        accountCode: l.accountCode,
+        side: l.side,
+        amount: l.amount,
+        contactId: l.contactId,
+        description: l.description,
+      })),
+      createdById: template.createdById,
+    });
+    return hydrateJournalFromRow(row);
+  }
+
+  async generateForPurchase(
+    template: PurchaseJournalTemplate,
+  ): Promise<Journal> {
+    const row = await this.autoEntryGen.generate(this.tx, {
+      organizationId: template.organizationId,
+      voucherTypeCode: "CE",
       contactId: template.contactId,
       date: template.date,
       periodId: template.periodId,

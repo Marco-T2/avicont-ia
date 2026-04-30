@@ -6,17 +6,27 @@ import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors
 import type { ContactType } from "@/modules/contacts/domain/value-objects/contact-type";
 import { PaymentTermsDays } from "@/modules/contacts/domain/value-objects/payment-terms-days";
 import { Payable } from "@/modules/payables/domain/payable.entity";
+import { Journal } from "@/modules/accounting/domain/journal.entity";
+import { OrgSettings } from "@/modules/org-settings/domain/org-settings.entity";
 import { Purchase, type PurchaseType } from "../../domain/purchase.entity";
 import type { PurchaseStatus } from "../../domain/value-objects/purchase-status";
 import {
+  PurchaseAccountNotFound,
   PurchaseContactInactive,
   PurchaseContactNotProvider,
+  PurchasePeriodClosed,
 } from "../errors/purchase-orchestration-errors";
 import { PurchaseService } from "../purchase.service";
 import { InMemoryPurchaseRepository } from "./fakes/in-memory-purchase.repository";
 import { InMemoryPayableRepository } from "./fakes/in-memory-payable.repository";
 import { InMemoryContactRepository } from "./fakes/in-memory-contact.repository";
 import { InMemoryPurchaseUnitOfWork } from "./fakes/in-memory-purchase-unit-of-work";
+import { InMemoryAccountLookup } from "./fakes/in-memory-account-lookup";
+import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
+import { InMemoryFiscalPeriodsRead } from "./fakes/in-memory-fiscal-periods-read";
+import { InMemoryIvaBookReader } from "./fakes/in-memory-iva-book-reader";
+import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
+import { InMemoryAccountBalancesRepository } from "./fakes/in-memory-account-balances.repo";
 
 const ORG = "org-1";
 const OTHER_ORG = "org-2";
@@ -386,5 +396,261 @@ describe("PurchaseService.createDraft", () => {
       .catch(() => undefined);
 
     expect(uow.ranContexts).toEqual([]);
+  });
+});
+
+describe("PurchaseService.post", () => {
+  let purchaseRepo: InMemoryPurchaseRepository;
+  let payableRepo: InMemoryPayableRepository;
+  let contactRepo: InMemoryContactRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let ivaBookReader: InMemoryIvaBookReader;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let uow: InMemoryPurchaseUnitOfWork;
+  let service: PurchaseService;
+
+  function buildPostContact(): Contact {
+    return Contact.fromPersistence({
+      id: "c-1",
+      organizationId: ORG,
+      type: "PROVEEDOR",
+      name: "Proveedor",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: true,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  function buildDefaultSettings(): OrgSettings {
+    return OrgSettings.createDefault({
+      id: "settings-1",
+      organizationId: ORG,
+      createdAt: new Date("2025-01-01"),
+      updatedAt: new Date("2025-01-01"),
+    });
+  }
+
+  function buildDraftPurchase(
+    overrides: { purchaseType?: PurchaseType; expenseAccountId?: string } = {},
+  ): Purchase {
+    const purchaseType = overrides.purchaseType ?? "COMPRA_GENERAL";
+    const needsExpense =
+      purchaseType === "COMPRA_GENERAL" || purchaseType === "SERVICIO";
+    return Purchase.createDraft({
+      organizationId: ORG,
+      purchaseType,
+      contactId: "c-1",
+      periodId: "period-1",
+      date: new Date("2025-01-15"),
+      description: "Compra test",
+      createdById: "user-1",
+      details: [
+        {
+          description: "Línea 1",
+          lineAmount: MonetaryAmount.of(1000),
+          ...(needsExpense
+            ? { expenseAccountId: overrides.expenseAccountId ?? "acc-expense-1" }
+            : {}),
+        },
+      ],
+    });
+  }
+
+  function buildJournalStub(): Journal {
+    return Journal.fromPersistence({
+      id: "journal-1",
+      organizationId: ORG,
+      status: "POSTED",
+      number: 1,
+      referenceNumber: null,
+      date: new Date("2025-01-15"),
+      description: "CG-001 - Compra test",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CE",
+      contactId: "c-1",
+      sourceType: "purchase",
+      sourceId: "purchase-1",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2025-01-15"),
+      updatedAt: new Date("2025-01-15"),
+      lines: [],
+    });
+  }
+
+  beforeEach(() => {
+    purchaseRepo = new InMemoryPurchaseRepository();
+    payableRepo = new InMemoryPayableRepository();
+    contactRepo = new InMemoryContactRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    ivaBookReader = new InMemoryIvaBookReader();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+
+    contactRepo.preload(buildPostContact());
+    orgSettings.preload(ORG, buildDefaultSettings());
+    accountLookup.preload({
+      id: "acc-expense-1",
+      code: "5.1.5",
+      isDetail: true,
+      isActive: true,
+    });
+    fiscalPeriods.preload("period-1", "OPEN");
+
+    // Stub createTx in payableRepo for post flow (paridad sale stub receivableRepo.createTx)
+    (payableRepo as unknown as {
+      createTx: (tx: unknown, data: { sourceId: string }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => ({ id: `payable-${data.sourceId}` });
+
+    uow = new InMemoryPurchaseUnitOfWork({
+      purchases: purchaseRepo,
+      accountBalances,
+      payables: payableRepo,
+      journalEntryFactory,
+    });
+
+    service = new PurchaseService({
+      repo: purchaseRepo,
+      payables: payableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      ivaBookReader,
+    });
+  });
+
+  it("posts a DRAFT purchase: sequence allocated, journal generated, balances applied, payable created, purchase linked", async () => {
+    const draft = buildDraftPurchase();
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    const result = await service.post(ORG, draft.id, "user-1");
+
+    expect(result.purchase.status).toBe("POSTED");
+    expect(result.purchase.sequenceNumber).toBe(1);
+    expect(result.purchase.journalEntryId).toBe("journal-1");
+    expect(result.purchase.payableId).toBe(`payable-${draft.id}`);
+    expect(journalEntryFactory.purchaseCalls).toHaveLength(1);
+    expect(accountBalances.applyPostCalls).toHaveLength(1);
+    expect(purchaseRepo.updateTxCalls).toHaveLength(1);
+    expect(purchaseRepo.updateTxCalls[0]!.options).toEqual({ replaceDetails: false });
+  });
+
+  it("propagates AuditContext into the UoW", async () => {
+    const draft = buildDraftPurchase();
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-42");
+
+    expect(uow.ranContexts).toEqual([
+      { userId: "user-42", organizationId: ORG },
+    ]);
+  });
+
+  it("throws NotFoundError when purchase does not exist", async () => {
+    await expect(service.post(ORG, "missing", "user-1")).rejects.toThrow(
+      NotFoundError,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws PurchasePeriodClosed when period is CLOSED", async () => {
+    const draft = buildDraftPurchase();
+    purchaseRepo.preload(draft);
+    fiscalPeriods.preload("period-1", "CLOSED");
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      PurchasePeriodClosed,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("throws PurchaseAccountNotFound when expense account is not in lookup (COMPRA_GENERAL)", async () => {
+    const draft = buildDraftPurchase({ expenseAccountId: "acc-missing" });
+    purchaseRepo.preload(draft);
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      PurchaseAccountNotFound,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  it("uses paymentTermsDays from contact for payable dueDate", async () => {
+    const draft = buildDraftPurchase();
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    let capturedDueDate: Date | undefined;
+    (payableRepo as unknown as {
+      createTx: (tx: unknown, data: { dueDate: Date; sourceId: string }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => {
+      capturedDueDate = data.dueDate;
+      return { id: `payable-${data.sourceId}` };
+    };
+
+    await service.post(ORG, draft.id, "user-1");
+
+    const expected = new Date("2025-01-15").getTime() + 30 * 86400000;
+    expect(capturedDueDate?.getTime()).toBe(expected);
+  });
+
+  it("invokes the journal factory with displayCode 'CG-001' for COMPRA_GENERAL", async () => {
+    const draft = buildDraftPurchase({ purchaseType: "COMPRA_GENERAL" });
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-1");
+
+    expect(journalEntryFactory.purchaseCalls[0]!.description).toBe(
+      "CG-001 - Compra test",
+    );
+  });
+
+  it("uses displayCode prefix 'FL' for FLETE and skips expense account lookup", async () => {
+    const draft = buildDraftPurchase({ purchaseType: "FLETE" });
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-1");
+
+    expect(journalEntryFactory.purchaseCalls[0]!.description).toBe(
+      "FL-001 - Compra test",
+    );
+    expect(accountLookup.callsByIds[0]!.ids).toEqual([]);
+  });
+
+  it("emits IVA-aware entry lines when ivaBookReader returns a snapshot", async () => {
+    const draft = buildDraftPurchase();
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+    ivaBookReader.preload(draft.id, {
+      id: "iva-1",
+      purchaseId: draft.id,
+      ivaRate: 0.13,
+      ivaAmount: 130,
+      netAmount: 1000,
+      exentos: 0,
+    });
+
+    await service.post(ORG, draft.id, "user-1");
+
+    const lines = journalEntryFactory.purchaseCalls[0]!.lines;
+    // IVA crédito fiscal account 1.1.8 (paridad legacy purchase)
+    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(true);
   });
 });

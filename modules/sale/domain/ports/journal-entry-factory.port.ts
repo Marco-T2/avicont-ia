@@ -21,6 +21,27 @@ export interface SaleJournalTemplate {
 }
 
 /**
+ * Purchase journal template — paridad simétrica de `SaleJournalTemplate`.
+ * Distinción semántica vía `sourceType: "purchase"` literal.
+ * `PurchaseJournalLineTemplate` reusa shape `SaleJournalLineTemplate`
+ * (line-level no tiene asimetría purchase/sale). Port shared por sale-hex
+ * (id: 1378 step 0 decision 1: heredar + extender).
+ */
+export type PurchaseJournalLineTemplate = SaleJournalLineTemplate;
+
+export interface PurchaseJournalTemplate {
+  organizationId: string;
+  contactId: string;
+  date: Date;
+  periodId: string;
+  description: string;
+  sourceType: "purchase";
+  sourceId: string;
+  createdById: string;
+  lines: PurchaseJournalLineTemplate[];
+}
+
+/**
  * Outbound factory port for journal entry generation from sale-hex use cases.
  *
  * **Outside `SaleScope`** (decisión §13 emergente Ciclo 5 lockeada por Marco,
@@ -45,6 +66,16 @@ export interface RegenerateJournalResult {
 
 export interface JournalEntryFactoryPort {
   generateForSale(template: SaleJournalTemplate): Promise<Journal>;
+
+  /**
+   * Espejo simétrico de `generateForSale` para purchase-hex use cases
+   * (`post`, `createAndPost`). Adapter wraps `AutoEntryGenerator.generate`
+   * con `voucherTypeCode: "CE"` (paridad legacy purchase.service.ts:460,
+   * "Compra-Egreso"). Heredado + extendido aquí (sale/domain/ports) por
+   * decisión step 0 A2 lockeada (id 1378). POC #11.0c evaluará si promote
+   * a `accounting/domain/ports/` o ambos modules.
+   */
+  generateForPurchase(template: PurchaseJournalTemplate): Promise<Journal>;
 
   /**
    * Edit-flow counterpart to `generateForSale`. Encapsulates the

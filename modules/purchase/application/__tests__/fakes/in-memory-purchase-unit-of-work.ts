@@ -2,6 +2,10 @@ import type {
   AuditContext,
   BaseScope,
 } from "@/modules/shared/domain/ports/unit-of-work";
+import type { AccountBalancesRepository } from "@/modules/accounting/domain/ports/account-balances.repo";
+import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
+import type { PayableRepository } from "@/modules/payables/domain/payable.repository";
+import type { JournalEntryFactoryPort } from "@/modules/sale/domain/ports/journal-entry-factory.port";
 import type { PurchaseRepository } from "../../../domain/ports/purchase.repository";
 import type {
   PurchaseScope,
@@ -27,6 +31,10 @@ function unused<T extends object>(name: string): T {
 export interface InMemoryPurchaseUnitOfWorkOptions {
   purchases: PurchaseRepository;
   fiscalPeriods?: BaseScope["fiscalPeriods"];
+  journalEntries?: JournalEntriesRepository;
+  accountBalances?: AccountBalancesRepository;
+  payables?: PayableRepository;
+  journalEntryFactory?: JournalEntryFactoryPort;
 }
 
 /**
@@ -56,6 +64,13 @@ export class InMemoryPurchaseUnitOfWork implements PurchaseUnitOfWork {
       correlationId,
       purchases: this.options.purchases,
       fiscalPeriods: this.options.fiscalPeriods ?? unused("fiscalPeriods"),
+      journalEntries:
+        this.options.journalEntries ?? unused("journalEntries"),
+      accountBalances:
+        this.options.accountBalances ?? unused("accountBalances"),
+      payables: this.options.payables ?? unused("payables"),
+      journalEntryFactory:
+        this.options.journalEntryFactory ?? unused("journalEntryFactory"),
     };
 
     const result = await fn(scope);
