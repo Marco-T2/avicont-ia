@@ -42,6 +42,18 @@ export interface AllocationLifoSnapshot {
   payment: { date: Date };
 }
 
+/**
+ * Trim plan item — paridad simétrica de sale-hex `ReceivableTrimItem`.
+ * Port-local DTO con sólo los fields que el persister necesita:
+ * `allocationId` (target row) + `newAmount` (post-trim amount; si 0 →
+ * delete). Caller (purchase-hex) mapea el preview output a este shape antes
+ * de invocar.
+ */
+export interface PayableTrimItem {
+  allocationId: string;
+  newAmount: number;
+}
+
 export interface CreatePayableTxData {
   organizationId: string;
   contactId: string;
@@ -75,6 +87,20 @@ export interface PayableRepository {
     organizationId: string,
     payableId: string,
   ): Promise<AllocationLifoSnapshot[]>;
+
+  /**
+   * Tx-aware persister para el LIFO trim plan computado por purchase-hex
+   * `computeTrimPlan`. Por cada item: si `newAmount === 0` borra el row
+   * allocation, si no actualiza `amount`. Espejo simétrico de sale-hex
+   * `applyTrimPlanTx` (paridad legacy `purchase.service.ts:1043-1076`
+   * in-line LIFO loop).
+   */
+  applyTrimPlanTx(
+    tx: unknown,
+    organizationId: string,
+    payableId: string,
+    items: PayableTrimItem[],
+  ): Promise<void>;
 
   /** Tx-aware creation used by purchase orchestration. */
   createTx(tx: unknown, data: CreatePayableTxData): Promise<{ id: string }>;

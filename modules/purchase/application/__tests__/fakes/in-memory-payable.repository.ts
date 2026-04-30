@@ -2,6 +2,7 @@ import type { Payable } from "@/modules/payables/domain/payable.entity";
 import type {
   AllocationLifoSnapshot,
   PayableRepository,
+  PayableTrimItem,
 } from "@/modules/payables/domain/payable.repository";
 
 /**
@@ -47,6 +48,33 @@ export class InMemoryPayableRepository implements PayableRepository {
     return this.allocationsByPayable.get(payableId) ?? [];
   }
 
+  applyTrimPlanCalls: {
+    organizationId: string;
+    payableId: string;
+    items: PayableTrimItem[];
+  }[] = [];
+
+  async applyTrimPlanTx(
+    _tx: unknown,
+    organizationId: string,
+    payableId: string,
+    items: PayableTrimItem[],
+  ): Promise<void> {
+    this.applyTrimPlanCalls.push({ organizationId, payableId, items });
+    const current = this.allocationsByPayable.get(payableId) ?? [];
+    const itemMap = new Map(items.map((i) => [i.allocationId, i.newAmount]));
+    const filtered: AllocationLifoSnapshot[] = [];
+    for (const a of current) {
+      if (!itemMap.has(a.id)) {
+        filtered.push(a);
+        continue;
+      }
+      const newAmt = itemMap.get(a.id)!;
+      if (newAmt > 0) filtered.push({ ...a, amount: newAmt });
+    }
+    this.allocationsByPayable.set(payableId, filtered);
+  }
+
   async findAll(): Promise<Payable[]> {
     throw new Error(
       "InMemoryPayableRepository.findAll not implemented (purchase-hex does not consume)",
@@ -55,8 +83,12 @@ export class InMemoryPayableRepository implements PayableRepository {
   async save(): Promise<void> {
     throw new Error("InMemoryPayableRepository.save not implemented");
   }
-  async update(): Promise<void> {
-    throw new Error("InMemoryPayableRepository.update not implemented");
+
+  updateCalls: Payable[] = [];
+
+  async update(payable: Payable): Promise<void> {
+    this.updateCalls.push(payable);
+    this.payables.set(payable.id, payable);
   }
   async aggregateOpen(): Promise<{ totalBalance: number; count: number }> {
     throw new Error("InMemoryPayableRepository.aggregateOpen not implemented");

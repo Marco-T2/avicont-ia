@@ -8,6 +8,7 @@ import type {
   PendingDocumentSnapshot,
   CreatePayableTxData,
   AllocationLifoSnapshot,
+  PayableTrimItem,
 } from "../domain/payable.repository";
 import { Payable } from "../domain/payable.entity";
 import type { PayableStatus } from "../domain/value-objects/payable-status";
@@ -124,6 +125,27 @@ export class PrismaPayablesRepository implements PayableRepository {
       sourceId: r.sourceId,
       createdAt: r.createdAt,
     }));
+  }
+
+  async applyTrimPlanTx(
+    tx: unknown,
+    _organizationId: string,
+    _payableId: string,
+    items: PayableTrimItem[],
+  ): Promise<void> {
+    const txClient = tx as Prisma.TransactionClient;
+    for (const item of items) {
+      if (item.newAmount <= 0) {
+        await txClient.paymentAllocation.delete({
+          where: { id: item.allocationId },
+        });
+      } else {
+        await txClient.paymentAllocation.update({
+          where: { id: item.allocationId },
+          data: { amount: new Prisma.Decimal(item.newAmount) },
+        });
+      }
+    }
   }
 
   async findAllocationsForPayable(

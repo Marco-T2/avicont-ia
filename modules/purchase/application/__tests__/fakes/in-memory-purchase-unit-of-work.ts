@@ -7,6 +7,7 @@ import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports
 import type { PayableRepository } from "@/modules/payables/domain/payable.repository";
 import type { JournalEntryFactoryPort } from "@/modules/sale/domain/ports/journal-entry-factory.port";
 import type { PurchaseRepository } from "../../../domain/ports/purchase.repository";
+import type { IvaBookRegenNotifierPort } from "../../../domain/ports/iva-book-regen-notifier.port";
 import type {
   PurchaseScope,
   PurchaseUnitOfWork,
@@ -35,6 +36,7 @@ export interface InMemoryPurchaseUnitOfWorkOptions {
   accountBalances?: AccountBalancesRepository;
   payables?: PayableRepository;
   journalEntryFactory?: JournalEntryFactoryPort;
+  ivaBookRegenNotifier?: IvaBookRegenNotifierPort;
 }
 
 /**
@@ -71,6 +73,8 @@ export class InMemoryPurchaseUnitOfWork implements PurchaseUnitOfWork {
       payables: this.options.payables ?? unused("payables"),
       journalEntryFactory:
         this.options.journalEntryFactory ?? unused("journalEntryFactory"),
+      ivaBookRegenNotifier:
+        this.options.ivaBookRegenNotifier ?? unused("ivaBookRegenNotifier"),
     };
 
     const result = await fn(scope);

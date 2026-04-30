@@ -111,6 +111,20 @@ export class PrismaJournalEntryFactoryAdapter
     oldJournalId: string,
     template: SaleJournalTemplate,
   ): Promise<RegenerateJournalResult> {
+    return this.regenerateInternal(oldJournalId, template);
+  }
+
+  async regenerateForPurchaseEdit(
+    oldJournalId: string,
+    template: PurchaseJournalTemplate,
+  ): Promise<RegenerateJournalResult> {
+    return this.regenerateInternal(oldJournalId, template);
+  }
+
+  private async regenerateInternal(
+    oldJournalId: string,
+    template: SaleJournalTemplate | PurchaseJournalTemplate,
+  ): Promise<RegenerateJournalResult> {
     const old = await this.readPort.findById(
       template.organizationId,
       oldJournalId,

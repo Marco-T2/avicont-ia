@@ -402,4 +402,73 @@ describe("Payable entity", () => {
       expect(snap.dueDate.getTime()).toBe(baseInput.dueDate.getTime());
     });
   });
+
+  describe("changeContact() — purchase-hex editPosted contact change", () => {
+    it("returns a new Payable with updated contactId", () => {
+      const p = Payable.create(baseInput);
+      const updated = p.changeContact("contact-2");
+
+      expect(updated.contactId).toBe("contact-2");
+      expect(updated.id).toBe(p.id);
+      expect(updated.amount.value).toBe(p.amount.value);
+    });
+
+    it("preserves the original instance (immutability)", () => {
+      const p = Payable.create(baseInput);
+      const updated = p.changeContact("contact-2");
+
+      expect(p.contactId).toBe("contact-1");
+      expect(updated).not.toBe(p);
+    });
+  });
+
+  describe("recomputeForPurchaseEdit() — purchase total mutation", () => {
+    it("caps paid at newTotal when paid > newTotal (status PAID)", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(800));
+      const updated = p.recomputeForPurchaseEdit(MonetaryAmount.of(500));
+
+      expect(updated.amount.value).toBe(500);
+      expect(updated.paid.value).toBe(500);
+      expect(updated.balance.value).toBe(0);
+      expect(updated.status).toBe("PAID");
+    });
+
+    it("preserves paid when paid <= newTotal (status PARTIAL)", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(300));
+      const updated = p.recomputeForPurchaseEdit(MonetaryAmount.of(700));
+
+      expect(updated.amount.value).toBe(700);
+      expect(updated.paid.value).toBe(300);
+      expect(updated.balance.value).toBe(400);
+      expect(updated.status).toBe("PARTIAL");
+    });
+
+    it("status PENDING when paid is zero (no allocations applied)", () => {
+      const p = Payable.create(baseInput);
+      const updated = p.recomputeForPurchaseEdit(MonetaryAmount.of(2000));
+
+      expect(updated.amount.value).toBe(2000);
+      expect(updated.paid.value).toBe(0);
+      expect(updated.balance.value).toBe(2000);
+      expect(updated.status).toBe("PENDING");
+    });
+
+    it("status PAID when paid equals newTotal exactly", () => {
+      const p = Payable.create(baseInput).applyAllocation(MonetaryAmount.of(500));
+      const updated = p.recomputeForPurchaseEdit(MonetaryAmount.of(500));
+
+      expect(updated.amount.value).toBe(500);
+      expect(updated.paid.value).toBe(500);
+      expect(updated.balance.value).toBe(0);
+      expect(updated.status).toBe("PAID");
+    });
+
+    it("returns a new Payable instance (immutability)", () => {
+      const p = Payable.create(baseInput);
+      const updated = p.recomputeForPurchaseEdit(MonetaryAmount.of(500));
+
+      expect(updated).not.toBe(p);
+      expect(p.amount.value).toBe(1000);
+    });
+  });
 });

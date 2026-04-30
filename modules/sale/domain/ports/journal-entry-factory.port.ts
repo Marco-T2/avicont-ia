@@ -98,4 +98,17 @@ export interface JournalEntryFactoryPort {
     oldJournalId: string,
     template: SaleJournalTemplate,
   ): Promise<RegenerateJournalResult>;
+
+  /**
+   * Espejo simétrico de `regenerateForSaleEdit` para purchase-hex use case
+   * `update` POSTED branch. Mismo load-mutate-persist cycle pero con
+   * `PurchaseJournalTemplate` (sourceType "purchase", voucherTypeCode "CE"
+   * resuelto por adapter). Devuelve `{old, new}` para que purchase-hex
+   * drive el cascade accountBalances sin importar accounting domain VOs.
+   * Heredado + extendido aquí por decisión step 0 A2 lockeada (id 1378).
+   */
+  regenerateForPurchaseEdit(
+    oldJournalId: string,
+    template: PurchaseJournalTemplate,
+  ): Promise<RegenerateJournalResult>;
 }

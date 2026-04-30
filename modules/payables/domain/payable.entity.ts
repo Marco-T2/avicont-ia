@@ -183,6 +183,55 @@ export class Payable {
     });
   }
 
+  /**
+   * Updates the payable's `contactId` — used when an underlying purchase's
+   * contact is changed via editPosted (legacy `purchase.service.ts:914`
+   * parity). Espejo simétrico de sale-hex `Receivable.changeContact`.
+   * Separation of concerns vs `recomputeForPurchaseEdit`: that method
+   * handles total mutation; this one handles identity mutation. Pre:
+   * payable not VOIDED — gated by purchase-hex orchestration; the aggregate
+   * trusts the new id has been vetted (existence/active/PROVEEDOR).
+   */
+  changeContact(contactId: string): Payable {
+    return new Payable({
+      ...this.props,
+      contactId,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Recomputes amount + paid (capped at newTotal) + balance + status when
+   * the underlying purchase's total changes via editPosted. Mirrors legacy
+   * `purchase.service.ts:980-1019` derivation. El aggregate emite el nuevo
+   * state; el LIFO trim de allocations cuyo paid > newTotal se orquesta
+   * fuera del aggregate (purchase-hex use case + `applyTrimPlanTx`).
+   * Espejo simétrico de sale-hex `Receivable.recomputeForSaleEdit`.
+   */
+  recomputeForPurchaseEdit(newTotal: MonetaryAmount): Payable {
+    const cappedPaid =
+      this.props.paid.value > newTotal.value ? newTotal : this.props.paid;
+    const newBalance = newTotal.minus(cappedPaid);
+
+    let newStatus: PayableStatus;
+    if (cappedPaid.equals(newTotal)) {
+      newStatus = "PAID";
+    } else if (cappedPaid.value > 0) {
+      newStatus = "PARTIAL";
+    } else {
+      newStatus = "PENDING";
+    }
+
+    return new Payable({
+      ...this.props,
+      amount: newTotal,
+      paid: cappedPaid,
+      balance: newBalance,
+      status: newStatus,
+      updatedAt: new Date(),
+    });
+  }
+
   revertAllocation(amount: MonetaryAmount): Payable {
     if (!amount.isGreaterThan(MonetaryAmount.zero())) {
       throw new RevertMustBePositive();

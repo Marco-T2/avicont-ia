@@ -21,8 +21,10 @@ import type {
 export class InMemoryJournalEntryFactory implements JournalEntryFactoryPort {
   saleCalls: SaleJournalTemplate[] = [];
   purchaseCalls: PurchaseJournalTemplate[] = [];
+  regenPurchaseCalls: { oldJournalId: string; template: PurchaseJournalTemplate }[] = [];
   private saleQueue: Journal[] = [];
   private purchaseQueue: Journal[] = [];
+  private regenPurchaseQueue: RegenerateJournalResult[] = [];
 
   enqueueSale(...journals: Journal[]): void {
     this.saleQueue.push(...journals);
@@ -30,6 +32,10 @@ export class InMemoryJournalEntryFactory implements JournalEntryFactoryPort {
 
   enqueuePurchase(...journals: Journal[]): void {
     this.purchaseQueue.push(...journals);
+  }
+
+  enqueueRegenPurchase(...results: RegenerateJournalResult[]): void {
+    this.regenPurchaseQueue.push(...results);
   }
 
   async generateForSale(template: SaleJournalTemplate): Promise<Journal> {
@@ -60,5 +66,19 @@ export class InMemoryJournalEntryFactory implements JournalEntryFactoryPort {
     throw new Error(
       "InMemoryJournalEntryFactory.regenerateForSaleEdit not used by purchase-hex (sale-hex has its own fake)",
     );
+  }
+
+  async regenerateForPurchaseEdit(
+    oldJournalId: string,
+    template: PurchaseJournalTemplate,
+  ): Promise<RegenerateJournalResult> {
+    this.regenPurchaseCalls.push({ oldJournalId, template });
+    const next = this.regenPurchaseQueue.shift();
+    if (!next) {
+      throw new Error(
+        "InMemoryJournalEntryFactory: no regen purchase result queued — call .enqueueRegenPurchase({old, new})",
+      );
+    }
+    return next;
   }
 }
