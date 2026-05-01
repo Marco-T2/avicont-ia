@@ -1,11 +1,20 @@
 /**
  * Tests de la ruta PATCH /[id]/void — Libro de Compras IVA
  *
- * Cubre: 200 con status VOIDED, 404 si no existe, 401 sin auth
- * IMPORTANTE: void SOLO cambia status, NO toca estadoSIN (compras no tienen estadoSIN;
- *             la semántica ortogonal aplica a ventas pero el patrón es el mismo).
+ * Cubre: 200 con status VOIDED + correlationId preserved, 404 si no existe,
+ *        401 sin auth, 403 sin acceso.
+ * NOTA: compras NO tienen estadoSIN — el void SOLO cambia status (lifecycle interno
+ *       Avicont). Asimetría intencional con sales-side donde estadoSIN es
+ *       ortogonal al status.
  *
  * PR3 — Task 3.3
+ *
+ * POC #11.0c A4-a Ciclo 2 RED — assertions cutoveradas a hex composition-root
+ * (`makeIvaBookService`). Failure mode RED declarado: hex spy `voidPurchase({
+ * organizationId, userId, id })` 0 calls porque la route legacy invoca
+ * `service.voidPurchase(orgId, userId, id)` positional. En GREEN cutover la
+ * route invoca hex spy → assertions pasan. Mirror sale C1 +1 test 403 paridad
+ * con reactivate (legacy void test set tenía 3, hex set tiene 4).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -28,17 +37,26 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockServiceInstance = {
+const mockLegacyServiceInstance = {
   voidPurchase: vi.fn(),
 };
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
+    return mockLegacyServiceInstance;
   }),
   IvaBooksRepository: vi.fn().mockImplementation(function () {
     return {};
   }),
+}));
+
+// ── A4-a Ciclo 2 hex composition-root mock ─────────────────────────────────────
+const mockHexService = {
+  voidPurchase: vi.fn(),
+};
+
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockHexService),
 }));
 
 import { requireAuth } from "@/features/shared/middleware";
@@ -54,7 +72,8 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 import { requirePermission } from "@/features/permissions/server";
 
-import { UnauthorizedError, NotFoundError } from "@/features/shared/errors";
+import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
+import { IvaBookNotFound } from "@/modules/iva-books/domain/errors/iva-book-errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 const ZERO = D("0");
@@ -112,9 +131,12 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/void", () => {
-  it("retorna 200 con la entrada anulada (status=VOIDED)", async () => {
+  it("retorna 200 con status=VOIDED + correlationId preserved", async () => {
     const dto = makeVoidedPurchaseDTO();
-    mockServiceInstance.voidPurchase.mockResolvedValue(dto);
+    mockHexService.voidPurchase.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-void-1",
+    });
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -126,16 +148,20 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/void", () 
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.voidPurchase).toHaveBeenCalledWith(ORG_ID, USER_ID, ENTRY_ID);
+    expect(mockHexService.voidPurchase).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: USER_ID,
+      id: ENTRY_ID,
+    });
 
     const body = await res.json();
     expect(body.status).toBe("VOIDED");
+    // §13 correlationId leak preserved (Opción C lockeada Marco)
+    expect(body.correlationId).toBe("corr-void-1");
   });
 
-  it("retorna 404 si la entrada no existe", async () => {
-    mockServiceInstance.voidPurchase.mockRejectedValue(
-      new NotFoundError("Entrada de Libro de Compras"),
-    );
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.voidPurchase.mockRejectedValue(new IvaBookNotFound("purchase"));
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -162,5 +188,20 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/void", () 
     });
 
     expect(res.status).toBe(401);
+  });
+
+  it("retorna 403 si no tiene acceso a la org", async () => {
+    vi.mocked(requirePermission).mockRejectedValueOnce(new ForbiddenError());
+
+    const { PATCH } = await import("../route");
+    const request = new Request(
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/purchases/${ENTRY_ID}/void`,
+      { method: "PATCH" },
+    );
+    const res = await PATCH(request, {
+      params: Promise.resolve({ orgSlug: ORG_SLUG, id: ENTRY_ID }),
+    });
+
+    expect(res.status).toBe(403);
   });
 });

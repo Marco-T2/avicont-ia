@@ -1,14 +1,21 @@
 /**
- * Tests de la ruta PATCH /[id]/reactivate — Libro de Compras IVA
+ * Tests de la ruta API: reactivate IvaPurchaseBook entry
  *
- * T2.5 RED (REQ-B.3):
- *   (a) 200 + DTO cuando exitoso
- *   (b) 404 cuando NotFoundError
- *   (c) 409 cuando ConflictError (entrada ya ACTIVE)
- *   (d) 401 sin autenticación
- *   (e) 403 sin acceso a org / rol insuficiente
+ * Cubre: PATCH 200 (reactivate + correlationId preserved), 404 (no existe),
+ *        422 (ya está ACTIVE — IvaBookReactivateNonVoided guard, ValidationError),
+ *        401, 403.
  *
- * Patrón Next.js 16 async params: { params: Promise<{ orgSlug, id }> }
+ * POC #11.0c A4-a Ciclo 2 RED — assertions cutoveradas a hex composition-root
+ * (`makeIvaBookService`). Tests asertean hex spy `reactivatePurchase({
+ * organizationId, userId, id })` que la route legacy NO invoca (legacy invoca
+ * `service.reactivatePurchase(orgId, userId, id)` positional). En GREEN cutover
+ * la route invoca hex spy → assertions pasan.
+ *
+ * 422 reactivate correctness fix heredado C1 (pre-aprobado): legacy retornaba
+ * 409 ConflictError; hex throws `IvaBookReactivateNonVoided` (extends
+ * `ValidationError` cuya `statusCode = 422`). NO §13 — error class statusCode
+ * mismatch en assumption RED. JSDoc route 409→422 alineado con realidad
+ * inheritance.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -19,6 +26,12 @@ vi.mock("@/features/shared/middleware", () => ({
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
   handleError: vi.fn((err: unknown) => {
+    if (err != null && typeof err === "object" && "flatten" in err && typeof (err as Record<string, unknown>).flatten === "function") {
+      return Response.json(
+        { error: "Datos inválidos", details: (err as { flatten: () => unknown }).flatten() },
+        { status: 400 },
+      );
+    }
     if (err != null && typeof err === "object" && "statusCode" in err) {
       const e = err as { message: string; code?: string; statusCode: number };
       return Response.json(
@@ -30,17 +43,25 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockServiceInstance = {
+const mockLegacyServiceInstance = {
   reactivatePurchase: vi.fn(),
 };
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
+    return mockLegacyServiceInstance;
   }),
   IvaBooksRepository: vi.fn().mockImplementation(function () {
     return {};
   }),
+}));
+
+const mockHexService = {
+  reactivatePurchase: vi.fn(),
+};
+
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockHexService),
 }));
 
 import { requireAuth } from "@/features/shared/middleware";
@@ -56,12 +77,11 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 import { requirePermission } from "@/features/permissions/server";
 
+import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
 import {
-  UnauthorizedError,
-  NotFoundError,
-  ConflictError,
-  ForbiddenError,
-} from "@/features/shared/errors";
+  IvaBookNotFound,
+  IvaBookReactivateNonVoided,
+} from "@/modules/iva-books/domain/errors/iva-book-errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 const ZERO = D("0");
@@ -119,9 +139,12 @@ beforeEach(() => {
 });
 
 describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate", () => {
-  it("T2.5-a: retorna 200 + DTO con status ACTIVE cuando exitoso", async () => {
+  it("retorna 200 con la entrada ACTIVE + correlationId preserved", async () => {
     const dto = makeActivePurchaseDTO();
-    mockServiceInstance.reactivatePurchase.mockResolvedValue(dto);
+    mockHexService.reactivatePurchase.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-reactivate-1",
+    });
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -133,16 +156,21 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.reactivatePurchase).toHaveBeenCalledWith(ORG_ID, USER_ID, ENTRY_ID);
+    expect(mockHexService.reactivatePurchase).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: USER_ID,
+      id: ENTRY_ID,
+    });
 
+    // §13 correlationId leak preserved
     const body = await res.json();
+    expect(body.correlationId).toBe("corr-reactivate-1");
+    expect(body.id).toBe(ENTRY_ID);
     expect(body.status).toBe("ACTIVE");
   });
 
-  it("T2.5-b: retorna 404 cuando NotFoundError", async () => {
-    mockServiceInstance.reactivatePurchase.mockRejectedValue(
-      new NotFoundError("Entrada de Libro de Compras"),
-    );
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.reactivatePurchase.mockRejectedValue(new IvaBookNotFound("purchase"));
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -156,9 +184,9 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate
     expect(res.status).toBe(404);
   });
 
-  it("T2.5-c: retorna 409 cuando ConflictError (entrada ya ACTIVE)", async () => {
-    mockServiceInstance.reactivatePurchase.mockRejectedValue(
-      new ConflictError("La entrada ya está activa (status !== VOIDED)"),
+  it("retorna 422 si la entrada ya está ACTIVE (IvaBookReactivateNonVoided guard idempotencia)", async () => {
+    mockHexService.reactivatePurchase.mockRejectedValue(
+      new IvaBookReactivateNonVoided("purchase"),
     );
 
     const { PATCH } = await import("../route");
@@ -170,10 +198,11 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate
       params: Promise.resolve({ orgSlug: ORG_SLUG, id: ENTRY_ID }),
     });
 
-    expect(res.status).toBe(409);
+    // IvaBookReactivateNonVoided extends ValidationError → statusCode 422
+    expect(res.status).toBe(422);
   });
 
-  it("T2.5-d: retorna 401 sin autenticación", async () => {
+  it("retorna 401 sin autenticación", async () => {
     vi.mocked(requirePermission).mockRejectedValueOnce(new UnauthorizedError());
 
     const { PATCH } = await import("../route");
@@ -188,7 +217,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]/reactivate
     expect(res.status).toBe(401);
   });
 
-  it("T2.5-e: retorna 403 con rol insuficiente", async () => {
+  it("retorna 403 con rol insuficiente", async () => {
     vi.mocked(requirePermission).mockRejectedValueOnce(new ForbiddenError("Rol insuficiente"));
 
     const { PATCH } = await import("../route");

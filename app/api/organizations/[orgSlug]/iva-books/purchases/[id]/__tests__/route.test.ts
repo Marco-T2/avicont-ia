@@ -1,9 +1,19 @@
 /**
  * Tests de las rutas API: Libro de Compras IVA — operaciones por id
  *
- * Cubre: GET /[id] (200, 404), PATCH /[id] (200, 400, 404), DELETE /[id] (204, 404)
+ * Cubre: GET /[id] (200, 404, 401), PATCH /[id] (200, 400, 404), DELETE /[id] (204, 404)
  *
  * PR3 — Task 3.3
+ *
+ * POC #11.0c A4-a Ciclo 2 RED — assertions cutoveradas a hex composition-root
+ * (`makeIvaBookService`). GET cutover: legacy `findPurchaseById` retorna null →
+ * route hace manual `if (!entry) throw NotFoundError`; hex `getPurchaseById` throws
+ * `IvaBookNotFound("purchase")` directo (drop manual throw). DELETE cutover: extract
+ * `entry` del `{entry, correlationId}` hex + spread §13 preserve correlationId.
+ *
+ * 422 LOCKED_EDIT_REQUIRES_JUSTIFICATION test removido — no exercised por hex
+ * IVA layer (mirror sale C1 cutover; ese path es responsabilidad sale-hex /
+ * purchase-hex, no del IvaBookService).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -32,7 +42,7 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockServiceInstance = {
+const mockLegacyServiceInstance = {
   findPurchaseById: vi.fn(),
   updatePurchase: vi.fn(),
   voidPurchase: vi.fn(),
@@ -40,11 +50,22 @@ const mockServiceInstance = {
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
+    return mockLegacyServiceInstance;
   }),
   IvaBooksRepository: vi.fn().mockImplementation(function () {
     return {};
   }),
+}));
+
+// ── A4-a Ciclo 2 hex composition-root mock ─────────────────────────────────────
+const mockHexService = {
+  getPurchaseById: vi.fn(),
+  recomputePurchase: vi.fn(),
+  voidPurchase: vi.fn(),
+};
+
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockHexService),
 }));
 
 import { requireAuth } from "@/features/shared/middleware";
@@ -60,12 +81,8 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 import { requirePermission } from "@/features/permissions/server";
 
-import {
-  UnauthorizedError,
-  NotFoundError,
-  ValidationError,
-  LOCKED_EDIT_REQUIRES_JUSTIFICATION,
-} from "@/features/shared/errors";
+import { UnauthorizedError } from "@/features/shared/errors";
+import { IvaBookNotFound } from "@/modules/iva-books/domain/errors/iva-book-errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 const ZERO = D("0");
@@ -129,7 +146,7 @@ beforeEach(() => {
 describe("GET /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
   it("retorna 200 con la entrada si existe", async () => {
     const dto = makePurchaseDTO();
-    mockServiceInstance.findPurchaseById.mockResolvedValue(dto);
+    mockHexService.getPurchaseById.mockResolvedValue(dto);
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -140,11 +157,11 @@ describe("GET /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.findPurchaseById).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
+    expect(mockHexService.getPurchaseById).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
   });
 
-  it("retorna 404 si la entrada no existe (service retorna null)", async () => {
-    mockServiceInstance.findPurchaseById.mockResolvedValue(null);
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.getPurchaseById.mockRejectedValue(new IvaBookNotFound("purchase"));
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -175,9 +192,12 @@ describe("GET /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
 // ── PATCH /[id] ──────────────────────────────────────────────────────────────
 
 describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
-  it("retorna 200 con la entrada actualizada", async () => {
+  it("retorna 200 con la entrada actualizada + correlationId preserved", async () => {
     const dto = makePurchaseDTO({ razonSocial: "Proveedor Actualizado" });
-    mockServiceInstance.updatePurchase.mockResolvedValue(dto);
+    mockHexService.recomputePurchase.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-recompute-1",
+    });
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -193,12 +213,18 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.updatePurchase).toHaveBeenCalledWith(
-      ORG_ID,
-      USER_ID,
-      ENTRY_ID,
-      expect.objectContaining({ razonSocial: "Proveedor Actualizado" }),
+    expect(mockHexService.recomputePurchase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        userId: USER_ID,
+        id: ENTRY_ID,
+        razonSocial: "Proveedor Actualizado",
+      }),
     );
+
+    // §13 correlationId leak preserved (Opción C lockeada Marco)
+    const body = await res.json();
+    expect(body.correlationId).toBe("corr-recompute-1");
   });
 
   it("retorna 400 si el body tiene valores inválidos (Zod)", async () => {
@@ -218,10 +244,8 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
     expect(res.status).toBe(400);
   });
 
-  it("retorna 404 si la entrada no existe", async () => {
-    mockServiceInstance.updatePurchase.mockRejectedValue(
-      new NotFoundError("Entrada de Libro de Compras"),
-    );
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.recomputePurchase.mockRejectedValue(new IvaBookNotFound("purchase"));
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -238,34 +262,6 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
 
     expect(res.status).toBe(404);
   });
-
-  it("retorna 422 LOCKED_EDIT_REQUIRES_JUSTIFICATION con details.requiredMin cuando justificación es insuficiente", async () => {
-    mockServiceInstance.updatePurchase.mockRejectedValue(
-      new ValidationError(
-        "Se requiere una justificación de al menos 50 caracteres para modificar un documento bloqueado en un período cerrado",
-        LOCKED_EDIT_REQUIRES_JUSTIFICATION,
-        { requiredMin: 50 },
-      ),
-    );
-
-    const { PATCH } = await import("../route");
-    const request = new Request(
-      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/purchases/${ENTRY_ID}`,
-      {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ razonSocial: "Actualización", justification: "corta" }),
-      },
-    );
-    const res = await PATCH(request, {
-      params: Promise.resolve({ orgSlug: ORG_SLUG, id: ENTRY_ID }),
-    });
-
-    expect(res.status).toBe(422);
-    const body = await res.json();
-    expect(body.code).toBe(LOCKED_EDIT_REQUIRES_JUSTIFICATION);
-    expect(body.details.requiredMin).toBe(50);
-  });
 });
 
 // ── DELETE /[id] ─────────────────────────────────────────────────────────────
@@ -273,7 +269,10 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
 describe("DELETE /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
   it("retorna 204 al anular (void) la entrada", async () => {
     const dto = makePurchaseDTO({ status: "VOIDED" });
-    mockServiceInstance.voidPurchase.mockResolvedValue(dto);
+    mockHexService.voidPurchase.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-void-delete-1",
+    });
 
     const { DELETE } = await import("../route");
     const request = new Request(
@@ -285,13 +284,15 @@ describe("DELETE /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(mockServiceInstance.voidPurchase).toHaveBeenCalledWith(ORG_ID, USER_ID, ENTRY_ID);
+    expect(mockHexService.voidPurchase).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: USER_ID,
+      id: ENTRY_ID,
+    });
   });
 
-  it("retorna 404 si la entrada no existe", async () => {
-    mockServiceInstance.voidPurchase.mockRejectedValue(
-      new NotFoundError("Entrada de Libro de Compras"),
-    );
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.voidPurchase.mockRejectedValue(new IvaBookNotFound("purchase"));
 
     const { DELETE } = await import("../route");
     const request = new Request(

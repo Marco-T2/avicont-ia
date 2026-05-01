@@ -2,16 +2,21 @@
  * Tests de las rutas API: Libro de Compras IVA
  *
  * Estrategia: servicio y middleware mockeados — no toca la DB.
- * Cubre: GET 200, POST 201, POST 400 (Zod), POST 401 (sin auth), POST 403 (wrong org),
- *        estadoSIN en payload validado.
+ * Cubre: GET 200, POST 201, POST 400 (Zod), POST 401 (sin auth), POST 403 (wrong org).
  *
  * PR3 — Tasks 3.1
+ *
+ * POC #11.0c A4-a Ciclo 2 RED — assertions cutoveradas a hex composition-root
+ * (`makeIvaBookService`). Legacy mock (`IvaBooksService` en
+ * `@/features/accounting/iva-books/server`) preservado para que la route legacy
+ * intacta NO crashee en RED. Failure mode RED declarado: hex spy
+ * (`regeneratePurchase`/`listPurchasesByPeriod`) 0 calls porque la route aún
+ * invoca `service.createPurchase`/`service.listPurchasesByPeriod` legacy. En
+ * GREEN cutover la route invoca hex spies → assertions pasan.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-
-// ── Mocks declarados ANTES de cualquier import de los handlers ───────────────
 
 vi.mock("@/features/shared/middleware", () => ({
   requireAuth: vi.fn(),
@@ -36,25 +41,29 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-// El mock del servicio usa un objeto compartido mutable para sobrevivir al cache de módulos.
-const mockServiceInstance = {
+const mockLegacyServiceInstance = {
   createPurchase: vi.fn(),
-  findPurchaseById: vi.fn(),
   listPurchasesByPeriod: vi.fn().mockResolvedValue([]),
-  updatePurchase: vi.fn(),
-  voidPurchase: vi.fn(),
 };
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
+    return mockLegacyServiceInstance;
   }),
   IvaBooksRepository: vi.fn().mockImplementation(function () {
     return {};
   }),
 }));
 
-// ── Imports después de los mocks ─────────────────────────────────────────────
+// ── A4-a Ciclo 2 hex composition-root mock ─────────────────────────────────────
+const mockHexService = {
+  regeneratePurchase: vi.fn(),
+  listPurchasesByPeriod: vi.fn().mockResolvedValue([]),
+};
+
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockHexService),
+}));
 
 import { requireAuth } from "@/features/shared/middleware";
 vi.mock("@/features/organizations/server", () => ({
@@ -148,7 +157,8 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   // Restablecer el comportamiento por defecto después de clearAllMocks
-  mockServiceInstance.listPurchasesByPeriod.mockResolvedValue([]);
+  mockLegacyServiceInstance.listPurchasesByPeriod.mockResolvedValue([]);
+  mockHexService.listPurchasesByPeriod.mockResolvedValue([]);
 
   vi.mocked(requireAuth).mockResolvedValue({ userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>);
   vi.mocked(requireOrgAccess).mockResolvedValue(ORG_ID);
@@ -174,11 +184,12 @@ describe("GET /api/organizations/[orgSlug]/iva-books/purchases", () => {
     const body = await res.json();
     expect(Array.isArray(body)).toBe(true);
     expect(body).toHaveLength(0);
+    expect(mockHexService.listPurchasesByPeriod).toHaveBeenCalled();
   });
 
   it("filtra por fiscalPeriodId si se pasa en query", async () => {
     const entry = makePurchaseDTO();
-    mockServiceInstance.listPurchasesByPeriod.mockResolvedValue([entry]);
+    mockHexService.listPurchasesByPeriod.mockResolvedValue([entry]);
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -187,7 +198,7 @@ describe("GET /api/organizations/[orgSlug]/iva-books/purchases", () => {
     const res = await GET(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.listPurchasesByPeriod).toHaveBeenCalledWith(
+    expect(mockHexService.listPurchasesByPeriod).toHaveBeenCalledWith(
       ORG_ID,
       expect.objectContaining({ fiscalPeriodId: PERIOD_ID }),
     );
@@ -221,9 +232,12 @@ describe("GET /api/organizations/[orgSlug]/iva-books/purchases", () => {
 // ── Tests: POST /purchases ────────────────────────────────────────────────────
 
 describe("POST /api/organizations/[orgSlug]/iva-books/purchases", () => {
-  it("retorna 201 con la entrada creada cuando el body es válido", async () => {
+  it("retorna 201 con la entrada creada + correlationId preserved", async () => {
     const dto = makePurchaseDTO();
-    mockServiceInstance.createPurchase.mockResolvedValue(dto);
+    mockHexService.regeneratePurchase.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-regenerate-1",
+    });
 
     const { POST } = await import("../route");
     const request = new Request(
@@ -237,7 +251,19 @@ describe("POST /api/organizations/[orgSlug]/iva-books/purchases", () => {
     const res = await POST(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
 
     expect(res.status).toBe(201);
-    expect(mockServiceInstance.createPurchase).toHaveBeenCalledWith(ORG_ID, USER_ID, expect.any(Object));
+    expect(mockHexService.regeneratePurchase).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        userId: USER_ID,
+        fiscalPeriodId: PERIOD_ID,
+        nitProveedor: "1234567",
+        tipoCompra: 1,
+      }),
+    );
+
+    // §13 correlationId leak preserved (Opción C lockeada Marco)
+    const body = await res.json();
+    expect(body.correlationId).toBe("corr-regenerate-1");
   });
 
   it("retorna 400 cuando faltan campos requeridos (Zod)", async () => {
@@ -258,7 +284,7 @@ describe("POST /api/organizations/[orgSlug]/iva-books/purchases", () => {
   });
 
   it("retorna 409 cuando hay violación de restricción única", async () => {
-    mockServiceInstance.createPurchase.mockRejectedValue(
+    mockHexService.regeneratePurchase.mockRejectedValue(
       new ConflictError("Entrada de Libro de Compras con los mismos datos ya existe"),
     );
 

@@ -1,45 +1,56 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
-import { SaleService } from "@/features/sale/server";
-import { PurchaseService } from "@/features/purchase/server";
 import {
   createPurchaseInputSchema,
   listQuerySchema,
   type CreatePurchaseInputDto,
-  type CreatePurchaseInput,
 } from "@/features/accounting/iva-books";
-import { Prisma } from "@/generated/prisma/client";
+import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
+import type { RegenerateIvaPurchaseBookInput } from "@/modules/iva-books/application/iva-book.service";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
-const service = new IvaBooksService(
-  new IvaBooksRepository(),
-  new SaleService(),
-  new PurchaseService(),
-);
+const service = makeIvaBookService();
 
 /**
- * Convierte los campos monetarios string del DTO Zod a Prisma.Decimal
- * antes de pasarlos al service.
+ * Adapter route → hex `regeneratePurchase` input. POC #11.0c A4-a Ciclo 2 — Q2
+ * lock: `MonetaryAmount.of(string)` directo + `codigoControl ?? ""` (Q2.5)
+ * + `fechaFactura "YYYY-MM-DD"` → `Date`. Defense-in-depth: hex recomputa
+ * `IvaCalcResult` server-side; los 5 campos derivados que el DTO Zod requiere
+ * (`subtotal`/`dfIva`/`baseIvaSujetoCf`/`dfCfIva`/`tasaIva`) se ignoran acá
+ * por diseño (paridad legacy `computeIvaFields`). Asimetría con sale-side:
+ * `tipoCompra` raw int (vs `estadoSIN` VO), `nitProveedor` (vs `nitCliente`).
  */
-function toPurchaseInput(dto: CreatePurchaseInputDto): CreatePurchaseInput {
-  const D = (v: string) => new Prisma.Decimal(v);
+function toRegenerateIvaPurchaseBookInput(
+  dto: CreatePurchaseInputDto,
+  organizationId: string,
+  userId: string,
+): RegenerateIvaPurchaseBookInput {
+  const M = (v: string) => MonetaryAmount.of(v);
   return {
-    ...dto,
-    importeTotal: D(dto.importeTotal),
-    importeIce: D(dto.importeIce),
-    importeIehd: D(dto.importeIehd),
-    importeIpj: D(dto.importeIpj),
-    tasas: D(dto.tasas),
-    otrosNoSujetos: D(dto.otrosNoSujetos),
-    exentos: D(dto.exentos),
-    tasaCero: D(dto.tasaCero),
-    subtotal: D(dto.subtotal),
-    dfIva: D(dto.dfIva),
-    codigoDescuentoAdicional: D(dto.codigoDescuentoAdicional),
-    importeGiftCard: D(dto.importeGiftCard),
-    baseIvaSujetoCf: D(dto.baseIvaSujetoCf),
-    dfCfIva: D(dto.dfCfIva),
-    tasaIva: D(dto.tasaIva),
+    organizationId,
+    userId,
+    fiscalPeriodId: dto.fiscalPeriodId,
+    purchaseId: dto.purchaseId,
+    fechaFactura: new Date(dto.fechaFactura),
+    nitProveedor: dto.nitProveedor,
+    razonSocial: dto.razonSocial,
+    numeroFactura: dto.numeroFactura,
+    codigoAutorizacion: dto.codigoAutorizacion,
+    codigoControl: dto.codigoControl ?? "",
+    tipoCompra: dto.tipoCompra,
+    notes: dto.notes ?? null,
+    inputs: {
+      importeTotal: M(dto.importeTotal),
+      importeIce: M(dto.importeIce),
+      importeIehd: M(dto.importeIehd),
+      importeIpj: M(dto.importeIpj),
+      tasas: M(dto.tasas),
+      otrosNoSujetos: M(dto.otrosNoSujetos),
+      exentos: M(dto.exentos),
+      tasaCero: M(dto.tasaCero),
+      codigoDescuentoAdicional: M(dto.codigoDescuentoAdicional),
+      importeGiftCard: M(dto.importeGiftCard),
+    },
   };
 }
 
@@ -86,7 +97,7 @@ export async function GET(
  * El service recomputa campos IVA server-side (defense-in-depth).
  *
  * Respuestas:
- * - 201: IvaPurchaseBookDTO creado
+ * - 201: IvaPurchaseBookDTO creado (con correlationId §13 preserved leak)
  * - 400: body inválido (Zod)
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
@@ -107,11 +118,14 @@ export async function POST(
 
     const body = await request.json();
     const dto = createPurchaseInputSchema.parse(body);
-    const input = toPurchaseInput(dto);
+    const input = toRegenerateIvaPurchaseBookInput(dto, orgId, userId);
 
-    const entry = await service.createPurchase(orgId, userId, input);
+    const result = await service.regeneratePurchase(input);
 
-    return Response.json(entry, { status: 201 });
+    return Response.json(
+      { ...result.entry, correlationId: result.correlationId },
+      { status: 201 },
+    );
   } catch (error) {
     return handleError(error);
   }

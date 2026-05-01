@@ -1,57 +1,64 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
-import { SaleService } from "@/features/sale/server";
-import { PurchaseService } from "@/features/purchase/server";
 import {
   updatePurchaseInputSchema,
   type UpdatePurchaseInputDto,
-  type UpdatePurchaseInput,
 } from "@/features/accounting/iva-books";
-import { NotFoundError } from "@/features/shared/errors";
-import { Prisma } from "@/generated/prisma/client";
+import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
+import type {
+  RecomputeIvaPurchaseBookInput,
+  PartialIvaPurchaseBookEntryInputs,
+} from "@/modules/iva-books/application/iva-book.service";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
-const service = new IvaBooksService(
-  new IvaBooksRepository(),
-  new SaleService(),
-  new PurchaseService(),
-);
+const service = makeIvaBookService();
 
 /**
- * Convierte los campos monetarios string del DTO Zod parcial a Prisma.Decimal.
- * Solo convierte los campos que están presentes en el patch.
- * El cast final es seguro porque todos los campos monetarios son convertidos explícitamente.
+ * Adapter route → hex `recomputePurchase` input parcial. POC #11.0c A4-a Ciclo
+ * 2 — Q2 lock: `MonetaryAmount.of(string)` directo solo para campos presentes
+ * en el patch + `codigoControl ?? ""` (Q2.5) + `fechaFactura "YYYY-MM-DD"`
+ * → `Date`. Defense-in-depth: hex recomputa `IvaCalcResult` server-side
+ * cuando hay monetary change. Notes patch-vs-preserve via `"notes" in dto`
+ * (mirror hex `:468` distingo). Asimetría con sale-side: `tipoCompra` raw int
+ * (vs `estadoSIN` VO), `nitProveedor` (vs `nitCliente`).
  */
-function toPurchaseUpdateInput(dto: UpdatePurchaseInputDto): UpdatePurchaseInput {
-  const D = (v: string) => new Prisma.Decimal(v);
-  const result: UpdatePurchaseInput = {
-    ...(dto.fechaFactura !== undefined ? { fechaFactura: dto.fechaFactura } : {}),
+function toRecomputeIvaPurchaseBookInput(
+  dto: UpdatePurchaseInputDto,
+  organizationId: string,
+  userId: string,
+  id: string,
+): RecomputeIvaPurchaseBookInput {
+  const M = (v: string) => MonetaryAmount.of(v);
+
+  const inputs: PartialIvaPurchaseBookEntryInputs = {
+    ...(dto.importeTotal !== undefined ? { importeTotal: M(dto.importeTotal) } : {}),
+    ...(dto.importeIce !== undefined ? { importeIce: M(dto.importeIce) } : {}),
+    ...(dto.importeIehd !== undefined ? { importeIehd: M(dto.importeIehd) } : {}),
+    ...(dto.importeIpj !== undefined ? { importeIpj: M(dto.importeIpj) } : {}),
+    ...(dto.tasas !== undefined ? { tasas: M(dto.tasas) } : {}),
+    ...(dto.otrosNoSujetos !== undefined ? { otrosNoSujetos: M(dto.otrosNoSujetos) } : {}),
+    ...(dto.exentos !== undefined ? { exentos: M(dto.exentos) } : {}),
+    ...(dto.tasaCero !== undefined ? { tasaCero: M(dto.tasaCero) } : {}),
+    ...(dto.codigoDescuentoAdicional !== undefined
+      ? { codigoDescuentoAdicional: M(dto.codigoDescuentoAdicional) }
+      : {}),
+    ...(dto.importeGiftCard !== undefined ? { importeGiftCard: M(dto.importeGiftCard) } : {}),
+  };
+
+  return {
+    organizationId,
+    userId,
+    id,
+    ...(dto.fechaFactura !== undefined ? { fechaFactura: new Date(dto.fechaFactura) } : {}),
     ...(dto.nitProveedor !== undefined ? { nitProveedor: dto.nitProveedor } : {}),
     ...(dto.razonSocial !== undefined ? { razonSocial: dto.razonSocial } : {}),
     ...(dto.numeroFactura !== undefined ? { numeroFactura: dto.numeroFactura } : {}),
     ...(dto.codigoAutorizacion !== undefined ? { codigoAutorizacion: dto.codigoAutorizacion } : {}),
-    ...(dto.codigoControl !== undefined ? { codigoControl: dto.codigoControl } : {}),
+    ...(dto.codigoControl !== undefined ? { codigoControl: dto.codigoControl ?? "" } : {}),
     ...(dto.tipoCompra !== undefined ? { tipoCompra: dto.tipoCompra } : {}),
-    ...(dto.fiscalPeriodId !== undefined ? { fiscalPeriodId: dto.fiscalPeriodId } : {}),
-    ...(dto.purchaseId !== undefined ? { purchaseId: dto.purchaseId } : {}),
-    ...(dto.notes !== undefined ? { notes: dto.notes } : {}),
-    ...(dto.importeTotal !== undefined ? { importeTotal: D(dto.importeTotal) } : {}),
-    ...(dto.importeIce !== undefined ? { importeIce: D(dto.importeIce) } : {}),
-    ...(dto.importeIehd !== undefined ? { importeIehd: D(dto.importeIehd) } : {}),
-    ...(dto.importeIpj !== undefined ? { importeIpj: D(dto.importeIpj) } : {}),
-    ...(dto.tasas !== undefined ? { tasas: D(dto.tasas) } : {}),
-    ...(dto.otrosNoSujetos !== undefined ? { otrosNoSujetos: D(dto.otrosNoSujetos) } : {}),
-    ...(dto.exentos !== undefined ? { exentos: D(dto.exentos) } : {}),
-    ...(dto.tasaCero !== undefined ? { tasaCero: D(dto.tasaCero) } : {}),
-    ...(dto.subtotal !== undefined ? { subtotal: D(dto.subtotal) } : {}),
-    ...(dto.dfIva !== undefined ? { dfIva: D(dto.dfIva) } : {}),
-    ...(dto.codigoDescuentoAdicional !== undefined ? { codigoDescuentoAdicional: D(dto.codigoDescuentoAdicional) } : {}),
-    ...(dto.importeGiftCard !== undefined ? { importeGiftCard: D(dto.importeGiftCard) } : {}),
-    ...(dto.baseIvaSujetoCf !== undefined ? { baseIvaSujetoCf: D(dto.baseIvaSujetoCf) } : {}),
-    ...(dto.dfCfIva !== undefined ? { dfCfIva: D(dto.dfCfIva) } : {}),
-    ...(dto.tasaIva !== undefined ? { tasaIva: D(dto.tasaIva) } : {}),
+    ...("notes" in dto ? { notes: dto.notes ?? null } : {}),
+    ...(Object.keys(inputs).length > 0 ? { inputs } : {}),
   };
-  return result;
 }
 
 /**
@@ -63,7 +70,7 @@ function toPurchaseUpdateInput(dto: UpdatePurchaseInputDto): UpdatePurchaseInput
  * - 200: IvaPurchaseBookDTO
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
- * - 404: entrada no encontrada
+ * - 404: entrada no encontrada (hex `IvaBookNotFound`)
  */
 export async function GET(
   _request: Request,
@@ -73,8 +80,7 @@ export async function GET(
     const { orgSlug, id } = await params;
     const { orgId } = await requirePermission("reports", "read", orgSlug);
 
-    const entry = await service.findPurchaseById(orgId, id);
-    if (!entry) throw new NotFoundError("Entrada de Libro de Compras");
+    const entry = await service.getPurchaseById(orgId, id);
 
     return Response.json(entry);
   } catch (error) {
@@ -89,11 +95,11 @@ export async function GET(
  * Si se envían campos monetarios, el service recomputa IVA.
  *
  * Respuestas:
- * - 200: IvaPurchaseBookDTO actualizado
+ * - 200: IvaPurchaseBookDTO actualizado (con correlationId §13 preserved leak)
  * - 400: body inválido (Zod)
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
- * - 404: entrada no encontrada
+ * - 404: entrada no encontrada (hex `IvaBookNotFound`)
  */
 export async function PATCH(
   request: Request,
@@ -110,11 +116,11 @@ export async function PATCH(
 
     const body = await request.json();
     const dto = updatePurchaseInputSchema.parse(body);
-    const input = toPurchaseUpdateInput(dto);
+    const input = toRecomputeIvaPurchaseBookInput(dto, orgId, userId, id);
 
-    const entry = await service.updatePurchase(orgId, userId, id, input);
+    const result = await service.recomputePurchase(input);
 
-    return Response.json(entry);
+    return Response.json({ ...result.entry, correlationId: result.correlationId });
   } catch (error) {
     return handleError(error);
   }
@@ -130,7 +136,7 @@ export async function PATCH(
  * - 204: anulado correctamente
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
- * - 404: entrada no encontrada
+ * - 404: entrada no encontrada (hex `IvaBookNotFound`)
  */
 export async function DELETE(
   _request: Request,
@@ -145,7 +151,7 @@ export async function DELETE(
     );
     const userId = session.userId;
 
-    await service.voidPurchase(orgId, userId, id);
+    await service.voidPurchase({ organizationId: orgId, userId, id });
 
     return new Response(null, { status: 204 });
   } catch (error) {
