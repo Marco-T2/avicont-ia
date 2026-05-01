@@ -197,7 +197,9 @@ export interface ApplyIvaBookVoidCascadeFromPurchaseInput {
  * `linked + POSTED + period OPEN`. NO comparte tx con `IvaBookScope`
  * (D-1 lockeada: bridge regen es side-effect post-UoW; sale-hex falla
  * → IvaBook persiste pero journal queda desincronizado, recuperable
- * por reintento manual).
+ * por reintento manual). C locked: IVA NO escribe journals ni balances
+ * directamente — el bridge es el único side-effect cross-module (ver
+ * `iva-book-unit-of-work.ts:21-27`).
  *
  * **Notes patch-vs-preserve distingo (recompute × {sale, purchase})** —
  * `if ("notes" in input) editInput.notes = input.notes ?? null;` distingue
@@ -644,6 +646,19 @@ export class IvaBookService {
     return { entry: result.entry, correlationId };
   }
 
+  /**
+   * IVA cascade entry point invocado por sale-hex `voidSale` cascade chain.
+   *
+   * **E locked (POC #11.0c A2)** — NO valida periodo (fidelidad legacy
+   * regla #1). Legacy `iva-books.service.ts:559-602` ejecuta el void
+   * cascade INDEPENDIENTE del estado periodo. Asimetría intencional con
+   * regenerate / recompute / void / reactivate (que sí validan periodo).
+   * Defense-in-depth contra fix accidental: NO agregar `fiscalPeriods.getById`
+   * acá — rompe fidelidad legacy regla #1.
+   *
+   * **F-α locked** — recibe `scope: IvaBookScope` por parámetro (no
+   * `uow.run()` interno). Ver `iva-book-unit-of-work.ts:29-37`.
+   */
   async applyVoidCascadeFromSale(
     input: ApplyIvaBookVoidCascadeFromSaleInput,
     scope: IvaBookScope,
@@ -657,6 +672,11 @@ export class IvaBookService {
     await scope.ivaSalesBooks.updateTx(voided);
   }
 
+  /**
+   * IVA cascade entry point invocado por purchase-hex `voidPurchase`
+   * cascade chain. **E locked + F-α locked** — mirror simétrico
+   * `applyVoidCascadeFromSale`. Legacy `iva-books.service.ts:618-659`.
+   */
   async applyVoidCascadeFromPurchase(
     input: ApplyIvaBookVoidCascadeFromPurchaseInput,
     scope: IvaBookScope,
