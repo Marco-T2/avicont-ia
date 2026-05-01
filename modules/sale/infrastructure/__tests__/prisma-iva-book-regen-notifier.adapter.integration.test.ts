@@ -3,6 +3,9 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
+import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
+import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 import { PrismaIvaBookRegenNotifierAdapter } from "../prisma-iva-book-regen-notifier.adapter";
 
@@ -300,5 +303,109 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
 
     expect(result).not.toBeNull();
     expect(result!.importeTotal).toBe(113);
+  });
+
+  it("E2 cutover hex contract: ctor 4-arg + body delega hex IvaBookService.recomputeFromSaleCascade(input, scope)", async () => {
+    // RED honesty pre-impl (feedback/red-acceptance-failure-mode):
+    // Pre-C2 GREEN ctor `(tx, ivaServiceFactory: () => IvaBooksService)`
+    // 2-arg legacy. Esta llamada con 4-arg `(tx, correlationId,
+    // ivaServiceFactory: () => IvaBookService, ivaScopeFactory)` →
+    // **TS2554 primary gate** "Expected 2 arguments, but got 4". Si TS
+    // strip lo deja pasar, secondary runtime gate: extra args ignored,
+    // body delegate `factoryFn().recomputeFromSaleCascade(this.tx,
+    // orgId, saleId, decimal)` legacy 4-arg shape, pero factory return
+    // type es hex `IvaBookService` (sin 's') con method shape `(input,
+    // scope)` → mock cascade NO invocado o llamado con args mismatch.
+    //
+    // **TS2345 tertiary gate**: param 2 type `() => IvaBookService` (hex,
+    // sin 's') no asignable a `() => IvaBooksService` (legacy, con 's')
+    // — incompatible class types. TS reporta primary TS2554 antes pero
+    // gate documentado.
+    //
+    // Mirror precedent A4-c C1 E1 RED dual-gate compile-time + runtime.
+    //
+    // Post-C2 GREEN: ctor `(tx, correlationId: string, ivaServiceFactory:
+    // () => IvaBookService, ivaScopeFactory: (tx, correlationId) =>
+    // IvaBookScope)`. Body invoca `ivaServiceFactory().
+    // recomputeFromSaleCascade({organizationId, saleId, newTotal:
+    // MonetaryAmount.of(newTotal)}, scope)` shape (hex contract). Post-
+    // call findFirst raw `tx.ivaSalesBook.findFirst` + 4-field Number
+    // narrow preservado (P2 (α) lock — paridad bit-exact legacy minimal
+    // blast radius).
+    //
+    // Cycle-break heredado C1 (factory shape) preservado; C2 cuts type
+    // legacy → hex + delegate legacy 4-arg → hex (input, scope). Capas
+    // separadas C1↔C2 bisect-friendly per Marco lock granularity D'.
+    //
+    // P1 (b) scopeFactory injection lockeada Marco: closure construido
+    // por iva root (`makeIvaScopeFactory`) cierra sobre prisma adapters
+    // iva-side (PrismaFiscalPeriodsTxRepo + PrismaIvaSalesBookEntryRepo
+    // + PrismaIvaPurchaseBookEntryRepo). CERO cross-module concrete
+    // imports en sale infrastructure adapter (§17 preservado).
+    //
+    // Mirror simétrico estricto purchase E2.
+    const saleId = await seedSaleDirect(4);
+    await seedIvaSalesBook({
+      saleId,
+      status: "ACTIVE",
+      sequenceTag: "hex-contract",
+      importeTotal: "120.00",
+      exentos: "0",
+    });
+
+    const cascadeInvocations: Array<{
+      input: { organizationId: string; saleId: string; newTotal: MonetaryAmount };
+      scope: IvaBookScope;
+    }> = [];
+
+    const mockHexService = {
+      recomputeFromSaleCascade: async (
+        input: { organizationId: string; saleId: string; newTotal: MonetaryAmount },
+        scope: IvaBookScope,
+      ): Promise<void> => {
+        cascadeInvocations.push({ input, scope });
+      },
+    } as unknown as IvaBookService;
+
+    const ivaServiceFactory = (): IvaBookService => mockHexService;
+
+    const ivaScopeFactory = (
+      _tx: Prisma.TransactionClient,
+      correlationId: string,
+    ): IvaBookScope =>
+      ({
+        correlationId,
+        fiscalPeriods: undefined as never,
+        ivaSalesBooks: undefined as never,
+        ivaPurchaseBooks: undefined as never,
+      }) as unknown as IvaBookScope;
+
+    const correlationId = "test-correlation-c2-e2-sale";
+
+    const result = await prisma.$transaction(async (tx) => {
+      const adapter = new PrismaIvaBookRegenNotifierAdapter(
+        tx,
+        correlationId,
+        ivaServiceFactory,
+        ivaScopeFactory,
+      );
+      return adapter.recomputeFromSale(testOrgId, saleId, 113);
+    });
+
+    // Hex contract assertion: input shape + scope shape
+    expect(cascadeInvocations).toHaveLength(1);
+    const { input, scope } = cascadeInvocations[0];
+    expect(input.organizationId).toBe(testOrgId);
+    expect(input.saleId).toBe(saleId);
+    expect(input.newTotal).toBeInstanceOf(MonetaryAmount);
+    expect(input.newTotal.value).toBe(113);
+    expect(scope.correlationId).toBe(correlationId);
+
+    // P2 (α) post-call findFirst preserved — hex mocked, row unchanged
+    expect(result).not.toBeNull();
+    expect(result!.importeTotal).toBe(120); // pre-seeded value (mock no-op)
+    expect(result!.exentos).toBe(0);
+    expect(typeof result!.baseIvaSujetoCf).toBe("number");
+    expect(typeof result!.dfCfIva).toBe("number");
   });
 });
