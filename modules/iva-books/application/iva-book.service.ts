@@ -198,6 +198,17 @@ export interface ApplyIvaBookVoidCascadeFromPurchaseInput {
  * (D-1 lockeada: bridge regen es side-effect post-UoW; sale-hex falla
  * → IvaBook persiste pero journal queda desincronizado, recuperable
  * por reintento manual).
+ *
+ * **Notes patch-vs-preserve distingo (recompute × {sale, purchase})** —
+ * `if ("notes" in input) editInput.notes = input.notes ?? null;` distingue
+ * patch-with-null (SET null) vs preserve (skip cuando key ausente).
+ * Mirror operacional del legacy `iva-books.service.ts:481` updateSale +
+ * `:312` updatePurchase, que delega a Prisma undefined-skip implicit.
+ * Drift heredado aceptado: edge case `{ notes: undefined }` con key
+ * explícitamente presente — legacy skip vs hex SET null (`?? null`
+ * coalesce). NO caller en práctica pasa `{ notes: undefined }` explícito
+ * (TypeScript indistinguible de key ausente); fix requeriría revisar
+ * firma repo + tests adicionales fuera scope C7 closing sweep.
  */
 export class IvaBookService {
   constructor(private readonly deps: IvaBookServiceDeps) {}

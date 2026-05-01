@@ -363,6 +363,7 @@ function seedSalesEntry(
     status?: "ACTIVE" | "VOIDED";
     inputs?: Partial<typeof baseSalesInputs>;
     estadoSIN?: "A" | "V" | "C" | "L";
+    notes?: string | null;
   } = {},
 ): IvaSalesBookEntry {
   const inputs = { ...baseSalesInputs, ...opts.inputs };
@@ -378,7 +379,7 @@ function seedSalesEntry(
     codigoAutorizacion: baseSalesHeader.codigoAutorizacion,
     codigoControl: baseSalesHeader.codigoControl,
     estadoSIN: opts.estadoSIN ?? baseSalesHeader.estadoSIN,
-    notes: null,
+    notes: opts.notes ?? null,
     inputs: {
       importeTotal: inputs.importeTotal,
       importeIce: inputs.importeIce,
@@ -405,6 +406,7 @@ function seedPurchaseEntry(
     status?: "ACTIVE" | "VOIDED";
     inputs?: Partial<typeof basePurchaseInputs>;
     tipoCompra?: number;
+    notes?: string | null;
   } = {},
 ): IvaPurchaseBookEntry {
   const inputs = { ...basePurchaseInputs, ...opts.inputs };
@@ -420,7 +422,7 @@ function seedPurchaseEntry(
     codigoAutorizacion: basePurchaseHeader.codigoAutorizacion,
     codigoControl: basePurchaseHeader.codigoControl,
     tipoCompra: opts.tipoCompra ?? basePurchaseHeader.tipoCompra,
-    notes: null,
+    notes: opts.notes ?? null,
     inputs: {
       importeTotal: inputs.importeTotal,
       importeIce: inputs.importeIce,
@@ -747,6 +749,117 @@ describe("IvaBookService.recomputePurchase", () => {
     expect(persisted.calcResult.subtotal.equals(expected.subtotal)).toBe(true);
     expect(persisted.calcResult.baseImponible.equals(expected.baseImponible)).toBe(true);
     expect(persisted.calcResult.ivaAmount.equals(expected.ivaAmount)).toBe(true);
+  });
+});
+
+// ── §13 drift C4: notes patch-vs-preserve distingo ───────────────────────────
+//
+// Hex tiene `if ("notes" in input) editInput.notes = input.notes ?? null;`
+// (recomputeSale L348/recomputePurchase L419) que distingue
+// patch-with-null (SET null) vs preserve (skip cuando key ausente).
+//
+// Legacy (`features/accounting/iva-books/iva-books.service.ts:481` updateSale
+// + `:312` updatePurchase) NO tiene guard explícito — delega a Prisma
+// undefined-skip implicit: input.notes === undefined → skip, null → SET
+// null, "x" → SET "x". Drift heredado aceptado: edge case
+// `{ notes: undefined }` con key explícitamente presente — legacy skip vs
+// hex SET null (`?? null` coalesce). NO caller en práctica pasa
+// `{ notes: undefined }` explícito (TypeScript indistinguible de key
+// ausente); 2 tests cubren el distingo principal patch-with-null vs
+// preserve (legacy parity), edge case documentado fuera de test surface.
+describe("IvaBookService recompute notes patch-vs-preserve distingo (§13 drift C4)", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+    h.fiscalPeriods.preload(PERIOD, "OPEN");
+  });
+
+  it("recomputeSale: patch-with-null SET null + preserve current cuando key ausente (legacy parity)", async () => {
+    // patch-with-null path: input.notes === null → SET null
+    const entry1 = seedSalesEntry(h, {
+      saleId: "sale-n1",
+      notes: "previous notes",
+    });
+    h.saleReader.preload({
+      id: "sale-n1",
+      organizationId: ORG,
+      status: "DRAFT",
+    });
+
+    await h.service.recomputeSale({
+      organizationId: ORG,
+      userId: USER,
+      id: entry1.id,
+      notes: null,
+    });
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+    expect(h.ivaSalesBooks.updateCalls[0].notes).toBe(null);
+
+    // preserve path: key "notes" ausente del input → skip, valor previo intacto
+    const entry2 = seedSalesEntry(h, {
+      saleId: "sale-n2",
+      notes: "preserved",
+    });
+    h.saleReader.preload({
+      id: "sale-n2",
+      organizationId: ORG,
+      status: "DRAFT",
+    });
+
+    await h.service.recomputeSale({
+      organizationId: ORG,
+      userId: USER,
+      id: entry2.id,
+      numeroFactura: "FACT-CHANGE",
+    });
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(2);
+    expect(h.ivaSalesBooks.updateCalls[1].notes).toBe("preserved");
+  });
+
+  it("recomputePurchase: patch-with-null SET null + preserve current cuando key ausente (legacy parity)", async () => {
+    // patch-with-null path
+    const entry1 = seedPurchaseEntry(h, {
+      purchaseId: "purchase-n1",
+      notes: "previous notes",
+    });
+    h.purchaseReader.preload({
+      id: "purchase-n1",
+      organizationId: ORG,
+      status: "DRAFT",
+    });
+
+    await h.service.recomputePurchase({
+      organizationId: ORG,
+      userId: USER,
+      id: entry1.id,
+      notes: null,
+    });
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+    expect(h.ivaPurchaseBooks.updateCalls[0].notes).toBe(null);
+
+    // preserve path
+    const entry2 = seedPurchaseEntry(h, {
+      purchaseId: "purchase-n2",
+      notes: "preserved",
+    });
+    h.purchaseReader.preload({
+      id: "purchase-n2",
+      organizationId: ORG,
+      status: "DRAFT",
+    });
+
+    await h.service.recomputePurchase({
+      organizationId: ORG,
+      userId: USER,
+      id: entry2.id,
+      numeroFactura: "PROV-CHANGE",
+    });
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(2);
+    expect(h.ivaPurchaseBooks.updateCalls[1].notes).toBe("preserved");
   });
 });
 
