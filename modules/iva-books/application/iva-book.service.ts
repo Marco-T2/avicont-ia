@@ -218,12 +218,7 @@ export class IvaBookService {
       );
     }
 
-    if (sale && sale.status === "POSTED" && period.status !== "OPEN") {
-      throw new IvaBookFiscalPeriodClosed({
-        entityType: "sale",
-        operation: "create",
-      });
-    }
+    applyBridgePeriodGate(sale, period, "sale", "create");
 
     const calcResult = computeIvaTotals(input.inputs);
 
@@ -249,13 +244,14 @@ export class IvaBookService {
       },
     );
 
-    if (sale && sale.status === "POSTED" && period.status === "OPEN") {
-      await this.deps.saleJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        input.saleId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      sale,
+      period,
+      this.deps.saleJournalRegenNotifier,
+      input.organizationId,
+      input.saleId!,
+      input.userId,
+    );
 
     return { entry: result, correlationId };
   }
@@ -276,12 +272,7 @@ export class IvaBookService {
       );
     }
 
-    if (purchase && purchase.status === "POSTED" && period.status !== "OPEN") {
-      throw new IvaBookFiscalPeriodClosed({
-        entityType: "purchase",
-        operation: "create",
-      });
-    }
+    applyBridgePeriodGate(purchase, period, "purchase", "create");
 
     const calcResult = computeIvaTotals(input.inputs);
 
@@ -307,17 +298,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      purchase &&
-      purchase.status === "POSTED" &&
-      period.status === "OPEN"
-    ) {
-      await this.deps.purchaseJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        input.purchaseId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      purchase,
+      period,
+      this.deps.purchaseJournalRegenNotifier,
+      input.organizationId,
+      input.purchaseId!,
+      input.userId,
+    );
 
     return { entry: result, correlationId };
   }
@@ -349,16 +337,7 @@ export class IvaBookService {
             input.organizationId,
             entry.fiscalPeriodId,
           );
-          if (
-            sale &&
-            sale.status === "POSTED" &&
-            period.status !== "OPEN"
-          ) {
-            throw new IvaBookFiscalPeriodClosed({
-              entityType: "sale",
-              operation: "modify",
-            });
-          }
+          applyBridgePeriodGate(sale, period, "sale", "modify");
         }
 
         let mergedInputs = entry.inputs;
@@ -387,17 +366,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      result.sale &&
-      result.sale.status === "POSTED" &&
-      result.period?.status === "OPEN"
-    ) {
-      await this.deps.saleJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        result.entry.saleId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      result.sale,
+      result.period,
+      this.deps.saleJournalRegenNotifier,
+      input.organizationId,
+      result.entry.saleId!,
+      input.userId,
+    );
 
     return { entry: result.entry, correlationId };
   }
@@ -429,16 +405,7 @@ export class IvaBookService {
             input.organizationId,
             entry.fiscalPeriodId,
           );
-          if (
-            purchase &&
-            purchase.status === "POSTED" &&
-            period.status !== "OPEN"
-          ) {
-            throw new IvaBookFiscalPeriodClosed({
-              entityType: "purchase",
-              operation: "modify",
-            });
-          }
+          applyBridgePeriodGate(purchase, period, "purchase", "modify");
         }
 
         let mergedInputs = entry.inputs;
@@ -470,17 +437,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      result.purchase &&
-      result.purchase.status === "POSTED" &&
-      result.period?.status === "OPEN"
-    ) {
-      await this.deps.purchaseJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        result.entry.purchaseId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      result.purchase,
+      result.period,
+      this.deps.purchaseJournalRegenNotifier,
+      input.organizationId,
+      result.entry.purchaseId!,
+      input.userId,
+    );
 
     return { entry: result.entry, correlationId };
   }
@@ -510,16 +474,7 @@ export class IvaBookService {
             input.organizationId,
             entry.fiscalPeriodId,
           );
-          if (
-            sale &&
-            sale.status === "POSTED" &&
-            period.status !== "OPEN"
-          ) {
-            throw new IvaBookFiscalPeriodClosed({
-              entityType: "sale",
-              operation: "modify",
-            });
-          }
+          applyBridgePeriodGate(sale, period, "sale", "modify");
         }
 
         const updated = entry.void();
@@ -528,17 +483,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      result.sale &&
-      result.sale.status === "POSTED" &&
-      result.period?.status === "OPEN"
-    ) {
-      await this.deps.saleJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        result.entry.saleId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      result.sale,
+      result.period,
+      this.deps.saleJournalRegenNotifier,
+      input.organizationId,
+      result.entry.saleId!,
+      input.userId,
+    );
 
     return { entry: result.entry, correlationId };
   }
@@ -568,16 +520,7 @@ export class IvaBookService {
             input.organizationId,
             entry.fiscalPeriodId,
           );
-          if (
-            purchase &&
-            purchase.status === "POSTED" &&
-            period.status !== "OPEN"
-          ) {
-            throw new IvaBookFiscalPeriodClosed({
-              entityType: "purchase",
-              operation: "modify",
-            });
-          }
+          applyBridgePeriodGate(purchase, period, "purchase", "modify");
         }
 
         const updated = entry.void();
@@ -586,17 +529,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      result.purchase &&
-      result.purchase.status === "POSTED" &&
-      result.period?.status === "OPEN"
-    ) {
-      await this.deps.purchaseJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        result.entry.purchaseId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      result.purchase,
+      result.period,
+      this.deps.purchaseJournalRegenNotifier,
+      input.organizationId,
+      result.entry.purchaseId!,
+      input.userId,
+    );
 
     return { entry: result.entry, correlationId };
   }
@@ -626,16 +566,7 @@ export class IvaBookService {
             input.organizationId,
             entry.fiscalPeriodId,
           );
-          if (
-            sale &&
-            sale.status === "POSTED" &&
-            period.status !== "OPEN"
-          ) {
-            throw new IvaBookFiscalPeriodClosed({
-              entityType: "sale",
-              operation: "modify",
-            });
-          }
+          applyBridgePeriodGate(sale, period, "sale", "modify");
         }
 
         const updated = entry.reactivate();
@@ -644,17 +575,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      result.sale &&
-      result.sale.status === "POSTED" &&
-      result.period?.status === "OPEN"
-    ) {
-      await this.deps.saleJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        result.entry.saleId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      result.sale,
+      result.period,
+      this.deps.saleJournalRegenNotifier,
+      input.organizationId,
+      result.entry.saleId!,
+      input.userId,
+    );
 
     return { entry: result.entry, correlationId };
   }
@@ -684,16 +612,7 @@ export class IvaBookService {
             input.organizationId,
             entry.fiscalPeriodId,
           );
-          if (
-            purchase &&
-            purchase.status === "POSTED" &&
-            period.status !== "OPEN"
-          ) {
-            throw new IvaBookFiscalPeriodClosed({
-              entityType: "purchase",
-              operation: "modify",
-            });
-          }
+          applyBridgePeriodGate(purchase, period, "purchase", "modify");
         }
 
         const updated = entry.reactivate();
@@ -702,17 +621,14 @@ export class IvaBookService {
       },
     );
 
-    if (
-      result.purchase &&
-      result.purchase.status === "POSTED" &&
-      result.period?.status === "OPEN"
-    ) {
-      await this.deps.purchaseJournalRegenNotifier.regenerateJournalForIvaChange(
-        input.organizationId,
-        result.entry.purchaseId!,
-        input.userId,
-      );
-    }
+    await applyBridgeNotifyIfPosted(
+      result.purchase,
+      result.period,
+      this.deps.purchaseJournalRegenNotifier,
+      input.organizationId,
+      result.entry.purchaseId!,
+      input.userId,
+    );
 
     return { entry: result.entry, correlationId };
   }
@@ -790,4 +706,55 @@ function mergePurchaseMonetaryInputs(
       patch.codigoDescuentoAdicional ?? current.codigoDescuentoAdicional,
     importeGiftCard: patch.importeGiftCard ?? current.importeGiftCard,
   };
+}
+
+// ── Bridge gate helpers (§13 #2 emergente — POC #11.0c A2 C7) ─────────────────
+
+type EntityWithStatus = { status: string };
+type PeriodWithStatus = { status: string };
+
+interface BridgeNotifier {
+  regenerateJournalForIvaChange(
+    organizationId: string,
+    entityId: string,
+    userId: string,
+  ): Promise<unknown>;
+}
+
+/**
+ * Period CLOSED gate (pre-UoW o in-UoW): throw si entity POSTED + period
+ * !== OPEN. Standalone IVA con period CLOSED NO lanza (paridad legacy
+ * regla #1).
+ */
+function applyBridgePeriodGate(
+  entity: EntityWithStatus | null,
+  period: PeriodWithStatus,
+  entityType: "sale" | "purchase",
+  operation: "create" | "modify",
+): void {
+  if (entity && entity.status === "POSTED" && period.status !== "OPEN") {
+    throw new IvaBookFiscalPeriodClosed({ entityType, operation });
+  }
+}
+
+/**
+ * Bridge regen notify post-UoW: invoca notifier solo si entity POSTED +
+ * period OPEN. D-1 lockeada — side-effect post-UoW, no comparte tx scope
+ * con `IvaBookScope`.
+ */
+async function applyBridgeNotifyIfPosted(
+  entity: EntityWithStatus | null,
+  period: PeriodWithStatus | null | undefined,
+  notifier: BridgeNotifier,
+  organizationId: string,
+  entityId: string,
+  userId: string,
+): Promise<void> {
+  if (entity && entity.status === "POSTED" && period?.status === "OPEN") {
+    await notifier.regenerateJournalForIvaChange(
+      organizationId,
+      entityId,
+      userId,
+    );
+  }
 }
