@@ -266,4 +266,65 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     expect(post!.importeTotal.toString()).toBe("200");
     expect(post!.status).toBe("VOIDED"); // status orthogonal — recompute does not flip
   });
+
+  it("E1 cycle-break: ctor accepts () => IvaBooksService factory + factory NOT invoked at ctor + invoked on first recomputeFromPurchase call", async () => {
+    // RED honesty pre-impl (feedback/red-acceptance-failure-mode): ctor
+    // actual exige `IvaBooksService` instance positional; pasar factory
+    // function viola signature → TS2345 `Argument of type
+    // '() => IvaBooksService' is not assignable to parameter of type
+    // 'IvaBooksService'` (compile-time RED locked). Runtime secondary RED:
+    // si TS strip lo deja pasar, body delegate intenta
+    // `factoryFn.recomputeFromPurchaseCascade(...)` sobre función →
+    // TypeError "not a function". Mirror precedent A4-b C1/C2 RED dual-gate
+    // compile-time + runtime.
+    //
+    // Post-GREEN (POC #11.0c A4-c Ciclo 1 cycle-break atómico): ctor
+    // signature `(tx, ivaServiceFactory: () => IvaBooksService)`. Body
+    // delegate sigue legacy 4-arg `factory().recomputeFromPurchaseCascade(
+    // tx, orgId, purchaseId, decimal)` — type todavía LEGACY (con 's');
+    // C2 cuts ctor type a hex `IvaBookService` (sin 's') + body delegate
+    // hex method (input, scope) + comp-root factory swap a `() =>
+    // makeIvaBookService()`. Capas separadas C1↔C2 bisect-friendly per
+    // Marco lock granularity D'.
+    //
+    // Cycle-break rationale: post-C2 cutover `makePurchaseService →
+    // makeIvaBookService → makePurchaseService` materializa recursión TDZ;
+    // lazy callback rompe el cycle estructuralmente (factory captured at
+    // composition, resolved at runtime first method call post-load).
+    // Strategy lock Marco Opción α (lazy callback) — single-instance via
+    // memoización en iva comp-root, paridad POC #10. Mirror simétrico
+    // estricto sale E1.
+    const purchaseId = await seedPurchaseDirect(3);
+    await seedIvaPurchaseBook({
+      purchaseId,
+      status: "ACTIVE",
+      sequenceTag: "cyclebreak",
+      importeTotal: "120.00",
+      exentos: "0",
+    });
+
+    let factoryInvocations = 0;
+    const ivaServiceFactory = (): IvaBooksService => {
+      factoryInvocations++;
+      return new IvaBooksService();
+    };
+
+    const result = await prisma.$transaction(async (tx) => {
+      const adapter = new PrismaIvaBookRegenNotifierAdapter(
+        tx,
+        ivaServiceFactory,
+      );
+      expect(factoryInvocations).toBe(0); // lazy: NOT invoked at ctor
+      const r = await adapter.recomputeFromPurchase(
+        testOrgId,
+        purchaseId,
+        113,
+      );
+      expect(factoryInvocations).toBe(1); // resolved on first method call
+      return r;
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.importeTotal).toBe(113);
+  });
 });
