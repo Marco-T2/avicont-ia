@@ -202,6 +202,12 @@ export interface RecomputeIvaSalesBookFromSaleCascadeInput {
   newTotal: MonetaryAmount;
 }
 
+export interface RecomputeIvaPurchaseBookFromPurchaseCascadeInput {
+  organizationId: string;
+  purchaseId: string;
+  newTotal: MonetaryAmount;
+}
+
 /**
  * IVA-hex application service. Orchestra los use cases inbound A2:
  * regenerate / recompute / void / reactivate / applyVoidCascade × {sale,
@@ -785,6 +791,34 @@ export class IvaBookService {
     const calcResult = computeIvaTotals(updatedInputs);
     const updated = entry.applyEdit({ inputs: updatedInputs, calcResult });
     await scope.ivaSalesBooks.updateTx(updated);
+  }
+
+  /**
+   * IVA cascade entry point invocado por purchase-hex `editPosted` cascade
+   * chain cuando cambia `importeTotal` de un purchase POSTED+linked. **E
+   * locked + F-α locked + Lock C textual + I2 architectural + I6 VOIDED
+   * preserve + asimetrías A1-A5** — mirror simétrico `recomputeFromSaleCascade`.
+   * Legacy `iva-books.service.ts:618-659` byte-exact mirror sale (líneas
+   * 559-602). Asimetrías C1→C2 declaradas: `purchaseId`, `ivaPurchaseBooks`,
+   * `findByPurchaseIdTx`, `IvaPurchaseBookEntryInputs` (shape idéntico sale).
+   */
+  async recomputeFromPurchaseCascade(
+    input: RecomputeIvaPurchaseBookFromPurchaseCascadeInput,
+    scope: IvaBookScope,
+  ): Promise<void> {
+    const entry = await scope.ivaPurchaseBooks.findByPurchaseIdTx(
+      input.organizationId,
+      input.purchaseId,
+    );
+    if (!entry) return;
+
+    const updatedInputs: IvaPurchaseBookEntryInputs = {
+      ...entry.inputs,
+      importeTotal: input.newTotal,
+    };
+    const calcResult = computeIvaTotals(updatedInputs);
+    const updated = entry.applyEdit({ inputs: updatedInputs, calcResult });
+    await scope.ivaPurchaseBooks.updateTx(updated);
   }
 
   // ── A2.5 reads (sales) ────────────────────────────────────────────────────
