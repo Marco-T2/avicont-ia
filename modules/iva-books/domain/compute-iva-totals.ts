@@ -21,7 +21,7 @@ import { IvaCalcResult } from "./value-objects/iva-calc-result";
  * intermedias retornan `MonetaryAmount` para composability.
  */
 
-const TASA_IVA = 0.13;
+export const TASA_IVA = 0.13;
 
 export interface CalcSubtotalParams {
   importeTotal: MonetaryAmount;
