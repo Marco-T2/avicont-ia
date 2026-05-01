@@ -65,7 +65,7 @@ export function makeSaleService(): SaleService {
       journalEntriesReadAdapter,
       accountLookupAdapter,
       autoEntryGen,
-      ivaBooksService,
+      () => ivaBooksService,
     ),
     accountLookup: accountLookupAdapter,
     orgSettings: new PrismaOrgSettingsReaderAdapter(makeOrgSettingsService()),

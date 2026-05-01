@@ -51,7 +51,7 @@ export class PrismaSaleUnitOfWork implements SaleUnitOfWork {
     private readonly journalEntriesReadPort: JournalEntriesReadPort,
     private readonly accountLookupPort: AccountLookupPort,
     private readonly autoEntryGen: AutoEntryGenerator,
-    private readonly ivaBooksService: IvaBooksService,
+    private readonly ivaServiceFactory: () => IvaBooksService,
   ) {}
 
   async run<T>(
@@ -76,7 +76,7 @@ export class PrismaSaleUnitOfWork implements SaleUnitOfWork {
         ),
         ivaBookRegenNotifier: new PrismaIvaBookRegenNotifierAdapter(
           tx,
-          this.ivaBooksService,
+          this.ivaServiceFactory,
         ),
         ivaBookVoidCascade: new PrismaIvaBookVoidCascadeAdapter(tx),
       };

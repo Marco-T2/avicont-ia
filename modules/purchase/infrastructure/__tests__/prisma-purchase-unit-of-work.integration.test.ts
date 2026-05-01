@@ -259,7 +259,7 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      ivaBooksService,
+      () => ivaBooksService,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
@@ -308,7 +308,7 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      ivaBooksService,
+      () => ivaBooksService,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();

@@ -183,7 +183,7 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     const result = await prisma.$transaction(async (tx) => {
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
-        new IvaBooksService(),
+        () => new IvaBooksService(),
       );
       return adapter.recomputeFromPurchase(testOrgId, purchaseId, 113);
     });
@@ -213,7 +213,7 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     const result = await prisma.$transaction(async (tx) => {
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
-        new IvaBooksService(),
+        () => new IvaBooksService(),
       );
       return adapter.recomputeFromPurchase(testOrgId, arbitraryPurchaseId, 200);
     });
@@ -248,7 +248,7 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     const result = await prisma.$transaction(async (tx) => {
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
-        new IvaBooksService(),
+        () => new IvaBooksService(),
       );
       return adapter.recomputeFromPurchase(testOrgId, purchaseId, 200);
     });

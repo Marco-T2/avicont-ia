@@ -69,7 +69,7 @@ export function makePurchaseService(): PurchaseService {
       journalEntriesReadAdapter,
       accountLookupAdapter,
       autoEntryGen,
-      ivaBooksService,
+      () => ivaBooksService,
     ),
     accountLookup: accountLookupAdapter,
     orgSettings: new PrismaOrgSettingsReaderAdapter(makeOrgSettingsService()),

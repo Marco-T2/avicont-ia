@@ -24,13 +24,21 @@ import type { IvaBookRegenNotifierPort } from "@/modules/purchase/domain/ports/i
  * bug latente (mutate VOIDED) se arregla en POC dedicado, no via mejora
  * unilateral del adapter.
  *
+ * **POC #11.0c A4-c C1 cycle-break mirror sale (Opción α lockeada Marco)**:
+ * ctor recibe `ivaServiceFactory: () => IvaBooksService` (callback) en
+ * lugar de instance resolved — preparación pre-cutover C2 contra recursión
+ * TDZ `makePurchaseService → makeIvaBookService → makePurchaseService`.
+ * Body delegate sigue legacy 4-arg en C1; C2 cuts ctor type a hex +
+ * delegate hex `(input, scope)`. Single-instance via memoización en iva
+ * comp-root (paridad POC #10).
+ *
  * Retirada §5.5 — POC #11.0c cuando IVA-hex se subscribe a purchase event
  * o lee de projected snapshot.
  */
 export class PrismaIvaBookRegenNotifierAdapter implements IvaBookRegenNotifierPort {
   constructor(
     private readonly tx: Prisma.TransactionClient,
-    private readonly legacyService: IvaBooksService,
+    private readonly ivaServiceFactory: () => IvaBooksService,
   ) {}
 
   async recomputeFromPurchase(
@@ -38,7 +46,7 @@ export class PrismaIvaBookRegenNotifierAdapter implements IvaBookRegenNotifierPo
     purchaseId: string,
     newTotal: number,
   ): Promise<IvaBookForEntry | null> {
-    await this.legacyService.recomputeFromPurchaseCascade(
+    await this.ivaServiceFactory().recomputeFromPurchaseCascade(
       this.tx,
       organizationId,
       purchaseId,
