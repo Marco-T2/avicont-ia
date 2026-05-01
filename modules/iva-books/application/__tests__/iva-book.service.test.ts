@@ -12,6 +12,7 @@ import { IvaBookService } from "../iva-book.service";
 import { InMemoryIvaSalesBookEntryRepository } from "./fakes/in-memory-iva-sales-book-entry.repository";
 import { InMemoryIvaPurchaseBookEntryRepository } from "./fakes/in-memory-iva-purchase-book-entry.repository";
 import { InMemoryIvaBookUnitOfWork } from "./fakes/in-memory-iva-book-unit-of-work";
+import type { IvaBookScope } from "../iva-book-unit-of-work";
 import { InMemoryFiscalPeriodReader } from "./fakes/in-memory-fiscal-period-reader";
 import { InMemorySaleReader } from "./fakes/in-memory-sale-reader";
 import { InMemoryPurchaseReader } from "./fakes/in-memory-purchase-reader";
@@ -1022,5 +1023,121 @@ describe("IvaBookService.reactivatePurchase", () => {
 
     expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
     expect(h.purchaseJournalRegenNotifier.calls).toHaveLength(0);
+  });
+});
+
+function buildScope(h: Harness, correlationId = "corr-cascade-test"): IvaBookScope {
+  return {
+    correlationId,
+    ivaSalesBooks: h.ivaSalesBooks,
+    ivaPurchaseBooks: h.ivaPurchaseBooks,
+    fiscalPeriods: new Proxy(
+      {},
+      {
+        get: (_target, prop) => {
+          throw new Error(
+            `buildScope: scope.fiscalPeriods.${String(prop)} not wired — applyVoidCascade does not access fiscalPeriods (mirror legacy voidCascadeTx skips period gate)`,
+          );
+        },
+      },
+    ) as IvaBookScope["fiscalPeriods"],
+  };
+}
+
+describe("IvaBookService.applyVoidCascadeFromSale", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+  });
+
+  it("happy: entry ACTIVE encontrada via saleId → void aplicado via scope.updateTx", async () => {
+    seedSalesEntry(h, { saleId: "sale-1", status: "ACTIVE" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.applyVoidCascadeFromSale(
+        { organizationId: ORG, saleId: "sale-1" },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+    expect(h.ivaSalesBooks.updateCalls[0].status).toBe("VOIDED");
+  });
+
+  it("silent no-op cuando no existe entry para saleId (mirror legacy voidCascadeTx null-guard)", async () => {
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.applyVoidCascadeFromSale(
+        { organizationId: ORG, saleId: "missing-sale" },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+  });
+
+  it("silent idempotency cuando entry ya VOIDED (mirror legacy voidCascadeTx status guard + entity.void())", async () => {
+    seedSalesEntry(h, { saleId: "sale-1", status: "VOIDED" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.applyVoidCascadeFromSale(
+        { organizationId: ORG, saleId: "sale-1" },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+  });
+});
+
+describe("IvaBookService.applyVoidCascadeFromPurchase", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+  });
+
+  it("happy: entry ACTIVE encontrada via purchaseId → void aplicado via scope.updateTx", async () => {
+    seedPurchaseEntry(h, { purchaseId: "purchase-1", status: "ACTIVE" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.applyVoidCascadeFromPurchase(
+        { organizationId: ORG, purchaseId: "purchase-1" },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+    expect(h.ivaPurchaseBooks.updateCalls[0].status).toBe("VOIDED");
+  });
+
+  it("silent no-op cuando no existe entry para purchaseId (mirror legacy voidCascadeTx null-guard)", async () => {
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.applyVoidCascadeFromPurchase(
+        { organizationId: ORG, purchaseId: "missing-purchase" },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+  });
+
+  it("silent idempotency cuando entry ya VOIDED (mirror legacy voidCascadeTx status guard + entity.void())", async () => {
+    seedPurchaseEntry(h, { purchaseId: "purchase-1", status: "VOIDED" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.applyVoidCascadeFromPurchase(
+        { organizationId: ORG, purchaseId: "purchase-1" },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
   });
 });

@@ -14,7 +14,10 @@ import {
   IvaBookNotFound,
 } from "../domain/errors/iva-book-errors";
 import { computeIvaTotals } from "../domain/compute-iva-totals";
-import type { IvaBookUnitOfWork } from "./iva-book-unit-of-work";
+import type {
+  IvaBookScope,
+  IvaBookUnitOfWork,
+} from "./iva-book-unit-of-work";
 import type { FiscalPeriodReaderPort } from "../domain/ports/fiscal-period-reader.port";
 import type { SaleReaderPort } from "../domain/ports/sale-reader.port";
 import type { PurchaseReaderPort } from "../domain/ports/purchase-reader.port";
@@ -157,6 +160,16 @@ export interface ReactivateIvaPurchaseBookInput {
 export interface ReactivateIvaPurchaseBookResult {
   entry: IvaPurchaseBookEntry;
   correlationId: string;
+}
+
+export interface ApplyIvaBookVoidCascadeFromSaleInput {
+  organizationId: string;
+  saleId: string;
+}
+
+export interface ApplyIvaBookVoidCascadeFromPurchaseInput {
+  organizationId: string;
+  purchaseId: string;
 }
 
 /**
@@ -702,6 +715,32 @@ export class IvaBookService {
     }
 
     return { entry: result.entry, correlationId };
+  }
+
+  async applyVoidCascadeFromSale(
+    input: ApplyIvaBookVoidCascadeFromSaleInput,
+    scope: IvaBookScope,
+  ): Promise<void> {
+    const entry = await scope.ivaSalesBooks.findBySaleIdTx(
+      input.organizationId,
+      input.saleId,
+    );
+    if (!entry || entry.status === "VOIDED") return;
+    const voided = entry.void();
+    await scope.ivaSalesBooks.updateTx(voided);
+  }
+
+  async applyVoidCascadeFromPurchase(
+    input: ApplyIvaBookVoidCascadeFromPurchaseInput,
+    scope: IvaBookScope,
+  ): Promise<void> {
+    const entry = await scope.ivaPurchaseBooks.findByPurchaseIdTx(
+      input.organizationId,
+      input.purchaseId,
+    );
+    if (!entry || entry.status === "VOIDED") return;
+    const voided = entry.void();
+    await scope.ivaPurchaseBooks.updateTx(voided);
   }
 }
 
