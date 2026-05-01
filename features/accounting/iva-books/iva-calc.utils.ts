@@ -1,5 +1,7 @@
 import { Prisma } from "@/generated/prisma/client";
 
+import { roundHalfUp } from "@/features/accounting/financial-statements/money.utils";
+
 // Alias local para legibilidad — no rompe el tipo Prisma.Decimal
 type Decimal = Prisma.Decimal;
 
@@ -9,16 +11,6 @@ type Decimal = Prisma.Decimal;
 // El "Importe Base" del LCV = subtotal − descuento (NO se divide entre 1.13).
 const TASA_IVA = new Prisma.Decimal("0.13");
 const ZERO = new Prisma.Decimal("0");
-
-// ── roundHalfUp ───────────────────────────────────────────────────────────────
-
-/**
- * Redondea un Decimal a 2 decimales con ROUND_HALF_UP (estándar SIN Bolivia).
- * 0.005 → 0.01, 0.004 → 0.00
- */
-function roundHalfUp(d: Decimal): Decimal {
-  return d.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
-}
 
 // ── Parámetros para calcSubtotal ──────────────────────────────────────────────
 
