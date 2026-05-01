@@ -531,4 +531,63 @@ describe("PrismaIvaPurchaseBookEntryRepo — Postgres integration", () => {
       );
     });
   });
+
+  describe("findById / findByPeriod (A2.5 — non-tx reads)", () => {
+    it("findById hydrates entry from row + tenancy guard", async () => {
+      // RED honesty: FAILS pre-implementación con "Not implemented — A2.5 C2 RED"
+      // (stub adapter). Post-GREEN: PASSES cuando adapter delega a
+      // db.ivaPurchaseBook.findFirst({ where: { id, organizationId } }) +
+      // hydrateFromRow.
+      const id = await seedRowDirect({ numeroFactura: "P-A25-FIND" });
+      const repo = new PrismaIvaPurchaseBookEntryRepo(prisma);
+
+      const entry = await repo.findById(testOrgId, id);
+      expect(entry).not.toBeNull();
+      expect(entry!.id).toBe(id);
+      expect(entry!.numeroFactura).toBe("P-A25-FIND");
+
+      // Tenancy guard: same id, different orgId → null
+      const otherOrg = await repo.findById(testOtherOrgId, id);
+      expect(otherOrg).toBeNull();
+    });
+
+    it("findByPeriod returns array filtered + ordered by fechaFactura asc", async () => {
+      // RED honesty: FAILS pre-implementación con "Not implemented — A2.5 C2 RED"
+      // (stub adapter). Post-GREEN: PASSES cuando adapter delega a
+      // db.ivaPurchaseBook.findMany({ where: { organizationId, fiscalPeriodId?,
+      // status? }, orderBy: { fechaFactura: 'asc' } }) + hydrateFromRow map.
+      const id1 = await seedRowDirect({ numeroFactura: "P-PER-1" });
+      const id2 = await seedRowDirect({ numeroFactura: "P-PER-2" });
+      // VOIDED row
+      const id3 = await seedRowDirect({
+        numeroFactura: "P-PER-V",
+        status: "VOIDED",
+      });
+      // Other org row (tenancy isolation): organizationId AND fiscalPeriodId
+      // belong to the other tenant.
+      const id4 = await seedRowDirect({
+        numeroFactura: "P-OTHER-PER",
+        organizationId: testOtherOrgId,
+        fiscalPeriodId: testOtherPeriodId,
+      });
+
+      const repo = new PrismaIvaPurchaseBookEntryRepo(prisma);
+
+      // Unfiltered (current org): includes id1, id2, id3 (NOT id4 — other period
+      // is in different org via testOtherPeriodId belonging to testOtherOrgId)
+      const all = await repo.findByPeriod(testOrgId, {});
+      const allIds = all.map((e) => e.id).sort();
+      expect(allIds).toEqual([id1, id2, id3].sort());
+
+      // Filter by status ACTIVE → excludes id3
+      const onlyActive = await repo.findByPeriod(testOrgId, {
+        status: "ACTIVE",
+      });
+      expect(onlyActive.map((e) => e.id).sort()).toEqual([id1, id2].sort());
+
+      // Tenancy: querying other org returns id4 only
+      const otherOrgRows = await repo.findByPeriod(testOtherOrgId, {});
+      expect(otherOrgRows.map((e) => e.id)).toEqual([id4]);
+    });
+  });
 });

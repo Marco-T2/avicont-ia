@@ -8,6 +8,7 @@ import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-
 import { IvaBookService } from "../application/iva-book.service";
 import { LegacyFiscalPeriodsAdapter } from "../infrastructure/legacy-fiscal-periods.adapter";
 import { PrismaIvaBookUnitOfWork } from "../infrastructure/prisma-iva-book-unit-of-work";
+import { PrismaIvaPurchaseBookEntryRepo } from "../infrastructure/prisma-iva-purchase-book-entry.repo";
 import { PrismaIvaSalesBookEntryRepo } from "../infrastructure/prisma-iva-sales-book-entry.repo";
 import { PrismaPurchaseReaderAdapter } from "../infrastructure/prisma-purchase-reader.adapter";
 import { PrismaSaleReaderAdapter } from "../infrastructure/prisma-sale-reader.adapter";
@@ -77,5 +78,6 @@ export function makeIvaBookService(): IvaBookService {
       makePurchaseService(),
     ),
     ivaSalesBooks: new PrismaIvaSalesBookEntryRepo(prisma),
+    ivaPurchaseBooks: new PrismaIvaPurchaseBookEntryRepo(prisma),
   });
 }

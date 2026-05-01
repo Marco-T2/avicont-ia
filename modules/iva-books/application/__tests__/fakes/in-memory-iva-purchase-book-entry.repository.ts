@@ -1,5 +1,8 @@
 import type { IvaPurchaseBookEntry } from "../../../domain/iva-purchase-book-entry.entity";
-import type { IvaPurchaseBookEntryRepository } from "../../../domain/ports/iva-purchase-book-entry-repository.port";
+import type {
+  IvaPurchaseBookEntryRepository,
+  ListPurchasesQuery,
+} from "../../../domain/ports/iva-purchase-book-entry-repository.port";
 
 /**
  * In-memory fake of `IvaPurchaseBookEntryRepository` for application-layer
@@ -54,5 +57,28 @@ export class InMemoryIvaPurchaseBookEntryRepository
     this.updateCalls.push(entry);
     this.store.set(entry.id, entry);
     return entry;
+  }
+
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaPurchaseBookEntry | null> {
+    const entry = this.store.get(id);
+    if (!entry || entry.organizationId !== organizationId) return null;
+    return entry;
+  }
+
+  async findByPeriod(
+    organizationId: string,
+    query: ListPurchasesQuery,
+  ): Promise<IvaPurchaseBookEntry[]> {
+    const out: IvaPurchaseBookEntry[] = [];
+    for (const entry of this.store.values()) {
+      if (entry.organizationId !== organizationId) continue;
+      if (query.fiscalPeriodId && entry.fiscalPeriodId !== query.fiscalPeriodId) continue;
+      if (query.status && entry.status !== query.status) continue;
+      out.push(entry);
+    }
+    return out;
   }
 }

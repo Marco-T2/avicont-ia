@@ -8,7 +8,10 @@ import {
   IvaPurchaseBookEntry,
   type IvaPurchaseBookEntryProps,
 } from "../domain/iva-purchase-book-entry.entity";
-import type { IvaPurchaseBookEntryRepository } from "../domain/ports/iva-purchase-book-entry-repository.port";
+import type {
+  IvaPurchaseBookEntryRepository,
+  ListPurchasesQuery,
+} from "../domain/ports/iva-purchase-book-entry-repository.port";
 import { parseIvaBookStatus } from "../domain/value-objects/iva-book-status";
 import { IvaCalcResult } from "../domain/value-objects/iva-calc-result";
 
@@ -68,6 +71,31 @@ export class PrismaIvaPurchaseBookEntryRepo
       data: toUpdateData(entry),
     });
     return entry;
+  }
+
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaPurchaseBookEntry | null> {
+    const row = await this.db.ivaPurchaseBook.findFirst({
+      where: { id, organizationId },
+    });
+    return row ? hydrateFromRow(row) : null;
+  }
+
+  async findByPeriod(
+    organizationId: string,
+    query: ListPurchasesQuery,
+  ): Promise<IvaPurchaseBookEntry[]> {
+    const rows = await this.db.ivaPurchaseBook.findMany({
+      where: {
+        organizationId,
+        ...(query.fiscalPeriodId ? { fiscalPeriodId: query.fiscalPeriodId } : {}),
+        ...(query.status ? { status: query.status } : {}),
+      },
+      orderBy: { fechaFactura: "asc" },
+    });
+    return rows.map(hydrateFromRow);
   }
 }
 

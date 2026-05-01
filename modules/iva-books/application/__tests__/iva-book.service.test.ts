@@ -112,6 +112,7 @@ function buildHarness(): Harness {
     saleJournalRegenNotifier,
     purchaseJournalRegenNotifier,
     ivaSalesBooks,
+    ivaPurchaseBooks,
   });
 
   return {
@@ -1458,5 +1459,196 @@ describe("InMemoryIvaSalesBookEntryRepository — non-tx reads (A2.5)", () => {
     });
     expect(aAndActive).toHaveLength(1);
     expect(aAndActive[0].numeroFactura).toBe("F-A1");
+  });
+});
+
+// ── A2.5 purchases reads ──────────────────────────────────────────────────
+
+function makePurchaseEntry(overrides: {
+  organizationId?: string;
+  fiscalPeriodId?: string;
+  purchaseId?: string;
+  numeroFactura?: string;
+} = {}): IvaPurchaseBookEntry {
+  const numeroFactura =
+    overrides.numeroFactura ??
+    `P-${Math.random().toString(36).slice(2, 8)}`;
+  return IvaPurchaseBookEntry.create({
+    organizationId: overrides.organizationId ?? ORG,
+    fiscalPeriodId: overrides.fiscalPeriodId ?? PERIOD,
+    purchaseId: overrides.purchaseId,
+    fechaFactura: new Date("2026-04-15"),
+    nitProveedor: "9876543210",
+    razonSocial: "Proveedor Read",
+    numeroFactura,
+    codigoAutorizacion: `AUTH-${numeroFactura}`,
+    codigoControl: "CTRL-READ",
+    tipoCompra: 1,
+    notes: null,
+    inputs: basePurchaseInputs,
+    calcResult: computeIvaTotals(basePurchaseInputs),
+  });
+}
+
+describe("IvaBookService.getPurchaseById (A2.5)", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+  });
+
+  it("returns entry when found", async () => {
+    const entry = makePurchaseEntry({ numeroFactura: "P-A001" });
+    h.ivaPurchaseBooks.preload(entry);
+    const result = await h.service.getPurchaseById(ORG, entry.id);
+    expect(result.id).toBe(entry.id);
+    expect(result.numeroFactura).toBe("P-A001");
+  });
+
+  it("throws IvaBookNotFound when missing", async () => {
+    await expect(
+      h.service.getPurchaseById(ORG, "nonexistent-id"),
+    ).rejects.toBeInstanceOf(IvaBookNotFound);
+  });
+
+  it("throws IvaBookNotFound when tenancy mismatch", async () => {
+    const entry = makePurchaseEntry({ organizationId: "org-A" });
+    h.ivaPurchaseBooks.preload(entry);
+    await expect(
+      h.service.getPurchaseById("org-B", entry.id),
+    ).rejects.toBeInstanceOf(IvaBookNotFound);
+  });
+});
+
+describe("IvaBookService.listPurchasesByPeriod (A2.5)", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+  });
+
+  it("returns array unfiltered when query empty", async () => {
+    h.ivaPurchaseBooks.preload(makePurchaseEntry({ numeroFactura: "P-1" }));
+    h.ivaPurchaseBooks.preload(makePurchaseEntry({ numeroFactura: "P-2" }));
+    h.ivaPurchaseBooks.preload(makePurchaseEntry({ numeroFactura: "P-3" }));
+    const result = await h.service.listPurchasesByPeriod(ORG, {});
+    expect(result).toHaveLength(3);
+  });
+
+  it("filters by fiscalPeriodId", async () => {
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-1", numeroFactura: "P-A" }),
+    );
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-2", numeroFactura: "P-B" }),
+    );
+    const result = await h.service.listPurchasesByPeriod(ORG, {
+      fiscalPeriodId: "p-1",
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].numeroFactura).toBe("P-A");
+  });
+
+  it("filters by status ACTIVE", async () => {
+    const active = makePurchaseEntry({ numeroFactura: "P-ACTIVE" });
+    const voided = makePurchaseEntry({ numeroFactura: "P-VOIDED" }).void();
+    h.ivaPurchaseBooks.preload(active);
+    h.ivaPurchaseBooks.preload(voided);
+    const result = await h.service.listPurchasesByPeriod(ORG, { status: "ACTIVE" });
+    expect(result).toHaveLength(1);
+    expect(result[0].numeroFactura).toBe("P-ACTIVE");
+  });
+
+  it("filters by status VOIDED", async () => {
+    const active = makePurchaseEntry({ numeroFactura: "P-ACTIVE2" });
+    const voided = makePurchaseEntry({ numeroFactura: "P-VOIDED2" }).void();
+    h.ivaPurchaseBooks.preload(active);
+    h.ivaPurchaseBooks.preload(voided);
+    const result = await h.service.listPurchasesByPeriod(ORG, { status: "VOIDED" });
+    expect(result).toHaveLength(1);
+    expect(result[0].numeroFactura).toBe("P-VOIDED2");
+  });
+
+  it("filters by both fiscalPeriodId + status", async () => {
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-X", numeroFactura: "P-XA" }),
+    );
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-X", numeroFactura: "P-XV" }).void(),
+    );
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-Y", numeroFactura: "P-YA" }),
+    );
+    const result = await h.service.listPurchasesByPeriod(ORG, {
+      fiscalPeriodId: "p-X",
+      status: "ACTIVE",
+    });
+    expect(result).toHaveLength(1);
+    expect(result[0].numeroFactura).toBe("P-XA");
+  });
+
+  it("tenancy: returns only entries of orgId", async () => {
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ organizationId: "org-X", numeroFactura: "P-X" }),
+    );
+    h.ivaPurchaseBooks.preload(
+      makePurchaseEntry({ organizationId: "org-Y", numeroFactura: "P-Y" }),
+    );
+    const result = await h.service.listPurchasesByPeriod("org-X", {});
+    expect(result).toHaveLength(1);
+    expect(result[0].numeroFactura).toBe("P-X");
+  });
+});
+
+describe("InMemoryIvaPurchaseBookEntryRepository — non-tx reads (A2.5)", () => {
+  let repo: InMemoryIvaPurchaseBookEntryRepository;
+  beforeEach(() => {
+    repo = new InMemoryIvaPurchaseBookEntryRepository();
+  });
+
+  it("findById returns entry when present + same orgId", async () => {
+    const entry = makePurchaseEntry({ numeroFactura: "P-FIND-1" });
+    repo.preload(entry);
+    const result = await repo.findById(ORG, entry.id);
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe(entry.id);
+  });
+
+  it("findById returns null when not present", async () => {
+    const result = await repo.findById(ORG, "missing-id");
+    expect(result).toBeNull();
+  });
+
+  it("findById returns null when tenancy mismatch", async () => {
+    const entry = makePurchaseEntry({ organizationId: "org-A", numeroFactura: "P-T" });
+    repo.preload(entry);
+    const result = await repo.findById("org-B", entry.id);
+    expect(result).toBeNull();
+  });
+
+  it("findByPeriod returns entries with full filter shape combinations", async () => {
+    repo.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-A", numeroFactura: "P-A1" }),
+    );
+    repo.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-A", numeroFactura: "P-A2" }).void(),
+    );
+    repo.preload(
+      makePurchaseEntry({ fiscalPeriodId: "p-B", numeroFactura: "P-B1" }),
+    );
+
+    const all = await repo.findByPeriod(ORG, {});
+    expect(all).toHaveLength(3);
+
+    const onlyA = await repo.findByPeriod(ORG, { fiscalPeriodId: "p-A" });
+    expect(onlyA).toHaveLength(2);
+
+    const onlyActive = await repo.findByPeriod(ORG, { status: "ACTIVE" });
+    expect(onlyActive).toHaveLength(2);
+
+    const aAndActive = await repo.findByPeriod(ORG, {
+      fiscalPeriodId: "p-A",
+      status: "ACTIVE",
+    });
+    expect(aAndActive).toHaveLength(1);
+    expect(aAndActive[0].numeroFactura).toBe("P-A1");
   });
 });

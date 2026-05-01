@@ -27,6 +27,10 @@ import type {
   IvaSalesBookEntryRepository,
   ListSalesQuery,
 } from "../domain/ports/iva-sales-book-entry-repository.port";
+import type {
+  IvaPurchaseBookEntryRepository,
+  ListPurchasesQuery,
+} from "../domain/ports/iva-purchase-book-entry-repository.port";
 
 export interface IvaBookServiceDeps {
   uow: IvaBookUnitOfWork;
@@ -42,6 +46,14 @@ export interface IvaBookServiceDeps {
    * wiring crea instancia distinta (non-tx) en composition-root.
    */
   ivaSalesBooks: IvaSalesBookEntryRepository;
+  /**
+   * Non-tx purchases repo — A2.5. Mirror simétrico de `ivaSalesBooks`.
+   * Same port used inside the UoW scope (tx-bound instance), here a
+   * non-tx instance bound to the default Prisma client para servir read
+   * paths (`getPurchaseById`, `listPurchasesByPeriod`). Production
+   * wiring crea instancia distinta (non-tx) en composition-root.
+   */
+  ivaPurchaseBooks: IvaPurchaseBookEntryRepository;
 }
 
 export interface RegenerateIvaSalesBookInput {
@@ -717,6 +729,24 @@ export class IvaBookService {
     query: ListSalesQuery,
   ): Promise<IvaSalesBookEntry[]> {
     return this.deps.ivaSalesBooks.findByPeriod(organizationId, query);
+  }
+
+  // ── A2.5 reads (purchases) ────────────────────────────────────────────────
+
+  async getPurchaseById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaPurchaseBookEntry> {
+    const entry = await this.deps.ivaPurchaseBooks.findById(organizationId, id);
+    if (!entry) throw new IvaBookNotFound("purchase");
+    return entry;
+  }
+
+  async listPurchasesByPeriod(
+    organizationId: string,
+    query: ListPurchasesQuery,
+  ): Promise<IvaPurchaseBookEntry[]> {
+    return this.deps.ivaPurchaseBooks.findByPeriod(organizationId, query);
   }
 }
 
