@@ -1064,6 +1064,11 @@ export class PurchaseService {
    * journal mutates. Period check outside-UoW (paridad sale-hex; legacy
    * `:1238-1240` lo replica in-tx por race protection — replicación
    * estricta diferida POC #11.0c con IVA service real).
+   *
+   * **Period gate** — purchase-hex SÍ valida periodo inside (asimetría
+   * deliberada con sale-hex que NO valida). IVA-hex consumer replica el
+   * gate en su lado para uniformar ambos paths per D-A1#4 elevation lock —
+   * ver `modules/iva-books/domain/ports/fiscal-period-reader.port.ts:8-26`.
    */
   async regenerateJournalForIvaChange(
     organizationId: string,

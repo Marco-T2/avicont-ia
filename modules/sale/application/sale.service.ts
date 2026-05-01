@@ -930,6 +930,11 @@ export class SaleService {
    * Flow: load sale + accounts + IVA snapshot + entry lines OUTSIDE UoW;
    * factory.regenerateForSaleEdit → applyVoid old + applyPost new INSIDE.
    * Sale aggregate unchanged — only the journal mutates.
+   *
+   * **Period gate** — sale-hex NO valida periodo aquí (asimetría deliberada
+   * con purchase-hex que SÍ valida inside). El gate vive en el consumer
+   * IVA-hex per D-A1#4 elevation lock — ver
+   * `modules/iva-books/domain/ports/fiscal-period-reader.port.ts:8-26`.
    */
   async regenerateJournalForIvaChange(
     organizationId: string,
