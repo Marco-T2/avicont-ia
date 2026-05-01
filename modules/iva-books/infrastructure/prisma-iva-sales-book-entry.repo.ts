@@ -8,7 +8,10 @@ import {
   IvaSalesBookEntry,
   type IvaSalesBookEntryProps,
 } from "../domain/iva-sales-book-entry.entity";
-import type { IvaSalesBookEntryRepository } from "../domain/ports/iva-sales-book-entry-repository.port";
+import type {
+  IvaSalesBookEntryRepository,
+  ListSalesQuery,
+} from "../domain/ports/iva-sales-book-entry-repository.port";
 import { parseIvaBookStatus } from "../domain/value-objects/iva-book-status";
 import { IvaCalcResult } from "../domain/value-objects/iva-calc-result";
 import { parseIvaSalesEstadoSIN } from "../domain/value-objects/iva-sales-estado-sin";
@@ -64,6 +67,31 @@ export class PrismaIvaSalesBookEntryRepo
       data: toUpdateData(entry),
     });
     return entry;
+  }
+
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaSalesBookEntry | null> {
+    const row = await this.db.ivaSalesBook.findFirst({
+      where: { id, organizationId },
+    });
+    return row ? hydrateFromRow(row) : null;
+  }
+
+  async findByPeriod(
+    organizationId: string,
+    query: ListSalesQuery,
+  ): Promise<IvaSalesBookEntry[]> {
+    const rows = await this.db.ivaSalesBook.findMany({
+      where: {
+        organizationId,
+        ...(query.fiscalPeriodId ? { fiscalPeriodId: query.fiscalPeriodId } : {}),
+        ...(query.status ? { status: query.status } : {}),
+      },
+      orderBy: { fechaFactura: "asc" },
+    });
+    return rows.map(hydrateFromRow);
   }
 }
 

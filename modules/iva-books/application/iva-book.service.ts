@@ -23,6 +23,10 @@ import type { SaleReaderPort } from "../domain/ports/sale-reader.port";
 import type { PurchaseReaderPort } from "../domain/ports/purchase-reader.port";
 import type { SaleJournalRegenNotifierPort } from "../domain/ports/sale-journal-regen-notifier.port";
 import type { PurchaseJournalRegenNotifierPort } from "../domain/ports/purchase-journal-regen-notifier.port";
+import type {
+  IvaSalesBookEntryRepository,
+  ListSalesQuery,
+} from "../domain/ports/iva-sales-book-entry-repository.port";
 
 export interface IvaBookServiceDeps {
   uow: IvaBookUnitOfWork;
@@ -31,6 +35,13 @@ export interface IvaBookServiceDeps {
   purchaseReader: PurchaseReaderPort;
   saleJournalRegenNotifier: SaleJournalRegenNotifierPort;
   purchaseJournalRegenNotifier: PurchaseJournalRegenNotifierPort;
+  /**
+   * Non-tx sales repo — A2.5. Same port used inside the UoW scope (tx-bound
+   * instance), here a non-tx instance bound to the default Prisma client
+   * para servir read paths (`getSaleById`, `listSalesByPeriod`). Production
+   * wiring crea instancia distinta (non-tx) en composition-root.
+   */
+  ivaSalesBooks: IvaSalesBookEntryRepository;
 }
 
 export interface RegenerateIvaSalesBookInput {
@@ -688,6 +699,24 @@ export class IvaBookService {
     if (!entry || entry.status === "VOIDED") return;
     const voided = entry.void();
     await scope.ivaPurchaseBooks.updateTx(voided);
+  }
+
+  // ── A2.5 reads (sales) ────────────────────────────────────────────────────
+
+  async getSaleById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaSalesBookEntry> {
+    const entry = await this.deps.ivaSalesBooks.findById(organizationId, id);
+    if (!entry) throw new IvaBookNotFound("sale");
+    return entry;
+  }
+
+  async listSalesByPeriod(
+    organizationId: string,
+    query: ListSalesQuery,
+  ): Promise<IvaSalesBookEntry[]> {
+    return this.deps.ivaSalesBooks.findByPeriod(organizationId, query);
   }
 }
 

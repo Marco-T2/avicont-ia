@@ -1,18 +1,32 @@
 import type { IvaSalesBookEntry } from "../iva-sales-book-entry.entity";
+import type { IvaBookStatus } from "../value-objects/iva-book-status";
+
+/**
+ * Filter shape for non-tx list queries. Mirror legacy
+ * `ListIvaBooksFilter` (features/accounting/iva-books/iva-books.repository.ts:18).
+ */
+export interface ListSalesQuery {
+  fiscalPeriodId?: string;
+  status?: IvaBookStatus;
+}
 
 /**
  * Read/write port for the `IvaSalesBookEntry` aggregate. Tx-aware methods
- * únicamente — todos los use cases A2 mutan dentro de
+ * cubren todos los use cases A2 que mutan dentro de
  * `IvaBookUnitOfWork.run` (regenerate / recompute / void / reactivate) o
  * comparten scope vía F-α scope-passing (`applyVoidCascade`). El adapter
  * Prisma A3 se construye contra el `Prisma.TransactionClient` abierto;
  * el in-memory fake registra mutaciones contra el `correlationId` del
  * scope.
  *
- * Mirror sale-hex `SaleRepository` pattern (tx-aware suffix + narrow shape)
- * pero sin `findAll` / `findById` non-tx — IVA-hex use cases A2 no exponen
- * read-only inbound (read use cases viven en sale-hex/purchase-hex que ya
- * consumen `IvaBookReaderPort` desde su domain).
+ * **A2.5 amplía read surface non-tx** (`findById` + `findByPeriod`) para
+ * servir el viewer use case desde `IvaBookService.{getSaleById, listSalesByPeriod}`
+ * — ver Q1 lock POC #11.0c A4 Step 0 (anti-CQRS pragmático alineado con
+ * sale-hex precedent `SaleService.list/getById`). El bookmark A2 original
+ * asumía "reads viven en sale-hex/purchase-hex via IvaBookReaderPort" — esa
+ * asunción cubre el bridge cross-module ("given a sale, find its IVA entry"),
+ * NO el viewer user-facing ("list IVA libro por período" / "get IVA entry
+ * by own id"). A2.5 cierra el gap.
  *
  * `findBySaleIdTx` cubre el path cascade — `applyVoidCascade(input, scope)`
  * resuelve la entry asociada a un `saleId` dentro de la tx parent del
@@ -31,6 +45,24 @@ export interface IvaSalesBookEntryRepository {
     organizationId: string,
     saleId: string,
   ): Promise<IvaSalesBookEntry | null>;
+
+  /**
+   * Non-tx load por `id` — A2.5. Viewer use case: el service traduce
+   * `null` → `IvaBookNotFound("sale")` throw en `getSaleById`.
+   */
+  findById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaSalesBookEntry | null>;
+
+  /**
+   * Non-tx list filtrada por `fiscalPeriodId` y/o `status` — A2.5. Mirror
+   * legacy `listSalesByPeriod` Prisma where + orderBy `fechaFactura asc`.
+   */
+  findByPeriod(
+    organizationId: string,
+    query: ListSalesQuery,
+  ): Promise<IvaSalesBookEntry[]>;
 
   /** Tx-aware persist de un aggregate freshly-created (regenerate). */
   saveTx(entry: IvaSalesBookEntry): Promise<IvaSalesBookEntry>;

@@ -1,5 +1,8 @@
 import type { IvaSalesBookEntry } from "../../../domain/iva-sales-book-entry.entity";
-import type { IvaSalesBookEntryRepository } from "../../../domain/ports/iva-sales-book-entry-repository.port";
+import type {
+  IvaSalesBookEntryRepository,
+  ListSalesQuery,
+} from "../../../domain/ports/iva-sales-book-entry-repository.port";
 
 /**
  * In-memory fake of `IvaSalesBookEntryRepository` for application-layer tests.
@@ -52,5 +55,28 @@ export class InMemoryIvaSalesBookEntryRepository
     this.updateCalls.push(entry);
     this.store.set(entry.id, entry);
     return entry;
+  }
+
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<IvaSalesBookEntry | null> {
+    const entry = this.store.get(id);
+    if (!entry || entry.organizationId !== organizationId) return null;
+    return entry;
+  }
+
+  async findByPeriod(
+    organizationId: string,
+    query: ListSalesQuery,
+  ): Promise<IvaSalesBookEntry[]> {
+    const out: IvaSalesBookEntry[] = [];
+    for (const entry of this.store.values()) {
+      if (entry.organizationId !== organizationId) continue;
+      if (query.fiscalPeriodId && entry.fiscalPeriodId !== query.fiscalPeriodId) continue;
+      if (query.status && entry.status !== query.status) continue;
+      out.push(entry);
+    }
+    return out;
   }
 }
