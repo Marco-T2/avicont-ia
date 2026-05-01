@@ -2,12 +2,15 @@ import "server-only";
 
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { VoucherTypesRepository } from "@/features/voucher-types/server";
 import { prisma } from "@/lib/prisma";
 import { FiscalPeriodsReadAdapter } from "@/modules/accounting/infrastructure/fiscal-periods-read.adapter";
 import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
 import { PrismaContactRepository } from "@/modules/contacts/infrastructure/prisma-contact.repository";
+import {
+  makeIvaBookService,
+  makeIvaScopeFactory,
+} from "@/modules/iva-books/presentation/composition-root";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/composition-root";
 import { PrismaReceivablesRepository } from "@/modules/receivables/infrastructure/prisma-receivables.repository";
@@ -51,10 +54,19 @@ const repoLike: UnitOfWorkRepoLike = {
 const accountsRepo = new AccountsRepository();
 const voucherTypesRepo = new VoucherTypesRepository();
 const autoEntryGen = new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
-const ivaBooksService = new IvaBooksService();
 const journalEntriesReadAdapter = new LegacyJournalEntriesReadAdapter();
 const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
 
+/**
+ * **POC #11.0c A4-c C2 GREEN cutover hex (P1 (b) + P4 (ii) + cycle-break
+ * Opción α lockeada Marco)**: UoW recibe `() => makeIvaBookService()` (hex
+ * factory wrap) en lugar de legacy singleton wrap. Memoización iva root
+ * (P4 (ii)) garantiza single-instance contract intent Opción α —
+ * invocaciones múltiples del factory retornan misma instance. `makeIvaScopeFactory()`
+ * provee closure cross-module cerrando sobre prisma adapters iva-side; sale
+ * infrastructure adapter recibe factory shape, NO importa concrete iva
+ * adapters (§17 preservado).
+ */
 export function makeSaleService(): SaleService {
   return new SaleService({
     repo: new PrismaSaleRepository(),
@@ -65,7 +77,8 @@ export function makeSaleService(): SaleService {
       journalEntriesReadAdapter,
       accountLookupAdapter,
       autoEntryGen,
-      () => ivaBooksService,
+      () => makeIvaBookService(),
+      makeIvaScopeFactory(),
     ),
     accountLookup: accountLookupAdapter,
     orgSettings: new PrismaOrgSettingsReaderAdapter(makeOrgSettingsService()),

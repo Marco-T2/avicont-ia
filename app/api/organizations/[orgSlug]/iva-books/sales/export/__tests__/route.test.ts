@@ -29,16 +29,23 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-// Mock del exporter + service (mismo barrel /server)
+// POC #11.0c A4-c C2 GREEN coupled mock swap: route cutover hex
+// `makeIvaBookService` + entriesToDto mapper. Mock split:
+// - hex root mock: `makeIvaBookService` retorna instance mock con
+//   `listSalesByPeriod` returning entity[] (mock empty array satisface
+//   batch wrapper map identity sin mapper transform real).
+// - legacy server mock preserva `exportIvaBookExcel` (XLSX exporter
+//   no migrated) — split de mocks vs C1 single mock.
 const FAKE_BUFFER = Buffer.from("FAKE_XLSX_CONTENT");
 const mockServiceInstance = {
   listSalesByPeriod: vi.fn().mockResolvedValue([]),
 };
 
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockServiceInstance),
+}));
+
 vi.mock("@/features/accounting/iva-books/server", () => ({
-  IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
-  }),
   exportIvaBookExcel: vi.fn().mockResolvedValue(FAKE_BUFFER),
 }));
 

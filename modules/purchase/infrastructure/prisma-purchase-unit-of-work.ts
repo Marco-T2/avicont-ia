@@ -1,11 +1,13 @@
 import "server-only";
 
 import type { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
-import type { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { withAuditTx } from "@/features/shared/audit-tx";
+import { Prisma } from "@/generated/prisma/client";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import { PrismaAccountBalancesRepo } from "@/modules/accounting/infrastructure/prisma-account-balances.repo";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
+import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
 import { PrismaPayablesRepository } from "@/modules/payables/infrastructure/prisma-payables.repository";
 import { PrismaJournalEntryFactoryAdapter } from "@/modules/sale/infrastructure/prisma-journal-entry-factory.adapter";
@@ -38,8 +40,18 @@ import { PrismaPurchaseRepository } from "./prisma-purchase.repository";
  *
  * Cross-module deps inyectadas en constructor (Ciclo 4 D-2 c2 DI per-tx via
  * composition root): `journalEntriesReadPort`, `accountLookupPort`,
- * `autoEntryGen`, `ivaBooksService`. Los 7 scope members tx-bound se
- * construyen dentro del `withAuditTx` callback con la `tx` outer compartida.
+ * `autoEntryGen`, `ivaServiceFactory`, `ivaScopeFactory`. Los 7 scope members
+ * tx-bound se construyen dentro del `withAuditTx` callback con la `tx` outer
+ * compartida.
+ *
+ * **POC #11.0c A4-c C2 GREEN cutover hex (P1 (b) + cycle-break Opción α
+ * lockeada Marco)**: `ivaServiceFactory: () => IvaBookService` retorna hex
+ * (sin 's', POC #11.0c A4-b cascade surface F-α scope param). `ivaScopeFactory:
+ * (tx, correlationId) => IvaBookScope` closure construido por iva root cierra
+ * sobre prisma adapters iva-side — CERO cross-module concrete imports en
+ * purchase infrastructure adapter (§17 preservado). Notifier adapter recibe
+ * ambos factories + correlationId para construir scope tx-bound al momento
+ * del cascade hex call. Mirror simétrico sale UoW.
  *
  * `journalEntries` Prisma adapter se instancia una sola vez y se reusa como
  * `writeRepo` del `journalEntryFactory` (paridad scope-bound POC #10 + sale
@@ -63,7 +75,11 @@ export class PrismaPurchaseUnitOfWork implements PurchaseUnitOfWork {
     private readonly journalEntriesReadPort: JournalEntriesReadPort,
     private readonly accountLookupPort: AccountLookupPort,
     private readonly autoEntryGen: AutoEntryGenerator,
-    private readonly ivaServiceFactory: () => IvaBooksService,
+    private readonly ivaServiceFactory: () => IvaBookService,
+    private readonly ivaScopeFactory: (
+      tx: Prisma.TransactionClient,
+      correlationId: string,
+    ) => IvaBookScope,
   ) {}
 
   async run<T>(
@@ -88,7 +104,9 @@ export class PrismaPurchaseUnitOfWork implements PurchaseUnitOfWork {
         ),
         ivaBookRegenNotifier: new PrismaIvaBookRegenNotifierAdapter(
           tx,
+          correlationId,
           this.ivaServiceFactory,
+          this.ivaScopeFactory,
         ),
         ivaBookVoidCascade: new PrismaIvaBookVoidCascadeAdapter(tx),
       };

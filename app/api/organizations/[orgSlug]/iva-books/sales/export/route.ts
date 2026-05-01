@@ -24,10 +24,11 @@ export const runtime = "nodejs";
 
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { IvaBooksService, exportIvaBookExcel } from "@/features/accounting/iva-books/server";
+import { exportIvaBookExcel } from "@/features/accounting/iva-books/server";
 import { listQuerySchema } from "@/features/accounting/iva-books";
+import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
 
-const service = new IvaBooksService();
+import { entriesToDto } from "./entity-to-dto";
 
 export async function GET(
   request: Request,
@@ -43,7 +44,12 @@ export async function GET(
       status: searchParams.get("status") ?? undefined,
     });
 
-    const entries = await service.listSalesByPeriod(orgId, query);
+    // POC #11.0c A4-c C2 GREEN cutover hex (P3 mapper bridge lockeada Marco):
+    // hex `listSalesByPeriod` retorna `IvaSalesBookEntry[]` (domain), legacy
+    // `exportIvaBookExcel` obliga `IvaSalesBookDTO[]` — `entriesToDto` bridge
+    // archivo dedicado per route (P3.3 lock).
+    const entries = await makeIvaBookService().listSalesByPeriod(orgId, query);
+    const dtos = entriesToDto(entries);
 
     // Etiqueta segura para el nombre de archivo (solo alfanumérico y guiones)
     const periodLabel = (query.fiscalPeriodId ?? "sin-periodo")
@@ -51,7 +57,7 @@ export async function GET(
       .replace(/-{2,}/g, "-")
       .replace(/^-|-$/g, "");
 
-    const buffer = await exportIvaBookExcel("sales", entries, periodLabel);
+    const buffer = await exportIvaBookExcel("sales", dtos, periodLabel);
 
     return new Response(new Uint8Array(buffer), {
       headers: {

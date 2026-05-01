@@ -15,7 +15,15 @@ import type {
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const TASA_IVA = new Prisma.Decimal("0.1300");
+/**
+ * Alícuota IVA Bolivia 13% — exported para consumo cross-module legacy↔hex
+ * bridge (POC #11.0c A4-c C2 GREEN P3.4 lock Marco): mapper hex
+ * `IvaSalesBookEntry → IvaSalesBookDTO` requiere `tasaIva: Decimal` campo
+ * que NO existe en `IvaCalcResult` VO (solo subtotal/baseImponible/ivaAmount).
+ * Single source of truth hasta retirement final del legacy `IvaBooksService`
+ * — cuando TASA_IVA migre a hex (POC futuro) el import path swap es trivial.
+ */
+export const TASA_IVA = new Prisma.Decimal("0.1300");
 
 // ── Helpers de cálculo ────────────────────────────────────────────────────────
 
