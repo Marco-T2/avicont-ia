@@ -4,10 +4,14 @@ import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
+import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
+import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
+import { __resetForTesting } from "@/modules/iva-books/presentation/composition-root";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import { Purchase } from "@/modules/purchase/domain/purchase.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -347,5 +351,62 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       where: { correlationId: scopeIdBeforeThrow! },
     });
     expect(auditRows.length).toBe(0);
+  });
+
+  it("E3 cleanup integration mirror: __resetForTesting() callable + UoW ctor 6-arg uniform hex shape with ivaScopeFactory dep (forward C3 GREEN cleanup target)", async () => {
+    // RED honesty C3 (feedback/red-acceptance-failure-mode):
+    // **Primary file-level RED**: 2 callsites legacy 5-arg en este archivo
+    // (commit + rollback tests L257, L306) — TS2554 transient pre-cleanup
+    // `Expected 6 arguments, but got 5`. C3 GREEN cleanup uniformly updates
+    // → 6-arg hex (+ivaScopeFactory dep). **Secondary runtime RED**: 2
+    // legacy callsites runtime-fail si vitest ejecuta sin TS check (esbuild
+    // strip), porque UoW.run construye adapter con 6-arg post-C2 GREEN —
+    // legacy 5-arg passes undefined a slot 6 (ivaScopeFactory) → adapter
+    // body invoca `this.ivaScopeFactory(...)` → TypeError "is not a function".
+    //
+    // **Tertiary E3 self**: usa NEW 6-arg shape POST-C2 GREEN (a515636) —
+    // E3 self pasa como SEED documenting cleanup target. RED honesty
+    // declarada via file-level transients pending GREEN.
+    //
+    // **`__resetForTesting()` integration**: validates iva root memo reset
+    // hook callable from this test context (P4 (ii) lockeada Marco). C3
+    // GREEN cleanup adds `beforeEach(() => __resetForTesting())` para test
+    // isolation cross-test.
+    //
+    // Mirror simétrico estricto sale UoW E3.
+    __resetForTesting();
+    expect(typeof __resetForTesting).toBe("function");
+
+    const mockHexService = {
+      recomputeFromPurchaseCascade: async (
+        _input: unknown,
+        _scope: IvaBookScope,
+      ): Promise<void> => {},
+    } as unknown as IvaBookService;
+
+    const mockScopeFactory = (
+      _tx: Prisma.TransactionClient,
+      correlationId: string,
+    ): IvaBookScope =>
+      ({
+        correlationId,
+        fiscalPeriods: undefined as never,
+        ivaSalesBooks: undefined as never,
+        ivaPurchaseBooks: undefined as never,
+      }) as unknown as IvaBookScope;
+
+    // Smoke cleanup target: 6-arg ctor hex shape uniform en file (post-C3
+    // GREEN cleanup). Pre-cleanup: 2 callsites legacy 5-arg coexisten con
+    // este E3 6-arg en mismo file → file inconsistency cleanup-pending.
+    const uow = new PrismaPurchaseUnitOfWork(
+      repo,
+      journalEntriesReadPort,
+      accountLookupPort,
+      autoEntryGen,
+      () => mockHexService,
+      mockScopeFactory,
+    );
+
+    expect(uow).toBeInstanceOf(PrismaPurchaseUnitOfWork);
   });
 });

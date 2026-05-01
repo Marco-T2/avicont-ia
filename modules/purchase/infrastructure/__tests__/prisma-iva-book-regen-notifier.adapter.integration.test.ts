@@ -5,6 +5,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
 import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
+import { __resetForTesting } from "@/modules/iva-books/presentation/composition-root";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 import { PrismaIvaBookRegenNotifierAdapter } from "../prisma-iva-book-regen-notifier.adapter";
@@ -442,5 +443,74 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     expect(result!.exentos).toBe(0);
     expect(typeof result!.baseIvaSujetoCf).toBe("number");
     expect(typeof result!.dfCfIva).toBe("number");
+  });
+
+  it("E3 cleanup integration mirror: __resetForTesting() callable + adapter ctor 4-arg uniform hex shape (forward C3 GREEN cleanup target)", async () => {
+    // RED honesty C3 (feedback/red-acceptance-failure-mode):
+    // **Primary file-level RED**: 4 callsites legacy 2-arg en este archivo
+    // (3 originals recompute ACTIVE/null/VOIDED + 1 E1 cycle-break) — TS2554
+    // transient pre-cleanup `Expected 4 arguments, but got 2`. C3 GREEN
+    // cleanup uniformly updates → 4-arg hex. **Secondary runtime RED**: 4
+    // legacy callsites runtime-fail TypeError (`this.ivaScopeFactory is not
+    // a function`) si vitest ejecuta sin TS check (esbuild strip), porque
+    // legacy passes factory at slot 2 (correlationId in NEW shape).
+    //
+    // **Tertiary E3 self**: usa NEW 4-arg shape POST-C2 GREEN (a515636) —
+    // E3 self pasa como SEED documenting cleanup target. RED honesty
+    // declarada via file-level transients pending GREEN, NO via E3 self
+    // failure.
+    //
+    // **`__resetForTesting()` integration**: validates iva root memo reset
+    // hook callable from this test context (P4 (ii) lockeada Marco). C3
+    // GREEN cleanup adds `beforeEach(() => __resetForTesting())` para
+    // test isolation.
+    //
+    // Mirror simétrico estricto sale E3.
+    __resetForTesting();
+    expect(typeof __resetForTesting).toBe("function");
+
+    const purchaseId = await seedPurchaseDirect(5);
+    await seedIvaPurchaseBook({
+      purchaseId,
+      status: "ACTIVE",
+      sequenceTag: "cleanup-target",
+      importeTotal: "120.00",
+      exentos: "0",
+    });
+
+    const mockHexService = {
+      recomputeFromPurchaseCascade: async (
+        _input: unknown,
+        _scope: IvaBookScope,
+      ): Promise<void> => {},
+    } as unknown as IvaBookService;
+
+    const mockScopeFactory = (
+      _tx: Prisma.TransactionClient,
+      correlationId: string,
+    ): IvaBookScope =>
+      ({
+        correlationId,
+        fiscalPeriods: undefined as never,
+        ivaSalesBooks: undefined as never,
+        ivaPurchaseBooks: undefined as never,
+      }) as unknown as IvaBookScope;
+
+    // Smoke cleanup target: 4-arg ctor hex shape uniform en file (post-C3
+    // GREEN cleanup). Pre-cleanup: 4 callsites legacy 2-arg coexisten con
+    // este E3 4-arg en mismo file → file inconsistency cleanup-pending.
+    const result = await prisma.$transaction(async (tx) => {
+      const adapter = new PrismaIvaBookRegenNotifierAdapter(
+        tx,
+        "test-correlation-c3-e3-purchase",
+        () => mockHexService,
+        mockScopeFactory,
+      );
+      expect(adapter).toBeInstanceOf(PrismaIvaBookRegenNotifierAdapter);
+      return adapter.recomputeFromPurchase(testOrgId, purchaseId, 113);
+    });
+
+    expect(result).not.toBeNull();
+    expect(result!.importeTotal).toBe(120); // pre-seeded (mock no-op)
   });
 });
