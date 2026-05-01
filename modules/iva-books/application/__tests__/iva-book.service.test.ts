@@ -1386,6 +1386,132 @@ describe("IvaBookService.recomputeFromSaleCascade", () => {
   });
 });
 
+describe("IvaBookService.recomputeFromPurchaseCascade", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+  });
+
+  it("T1 happy: entry ACTIVE encontrada via purchaseId → updateTx con importeTotal nuevo + 9 deducciones preserved + calcResult recomputed via computeIvaTotals", async () => {
+    seedPurchaseEntry(h, {
+      purchaseId: "purchase-cascade-1",
+      status: "ACTIVE",
+      inputs: {
+        importeTotal: m(2000),
+        importeIce: m(80),
+        importeIehd: m(30),
+        importeIpj: m(15),
+        tasas: m(8),
+      },
+    });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromPurchaseCascade(
+        {
+          organizationId: ORG,
+          purchaseId: "purchase-cascade-1",
+          newTotal: m(3500),
+        },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+    const updated = h.ivaPurchaseBooks.updateCalls[0];
+
+    expect(updated.inputs.importeTotal.equals(m(3500))).toBe(true);
+    expect(updated.inputs.importeIce.equals(m(80))).toBe(true);
+    expect(updated.inputs.importeIehd.equals(m(30))).toBe(true);
+    expect(updated.inputs.importeIpj.equals(m(15))).toBe(true);
+    expect(updated.inputs.tasas.equals(m(8))).toBe(true);
+    expect(updated.inputs.otrosNoSujetos.equals(zero)).toBe(true);
+    expect(updated.inputs.exentos.equals(zero)).toBe(true);
+    expect(updated.inputs.tasaCero.equals(zero)).toBe(true);
+    expect(updated.inputs.codigoDescuentoAdicional.equals(zero)).toBe(true);
+    expect(updated.inputs.importeGiftCard.equals(zero)).toBe(true);
+
+    const expectedCalc = computeIvaTotals({
+      importeTotal: m(3500),
+      importeIce: m(80),
+      importeIehd: m(30),
+      importeIpj: m(15),
+      tasas: m(8),
+      otrosNoSujetos: zero,
+      exentos: zero,
+      tasaCero: zero,
+      codigoDescuentoAdicional: zero,
+      importeGiftCard: zero,
+    });
+    expect(updated.calcResult.subtotal.equals(expectedCalc.subtotal)).toBe(true);
+    expect(
+      updated.calcResult.baseImponible.equals(expectedCalc.baseImponible),
+    ).toBe(true);
+    expect(updated.calcResult.ivaAmount.equals(expectedCalc.ivaAmount)).toBe(
+      true,
+    );
+  });
+
+  it("T2 no-op (paridad legacy I3): NO entry para purchaseId → resolves sin throw + 0 updateTx", async () => {
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromPurchaseCascade(
+        {
+          organizationId: ORG,
+          purchaseId: "missing-purchase",
+          newTotal: m(3500),
+        },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(0);
+  });
+
+  it("T3 paridad legacy bug latente — VOIDED mutates (Marco lock Ciclo 5c sale 5c (b), NO defensive filter unilateral, fix POC dedicado): entry VOIDED → cascade muta igual", async () => {
+    seedPurchaseEntry(h, { purchaseId: "purchase-voided", status: "VOIDED" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromPurchaseCascade(
+        {
+          organizationId: ORG,
+          purchaseId: "purchase-voided",
+          newTotal: m(3500),
+        },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+    expect(
+      h.ivaPurchaseBooks.updateCalls[0].inputs.importeTotal.equals(m(3500)),
+    ).toBe(true);
+  });
+
+  it("T4 E lock cascade NO valida periodo (paridad legacy I1, mirror applyVoidCascadeFromPurchase precedent): buildScope fiscalPeriods Proxy throws-on-access → cascade no la toca, mutates igual", async () => {
+    seedPurchaseEntry(h, {
+      purchaseId: "purchase-no-period-gate",
+      status: "ACTIVE",
+    });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromPurchaseCascade(
+        {
+          organizationId: ORG,
+          purchaseId: "purchase-no-period-gate",
+          newTotal: m(3500),
+        },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaPurchaseBooks.updateCalls).toHaveLength(1);
+  });
+});
+
 // ── A2.5 sales reads ──────────────────────────────────────────────────────
 
 function makeSalesEntry(overrides: {
