@@ -14,10 +14,14 @@ export interface PurchaseSnapshot {
   id: string;
   organizationId: string;
   /**
-   * Purchase status — used to gate bridge invocation (POSTED+OPEN triggers
-   * `PurchaseJournalRegenNotifier.regenerateJournalForIvaChange`, DRAFT no).
+   * Purchase status — Prisma `PurchaseStatus` schema parity (4 valores,
+   * schema:521-526). Bridge gate: only `POSTED` triggers
+   * `PurchaseJournalRegenNotifier.regenerateJournalForIvaChange`
+   * (DRAFT/LOCKED/VOIDED skip). LOCKED widened POC #11.0c A3 pre-C1
+   * (aspirational_mock_signal — port honra el contrato real del adapter Prisma,
+   * que emite los 4 enum values).
    */
-  status: "DRAFT" | "POSTED" | "VOIDED";
+  status: "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
 }
 
 export interface PurchaseReaderPort {

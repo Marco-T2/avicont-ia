@@ -18,10 +18,13 @@ export interface SaleSnapshot {
   id: string;
   organizationId: string;
   /**
-   * Sale status — used to gate bridge invocation (POSTED+OPEN triggers
-   * `SaleJournalRegenNotifier.regenerateJournalForIvaChange`, DRAFT no).
+   * Sale status — Prisma `SaleStatus` schema parity (4 valores, schema:507-512).
+   * Bridge gate: only `POSTED` triggers
+   * `SaleJournalRegenNotifier.regenerateJournalForIvaChange` (DRAFT/LOCKED/VOIDED
+   * skip). LOCKED widened POC #11.0c A3 pre-C1 (aspirational_mock_signal — port
+   * honra el contrato real del adapter Prisma, que emite los 4 enum values).
    */
-  status: "DRAFT" | "POSTED" | "VOIDED";
+  status: "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
 }
 
 export interface SaleReaderPort {
