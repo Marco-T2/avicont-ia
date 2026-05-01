@@ -1271,6 +1271,121 @@ describe("IvaBookService.applyVoidCascadeFromPurchase", () => {
   });
 });
 
+describe("IvaBookService.recomputeFromSaleCascade", () => {
+  let h: Harness;
+  beforeEach(() => {
+    h = buildHarness();
+  });
+
+  it("T1 happy: entry ACTIVE encontrada via saleId → updateTx con importeTotal nuevo + 9 deducciones preserved + calcResult recomputed via computeIvaTotals", async () => {
+    seedSalesEntry(h, {
+      saleId: "sale-cascade-1",
+      status: "ACTIVE",
+      inputs: {
+        importeTotal: m(1000),
+        importeIce: m(50),
+        importeIehd: m(20),
+        importeIpj: m(10),
+        tasas: m(5),
+      },
+    });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromSaleCascade(
+        { organizationId: ORG, saleId: "sale-cascade-1", newTotal: m(2000) },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+    const updated = h.ivaSalesBooks.updateCalls[0];
+
+    expect(updated.inputs.importeTotal.equals(m(2000))).toBe(true);
+    expect(updated.inputs.importeIce.equals(m(50))).toBe(true);
+    expect(updated.inputs.importeIehd.equals(m(20))).toBe(true);
+    expect(updated.inputs.importeIpj.equals(m(10))).toBe(true);
+    expect(updated.inputs.tasas.equals(m(5))).toBe(true);
+    expect(updated.inputs.otrosNoSujetos.equals(zero)).toBe(true);
+    expect(updated.inputs.exentos.equals(zero)).toBe(true);
+    expect(updated.inputs.tasaCero.equals(zero)).toBe(true);
+    expect(updated.inputs.codigoDescuentoAdicional.equals(zero)).toBe(true);
+    expect(updated.inputs.importeGiftCard.equals(zero)).toBe(true);
+
+    const expectedCalc = computeIvaTotals({
+      importeTotal: m(2000),
+      importeIce: m(50),
+      importeIehd: m(20),
+      importeIpj: m(10),
+      tasas: m(5),
+      otrosNoSujetos: zero,
+      exentos: zero,
+      tasaCero: zero,
+      codigoDescuentoAdicional: zero,
+      importeGiftCard: zero,
+    });
+    expect(updated.calcResult.subtotal.equals(expectedCalc.subtotal)).toBe(true);
+    expect(
+      updated.calcResult.baseImponible.equals(expectedCalc.baseImponible),
+    ).toBe(true);
+    expect(updated.calcResult.ivaAmount.equals(expectedCalc.ivaAmount)).toBe(
+      true,
+    );
+  });
+
+  it("T2 no-op (paridad legacy I3): NO entry para saleId → resolves sin throw + 0 updateTx", async () => {
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromSaleCascade(
+        {
+          organizationId: ORG,
+          saleId: "missing-sale",
+          newTotal: m(2000),
+        },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(0);
+  });
+
+  it("T3 paridad legacy bug latente — VOIDED mutates (Marco lock Ciclo 5c, fix POC dedicado, NO defensive filter unilateral): entry VOIDED → cascade muta igual", async () => {
+    seedSalesEntry(h, { saleId: "sale-voided", status: "VOIDED" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromSaleCascade(
+        { organizationId: ORG, saleId: "sale-voided", newTotal: m(2000) },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+    expect(
+      h.ivaSalesBooks.updateCalls[0].inputs.importeTotal.equals(m(2000)),
+    ).toBe(true);
+  });
+
+  it("T4 E lock cascade NO valida periodo (paridad legacy I1, mirror applyVoidCascadeFromSale precedent): buildScope fiscalPeriods Proxy throws-on-access → cascade no la toca, mutates igual", async () => {
+    seedSalesEntry(h, { saleId: "sale-no-period-gate", status: "ACTIVE" });
+    const scope = buildScope(h);
+
+    await expect(
+      h.service.recomputeFromSaleCascade(
+        {
+          organizationId: ORG,
+          saleId: "sale-no-period-gate",
+          newTotal: m(2000),
+        },
+        scope,
+      ),
+    ).resolves.toBeUndefined();
+
+    expect(h.ivaSalesBooks.updateCalls).toHaveLength(1);
+  });
+});
+
 // ── A2.5 sales reads ──────────────────────────────────────────────────────
 
 function makeSalesEntry(overrides: {
