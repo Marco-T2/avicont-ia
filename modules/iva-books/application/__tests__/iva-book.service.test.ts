@@ -225,19 +225,28 @@ describe("IvaBookService.regenerateSale", () => {
       importeIce: m(50),
       codigoDescuentoAdicional: m(20),
     };
-    const expectedCalc = computeIvaTotals(customInputs);
 
     await h.service.regenerateSale({
       ...baseSalesHeader,
       inputs: customInputs,
     });
 
+    // Hardcoded from SIN Bolivia spec (Formulario 200 Rubro 1.a, alícuota
+    // 13% HALF_UP) — NO derivar de computeIvaTotals (circular weak
+    // verification):
+    //   subtotal      = importeTotal - ICE = 1000 - 50 = 950.00
+    //   baseImponible = subtotal - descuento = 950 - 20 = 930.00
+    //   ivaAmount     = baseImponible × 0.13 = 120.90 (HALF_UP 2dp)
+    const expectedSubtotal = m(950);
+    const expectedBaseImponible = m(930);
+    const expectedIvaAmount = m(120.9);
+
     const persisted = h.ivaSalesBooks.saveCalls[0];
-    expect(persisted.calcResult.subtotal.equals(expectedCalc.subtotal)).toBe(true);
+    expect(persisted.calcResult.subtotal.equals(expectedSubtotal)).toBe(true);
     expect(
-      persisted.calcResult.baseImponible.equals(expectedCalc.baseImponible),
+      persisted.calcResult.baseImponible.equals(expectedBaseImponible),
     ).toBe(true);
-    expect(persisted.calcResult.ivaAmount.equals(expectedCalc.ivaAmount)).toBe(true);
+    expect(persisted.calcResult.ivaAmount.equals(expectedIvaAmount)).toBe(true);
   });
 });
 
@@ -340,19 +349,28 @@ describe("IvaBookService.regeneratePurchase", () => {
       importeIce: m(100),
       codigoDescuentoAdicional: m(50),
     };
-    const expectedCalc = computeIvaTotals(customInputs);
 
     await h.service.regeneratePurchase({
       ...basePurchaseHeader,
       inputs: customInputs,
     });
 
+    // Hardcoded from SIN Bolivia spec (Formulario 200 Rubro 1.a, alícuota
+    // 13% HALF_UP) — NO derivar de computeIvaTotals (circular weak
+    // verification):
+    //   subtotal      = importeTotal - ICE = 2000 - 100 = 1900.00
+    //   baseImponible = subtotal - descuento = 1900 - 50 = 1850.00
+    //   ivaAmount     = baseImponible × 0.13 = 240.50 (HALF_UP 2dp)
+    const expectedSubtotal = m(1900);
+    const expectedBaseImponible = m(1850);
+    const expectedIvaAmount = m(240.5);
+
     const persisted = h.ivaPurchaseBooks.saveCalls[0];
-    expect(persisted.calcResult.subtotal.equals(expectedCalc.subtotal)).toBe(true);
+    expect(persisted.calcResult.subtotal.equals(expectedSubtotal)).toBe(true);
     expect(
-      persisted.calcResult.baseImponible.equals(expectedCalc.baseImponible),
+      persisted.calcResult.baseImponible.equals(expectedBaseImponible),
     ).toBe(true);
-    expect(persisted.calcResult.ivaAmount.equals(expectedCalc.ivaAmount)).toBe(true);
+    expect(persisted.calcResult.ivaAmount.equals(expectedIvaAmount)).toBe(true);
   });
 });
 
@@ -578,23 +596,21 @@ describe("IvaBookService.recomputeSale", () => {
       inputs: { codigoDescuentoAdicional: m(20) },
     });
 
-    const merged = {
-      importeTotal: m(1000),
-      importeIce: m(50),
-      importeIehd: zero,
-      importeIpj: zero,
-      tasas: zero,
-      otrosNoSujetos: zero,
-      exentos: zero,
-      tasaCero: zero,
-      codigoDescuentoAdicional: m(20),
-      importeGiftCard: zero,
-    };
-    const expected = computeIvaTotals(merged);
+    // Hardcoded from SIN Bolivia spec (Formulario 200 Rubro 1.a, alícuota
+    // 13% HALF_UP) — merged inputs = seed (importeTotal:1000, importeIce:50)
+    // + patch (codigoDescuentoAdicional:20) — NO derivar de computeIvaTotals
+    // (circular weak verification):
+    //   subtotal      = importeTotal - ICE = 1000 - 50 = 950.00
+    //   baseImponible = subtotal - descuento = 950 - 20 = 930.00
+    //   ivaAmount     = baseImponible × 0.13 = 120.90 (HALF_UP 2dp)
+    const expectedSubtotal = m(950);
+    const expectedBaseImponible = m(930);
+    const expectedIvaAmount = m(120.9);
+
     const persisted = h.ivaSalesBooks.updateCalls[0];
-    expect(persisted.calcResult.subtotal.equals(expected.subtotal)).toBe(true);
-    expect(persisted.calcResult.baseImponible.equals(expected.baseImponible)).toBe(true);
-    expect(persisted.calcResult.ivaAmount.equals(expected.ivaAmount)).toBe(true);
+    expect(persisted.calcResult.subtotal.equals(expectedSubtotal)).toBe(true);
+    expect(persisted.calcResult.baseImponible.equals(expectedBaseImponible)).toBe(true);
+    expect(persisted.calcResult.ivaAmount.equals(expectedIvaAmount)).toBe(true);
   });
 });
 
@@ -732,23 +748,21 @@ describe("IvaBookService.recomputePurchase", () => {
       inputs: { codigoDescuentoAdicional: m(40) },
     });
 
-    const merged = {
-      importeTotal: m(2000),
-      importeIce: m(80),
-      importeIehd: zero,
-      importeIpj: zero,
-      tasas: zero,
-      otrosNoSujetos: zero,
-      exentos: zero,
-      tasaCero: zero,
-      codigoDescuentoAdicional: m(40),
-      importeGiftCard: zero,
-    };
-    const expected = computeIvaTotals(merged);
+    // Hardcoded from SIN Bolivia spec (Formulario 200 Rubro 1.a, alícuota
+    // 13% HALF_UP) — merged inputs = seed (importeTotal:2000, importeIce:80)
+    // + patch (codigoDescuentoAdicional:40) — NO derivar de computeIvaTotals
+    // (circular weak verification):
+    //   subtotal      = importeTotal - ICE = 2000 - 80 = 1920.00
+    //   baseImponible = subtotal - descuento = 1920 - 40 = 1880.00
+    //   ivaAmount     = baseImponible × 0.13 = 244.40 (HALF_UP 2dp)
+    const expectedSubtotal = m(1920);
+    const expectedBaseImponible = m(1880);
+    const expectedIvaAmount = m(244.4);
+
     const persisted = h.ivaPurchaseBooks.updateCalls[0];
-    expect(persisted.calcResult.subtotal.equals(expected.subtotal)).toBe(true);
-    expect(persisted.calcResult.baseImponible.equals(expected.baseImponible)).toBe(true);
-    expect(persisted.calcResult.ivaAmount.equals(expected.ivaAmount)).toBe(true);
+    expect(persisted.calcResult.subtotal.equals(expectedSubtotal)).toBe(true);
+    expect(persisted.calcResult.baseImponible.equals(expectedBaseImponible)).toBe(true);
+    expect(persisted.calcResult.ivaAmount.equals(expectedIvaAmount)).toBe(true);
   });
 });
 
