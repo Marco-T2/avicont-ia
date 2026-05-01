@@ -4,6 +4,12 @@
  * Cubre: GET /[id] (200, 404), PATCH /[id] (200, 400, 404), DELETE /[id] (204, 404)
  *
  * PR3 — Task 3.3
+ *
+ * POC #11.0c A4-a Ciclo 1 RED — assertions cutoveradas a hex composition-root
+ * (`makeIvaBookService`). GET cutover: legacy `findSaleById` retorna null →
+ * route hace manual `if (!entry) throw NotFoundError`; hex `getSaleById` throws
+ * `IvaBookNotFound("sale")` directo (drop manual throw). DELETE cutover: extract
+ * `entry` del `{entry, correlationId}` hex + spread §13 preserve correlationId.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -32,7 +38,7 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockServiceInstance = {
+const mockLegacyServiceInstance = {
   findSaleById: vi.fn(),
   updateSale: vi.fn(),
   voidSale: vi.fn(),
@@ -40,11 +46,22 @@ const mockServiceInstance = {
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
+    return mockLegacyServiceInstance;
   }),
   IvaBooksRepository: vi.fn().mockImplementation(function () {
     return {};
   }),
+}));
+
+// ── A4-a Ciclo 1 hex composition-root mock ─────────────────────────────────────
+const mockHexService = {
+  getSaleById: vi.fn(),
+  recomputeSale: vi.fn(),
+  voidSale: vi.fn(),
+};
+
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockHexService),
 }));
 
 import { requireAuth } from "@/features/shared/middleware";
@@ -60,7 +77,8 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 import { requirePermission } from "@/features/permissions/server";
 
-import { UnauthorizedError, NotFoundError } from "@/features/shared/errors";
+import { UnauthorizedError } from "@/features/shared/errors";
+import { IvaBookNotFound } from "@/modules/iva-books/domain/errors/iva-book-errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 const ZERO = D("0");
@@ -124,7 +142,7 @@ beforeEach(() => {
 describe("GET /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
   it("retorna 200 con la entrada si existe", async () => {
     const dto = makeSaleDTO();
-    mockServiceInstance.findSaleById.mockResolvedValue(dto);
+    mockHexService.getSaleById.mockResolvedValue(dto);
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -135,11 +153,11 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.findSaleById).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
+    expect(mockHexService.getSaleById).toHaveBeenCalledWith(ORG_ID, ENTRY_ID);
   });
 
-  it("retorna 404 si la entrada no existe (service retorna null)", async () => {
-    mockServiceInstance.findSaleById.mockResolvedValue(null);
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.getSaleById.mockRejectedValue(new IvaBookNotFound("sale"));
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -170,9 +188,12 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
 // ── PATCH /[id] ──────────────────────────────────────────────────────────────
 
 describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
-  it("retorna 200 con la entrada actualizada", async () => {
+  it("retorna 200 con la entrada actualizada + correlationId preserved", async () => {
     const dto = makeSaleDTO({ razonSocial: "Cliente Actualizado" });
-    mockServiceInstance.updateSale.mockResolvedValue(dto);
+    mockHexService.recomputeSale.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-recompute-1",
+    });
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -188,12 +209,18 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.updateSale).toHaveBeenCalledWith(
-      ORG_ID,
-      USER_ID,
-      ENTRY_ID,
-      expect.objectContaining({ razonSocial: "Cliente Actualizado" }),
+    expect(mockHexService.recomputeSale).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        userId: USER_ID,
+        id: ENTRY_ID,
+        razonSocial: "Cliente Actualizado",
+      }),
     );
+
+    // §13 correlationId leak preserved
+    const body = await res.json();
+    expect(body.correlationId).toBe("corr-recompute-1");
   });
 
   it("retorna 400 si estadoSIN tiene valor inválido en PATCH", async () => {
@@ -213,10 +240,8 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
     expect(res.status).toBe(400);
   });
 
-  it("retorna 404 si la entrada no existe", async () => {
-    mockServiceInstance.updateSale.mockRejectedValue(
-      new NotFoundError("Entrada de Libro de Ventas"),
-    );
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.recomputeSale.mockRejectedValue(new IvaBookNotFound("sale"));
 
     const { PATCH } = await import("../route");
     const request = new Request(
@@ -240,7 +265,10 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
 describe("DELETE /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
   it("retorna 204 al anular (void) la entrada", async () => {
     const dto = makeSaleDTO({ status: "VOIDED" });
-    mockServiceInstance.voidSale.mockResolvedValue(dto);
+    mockHexService.voidSale.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-void-delete-1",
+    });
 
     const { DELETE } = await import("../route");
     const request = new Request(
@@ -252,13 +280,15 @@ describe("DELETE /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
     });
 
     expect(res.status).toBe(204);
-    expect(mockServiceInstance.voidSale).toHaveBeenCalledWith(ORG_ID, USER_ID, ENTRY_ID);
+    expect(mockHexService.voidSale).toHaveBeenCalledWith({
+      organizationId: ORG_ID,
+      userId: USER_ID,
+      id: ENTRY_ID,
+    });
   });
 
-  it("retorna 404 si la entrada no existe", async () => {
-    mockServiceInstance.voidSale.mockRejectedValue(
-      new NotFoundError("Entrada de Libro de Ventas"),
-    );
+  it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
+    mockHexService.voidSale.mockRejectedValue(new IvaBookNotFound("sale"));
 
     const { DELETE } = await import("../route");
     const request = new Request(

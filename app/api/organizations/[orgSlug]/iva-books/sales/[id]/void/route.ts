@@ -1,14 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
-import { SaleService } from "@/features/sale/server";
-import { PurchaseService } from "@/features/purchase/server";
+import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
 
-const service = new IvaBooksService(
-  new IvaBooksRepository(),
-  new SaleService(),
-  new PurchaseService(),
-);
+const service = makeIvaBookService();
 
 /**
  * PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/void
@@ -18,10 +12,10 @@ const service = new IvaBooksService(
  *          `status` (Avicont) y `estadoSIN` (SIN) son independientes por diseño.
  *
  * Respuestas:
- * - 200: IvaSalesBookDTO con status = VOIDED, estadoSIN intacto
+ * - 200: IvaSalesBookDTO con status = VOIDED, estadoSIN intacto + correlationId §13 preserved
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
- * - 404: entrada no encontrada
+ * - 404: entrada no encontrada (hex `IvaBookNotFound`)
  */
 export async function PATCH(
   _request: Request,
@@ -36,9 +30,9 @@ export async function PATCH(
     );
     const userId = session.userId;
 
-    const entry = await service.voidSale(orgId, userId, id);
+    const result = await service.voidSale({ organizationId: orgId, userId, id });
 
-    return Response.json(entry);
+    return Response.json({ ...result.entry, correlationId: result.correlationId });
   } catch (error) {
     return handleError(error);
   }

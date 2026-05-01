@@ -1,45 +1,55 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
-import { SaleService } from "@/features/sale/server";
-import { PurchaseService } from "@/features/purchase/server";
 import {
   createSaleInputSchema,
   listQuerySchema,
   type CreateSaleInputDto,
-  type CreateSaleInput,
 } from "@/features/accounting/iva-books";
-import { Prisma } from "@/generated/prisma/client";
+import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
+import type { RegenerateIvaSalesBookInput } from "@/modules/iva-books/application/iva-book.service";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
-const service = new IvaBooksService(
-  new IvaBooksRepository(),
-  new SaleService(),
-  new PurchaseService(),
-);
+const service = makeIvaBookService();
 
 /**
- * Convierte los campos monetarios string del DTO Zod a Prisma.Decimal
- * antes de pasarlos al service.
+ * Adapter route → hex `regenerateSale` input. POC #11.0c A4-a Ciclo 1 — Q2
+ * lock: `MonetaryAmount.of(string)` directo + `codigoControl ?? ""` (Q2.5)
+ * + `fechaFactura "YYYY-MM-DD"` → `Date`. Defense-in-depth: hex recomputa
+ * `IvaCalcResult` server-side; los 5 campos derivados que el DTO Zod requiere
+ * (`subtotal`/`dfIva`/`baseIvaSujetoCf`/`dfCfIva`/`tasaIva`) se ignoran acá
+ * por diseño (paridad legacy `computeIvaFields`).
  */
-function toSaleInput(dto: CreateSaleInputDto): CreateSaleInput {
-  const D = (v: string) => new Prisma.Decimal(v);
+function toRegenerateIvaSalesBookInput(
+  dto: CreateSaleInputDto,
+  organizationId: string,
+  userId: string,
+): RegenerateIvaSalesBookInput {
+  const M = (v: string) => MonetaryAmount.of(v);
   return {
-    ...dto,
-    importeTotal: D(dto.importeTotal),
-    importeIce: D(dto.importeIce),
-    importeIehd: D(dto.importeIehd),
-    importeIpj: D(dto.importeIpj),
-    tasas: D(dto.tasas),
-    otrosNoSujetos: D(dto.otrosNoSujetos),
-    exentos: D(dto.exentos),
-    tasaCero: D(dto.tasaCero),
-    subtotal: D(dto.subtotal),
-    dfIva: D(dto.dfIva),
-    codigoDescuentoAdicional: D(dto.codigoDescuentoAdicional),
-    importeGiftCard: D(dto.importeGiftCard),
-    baseIvaSujetoCf: D(dto.baseIvaSujetoCf),
-    dfCfIva: D(dto.dfCfIva),
-    tasaIva: D(dto.tasaIva),
+    organizationId,
+    userId,
+    fiscalPeriodId: dto.fiscalPeriodId,
+    saleId: dto.saleId,
+    fechaFactura: new Date(dto.fechaFactura),
+    nitCliente: dto.nitCliente,
+    razonSocial: dto.razonSocial,
+    numeroFactura: dto.numeroFactura,
+    codigoAutorizacion: dto.codigoAutorizacion,
+    codigoControl: dto.codigoControl ?? "",
+    estadoSIN: dto.estadoSIN,
+    notes: dto.notes ?? null,
+    inputs: {
+      importeTotal: M(dto.importeTotal),
+      importeIce: M(dto.importeIce),
+      importeIehd: M(dto.importeIehd),
+      importeIpj: M(dto.importeIpj),
+      tasas: M(dto.tasas),
+      otrosNoSujetos: M(dto.otrosNoSujetos),
+      exentos: M(dto.exentos),
+      tasaCero: M(dto.tasaCero),
+      codigoDescuentoAdicional: M(dto.codigoDescuentoAdicional),
+      importeGiftCard: M(dto.importeGiftCard),
+    },
   };
 }
 
@@ -87,7 +97,7 @@ export async function GET(
  * El service recomputa campos IVA server-side (defense-in-depth).
  *
  * Respuestas:
- * - 201: IvaSalesBookDTO creado
+ * - 201: IvaSalesBookDTO creado (con correlationId §13 preserved leak)
  * - 400: body inválido (Zod), incl. estadoSIN fuera de A/V/C/L
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
@@ -108,11 +118,14 @@ export async function POST(
 
     const body = await request.json();
     const dto = createSaleInputSchema.parse(body);
-    const input = toSaleInput(dto);
+    const input = toRegenerateIvaSalesBookInput(dto, orgId, userId);
 
-    const entry = await service.createSale(orgId, userId, input);
+    const result = await service.regenerateSale(input);
 
-    return Response.json(entry, { status: 201 });
+    return Response.json(
+      { ...result.entry, correlationId: result.correlationId },
+      { status: 201 },
+    );
   } catch (error) {
     return handleError(error);
   }

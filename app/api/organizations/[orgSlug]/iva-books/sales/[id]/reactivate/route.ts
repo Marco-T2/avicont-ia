@@ -1,14 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { IvaBooksService, IvaBooksRepository } from "@/features/accounting/iva-books/server";
-import { SaleService } from "@/features/sale/server";
-import { PurchaseService } from "@/features/purchase/server";
+import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
 
-const service = new IvaBooksService(
-  new IvaBooksRepository(),
-  new SaleService(),
-  new PurchaseService(),
-);
+const service = makeIvaBookService();
 
 /**
  * PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/reactivate
@@ -19,11 +13,11 @@ const service = new IvaBooksService(
  *          `status` (Avicont) y `estadoSIN` (SIN) son independientes por diseño.
  *
  * Respuestas:
- * - 200: IvaSalesBookDTO con status = ACTIVE, estadoSIN intacto
+ * - 200: IvaSalesBookDTO con status = ACTIVE, estadoSIN intacto + correlationId §13 preserved
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org o rol insuficiente
- * - 404: entrada no encontrada
- * - 409: la entrada ya está ACTIVE (guard idempotencia)
+ * - 404: entrada no encontrada (hex `IvaBookNotFound`)
+ * - 422: la entrada ya está ACTIVE (hex `IvaBookReactivateNonVoided` guard idempotencia, ValidationError)
  */
 export async function PATCH(
   _request: Request,
@@ -38,9 +32,13 @@ export async function PATCH(
     );
     const userId = session.userId;
 
-    const entry = await service.reactivateSale(orgId, userId, id);
+    const result = await service.reactivateSale({
+      organizationId: orgId,
+      userId,
+      id,
+    });
 
-    return Response.json(entry);
+    return Response.json({ ...result.entry, correlationId: result.correlationId });
   } catch (error) {
     return handleError(error);
   }

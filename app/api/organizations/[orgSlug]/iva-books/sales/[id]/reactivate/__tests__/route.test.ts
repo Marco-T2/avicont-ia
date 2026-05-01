@@ -1,18 +1,15 @@
 /**
- * Tests de la ruta PATCH /[id]/void — Libro de Ventas IVA
+ * Tests de la ruta API: reactivate IvaSalesBook entry
  *
- * Cubre: 200 con status VOIDED + correlationId preserved, 404 si no existe,
- *        401 sin auth, 403 sin acceso.
- * CRÍTICO: void SOLO cambia status (lifecycle interno Avicont).
- *          estadoSIN NO se toca — es ortogonal (eje SIN independiente).
+ * Cubre: PATCH 200 (reactivate + correlationId preserved), 404 (no existe),
+ *        409 (ya está ACTIVE — IvaBookReactivateNonVoided guard), 401, 403.
  *
- * PR3 — Task 3.3
- *
- * POC #11.0c A4-a Ciclo 1 RED — assertions cutoveradas a hex composition-root
- * (`makeIvaBookService`). Failure mode RED declarado: hex spy `voidSale({
- * organizationId, userId, id })` 0 calls porque la route legacy invoca
- * `service.voidSale(orgId, userId, id)` positional. En GREEN cutover la
- * route invoca hex spy → assertions pasan.
+ * POC #11.0c A4-a Ciclo 1 RED — archivo nuevo dedicado (legacy NO tenía
+ * test file para `sales/[id]/reactivate/route.ts`). RED honesty preventivo:
+ * tests asertean hex spy `reactivateSale({ organizationId, userId, id })` que
+ * la route legacy NO invoca (legacy invoca `service.reactivateSale(orgId,
+ * userId, id)` positional). En GREEN cutover la route invoca hex spy →
+ * assertions pasan.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -23,7 +20,12 @@ vi.mock("@/features/shared/middleware", () => ({
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
   handleError: vi.fn((err: unknown) => {
-    // Duck-typing: avoids require() alias issues inside vi.mock factories
+    if (err != null && typeof err === "object" && "flatten" in err && typeof (err as Record<string, unknown>).flatten === "function") {
+      return Response.json(
+        { error: "Datos inválidos", details: (err as { flatten: () => unknown }).flatten() },
+        { status: 400 },
+      );
+    }
     if (err != null && typeof err === "object" && "statusCode" in err) {
       const e = err as { message: string; code?: string; statusCode: number };
       return Response.json(
@@ -36,7 +38,7 @@ vi.mock("@/features/shared/middleware", () => ({
 }));
 
 const mockLegacyServiceInstance = {
-  voidSale: vi.fn(),
+  reactivateSale: vi.fn(),
 };
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
@@ -48,9 +50,8 @@ vi.mock("@/features/accounting/iva-books/server", () => ({
   }),
 }));
 
-// ── A4-a Ciclo 1 hex composition-root mock ─────────────────────────────────────
 const mockHexService = {
-  voidSale: vi.fn(),
+  reactivateSale: vi.fn(),
 };
 
 vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
@@ -71,10 +72,14 @@ vi.mock("@/features/permissions/server", () => ({
 import { requirePermission } from "@/features/permissions/server";
 
 import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
-import { IvaBookNotFound } from "@/modules/iva-books/domain/errors/iva-book-errors";
+import {
+  IvaBookNotFound,
+  IvaBookReactivateNonVoided,
+} from "@/modules/iva-books/domain/errors/iva-book-errors";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 const ZERO = D("0");
+const TASA_IVA = D("0.1300");
 
 const ORG_SLUG = "test-org";
 const ORG_ID = "org-test-id";
@@ -82,7 +87,7 @@ const USER_ID = "user-test-id";
 const PERIOD_ID = "period-test-id";
 const ENTRY_ID = "sale-entry-test-id";
 
-function makeVoidedSaleDTO() {
+function makeSaleDTO(overrides = {}) {
   return {
     id: ENTRY_ID,
     organizationId: ORG_ID,
@@ -93,7 +98,6 @@ function makeVoidedSaleDTO() {
     numeroFactura: "FAC-SALE-001",
     codigoAutorizacion: "AUTH-SALE-001",
     codigoControl: "",
-    // estadoSIN permanece "A" — el void NO lo cambia (ejes ortogonales)
     estadoSIN: "A" as const,
     importeTotal: D("2000.00"),
     importeIce: ZERO,
@@ -109,11 +113,11 @@ function makeVoidedSaleDTO() {
     importeGiftCard: ZERO,
     baseIvaSujetoCf: D("2000.00"),
     dfCfIva: D("260.00"),
-    tasaIva: D("0.1300"),
-    // Solo esto cambia:
-    status: "VOIDED" as const,
+    tasaIva: TASA_IVA,
+    status: "ACTIVE" as const,
     createdAt: new Date(),
     updatedAt: new Date(),
+    ...overrides,
   };
 }
 
@@ -130,17 +134,17 @@ beforeEach(() => {
   } as Awaited<ReturnType<typeof requirePermission>>);
 });
 
-describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/void", () => {
-  it("retorna 200 con status=VOIDED, estadoSIN intacto + correlationId preserved", async () => {
-    const dto = makeVoidedSaleDTO();
-    mockHexService.voidSale.mockResolvedValue({
+describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/reactivate", () => {
+  it("retorna 200 con la entrada ACTIVE + correlationId preserved", async () => {
+    const dto = makeSaleDTO({ status: "ACTIVE" });
+    mockHexService.reactivateSale.mockResolvedValue({
       entry: dto,
-      correlationId: "corr-void-1",
+      correlationId: "corr-reactivate-1",
     });
 
     const { PATCH } = await import("../route");
     const request = new Request(
-      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/void`,
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/reactivate`,
       { method: "PATCH" },
     );
     const res = await PATCH(request, {
@@ -148,26 +152,25 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/void", () => {
     });
 
     expect(res.status).toBe(200);
-    expect(mockHexService.voidSale).toHaveBeenCalledWith({
+    expect(mockHexService.reactivateSale).toHaveBeenCalledWith({
       organizationId: ORG_ID,
       userId: USER_ID,
       id: ENTRY_ID,
     });
 
+    // §13 correlationId leak preserved
     const body = await res.json();
-    expect(body.status).toBe("VOIDED");
-    // estadoSIN NO cambia — eje ortogonal
-    expect(body.estadoSIN).toBe("A");
-    // §13 correlationId leak preserved (Opción C lockeada Marco)
-    expect(body.correlationId).toBe("corr-void-1");
+    expect(body.correlationId).toBe("corr-reactivate-1");
+    expect(body.id).toBe(ENTRY_ID);
+    expect(body.status).toBe("ACTIVE");
   });
 
   it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {
-    mockHexService.voidSale.mockRejectedValue(new IvaBookNotFound("sale"));
+    mockHexService.reactivateSale.mockRejectedValue(new IvaBookNotFound("sale"));
 
     const { PATCH } = await import("../route");
     const request = new Request(
-      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/void`,
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/reactivate`,
       { method: "PATCH" },
     );
     const res = await PATCH(request, {
@@ -177,12 +180,30 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/void", () => {
     expect(res.status).toBe(404);
   });
 
+  it("retorna 422 si la entrada ya está ACTIVE (IvaBookReactivateNonVoided guard idempotencia)", async () => {
+    mockHexService.reactivateSale.mockRejectedValue(
+      new IvaBookReactivateNonVoided("sale"),
+    );
+
+    const { PATCH } = await import("../route");
+    const request = new Request(
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/reactivate`,
+      { method: "PATCH" },
+    );
+    const res = await PATCH(request, {
+      params: Promise.resolve({ orgSlug: ORG_SLUG, id: ENTRY_ID }),
+    });
+
+    // IvaBookReactivateNonVoided extends ValidationError → statusCode 422
+    expect(res.status).toBe(422);
+  });
+
   it("retorna 401 sin auth", async () => {
     vi.mocked(requirePermission).mockRejectedValueOnce(new UnauthorizedError());
 
     const { PATCH } = await import("../route");
     const request = new Request(
-      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/void`,
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/reactivate`,
       { method: "PATCH" },
     );
     const res = await PATCH(request, {
@@ -197,7 +218,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/void", () => {
 
     const { PATCH } = await import("../route");
     const request = new Request(
-      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/void`,
+      `http://localhost/api/organizations/${ORG_SLUG}/iva-books/sales/${ENTRY_ID}/reactivate`,
       { method: "PATCH" },
     );
     const res = await PATCH(request, {

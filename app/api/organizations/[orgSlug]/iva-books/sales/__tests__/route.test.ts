@@ -6,6 +6,14 @@
  *        POST 401, POST 403, estadoSIN en payload validado.
  *
  * PR3 — Task 3.2
+ *
+ * POC #11.0c A4-a Ciclo 1 RED — assertions cutoveradas a hex composition-root
+ * (`makeIvaBookService`). Legacy mock (`IvaBooksService` en
+ * `@/features/accounting/iva-books/server`) preservado para que la route legacy
+ * intacta NO crashee en RED. Failure mode RED declarado: hex spy
+ * (`regenerateSale`/`listSalesByPeriod`) 0 calls porque la route aún invoca
+ * `service.createSale`/`service.listSalesByPeriod` legacy. En GREEN cutover
+ * la route invoca hex spies → assertions pasan.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -34,18 +42,28 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockServiceInstance = {
+const mockLegacyServiceInstance = {
   createSale: vi.fn(),
   listSalesByPeriod: vi.fn().mockResolvedValue([]),
 };
 
 vi.mock("@/features/accounting/iva-books/server", () => ({
   IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
+    return mockLegacyServiceInstance;
   }),
   IvaBooksRepository: vi.fn().mockImplementation(function () {
     return {};
   }),
+}));
+
+// ── A4-a Ciclo 1 hex composition-root mock ─────────────────────────────────────
+const mockHexService = {
+  regenerateSale: vi.fn(),
+  listSalesByPeriod: vi.fn().mockResolvedValue([]),
+};
+
+vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
+  makeIvaBookService: vi.fn(() => mockHexService),
 }));
 
 import { requireAuth } from "@/features/shared/middleware";
@@ -136,7 +154,8 @@ const validCreateBody = {
 beforeEach(() => {
   vi.clearAllMocks();
 
-  mockServiceInstance.listSalesByPeriod.mockResolvedValue([]);
+  mockLegacyServiceInstance.listSalesByPeriod.mockResolvedValue([]);
+  mockHexService.listSalesByPeriod.mockResolvedValue([]);
 
   vi.mocked(requireAuth).mockResolvedValue({ userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>);
   vi.mocked(requireOrgAccess).mockResolvedValue(ORG_ID);
@@ -165,7 +184,7 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales", () => {
 
   it("filtra por fiscalPeriodId si se pasa en query", async () => {
     const entry = makeSaleDTO();
-    mockServiceInstance.listSalesByPeriod.mockResolvedValue([entry]);
+    mockHexService.listSalesByPeriod.mockResolvedValue([entry]);
 
     const { GET } = await import("../route");
     const request = new Request(
@@ -174,7 +193,7 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales", () => {
     const res = await GET(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
 
     expect(res.status).toBe(200);
-    expect(mockServiceInstance.listSalesByPeriod).toHaveBeenCalledWith(
+    expect(mockHexService.listSalesByPeriod).toHaveBeenCalledWith(
       ORG_ID,
       expect.objectContaining({ fiscalPeriodId: PERIOD_ID }),
     );
@@ -210,7 +229,10 @@ describe("GET /api/organizations/[orgSlug]/iva-books/sales", () => {
 describe("POST /api/organizations/[orgSlug]/iva-books/sales", () => {
   it("retorna 201 con la entrada creada cuando el body es válido", async () => {
     const dto = makeSaleDTO();
-    mockServiceInstance.createSale.mockResolvedValue(dto);
+    mockHexService.regenerateSale.mockResolvedValue({
+      entry: dto,
+      correlationId: "corr-1",
+    });
 
     const { POST } = await import("../route");
     const request = new Request(
@@ -224,7 +246,25 @@ describe("POST /api/organizations/[orgSlug]/iva-books/sales", () => {
     const res = await POST(request, { params: Promise.resolve({ orgSlug: ORG_SLUG }) });
 
     expect(res.status).toBe(201);
-    expect(mockServiceInstance.createSale).toHaveBeenCalledWith(ORG_ID, USER_ID, expect.any(Object));
+    expect(mockHexService.regenerateSale).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: ORG_ID,
+        userId: USER_ID,
+        fiscalPeriodId: PERIOD_ID,
+        fechaFactura: expect.any(Date),
+        nitCliente: validCreateBody.nitCliente,
+        razonSocial: validCreateBody.razonSocial,
+        numeroFactura: validCreateBody.numeroFactura,
+        codigoAutorizacion: validCreateBody.codigoAutorizacion,
+        codigoControl: "",
+        estadoSIN: "A",
+        inputs: expect.any(Object),
+      }),
+    );
+
+    // §13 correlationId leak preserved (Opción C lockeada Marco)
+    const body = await res.json();
+    expect(body.correlationId).toBe("corr-1");
   });
 
   it("retorna 400 cuando estadoSIN tiene valor inválido (fuera de A/V/C/L)", async () => {
@@ -276,7 +316,7 @@ describe("POST /api/organizations/[orgSlug]/iva-books/sales", () => {
   });
 
   it("retorna 409 cuando hay violación de restricción única", async () => {
-    mockServiceInstance.createSale.mockRejectedValue(
+    mockHexService.regenerateSale.mockRejectedValue(
       new ConflictError("Entrada de Libro de Ventas con los mismos datos ya existe"),
     );
 
