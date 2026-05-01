@@ -31,6 +31,7 @@ import type {
   IvaPurchaseBookEntryRepository,
   ListPurchasesQuery,
 } from "../domain/ports/iva-purchase-book-entry-repository.port";
+import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 export interface IvaBookServiceDeps {
   uow: IvaBookUnitOfWork;
@@ -193,6 +194,12 @@ export interface ApplyIvaBookVoidCascadeFromSaleInput {
 export interface ApplyIvaBookVoidCascadeFromPurchaseInput {
   organizationId: string;
   purchaseId: string;
+}
+
+export interface RecomputeIvaSalesBookFromSaleCascadeInput {
+  organizationId: string;
+  saleId: string;
+  newTotal: MonetaryAmount;
 }
 
 /**
@@ -711,6 +718,73 @@ export class IvaBookService {
     if (!entry || entry.status === "VOIDED") return;
     const voided = entry.void();
     await scope.ivaPurchaseBooks.updateTx(voided);
+  }
+
+  /**
+   * IVA cascade entry point invocado por sale-hex `editPosted` cascade chain
+   * cuando cambia `importeTotal` de un sale POSTED+linked. Recomputa derivados
+   * IVA preserving 9 deducciones (paridad legacy `iva-books.service.ts:559-602`).
+   *
+   * **E locked (POC #11.0c A2)** — NO valida periodo (fidelidad legacy regla
+   * #1 I1). Cascade ejecuta INDEPENDIENTE del estado periodo. Asimetría
+   * intencional con regenerate / recompute / void / reactivate (que sí
+   * validan). Defense-in-depth: NO agregar `fiscalPeriods.getById` acá.
+   *
+   * **F-α locked** — recibe `scope: IvaBookScope` por parámetro (no
+   * `uow.run()` interno). Caller (sale UoW notifier adapter A4-c) ya tiene
+   * tx parent abierta. Mirror simétrico `applyVoidCascadeFromSale`.
+   *
+   * **Lock C textual preservado** (`iva-book-unit-of-work.ts:21-27`): IVA NO
+   * escribe journals/balances/receivables/payables — solo `scope.ivaSalesBooks`
+   * (own aggregate). Cascade preserve esta invariante.
+   *
+   * **I2 architectural enforced by scope shape**: cascade methods reciben
+   * `IvaBookScope` (NO `SaleJournalRegenNotifierPort`) — invariante "NO loop
+   * Sale→IVA→Journal→Sale" garantizado estructuralmente, no por runtime check.
+   *
+   * **Defense-in-depth (paridad legacy I4-I5)**: recomputa `IvaCalcResult`
+   * server-side via `computeIvaTotals(updatedInputs)`; preserva 9 deducciones
+   * (`importeIce/importeIehd/importeIpj/tasas/otrosNoSujetos/exentos/tasaCero/
+   * codigoDescuentoAdicional/importeGiftCard`) sin modificar — solo
+   * `importeTotal` cambia + derivados (`subtotal/baseIvaSujetoCf/dfIva/dfCfIva/
+   * tasaIva`) recomputed.
+   *
+   * **No-op contract (paridad legacy I3)**: si no existe entry para `saleId`,
+   * return sin throw.
+   *
+   * **VOIDED preserve (paridad legacy I6 — bug latente Marco lock Ciclo 5c
+   * sale 5c (b))**: SIN status filter — opera sobre ACTIVE+VOIDED igual.
+   * Adapter NO inventa "defensive" filter; legacy bug "mutate VOIDED" se
+   * arregla en POC dedicado, no via mejora unilateral.
+   *
+   * **Asimetrías declaradas vs legacy** (NO drift, A1-A5):
+   *   - A1 input named (interface), no positional — paridad shape A2.5/A4-a
+   *   - A2 `MonetaryAmount` VO clean boundary (caller A4-c notifier wraps
+   *     `Prisma.Decimal`)
+   *   - A3 scope param F-α en lugar de external tx — mirror precedent
+   *   - A4 `entry.applyEdit({ inputs, calcResult })` domain-centric
+   *     (entity owns derived field consistency) en lugar de Prisma
+   *     `update({ data })` direct
+   *   - A5 NO `tasaIva: TASA_IVA` explícito — `IvaCalcResult` ya incluye
+   *     `tasaIva` (defense-in-depth A2 C3)
+   */
+  async recomputeFromSaleCascade(
+    input: RecomputeIvaSalesBookFromSaleCascadeInput,
+    scope: IvaBookScope,
+  ): Promise<void> {
+    const entry = await scope.ivaSalesBooks.findBySaleIdTx(
+      input.organizationId,
+      input.saleId,
+    );
+    if (!entry) return;
+
+    const updatedInputs: IvaSalesBookEntryInputs = {
+      ...entry.inputs,
+      importeTotal: input.newTotal,
+    };
+    const calcResult = computeIvaTotals(updatedInputs);
+    const updated = entry.applyEdit({ inputs: updatedInputs, calcResult });
+    await scope.ivaSalesBooks.updateTx(updated);
   }
 
   // ── A2.5 reads (sales) ────────────────────────────────────────────────────
