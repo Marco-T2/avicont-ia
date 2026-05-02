@@ -181,7 +181,7 @@ function buildService(initial: ReturnType<typeof makeDraftPurchase>) {
 
   // Constructor order: repo, orgSettingsService, autoEntryGenerator,
   // contactsService, payablesRepo, balancesService, periodsService,
-  // accountsRepo, journalRepo, ivaBooksService
+  // accountsRepo, journalRepo
   const service = new PurchaseService(
     repo as never,
     orgSettingsService as never,
@@ -192,7 +192,6 @@ function buildService(initial: ReturnType<typeof makeDraftPurchase>) {
     periodsService as never,
     accountsRepo as never,
     journalRepo as never,
-    undefined, // ivaBooksService
   );
 
   return { service, repo, fakeTx, autoEntryGenerator };
