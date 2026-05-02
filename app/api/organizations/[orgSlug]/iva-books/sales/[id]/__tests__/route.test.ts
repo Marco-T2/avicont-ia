@@ -38,21 +38,6 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockLegacyServiceInstance = {
-  findSaleById: vi.fn(),
-  updateSale: vi.fn(),
-  voidSale: vi.fn(),
-};
-
-vi.mock("@/features/accounting/iva-books/server", () => ({
-  IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockLegacyServiceInstance;
-  }),
-  IvaBooksRepository: vi.fn().mockImplementation(function () {
-    return {};
-  }),
-}));
-
 // ── A4-a Ciclo 1 hex composition-root mock ─────────────────────────────────────
 const mockHexService = {
   getSaleById: vi.fn(),

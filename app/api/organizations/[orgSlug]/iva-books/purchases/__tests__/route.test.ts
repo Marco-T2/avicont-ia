@@ -41,20 +41,6 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockLegacyServiceInstance = {
-  createPurchase: vi.fn(),
-  listPurchasesByPeriod: vi.fn().mockResolvedValue([]),
-};
-
-vi.mock("@/features/accounting/iva-books/server", () => ({
-  IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockLegacyServiceInstance;
-  }),
-  IvaBooksRepository: vi.fn().mockImplementation(function () {
-    return {};
-  }),
-}));
-
 // ── A4-a Ciclo 2 hex composition-root mock ─────────────────────────────────────
 const mockHexService = {
   regeneratePurchase: vi.fn(),
@@ -157,7 +143,6 @@ beforeEach(() => {
   vi.clearAllMocks();
 
   // Restablecer el comportamiento por defecto después de clearAllMocks
-  mockLegacyServiceInstance.listPurchasesByPeriod.mockResolvedValue([]);
   mockHexService.listPurchasesByPeriod.mockResolvedValue([]);
 
   vi.mocked(requireAuth).mockResolvedValue({ userId: USER_ID } as Awaited<ReturnType<typeof requireAuth>>);

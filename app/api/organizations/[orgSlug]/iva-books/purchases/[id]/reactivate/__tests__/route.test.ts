@@ -43,19 +43,6 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockLegacyServiceInstance = {
-  reactivatePurchase: vi.fn(),
-};
-
-vi.mock("@/features/accounting/iva-books/server", () => ({
-  IvaBooksService: vi.fn().mockImplementation(function () {
-    return mockLegacyServiceInstance;
-  }),
-  IvaBooksRepository: vi.fn().mockImplementation(function () {
-    return {};
-  }),
-}));
-
 const mockHexService = {
   reactivatePurchase: vi.fn(),
 };
