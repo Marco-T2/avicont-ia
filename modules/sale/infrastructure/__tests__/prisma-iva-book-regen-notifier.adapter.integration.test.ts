@@ -1,4 +1,12 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 
 import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { Prisma } from "@/generated/prisma/client";
@@ -28,11 +36,63 @@ import { PrismaIvaBookRegenNotifierAdapter } from "../prisma-iva-book-regen-noti
  * (b) alinear paridad).
  */
 
+/**
+ * **POC #11.0c A4-c C3 GREEN cleanup helpers (mirror simétrico)**:
+ * Test setup wraps legacy `IvaBooksService.recomputeFromSaleCascade(tx, ...)`
+ * 4-arg call inside a hex `IvaBookService.recomputeFromSaleCascade(input,
+ * scope)` shape — preserva real mutation behavior (Decimal calc + post-call
+ * findFirst narrow tests 1+3) sin requerir construcción real de hex
+ * `IvaBookService` con 8 deps. Mock hex pasa shape contract; body delegates
+ * a legacy via captured `tx` closure de `prisma.$transaction` callback.
+ *
+ * `ivaScopeFactory` retorna scope minimal con `correlationId` real +
+ * undefined-as-never para fields no usados por adapter body (P2 (α) findFirst
+ * raw es independiente de scope contents, solo hex cascade lo consume y
+ * acá lo mock-a).
+ */
+function buildHexFactoryDelegateLegacy(
+  tx: Prisma.TransactionClient,
+  legacy: IvaBooksService,
+): () => IvaBookService {
+  return () =>
+    ({
+      recomputeFromSaleCascade: async (
+        input: { organizationId: string; saleId: string; newTotal: MonetaryAmount },
+        _scope: IvaBookScope,
+      ): Promise<void> => {
+        await legacy.recomputeFromSaleCascade(
+          tx,
+          input.organizationId,
+          input.saleId,
+          new Prisma.Decimal(input.newTotal.value),
+        );
+      },
+    }) as unknown as IvaBookService;
+}
+
+const ivaScopeFactory = (
+  _tx: Prisma.TransactionClient,
+  correlationId: string,
+): IvaBookScope =>
+  ({
+    correlationId,
+    fiscalPeriods: undefined as never,
+    ivaSalesBooks: undefined as never,
+    ivaPurchaseBooks: undefined as never,
+  }) as unknown as IvaBookScope;
+
 describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
   let testUserId: string;
   let testOrgId: string;
   let testPeriodId: string;
   let testContactId: string;
+
+  // POC #11.0c A4-c C3 GREEN cleanup integration mirror — `__resetForTesting()`
+  // invoca iva root memo reset entre tests (cumple intent Opción α single-
+  // instance + memo P4 (ii) lockeada Marco).
+  beforeEach(() => {
+    __resetForTesting();
+  });
 
   beforeAll(async () => {
     const stamp = Date.now();
@@ -163,9 +223,12 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     });
 
     const result = await prisma.$transaction(async (tx) => {
+      const legacyService = new IvaBooksService();
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
-        () => new IvaBooksService(),
+        "test-correlation-c3-cleanup",
+        buildHexFactoryDelegateLegacy(tx, legacyService),
+        ivaScopeFactory,
       );
       return adapter.recomputeFromSale(testOrgId, saleId, 113);
     });
@@ -193,9 +256,12 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     const arbitrarySaleId = "00000000-0000-0000-0000-000000000000";
 
     const result = await prisma.$transaction(async (tx) => {
+      const legacyService = new IvaBooksService();
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
-        () => new IvaBooksService(),
+        "test-correlation-c3-cleanup",
+        buildHexFactoryDelegateLegacy(tx, legacyService),
+        ivaScopeFactory,
       );
       return adapter.recomputeFromSale(testOrgId, arbitrarySaleId, 200);
     });
@@ -228,9 +294,12 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     });
 
     const result = await prisma.$transaction(async (tx) => {
+      const legacyService = new IvaBooksService();
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
-        () => new IvaBooksService(),
+        "test-correlation-c3-cleanup",
+        buildHexFactoryDelegateLegacy(tx, legacyService),
+        ivaScopeFactory,
       );
       return adapter.recomputeFromSale(testOrgId, saleId, 200);
     });
@@ -286,15 +355,18 @@ describe("PrismaIvaBookRegenNotifierAdapter — Postgres integration", () => {
     });
 
     let factoryInvocations = 0;
-    const ivaServiceFactory = (): IvaBooksService => {
-      factoryInvocations++;
-      return new IvaBooksService();
-    };
+    const legacyService = new IvaBooksService();
 
     const result = await prisma.$transaction(async (tx) => {
+      const ivaServiceFactory = (): IvaBookService => {
+        factoryInvocations++;
+        return buildHexFactoryDelegateLegacy(tx, legacyService)();
+      };
       const adapter = new PrismaIvaBookRegenNotifierAdapter(
         tx,
+        "test-correlation-c3-e1-cyclebreak",
         ivaServiceFactory,
+        ivaScopeFactory,
       );
       expect(factoryInvocations).toBe(0); // lazy: NOT invoked at ctor
       const r = await adapter.recomputeFromSale(testOrgId, saleId, 113);

@@ -1,8 +1,15 @@
-import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from "vitest";
 
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
-import { IvaBooksService } from "@/features/accounting/iva-books/iva-books.service";
 import { VoucherTypesRepository } from "@/features/voucher-types/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
@@ -68,15 +75,37 @@ const repo: UnitOfWorkRepoLike = {
 
 // Cross-module deps reales (no stubs): instancias singletons-like con default
 // ctor — paridad legacy. Sólo `purchases` + `journalEntries` se ejercen en
-// estos 2 tests, pero el constructor del adapter exige las 4 deps por D-2
-// Ciclo 4 sale (heredado mirror).
+// estos 2 tests, pero el constructor del adapter exige las 5 deps por D-2
+// Ciclo 4 sale (heredado mirror) + ivaScopeFactory POC #11.0c A4-c C2 GREEN.
 const journalEntriesReadPort = new LegacyJournalEntriesReadAdapter();
 const accountLookupPort = new LegacyAccountLookupAdapter();
 const autoEntryGen = new AutoEntryGenerator(
   new AccountsRepository(),
   new VoucherTypesRepository(),
 );
-const ivaBooksService = new IvaBooksService();
+
+/**
+ * **POC #11.0c A4-c C3 GREEN cleanup helpers (mirror simétrico sale)**:
+ * UoW commit + rollback tests NO disparan notifier cascade — mock hex
+ * service trivial no-op satisface type contract sin delegación legacy.
+ * `ivaScopeFactoryHelper` retorna scope minimal con `correlationId` real
+ * + undefined-as-never (cumple BaseScope shape sin exercise real).
+ */
+const mockHexService = {
+  recomputeFromSaleCascade: async (): Promise<void> => {},
+  recomputeFromPurchaseCascade: async (): Promise<void> => {},
+} as unknown as IvaBookService;
+
+const ivaScopeFactoryHelper = (
+  _tx: Prisma.TransactionClient,
+  correlationId: string,
+): IvaBookScope =>
+  ({
+    correlationId,
+    fiscalPeriods: undefined as never,
+    ivaSalesBooks: undefined as never,
+    ivaPurchaseBooks: undefined as never,
+  }) as unknown as IvaBookScope;
 
 describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
   let testOrgId: string;
@@ -87,6 +116,12 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
   let assetAccountId: string;
   let liabilityAccountId: string;
   const capturedCorrelationIds: string[] = [];
+
+  // POC #11.0c A4-c C3 GREEN cleanup integration mirror — `__resetForTesting()`
+  // invoca iva root memo reset entre tests (P4 (ii) lockeada Marco).
+  beforeEach(() => {
+    __resetForTesting();
+  });
 
   beforeAll(async () => {
     const stamp = Date.now();
@@ -263,7 +298,8 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      () => ivaBooksService,
+      () => mockHexService,
+      ivaScopeFactoryHelper,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
@@ -312,7 +348,8 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      () => ivaBooksService,
+      () => mockHexService,
+      ivaScopeFactoryHelper,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
