@@ -1,7 +1,9 @@
 /**
- * POC siguiente A1-C1 RED — bridges teardown shape assertion.
+ * POC siguiente A1 — bridges teardown shape assertion (cumulative C1+C2).
  *
- * Expected failure (RED justificado, TS-N/A runtime assertion × 6):
+ * Expected failure cumulative (RED justificado, TS-N/A runtime assertion × 8):
+ *
+ * A1-C1 RED (Tests 1-3, transitioned GREEN at commits 7b7ff94 + b86c26d):
  *   - Test 1 "purchases/[purchaseId]/route.ts no longer instantiates legacy
  *     IvaBooksService" FALLA porque route.ts:8 contiene `new IvaBooksService()`
  *     todavía + import legacy `@/features/accounting/iva-books/server`. GREEN
@@ -16,7 +18,17 @@
  *     en `editPosted` (línea 1078). GREEN A1-C1 sub-paso 2 (purchase outbound
  *     full asimetría) cierra el RED.
  *
- * Al terminar A1-C1 GREEN sub-pasos 2-6 este archivo debe pasar.
+ * A1-C2 RED (Test 4, transitará GREEN en sub-pasos C2):
+ *   - Test 4 "sale.service.ts no longer wires IvaBooksServiceForSaleCascade
+ *     outbound (asimetría C2)" FALLA porque sale.service.ts:59 declara la
+ *     interface `IvaBooksServiceForSaleCascade` + sale.service.ts:926 invoca
+ *     `this.ivaBooksService.recomputeFromSaleCascade` en `editPosted`. GREEN
+ *     A1-C2 sub-pasos 1-3 (drop interface + ctor param/field/assignment + drop
+ *     cascade invocation block) cierran el RED. Re-route via hex
+ *     `IvaBookRegenNotifierPort` adapter `modules/sale/infrastructure/...`
+ *     (Q5 verified tx-bound preserve POC #11.0c A4-c C2 GREEN P1 (b)).
+ *
+ * Al terminar A1-C1 + A1-C2 GREEN este archivo debe pasar (4 tests, 8 assertions).
  *
  * Asimetría legítima C1/C2 (post-pre-recon profundo): purchase outbound full
  * (interface + ctor param + field + invocation cascade chain) absorbido en
@@ -66,7 +78,12 @@ const PURCHASE_SERVICE_PATH = path.join(
   "features/purchase/purchase.service.ts",
 );
 
-describe("POC siguiente A1-C1 — bridges teardown shape assertion", () => {
+const SALE_SERVICE_PATH = path.join(
+  REPO_ROOT,
+  "features/sale/sale.service.ts",
+);
+
+describe("POC siguiente A1 — bridges teardown shape assertion", () => {
   it("purchases/[purchaseId]/route.ts no longer instantiates legacy IvaBooksService", () => {
     const source = fs.readFileSync(ROUTE_PATH, "utf8");
     expect(source).not.toMatch(/new\s+IvaBooksService\s*\(/);
@@ -86,6 +103,14 @@ describe("POC siguiente A1-C1 — bridges teardown shape assertion", () => {
     expect(source).not.toMatch(/interface\s+IvaBooksServiceForPurchaseCascade/);
     expect(source).not.toMatch(
       /this\.ivaBooksService\.recomputeFromPurchaseCascade/,
+    );
+  });
+
+  it("sale.service.ts no longer wires IvaBooksServiceForSaleCascade outbound (asimetría C2)", () => {
+    const source = fs.readFileSync(SALE_SERVICE_PATH, "utf8");
+    expect(source).not.toMatch(/interface\s+IvaBooksServiceForSaleCascade/);
+    expect(source).not.toMatch(
+      /this\.ivaBooksService\.recomputeFromSaleCascade/,
     );
   });
 });
