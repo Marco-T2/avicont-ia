@@ -25,4 +25,4 @@ export type {
   UpdateSaleInputDto,
 } from "./iva-books.validation";
 
-export { calcTotales } from "./iva-calc.utils";
+export { calcTotales, TASA_IVA } from "./iva-calc.utils";
