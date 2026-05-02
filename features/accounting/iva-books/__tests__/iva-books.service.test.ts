@@ -315,17 +315,6 @@ describe("IvaBooksService", () => {
       expect(repo.reactivateSale).toHaveBeenCalledWith(orgId, "iva-sale-book-id", expect.anything());
       expect(result.status).toBe("ACTIVE");
     });
-
-    it("llama a maybeRegenerateJournal cuando saleId y userId presentes", async () => {
-      const activeDTO = makeSaleDTO({ status: "ACTIVE", saleId: "sale-regen-id" });
-      vi.mocked(repo.reactivateSale).mockResolvedValueOnce(activeDTO);
-
-      // El service necesita SaleService internamente para regenerar — usamos service sin SaleService
-      // y verificamos que NO explota (regen es fire-and-forget when no saleService)
-      await expect(
-        service.reactivateSale(orgId, "user-id", "iva-sale-book-id"),
-      ).resolves.toBeDefined();
-    });
   });
 
   // ── listPurchasesByPeriod ───────────────────────────────────────────────────

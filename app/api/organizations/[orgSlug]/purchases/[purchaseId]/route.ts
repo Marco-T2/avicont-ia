@@ -2,22 +2,9 @@ import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { PurchaseService } from "@/features/purchase/server";
 import { updatePurchaseSchema } from "@/features/purchase";
-import { IvaBooksService } from "@/features/accounting/iva-books/server";
 import { UsersService } from "@/features/users/server";
 
-const ivaBooksService = new IvaBooksService();
-const purchaseService = new PurchaseService(
-  undefined, // repo
-  undefined, // orgSettingsService
-  undefined, // autoEntryGenerator
-  undefined, // contactsService
-  undefined, // payablesRepo
-  undefined, // balancesService
-  undefined, // periodsService
-  undefined, // accountsRepo
-  undefined, // journalRepo
-  ivaBooksService,
-);
+const purchaseService = new PurchaseService();
 const usersService = new UsersService();
 
 export async function GET(
