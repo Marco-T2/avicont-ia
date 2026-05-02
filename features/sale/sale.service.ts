@@ -49,22 +49,6 @@ import {
 } from "./sale.utils";
 import { calcTotales } from "@/features/accounting/iva-books";
 
-// ── Bridge interface: IvaBooksService (evitar importación circular) ──────────
-
-/**
- * Contrato mínimo de IvaBooksService necesario para el cascade de editPosted.
- * Usar la interfaz en vez del tipo concreto para evitar acoplamiento circular
- * (IvaBooksService ya tiene un bridge hacia SaleService en el sentido inverso).
- */
-interface IvaBooksServiceForSaleCascade {
-  recomputeFromSaleCascade(
-    tx: Prisma.TransactionClient,
-    orgId: string,
-    saleId: string,
-    newTotal: Prisma.Decimal,
-  ): Promise<void>;
-}
-
 // ── Auxiliar: computar plan de recorte LIFO (sin DB, sin efectos) ─────────────
 
 /**
@@ -156,7 +140,6 @@ export class SaleService {
   private readonly periodsService: FiscalPeriodsService;
   private readonly accountsRepo: AccountsRepository;
   private readonly journalRepo: JournalRepository;
-  private readonly ivaBooksService?: IvaBooksServiceForSaleCascade;
 
   constructor(
     repo?: SaleRepository,
@@ -168,7 +151,6 @@ export class SaleService {
     periodsService?: FiscalPeriodsService,
     accountsRepo?: AccountsRepository,
     journalRepo?: JournalRepository,
-    ivaBooksService?: IvaBooksServiceForSaleCascade,
   ) {
     this.repo = repo ?? new SaleRepository();
     this.orgSettingsService = orgSettingsService ?? new OrgSettingsService();
@@ -178,7 +160,6 @@ export class SaleService {
     this.periodsService = periodsService ?? new FiscalPeriodsService();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.journalRepo = journalRepo ?? new JournalRepository();
-    this.ivaBooksService = ivaBooksService;
 
     const voucherTypesRepo = new VoucherTypesRepository();
     this.autoEntryGenerator =
@@ -916,19 +897,6 @@ export class SaleService {
             ...(input.contactId !== undefined && { contactId: input.contactId }),
           },
         });
-      }
-
-      // g. Recomputar IvaSalesBook si existe uno vinculado (D1, D2).
-      // Se llama al final de la tx para que todo lo anterior sea visible dentro
-      // del mismo bloque atómico. NO llama a maybeRegenerateJournal (REQ-3 / D2).
-      if (sale.ivaSalesBook && this.ivaBooksService) {
-        const effectiveNewTotal = newTotalAmount ?? Number(sale.totalAmount);
-        await this.ivaBooksService.recomputeFromSaleCascade(
-          tx,
-          organizationId,
-          sale.id,
-          new Prisma.Decimal(effectiveNewTotal),
-        );
       }
 
       return undefined;

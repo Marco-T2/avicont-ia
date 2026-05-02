@@ -19,7 +19,6 @@ import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { JournalRepository } from "@/features/accounting/journal.repository";
-import { IvaBooksService } from "@/features/accounting/iva-books/server";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -222,10 +221,6 @@ function createServiceMocks(allocationOverride?: PaymentAllocationWithPayment[])
     updateTx: vi.fn().mockResolvedValue({ id: "entry-dr-01", lines: [] }),
   } as unknown as JournalRepository;
 
-  const ivaBooksService = {
-    recomputeFromSaleCascade: vi.fn().mockResolvedValue(undefined),
-  } as unknown as IvaBooksService;
-
   const service = new SaleService(
     repo,
     orgSettingsService,
@@ -236,10 +231,9 @@ function createServiceMocks(allocationOverride?: PaymentAllocationWithPayment[])
     periodsService,
     accountsRepo,
     journalRepo,
-    ivaBooksService,
   );
 
-  return { repo, service, allocationFindManyMock, receivableFindFirstMock, ivaBooksService };
+  return { repo, service, allocationFindManyMock, receivableFindFirstMock };
 }
 
 // ── Tests: SaleService.getEditPreview ────────────────────────────────────────
