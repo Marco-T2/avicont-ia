@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { SaleService } from "@/features/sale/server";
+import { prisma } from "@/lib/prisma";
+import { makeSaleService } from "@/modules/sale/presentation/composition-root";
+import { toSaleWithDetails } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import SaleList from "@/components/sales/sale-list";
 
 interface SalesPageProps {
@@ -18,8 +20,40 @@ export default async function SalesPage({ params }: SalesPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const saleService = new SaleService();
+  const saleService = makeSaleService();
   const sales = await saleService.list(orgId);
+
+  const contactIds = [...new Set(sales.map((s) => s.contactId))];
+  const periodIds = [...new Set(sales.map((s) => s.periodId))];
+
+  const [contacts, periods] = await Promise.all([
+    prisma.contact.findMany({
+      where: { id: { in: contactIds } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        nit: true,
+        paymentTermsDays: true,
+      },
+    }),
+    prisma.fiscalPeriod.findMany({
+      where: { id: { in: periodIds } },
+      select: { id: true, name: true, status: true },
+    }),
+  ]);
+
+  const contactMap = new Map(contacts.map((c) => [c.id, c]));
+  const periodMap = new Map(periods.map((p) => [p.id, p]));
+
+  const salesWithDetails = sales.map((s) =>
+    toSaleWithDetails(s, {
+      contact: contactMap.get(s.contactId)!,
+      period: periodMap.get(s.periodId)!,
+      receivable: null,
+      ivaSalesBook: null,
+    }),
+  );
 
   return (
     <div className="space-y-6">
@@ -32,7 +66,7 @@ export default async function SalesPage({ params }: SalesPageProps) {
 
       <SaleList
         orgSlug={orgSlug}
-        initialSales={JSON.parse(JSON.stringify(sales))}
+        initialSales={JSON.parse(JSON.stringify(salesWithDetails))}
       />
     </div>
   );
