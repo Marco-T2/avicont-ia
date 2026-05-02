@@ -599,7 +599,13 @@ Cuando un POC revela un **problema sistémico de fidelidad o consistencia** (dri
 
 **Precedente**: post POC #8 (payment), la auditoría retroactiva de receivables (POC #6) y payables (POC #7) surfaceó dos drifts reales de error codes — `PAYMENT_ALLOCATION_EXCEEDS_BALANCE` y `PAYMENT_ALLOCATION_TARGET_VOIDED` (shared) coexistían con codes módulo-locales en receivables/payables, y payment los compensaba con pre-checks defensivos. La Opción C aplicada eliminó el drift en la fuente y borró los pre-checks, devolviendo la invariante a un solo lugar (R9 — invariantes en entity).
 
-**Cross-ref**: la regla complementa Stop rule v4 (engram `feedback/sub-agent-stop-rule`); ambas evitan que parity gaps lleguen a master.
+**Pre-phase audit gate operacional**: complemento operacional de la auditoría retroactiva sistémica. Al cerrar una sub-fase de un POC, correr **full suite** (no sólo focused) es check de bajo costo OBLIGATORIO. Métricas focused (e.g. "iva-books 245/245 ✅, mapper 10/10 ✅, export route 22/22 ✅") **NO sustituyen** full audit — pueden pasar verde mientras drift cross-feature regresiona silently en otra capa. La auditoría retroactiva (resto de §13) detecta drift hacia atrás; el pre-phase audit gate detecta drift en curso al momento de cerrar.
+
+**Por qué**: el costo asimétrico favorece el check. Full suite cuesta minutos; drift slip silent puede costar horas-días de bisect en POC siguiente, donde aparece mezclado con complejidad nueva. Vale para cierre de sub-fase, cierre de POC entero, y cierre de sub-tarea con scope cross-module.
+
+**Precedente — POC #11.0c A4-c**: bookmark `poc-11/0c/a4/c/closed` reportó focused metrics ✅ (iva-books 245/245 + mapper 10/10 + export route 22/22) pero full suite NO corrió post-A4-c. 4 violations REQ-FMB.5 (entity-to-dto.ts importando Prisma directo en vez de via barrel) slipped silent y surfacearon recién al abrir POC #11.0c A5 (full suite mostró 7 fails vs 6 baseline heredados pre-POC). Fix corrector retroactivo `2893a42` (entity-to-dto barrel re-route) cerró el gap; lección codificada acá.
+
+**Cross-ref**: la regla complementa Stop rule v4 (engram `feedback/sub-agent-stop-rule`); ambas evitan que parity gaps lleguen a master. Aplicación recursiva — feedback `feedback_pre_phase_audit` + `feedback_low_cost_verification_asymmetry` (engrams personales).
 
 ---
 
@@ -754,10 +760,13 @@ El POC destino **NO** es libre de cerrar sin honrar el cutover diferido. La deud
 |---|---|---|---|---|
 | #11.0a A4 | Cutover 12 consumers formales de legacy `SaleService` (3 core API + 8 iva-books + 1 dispatches-hub)¹ | Cutover 3 consumers (A4-a: 3 core API routes) | POC #11.0c | Bridges `SaleServiceForBridge` (8 iva-books) y `SaleServiceForHub` (1 hub) requieren shape y contracts que sólo hacen sentido cuando IVA migre a hex y los bridges se rediseñen sin `externalTx` (§5.5 retired Ciclo 6 hex `regenerateJournalForIvaChange`) ni shape-adapter (`Sale` aggregate hex no expone `period` hidratado ni `displayCode`/`contact` hidratado para hub). En POC #11.0c, el consumer (IVA) migra a hex; los bridges legacy desaparecen y los 10 consumers diferidos hacen cutover atómico contra puertos hex equivalentes. |
 | #11.0b A4 γ | Cutover 12 consumers formales de legacy `PurchaseService` (3 core API + 4 iva-books/purchases + 3 server components + 2 client components)² | Cutover 1 consumer (A4-a γ: `purchases/route.ts` GET + POST) | POC #11.0c | Asimetría legítima vs sale A4-a (3 core routes): purchase entrega scope mínimo γ porque (a) shape arquitectónico hex `makePurchaseService()` factory ya validado por sale A4-a precedent — re-validar 3 core API routes purchase es trabajo redundante; (b) bridge cross-module `iva-books.service.ts:618 recomputeFromPurchaseCascade` paralelo simétrico al sale `recomputeFromSaleCascade:559` requiere cutover atómico cuando IVA migre a hex; (c) `PurchaseWithDetails` legacy DTO migration paralelo sale A5 β Ciclo 3 diferida POC #11.0c — server components + client components consumen el DTO legacy directamente. γ entrega validación asimetrías purchase-specific (object DI spread vs sale positional, factory cross-module sale-side reusado `PrismaJournalEntryFactoryAdapter`, 5+1 cross-module imports §17, UoW 9 scope members) — destapó drift heredado A4-a γ simétrico al sale (legacy Zod parsea `date: string + lineAmount: number` vs hex `CreateDraftInput {date: Date, lineAmount: MonetaryAmount}`, runtime safe via JS coerción, tsc baseline 14 → 16 con 2 callsites POST createDraft + createAndPost vs sale 1 callsite). |
+| #11.0c A4 + A5 | Hereda 10 cutovers sale-side diferidos POC #11.0a A4 (8 iva-books + 1 hub + `dispatches/page`) + 11 cutovers purchase-side diferidos POC #11.0b A4 γ (2 core API + 4 iva-books/purchases + 3 server components + 2 client components) + cleanup `features/sale/` y `features/purchase/` load-bearing (POC #11.0a A5 β y POC #11.0b A5 cleanup completo diferido)³ | A4 entera 18 cutovers runtime entregados (A4-a 8 routes core + A4-b 10 iva-books cascade + A4-c cycle-break + cutover hex contract + cleanup integration mirror) + retroactive REQ-FMB.5 fix corrector (entity-to-dto barrel re-route) + A5 sanitize correlationId-api-leak (8 prod routes + 8 tests + 8 JSDoc atomic revoke) | POC futuro pre-IVA-CRUD-hex-migration | 3 bridges teardown DEFER (`SaleServiceForBridge`, `PurchaseServiceForBridge`, `SaleServiceForHub`) — pre-condición pre-IVA-CRUD-hex-migration: contracts bridge sólo se rediseñan cuando IVA migre a hex y el shape `externalTx` (§5.5 retired Ciclo 6) deja de ser pre-condición. Cleanup `features/sale/` + `features/purchase/` load-bearing también se difiere al mismo POC futuro — load-bearing por bridges activos. Detalle estructural §19. |
 
 ¹ **Nota correctiva (POC #11.0a A5 β Step 0 D-Step0#2)**: pre-recon A5 β reveló 3 server components adicionales consumiendo `SaleService` legacy NO listados en el scope formal del bookmark histórico A4-a: `app/(dashboard)/[orgSlug]/sales/page.tsx`, `sales/[saleId]/page.tsx`, `dispatches/page.tsx`. POC #11.0c hereda **10 cutovers explícitos** (8 iva-books + 1 hub + `dispatches/page` — el surface nuevo que A5 β agrega al scope heredado), no 9. Los otros 2 server components (`sales/page` + `sales/[saleId]/page`) son consumers conocidos pre-existentes pero quedan para auditoría retroactiva POC #11.0c. El bookmark histórico se preserva sin reescribir — la corrección vive aquí (auditabilidad).
 
 ² **Nota correctiva (POC #11.0b post-A3 audit-6 Marco challenge)**: bookmark scope POC #11.0b nunca se lockeó explícitamente al inicio del POC (asumido implícito mirror sale POC #11.0a 5 sub-fases). Cuando A1+A2+A3 cerraron, reporte interpretó "POC #11.0b CLOSED completo" — Marco surfaceó el gap (A4 + A5 pendientes mirror sale precedent). Bookmark `poc-11/0b/scope-locked-bookmark` (engram) se creó retroactivamente con γ lockeada Marco (A4-a γ minimal + A5 cleanup completo deferral). POC #11.0c hereda **11 cutovers purchase-side explícitos** post A4-a γ (2 core API restantes + 4 iva-books/purchases + 3 server components + 2 client components) + cleanup completo `features/purchase/` (mirror sale cleanup completo diferido). Tsc baseline POC #11.0c heredado actualizado: 16 errores (3 sales/route + 2 purchases/route + 11 findManyByCodes) — drift heredado A4-a γ simétrico al sale precedente. El bookmark POC #11.0b se preserva con la corrección retroactiva en `poc-11/0b/scope-locked-bookmark` engram (auditabilidad). Lección operacional: bookmark scope-locked-bookmark al INICIO de un POC es check obligatorio — sin él, cierre prematuro pasa silently incluso con auditoría retroactiva por sub-fase.
+
+³ **Nota emergente (POC #11.0c A4-c)**: bridges teardown surfaceó como NEW §13 emergente durante A4-c P-items recon — blast radius excedió expectativa "validación estructural sale + purchase". Las 3 interfaces (`SaleServiceForBridge`, `PurchaseServiceForBridge`, `SaleServiceForHub`) son consumibles únicamente por consumers cross-module (IVA, hub) que NO migran en POC #11.0c — sus contracts dependen de `externalTx` (§5.5 retired Ciclo 6 hex) y de shape-adapter no expuesto por aggregates hex (`Sale.period` hidratado, `displayCode`/`contact` hidratado para hub). Lock D-Step0 Marco: NO A4-c, NO A5, NO POC #11.0c entero — defer atómico POC futuro pre-IVA-CRUD-hex-migration cuando consumer (IVA) migre a hex y bridges desaparezcan en cutover atómico (§19). Adicionalmente A5 cerró sanitize `correlationId-api-leak` (Opción C ejecutada cleanup pre-decidido per engram `poc-11/0c/a4/section-13/correlationid-api-leak`) — convención formal codificada §20. Métricas POC #11.0c finales: 5030/6/2 (5038 tests) + tsc 16 + ESLint 11e/15w heredados pre-existentes — POC futuro retire #6 ESLint warnings legacy `features/` + #9 drift externo R5 Prisma value-objects.
 
 ### 18.5. Cleanup parcial honesto — caso inverso
 
@@ -795,3 +804,75 @@ El POC destino **NO** es libre de cerrar sin honrar el cutover diferido. La deud
 - **Complementa**: §13 (auditoría retroactiva — surface drift hacia atrás), §14 (componente mínimo — completar la decisión actual), §18.5 (cleanup parcial honesto — caso inverso). §18 cubre el caso simétrico hacia adelante: cuando la decisión actual choca con scope prometido, mover el scope, no la decisión.
 - **NO debilita**: regla #1 fidelidad legacy (la deuda explícita no es atajo — es el costo conocido y declarado de la decisión lockeada anterior).
 - **Pre-condición POC destino**: el POC que herede la deuda diferida la lista en su bookmark de apertura como scope obligatorio. Sin eso, el patrón se rompe.
+
+---
+
+## 19. Bridges teardown legacy — defer pre-IVA-CRUD-hex-migration
+
+Tres interfaces bridge legacy quedan vivas post-POC #11.0c por **shape-dependency** sobre decisiones lockeadas en POCs anteriores. Su teardown es **pre-condición de cierre** del POC futuro que migre IVA CRUD a hex — NO scope distribuible, NO scope iterable, NO removable separadamente.
+
+### 19.1. Interfaces afectadas
+
+| Interface | Owner | Consumer | Razón shape-bound |
+|---|---|---|---|
+| `SaleServiceForBridge` | `features/sale/sale.service.ts` | `iva-books.service.ts:559 recomputeFromSaleCascade` | Contract requiere `externalTx` para atomicidad write-IVA + regen sale. §5.5 retired Ciclo 6 elimina `externalTx` en hex `regenerateJournalForIvaChange` — el bridge no puede satisfacer la signature hex sin resucitar el path retirado. |
+| `PurchaseServiceForBridge` | `features/purchase/purchase.service.ts` | `iva-books.service.ts:618 recomputeFromPurchaseCascade` | Mirror simétrico sale-side (§18.4 fila #11.0b A4 γ). Misma shape-dependency `externalTx`. |
+| `SaleServiceForHub` | `features/sale/sale.service.ts` | `dispatches-hub` | Contract requiere `Sale.period`, `Sale.displayCode`, `Sale.contact` hidratados — el aggregate hex `Sale` NO los expone (cross-aggregate hidratación hub-specific, no parte del aggregate root). El bridge sólo se rediseña cuando hub migre a hex y consuma puertos query dedicados (no cross-aggregate hidratación spread en aggregate). |
+
+### 19.2. Pre-condición POC futuro pre-IVA-CRUD-hex-migration
+
+El POC que cierre el cutover IVA CRUD a hex **debe** entregar:
+
+1. Cutover atómico de los 3 bridges como parte del scope IVA hex — no scope adicional, son la condición de salida.
+2. Cleanup `features/sale/` + `features/purchase/` load-bearing files (factible sólo post-bridges teardown — son load-bearing por los bridges activos).
+3. Re-rutear cross-module concretos via puertos hex equivalentes — sin resucitar `externalTx`, sin agregar shape-adapter hidratado en aggregate.
+
+### 19.3. Por qué NO entra en §15
+
+§15 lista pendientes iterables tras el POC `mortality` — items con scope no-bloqueante, refinables incrementalmente. Bridges teardown es **bloqueador estructural** pre-IVA-CRUD-hex-migration: condición binaria de cierre, no item refinable. Coherente con §18 dejar la deuda explícita con destino y forma de cierre conocidos (§18.2 punto 4 — POC destino + acceptance del cierre).
+
+### 19.4. Cross-ref
+
+- **Origen**: §18.4 fila POC #11.0c (³ nota emergente A4-c) — defer lockeado D-Step0 Marco.
+- **Engram**: `poc-11/0c/a4/c/closed` (P-items A4-c) — surface inicial blast radius bridges; `poc-11/0c/a4/closed` (POC #11.0c A4 entera CLOSED) — defer ratificado.
+- **Complementa**: §18 (caso simétrico forward — defer scope con destino conocido). §19 es ejecución concreta de §18 aplicada al cierre POC #11.0c.
+
+---
+
+## 20. correlationId NO en API surface
+
+Las hex routes Next.js que retornan `Response.json` (o `NextResponse.json`) **NO** deben spread `correlationId` en el body de la response:
+
+```ts
+// ❌ INCORRECTO — leak audit telemetry interno en API surface
+return Response.json({ ...result.entry, correlationId: result.correlationId });
+
+// ✅ CORRECTO — sólo entrega el aggregate/DTO público
+return Response.json(result.entry);
+```
+
+**Razón estructural**: `correlationId` es identificador de correlation tracking entre transacción + audit log. Es **telemetría interna del backend** — no parte del contrato API público. Filtrarlo al body acopla consumers externos a un campo audit-only que puede cambiar shape (UUID v4 → ULID → trace-id distributed) sin notice, y expone el modelo audit a clients que NO deben razonar sobre él.
+
+El shape canónico hex `{ entry, correlationId }` (retornado por `service.execute()`) **separa concerns correctamente**: `entry` es el aggregate público, `correlationId` es metadata audit. La capa HTTP route es responsable de elegir qué se publica — y `correlationId` no se publica.
+
+### 20.1. Auditoría retroactiva esperable pre-merge POC futuro
+
+Toda hex route nueva — y toda hex route existente que entre a un POC futuro de cutover/refactor — debe auditarse contra el leak shape:
+
+```bash
+# pattern grep pre-merge — hits = leak
+grep -rE "Response\.json\(\s*\{\s*\.\.\.[^,]+,\s*correlationId" app/
+grep -rE "NextResponse\.json\(\s*\{\s*\.\.\.[^,]+,\s*correlationId" app/
+```
+
+Strip atómico en mismo edit que toque la route — no diferir a "cleanup commit posterior". Si requiere RED+GREEN paired (assertions test acopladas), precedent A5 split TDD aplica (RED separado del GREEN+REFACTOR atomic, per `feedback_jsdoc_atomic_revoke`).
+
+### 20.2. Precedente — POC #11.0c A5
+
+Surfaceó como `§13 emergente correlationId-api-leak` durante POC #11.0c A4-a Ciclo 1 Q4 verify gate: 8 routes iva-books `{sales,purchases}` × `{POST, PATCH, void, reactivate}` retornaban `Response.json({ ...result.entry, correlationId: result.correlationId })`. Lock decisional fue Opción C (preservation-during-cutover, cleanup futuro pre-decidido) en POC #11.0c A4-a; ejecutado en POC #11.0c A5 (sanitize TDD split: 8 tests inversion RED en `e55e551` + 8 routes strip + 8 JSDoc atomic revoke GREEN+REFACTOR en `6ed613d`).
+
+### 20.3. Cross-ref
+
+- **Origen**: §13 (auditoría retroactiva) — la convención emerge de un drift sistémico audit-only filtrado a API; auditoría retroactiva (§20.1) extiende detección hacia atrás.
+- **Engram**: `poc-11/0c/a4/section-13/correlationid-api-leak` (lock textual original Opción C → CLOSED A5), `poc-11/0c/a5/closed` (sanitize ejecución A5).
+- **Complementa**: §3 (reglas duras) — convención HTTP-layer specific, no reemplaza R1-R9; §8 (anti-patrones) — leak abstracción audit en API surface.
