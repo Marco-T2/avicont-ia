@@ -607,6 +607,24 @@ Cuando un POC revela un **problema sistémico de fidelidad o consistencia** (dri
 
 **Cross-ref**: la regla complementa Stop rule v4 (engram `feedback/sub-agent-stop-rule`); ambas evitan que parity gaps lleguen a master. Aplicación recursiva — feedback `feedback_pre_phase_audit` + `feedback_low_cost_verification_asymmetry` (engrams personales).
 
+### 13.7. Lecciones operacionales agent-lock-discipline
+
+Protocolo cross-POC aplicable a TODAS las sub-fases paired RED+GREEN futuras — burden upstream agente conocedor target files, NO downstream verify post-execute. Cementadas durante POC siguiente A1+A2 a partir de §13 emergentes recurrence (15 lettered G-U + 5 A1-C1 unlettered = 20 cumulative). Reverse delegation: agente surface emergente, Marco confirma timing — más §13 caught antes execute.
+
+1. **Pre-recon profundo expand → architecture enforcement test runs**: cuando lock toca import paths cross-feature, agregar al pre-recon `feature-boundaries.test.ts` (REQ-FMB.4 + REQ-FMB.5) + `no-restricted-imports` ESLint rules + custom architecture invariants tests. Multi-axis NO single-axis grep.
+2. **Lock regex/assertion requires target file read pre-RED**: agente DEBE leer target file completo + validar regex discrimina pre-state (RED falla correcto) vs target-state (GREEN pasa). Surface §13 emergente si discriminación falla — NO aceptar lock blind. Pattern stronger regex: binding capture + line-anchored.
+3. **Runtime invariants verify pre-lock (~5s confirm)**: cuando lock incluye runtime semántica específica (Decimal.js, JSON serialization, hash, regex engine behavior), proponer + ejecutar runtime confirm rápido ANTES de cementar. Speculative locks rompen recurrentemente — runtime confirm temprano es ~5s vs hours re-trabajo follow-up.
+4. **TDD paired discipline post-§13 emergente (NO inline update)**: cuando §13 emergente surface post-GREEN y requiere test/regex update, follow-up paired RED+GREEN sequential preserva atomic granularity bisect-friendly. Inline update rompe paired discipline. Mirror precedent A1-C1 follow-up `b86c26d` + A2-C1.5 follow-up.
+5. **Shape tests prev sub-fase self-contained against future deletes**: pattern `expect(fs.existsSync(path)).toBe(false)` future-proof vs `fs.readFileSync(path)` fragile (ENOENT exception masks `not.toMatch` semantic). DROP/UPGRADE tests fragile mismo RED commit ANTES de proceder con deletion atomic batch — Marco override timing crítico (cambios shape pertenecen a RED, NO GREEN). Empirical validation §13.N A2-C3.
+6. **Heuristic path discrimination requires lectura individual**: grep PROJECT-scope cuenta candidatos sin discriminar JSDoc references natural prose vs imports/instantiations reales. Pattern: grep `^import.*X\|new X\|from.*X` para discriminar binding actual vs JSDoc cosmetic. Lectura individual obligatoria pre-clasificación Cat A/B/C.
+7. **Scope shrink in-flight via lectura individual obligatoria**: pre-recon expand cuenta candidatos via grep ≠ alcance final. Lectura individual cada candidato OBLIGATORIA para clasificar Cat A/B/C disposition surgical. Cost ~3 min lectura vs corrupción silent risk.
+8. **Re-pre-recon independent cross-check próxima sesión sin engram persistido**: pre-recon expand vive en contexto prompt sesión actual, NO sustituye engram. Próxima sesión cold start DEBE re-pre-recon independent cross-check ANTES de opinar Q's pendientes. Burden upstream agente nuevo: re-verify scope independiente, NO blind accept context prompt.
+9. **Burden upstream agente conocedor target files (meta-pattern)**: lecciones #2 + #5 + #6 + #7 share root: agente DEBE lectura individual archivos target pre-execute. Burden upstream NO downstream verify post-commit. Cheaper + bisect-friendlier. Empirical validation cumulative POC siguiente: 5 §13 emergentes Q-U surfaced TODOS pre-RED via lecciones #1-#8 application — cero §13 emergentes post-execute pre-recon A3.
+
+**Cross-ref engrams** (texto canónico cementado): `protocol/agent-lock-discipline` #1509 (lecciones #1-4 A2-C1) + `protocol/agent-lock-discipline/a2c2-additions` #1512 (lecciones #7-8 A2-C2 cumulative) + `protocol/agent-lock-discipline/a2c3-additions` #1515 (lección #5 A2-C3 empirical validation precedent).
+
+**Aplicabilidad**: cross-POC. POC nuevo dedicado A3 hereda las 9 lecciones como starting state — pre-recon expand A3 ya las aplicó (engram `poc-siguiente/a3/pre-recon-deferred-new-poc`).
+
 ---
 
 ## 14. Componente mínimo de una decisión arquitectónica
@@ -761,6 +779,7 @@ El POC destino **NO** es libre de cerrar sin honrar el cutover diferido. La deud
 | #11.0a A4 | Cutover 12 consumers formales de legacy `SaleService` (3 core API + 8 iva-books + 1 dispatches-hub)¹ | Cutover 3 consumers (A4-a: 3 core API routes) | POC #11.0c | Bridges `SaleServiceForBridge` (8 iva-books) y `SaleServiceForHub` (1 hub) requieren shape y contracts que sólo hacen sentido cuando IVA migre a hex y los bridges se rediseñen sin `externalTx` (§5.5 retired Ciclo 6 hex `regenerateJournalForIvaChange`) ni shape-adapter (`Sale` aggregate hex no expone `period` hidratado ni `displayCode`/`contact` hidratado para hub). En POC #11.0c, el consumer (IVA) migra a hex; los bridges legacy desaparecen y los 10 consumers diferidos hacen cutover atómico contra puertos hex equivalentes. |
 | #11.0b A4 γ | Cutover 12 consumers formales de legacy `PurchaseService` (3 core API + 4 iva-books/purchases + 3 server components + 2 client components)² | Cutover 1 consumer (A4-a γ: `purchases/route.ts` GET + POST) | POC #11.0c | Asimetría legítima vs sale A4-a (3 core routes): purchase entrega scope mínimo γ porque (a) shape arquitectónico hex `makePurchaseService()` factory ya validado por sale A4-a precedent — re-validar 3 core API routes purchase es trabajo redundante; (b) bridge cross-module `iva-books.service.ts:618 recomputeFromPurchaseCascade` paralelo simétrico al sale `recomputeFromSaleCascade:559` requiere cutover atómico cuando IVA migre a hex; (c) `PurchaseWithDetails` legacy DTO migration paralelo sale A5 β Ciclo 3 diferida POC #11.0c — server components + client components consumen el DTO legacy directamente. γ entrega validación asimetrías purchase-specific (object DI spread vs sale positional, factory cross-module sale-side reusado `PrismaJournalEntryFactoryAdapter`, 5+1 cross-module imports §17, UoW 9 scope members) — destapó drift heredado A4-a γ simétrico al sale (legacy Zod parsea `date: string + lineAmount: number` vs hex `CreateDraftInput {date: Date, lineAmount: MonetaryAmount}`, runtime safe via JS coerción, tsc baseline 14 → 16 con 2 callsites POST createDraft + createAndPost vs sale 1 callsite). |
 | #11.0c A4 + A5 | Hereda 10 cutovers sale-side diferidos POC #11.0a A4 (8 iva-books + 1 hub + `dispatches/page`) + 11 cutovers purchase-side diferidos POC #11.0b A4 γ (2 core API + 4 iva-books/purchases + 3 server components + 2 client components) + cleanup `features/sale/` y `features/purchase/` load-bearing (POC #11.0a A5 β y POC #11.0b A5 cleanup completo diferido)³ | A4 entera 18 cutovers runtime entregados (A4-a 8 routes core + A4-b 10 iva-books cascade + A4-c cycle-break + cutover hex contract + cleanup integration mirror) + retroactive REQ-FMB.5 fix corrector (entity-to-dto barrel re-route) + A5 sanitize correlationId-api-leak (8 prod routes + 8 tests + 8 JSDoc atomic revoke) | POC futuro pre-IVA-CRUD-hex-migration | 4 bridges teardown DEFER IVA-CRUD-hex-migration (2 inbound `SaleServiceForBridge`, `PurchaseServiceForBridge` + 2 outbound `IvaBooksServiceForSaleCascade`, `IvaBooksServiceForPurchaseCascade`) — pre-condición pre-IVA-CRUD-hex-migration: contracts bridge sólo se rediseñan cuando IVA migre a hex y el shape `externalTx` (§5.5 retired Ciclo 6) deja de ser pre-condición. (Bridge `SaleServiceForHub` defer separado: hub-migration POC, NO IVA-CRUD; shape-adapter cross-aggregate hidratación `Sale.period`/`displayCode`/`contact` permanece §18.4 fila POC #11.0a contexto histórico.) Cleanup `features/sale/` + `features/purchase/` load-bearing también se difiere al mismo POC futuro — load-bearing por bridges activos. Detalle estructural §19. |
+| **POC siguiente** (IVA CRUD hex migration + bridges teardown atómico) | A1 (4 bridges teardown atómico: 2 inbound `SaleServiceForBridge` + `PurchaseServiceForBridge` deletion + 2 outbound `IvaBooksServiceFor{Sale,Purchase}Cascade` asimetría C1 purchase + C2 sale) + A2 (TASA_IVA Decimal migration legacy → `iva-calc.utils.ts` + REQ-FMB.5 re-export top-level barrel + vi.mock factory legacy cleanup 8 archivos surgical Cat A 6 + Cat B 2 + atomic delete legacy class structure 2 source classes `IvaBooksService`/`IvaBooksRepository` + 4 legacy tests + 2 Q5 integration tests + `server.ts` trim) — pre-condición §19 puntos 1 + 3 CUMPLIDA | A1 (3 commits master `c7805f3` + bridges) + A2 (5 commits cumulative `9964739`/`972c884` C1 + `d01089c`/`ee5f461` C1.5 + `1fe6874`/`66be172` C2 + `b1c429d`/`349ea9a` C3) + A4 doc-only (this commit batch — JSDoc sweep `37b2301` + architecture.md cementación) | POC nuevo dedicado A3 | A3 cleanup `features/{sale,purchase}/` load-bearing es **trabajo distinto, NO cleanup atómico** (§14 boundary natural): (a) migración hex `modules/purchase/presentation/dto+schemas` precondición — asimetría material §13.R (sale tiene `presentation/{dto,schemas}/`, purchase NO); (b) 8 callers cutover (4 sale `new SaleService()` no-args + HubService dep en `dispatches/page` + `dispatches-hub/route` + 4 purchase `new PurchaseService()` no-args en 2 pages + 2 routes — NO 3 como prompt original §13.Q count drift); (c) DTO mappers presentation pages cutover (§13.T shape divergence hex `Sale[]` entity vs legacy `SaleWithDetails[]` DTO — pages requieren mapper, NO trivial swap); (d) HubService refactor decisión (Sale↔Dispatch hub callers); (e) 20 legacy tests deletion final (11 sale + 9 purchase). Pre-recon expand reveló 5 §13 emergentes Q-U scope honest desde inicio POC nuevo (mirror A2 strategy β refinement precedent). Engram heredado `poc-siguiente/a3/pre-recon-deferred-new-poc` (#1517) — POC nuevo Step 0 leerá este bookmark + scope-locked-bookmark inicial Marco lock granularity 6-8 ciclos (A3-C1 build hex purchase presentation/dto+schemas + A3-C2 sale callers cutover + A3-C3 purchase callers cutover + A3-C4 types/schemas consumers + A3-C5 HubService decisión + A3-C6 atomic delete features/sale + A3-C7 atomic delete features/purchase + A3-C8 doc-only post-mortem). |
 
 ¹ **Nota correctiva (POC #11.0a A5 β Step 0 D-Step0#2)**: pre-recon A5 β reveló 3 server components adicionales consumiendo `SaleService` legacy NO listados en el scope formal del bookmark histórico A4-a: `app/(dashboard)/[orgSlug]/sales/page.tsx`, `sales/[saleId]/page.tsx`, `dispatches/page.tsx`. POC #11.0c hereda **10 cutovers explícitos** (8 iva-books + 1 hub + `dispatches/page` — el surface nuevo que A5 β agrega al scope heredado), no 9. Los otros 2 server components (`sales/page` + `sales/[saleId]/page`) son consumers conocidos pre-existentes pero quedan para auditoría retroactiva POC #11.0c. El bookmark histórico se preserva sin reescribir — la corrección vive aquí (auditabilidad).
 
@@ -807,9 +826,9 @@ El POC destino **NO** es libre de cerrar sin honrar el cutover diferido. La deud
 
 ---
 
-## 19. Bridges teardown legacy — defer pre-IVA-CRUD-hex-migration
+## 19. Bridges teardown legacy — ~~defer pre-IVA-CRUD-hex-migration~~ **CLOSED post-POC siguiente**
 
-Cuatro interfaces bridge IVA quedan vivas post-POC #11.0c por **shape-dependency** sobre decisiones lockeadas en POCs anteriores. Su teardown es **pre-condición de cierre** del POC futuro que migre IVA CRUD a hex — NO scope distribuible, NO scope iterable, NO removable separadamente. (El bridge `SaleServiceForHub` queda fuera de §19 — es Sale↔Dispatch hub, defer atado a hub-migration POC, NO IVA-CRUD; cross-aggregate hidratación `Sale.period`/`displayCode`/`contact` permanece §18.4 fila POC #11.0a contexto histórico.)
+Cuatro interfaces bridge IVA ~~quedan vivas post-POC #11.0c~~ **fueron teardown atómicamente en POC siguiente A1+A2** (bookmarks `poc-siguiente/a1/c2/closed` #1506 + `poc-siguiente/a2/c3/closed` #1514). El teardown era **pre-condición de cierre** del POC futuro que migre IVA CRUD a hex — POC siguiente entregó esa pre-condición CUMPLIDA. (El bridge `SaleServiceForHub` queda fuera de §19 — es Sale↔Dispatch hub, defer atado a hub-migration POC, NO IVA-CRUD; cross-aggregate hidratación `Sale.period`/`displayCode`/`contact` permanece §18.4 fila POC #11.0a contexto histórico.)
 
 ### 19.1. Interfaces afectadas
 
@@ -820,13 +839,15 @@ Cuatro interfaces bridge IVA quedan vivas post-POC #11.0c por **shape-dependency
 | `IvaBooksServiceForSaleCascade` (outbound Sale→IVA) | `features/accounting/iva-books/iva-books.service.ts` | `sale.service.ts:59 interface decl + 926 invocation en SaleService.editPosted` | Cascade `recomputeFromSaleCascade(tx, orgId, saleId, newTotal)` invocado desde `SaleService.editPosted` durante write-tx. Shape `tx`-bound legacy + path `regenerateJournalForIvaChange` (§5.5 retired Ciclo 6). Re-rutear via puerto hex equivalente sin resucitar `externalTx` ni cross-tx coupling. |
 | `IvaBooksServiceForPurchaseCascade` (outbound Purchase→IVA) | `features/accounting/iva-books/iva-books.service.ts` | `purchase.service.ts:60 interface decl + 1078 invocation en PurchaseService.editPosted` | Mirror simétrico sale-side. Misma shape-dependency `tx`-bound + `regenerateJournalForIvaChange`. |
 
-### 19.2. Pre-condición POC futuro pre-IVA-CRUD-hex-migration
+### 19.2. Pre-condición ~~POC futuro pre-IVA-CRUD-hex-migration~~ **CUMPLIDA POC siguiente A1+A2**
 
-El POC que cierre el cutover IVA CRUD a hex **debe** entregar:
+El POC que cierre el cutover IVA CRUD a hex **debía** entregar:
 
-1. Cutover atómico de los 4 bridges como parte del scope IVA hex — no scope adicional, son la condición de salida.
-2. Cleanup `features/sale/` + `features/purchase/` load-bearing files (factible sólo post-bridges teardown — son load-bearing por los bridges activos).
-3. Re-rutear cross-module concretos via puertos hex equivalentes — sin resucitar `externalTx`, sin agregar shape-adapter hidratado en aggregate.
+1. ~~Cutover atómico de los 4 bridges como parte del scope IVA hex~~ ✅ **CUMPLIDO POC siguiente A1** — 4 bridges teardown atómico:
+   - A1-C1: 2 inbound (`SaleServiceForBridge` + `PurchaseServiceForBridge`) deletion + purchase outbound full asimetría (`IvaBooksServiceForPurchaseCascade`)
+   - A1-C2: sale outbound asimetría (`IvaBooksServiceForSaleCascade`) deletion
+2. ~~Cleanup `features/sale/` + `features/purchase/` load-bearing files~~ ⏳ **DIFERIDO POC nuevo dedicado A3** — load-bearing real post-A1+A2 (4 sale callers + 4 purchase callers + 6 types/schemas consumers), trabajo distinto (migración hex purchase presentation/dto+schemas asimetría + DTO mappers + HubService decisión). §18.4 fila POC siguiente.
+3. ~~Re-rutear cross-module concretos via puertos hex equivalentes~~ ✅ **CUMPLIDO POC #11.0c A4-c + POC siguiente A2** — adapters Prisma directo (`PrismaIvaBookReaderAdapter`, `PrismaIvaBookVoidCascadeAdapter`, `PrismaIvaBookRegenNotifierAdapter`) post-cutover hex factory `makeIvaBookService` + IVA CRUD migration (TASA_IVA → `iva-calc.utils.ts` + `IvaBooksService`/`IvaBooksRepository` deletion).
 
 ### 19.3. Por qué NO entra en §15
 
@@ -835,8 +856,19 @@ El POC que cierre el cutover IVA CRUD a hex **debe** entregar:
 ### 19.4. Cross-ref
 
 - **Origen**: §18.4 fila POC #11.0c (³ nota emergente A4-c) — defer lockeado D-Step0 Marco.
-- **Engram**: `poc-11/0c/a4/c/closed` (P-items A4-c) — surface inicial blast radius bridges; `poc-11/0c/a4/closed` (POC #11.0c A4 entera CLOSED) — defer ratificado.
-- **Complementa**: §18 (caso simétrico forward — defer scope con destino conocido). §19 es ejecución concreta de §18 aplicada al cierre POC #11.0c.
+- **Engrams POC #11.0c**: `poc-11/0c/a4/c/closed` (P-items A4-c) — surface inicial blast radius bridges; `poc-11/0c/a4/closed` (POC #11.0c A4 entera CLOSED) — defer ratificado.
+- **Engrams POC siguiente cierre**: `poc-siguiente/a1/c2/closed` #1506 (4 bridges teardown atómico) + `poc-siguiente/a2/c3/closed` #1514 (legacy class deletion atómica + IVA CRUD migration completion).
+- **Complementa**: §18 (caso simétrico forward — defer scope con destino conocido). §19 es ejecución concreta de §18 aplicada al cierre POC #11.0c — y POC siguiente es ejecución concreta del defer cumpliendo la pre-condición.
+
+### 19.5. Status closure POC siguiente A1+A2
+
+POC siguiente "IVA CRUD hex migration + bridges teardown atómico" entregó la pre-condición §19.2 puntos 1 + 3 — punto 2 (cleanup `features/{sale,purchase}/` load-bearing) DIFERIDO POC nuevo dedicado A3 por scope honest §14 (trabajo distinto: migración hex purchase presentation/dto+schemas asimetría + DTO mappers + HubService refactor decisión + 8 callers cutover). Mirror precedent A2 strategy β refinement.
+
+**Métricas finales POC siguiente A1+A2**: 8 commits master cumulative pre-A4 doc-only. TSC 16 baseline preserved. Suite 4928/6/2 (delta -55 legacy tests deleted + 8 RED→GREEN A2-C3 - 1 dropped Test 2 bridges = -48 net). ESLint 11e/13w (improvement -2 warnings vs baseline 11e/15w — warnings vivían en archivos legacy deleted, NO regression). REQ-FMB.4 8 baseline preserved. REQ-FMB.5 0 violations preserved.
+
+**§13 emergentes cumulative POC siguiente** (15 lettered + 5 A1-C1 unlettered = 20 total): G/H/I (A2-C1 Decimal.js + REQ-FMB.5 + binding-capture regex) + J/K/L/M (A2-C2 vi.mock factory + path discrimination + scope shrink + JSDoc defer) + N/O/P (A2-C3 shape-self-contained + JSDoc stale + count drift narrativo) + Q/R/S/T/U (A3 pre-recon — count drift + asimetría purchase hex DTO+schemas + getById signature + DTO shape divergence + bridges-teardown-shape Tests 3+4 NO self-contained).
+
+**Lecciones operacionales agent-lock-discipline**: 9 cementadas — ver §13.7.
 
 ---
 
@@ -876,4 +908,14 @@ Surfaceó como `§13 emergente correlationId-api-leak` durante POC #11.0c A4-a C
 
 - **Origen**: §13 (auditoría retroactiva) — la convención emerge de un drift sistémico audit-only filtrado a API; auditoría retroactiva (§20.1) extiende detección hacia atrás.
 - **Engram**: `poc-11/0c/a4/section-13/correlationid-api-leak` (lock textual original Opción C → CLOSED A5), `poc-11/0c/a5/closed` (sanitize ejecución A5).
+
+### 20.4. Verify retroactivo POC siguiente
+
+POC siguiente "IVA CRUD hex migration + bridges teardown atómico" verify retroactivo §20.1 pattern grep ejecutado pre-cierre (A4 doc-only post-mortem):
+
+- **Routes nuevas added POC siguiente**: 0 — POC siguiente fue cleanup atómico (deletions + migrations), NO surface API growth.
+- **Routes editadas POC siguiente**: 0 routes añaden `correlationId` al body. Modificaciones se limitaron a (a) drop legacy class instantiations (`new IvaBooksService()` deletion), (b) re-import paths post-A2-C1.5 redirect (TASA_IVA top-level barrel), (c) vi.mock factory cleanup A2-C2.
+- **Convención §20 preservada**: leak shape NO regressed. 8 commits cumulative POC siguiente verify clean contra `Response.json({ ...result, correlationId })` pattern.
+
+Pattern application coherente §20.1: cualquier hex route futura POC nuevo A3 (cutover legacy → hex) DEBE auditarse contra leak shape pre-merge. Strip atómico mismo edit que toque la route.
 - **Complementa**: §3 (reglas duras) — convención HTTP-layer specific, no reemplaza R1-R9; §8 (anti-patrones) — leak abstracción audit en API surface.
