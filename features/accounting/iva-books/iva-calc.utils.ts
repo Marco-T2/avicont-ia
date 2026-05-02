@@ -9,7 +9,19 @@ type Decimal = Prisma.Decimal;
 
 // Convención SIN Bolivia (Formulario 200): Débito Fiscal = Total × 13% (alícuota nominal).
 // El "Importe Base" del LCV = subtotal − descuento (NO se divide entre 1.13).
-const TASA_IVA = new Prisma.Decimal("0.13");
+/**
+ * Alícuota IVA Bolivia 13% — exported para consumo cross-module legacy↔hex
+ * bridge (POC #11.0c A4-c C2 GREEN P3.4 lock Marco): mapper hex
+ * `IvaSalesBookEntry → IvaSalesBookDTO` requiere `tasaIva: Decimal` campo
+ * que NO existe en `IvaCalcResult` VO (solo subtotal/baseImponible/ivaAmount).
+ * Single source of truth post-A2-C1 migration (POC siguiente) — TASA_IVA
+ * migrado del legacy `iva-books.service.ts:25` aquí (semánticamente acoplado
+ * a `calcTotales` — ambos cálculo IVA cohesivos en el mismo archivo). Valor
+ * textual `"0.1300"` preserve P3.4 source-text lock (drop trailing zero
+ * silently equivalente runtime via Decimal.js normalize, pero pierde el lock
+ * textual que cementa la alícuota canonical 4-decimales SIN Bolivia).
+ */
+export const TASA_IVA = new Prisma.Decimal("0.1300");
 const ZERO = new Prisma.Decimal("0");
 
 // ── Parámetros para calcSubtotal ──────────────────────────────────────────────
