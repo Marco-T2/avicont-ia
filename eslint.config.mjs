@@ -37,6 +37,13 @@ const banPrismaInDomain = [
   },
 ];
 
+// R5 carve-out for presentation/ — type-only Prisma imports allowed for
+// read-side DTO hydration (Omit/extends). Runtime value imports remain banned.
+const banPrismaInPresentation = banPrismaInDomain.map((p) => ({
+  ...p,
+  allowTypeImports: true,
+}));
+
 const banDomainCrossLayer = [
   {
     group: [
@@ -153,7 +160,7 @@ const eslintConfig = defineConfig([
     rules: {
       "no-restricted-imports": [
         "error",
-        { patterns: [...banPrismaInDomain, ...banPresInfra] },
+        { patterns: [...banPrismaInPresentation, ...banPresInfra] },
       ],
     },
   },
