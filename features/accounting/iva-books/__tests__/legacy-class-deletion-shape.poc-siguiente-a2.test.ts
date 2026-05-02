@@ -9,16 +9,21 @@
  *     local NO exported + valor textual "0.13" (drop trailing zero rompe P3.4
  *     textual lock). GREEN A2-C1 sub-paso 1 (convert const → export const +
  *     harmonize "0.13" → "0.1300" + JSDoc migrate del legacy + cite P3.4) cierra.
- *   - Test 2 "entity-to-dto.ts sales imports TASA_IVA from iva-calc.utils path"
- *     FALLA porque entity-to-dto.ts:3 actualmente importa de
- *     `@/features/accounting/iva-books/server` (re-export del legacy). GREEN
- *     A2-C1 sub-paso 2 (update import path) cierra.
- *   - Test 3 "entity-to-dto.ts purchases imports TASA_IVA from iva-calc.utils
- *     path" FALLA por mismo motivo. GREEN A2-C1 sub-paso 3 cierra.
- *   - Test 4 "entity-to-dto.test.ts {sales,purchases} import TASA_IVA from
- *     iva-calc.utils path" FALLA porque tests:3 actualmente importan directo de
- *     `@/features/accounting/iva-books/iva-books.service` (asimetría prod via
- *     /server, tests via service.ts directo). GREEN A2-C1 sub-pasos 4+5 cierran.
+ *   - Test 2-4 (post-A2-C1.5): import path target = top-level barrel
+ *     `@/features/accounting/iva-books` (NO deep `/iva-calc.utils`). Discriminación
+ *     vía binding capture regex `import { TASA_IVA } from ...` evita premature
+ *     green via type imports preexistentes (IvaSalesBookDTO/IvaPurchaseBookDTO
+ *     importados del top-level barrel para types — diferente binding).
+ *
+ * A2-C1.5 follow-up RED+GREEN (post §13.H + §13.I emergentes):
+ *   - §13.H REQ-FMB.5: deep import `iva-calc.utils` desde `app/` violó feature
+ *     boundary (8 violations REQ-FMB.4 baseline + 2 violations REQ-FMB.5
+ *     emergentes A2-C1). Fix: re-export TASA_IVA via index.ts top-level barrel
+ *     + redirect 4 consumers a top-level path (NO deep).
+ *   - §13.I premature green: regex sin binding capture matchea OTROS imports
+ *     top-level barrel preexistentes (type imports). Fix: regex stronger
+ *     `/import\s*\{\s*TASA_IVA\s*\}\s*from.../` discrimina explícitamente el
+ *     binding `{ TASA_IVA }` named import from top-level barrel.
  *
  * A2-C2 RED (extend cumulative en C2):
  *   - Class IvaBooksService deletion + Repository deletion + 4 legacy tests
@@ -79,30 +84,31 @@ describe("POC siguiente A2 — legacy class deletion + TASA_IVA migration shape"
     );
   });
 
-  it("entity-to-dto.ts (sales export) imports TASA_IVA from iva-calc.utils path", () => {
+  it("entity-to-dto.ts (sales export) imports TASA_IVA from top-level barrel (REQ-FMB.5 compliance, A2-C1.5 follow-up §13.H)", () => {
     const source = fs.readFileSync(SALES_ENTITY_TO_DTO_PATH, "utf8");
     expect(source).toMatch(
-      /from\s+["']@\/features\/accounting\/iva-books\/iva-calc\.utils["']/,
+      /import\s*\{\s*TASA_IVA\s*\}\s*from\s+["']@\/features\/accounting\/iva-books["']/,
     );
   });
 
-  it("entity-to-dto.ts (purchases export) imports TASA_IVA from iva-calc.utils path", () => {
+  it("entity-to-dto.ts (purchases export) imports TASA_IVA from top-level barrel (REQ-FMB.5 compliance, A2-C1.5 follow-up §13.H)", () => {
     const source = fs.readFileSync(PURCHASES_ENTITY_TO_DTO_PATH, "utf8");
     expect(source).toMatch(
-      /from\s+["']@\/features\/accounting\/iva-books\/iva-calc\.utils["']/,
+      /import\s*\{\s*TASA_IVA\s*\}\s*from\s+["']@\/features\/accounting\/iva-books["']/,
     );
   });
 
-  it("entity-to-dto.test.ts (sales + purchases export) import TASA_IVA from iva-calc.utils path", () => {
+  it("entity-to-dto.test.ts (sales + purchases export) import TASA_IVA from top-level barrel (A2-C1.5 follow-up §13.H + binding capture §13.I)", () => {
     const salesTestSource = fs.readFileSync(SALES_ENTITY_TO_DTO_TEST_PATH, "utf8");
     const purchasesTestSource = fs.readFileSync(
       PURCHASES_ENTITY_TO_DTO_TEST_PATH,
       "utf8",
     );
-    const PATH_REGEX = /from.*iva-calc\.utils/;
+    const BINDING_REGEX =
+      /import\s*\{\s*TASA_IVA\s*\}\s*from\s+["']@\/features\/accounting\/iva-books["']/;
     expect({
-      sales: PATH_REGEX.test(salesTestSource),
-      purchases: PATH_REGEX.test(purchasesTestSource),
+      sales: BINDING_REGEX.test(salesTestSource),
+      purchases: BINDING_REGEX.test(purchasesTestSource),
     }).toEqual({ sales: true, purchases: true });
   });
 });
