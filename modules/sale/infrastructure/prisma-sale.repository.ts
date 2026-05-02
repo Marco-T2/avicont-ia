@@ -56,6 +56,7 @@ export class PrismaSaleRepository implements SaleRepository {
         organizationId,
         ...(filters?.status ? { status: filters.status as SaleStatus } : {}),
         ...(filters?.contactId ? { contactId: filters.contactId } : {}),
+        ...(filters?.periodId ? { periodId: filters.periodId } : {}),
         ...(filters?.dateFrom || filters?.dateTo
           ? {
               date: {

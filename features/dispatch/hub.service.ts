@@ -1,12 +1,24 @@
 import "server-only";
+import { prisma } from "@/lib/prisma";
+import type { Sale } from "@/modules/sale/domain/sale.entity";
+import { computeDisplayCode } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import type { HubItem, HubItemSale, HubItemDispatch, HubFilters } from "./hub.types";
 
-// ── Monetary amount accepted from either service ──────────────────────────
-// Both SaleService (number) and DispatchService (Prisma.Decimal) satisfy
-// this union. The mapper normalises to string via toFixed(2).
+// ── Monetary amount accepted from DispatchService (legacy shape) ──────────
+// DispatchService still returns Prisma.Decimal | number. The mapper normalises
+// to string via toFixed(2). SaleService (post A3-C5 cutover) returns hex
+// `Sale[]` — totalAmount via `sale.totalAmount.value: number`, no union needed.
 type MonetaryAmount = { toFixed(d: number): string } | number | string;
 
 // ── Dependency interfaces (no circular imports) ───────────────────────────
+//
+// `SaleServiceForHub` (POC nuevo A3-C5 refactor (a) inline) — drops `displayCode`
+// + nested `contact: {id,name,type}` fields. Hex `Sale[]` entity shape
+// passthrough; HubService computes displayCode via `computeDisplayCode`
+// (DRY A3-C3 SubQ-d) + batch contact name lookup via Prisma direct
+// (mirror A3-C4a Map<id, name> pattern). DRAFT sales (sequenceNumber null)
+// receive literal `"VG-DRAFT"` displayCode (§13.AC caller responsibility
+// null guard preserva A3-C3 mapper fail-fast invariant).
 
 export interface SaleServiceForHub {
   list(
@@ -18,20 +30,7 @@ export interface SaleServiceForHub {
       dateFrom?: Date;
       dateTo?: Date;
     },
-  ): Promise<
-    Array<{
-      id: string;
-      displayCode: string;
-      referenceNumber: number | null;
-      date: Date;
-      contactId: string;
-      contact: { id: string; name: string; type: string };
-      periodId: string;
-      description: string;
-      totalAmount: MonetaryAmount;
-      status: string;
-    }>
-  >;
+  ): Promise<Sale[]>;
 }
 
 export interface DispatchServiceForHub {
@@ -77,19 +76,23 @@ function normaliseMoney(amount: MonetaryAmount): string {
 
 // ── Mappers (private pure functions) ─────────────────────────────────────
 
-function toHubItemSale(sale: Awaited<ReturnType<SaleServiceForHub["list"]>>[number]): HubItemSale {
+function toHubItemSale(
+  sale: Sale,
+  contactName: string,
+  displayCode: string,
+): HubItemSale {
   return {
     source: "sale",
     type: "VENTA_GENERAL",
     id: sale.id,
-    displayCode: sale.displayCode,
+    displayCode,
     referenceNumber: sale.referenceNumber,
     date: sale.date,
     contactId: sale.contactId,
-    contactName: sale.contact.name,
+    contactName,
     periodId: sale.periodId,
     description: sale.description,
-    totalAmount: normaliseMoney(sale.totalAmount),
+    totalAmount: sale.totalAmount.value.toFixed(2),
     status: sale.status as HubItemSale["status"],
   };
 }
@@ -135,8 +138,8 @@ export class HubService {
     let dispatchItems: HubItemDispatch[] = [];
 
     if (type === "VENTA_GENERAL") {
-      const rows = await this.sales.list(organizationId, commonFilters);
-      saleItems = rows.map(toHubItemSale);
+      const sales = await this.sales.list(organizationId, commonFilters);
+      saleItems = await this.mapSalesWithContacts(organizationId, sales);
     } else if (type === "NOTA_DESPACHO" || type === "BOLETA_CERRADA") {
       const rows = await this.dispatches.list(organizationId, {
         ...commonFilters,
@@ -148,7 +151,7 @@ export class HubService {
         this.sales.list(organizationId, commonFilters),
         this.dispatches.list(organizationId, commonFilters),
       ]);
-      saleItems = sales.map(toHubItemSale);
+      saleItems = await this.mapSalesWithContacts(organizationId, sales);
       dispatchItems = dispatches.map(toHubItemDispatch);
     }
 
@@ -163,5 +166,28 @@ export class HubService {
     const items = merged.slice(offset, offset + limit);
 
     return { items, total };
+  }
+
+  private async mapSalesWithContacts(
+    organizationId: string,
+    sales: Sale[],
+  ): Promise<HubItemSale[]> {
+    if (sales.length === 0) return [];
+
+    const contactIds = [...new Set(sales.map((s) => s.contactId))];
+    const contacts = await prisma.contact.findMany({
+      where: { organizationId, id: { in: contactIds } },
+      select: { id: true, name: true },
+    });
+    const contactNameById = new Map(contacts.map((c) => [c.id, c.name]));
+
+    return sales.map((s) => {
+      const contactName = contactNameById.get(s.contactId) ?? "";
+      const displayCode =
+        s.sequenceNumber !== null
+          ? computeDisplayCode(s.sequenceNumber)
+          : "VG-DRAFT";
+      return toHubItemSale(s, contactName, displayCode);
+    });
   }
 }

@@ -2,6 +2,7 @@ import type { Sale } from "../sale.entity";
 
 export interface SaleFilters {
   contactId?: string;
+  periodId?: string;
   status?: string;
   dateFrom?: Date;
   dateTo?: Date;

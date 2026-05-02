@@ -5,11 +5,31 @@
  * Covers REQ-1 (merge), REQ-2 (discriminated union), REQ-3 (type filter),
  * REQ-4 (date filter), REQ-5 (status filter), REQ-6 (sort order).
  * All sub-service deps are mocked — no DB access.
+ *
+ * POC nuevo A3-C5 update: `SaleServiceForHub.list()` retorna `Promise<Sale[]>`
+ * (hex entity post-refactor (a) inline). Fixtures `makeSale` ahora satisfacen
+ * Sale entity shape via duck-type (sequenceNumber + totalAmount.value getter).
+ * `vi.mock("@/lib/prisma")` stubea `prisma.contact.findMany` para HubService
+ * batch contact name lookup (Marco lock SubQ-γ Prisma direct).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { HubService } from "../hub.service";
 import type { SaleServiceForHub, DispatchServiceForHub } from "../hub.service";
+import type { Sale } from "@/modules/sale/domain/sale.entity";
+
+// ── Prisma mock: contact.findMany batch lookup (A3-C5 SubQ-γ) ──────────────────
+
+vi.mock("@/lib/prisma", () => ({
+  prisma: {
+    contact: {
+      findMany: vi.fn().mockResolvedValue([
+        { id: "contact-1", name: "Cliente Test" },
+        { id: "contact-2", name: "Cliente Test 2" },
+      ]),
+    },
+  },
+}));
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
@@ -21,19 +41,20 @@ function makeSale(overrides: Partial<{
   status: string;
   contactId: string;
   periodId: string;
-}> = {}) {
+  sequenceNumber: number | null;
+  totalAmount: number;
+}> = {}): Sale {
   return {
     id: overrides.id ?? "sale-1",
-    displayCode: "V-001",
+    sequenceNumber: overrides.sequenceNumber ?? 1,
     referenceNumber: null,
     date: overrides.date ?? new Date("2024-02-15"),
     contactId: overrides.contactId ?? "contact-1",
-    contact: { id: overrides.contactId ?? "contact-1", name: "Cliente Test", type: "CLIENTE" },
     periodId: overrides.periodId ?? "period-1",
     description: "Venta test",
-    totalAmount: 1000,
+    totalAmount: { value: overrides.totalAmount ?? 1000 },
     status: overrides.status ?? "DRAFT",
-  };
+  } as unknown as Sale;
 }
 
 function makeDispatch(overrides: Partial<{
@@ -182,6 +203,8 @@ describe("HubService.listHub", () => {
   });
 
   // PR2-cleanup — Decimal serialization: totalAmount exposed as string at boundary
+  // POC nuevo A3-C5 update: hex Sale.totalAmount via MonetaryAmount.value getter
+  // (no Decimal union); DispatchService legacy mantiene Decimal duck-type union.
   describe("Decimal serialization", () => {
     // Helper that simulates Prisma.Decimal duck-type (has toFixed method)
     function makeDecimal(value: number): { toFixed: (d: number) => string; toString: () => string } {
@@ -191,11 +214,9 @@ describe("HubService.listHub", () => {
       };
     }
 
-    it("normalises Prisma.Decimal totalAmount from sale to a 2-decimal string", async () => {
-      const decimalAmount = makeDecimal(1234.5);
+    it("extracts hex Sale.totalAmount.value to a 2-decimal string", async () => {
       vi.mocked(saleService.list).mockResolvedValue([
-         
-        { ...makeSale({ id: "s-decimal" }), totalAmount: decimalAmount as any },
+        makeSale({ id: "s-value", totalAmount: 1234.5 }),
       ]);
 
       const { items } = await hub.listHub(ORG_ID, { type: "VENTA_GENERAL" });
@@ -206,23 +227,13 @@ describe("HubService.listHub", () => {
     it("normalises Prisma.Decimal totalAmount from dispatch to a 2-decimal string", async () => {
       const decimalAmount = makeDecimal(999.9);
       vi.mocked(dispatchService.list).mockResolvedValue([
-         
+
         { ...makeDispatch({ id: "d-decimal" }), totalAmount: decimalAmount as any },
       ]);
 
       const { items } = await hub.listHub(ORG_ID, { type: "NOTA_DESPACHO" });
 
       expect(items[0].totalAmount).toBe("999.90");
-    });
-
-    it("normalises plain number totalAmount to a 2-decimal string", async () => {
-      vi.mocked(saleService.list).mockResolvedValue([
-        { ...makeSale({ id: "s-plain" }), totalAmount: 500 },
-      ]);
-
-      const { items } = await hub.listHub(ORG_ID, { type: "VENTA_GENERAL" });
-
-      expect(items[0].totalAmount).toBe("500.00");
     });
   });
 });

@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { HubService } from "@/features/dispatch/server";
-import { SaleService } from "@/features/sale/server";
+import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { DispatchService } from "@/features/dispatch/server";
 import { hubQuerySchema } from "@/features/dispatch/server";
 
@@ -9,12 +9,14 @@ import { hubQuerySchema } from "@/features/dispatch/server";
  * Module-level instantiation — same pattern as iva-books/sales/route.ts.
  *
  * HubService uses constructor interface injection (SaleServiceForHub /
- * DispatchServiceForHub). Both real services satisfy the interfaces
- * structurally: totalAmount is typed as MonetaryAmount (Decimal | number | string)
- * and normalised to string inside the mappers — no cast needed.
+ * DispatchServiceForHub). Hex `makeSaleService()` (POC nuevo A3-C5 cutover)
+ * returns hex `Sale[]` from `list()` — HubService computes displayCode via
+ * `computeDisplayCode` mapper reuse + batch contact name lookup via Prisma
+ * direct. DispatchService still legacy (out of scope A3) — totalAmount union
+ * (Decimal | number | string) normalised via `normaliseMoney` mapper.
  */
 const hubService = new HubService(
-  new SaleService(),
+  makeSaleService(),
   new DispatchService(),
 );
 
