@@ -11,7 +11,7 @@ const service = makeIvaBookService();
  * Solo modifica `status` — compras NO tienen estadoSIN.
  *
  * Respuestas:
- * - 200: IvaPurchaseBookDTO con status = VOIDED + correlationId §13 preserved
+ * - 200: IvaPurchaseBookDTO con status = VOIDED
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
  * - 404: entrada no encontrada (hex `IvaBookNotFound`)
@@ -31,7 +31,7 @@ export async function PATCH(
 
     const result = await service.voidPurchase({ organizationId: orgId, userId, id });
 
-    return Response.json({ ...result.entry, correlationId: result.correlationId });
+    return Response.json(result.entry);
   } catch (error) {
     return handleError(error);
   }

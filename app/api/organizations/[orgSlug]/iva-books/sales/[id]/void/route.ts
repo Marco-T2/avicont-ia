@@ -12,7 +12,7 @@ const service = makeIvaBookService();
  *          `status` (Avicont) y `estadoSIN` (SIN) son independientes por diseño.
  *
  * Respuestas:
- * - 200: IvaSalesBookDTO con status = VOIDED, estadoSIN intacto + correlationId §13 preserved
+ * - 200: IvaSalesBookDTO con status = VOIDED, estadoSIN intacto
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
  * - 404: entrada no encontrada (hex `IvaBookNotFound`)
@@ -32,7 +32,7 @@ export async function PATCH(
 
     const result = await service.voidSale({ organizationId: orgId, userId, id });
 
-    return Response.json({ ...result.entry, correlationId: result.correlationId });
+    return Response.json(result.entry);
   } catch (error) {
     return handleError(error);
   }

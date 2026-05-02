@@ -97,7 +97,7 @@ export async function GET(
  * El service recomputa campos IVA server-side (defense-in-depth).
  *
  * Respuestas:
- * - 201: IvaPurchaseBookDTO creado (con correlationId §13 preserved leak)
+ * - 201: IvaPurchaseBookDTO creado
  * - 400: body inválido (Zod)
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
@@ -122,10 +122,7 @@ export async function POST(
 
     const result = await service.regeneratePurchase(input);
 
-    return Response.json(
-      { ...result.entry, correlationId: result.correlationId },
-      { status: 201 },
-    );
+    return Response.json(result.entry, { status: 201 });
   } catch (error) {
     return handleError(error);
   }

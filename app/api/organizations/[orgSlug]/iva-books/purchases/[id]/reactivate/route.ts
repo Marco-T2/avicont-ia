@@ -11,7 +11,7 @@ const service = makeIvaBookService();
  * Regenera el asiento contable CON IVA e IT (buildPurchaseEntryLines IVA path).
  *
  * Respuestas:
- * - 200: IvaPurchaseBookDTO con status = ACTIVE + correlationId §13 preserved
+ * - 200: IvaPurchaseBookDTO con status = ACTIVE
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org o rol insuficiente
  * - 404: entrada no encontrada (hex `IvaBookNotFound`)
@@ -36,7 +36,7 @@ export async function PATCH(
       id,
     });
 
-    return Response.json({ ...result.entry, correlationId: result.correlationId });
+    return Response.json(result.entry);
   } catch (error) {
     return handleError(error);
   }

@@ -95,7 +95,7 @@ export async function GET(
  * Si se envían campos monetarios, el service recomputa IVA.
  *
  * Respuestas:
- * - 200: IvaPurchaseBookDTO actualizado (con correlationId §13 preserved leak)
+ * - 200: IvaPurchaseBookDTO actualizado
  * - 400: body inválido (Zod)
  * - 401: sin sesión Clerk
  * - 403: sin acceso a la org
@@ -120,7 +120,7 @@ export async function PATCH(
 
     const result = await service.recomputePurchase(input);
 
-    return Response.json({ ...result.entry, correlationId: result.correlationId });
+    return Response.json(result.entry);
   } catch (error) {
     return handleError(error);
   }
