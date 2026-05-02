@@ -1,7 +1,16 @@
 /**
  * POC siguiente A1 — bridges teardown shape assertion (cumulative C1+C2).
  *
- * Expected failure cumulative (RED justificado, TS-N/A runtime assertion × 8):
+ * **A2-C3 update (lección A6 #5 §13.N)**: Test 2 DROPPED mismo RED commit A2-C3
+ * porque leía `iva-books.service.ts` via fs.readFileSync — file será deleted
+ * en A2-C3 GREEN atomic batch sub-paso 2 → ENOENT exception. Subsumed por file
+ * existence assertion en `legacy-class-deletion-shape.poc-siguiente-a2.test.ts`
+ * (file no existe ⇒ no declara interfaces). IVA_SERVICE_PATH constant removed
+ * mismo RED commit. Resultado post-A2-C3: 3 tests A1 (Tests 1, 3, 4) en este
+ * archivo + 12 tests A2 (Tests 1-4 A2-C1+C1.5 + Tests 5-12 A2-C3) en el sister
+ * shape file.
+ *
+ * Expected failure cumulative ORIGINAL (RED justificado, TS-N/A runtime assertion × 8):
  *
  * A1-C1 RED (Tests 1-3, transitioned GREEN at commits 7b7ff94 + b86c26d):
  *   - Test 1 "purchases/[purchaseId]/route.ts no longer instantiates legacy
@@ -68,11 +77,6 @@ const ROUTE_PATH = path.join(
   "app/api/organizations/[orgSlug]/purchases/[purchaseId]/route.ts",
 );
 
-const IVA_SERVICE_PATH = path.join(
-  REPO_ROOT,
-  "features/accounting/iva-books/iva-books.service.ts",
-);
-
 const PURCHASE_SERVICE_PATH = path.join(
   REPO_ROOT,
   "features/purchase/purchase.service.ts",
@@ -92,11 +96,15 @@ describe("POC siguiente A1 — bridges teardown shape assertion", () => {
     );
   });
 
-  it("iva-books.service.ts no longer declares SaleServiceForBridge / PurchaseServiceForBridge interfaces", () => {
-    const source = fs.readFileSync(IVA_SERVICE_PATH, "utf8");
-    expect(source).not.toMatch(/interface\s+SaleServiceForBridge/);
-    expect(source).not.toMatch(/interface\s+PurchaseServiceForBridge/);
-  });
+  // Test 2 DROPPED en A2-C3 RED commit (lección A6 #5 §13.N): shape test
+  // prev sub-fase NO self-contained contra A2-C3 atomic delete iva-books.
+  // service.ts. Original verificaba `iva-books.service.ts no longer declares
+  // SaleServiceForBridge / PurchaseServiceForBridge interfaces` via
+  // fs.readFileSync(IVA_SERVICE_PATH, "utf8") — post-delete → ENOENT
+  // exception (assertion fails by exception, NO `not.toMatch` clean).
+  // Subsumed por file existence assertion en `legacy-class-deletion-shape.
+  // poc-siguiente-a2.test.ts` (file no existe ⇒ no declara interfaces,
+  // redundancia trivial). IVA_SERVICE_PATH constant removed mismo RED commit.
 
   it("purchase.service.ts no longer wires IvaBooksServiceForPurchaseCascade outbound (asimetría C1)", () => {
     const source = fs.readFileSync(PURCHASE_SERVICE_PATH, "utf8");
