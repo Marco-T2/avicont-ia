@@ -218,9 +218,8 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]", () => {
       }),
     );
 
-    // §13 correlationId leak preserved
     const body = await res.json();
-    expect(body.correlationId).toBe("corr-recompute-1");
+    expect(body.correlationId).toBeUndefined();
   });
 
   it("retorna 400 si estadoSIN tiene valor inválido en PATCH", async () => {

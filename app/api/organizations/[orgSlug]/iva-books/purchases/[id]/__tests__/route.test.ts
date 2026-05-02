@@ -222,9 +222,8 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/purchases/[id]", () => {
       }),
     );
 
-    // §13 correlationId leak preserved (Opción C lockeada Marco)
     const body = await res.json();
-    expect(body.correlationId).toBe("corr-recompute-1");
+    expect(body.correlationId).toBeUndefined();
   });
 
   it("retorna 400 si el body tiene valores inválidos (Zod)", async () => {

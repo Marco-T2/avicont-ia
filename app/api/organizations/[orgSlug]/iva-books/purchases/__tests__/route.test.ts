@@ -261,9 +261,8 @@ describe("POST /api/organizations/[orgSlug]/iva-books/purchases", () => {
       }),
     );
 
-    // §13 correlationId leak preserved (Opción C lockeada Marco)
     const body = await res.json();
-    expect(body.correlationId).toBe("corr-regenerate-1");
+    expect(body.correlationId).toBeUndefined();
   });
 
   it("retorna 400 cuando faltan campos requeridos (Zod)", async () => {

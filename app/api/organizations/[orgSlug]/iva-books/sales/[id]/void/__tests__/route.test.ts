@@ -158,8 +158,7 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/void", () => {
     expect(body.status).toBe("VOIDED");
     // estadoSIN NO cambia — eje ortogonal
     expect(body.estadoSIN).toBe("A");
-    // §13 correlationId leak preserved (Opción C lockeada Marco)
-    expect(body.correlationId).toBe("corr-void-1");
+    expect(body.correlationId).toBeUndefined();
   });
 
   it("retorna 404 si la entrada no existe (hex throws IvaBookNotFound)", async () => {

@@ -158,9 +158,8 @@ describe("PATCH /api/organizations/[orgSlug]/iva-books/sales/[id]/reactivate", (
       id: ENTRY_ID,
     });
 
-    // §13 correlationId leak preserved
     const body = await res.json();
-    expect(body.correlationId).toBe("corr-reactivate-1");
+    expect(body.correlationId).toBeUndefined();
     expect(body.id).toBe(ENTRY_ID);
     expect(body.status).toBe("ACTIVE");
   });
