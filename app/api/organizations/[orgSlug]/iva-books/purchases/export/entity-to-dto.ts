@@ -1,7 +1,7 @@
 import "server-only";
 
-import { TASA_IVA } from "@/features/accounting/iva-books/iva-books.service";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books/iva-books.types";
+import { TASA_IVA } from "@/features/accounting/iva-books/server";
+import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
 import { Prisma } from "@/generated/prisma/client";
 import type { IvaPurchaseBookEntry } from "@/modules/iva-books/domain/iva-purchase-book-entry.entity";
 

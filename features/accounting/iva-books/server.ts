@@ -5,6 +5,6 @@
  */
 import "server-only";
 
-export { IvaBooksService } from "./iva-books.service";
+export { IvaBooksService, TASA_IVA } from "./iva-books.service";
 export { IvaBooksRepository } from "./iva-books.repository";
 export { exportIvaBookExcel } from "./exporters/excel.exporter";
