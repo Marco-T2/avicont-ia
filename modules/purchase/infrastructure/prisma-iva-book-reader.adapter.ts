@@ -13,7 +13,9 @@ import type {
  * directo, NO wrap-thin shim — no existe método legacy análogo
  * `findByPurchaseId` en `IvaBooksRepository` (paralelo asimétrico sale 5a:
  * legacy `findSaleById` busca por `IvaSalesBook.id`, no por `Sale.id`).
- * Retirada §5.5 — POC #11.0c.
+ * Retirada §5.5 — POC #11.0c. (Legacy `IvaBooksService` y `IvaBooksRepository`
+ * deleted POC siguiente A2-C3, engram `poc-siguiente/a2/c3/closed` — adapter
+ * Prisma directo permanece como implementación final hex.)
  *
  * Paridad regla #1: `findUnique({where:{purchaseId}})` SIN filter
  * `organizationId` (legacy `voidCascadeTx purchase.service.ts:1361` usa el

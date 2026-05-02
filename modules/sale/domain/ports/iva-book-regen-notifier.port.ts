@@ -7,10 +7,11 @@ import type { IvaBookForEntry } from "../build-sale-entry-lines";
  * rolls back with the sale write.
  *
  * **Temporal §5.5** — declared as a port to keep sale-hex decoupled from the
- * legacy `IvaBooksService`, NOT as endorsement of bidirectional coupling.
+ * legacy `IvaBooksService` (legacy class deleted POC siguiente A2-C3, engram
+ * `poc-siguiente/a2/c3/closed`), NOT as endorsement of bidirectional coupling.
  * Retired in POC #11.0c when IVA-hex subscribes to a sale event or reads from
- * a projected snapshot owned by IVA. Until then the adapter wraps the legacy
- * service directly.
+ * a projected snapshot owned by IVA. Adapter ahora wraps el hex `IvaBookService`
+ * (post-A2-C3 cutover hex factory `makeIvaBookService`).
  *
  * Returns the recomputed `IvaBookForEntry` so sale-hex can rebuild journal
  * lines reflecting the new IVA shape (legacy `editPosted:717-740` uses

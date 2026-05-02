@@ -13,6 +13,12 @@
  * (`regeneratePurchase`/`listPurchasesByPeriod`) 0 calls porque la route aún
  * invoca `service.createPurchase`/`service.listPurchasesByPeriod` legacy. En
  * GREEN cutover la route invoca hex spies → assertions pasan.
+ *
+ * **POC siguiente A2-C2 update**: legacy mock keys `IvaBooksService` /
+ * `IvaBooksRepository` dropeadas del vi.mock factory (Cat A surgical cleanup,
+ * engram `poc-siguiente/a2/c2/closed`). POC siguiente A2-C3 deleted la legacy
+ * class entirely — JSDoc historical reference preservada (engram
+ * `poc-siguiente/a2/c3/closed`).
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";

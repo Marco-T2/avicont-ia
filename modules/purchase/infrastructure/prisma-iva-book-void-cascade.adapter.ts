@@ -10,7 +10,9 @@ import type { IvaBookVoidCascadePort } from "@/modules/purchase/domain/ports/iva
  * §13 emergente E-5.a-purchase (POC #11.0b A3 Ciclo 5b): Opción β Prisma
  * directo, NO wrap-thin shim — `IvaBooksService.markVoidedFromPurchase` no
  * existe (legacy escribe `tx.ivaPurchaseBook.update` directo en cascade
- * purchase-side). Retirada §5.5 — POC #11.0c.
+ * purchase-side). Retirada §5.5 — POC #11.0c. (Legacy `IvaBooksService`
+ * deleted POC siguiente A2-C3, engram `poc-siguiente/a2/c3/closed` — adapter
+ * Prisma directo permanece como implementación final hex.)
  *
  * Paridad regla #1: `findUnique({where:{purchaseId}})` SIN filter
  * `organizationId` (mirror legacy bit-exact `:1361`). `_organizationId`

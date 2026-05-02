@@ -10,6 +10,9 @@ import type { IvaBookVoidCascadePort } from "@/modules/sale/domain/ports/iva-boo
  * §13 emergente E-5.a (POC #11.0a A3 Ciclo 5b): Opción β Prisma directo, NO
  * wrap-thin shim — `IvaBooksService.markVoidedFromSale` no existe. JSDoc del
  * port actualizada en mismo commit (piggyback). Retirada §5.5 — POC #11.0c.
+ * (Legacy `IvaBooksService` deleted POC siguiente A2-C3, engram
+ * `poc-siguiente/a2/c3/closed` — adapter Prisma directo permanece como
+ * implementación final hex.)
  *
  * Paridad regla #1: `findUnique({where:{saleId}})` SIN filter
  * `organizationId` (mirror legacy bit-exact). `_organizationId` queda

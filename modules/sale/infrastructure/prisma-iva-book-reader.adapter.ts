@@ -12,7 +12,10 @@ import type {
  * §13 emergente E-5.d (POC #11.0a A3 Ciclo 5a): Opción β Prisma directo, NO
  * wrap-thin shim — legacy `IvaBooksService.findSaleById(orgId, id)` busca por
  * `IvaSalesBook.id`, no por `Sale.id`, y no existe método público
- * `findBySaleId`. Retirada §5.5 — POC #11.0c.
+ * `findBySaleId`. Retirada §5.5 — POC #11.0c. (Legacy `IvaBooksService` y
+ * `IvaBooksRepository` deleted POC siguiente A2-C3, engram
+ * `poc-siguiente/a2/c3/closed` — adapter Prisma directo permanece como
+ * implementación final hex.)
  *
  * Paridad regla #1: `findUnique({where:{saleId}})` SIN filter `organizationId`
  * (legacy `voidCascadeTx:1205` usa el mismo shape). `organizationId` queda

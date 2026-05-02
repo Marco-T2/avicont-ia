@@ -964,7 +964,10 @@ export class SaleService {
   // CONTRATO READ-ONLY sobre IvaSalesBook:
   //   Este método LEE el IvaSalesBook para construir las líneas del asiento,
   //   pero NUNCA escribe en él. Esta restricción previene el loop:
-  //   IvaBooksService → regenerateJournalForIvaChange → IvaBooksService.
+  //   IvaBooksService → regenerateJournalForIvaChange → IvaBooksService
+  //   (legacy `IvaBooksService` deleted POC siguiente A2-C3, engram
+  //   `poc-siguiente/a2/c3/closed` — invariante read-only preservada como
+  //   anti-pattern reference para futuro consumer hex `IvaBookService`).
   //
   //   GREP ENFORCEMENT: no debe existir `tx.ivaSalesBook.update` en este método.
   //

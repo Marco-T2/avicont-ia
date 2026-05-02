@@ -14,7 +14,10 @@ import { PrismaIvaBookVoidCascadeAdapter } from "../prisma-iva-book-void-cascade
  *
  * Opción β Prisma directo lockeada (paralelo Ciclo 3 SaleRepo): mirror exacto
  * `voidCascadeTx:1205-1211` legacy — `IvaBooksService.markVoidedFromSale`
- * NO existe. JSDoc del port actualizada en mismo commit (piggyback).
+ * NO existe. JSDoc del port actualizada en mismo commit (piggyback). (Legacy
+ * `IvaBooksService` deleted POC siguiente A2-C3, engram
+ * `poc-siguiente/a2/c3/closed` — adapter Prisma directo permanece como
+ * implementación final hex.)
  *
  * Paridad regla #1: `findUnique({where:{saleId}})` SIN filter
  * `organizationId` (mirror legacy bit-exact). `_organizationId` queda anotado

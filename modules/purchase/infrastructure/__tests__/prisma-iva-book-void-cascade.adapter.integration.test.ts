@@ -23,7 +23,10 @@ import { PrismaIvaBookVoidCascadeAdapter } from "../prisma-iva-book-void-cascade
  * Opción β Prisma directo lockeada (mirror sale 5b §13 E-5.a): mirror exacto
  * `voidCascadeTx purchase.service.ts:1361-1367` legacy —
  * `IvaBooksService.markVoidedFromPurchase` NO existe (legacy escribe directo
- * en cascade purchase-side). Retirada §5.5 — POC #11.0c.
+ * en cascade purchase-side). Retirada §5.5 — POC #11.0c. (Legacy
+ * `IvaBooksService` deleted POC siguiente A2-C3, engram
+ * `poc-siguiente/a2/c3/closed` — adapter Prisma directo permanece como
+ * implementación final hex.)
  *
  * Paridad regla #1: `findUnique({where:{purchaseId}})` SIN filter
  * `organizationId` (mirror legacy bit-exact `:1361`). `_organizationId`

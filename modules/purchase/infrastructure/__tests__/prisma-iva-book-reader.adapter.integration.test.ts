@@ -23,7 +23,10 @@ import { PrismaIvaBookReaderAdapter } from "../prisma-iva-book-reader.adapter";
  * en `IvaBooksRepository`. Adapter usa `Pick<PrismaClient, "ivaPurchaseBook">`
  * .findUnique({where:{purchaseId}}) — purchaseId @unique global (schema L987).
  * Filter `status === "ACTIVE"` post-call mirror legacy
- * `extractIvaBookForEntry:131` (regla #1 fidelidad bit-exact).
+ * `extractIvaBookForEntry:131` (regla #1 fidelidad bit-exact). (Legacy
+ * `IvaBooksService` y `IvaBooksRepository` deleted POC siguiente A2-C3, engram
+ * `poc-siguiente/a2/c3/closed` — adapter Prisma directo permanece como
+ * implementación final hex.)
  */
 
 describe("PrismaIvaBookReaderAdapter — Postgres integration", () => {
