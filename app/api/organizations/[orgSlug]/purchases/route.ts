@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import {
   createPurchaseSchema,
   purchaseFiltersSchema,
-} from "@/features/purchase";
+} from "@/modules/purchase/presentation/schemas/purchase.schemas";
 import { UsersService } from "@/features/users/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 

@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { PurchaseService } from "@/features/purchase/server";
-import { updatePurchaseSchema } from "@/features/purchase";
+import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";
 import { UsersService } from "@/features/users/server";
 
 const purchaseService = new PurchaseService();
