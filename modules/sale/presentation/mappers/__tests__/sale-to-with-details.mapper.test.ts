@@ -9,7 +9,6 @@ import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-a
 import {
   computeDisplayCode,
   toContactSummary,
-  toCreatedBySummary,
   toPeriodSummary,
   toReceivableSummary,
   toSaleDetailRow,
@@ -20,15 +19,16 @@ import {
  * Smoke type-check + runtime behavior para mappers presentation Sale (POC nuevo
  * A3-C3 GREEN — caller-passes-deps pattern).
  *
- * Cobertura per Marco SubQ-g 8 it() blocks (7 sub-mapper + 1 displayCode null edge):
+ * Cobertura post A3-C3.5 §13.W drop createdBy: 7 it() blocks (6 sub-mapper +
+ * 1 displayCode null edge). Test 5 `toCreatedBySummary passthrough` dropeado +
+ * Test 8 composite modificado (sin createdBy en deps + result assertion):
  *   1. computeDisplayCode happy path VG-NNN padStart 3 (mirror legacy getDisplayCode)
  *   2. computeDisplayCode null edge throws (SubQ-d fail-fast — DRAFT sales)
  *   3. toContactSummary passthrough Prisma raw → DTO contact shape
  *   4. toPeriodSummary passthrough Prisma raw → DTO period shape
- *   5. toCreatedBySummary passthrough Prisma raw → DTO createdBy shape
- *   6. toReceivableSummary Decimal→number + nested allocations + payment.date toISOString
- *   7. toSaleDetailRow MonetaryAmount→number + quantity/unitPrice undefined→null
- *   8. toSaleWithDetails main compositor caller-passes-deps Sale entity + deps → SaleWithDetails end-to-end
+ *   5. toReceivableSummary Decimal→number + nested allocations + payment.date toISOString
+ *   6. toSaleDetailRow MonetaryAmount→number + quantity/unitPrice undefined→null
+ *   7. toSaleWithDetails main compositor caller-passes-deps Sale entity + deps → SaleWithDetails end-to-end
  *
  * Decimal mocking: type-only `import type { Prisma }` + cast to satisfy
  * `.toNumber()` interface (R5 banPrismaInPresentation preserved — no runtime
@@ -77,18 +77,7 @@ describe("sale-to-with-details mappers (smoke)", () => {
     expect(toPeriodSummary(period)).toEqual(period);
   });
 
-  // ── Test 5: toCreatedBySummary passthrough ────────────────────────────────────
-
-  it("toCreatedBySummary passthrough Prisma raw → DTO createdBy shape", () => {
-    const createdBy = {
-      id: "u-1",
-      name: "Usuario Uno",
-      email: "u1@example.com",
-    };
-    expect(toCreatedBySummary(createdBy)).toEqual(createdBy);
-  });
-
-  // ── Test 6: toReceivableSummary Decimal→number + nested allocations ───────────
+  // ── Test 5: toReceivableSummary Decimal→number + nested allocations ───────────
 
   it("toReceivableSummary Decimal→number + nested allocations + payment.date toISOString", () => {
     const paymentDate = new Date("2026-03-15T10:00:00Z");
@@ -123,7 +112,7 @@ describe("sale-to-with-details mappers (smoke)", () => {
     expect(result.allocations[0].payment.date).toBe(paymentDate.toISOString());
   });
 
-  // ── Test 7: toSaleDetailRow MonetaryAmount→number conversion ──────────────────
+  // ── Test 6: toSaleDetailRow MonetaryAmount→number conversion ──────────────────
 
   it("toSaleDetailRow MonetaryAmount→number + quantity/unitPrice undefined→null", () => {
     const detail = SaleDetail.fromPersistence({
@@ -147,7 +136,7 @@ describe("sale-to-with-details mappers (smoke)", () => {
     expect(row.incomeAccountId).toBe("acc-1");
   });
 
-  // ── Test 8: toSaleWithDetails main compositor end-to-end ──────────────────────
+  // ── Test 7: toSaleWithDetails main compositor end-to-end ──────────────────────
 
   it("toSaleWithDetails main compositor caller-passes-deps Sale entity + deps → SaleWithDetails", () => {
     const detail = SaleDetail.fromPersistence({
@@ -189,7 +178,6 @@ describe("sale-to-with-details mappers (smoke)", () => {
         paymentTermsDays: null,
       },
       period: { id: "p-1", name: "Marzo 2026", status: "OPEN" },
-      createdBy: { id: "u-1", name: "Usuario", email: "u@example.com" },
     };
     const result = toSaleWithDetails(sale, deps);
     expect(result.id).toBe("s-1");
@@ -200,7 +188,7 @@ describe("sale-to-with-details mappers (smoke)", () => {
     expect(result.displayCode).toBe("VG-007");
     expect(result.contact.name).toBe("Cliente Uno");
     expect(result.period.name).toBe("Marzo 2026");
-    expect(result.createdBy.email).toBe("u@example.com");
+    expect(result.createdById).toBe("u-1");
     expect(result.details).toHaveLength(1);
     expect(result.details[0].lineAmount).toBe(100);
     expect(result.details[0].quantity).toBe(2);

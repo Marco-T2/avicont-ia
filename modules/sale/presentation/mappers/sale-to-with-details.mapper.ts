@@ -21,16 +21,22 @@ import type {
  * 2 sale pages + A3-C5 cutover 2 HubService deps.
  *
  * Pattern: caller (page) loads external deps via separate Prisma queries
- * (contact via ContactsService, period via FiscalPeriodsService, createdBy via
- * UserRepo, receivable via ReceivablesRepository, ivaSalesBook via
- * IvaSalesBooksService) y pasa al main compositor `toSaleWithDetails(sale,
- * deps)` que invoca sub-mappers cohesivos.
+ * (contact via ContactsService, period via FiscalPeriodsService, receivable via
+ * Prisma direct, ivaSalesBook via Prisma direct) y pasa al main compositor
+ * `toSaleWithDetails(sale, deps)` que invoca sub-mappers cohesivos.
  *
  * Hex purity preserved: mapper consume Sale domain entity output (`makeSaleService`),
  * NO toca presentation concerns dentro de application layer. Sub-mappers
- * EXTERNAL deps (contact/period/createdBy/receivable) reciben Prisma raw shape
+ * EXTERNAL deps (contact/period/receivable) reciben Prisma raw shape
  * passthrough (Marco lock GREEN — caller ya carga via Prisma queries, mapper
  * recibe directo).
+ *
+ * §13.W resolution (A3-C3.5 paired follow-up): unused user-summary nested
+ * field dropeado del mapper deps signature + DTO + sub-mapper export. Verified
+ * pre-recon profundo A3-C4: SaleList (sale-list.tsx) + SaleForm (sale-form.tsx)
+ * + HubService SaleServiceForHub interface (hub.service.ts:11-35) cero
+ * consumers. Sale entity user-id field preserved via Omit<Sale, "totalAmount">
+ * passthrough. Cross-ref engram bookmark `poc-nuevo/a3/c3-5/closed`.
  *
  * Sub-mapper `toSaleDetailRow` recibe DOMAIN SaleDetail entity (NO Prisma raw)
  * porque Sale.details son entities — internal Sale data, NOT external dep.
@@ -73,12 +79,6 @@ export type PeriodRaw = {
   status: string;
 };
 
-export type CreatedByRaw = {
-  id: string;
-  name: string;
-  email: string;
-};
-
 export type AllocationRaw = {
   id: string;
   paymentId: string;
@@ -105,7 +105,6 @@ export type ReceivableRaw = {
 export interface ToSaleWithDetailsDeps {
   contact: ContactRaw;
   period: PeriodRaw;
-  createdBy: CreatedByRaw;
   receivable?: ReceivableRaw | null;
   ivaSalesBook?: IvaSalesBookDTO | null;
 }
@@ -140,16 +139,6 @@ export function toPeriodSummary(period: PeriodRaw): SaleWithDetails["period"] {
     id: period.id,
     name: period.name,
     status: period.status,
-  };
-}
-
-export function toCreatedBySummary(
-  createdBy: CreatedByRaw,
-): SaleWithDetails["createdBy"] {
-  return {
-    id: createdBy.id,
-    name: createdBy.name,
-    email: createdBy.email,
   };
 }
 
@@ -233,7 +222,6 @@ export function toSaleWithDetails(
     details: sale.details.map(toSaleDetailRow),
     contact: toContactSummary(deps.contact),
     period: toPeriodSummary(deps.period),
-    createdBy: toCreatedBySummary(deps.createdBy),
     receivable: deps.receivable ? toReceivableSummary(deps.receivable) : null,
     displayCode,
     ivaSalesBook: deps.ivaSalesBook ?? null,

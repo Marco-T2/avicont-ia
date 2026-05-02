@@ -61,7 +61,6 @@ function makeSale(overrides: Partial<SaleWithDetails> = {}): SaleWithDetails {
     displayCode: "VG-002",
     contact: { id: "contact-dryrun-001", name: "Cliente DryRun", type: "CLIENTE", paymentTermsDays: 30 },
     period: { id: PERIOD_ID, name: "Enero 2025", status: "OPEN" },
-    createdBy: { id: USER_ID, name: "Test User", email: "test@test.com" },
     details: [
       {
         id: "detail-dryrun-01",

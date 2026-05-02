@@ -49,7 +49,6 @@ function makeLockedSale(): SaleWithDetails {
       paymentTermsDays: 30,
     },
     period: { id: PERIOD_ID, name: "Enero 2025", status: "CLOSED" },
-    createdBy: { id: "user-sale-001", name: "Test", email: "t@t.com" },
     details: [],
     receivable: null,
     ivaSalesBook: null,

@@ -3,8 +3,9 @@
  * caller-passes-deps pattern §13.T resolution preparation).
  *
  * Axis: build modules/sale/presentation/mappers/sale-to-with-details.mapper.ts
- * con 7 exports puros (1 utility computeDisplayCode + 5 sub-mappers passthrough/
- * conversion + 1 main toSaleWithDetails compositor caller-passes-deps). Pattern
+ * con 6 exports puros post-A3-C3.5 §13.W drop createdBy (1 utility
+ * computeDisplayCode + 4 sub-mappers passthrough/conversion + 1 main
+ * toSaleWithDetails compositor caller-passes-deps). Pattern
  * caller-passes-deps FORZADO por hex PrismaSaleRepository include scope =
  * `{ details only }` — Sale entity hidratada SIN source material para
  * SaleWithDetails (contact, period, createdBy, receivable, ivaSalesBook).
@@ -16,8 +17,10 @@
  *   - SubQ-c standalone computeDisplayCode exported (DRY A3-C5 HubService inline)
  *   - SubQ-d throw Error para sequenceNumber null (fail-fast surface real bugs)
  *   - SubQ-e 1 file cohesive (mirror precedent dto/sale-with-details.ts)
- *   - SubQ-f 8 assertions α RED (1 file existence + 7 export shape)
+ *   - SubQ-f 8 assertions α RED (1 file existence + 7 export shape) — post
+ *     A3-C3.5 §13.W drop createdBy: 7 assertions (1 file + 6 export shape)
  *   - SubQ-g 8 it() blocks GREEN smoke (7 sub-mapper + 1 displayCode null edge)
+ *     — post A3-C3.5: 7 it() blocks (6 sub-mapper + 1 displayCode null edge)
  *   - SubQ-h DEFER purchase mappers a sub-fase futura paired follow-up
  *
  * Asimetría material §13.T verificada A3-C3 pre-recon:
@@ -34,15 +37,16 @@
  *     A3-C4 cutover 2 sale pages + A3-C5 cutover 2 HubService deps
  *
  * Expected failure cumulative (RED justificado, 8 assertions α file existence × 1
- * + export shape × 7):
+ * + export shape × 7) — post A3-C3.5 §13.W drop createdBy: 7 assertions (1 + 6):
  *
- * A3-C3 RED (Tests 1-8, GREEN al cierre A3-C3):
+ * A3-C3 RED (Tests 1-8, GREEN al cierre A3-C3) — Tests 1-7 post A3-C3.5:
  *   - Test 1 file existence: sale-to-with-details.mapper.ts NO existe
- *     (mapper module nuevo). GREEN A3-C3 sub-paso 1 build file con 7 exports.
- *   - Tests 2-8 export shape: 7 symbols requeridos
+ *     (mapper module nuevo). GREEN A3-C3 sub-paso 1 build file con 6 exports
+ *     post drop createdBy.
+ *   - Tests 2-7 export shape: 6 symbols requeridos
  *     (computeDisplayCode + toContactSummary + toPeriodSummary +
- *      toCreatedBySummary + toReceivableSummary + toSaleDetailRow +
- *      toSaleWithDetails main).
+ *      toReceivableSummary + toSaleDetailRow + toSaleWithDetails main —
+ *      toCreatedBySummary dropeado A3-C3.5 §13.W resolution).
  *
  * Self-contained future-proof check (lección A6 #5): shape test asserta paths
  * modules/sale/presentation/mappers/* (hex que persiste). NO toca features/{sale,
@@ -109,22 +113,17 @@ describe("POC nuevo A3-C3 — sale presentation mappers shape", () => {
     expect(source).toMatch(/export\s+(?:function|const)\s+toPeriodSummary\b/);
   });
 
-  it("Test 5: mapper exports toCreatedBySummary (sub-mapper passthrough)", () => {
-    const source = fs.readFileSync(SALE_MAPPER_PATH, "utf8");
-    expect(source).toMatch(/export\s+(?:function|const)\s+toCreatedBySummary\b/);
-  });
-
-  it("Test 6: mapper exports toReceivableSummary (sub-mapper Decimal→number + nested allocations)", () => {
+  it("Test 5: mapper exports toReceivableSummary (sub-mapper Decimal→number + nested allocations)", () => {
     const source = fs.readFileSync(SALE_MAPPER_PATH, "utf8");
     expect(source).toMatch(/export\s+(?:function|const)\s+toReceivableSummary\b/);
   });
 
-  it("Test 7: mapper exports toSaleDetailRow (sub-mapper MonetaryAmount/Decimal→number)", () => {
+  it("Test 6: mapper exports toSaleDetailRow (sub-mapper MonetaryAmount/Decimal→number)", () => {
     const source = fs.readFileSync(SALE_MAPPER_PATH, "utf8");
     expect(source).toMatch(/export\s+(?:function|const)\s+toSaleDetailRow\b/);
   });
 
-  it("Test 8: mapper exports toSaleWithDetails (main compositor caller-passes-deps)", () => {
+  it("Test 7: mapper exports toSaleWithDetails (main compositor caller-passes-deps)", () => {
     const source = fs.readFileSync(SALE_MAPPER_PATH, "utf8");
     expect(source).toMatch(/export\s+(?:function|const)\s+toSaleWithDetails\b/);
   });

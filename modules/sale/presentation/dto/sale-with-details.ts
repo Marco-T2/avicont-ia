@@ -55,11 +55,6 @@ export interface SaleWithDetails extends Omit<Sale, "totalAmount"> {
     name: string;
     status: string;
   };
-  createdBy: {
-    id: string;
-    name: string;
-    email: string;
-  };
   details: SaleDetailRow[];
   receivable?: ReceivableSummary | null;
   displayCode: string;
