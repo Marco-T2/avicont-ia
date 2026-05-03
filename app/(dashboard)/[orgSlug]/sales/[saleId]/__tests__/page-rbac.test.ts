@@ -47,6 +47,11 @@ vi.mock("@/modules/sale/presentation/composition-root", () => ({
 
 vi.mock("@/modules/sale/presentation/mappers/sale-to-with-details.mapper", () => ({
   toSaleWithDetails: mockToSaleWithDetails,
+  // A3-C4b.5 §13.AC-sale-paged: page imports SALE_PREFIX + computeDisplayCode
+  // post A3-C4a.5 mapper refactor — mock factory debe exponer ambos o crash
+  // runtime. Stubs simples (test NO assertea displayCode value).
+  SALE_PREFIX: "VG",
+  computeDisplayCode: (n: number) => `VG-${String(n).padStart(3, "0")}`,
 }));
 
 vi.mock("@/lib/prisma", () => ({
