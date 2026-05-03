@@ -101,11 +101,6 @@ export interface PurchaseWithDetails
     name: string;
     status: string;
   };
-  createdBy: {
-    id: string;
-    name: string;
-    email: string;
-  };
   details: PurchaseDetailRow[];
   payable?: PayableSummary | null;
   displayCode: string;
