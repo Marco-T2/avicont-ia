@@ -2,7 +2,11 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { prisma } from "@/lib/prisma";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
-import { toSaleWithDetails } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
+import {
+  toSaleWithDetails,
+  computeDisplayCode,
+  SALE_PREFIX,
+} from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import SaleList from "@/components/sales/sale-list";
 
 interface SalesPageProps {
@@ -52,6 +56,14 @@ export default async function SalesPage({ params }: SalesPageProps) {
       period: periodMap.get(s.periodId)!,
       receivable: null,
       ivaSalesBook: null,
+      // §13.AC-sale-paged caller responsibility null guard (A3-C4a.5 paired):
+      // DRAFT sales (sequenceNumber=null) usan fallback `${SALE_PREFIX}-DRAFT`
+      // mirror §13.AC HubService A3-C5 SubQ-β. computeDisplayCode standalone
+      // SubQ-d fail-fast invariant preservado.
+      displayCode:
+        s.sequenceNumber !== null
+          ? computeDisplayCode(s.sequenceNumber)
+          : `${SALE_PREFIX}-DRAFT`,
     }),
   );
 

@@ -107,9 +107,26 @@ export interface ToSaleWithDetailsDeps {
   period: PeriodRaw;
   receivable?: ReceivableRaw | null;
   ivaSalesBook?: IvaSalesBookDTO | null;
+  /**
+   * Caller-computed displayCode (A3-C4a.5 §13.AC-sale-paged resolution):
+   * non-DRAFT path = `computeDisplayCode(sale.sequenceNumber)`, DRAFT path =
+   * `${SALE_PREFIX}-DRAFT` fallback. Caller responsibility null guard mirror
+   * §13.AC HubService A3-C5 SubQ-β precedent.
+   */
+  displayCode: string;
 }
 
 // ── Utility: displayCode formula `VG-NNN` (DRY A3-C5 HubService inline) ────────
+
+/**
+ * Sale displayCode prefix exportado para caller responsibility null guard
+ * fallback (A3-C4a.5 paired §13.AC-sale-paged): callers que invocan
+ * `toSaleWithDetails` para listas con DRAFT sales (sequenceNumber=null)
+ * construyen fallback `${SALE_PREFIX}-DRAFT` mirror §13.AC HubService A3-C5
+ * SubQ-β precedent. SubQ-d fail-fast invariant standalone preservado en
+ * `computeDisplayCode` (sigue throwing on null).
+ */
+export const SALE_PREFIX = "VG";
 
 export function computeDisplayCode(sequenceNumber: number | null): string {
   if (sequenceNumber === null) {
@@ -117,7 +134,7 @@ export function computeDisplayCode(sequenceNumber: number | null): string {
       "computeDisplayCode requires sequenceNumber — DRAFT sales (null sequenceNumber) NO tienen displayCode (SubQ-d fail-fast lock)",
     );
   }
-  return `VG-${String(sequenceNumber).padStart(3, "0")}`;
+  return `${SALE_PREFIX}-${String(sequenceNumber).padStart(3, "0")}`;
 }
 
 // ── Sub-mappers: passthrough EXTERNAL deps (Prisma raw shape) ─────────────────
@@ -198,10 +215,9 @@ export function toSaleWithDetails(
   sale: Sale,
   deps: ToSaleWithDetailsDeps,
 ): SaleWithDetails {
-  // computeDisplayCode throws si sequenceNumber null — guard pre-construction
-  // garantiza SaleWithDetails.sequenceNumber: number invariant downstream.
-  const displayCode = computeDisplayCode(sale.sequenceNumber);
-
+  // displayCode caller responsibility (A3-C4a.5 §13.AC-sale-paged): caller
+  // computa con null guard ternary + ${SALE_PREFIX}-DRAFT fallback DRAFT path
+  // mirror §13.AC HubService A3-C5 SubQ-β precedent.
   return {
     id: sale.id,
     organizationId: sale.organizationId,
@@ -223,7 +239,7 @@ export function toSaleWithDetails(
     contact: toContactSummary(deps.contact),
     period: toPeriodSummary(deps.period),
     receivable: deps.receivable ? toReceivableSummary(deps.receivable) : null,
-    displayCode,
+    displayCode: deps.displayCode,
     ivaSalesBook: deps.ivaSalesBook ?? null,
   };
 }

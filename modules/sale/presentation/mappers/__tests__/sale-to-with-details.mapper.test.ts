@@ -178,6 +178,9 @@ describe("sale-to-with-details mappers (smoke)", () => {
         paymentTermsDays: null,
       },
       period: { id: "p-1", name: "Marzo 2026", status: "OPEN" },
+      // A3-C4a.5 §13.AC-sale-paged: caller-passes-displayCode signature.
+      // Non-DRAFT path = `computeDisplayCode(sale.sequenceNumber)` → "VG-007".
+      displayCode: "VG-007",
     };
     const result = toSaleWithDetails(sale, deps);
     expect(result.id).toBe("s-1");
