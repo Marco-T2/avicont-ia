@@ -1,10 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { PurchaseService } from "@/features/purchase/server";
+import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";
 import { UsersService } from "@/features/users/server";
 
-const purchaseService = new PurchaseService();
+const purchaseService = makePurchaseService();
 const usersService = new UsersService();
 
 export async function GET(
@@ -50,14 +50,14 @@ export async function PATCH(
     // dryRun: true → return preview without executing any writes
     if (dryRun === true) {
       const newTotal = computeNewTotal(input);
-      const { trimPreview } = await purchaseService.getEditPreview(purchaseId, orgId, newTotal);
+      const { trimPreview } = await purchaseService.getEditPreview(orgId, purchaseId, newTotal);
       return Response.json({ dryRun: true, trimPreview });
     }
 
     // No confirmTrim → run a preview; if trim is needed, require confirmation
     if (!confirmTrim) {
       const newTotal = computeNewTotal(input);
-      const { trimPreview } = await purchaseService.getEditPreview(purchaseId, orgId, newTotal);
+      const { trimPreview } = await purchaseService.getEditPreview(orgId, purchaseId, newTotal);
       if (trimPreview.length > 0) {
         return Response.json({ requiresConfirmation: true, trimPreview });
       }
@@ -65,7 +65,7 @@ export async function PATCH(
 
     // confirmTrim: true OR no trim needed → proceed with normal edit
     const user = await usersService.resolveByClerkId(clerkUserId);
-    const purchase = await purchaseService.update(orgId, purchaseId, input, user.id, role, justification);
+    const purchase = await purchaseService.update(orgId, purchaseId, input, { userId: user.id, role, justification });
 
     return Response.json(purchase);
   } catch (error) {

@@ -2,10 +2,10 @@ import { z } from "zod";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { PurchaseService } from "@/features/purchase/server";
+import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 
 const usersService = new UsersService();
-const purchaseService = new PurchaseService();
+const purchaseService = makePurchaseService();
 
 const purchaseActionSchema = z.object({
   status: z.enum(["POSTED", "VOIDED"]),
@@ -18,7 +18,7 @@ export async function POST(
 ) {
   try {
     const { orgSlug, purchaseId } = await params;
-    const { session, orgId } = await requirePermission(
+    const { session, orgId, role } = await requirePermission(
       "purchases",
       "write",
       orgSlug,
@@ -34,7 +34,7 @@ export async function POST(
     if (status === "POSTED") {
       purchase = await purchaseService.post(orgId, purchaseId, user.id);
     } else {
-      purchase = await purchaseService.void(orgId, purchaseId, user.id, justification);
+      purchase = await purchaseService.void(orgId, purchaseId, { userId: user.id, role, justification });
     }
 
     return Response.json(purchase);
