@@ -129,11 +129,28 @@ export interface ToPurchaseWithDetailsDeps {
   period: PeriodRaw;
   payable?: PayableRaw | null;
   ivaPurchaseBook?: IvaPurchaseBookDTO | null;
+  /**
+   * Caller-computed displayCode (A3-C6a §13.AC-purchase resolution variante 4):
+   * non-DRAFT path = `computeDisplayCode(purchase.purchaseType, purchase.sequenceNumber)`,
+   * DRAFT path = `${TYPE_PREFIXES[purchase.purchaseType]}-DRAFT` polymorphic
+   * fallback per purchaseType discriminator. Caller responsibility null guard
+   * mirror §13.AC HubService A3-C5 SubQ-β + A3-C4a.5 sale paired pattern.
+   */
+  displayCode: string;
 }
 
 // ── Utility: TYPE_PREFIXES per purchaseType (mirror legacy purchase.utils.ts) ─
 
-const TYPE_PREFIXES: Record<PurchaseType, string> = {
+/**
+ * Purchase displayCode prefix lookup exportado para caller responsibility null
+ * guard fallback (A3-C6a §13.AC-purchase variante 4): callers que invocan
+ * `toPurchaseWithDetails` con DRAFT purchases (sequenceNumber=null) construyen
+ * fallback `${TYPE_PREFIXES[purchaseType]}-DRAFT` polymorphic per purchaseType
+ * discriminator (FL/PF/CG/SV asimetría purchase vs sale fixed prefix VG)
+ * mirror A3-C4a.5 sale paired pattern. SubQ-d fail-fast invariant standalone
+ * preservado en `computeDisplayCode` (sigue throwing on null).
+ */
+export const TYPE_PREFIXES: Record<PurchaseType, string> = {
   FLETE: "FL",
   POLLO_FAENADO: "PF",
   COMPRA_GENERAL: "CG",
@@ -244,13 +261,9 @@ export function toPurchaseWithDetails(
   purchase: Purchase,
   deps: ToPurchaseWithDetailsDeps,
 ): PurchaseWithDetails {
-  // computeDisplayCode throws si sequenceNumber null — guard pre-construction
-  // garantiza PurchaseWithDetails.sequenceNumber: number invariant downstream.
-  const displayCode = computeDisplayCode(
-    purchase.purchaseType,
-    purchase.sequenceNumber,
-  );
-
+  // displayCode caller responsibility (A3-C6a §13.AC-purchase variante 4):
+  // caller computa con null guard ternary + ${TYPE_PREFIXES[purchaseType]}-DRAFT
+  // polymorphic fallback DRAFT path mirror A3-C4a.5 sale paired pattern.
   return {
     id: purchase.id,
     organizationId: purchase.organizationId,
@@ -282,7 +295,7 @@ export function toPurchaseWithDetails(
     contact: toContactSummary(deps.contact),
     period: toPeriodSummary(deps.period),
     payable: deps.payable ? toPayableSummary(deps.payable) : null,
-    displayCode,
+    displayCode: deps.displayCode,
     ivaPurchaseBook: deps.ivaPurchaseBook ?? null,
   };
 }
