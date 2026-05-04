@@ -6,7 +6,7 @@ import {
   JournalRepository,
   type JournalEntryWithLines,
 } from "@/features/accounting/server";
-import { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { type VoucherTypeRepository, makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import type {
   AccountingPort,
   AccountReference,
@@ -40,7 +40,7 @@ export class LegacyAccountingAdapter implements AccountingPort {
     accountsRepo?: AccountsRepository;
     journalRepo?: JournalRepository;
     autoEntryGenerator?: AutoEntryGenerator;
-    voucherTypesRepo?: VoucherTypesRepository;
+    voucherTypesRepo?: VoucherTypeRepository;
   }) {
     this.accountsRepo = deps?.accountsRepo ?? new AccountsRepository();
     this.journalRepo = deps?.journalRepo ?? new JournalRepository();
@@ -48,7 +48,7 @@ export class LegacyAccountingAdapter implements AccountingPort {
       deps?.autoEntryGenerator ??
       new AutoEntryGenerator(
         this.accountsRepo,
-        deps?.voucherTypesRepo ?? new VoucherTypesRepository(),
+        deps?.voucherTypesRepo ?? makeVoucherTypeRepository(),
       );
   }
 

@@ -2,7 +2,7 @@ import "server-only";
 
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
-import { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { prisma } from "@/lib/prisma";
 import { FiscalPeriodsReadAdapter } from "@/modules/accounting/infrastructure/fiscal-periods-read.adapter";
 import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
@@ -52,7 +52,7 @@ const repoLike: UnitOfWorkRepoLike = {
 // se reusa entre AutoEntryGenerator (in-tx code→id resolution) y
 // LegacyAccountLookupAdapter (pre-tx id→code resolution) — D-4 lockeada Ciclo 4.
 const accountsRepo = new AccountsRepository();
-const voucherTypesRepo = new VoucherTypesRepository();
+const voucherTypesRepo = makeVoucherTypeRepository();
 const autoEntryGen = new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
 const journalEntriesReadAdapter = new LegacyJournalEntriesReadAdapter();
 const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);

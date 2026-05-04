@@ -1,10 +1,10 @@
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import type {
   AccountingVoucherType,
   VoucherTypesReadPort,
 } from "@/modules/accounting/domain/ports/voucher-types-read.port";
 
-const legacy = new VoucherTypesService();
+const legacy = makeVoucherTypesService();
 
 /**
  * Cross-module narrow map (8→1 field) sobre `VoucherTypesService.getById`.

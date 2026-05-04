@@ -4,12 +4,12 @@ const { mockGetById } = vi.hoisted(() => ({
   mockGetById: vi.fn(),
 }));
 
-// Mock hex factory: the adapter source still imports legacy
-// `VoucherTypesService` (Cat 3 deferred A5-C2b), but the legacy shim's
-// `getById` internally calls `makeVoucherTypesService().getById()` and
-// adapts the entity via `toSnapshot()`. Mocking hex intercepts the chain;
-// mock value must be entity-like with `.toSnapshot()` so `toLegacyShape`
-// produces the legacy POJO shape the adapter narrows.
+// Mock hex factory: post-A5-C2b GREEN cutover the adapter directly imports
+// `makeVoucherTypesService` from hex presentation/server (NO legacy shim
+// chain). `legacy.getById()` returns the hex entity; adapter narrows via
+// primitive `.id` access (mirror #1582 non-breaking primitive-only pattern).
+// Mock value alineado direct hex contract: `.id` at top level — NO
+// `.toSnapshot()` unwrap intermediation needed.
 vi.mock("@/modules/voucher-types/presentation/server", () => ({
   makeVoucherTypesService: () => ({ getById: mockGetById }),
 }));
@@ -40,16 +40,7 @@ describe("VoucherTypesReadAdapter — narrow 8→1 con throw pass-through", () =
 
   it("getById: narrows aggregate to { id } and forwards args (orgId, voucherTypeId)", async () => {
     mockGetById.mockResolvedValue({
-      toSnapshot: () => ({
-        id: "vt-1",
-        organizationId: "org-1",
-        code: "FA",
-        prefix: "FA-A",
-        name: "Factura A",
-        description: "Factura tipo A",
-        isActive: true,
-        isAdjustment: false,
-      }),
+      id: "vt-1",
     });
 
     const adapter = new VoucherTypesReadAdapter();
