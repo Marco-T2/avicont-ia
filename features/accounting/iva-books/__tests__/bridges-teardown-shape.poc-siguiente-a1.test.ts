@@ -6,9 +6,22 @@
  * en A2-C3 GREEN atomic batch sub-paso 2 → ENOENT exception. Subsumed por file
  * existence assertion en `legacy-class-deletion-shape.poc-siguiente-a2.test.ts`
  * (file no existe ⇒ no declara interfaces). IVA_SERVICE_PATH constant removed
- * mismo RED commit. Resultado post-A2-C3: 3 tests A1 (Tests 1, 3, 4) en este
- * archivo + 12 tests A2 (Tests 1-4 A2-C1+C1.5 + Tests 5-12 A2-C3) en el sister
- * shape file.
+ * mismo RED commit.
+ *
+ * **A3-C7 update (lección A6 #5 §13.A3-C7-α)**: Test 4 DROPPED mismo RED commit
+ * A3-C7 porque leía `features/sale/sale.service.ts` via fs.readFileSync — file
+ * será deleted en A3-C7 GREEN atomic batch sub-paso 1 → ENOENT exception
+ * (mirror exact §13.N A2-C3 pattern, lección A6 #5 empirical validation 2da
+ * evidencia formal). Subsumed por file existence assertion Test 1 en
+ * `c7-legacy-sale-deletion-shape.poc-nuevo-a3.test.ts` (file no existe ⇒ no
+ * declara interface, redundancia trivial). SALE_SERVICE_PATH constant removed
+ * mismo RED commit.
+ *
+ * Resultado post-A3-C7: 2 tests A1 (Tests 1 + 3) en este archivo + 12 tests
+ * A2 (Tests 1-4 A2-C1+C1.5 + Tests 5-12 A2-C3) en sister shape file
+ * `legacy-class-deletion-shape.poc-siguiente-a2.test.ts` + 8 tests A3-C7 en
+ * sister shape file `c7-legacy-sale-deletion-shape.poc-nuevo-a3.test.ts`
+ * (cumulative file existence assertions cross-feature legacy retirement).
  *
  * Expected failure cumulative ORIGINAL (RED justificado, TS-N/A runtime assertion × 8):
  *
@@ -82,10 +95,9 @@ const PURCHASE_SERVICE_PATH = path.join(
   "features/purchase/purchase.service.ts",
 );
 
-const SALE_SERVICE_PATH = path.join(
-  REPO_ROOT,
-  "features/sale/sale.service.ts",
-);
+// SALE_SERVICE_PATH constant REMOVED en A3-C7 RED commit (lección A6 #5
+// §13.A3-C7-α): consumido únicamente por Test 4 DROPPED — `features/sale/
+// sale.service.ts` será deleted A3-C7 GREEN atomic batch sub-paso 1.
 
 describe("POC siguiente A1 — bridges teardown shape assertion", () => {
   it("purchases/[purchaseId]/route.ts no longer instantiates legacy IvaBooksService", () => {
@@ -114,11 +126,14 @@ describe("POC siguiente A1 — bridges teardown shape assertion", () => {
     );
   });
 
-  it("sale.service.ts no longer wires IvaBooksServiceForSaleCascade outbound (asimetría C2)", () => {
-    const source = fs.readFileSync(SALE_SERVICE_PATH, "utf8");
-    expect(source).not.toMatch(/interface\s+IvaBooksServiceForSaleCascade/);
-    expect(source).not.toMatch(
-      /this\.ivaBooksService\.recomputeFromSaleCascade/,
-    );
-  });
+  // Test 4 DROPPED en A3-C7 RED commit (lección A6 #5 §13.A3-C7-α): shape
+  // test prev sub-fase NO self-contained contra A3-C7 atomic delete `features/
+  // sale/sale.service.ts`. Original verificaba `sale.service.ts no longer
+  // wires IvaBooksServiceForSaleCascade outbound (asimetría C2)` via
+  // fs.readFileSync(SALE_SERVICE_PATH, "utf8") — post-delete → ENOENT
+  // exception (assertion fails by exception, NO `not.toMatch` clean).
+  // Subsumed por file existence assertion Test 1 en `c7-legacy-sale-deletion-
+  // shape.poc-nuevo-a3.test.ts` (file no existe ⇒ no declara interface,
+  // redundancia trivial). SALE_SERVICE_PATH constant removed mismo RED commit.
+  // Mirror exact §13.N A2-C3 pattern (Test 2 DROPPED bloque arriba).
 });
