@@ -4,7 +4,7 @@ import { DispatchService } from "@/features/dispatch/server";
 import { ContactsService } from "@/features/contacts/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { ProductTypesService } from "@/features/product-types/server";
-import { OrgSettingsService } from "@/features/org-settings/server";
+import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import DispatchForm from "@/components/dispatches/dispatch-form";
 
 interface DispatchDetailPageProps {
@@ -28,7 +28,7 @@ export default async function DispatchDetailPage({
   const contactsService = new ContactsService();
   const periodsService = new FiscalPeriodsService();
   const productTypesService = new ProductTypesService();
-  const orgSettingsService = new OrgSettingsService();
+  const orgSettingsService = makeOrgSettingsService();
 
   let dispatch;
   try {
@@ -41,7 +41,7 @@ export default async function DispatchDetailPage({
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
     periodsService.list(orgId),
     productTypesService.list(orgId, { isActive: true }),
-    orgSettingsService.getOrCreate(orgId),
+    orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
   ]);
 
   // Open periods for editing; ensure current dispatch period is included even if closed

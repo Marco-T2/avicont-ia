@@ -57,12 +57,11 @@ vi.mock("@/features/product-types/server", () => {
   return { ProductTypesService };
 });
 
-vi.mock("@/features/org-settings/server", () => {
-  class OrgSettingsService {
-    getOrCreate = mockOrgSettingsGetOrCreate;
-  }
-  return { OrgSettingsService };
-});
+vi.mock("@/modules/org-settings/presentation/server", () => ({
+  makeOrgSettingsService: () => ({
+    getOrCreate: mockOrgSettingsGetOrCreate,
+  }),
+}));
 
 vi.mock("@/components/dispatches/dispatch-form", () => ({
   default: vi.fn().mockReturnValue(null),
@@ -87,7 +86,9 @@ beforeEach(() => {
   mockContactsList.mockResolvedValue([]);
   mockPeriodsList.mockResolvedValue([]);
   mockProductTypesList.mockResolvedValue([]);
-  mockOrgSettingsGetOrCreate.mockResolvedValue({ roundingThreshold: "0" });
+  mockOrgSettingsGetOrCreate.mockResolvedValue({
+    toSnapshot: () => ({ roundingThreshold: "0" }),
+  });
 });
 
 describe("/dispatches/[dispatchId] — rbac gate", () => {

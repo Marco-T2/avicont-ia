@@ -5,7 +5,7 @@ import { ContactsService } from "@/features/contacts/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
 import { AccountsRepository } from "@/features/accounting/server";
-import { OrgSettingsService } from "@/features/org-settings/server";
+import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import PaymentForm from "@/components/payments/payment-form";
 
 interface PaymentDetailPageProps {
@@ -29,7 +29,7 @@ export default async function PaymentDetailPage({
   const contactsService = new ContactsService();
   const periodsService = new FiscalPeriodsService();
   const docTypesService = new OperationalDocTypesService();
-  const orgSettingsService = new OrgSettingsService();
+  const orgSettingsService = makeOrgSettingsService();
   const accountsRepo = new AccountsRepository();
 
   let payment;
@@ -43,7 +43,7 @@ export default async function PaymentDetailPage({
     contactsService.list(orgId),
     periodsService.list(orgId),
     docTypesService.list(orgId, { isActive: true }),
-    orgSettingsService.getOrCreate(orgId),
+    orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
   ]);
 
   const openPeriods = periods.filter((p) => p.status === "OPEN");

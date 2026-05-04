@@ -2,11 +2,11 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { OrgSettingsService } from "@/features/org-settings/server";
+import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import { Button } from "@/components/ui/button";
 import { OrgSettingsForm } from "@/components/settings/org-settings-form";
 
-const settingsService = new OrgSettingsService();
+const settingsService = makeOrgSettingsService();
 
 interface SettingsGeneralPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -29,7 +29,7 @@ export default async function SettingsGeneralPage({
     redirect(`/${orgSlug}`);
   }
 
-  const settings = await settingsService.getOrCreate(orgId);
+  const settings = (await settingsService.getOrCreate(orgId)).toSnapshot();
 
   return (
     <div className="space-y-6">

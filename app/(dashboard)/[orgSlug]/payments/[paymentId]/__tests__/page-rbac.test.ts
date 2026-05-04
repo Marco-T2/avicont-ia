@@ -71,12 +71,11 @@ vi.mock("@/features/accounting/server", () => {
   return { AccountsRepository };
 });
 
-vi.mock("@/features/org-settings/server", () => {
-  class OrgSettingsService {
-    getOrCreate = mockOrgSettingsGetOrCreate;
-  }
-  return { OrgSettingsService };
-});
+vi.mock("@/modules/org-settings/presentation/server", () => ({
+  makeOrgSettingsService: () => ({
+    getOrCreate: mockOrgSettingsGetOrCreate,
+  }),
+}));
 
 vi.mock("@/components/payments/payment-form", () => ({
   default: vi.fn().mockReturnValue(null),
@@ -98,11 +97,13 @@ beforeEach(() => {
   mockPeriodsList.mockResolvedValue([]);
   mockDocTypesList.mockResolvedValue([]);
   mockOrgSettingsGetOrCreate.mockResolvedValue({
-    cashParentCode: "1.1.1",
-    pettyCashParentCode: "1.1.2",
-    bankParentCode: "1.1.3",
-    cajaGeneralAccountCode: "1.1.1.01",
-    bancoAccountCode: "1.1.3.01",
+    toSnapshot: () => ({
+      cashParentCode: "1.1.1",
+      pettyCashParentCode: "1.1.2",
+      bankParentCode: "1.1.3",
+      cajaGeneralAccountCode: "1.1.1.01",
+      bancoAccountCode: "1.1.3.01",
+    }),
   });
   mockAccountsFindChildren.mockResolvedValue([]);
 });

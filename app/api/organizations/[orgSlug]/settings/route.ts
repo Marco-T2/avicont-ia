@@ -1,9 +1,9 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { OrgSettingsService } from "@/features/org-settings/server";
-import { updateOrgSettingsSchema } from "@/features/org-settings";
+import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
+import { updateOrgSettingsSchema } from "@/modules/org-settings/presentation";
 
-const orgSettingsService = new OrgSettingsService();
+const orgSettingsService = makeOrgSettingsService();
 
 export async function GET(
   _request: Request,
@@ -15,7 +15,7 @@ export async function GET(
 
     const settings = await orgSettingsService.getOrCreate(orgId);
 
-    return Response.json(settings);
+    return Response.json(settings.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
@@ -34,7 +34,7 @@ export async function PATCH(
 
     const settings = await orgSettingsService.update(orgId, input);
 
-    return Response.json(settings);
+    return Response.json(settings.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
