@@ -948,8 +948,33 @@ POC nuevo dedicado A3 "cleanup `features/{sale,purchase}/` load-bearing + cumula
 - **Routes nuevas added POC nuevo A3**: 0 — POC nuevo A3 fue cumulative cutover (composition root `makeService` factory + DTO mappers + DELETE legacy class instantiations), NO surface API growth.
 - **Routes editadas POC nuevo A3**: sale routes 3+4 (A3-C5 cutover `sales/[saleId]/route.ts` PATCH + `sales/[saleId]/status/route.ts` POST → hex composition root) + purchase routes 3+4 (A3-C6c cutover `purchases/[purchaseId]/route.ts` PATCH + `purchases/[purchaseId]/status/route.ts` POST → hex composition root). 0 routes añaden `correlationId` al body — verify runtime grep `Response\.json\(\s*\{\s*\.\.\.[^,]+,\s*correlationId` returned 0 matches PROD app/ paths. Modificaciones se limitaron a (a) replace `new SaleService()`/`new PurchaseService()` legacy con `makeSaleService()`/`makePurchaseService()` composition root + (b) replace import `@/features/sale/server`/`@/features/purchase/server` con `@/modules/{sale,purchase}/presentation/composition-root` + (c) signature swaps object-DI vs positional + (d) `Response.json` raw entity preserved (NO mapper invocation routes mutation per consumer behavior `purchase-form.tsx`/`sale-form.tsx` mutation handlers NO consume body solo `response.ok`).
 - **Convención §20 preservada**: leak shape NO regressed. 32 commits cumulative POC nuevo A3 verify clean contra `Response.json({ ...result, correlationId })` pattern.
-- **D5 PATCH/POST mismatch defer POC futuro paridad fix sale + purchase paired**: sale `sales/[saleId]/status/route.ts:15` POST vs client `sale-form.tsx` PATCH + purchase `purchases/[purchaseId]/status/route.ts:15` POST vs client `purchase-form.tsx:564,590` PATCH mismatches paired. Documentation A3-D3 sub-fase doc-only post-mortem + defer POC futuro dedicado fix paridad ambos features (out-of-scope POC nuevo A3 entrega). Cross-ref engram bookmark POC futuro candidate.
+- **D5 PATCH/POST mismatch defer POC futuro paridad fix sale + purchase paired**: sale `sales/[saleId]/status/route.ts:10` POST vs client `sale-form.tsx:344,454` PATCH (handlePost + handleVoid) + purchase `purchases/[purchaseId]/status/route.ts:15` POST vs client `purchase-form.tsx:564,590` PATCH (handlePost + handleVoid) mismatches paired. Documentation A3-D3 sub-fase doc-only post-mortem ✅ §21.1 (line refs sale corregidos `:15`→`:10` retroactivo §13.A3-D3-α drift cumulative arithmetic engram chain — 3ra evidencia paired sister §13.A3-C7-γ + §13.A3-C8-δ engram-only). Cross-ref §21 + engram `poc-futuro/d5-patch-post-mismatch-paridad-fix` POC futuro candidate.
 
 Pattern application coherente §20.1 forward: cualquier hex route futura POCs siguientes inmediatos (~12 features remaining: IVA books / payables / receivables / journal entries / fiscal periods / accounts / org settings / contacts / dispatches / shipments / wage / etc.) DEBE auditarse contra leak shape pre-merge. Strip atómico mismo edit que toque la route. Lección #14 runtime verify pre-cementación architecture.md aplicable cumulative arithmetic claims POC future closures (Suite/TSC/ESLint/file counts).
 
 - **Complementa**: §3 (reglas duras) — convención HTTP-layer specific, no reemplaza R1-R9; §8 (anti-patrones) — leak abstracción audit en API surface.
+
+---
+
+## 21. Bugs latentes documentados defer POC futuro
+
+Bugs estructurales detectados durante POC nuevo A3 doc-only post-mortem cumulative que NO bloquean POC entrega y se difieren a POC futuro dedicado. Documentation aquí preserva auditabilidad cross-feature paired pre-fix — auditable cualquier sub-fase futura via grep `§21.N`.
+
+### 21.1. D5 PATCH/POST mismatch sale + purchase paired (defer POC futuro paridad fix)
+
+Routes `/status` y client mutation handlers desacoplados — bug latente paired ambos features sale + purchase:
+
+| Endpoint / Caller | Path | Línea | Método HTTP |
+|---|---|---|---|
+| Route handler sale | `app/api/organizations/[orgSlug]/sales/[saleId]/status/route.ts` | 10 | `POST` |
+| Route handler purchase | `app/api/organizations/[orgSlug]/purchases/[purchaseId]/status/route.ts` | 15 | `POST` |
+| Client caller sale `handlePost` | `components/sales/sale-form.tsx` | 344 | `PATCH` |
+| Client caller sale `handleVoid` | `components/sales/sale-form.tsx` | 454 | `PATCH` |
+| Client caller purchase `handlePost` | `components/purchases/purchase-form.tsx` | 564 | `PATCH` |
+| Client caller purchase `handleVoid` | `components/purchases/purchase-form.tsx` | 590 | `PATCH` |
+
+**Ground truth REST**: status transition (POSTED/VOIDED) es state mutation parcial — `PATCH` es semánticamente correcto cliente-side. Routes deben migrar a `export async function PATCH` (o aceptar ambos métodos si retro-compat necesaria).
+
+**Cobertura runtime ZERO**: directorios `[saleId]/status/` y `[purchaseId]/status/` NO contienen `__tests__/` sibling — bug latente sin runtime test que detecte.
+
+**Cross-ref**: §20.5 (mention parcial originada A3-D1) + engram `poc-futuro/d5-patch-post-mismatch-paridad-fix` (POC futuro candidate fix paridad ambos features sale + purchase paired — out-of-scope POC nuevo A3 entrega).
