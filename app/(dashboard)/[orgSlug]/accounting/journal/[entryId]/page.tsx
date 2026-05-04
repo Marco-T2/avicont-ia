@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { JournalService } from "@/features/accounting/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryDetail from "@/components/accounting/journal-entry-detail";
 
 interface EntryDetailPageProps {
@@ -24,7 +24,7 @@ export default async function EntryDetailPage({
 
   const journalService = new JournalService();
   const periodsService = new FiscalPeriodsService();
-  const voucherTypesService = new VoucherTypesService();
+  const voucherTypesService = makeVoucherTypesService();
 
   let entry;
   try {

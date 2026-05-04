@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { AccountsService } from "@/features/accounting/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryForm from "@/components/accounting/journal-entry-form";
 
 interface NewJournalEntryPageProps {
@@ -24,12 +24,14 @@ export default async function NewJournalEntryPage({
 
   const accountsService = new AccountsService();
   const periodsService = new FiscalPeriodsService();
-  const voucherTypesService = new VoucherTypesService();
+  const voucherTypesService = makeVoucherTypesService();
 
   const [accounts, periods, voucherTypes] = await Promise.all([
     accountsService.list(orgId),
     periodsService.list(orgId),
-    voucherTypesService.list(orgId),
+    voucherTypesService
+      .list(orgId)
+      .then((entities) => entities.map((vt) => vt.toSnapshot())),
   ]);
 
   return (

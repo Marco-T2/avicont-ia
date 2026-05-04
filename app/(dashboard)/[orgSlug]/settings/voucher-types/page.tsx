@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { Button } from "@/components/ui/button";
 import VoucherTypesManager from "@/components/settings/voucher-types-manager";
 
@@ -21,8 +21,10 @@ export default async function VoucherTypesPage({ params }: VoucherTypesPageProps
     redirect(`/${orgSlug}`);
   }
 
-  const service = new VoucherTypesService();
-  const voucherTypes = await service.list(orgId, { includeCounts: true });
+  const service = makeVoucherTypesService();
+  const voucherTypes = (
+    await service.list(orgId, { includeCounts: true })
+  ).map((vt) => vt.toSnapshot());
 
   return (
     <div className="space-y-6">
@@ -49,7 +51,7 @@ export default async function VoucherTypesPage({ params }: VoucherTypesPageProps
           prefix: vt.prefix,
           description: vt.description,
           isActive: vt.isActive,
-          _count: (vt as { _count?: { journalEntries: number } })._count,
+          _count: vt._count,
         }))}
       />
     </div>

@@ -39,12 +39,9 @@ vi.mock("@/features/fiscal-periods/server", () => {
   return { FiscalPeriodsService };
 });
 
-vi.mock("@/features/voucher-types/server", () => {
-  class VoucherTypesService {
-    list = mockVoucherTypesList;
-  }
-  return { VoucherTypesService };
-});
+vi.mock("@/modules/voucher-types/presentation/server", () => ({
+  makeVoucherTypesService: () => ({ list: mockVoucherTypesList }),
+}));
 
 vi.mock("@/components/accounting/journal-entry-list", () => ({
   default: vi.fn().mockReturnValue(null),

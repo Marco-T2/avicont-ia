@@ -1,9 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
-import { createVoucherTypeSchema } from "@/features/voucher-types/server";
+import {
+  makeVoucherTypesService,
+  createVoucherTypeSchema,
+} from "@/modules/voucher-types/presentation/server";
 
-const service = new VoucherTypesService();
+const service = makeVoucherTypesService();
 
 export async function GET(
   request: Request,
@@ -20,7 +22,9 @@ export async function GET(
       includeCounts: true,
     };
 
-    const types = await service.list(orgId, options);
+    const types = (await service.list(orgId, options)).map((vt) =>
+      vt.toSnapshot(),
+    );
 
     return Response.json(types);
   } catch (error) {
@@ -39,7 +43,7 @@ export async function POST(
     const body = await request.json();
     const input = createVoucherTypeSchema.parse(body);
 
-    const created = await service.create(orgId, input);
+    const created = (await service.create(orgId, input)).toSnapshot();
 
     return Response.json(created, { status: 201 });
   } catch (error) {

@@ -19,7 +19,7 @@ import {
 } from "@/features/ai-agent/server";
 import { requirePermission } from "@/features/permissions/server";
 import { JournalService, parseEntryDate } from "@/features/accounting/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import {
   ValidationError,
@@ -34,7 +34,7 @@ const rateLimitService = new AgentRateLimitService();
 const expensesService = new ExpensesService();
 const mortalityService = new MortalityService();
 const journalService = new JournalService();
-const voucherTypesService = new VoucherTypesService();
+const voucherTypesService = makeVoucherTypesService();
 const fiscalPeriodsService = new FiscalPeriodsService();
 
 export async function POST(
@@ -231,10 +231,9 @@ async function handleCreateJournalEntryConfirm(
 
   // Resolver voucherTypeCode → voucherTypeId desde el catálogo del seed.
   const voucherTypeCode = deriveVoucherTypeCode(validated.template);
-  const voucherType = await voucherTypesService.getByCode(
-    organizationId,
-    voucherTypeCode,
-  );
+  const voucherType = (
+    await voucherTypesService.getByCode(organizationId, voucherTypeCode)
+  ).toSnapshot();
 
   // Resolver fecha → periodId. Extraemos solo la parte de fecha calendario
   // (YYYY-MM-DD) e ignoramos el componente de tiempo y offset. Esto evita que

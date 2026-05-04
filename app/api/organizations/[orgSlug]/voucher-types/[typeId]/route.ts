@@ -1,9 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
-import { updateVoucherTypeSchema } from "@/features/voucher-types/server";
+import {
+  makeVoucherTypesService,
+  updateVoucherTypeSchema,
+} from "@/modules/voucher-types/presentation/server";
 
-const service = new VoucherTypesService();
+const service = makeVoucherTypesService();
 
 export async function PATCH(
   request: Request,
@@ -16,7 +18,7 @@ export async function PATCH(
     const body = await request.json();
     const input = updateVoucherTypeSchema.parse(body);
 
-    const updated = await service.update(orgId, typeId, input);
+    const updated = (await service.update(orgId, typeId, input)).toSnapshot();
 
     return Response.json(updated);
   } catch (error) {

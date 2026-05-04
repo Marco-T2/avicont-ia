@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import CorrelationAuditView from "@/components/accounting/correlation-audit-view";
 
 interface CorrelationAuditPageProps {
@@ -20,8 +20,10 @@ export default async function CorrelationAuditPage({
     redirect(`/${orgSlug}`);
   }
 
-  const voucherTypesService = new VoucherTypesService();
-  const voucherTypes = await voucherTypesService.list(orgId);
+  const voucherTypesService = makeVoucherTypesService();
+  const voucherTypes = (await voucherTypesService.list(orgId)).map((vt) =>
+    vt.toSnapshot(),
+  );
 
   return (
     <div className="space-y-6">

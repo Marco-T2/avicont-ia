@@ -17,13 +17,20 @@ vi.mock("@/features/shared/middleware", () => ({
   ),
 }));
 
-// Mock VoucherTypesService to avoid unrelated DB calls
-vi.mock("@/features/voucher-types/server", () => {
-  class VoucherTypesService {
-    seedForOrg = vi.fn().mockResolvedValue([]);
-  }
-  return { VoucherTypesService };
-});
+// Mock hex voucher-types factory to avoid unrelated DB calls. Source
+// `app/api/organizations/route.ts` does NOT import voucher-types directly;
+// the transitive call comes from `features/organizations/organizations.service.ts`
+// (Cat 3 deferred A5-C2a). The legacy shim's `seedForOrg` internally
+// delegates to `makeVoucherTypesServiceForTx(tx).seedForOrg()`, so mocking
+// the hex factory intercepts both direct and transitive consumers.
+vi.mock("@/modules/voucher-types/presentation/server", () => ({
+  makeVoucherTypesService: () => ({
+    seedForOrg: vi.fn().mockResolvedValue([]),
+  }),
+  makeVoucherTypesServiceForTx: () => ({
+    seedForOrg: vi.fn().mockResolvedValue([]),
+  }),
+}));
 
 // Mock prisma
 vi.mock("@/lib/prisma", () => {

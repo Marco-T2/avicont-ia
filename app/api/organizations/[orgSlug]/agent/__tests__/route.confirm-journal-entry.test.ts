@@ -98,8 +98,8 @@ vi.mock("@/features/accounting/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/voucher-types/server", () => ({
-  VoucherTypesService: vi.fn().mockImplementation(function () {
+vi.mock("@/modules/voucher-types/presentation/server", () => ({
+  makeVoucherTypesService: vi.fn().mockImplementation(function () {
     return { getByCode: mockGetVoucherByCode };
   }),
 }));
@@ -186,11 +186,16 @@ beforeEach(() => {
     orgId: ORG_ID,
     role: "contador",
   });
+  // Hex factory `getByCode` returns a `VoucherType` entity. Source applies
+  // `.toSnapshot()` adapter (§13.A5-γ pattern 4) before reading `.prefix`.
+  // Mock returns entity-like with toSnapshot() to match the cutover contract.
   mockGetVoucherByCode.mockResolvedValue({
-    id: "vt-CE",
-    code: "CE",
-    prefix: "E",
-    name: "Comprobante de Egreso",
+    toSnapshot: () => ({
+      id: "vt-CE",
+      code: "CE",
+      prefix: "E",
+      name: "Comprobante de Egreso",
+    }),
   });
   mockFindPeriodByDate.mockResolvedValue({
     id: "period-2026-04",
@@ -400,10 +405,12 @@ describe("POST /api/organizations/[orgSlug]/agent?action=confirm — createJourn
 
   it("(h) bank_deposit usa voucherTypeCode='CI' (no 'CE')", async () => {
     mockGetVoucherByCode.mockResolvedValueOnce({
-      id: "vt-CI",
-      code: "CI",
-      prefix: "I",
-      name: "Comprobante de Ingreso",
+      toSnapshot: () => ({
+        id: "vt-CI",
+        code: "CI",
+        prefix: "I",
+        name: "Comprobante de Ingreso",
+      }),
     });
     const data = {
       template: "bank_deposit",

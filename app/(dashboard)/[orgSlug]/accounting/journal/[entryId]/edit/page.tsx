@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { JournalService, AccountsService } from "@/features/accounting/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryForm from "@/components/accounting/journal-entry-form";
 
 interface EditJournalEntryPageProps {
@@ -25,7 +25,7 @@ export default async function EditJournalEntryPage({
   const journalService = new JournalService();
   const accountsService = new AccountsService();
   const periodsService = new FiscalPeriodsService();
-  const voucherTypesService = new VoucherTypesService();
+  const voucherTypesService = makeVoucherTypesService();
 
   let entry;
   try {
@@ -47,7 +47,9 @@ export default async function EditJournalEntryPage({
   const [accounts, periods, voucherTypes] = await Promise.all([
     accountsService.list(orgId),
     periodsService.list(orgId),
-    voucherTypesService.list(orgId),
+    voucherTypesService
+      .list(orgId)
+      .then((entities) => entities.map((vt) => vt.toSnapshot())),
   ]);
 
   // Period-gate: closed periods make entries immutable (same rule as sales/purchases).

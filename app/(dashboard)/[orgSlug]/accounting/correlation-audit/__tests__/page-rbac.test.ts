@@ -18,12 +18,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/voucher-types/server", () => {
-  class VoucherTypesService {
-    list = mockVoucherTypesList;
-  }
-  return { VoucherTypesService };
-});
+vi.mock("@/modules/voucher-types/presentation/server", () => ({
+  makeVoucherTypesService: () => ({ list: mockVoucherTypesList }),
+}));
 
 vi.mock("@/components/accounting/correlation-audit-view", () => ({
   default: vi.fn().mockReturnValue(null),
