@@ -52,9 +52,9 @@ import type {
  * - architecture.md §13.T DTO shape divergence Sale entity vs SaleWithDetails
  * - architecture.md §13.V allowTypeImports presentation carve-out (A3-C1.5)
  * - engram bookmark `poc-nuevo/a3/c3/locked` Marco locks Q1-Q6 + SubQ-a–h
- * - features/sale/sale.repository.ts:30-58 (legacy saleInclude shape source completo)
- * - features/sale/sale.service.ts:124-130 (legacy withDisplayCode pattern reference)
- * - features/sale/sale.utils.ts:getDisplayCode (computeDisplayCode formula `VG-NNN`)
+ * - legacy saleInclude shape source completo (post-A3-C7 atomic delete commit ad36da2)
+ * - legacy withDisplayCode pattern reference (post-A3-C7 atomic delete)
+ * - legacy getDisplayCode formula `VG-NNN` (post-A3-C7 atomic delete)
  * - modules/sale/presentation/dto/sale-with-details.ts (target shape destination)
  * - modules/sale/application/sale.service.ts:94-105 (hex .list/.getById return Sale entity)
  */
@@ -62,7 +62,7 @@ import type {
 // ── Types: Prisma raw shapes mirror legacy `saleInclude` ───────────────────────
 //
 // External dep input shapes corresponden 1:1 a legacy `saleInclude` Prisma select
-// projections (`features/sale/sale.repository.ts:30-58`). Caller carga estos
+// projections (legacy saleInclude — post-A3-C7 atomic delete). Caller carga estos
 // shapes via Prisma queries (typically con `select` matching estos fields).
 
 export type ContactRaw = {

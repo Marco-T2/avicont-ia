@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 /**
- * Validates sale presentation inputs (create, update, filter, status). Migrado
- * bit-exact desde `features/sale/sale.validation.ts` (POC #11.0a A5 β Ciclo 2).
+ * Validates sale presentation inputs (create, update, filter, status) — migrado
+ * bit-exact (POC #11.0a A5 β + POC nuevo A3-C7 atomic delete commit ad36da2).
  */
 
 const saleDetailSchema = z.object({

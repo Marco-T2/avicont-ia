@@ -184,10 +184,10 @@ describe("PurchaseService.list", () => {
    * Audit-5 D-A3-2 RED — paridad legacy regla #1 invariante D-A3-2.
    *
    * Schema Purchase tiene `purchaseType` discriminator (4 valores: FLETE,
-   * POLLO_FAENADO, COMPRA_GENERAL, SERVICIO). Legacy
-   * `features/purchase/purchase.repository.ts:124` aplica filtro `if
-   * (filters?.purchaseType) where.purchaseType = filters.purchaseType` antes
-   * del `findMany`. Consumer real:
+   * POLLO_FAENADO, COMPRA_GENERAL, SERVICIO). Legacy purchase.repository
+   * aplicaba filtro `if (filters?.purchaseType) where.purchaseType =
+   * filters.purchaseType` antes del `findMany` (post-A3-C8 atomic delete
+   * commit 4aa8480). Consumer real:
    * `app/api/organizations/[orgSlug]/purchases/route.ts:23` lee
    * `searchParams.get("purchaseType")` y lo pasa vía
    * `purchaseFiltersSchema.parse` → `purchaseService.list(orgId, filters)`
@@ -709,8 +709,8 @@ describe("PurchaseService.post", () => {
    * Audit-4 D-A3-1 RED — paridad legacy regla #1 invariante D-A3-1.
    *
    * Schema `@@unique([organizationId, purchaseType, sequenceNumber])` + legacy
-   * `features/purchase/purchase.repository.ts:163-172` (`where: { organizationId,
-   * purchaseType }` filter antes del `MAX(sequenceNumber)+1`) +
+   * purchase.repository (`where: { organizationId, purchaseType }` filter antes
+   * del `MAX(sequenceNumber)+1` — post-A3-C8 atomic delete commit 4aa8480) +
    * Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven en la
    * misma org sin colisión) imponen secuencias INDEPENDIENTES por purchaseType.
    *

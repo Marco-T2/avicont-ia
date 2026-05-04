@@ -1,9 +1,8 @@
 import { z } from "zod";
 
 /**
- * Validates purchase presentation inputs (create, update, filter). Migrado
- * bit-exact desde `features/purchase/purchase.validation.ts` (POC nuevo A3
- * Ciclo 1).
+ * Validates purchase presentation inputs (create, update, filter) — migrado
+ * bit-exact (POC nuevo A3-C1 + atomic delete A3-C8 commit 4aa8480).
  *
  * Mirror sale precedent `modules/sale/presentation/schemas/sale.schemas.ts`
  * (POC #11.0a A5 β Ciclo 2) modulo Q5 lock Marco (a) mirror legacy estricto:

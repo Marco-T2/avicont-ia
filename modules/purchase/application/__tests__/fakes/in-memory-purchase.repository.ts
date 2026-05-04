@@ -12,8 +12,8 @@ import type {
  * Asimetría vs `InMemorySaleRepository` (audit-4 D-A3-1):
  * `getNextSequenceNumberTx` scoped por (`organizationId`, `purchaseType`) —
  * schema `@@unique([organizationId, purchaseType, sequenceNumber])` + paridad
- * legacy regla #1 (`features/purchase/purchase.repository.ts:163-172`) +
- * Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven).
+ * legacy regla #1 (legacy purchase.repository — post-A3-C8 atomic delete commit
+ * 4aa8480) + Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven).
  */
 export class InMemoryPurchaseRepository implements PurchaseRepository {
   private readonly store = new Map<string, Purchase>();

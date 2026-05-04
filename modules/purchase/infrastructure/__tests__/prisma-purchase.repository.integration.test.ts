@@ -28,8 +28,8 @@ type PurchaseRowWithDetails = Prisma.PurchaseGetPayload<{
  * queries directas sobre `Pick<PrismaClient, "purchase" | "purchaseDetail">`.
  *
  * D-A3-1 audit-4 locked: getNextSequenceNumberTx scoped por (organizationId,
- * purchaseType) — paridad legacy `features/purchase/purchase.repository.ts:163-172`
- * + schema `@@unique([organizationId, purchaseType, sequenceNumber])`.
+ * purchaseType) — paridad legacy purchase.repository (post-A3-C8 atomic delete
+ * commit 4aa8480) + schema `@@unique([organizationId, purchaseType, sequenceNumber])`.
  */
 
 describe("PrismaPurchaseRepository — Postgres integration", () => {
@@ -283,7 +283,8 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
 
   it("findAll: filters status + contactId + dateFrom narrow correctly", async () => {
     // RED honesty: pre-GREEN stub throw. Post-GREEN: WHERE compone status +
-    // contactId + date.gte como legacy `features/purchase/purchase.repository.ts:124-133`.
+    // contactId + date.gte como legacy purchase.repository (post-A3-C8 atomic
+    // delete commit 4aa8480).
     await seedPurchaseDirect("DRAFT", 0);
     await seedPurchaseDirect("POSTED", 1);
     const repo = new PrismaPurchaseRepository();
@@ -472,9 +473,9 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
 
   it("updateTx: replaceDetails:true delete-and-recreate details, totalAmount recalculated", async () => {
     // RED honesty: pre-GREEN stub throw. Post-GREEN: adapter mirror legacy
-    // delete-and-recreate (`features/purchase/purchase.repository.ts:314-322`):
-    // tx.purchaseDetail.deleteMany + createMany con newDetails. Total recalculated
-    // por aggregate.replaceDetails antes del update.
+    // delete-and-recreate (legacy purchase.repository — post-A3-C8 atomic delete
+    // commit 4aa8480): tx.purchaseDetail.deleteMany + createMany con newDetails.
+    // Total recalculated por aggregate.replaceDetails antes del update.
     const id = await seedPurchaseDirect("DRAFT", 0, "FLETE", 3);
 
     const fetched = await prisma.purchase.findFirstOrThrow({
@@ -607,9 +608,9 @@ describe("PrismaPurchaseRepository — Postgres integration", () => {
   it("getNextSequenceNumberTx: returns 1 first call for FLETE, N+1 after seed N", async () => {
     // RED honesty preventivo: pre-GREEN FAILS por stub `getNextSequenceNumberTx`
     // throw "Not implemented yet — pending Cycle 6". Post-GREEN: mirror legacy
-    // MAX+1 SIN row lock (`features/purchase/purchase.repository.ts:163-172`,
-    // fidelidad regla #1). Two calls: empty store → 1; tras seed sequenceNumber=5
-    // → 6.
+    // MAX+1 SIN row lock (legacy purchase.repository — post-A3-C8 atomic delete
+    // commit 4aa8480, fidelidad regla #1). Two calls: empty store → 1; tras seed
+    // sequenceNumber=5 → 6.
     const first = await prisma.$transaction(async (tx) => {
       const repo = new PrismaPurchaseRepository(tx);
       return repo.getNextSequenceNumberTx(testOrgId, "FLETE");

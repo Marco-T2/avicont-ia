@@ -303,9 +303,9 @@ describe("PrismaSaleRepository — Postgres integration", () => {
   it("saveTx: normalizes date to noon UTC (legacy toNoonUtc parity)", async () => {
     // RED honesty (POC #11.0a A3 audit H-01): pre-fix saveTx persiste
     // `sale.date` directo (`prisma-sale.repository.ts:81`). Legacy
-    // `features/sale/sale.repository.ts:160,194 (create/createPostedTx)` aplica
-    // `toNoonUtc(input.date)` → toda row persistida garantiza 12:00 UTC. Sin
-    // fix, el row queda con la hora de input.
+    // sale.repository (create/createPostedTx) aplicaba `toNoonUtc(input.date)` →
+    // toda row persistida garantizaba 12:00 UTC. Sin fix, el row quedaba con la
+    // hora de input. (Legacy post-A3-C7 atomic delete commit ad36da2.)
     // Expected failure: `persisted.date.toISOString()` devuelve
     // `"2099-01-15T14:30:00.000Z"` en vez de `"2099-01-15T12:00:00.000Z"`.
     const draft = Sale.createDraft({
@@ -525,9 +525,9 @@ describe("PrismaSaleRepository — Postgres integration", () => {
   it("updateTx: normalizes date to noon UTC (legacy toNoonUtc parity)", async () => {
     // RED honesty (POC #11.0a A3 audit H-02): pre-fix updateTx persiste
     // `sale.date` directo (`prisma-sale.repository.ts:109`). Legacy
-    // `features/sale/sale.repository.ts:349 (buildUpdateData)` aplica
-    // `toNoonUtc(data.date)`. Sin fix, el path edición rompe la garantía 12:00
-    // UTC del row.
+    // sale.repository (buildUpdateData) aplicaba `toNoonUtc(data.date)`. Sin
+    // fix, el path edición rompía la garantía 12:00 UTC del row. (Legacy
+    // post-A3-C7 atomic delete commit ad36da2.)
     // Expected failure: `persisted.date.toISOString()` devuelve
     // `"2099-02-20T08:15:00.000Z"` en vez de `"2099-02-20T12:00:00.000Z"`.
     const id = await seedSaleDirect("DRAFT", 0);

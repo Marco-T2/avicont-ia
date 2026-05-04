@@ -60,7 +60,7 @@ import type {
  *     cobrar vs pagar — Prisma raw → DTO Decimal→number + nested allocations)
  *   - sale fixed prefix `VG` ↔ purchase TYPE_PREFIXES `FL/PF/CG/SV` per
  *     `PurchaseType` (4 polymorphic discriminators, mirror legacy
- *     `features/purchase/purchase.utils.ts:47-49 getDisplayCode`)
+ *     getDisplayCode formula — post-A3-C8 atomic delete commit 4aa8480)
  *   - sale `toSaleDetailRow` 5 fields ↔ purchase `toPurchaseDetailRow` 12+
  *     optional fields (asimetría discriminator polymorphism)
  *
@@ -71,7 +71,7 @@ import type {
  * - engram bookmark `poc-nuevo/a3/c5-5/locked` Marco Q-final 1-5
  * - engram bookmark `poc-nuevo/a3/c5/closed` (#1534) atomic precedent + computeDisplayCode reuse
  * - engram bookmark `poc-nuevo/a3/c3/locked` (sale precedent Marco locks Q1-Q6 SubQ-a–h)
- * - features/purchase/purchase.utils.ts:47-49 (legacy getDisplayCode formula reference)
+ * - legacy getDisplayCode formula reference (post-A3-C8 atomic delete commit 4aa8480)
  * - modules/purchase/application/purchase.service.ts:46-51 (TYPE_PREFIXES FL/PF/CG/SV)
  * - modules/purchase/application/purchase.service.ts:109-119 (hex .list/.getById return Purchase)
  * - modules/purchase/presentation/dto/purchase-with-details.ts (target shape destination)
@@ -82,8 +82,8 @@ import type {
 // ── Types: Prisma raw shapes mirror legacy `purchaseInclude` ──────────────────
 //
 // External dep input shapes corresponden 1:1 a legacy `purchaseInclude` /
-// `purchaseDetailInclude` Prisma select projections
-// (`features/purchase/purchase.repository.ts:purchaseInclude+purchaseDetailInclude`).
+// `purchaseDetailInclude` Prisma select projections (legacy
+// purchaseInclude+purchaseDetailInclude — post-A3-C8 atomic delete commit 4aa8480).
 // Caller carga estos shapes via Prisma queries (typically con `select`
 // matching estos fields).
 

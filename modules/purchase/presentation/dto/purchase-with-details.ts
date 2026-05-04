@@ -7,8 +7,8 @@ import type {
 import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
 
 /**
- * Hydrates Purchase read-side responses for routes/components (POC nuevo A3
- * Ciclo 1, migrado bit-exact desde `features/purchase/purchase.types.ts`).
+ * Hydrates Purchase read-side responses for routes/components — migrado
+ * bit-exact (POC nuevo A3-C1 + atomic delete A3-C8 commit 4aa8480).
  *
  * Mirror sale precedent `modules/sale/presentation/dto/sale-with-details.ts`
  * (POC #11.0a A5 β Ciclo 3) — paridad arquitectónica + paridad bit-exact con

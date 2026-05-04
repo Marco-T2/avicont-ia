@@ -8,9 +8,9 @@ import {
 } from "../sale.schemas";
 
 /**
- * Zod presentation schemas migrados desde `features/sale/sale.validation.ts`
- * (POC #11.0a A5 β Ciclo 2). Cobertura mínima por schema: 1 parse válido +
- * 1+ inválidos por requirement crítico — paridad bit-exact con legacy.
+ * Zod presentation schemas migrados bit-exact (POC #11.0a A5 β + POC nuevo
+ * A3-C7 atomic delete commit ad36da2). Cobertura mínima por schema: 1 parse
+ * válido + 1+ inválidos por requirement crítico — paridad bit-exact con legacy.
  */
 
 describe("Sale presentation schemas", () => {

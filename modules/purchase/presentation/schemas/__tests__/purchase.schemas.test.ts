@@ -7,8 +7,8 @@ import {
 } from "../purchase.schemas";
 
 /**
- * Zod presentation schemas migrados desde `features/purchase/purchase.validation.ts`
- * (POC nuevo A3 Ciclo 1). Cobertura mínima por schema: 1 parse válido + 1+
+ * Zod presentation schemas migrados bit-exact (POC nuevo A3-C1 + atomic delete
+ * A3-C8 commit 4aa8480). Cobertura mínima por schema: 1 parse válido + 1+
  * inválidos por requirement crítico — paridad bit-exact con legacy.
  *
  * Mirror sale precedent

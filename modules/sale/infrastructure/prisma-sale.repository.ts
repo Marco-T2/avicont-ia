@@ -13,8 +13,9 @@ import type {
 
 /**
  * Prisma directo adapter for `SaleRepository` (POC #11.0a A3 Ciclo 3 — §13
- * emergente Opción β locked Marco). Mirror legacy `features/sale/sale.
- * repository.ts` bit-exact via Prisma queries directas — NO wrap-thin shim.
+ * emergente Opción β locked Marco). Mirror legacy sale.repository bit-exact via
+ * Prisma queries directas — NO wrap-thin shim. Legacy post-A3-C7 atomic delete
+ * commit ad36da2.
  *
  * Constructor flexible: `db = prisma` para reads pre-UoW; tx-bound dentro de
  * `SaleUnitOfWork.run` (Ciclo 6) — paridad con `PrismaReceivablesRepository`.

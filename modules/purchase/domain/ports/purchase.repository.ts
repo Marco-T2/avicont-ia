@@ -4,7 +4,7 @@ export interface PurchaseFilters {
   /**
    * Asimetría purchase vs sale-hex (audit-5 D-A3-2): purchase schema tiene
    * discriminator `purchaseType` (4 valores). Legacy
-   * `features/purchase/purchase.repository.ts:124` filtra; consumer real
+   * legacy purchase.repository filtraba (post-A3-C8 atomic delete commit 4aa8480); consumer real
    * `app/api/organizations/[orgSlug]/purchases/route.ts:23` (cutover POC
    * #11.0c). Paralelo D-A3-1 (`getNextSequenceNumberTx` scoped).
    */
@@ -67,8 +67,8 @@ export interface PurchaseRepository {
    * Asimetría purchase vs sale-hex (audit-4 D-A3-1): purchase tiene 4
    * secuencias INDEPENDIENTES por `PurchaseType` (FLETE, POLLO_FAENADO,
    * COMPRA_GENERAL, SERVICIO) — paridad legacy regla #1 con
-   * `features/purchase/purchase.repository.ts:163-172` (`where: {
-   * organizationId, purchaseType }` antes del `MAX(sequenceNumber)+1`).
+   * legacy purchase.repository (`where: { organizationId, purchaseType }` antes
+   * del `MAX(sequenceNumber)+1` — post-A3-C8 atomic delete commit 4aa8480).
    * Schema constraint `@@unique([organizationId, purchaseType, sequenceNumber])`
    * + Convention §12 sub-prefix determinístico (FL-001 + CG-001 conviven en
    * misma org sin colisión). Sin row lock; concurrencia → `P2002` aborta tx

@@ -4,8 +4,8 @@ import type { AllocationLifoSnapshot } from "@/modules/receivables/domain/receiv
  * Trim plan item — represents one allocation that the LIFO trim algorithm
  * would shrink (or zero out) if the sale's total were lowered. Strings (not
  * `MonetaryAmount`) preserve legacy parity with the read-only preview shape
- * `features/sale/sale.service.ts:30,82` (no monetary arithmetic happens
- * downstream — the UI just displays).
+ * (legacy `sale.service.ts` preview — post-A3-C7 atomic delete commit ad36da2;
+ * no monetary arithmetic happens downstream — the UI just displays).
  */
 export interface TrimPreviewItem {
   allocationId: string;

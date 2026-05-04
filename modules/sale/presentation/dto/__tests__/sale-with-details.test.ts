@@ -8,10 +8,10 @@ import type {
 } from "../sale-with-details";
 
 /**
- * Smoke type-check para DTO presentation Sale (POC #11.0a A5 β Ciclo 3).
- * Cobertura: import resolution + shape literal compile-time. Migrado bit-exact
- * desde `features/sale/sale.types.ts` — paridad shape lockeada (D-A5#5 α
- * displayCode = DTO presentation property, no aggregate hex).
+ * Smoke type-check para DTO presentation Sale — migrado bit-exact
+ * (POC #11.0a A5 β + POC nuevo A3-C7 atomic delete commit ad36da2).
+ * Cobertura: import resolution + shape literal compile-time. Paridad shape
+ * lockeada (D-A5#5 α displayCode = DTO presentation property, no aggregate hex).
  */
 
 describe("sale-with-details DTO (smoke)", () => {
