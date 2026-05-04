@@ -27,7 +27,7 @@ import {
   computeReceivableStatus,
   type DocumentStatus,
 } from "@/features/accounting/server";
-import { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { ContactsService } from "@/features/contacts/server";
 import { ReceivablesRepository } from "@/features/receivables/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
@@ -174,7 +174,7 @@ export class DispatchService {
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.journalRepo = journalRepo ?? new JournalRepository();
 
-    const voucherTypesRepo = new VoucherTypesRepository();
+    const voucherTypesRepo = makeVoucherTypeRepository();
     this.autoEntryGenerator =
       autoEntryGenerator ?? new AutoEntryGenerator(this.accountsRepo, voucherTypesRepo);
   }

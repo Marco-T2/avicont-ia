@@ -5,7 +5,7 @@ import {
 } from "@/features/shared/errors";
 import { OrganizationsRepository } from "./organizations.repository";
 import { UsersService } from "@/features/users/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { AccountsService } from "@/features/accounting/accounts.service";
 import { buildSystemRolePayloads } from "@/prisma/seed-system-roles";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";
@@ -25,7 +25,7 @@ export class OrganizationsService {
     usersService?: UsersService,
     accountsService?: AccountsService,
   ) {
-    this.voucherTypesService = voucherTypesService ?? new VoucherTypesService();
+    this.voucherTypesService = voucherTypesService ?? makeVoucherTypesService();
     this.usersService = usersService ?? new UsersService();
     this.accountsService = accountsService ?? new AccountsService();
   }
@@ -69,7 +69,7 @@ export class OrganizationsService {
         tx,
       );
 
-      await this.voucherTypesService.seedForOrg(org.id, tx);
+      await this.voucherTypesService.seedDefaultsForOrg(org.id, tx);
 
       await this.accountsService.seedChartOfAccounts(org.id, tx);
 

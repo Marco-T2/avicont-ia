@@ -55,7 +55,7 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
     } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[0]>;
 
     const voucherTypesService = {
-      seedForOrg: vi.fn().mockResolvedValue([]),
+      seedDefaultsForOrg: vi.fn().mockResolvedValue([]),
     } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[1]>;
 
     const usersService = {
@@ -116,12 +116,12 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
     );
   });
 
-  it("F-1-S4 — voucherTypesService.seedForOrg receives the tx client from the transaction callback", async () => {
+  it("F-1-S4 — voucherTypesService.seedDefaultsForOrg receives the tx client from the transaction callback", async () => {
     const { service, voucherTypesService, txClient } = buildService();
 
     await service.syncOrganization(INPUT, CLERK_USER_ID);
 
-    expect(voucherTypesService.seedForOrg).toHaveBeenCalledWith(
+    expect(voucherTypesService.seedDefaultsForOrg).toHaveBeenCalledWith(
       CREATED_ORG.id,
       txClient,
     );

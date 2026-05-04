@@ -3,7 +3,9 @@ import "server-only";
 export {
   makeVoucherTypesService,
   makeVoucherTypesServiceForTx,
+  makeVoucherTypeRepository,
 } from "./composition-root";
+export { VoucherTypesService } from "../application/voucher-types.service";
 export {
   createVoucherTypeSchema,
   updateVoucherTypeSchema,

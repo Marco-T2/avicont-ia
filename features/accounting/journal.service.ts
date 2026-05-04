@@ -29,7 +29,7 @@ import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { VoucherTypesService } from "@/features/voucher-types/server";
+import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { ContactsService } from "@/features/contacts/server";
 import { OrgProfileService } from "@/features/org-profile/server";
 import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
@@ -80,7 +80,7 @@ export class JournalService {
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? new FiscalPeriodsService();
-    this.voucherTypesService = voucherTypesService ?? new VoucherTypesService();
+    this.voucherTypesService = voucherTypesService ?? makeVoucherTypesService();
     this.contactsService = contactsService ?? new ContactsService();
     this.orgProfileService = orgProfileService ?? new OrgProfileService();
     this.sigConfigService = sigConfigService ?? new DocumentSignatureConfigService();

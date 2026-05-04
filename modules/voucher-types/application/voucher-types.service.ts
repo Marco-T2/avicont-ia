@@ -1,4 +1,5 @@
 import { NotFoundError } from "@/features/shared/errors";
+import { DEFAULT_VOUCHER_TYPES } from "@/prisma/seeds/voucher-types";
 import type {
   VoucherTypeRepository,
   ListVoucherTypesOptions,
@@ -109,5 +110,32 @@ export class VoucherTypesService {
     );
     await this.repo.saveMany(entities);
     return entities;
+  }
+
+  /**
+   * Seed the project-wide default voucher types catalog for a newly created
+   * organization. Wraps `seedForOrg(orgId, DEFAULT_VOUCHER_TYPES)` and routes
+   * through a tx-aware service when `tx` is provided, so callers like
+   * `OrganizationsService.syncOrganization` can seed within an active
+   * transaction without knowing the catalog or the tx-aware factory.
+   *
+   * §13.A5-ε Option D-3 method-on-class — awkward circular dep with
+   * presentation/composition-root mitigated via dynamic import; tx parameter
+   * typed `unknown` (cast via Parameters<typeof factory>) to avoid a Prisma
+   * import in the application layer (R5).
+   */
+  async seedDefaultsForOrg(
+    organizationId: string,
+    tx?: unknown,
+  ): Promise<VoucherType[]> {
+    if (tx === undefined) {
+      return this.seedForOrg(organizationId, [...DEFAULT_VOUCHER_TYPES]);
+    }
+    const { makeVoucherTypesServiceForTx } = await import(
+      "../presentation/composition-root"
+    );
+    return makeVoucherTypesServiceForTx(
+      tx as Parameters<typeof makeVoucherTypesServiceForTx>[0],
+    ).seedForOrg(organizationId, [...DEFAULT_VOUCHER_TYPES]);
   }
 }

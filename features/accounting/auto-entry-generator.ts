@@ -7,7 +7,7 @@ import {
 } from "@/features/shared/errors";
 import type { Prisma } from "@/generated/prisma/client";
 import type { AccountsRepository } from "./accounts.repository";
-import type { VoucherTypesRepository } from "@/features/voucher-types/server";
+import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { JournalRepository } from "./journal.repository";
 import type { JournalEntryWithLines } from "./journal.types";
 
@@ -42,7 +42,7 @@ export class AutoEntryGenerator {
 
   constructor(
     private readonly accountsRepo: AccountsRepository,
-    private readonly voucherTypesRepo: VoucherTypesRepository,
+    private readonly voucherTypesRepo: VoucherTypeRepository,
     journalRepo?: JournalRepository,
   ) {
     this.journalRepo = journalRepo ?? new JournalRepository();

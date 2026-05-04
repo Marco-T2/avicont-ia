@@ -24,7 +24,7 @@ import { JournalService } from "../journal.service";
 import type { JournalRepository } from "../journal.repository";
 import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { AccountBalancesService } from "@/features/account-balances/server";
-import type { VoucherTypesService } from "@/features/voucher-types/server";
+import type { VoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import type { JournalEntryWithLines } from "../journal.types";
 import type { Prisma } from "@/generated/prisma/client";
 
