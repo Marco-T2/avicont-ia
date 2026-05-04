@@ -62,11 +62,11 @@ vi.mock("@/features/dispatch/hub.service", () => ({
 
 // ── SaleService / DispatchService mocks (constructor deps) ───────────────────
 
-vi.mock("@/features/sale/sale.service", () => ({
-  SaleService: vi.fn().mockImplementation(function () {
-    return {};
-  }),
-}));
+// vi.mock("@/features/sale/sale.service") REMOVED en A3-C7 GREEN (mock_hygiene_
+// commit_scope MEMORY.md): DEAD-MOCK post A3-C5 cutover — route.ts:4 importa
+// `makeSaleService` desde `@/modules/sale/presentation/composition-root` (hex),
+// NO importa de `@/features/sale/sale.service`. Path siendo deleted A3-C7 GREEN
+// sub-pasos 1-19 (features/sale/ wholesale removal). Sub-paso 21 atomic batch.
 
 vi.mock("@/features/dispatch/dispatch.service", () => ({
   DispatchService: vi.fn().mockImplementation(function () {
