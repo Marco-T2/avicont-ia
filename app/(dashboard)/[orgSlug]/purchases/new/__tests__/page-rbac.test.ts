@@ -46,7 +46,11 @@ vi.mock("@/features/product-types/server", () => {
   return { ProductTypesService };
 });
 
-vi.mock("@/features/purchase/server", () => ({}));
+// vi.mock("@/features/purchase/server") DROPPED A3-C8 GREEN sub-paso 19
+// (§13.A3-C8-β mock_hygiene_commit_scope MEMORY.md APPLIED): DEAD-MOCK
+// post A3-C6a/b/c cutover (page actual NewPurchasePage NO importa
+// @/features/purchase/server — ya consume makePurchaseService desde hex
+// composition-root @/modules/purchase/presentation/composition-root).
 
 vi.mock("@/components/purchases/purchase-form", () => ({
   default: vi.fn().mockReturnValue(null),
