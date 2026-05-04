@@ -14,7 +14,7 @@ import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { Prisma } from "@/generated/prisma/client";
 import { DispatchRepository } from "./dispatch.repository";
 import type { ComputedDetail, BcSummary } from "./dispatch.repository";
-import { OrgSettingsService } from "@/features/org-settings/server";
+import { OrgSettingsService, makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import {
   AutoEntryGenerator,
   JournalRepository,
@@ -166,7 +166,7 @@ export class DispatchService {
     journalRepo?: JournalRepository,
   ) {
     this.repo = repo ?? new DispatchRepository();
-    this.orgSettingsService = orgSettingsService ?? new OrgSettingsService();
+    this.orgSettingsService = orgSettingsService ?? makeOrgSettingsService();
     this.contactsService = contactsService ?? new ContactsService();
     this.receivablesRepo = receivablesRepo ?? new ReceivablesRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
@@ -312,7 +312,7 @@ export class DispatchService {
 
     // 6. Calcular totalAmount
     const exactTotal = computedDetails.reduce((sum, d) => sum + d.lineAmount, 0);
-    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+    const settings = (await this.orgSettingsService.getOrCreate(organizationId)).toSnapshot();
     const threshold = Number(settings.roundingThreshold);
     const totalAmount = roundTotal(exactTotal, threshold);
 
@@ -564,7 +564,7 @@ export class DispatchService {
     }
 
     // 2. Pre-cargar configuración y calcular newTotalAmount si cambiaron los detalles
-    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+    const settings = (await this.orgSettingsService.getOrCreate(organizationId)).toSnapshot();
     let newTotalAmount: number | undefined;
     if (computedDetails !== undefined) {
       const threshold = Number(settings.roundingThreshold);
@@ -816,7 +816,7 @@ export class DispatchService {
       (sum, d) => sum + Number(d.lineAmount),
       0,
     );
-    const settings = await this.orgSettingsService.getOrCreate(organizationId);
+    const settings = (await this.orgSettingsService.getOrCreate(organizationId)).toSnapshot();
     const threshold = Number(settings.roundingThreshold);
     const totalAmount = roundTotal(exactTotal, threshold);
 

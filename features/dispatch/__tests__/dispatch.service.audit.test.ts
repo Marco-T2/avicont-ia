@@ -24,7 +24,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import * as auditCtx from "@/features/shared/audit-context";
 import { DispatchService } from "../dispatch.service";
 import type { DispatchRepository } from "../dispatch.repository";
-import type { OrgSettingsService } from "@/features/org-settings/server";
+import type { OrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type { ReceivablesRepository } from "@/features/receivables/server";
 import type { AccountBalancesService } from "@/features/account-balances/server";
 import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
@@ -146,8 +146,10 @@ function buildService(initial: DispatchWithDetails) {
 
   const orgSettingsService = {
     getOrCreate: vi.fn().mockResolvedValue({
-      cxcAccountCode: "1.1.2",
-      roundingThreshold: 0,
+      toSnapshot: () => ({
+        cxcAccountCode: "1.1.2",
+        roundingThreshold: 0,
+      }),
     }),
   } as unknown as OrgSettingsService;
 

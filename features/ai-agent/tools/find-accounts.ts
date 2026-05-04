@@ -2,7 +2,7 @@ import "server-only";
 import { z } from "zod";
 import { defineTool } from "../llm";
 import { AccountsRepository } from "@/features/accounting/server";
-import { OrgSettingsService } from "@/features/org-settings/server";
+import { OrgSettingsService, makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type { Account } from "@/generated/prisma/client";
 
 // ── Tool definition ──
@@ -57,11 +57,11 @@ export async function executeFindAccountsByPurpose(
   deps: FindAccountsByPurposeDeps = {},
 ): Promise<FindAccountsResult> {
   const accountsRepo = deps.accountsRepo ?? new AccountsRepository();
-  const orgSettingsService = deps.orgSettingsService ?? new OrgSettingsService();
+  const orgSettingsService = deps.orgSettingsService ?? makeOrgSettingsService();
 
   // Capa 1 — Defaults curados por la org (solo bank y cash; expense no tiene defaults).
   if (input.purpose === "bank" || input.purpose === "cash") {
-    const settings = await orgSettingsService.getOrCreate(organizationId);
+    const settings = (await orgSettingsService.getOrCreate(organizationId)).toSnapshot();
     const configuredIds =
       input.purpose === "bank"
         ? settings.defaultBankAccountIds
@@ -123,7 +123,7 @@ async function runHeuristic(
     return all.filter((a) => a.isActive && a.isDetail);
   }
 
-  const settings = await orgSettingsService.getOrCreate(organizationId);
+  const settings = (await orgSettingsService.getOrCreate(organizationId)).toSnapshot();
   const parentCodes =
     purpose === "cash"
       ? [settings.cashParentCode, settings.pettyCashParentCode]

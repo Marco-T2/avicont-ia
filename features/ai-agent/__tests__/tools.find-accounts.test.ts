@@ -20,7 +20,7 @@ vi.hoisted(() => {
 
 import { executeFindAccountsByPurpose } from "../tools/find-accounts";
 import type { AccountsRepository } from "@/features/accounting/accounts.repository";
-import type { OrgSettingsService } from "@/features/org-settings/server";
+import type { OrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type { Account, OrgSettings } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
 
@@ -79,7 +79,7 @@ function makeDeps(opts?: {
   const settings = opts?.settings ?? makeSettings();
 
   const orgSettingsService = {
-    getOrCreate: vi.fn(async () => settings),
+    getOrCreate: vi.fn(async () => ({ toSnapshot: () => settings })),
   } as unknown as OrgSettingsService;
 
   const accountsRepo = {

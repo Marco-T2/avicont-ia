@@ -43,7 +43,11 @@
  *   ── Runtime path coverage .toSnapshot() granular per callsite (Tests 14-19) ──
  *   - dispatch.service.ts × 3 callsites split per method body:
  *       T14 createAndPost (línea 259-414) body contains `.toSnapshot()`
- *       T15 update (línea 416-548) body contains `.toSnapshot()`
+ *       T15 updatePostedDispatchTx (línea 550-779 PRIVATE method — corrected
+ *           atomic mid-cycle GREEN commit body NAMED explicit; original RED
+ *           scope cementó "async update(" PUBLIC method por inventory
+ *           inferential method-name error §13.A4-ι NO-formal mirror §13.A4-ζ
+ *           + §13.A4-θ precedents) body contains `.toSnapshot()`
  *       T16 post (línea 789-921) body contains `.toSnapshot()`
  *   - find-accounts.ts × 2 callsites split per function body:
  *       T17 executeFindAccountsByPurpose body contains `.toSnapshot()`
@@ -252,10 +256,10 @@ describe("POC nuevo A4-C2 — org-settings cleanup Cat 3 cross-feature/cross-mod
     expect(body).toMatch(TO_SNAPSHOT_RE);
   });
 
-  it("Test 15: dispatch.service.ts update method body contains `.toSnapshot()` adapter call", () => {
+  it("Test 15: dispatch.service.ts updatePostedDispatchTx PRIVATE method body contains `.toSnapshot()` adapter call (corrected atomic mid-cycle § A4-ι NO-formal)", () => {
     const source = fs.readFileSync(DISPATCH_SERVICE, "utf8");
-    const start = source.indexOf("async update(");
-    const end = source.indexOf("private async updatePostedDispatchTx(", start);
+    const start = source.indexOf("private async updatePostedDispatchTx(");
+    const end = source.indexOf("async delete(", start);
     expect(start).toBeGreaterThan(0);
     expect(end).toBeGreaterThan(start);
     const body = source.slice(start, end);

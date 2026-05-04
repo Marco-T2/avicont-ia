@@ -1,5 +1,5 @@
 import "server-only";
-import { OrgSettingsService } from "@/features/org-settings/server";
+import { OrgSettingsService, makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type {
   OrgSettingsReadPort,
   PaymentOrgSettings,
@@ -11,10 +11,10 @@ import type {
  * needs — drops every other field of the snapshot.
  */
 export class LegacyOrgSettingsAdapter implements OrgSettingsReadPort {
-  constructor(private readonly service: OrgSettingsService = new OrgSettingsService()) {}
+  constructor(private readonly service: OrgSettingsService = makeOrgSettingsService()) {}
 
   async getOrCreate(organizationId: string): Promise<PaymentOrgSettings> {
-    const settings = await this.service.getOrCreate(organizationId);
+    const settings = (await this.service.getOrCreate(organizationId)).toSnapshot();
     return {
       cajaGeneralAccountCode: settings.cajaGeneralAccountCode,
       bancoAccountCode: settings.bancoAccountCode,
