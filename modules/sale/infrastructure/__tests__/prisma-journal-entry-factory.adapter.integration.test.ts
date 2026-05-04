@@ -10,7 +10,7 @@ import {
   NotFoundError,
   VOUCHER_TYPE_NOT_IN_ORG,
 } from "@/features/shared/errors";
-import { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
@@ -231,7 +231,7 @@ describe("PrismaJournalEntryFactoryAdapter — Postgres integration", () => {
     const writeRepo = new PrismaJournalEntriesRepository(tx);
     const autoEntryGen = new AutoEntryGenerator(
       new AccountsRepository(),
-      new VoucherTypesRepository(),
+      makeVoucherTypeRepository(),
     );
     return new PrismaJournalEntryFactoryAdapter(
       tx,

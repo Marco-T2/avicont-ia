@@ -10,7 +10,7 @@ import {
 
 import { AccountsRepository } from "@/features/accounting/accounts.repository";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
-import { VoucherTypesRepository } from "@/features/voucher-types/server";
+import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
@@ -81,7 +81,7 @@ const journalEntriesReadPort = new LegacyJournalEntriesReadAdapter();
 const accountLookupPort = new LegacyAccountLookupAdapter();
 const autoEntryGen = new AutoEntryGenerator(
   new AccountsRepository(),
-  new VoucherTypesRepository(),
+  makeVoucherTypeRepository(),
 );
 
 /**
