@@ -1,8 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { PaymentRepository } from "@/modules/payment/presentation/server";
+import { PrismaPaymentsRepository } from "@/modules/payment/presentation/server";
 
-const paymentRepository = new PaymentRepository();
+const paymentRepository = new PrismaPaymentsRepository();
 
 export async function GET(
   request: Request,

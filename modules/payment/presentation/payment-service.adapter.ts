@@ -1,57 +1,48 @@
 import "server-only";
-import { NotFoundError } from "@/features/shared/errors";
+import { makePaymentsService, makePaymentReader } from "./composition-root";
+import type { PaymentWithRelationsReaderPort } from "../domain/ports/payment-with-relations-reader.port";
+import { PaymentNotFound } from "../domain/errors/payment-errors";
+import type { PaymentsService as InnerPaymentsService } from "../application/payments.service";
 import type { WithCorrelation } from "@/features/shared/audit-tx";
-import {
-  makePaymentsService,
-  makePaymentReader,
-  type PaymentsService as InnerPaymentsService,
-  type PaymentWithRelationsReaderPort,
-} from "@/modules/payment/presentation/server";
-import { toPaymentWithRelations } from "@/modules/payment/infrastructure/mappers/payment-with-relations.mapper";
-import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
+import type { PaymentWithRelations } from "./dto/payment-with-relations";
 import type {
   CreatePaymentInput,
   UpdatePaymentInput,
   PaymentFilters,
   AllocationInput,
   CreditAllocationSource,
-} from "./payment.types";
+} from "@/features/payment/payment.types";
 
 /**
- * Backward-compat shim. Delegates business logic to the hexagonal
- * `modules/payment/` and re-fetches the row via the reader port post-write
- * for the legacy `PaymentWithRelations` envelope contract.
+ * Adapter Layer presentation/ delegate via reader port + composition-root chain
+ * canonical R4 exception path EXACT mirror α-A3.B (paired C1b-α `89e6441`
+ * precedent EXACT — composition-root.ts is the ONE legitimate R4 exception
+ * canonical hex architecture).
  *
- * Intermediate state post-C4-α (split cycle wholesale-delete-pending C4-β):
- *   - Prisma direct queries removed — read-side delegated to
- *     `makePaymentReader()` reader port (constructed inline; R5 NO aplica
- *     features/ layer)
- *   - Mapper imports swapped a hex infrastructure path post-MOVE
- *     (cascade Test 14 SHIM_INFRA_MAPPER_IMPORT_RE)
- *   - Full removal C4-β wholesale absorbs cleanup natural
+ * Encapsulates the legacy `PaymentService` shim contract preserved across the
+ * cutover: envelope DTO `PaymentWithRelations` + zero-arg construct + args
+ * reorder + `WithCorrelation<...>` wrapping. Read-side via injected reader
+ * port returning domain-internal `PaymentWithRelationsSnapshot` (port boundary
+ * type — see port file); presentation casts back to UI envelope DTO via
+ * structural equivalence at boundary. Write-side delegates to inner hex
+ * `PaymentsService` (Payment-entity returns) + re-fetches via reader port.
  *
- * Translation pattern:
- *   - Module returns `PaymentResult { payment: Payment-entity, correlationId }`
- *   - Shim re-fetches envelope DTO via reader port + spreads `correlationId`
+ * §13 NEW classification cementación target D1 — "Adapter Layer presentation/
+ * delegate via reader port + composition-root chain canonical R4 exception
+ * path EXACT mirror α-A3.B" + "Reader port domain-internal Snapshot type
+ * local definition pattern (mirror iva-books precedent EXACT cumulative
+ * cross-module)".
  *
- * Constructor: legacy callers do `new PaymentService()` (zero args). The
- * module is composed via `makePaymentsService()` internally — collaborator
- * args are accepted for backwards-compat but ignored.
+ * R5 honored estricto — NO Prisma value imports (reader port DI carries the
+ * infra-side Prisma access via composition-root chain).
  */
 export class PaymentService {
+  private readonly reader: PaymentWithRelationsReaderPort;
   private readonly inner: InnerPaymentsService;
-  private readonly reader: PaymentWithRelationsReaderPort = makePaymentReader();
 
-  constructor(
-    _repo?: unknown,
-    _orgSettingsService?: unknown,
-    _autoEntryGenerator?: unknown,
-    _balancesService?: unknown,
-    _periodsService?: unknown,
-    _accountsRepo?: unknown,
-    _journalRepo?: unknown,
-  ) {
-    this.inner = makePaymentsService();
+  constructor(reader?: PaymentWithRelationsReaderPort, inner?: InnerPaymentsService) {
+    this.reader = reader ?? makePaymentReader();
+    this.inner = inner ?? makePaymentsService();
   }
 
   // ── Reads ──
@@ -60,16 +51,15 @@ export class PaymentService {
     organizationId: string,
     filters?: PaymentFilters,
   ): Promise<PaymentWithRelations[]> {
-    const snapshots = await this.reader.findAllWithRelations(organizationId, filters);
-    return snapshots.map(toPaymentWithRelations);
+    return this.readAll(organizationId, filters);
   }
 
   async getById(
     organizationId: string,
     id: string,
   ): Promise<PaymentWithRelations> {
-    const row = await this.fetchWithRelations(organizationId, id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, id);
+    if (!row) throw new PaymentNotFound();
     return row;
   }
 
@@ -107,8 +97,8 @@ export class PaymentService {
       allocations: input.allocations,
       creditSources: input.creditSources,
     });
-    const row = await this.fetchWithRelations(organizationId, created.id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, created.id);
+    if (!row) throw new PaymentNotFound();
     return row;
   }
 
@@ -136,8 +126,8 @@ export class PaymentService {
         creditSources: input.creditSources,
       },
     );
-    const row = await this.fetchWithRelations(organizationId, payment.id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, payment.id);
+    if (!row) throw new PaymentNotFound();
     return { ...row, correlationId };
   }
 
@@ -166,8 +156,8 @@ export class PaymentService {
       },
       { role, justification },
     );
-    const row = await this.fetchWithRelations(organizationId, payment.id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, payment.id);
+    if (!row) throw new PaymentNotFound();
     return { ...row, correlationId };
   }
 
@@ -185,8 +175,8 @@ export class PaymentService {
       userId,
       id,
     );
-    const row = await this.fetchWithRelations(organizationId, payment.id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, payment.id);
+    if (!row) throw new PaymentNotFound();
     return { ...row, correlationId };
   }
 
@@ -203,8 +193,8 @@ export class PaymentService {
       id,
       { role, justification },
     );
-    const row = await this.fetchWithRelations(organizationId, payment.id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, payment.id);
+    if (!row) throw new PaymentNotFound();
     return { ...row, correlationId };
   }
 
@@ -223,8 +213,8 @@ export class PaymentService {
       newAllocations,
       { role, justification },
     );
-    const row = await this.fetchWithRelations(organizationId, payment.id);
-    if (!row) throw new NotFoundError("Pago");
+    const row = await this.readById(organizationId, payment.id);
+    if (!row) throw new PaymentNotFound();
     return { ...row, correlationId };
   }
 
@@ -242,17 +232,27 @@ export class PaymentService {
     );
   }
 
-  // ── Re-fetch helper (translation point: PaymentResult → PaymentWithRelations) ──
+  // ── Read helpers (Snapshot → UI envelope DTO type bridge) ──
+  //
+  // The reader port returns `PaymentWithRelationsSnapshot` (domain-internal
+  // boundary type per R1 banDomainCrossLayer). Cast trivial via structural
+  // equivalence — runtime shape is identical to the legacy
+  // `PaymentWithRelations` envelope (the mapper produces the same row →
+  // envelope transformation regardless of which type-system label is applied).
 
-  private async fetchWithRelations(
+  private async readAll(
+    organizationId: string,
+    filters?: PaymentFilters,
+  ): Promise<PaymentWithRelations[]> {
+    const snapshots = await this.reader.findAllWithRelations(organizationId, filters);
+    return snapshots as unknown as PaymentWithRelations[];
+  }
+
+  private async readById(
     organizationId: string,
     id: string,
   ): Promise<PaymentWithRelations | null> {
-    const row = await this.reader.findByIdWithRelations(organizationId, id);
-    // Idempotent mapper re-application — the reader internally invokes
-    // toPaymentWithRelations, this explicit pass keeps the cascade import
-    // live for Test 14 contract preservation transitional state. C4-β
-    // wholesale delete absorbs cleanup natural.
-    return row ? toPaymentWithRelations(row) : null;
+    const snapshot = await this.reader.findByIdWithRelations(organizationId, id);
+    return snapshot as unknown as PaymentWithRelations | null;
   }
 }

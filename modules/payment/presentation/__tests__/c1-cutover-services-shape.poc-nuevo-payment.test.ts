@@ -351,11 +351,6 @@ const PAYMENT_DETAIL_PAGE_RBAC_TEST = path.join(
   REPO_ROOT,
   "app/(dashboard)/[orgSlug]/payments/[paymentId]/__tests__/page-rbac.test.ts",
 );
-const HEX_BARREL_SERVER = path.join(
-  REPO_ROOT,
-  "modules/payment/presentation/server.ts",
-);
-
 // ── Regex patterns ───────────────────────────────────────────────────────────
 
 const HEX_CANONICAL_SERVER_IMPORT_RE =
@@ -368,8 +363,9 @@ const HEX_CANONICAL_SERVER_VI_MOCK_RE =
   /vi\.mock\(\s*["']@\/modules\/payment\/presentation\/server["']/;
 const HEX_FIND_UNAPPLIED_BY_CONTACT_INVOCATION_RE = /\.findUnappliedByContact\s*\(/;
 const LEGACY_FIND_UNAPPLIED_PAYMENTS_INVOCATION_RE = /\.findUnappliedPayments\s*\(/;
-const HEX_BARREL_LEGACY_CLASSES_REEXPORT_RE =
-  /export\s*\{\s*PaymentService\s*,\s*PaymentRepository\s*\}\s*from\s+["']@\/features\/payment\/server["']/;
+// HEX_BARREL_SERVER + HEX_BARREL_LEGACY_CLASSES_REEXPORT_RE removed — exclusive
+// consumers were Test 14 (dropped en C4-α GREEN per Collision #2 absorption
+// Opción α). Section E preamble note explica rationale.
 
 describe("POC nuevo payment C1 — cross-feature/cross-module presentation cutover routes + pages + vi.mock targets PaymentService + PaymentRepository hex barrel (single feature axis NO paired, §13.A5-α 13ma evidencia matures cumulative cross-POC sub-cycle continuation + §13.A5-ε 2da evidencia matures post-cementación canonical Opción B drop alias + §13.A4-η LOAD-BEARING render path coverage MATERIAL Opción A re-export class identity preserved)", () => {
   // ── A: Hex canonical barrel import POSITIVE per callsite (Tests 1-8) ────
@@ -471,17 +467,14 @@ describe("POC nuevo payment C1 — cross-feature/cross-module presentation cutov
     expect(source).not.toMatch(LEGACY_FEATURES_PAYMENT_SERVER_VI_MOCK_RE);
   });
 
-  // ── E: Hex barrel canonical Opción A re-export legacy classes sanity (Test 14) ──
-  // Opción A Marco lock #1 — hex barrel re-export legacy class identity
-  // `{ PaymentService, PaymentRepository }` from `@/features/payment/server`.
-  // Single direction re-export sin circular type collision (verify pre-RED
-  // Step 0 expand grep — features/payment/payment.service.ts imports
-  // makePaymentsService from hex via `inner: makePaymentsService()` line 58, NO
-  // PaymentService class re-import). Single-direction class re-export TS module
-  // resolution acepta sin circular collision.
-
-  it("Test 14: modules/payment/presentation/server.ts contains `export { PaymentService, PaymentRepository } from \"@/features/payment/server\"` (canonical Opción A re-export legacy classes Marco lock #1 — preserves DTO contract PaymentWithRelations defer C2 mapper centralizado Marco lock L3)", () => {
-    const source = fs.readFileSync(HEX_BARREL_SERVER, "utf8");
-    expect(source).toMatch(HEX_BARREL_LEGACY_CLASSES_REEXPORT_RE);
-  });
+  // ── E: Test 14 SUPERSEDED por C4-α GREEN drop línea 86 ──
+  // Original Test 14 asserted Opción A re-export `export { PaymentService,
+  // PaymentRepository } from "@/features/payment/server"`. Superseded por C4-α
+  // commit (Adapter Layer presentation/ delegate via reader port + composition-root
+  // chain canonical R4 exception path EXACT mirror α-A3.B). Línea 86 dropped +
+  // chain via composition-root (callsite → server → composition-root →
+  // payment-service.adapter). C4-α RED Test 11 + C4-α GREEN cementan el chain
+  // post-cutover. Test 14 dropped en mismo C4-α GREEN batch (Collision #2
+  // absorption Opción α — cleanup superseded tests mismo batch que origina
+  // cascade). Cumulative cross-POC mirror paired C7 Opción B EXACT precedent.
 });

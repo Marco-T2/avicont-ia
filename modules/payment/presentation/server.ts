@@ -4,6 +4,8 @@ export {
   makePaymentsService,
   makePaymentsServiceForTx,
   PrismaPaymentsRepository,
+  makePaymentReader,
+  makePaymentServiceAdapter,
 } from "./composition-root";
 
 export {
@@ -22,16 +24,11 @@ export type {
   AllocationDraft,
 } from "../domain/payment.entity";
 // `PaymentRepository` (TYPE port) intentionally NOT re-exported from this
-// barrel — collision avoidance with the legacy `PaymentRepository` class
-// re-exported at the bottom of this file from `@/features/payment/server` per
-// Marco lock #1 Opción A (C1 cutover). Internal hex consumers
-// (modules/payment/{infrastructure,application}/) import the TYPE port
-// directly from `../domain/payment.repository`. Forward-applicable cross-POC:
-// when hex barrel re-exports a legacy VALUE class with same name as a domain
-// TYPE port, drop the TYPE port from the barrel re-export (consumers should
-// import directly from domain/). §13 R-name-collision NEW invariant collision
-// category (TS namespace shadowing TYPE-vs-VALUE re-export ambiguity) —
-// cementación target D1 doc-only.
+// barrel — internal hex consumers (modules/payment/{infrastructure,application}/)
+// import the TYPE port directly from `../domain/payment.repository` per the
+// cross-POC convention "domain ports stay private to the module". §13
+// R-name-collision NEW invariant collision category (TS namespace shadowing
+// TYPE-vs-VALUE re-export ambiguity) — cementación target D1 doc-only.
 export type {
   PaymentFilters,
   UnappliedPaymentSnapshot,
@@ -41,6 +38,7 @@ export type { PaymentStatus } from "../domain/value-objects/payment-status";
 export { PAYMENT_STATUSES } from "../domain/value-objects/payment-status";
 export type { PaymentMethod } from "../domain/value-objects/payment-method";
 export type { PaymentDirection } from "../domain/value-objects/payment-direction";
+export type { PaymentWithRelationsReaderPort } from "../domain/ports/payment-with-relations-reader.port";
 export { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 export {
   InvalidMonetaryAmount,
@@ -57,6 +55,7 @@ export {
   PaymentMixedAllocation,
   PaymentAllocationsExceedTotal,
   CannotModifyVoidedPayment,
+  PaymentNotFound,
   INVALID_PAYMENT_STATUS,
   INVALID_PAYMENT_METHOD,
   INVALID_PAYMENT_DIRECTION,
@@ -75,12 +74,11 @@ export {
   type PaymentResult,
 } from "../application/payments.service";
 
-// ── Opción A canonical re-export legacy class identity (Marco lock #1 C1) ──
-// Preserves DTO contract `PaymentWithRelations` defer C2 mapper centralizado
-// per Marco lock L3 original. Single-direction class re-export — features →
-// hex circular module import mitigated (features/payment/payment.service.ts
-// imports `makePaymentsService` from this hex barrel via `inner: makePaymentsService()`
-// at constructor invocation time, NO module-eval circular collision).
-// PaymentService/PaymentRepository wholesale delete defer C4 wholesale per
-// Marco lock L1 ESTRICTO.
-export { PaymentService, PaymentRepository } from "@/features/payment/server";
+// ── Adapter Layer presentation/ canonical R4 exception path EXACT mirror α-A3.B
+// (paired C1b-α `89e6441` precedent) — `PaymentService` is the new presentation
+// Adapter from `./payment-service.adapter`, re-exported via composition-root
+// chain. Wraps inner hex `PaymentsService` + `PaymentWithRelationsReaderPort`
+// DI to expose the legacy shim contract (envelope DTO + zero-arg construct +
+// args reorder + WithCorrelation wrapping). §13 NEW classification cementación
+// target D1.
+export { PaymentService } from "./composition-root";

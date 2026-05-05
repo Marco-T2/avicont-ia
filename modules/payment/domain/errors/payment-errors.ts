@@ -1,5 +1,6 @@
 import {
   ValidationError,
+  NotFoundError,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
   PAYMENT_MIXED_ALLOCATION,
@@ -110,6 +111,13 @@ export class CannotModifyVoidedPayment extends ValidationError {
       "Un documento anulado no puede ser modificado",
       ENTRY_VOIDED_IMMUTABLE,
     );
+  }
+}
+
+export class PaymentNotFound extends NotFoundError {
+  constructor() {
+    super("Pago");
+    this.name = "PaymentNotFound";
   }
 }
 

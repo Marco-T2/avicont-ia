@@ -27,7 +27,7 @@
  *   3. MOVE modules/payment/{presentation→infrastructure}/mappers/payment-with-relations.mapper.ts
  *   4. NEW modules/payment/presentation/payment-service.adapter.ts
  *   5. UPDATE modules/payment/presentation/composition-root.ts (+wire reader +
- *      makePaymentService factory + PaymentService re-export chain)
+ *      makePaymentServiceAdapter factory + PaymentService re-export chain)
  *   6. UPDATE modules/payment/presentation/server.ts (drop línea 86 +
  *      re-export from composition-root chain canonical R4 exception)
  *   7. UPDATE app/api/.../unapplied-payments/route.ts (PrismaPaymentsRepository
@@ -94,7 +94,7 @@
  *     existence guard FAIL)
  *   - Test 9: presentation Adapter class delegate + R5 honored (file absent →
  *     existence guard FAIL)
- *   - Test 10: composition-root NO contains makePaymentService factory + reader
+ *   - Test 10: composition-root NO contains makePaymentServiceAdapter factory + reader
  *     wire pre-GREEN → regex no match → FAILS
  *   - Test 11: server.ts línea 86 still has from "@/features/payment/server"
  *     pre-GREEN → regex matches legacy → FAILS expect not toMatch
@@ -205,13 +205,20 @@ const PAYMENT_NOT_FOUND_CLASS_RE =
 const NOT_FOUND_ERROR_IMPORT_RE =
   /^import\s+\{[^}]*\bNotFoundError\b[^}]*\}\s+from\s+["']@\/features\/shared\/errors["']/m;
 
-// Test 7 — Reader port interface shape
+// Test 7 — Reader port interface shape (Path C resolution Collision #1 — Snapshot
+// LOCAL inline definition mirror iva-books sale-reader.port.ts:17-28 precedent
+// EXACT cumulative cross-module). R1 banDomainCrossLayer honored estricto —
+// port file MUST NOT cross-layer import presentation/dto/PaymentWithRelations.
 const READER_PORT_INTERFACE_RE =
   /^export\s+interface\s+PaymentWithRelationsReaderPort\b/m;
+const READER_PORT_SNAPSHOT_INTERFACE_RE =
+  /^export\s+interface\s+PaymentWithRelationsSnapshot\b/m;
+const READER_PORT_NO_CROSS_LAYER_DTO_IMPORT_RE =
+  /^import\s+type\s+\{[^}]*\bPaymentWithRelations\b[^}]*\}\s+from\s+["']@\/modules\/payment\/presentation\/dto\/payment-with-relations["']/m;
 const READER_PORT_FIND_ALL_RE =
-  /findAllWithRelations\s*\([^)]*organizationId\s*:\s*string[^)]*\)\s*:\s*Promise<\s*PaymentWithRelations\[\]\s*>/;
+  /findAllWithRelations\s*\([^)]*organizationId\s*:\s*string[^)]*\)\s*:\s*Promise<\s*PaymentWithRelationsSnapshot\[\]\s*>/;
 const READER_PORT_FIND_BY_ID_RE =
-  /findByIdWithRelations\s*\([^)]*organizationId\s*:\s*string[^)]*id\s*:\s*string[^)]*\)\s*:\s*Promise<\s*PaymentWithRelations\s*\|\s*null\s*>/;
+  /findByIdWithRelations\s*\([^)]*organizationId\s*:\s*string[^)]*id\s*:\s*string[^)]*\)\s*:\s*Promise<\s*PaymentWithRelationsSnapshot\s*\|\s*null\s*>/;
 
 // Test 8 — Reader adapter implements port + Prisma queries
 const READER_ADAPTER_IMPLEMENTS_RE =
@@ -235,7 +242,7 @@ const PRESENTATION_ADAPTER_PAYMENT_NOT_FOUND_IMPORT_RE =
 
 // Test 10 — composition-root wire NEW makePaymentService factory + reader
 const COMPOSITION_MAKE_PAYMENT_SERVICE_RE =
-  /^export\s+function\s+makePaymentService\s*\(\s*\)\s*:\s*PaymentService\b/m;
+  /^export\s+function\s+makePaymentServiceAdapter\s*\(\s*\)\s*:\s*PaymentService\b/m;
 const COMPOSITION_PAYMENT_SERVICE_RE_EXPORT_RE =
   /^export\s+\{[^}]*\bPaymentService\b[^}]*\}\s+from\s+["']\.\/payment-service\.adapter["']/m;
 const COMPOSITION_READER_ADAPTER_IMPORT_RE =
@@ -312,12 +319,14 @@ describe("POC nuevo payment C4-α — Adapter Layer presentation/ delegate via r
 
   // ── D: Reader port interface shape (Test 7) ───────────────────────────────
 
-  it("Test 7 — reader port interface shape findAllWithRelations + findByIdWithRelations", () => {
+  it("Test 7 — reader port interface shape + Snapshot LOCAL inline def + R1 honor (Path C resolution Collision #1 mirror iva-books precedent EXACT)", () => {
     const exists = fs.existsSync(READER_PORT_FILE);
     expect(exists).toBe(true);
     if (!exists) return;
     const content = fs.readFileSync(READER_PORT_FILE, "utf8");
     expect(content).toMatch(READER_PORT_INTERFACE_RE);
+    expect(content).toMatch(READER_PORT_SNAPSHOT_INTERFACE_RE);
+    expect(content).not.toMatch(READER_PORT_NO_CROSS_LAYER_DTO_IMPORT_RE);
     expect(content).toMatch(READER_PORT_FIND_ALL_RE);
     expect(content).toMatch(READER_PORT_FIND_BY_ID_RE);
   });
@@ -355,7 +364,7 @@ describe("POC nuevo payment C4-α — Adapter Layer presentation/ delegate via r
   // PaymentService class from Adapter file + wires reader Adapter into
   // makePaymentService factory.
 
-  it("Test 10 — composition-root wires reader Adapter + makePaymentService factory + PaymentService re-export chain", () => {
+  it("Test 10 — composition-root wires reader Adapter + makePaymentServiceAdapter factory + PaymentService re-export chain", () => {
     const content = fs.readFileSync(COMPOSITION_ROOT_FILE, "utf8");
     expect(content).toMatch(COMPOSITION_READER_ADAPTER_IMPORT_RE);
     expect(content).toMatch(COMPOSITION_MAKE_PAYMENT_SERVICE_RE);
