@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { PaymentService } from "@/features/payment/server";
-import { updatePaymentSchema } from "@/features/payment";
+import { updatePaymentSchema } from "@/modules/payment/presentation/validation";
 
 const paymentService = new PaymentService();
 

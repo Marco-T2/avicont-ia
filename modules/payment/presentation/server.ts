@@ -6,6 +6,13 @@ export {
   PrismaPaymentsRepository,
 } from "./composition-root";
 
+export {
+  createPaymentSchema,
+  updatePaymentSchema,
+  paymentFiltersSchema,
+  updateAllocationsSchema,
+} from "./validation";
+
 export { Payment } from "../domain/payment.entity";
 export type {
   PaymentProps,

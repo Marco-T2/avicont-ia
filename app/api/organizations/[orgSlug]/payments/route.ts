@@ -4,7 +4,7 @@ import { PaymentService } from "@/features/payment/server";
 import {
   createPaymentSchema,
   paymentFiltersSchema,
-} from "@/features/payment";
+} from "@/modules/payment/presentation/validation";
 import { UsersService } from "@/features/users/server";
 
 const paymentService = new PaymentService();
