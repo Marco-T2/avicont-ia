@@ -4,10 +4,10 @@ import {
   attachContacts,
   makeReceivablesService,
   type ReceivablesService as InnerReceivablesService,
+  type ReceivableSnapshotWithContact,
+  type OpenAggregate,
 } from "@/modules/receivables/presentation/server";
 import type {
-  ReceivableWithContact,
-  OpenAggregate,
   CreateReceivableInput,
   UpdateReceivableInput,
   UpdateReceivableStatusInput,
@@ -17,7 +17,7 @@ import type {
 /**
  * Backward-compat shim. Delegates business logic to the hexagonal
  * `modules/receivables/` and re-attaches `contact` for legacy consumers
- * that expect the Prisma `ReceivableWithContact` shape.
+ * that expect the Prisma `ReceivableSnapshotWithContact` shape.
  */
 export class ReceivablesService {
   private readonly inner: InnerReceivablesService;
@@ -29,7 +29,7 @@ export class ReceivablesService {
   async list(
     organizationId: string,
     filters?: ReceivableFilters,
-  ): Promise<ReceivableWithContact[]> {
+  ): Promise<ReceivableSnapshotWithContact[]> {
     const items = await this.inner.list(organizationId, filters);
     return attachContacts(organizationId, items);
   }
@@ -37,7 +37,7 @@ export class ReceivablesService {
   async getById(
     organizationId: string,
     id: string,
-  ): Promise<ReceivableWithContact> {
+  ): Promise<ReceivableSnapshotWithContact> {
     const r = await this.inner.getById(organizationId, id);
     return attachContact(organizationId, r);
   }
@@ -45,7 +45,7 @@ export class ReceivablesService {
   async create(
     organizationId: string,
     input: CreateReceivableInput,
-  ): Promise<ReceivableWithContact> {
+  ): Promise<ReceivableSnapshotWithContact> {
     const r = await this.inner.create(organizationId, {
       ...input,
       amount: typeof input.amount === "number" || typeof input.amount === "string"
@@ -59,7 +59,7 @@ export class ReceivablesService {
     organizationId: string,
     id: string,
     input: UpdateReceivableInput & { amount?: unknown },
-  ): Promise<ReceivableWithContact> {
+  ): Promise<ReceivableSnapshotWithContact> {
     const r = await this.inner.update(organizationId, id, input);
     return attachContact(organizationId, r);
   }
@@ -68,7 +68,7 @@ export class ReceivablesService {
     organizationId: string,
     id: string,
     input: UpdateReceivableStatusInput,
-  ): Promise<ReceivableWithContact> {
+  ): Promise<ReceivableSnapshotWithContact> {
     const r = await this.inner.transitionStatus(organizationId, id, {
       status: input.status,
       paidAmount: input.paidAmount === undefined
@@ -83,7 +83,7 @@ export class ReceivablesService {
   async void(
     organizationId: string,
     id: string,
-  ): Promise<ReceivableWithContact> {
+  ): Promise<ReceivableSnapshotWithContact> {
     const r = await this.inner.void(organizationId, id);
     return attachContact(organizationId, r);
   }

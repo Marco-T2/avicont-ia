@@ -8,8 +8,8 @@
  * §13.A4-η load-bearing render path coverage. NEW pattern emergent §13.A5-γ
  * Opción A bridge (vs Opción C `.toSnapshot()` adapter precedent A5-C1) —
  * post-C1b-α canonical R4 exception path, hex barrel re-exporta `attachContact[s]`
- * que preserva DTO contract `PayableWithContact[]` legacy via mapper interno
- * `toPayableWithContact` reconstructing `Prisma.Decimal` at infrastructure/
+ * que preserva DTO contract `PayableSnapshotWithContact[]` legacy via mapper interno
+ * `toPayableSnapshotWithContact` reconstructing `Prisma.Decimal` at infrastructure/
  * layer (R5 honored). Cutover preserves consumer surface — components/
  * `payable-list.tsx` type consumer NO change scope C3-C4 (defer DTO drop
  * a C5-C6 wholesale). Mirror C0+C1a+C1b-α precedent EXACT estricto Path α
@@ -96,10 +96,10 @@
  * §13.A5-γ MATERIAL boundary preservation (Opción A bridge NEW pattern emergent
  * vs Opción C `.toSnapshot()` precedent A5-C1):
  *   - Pre-cutover: legacy `PayablesService.list/getById/create/update/updateStatus/void`
- *     returns `Promise<PayableWithContact>` via internal `attachContact[s]`
+ *     returns `Promise<PayableSnapshotWithContact>` via internal `attachContact[s]`
  *     invocation (post-C1b-α delegation chain through hex factory + bridge).
  *   - Post-cutover: routes/page invoke directly `makePayablesService()` factory
- *     + explicit `attachContact[s]` bridge → preserves Promise<PayableWithContact>
+ *     + explicit `attachContact[s]` bridge → preserves Promise<PayableSnapshotWithContact>
  *     contract at consumer surface (components/ payable-list.tsx + Response.json
  *     consumers + JSON.stringify RSC boundary). NO `.toSnapshot()` adapter
  *     required at boundary — bridge attachContact reconstructs Prisma.Decimal
@@ -200,7 +200,7 @@
  *   - app/(dashboard)/[orgSlug]/accounting/cxp/page.tsx (target list RSC — 1 callsite)
  *   - app/(dashboard)/[orgSlug]/accounting/cxp/__tests__/page.test.ts (target vi.mock §13.A4-η load-bearing)
  *   - features/payables/payables.service.ts (legacy shim — preserved C3-C4 scope, drop C7 wholesale delete)
- *   - features/payables/payables.types.ts (PayableWithContact type preserved C3-C4 scope, components type consumer NO change, drop C5-C6 DTO + C7 wholesale)
+ *   - features/payables/payables.types.ts (PayableSnapshotWithContact type preserved C3-C4 scope, components type consumer NO change, drop C5-C6 DTO + C7 wholesale)
  *   - modules/payables/presentation/server.ts (hex barrel re-exports `makePayablesService` + `attachContact[s]` post-C1b-α — consumer surface ready)
  *   - modules/payables/infrastructure/contact-attacher.ts (mapper Prisma.Decimal reconstruction post-C1b-α — bridge content)
  *   - modules/receivables/presentation/__tests__/c3-c4-cutover-shape.paired-pr.test.ts (paired sister mirror RED this batch)
@@ -274,7 +274,7 @@ describe("POC paired payables↔receivables C3-C4 — cutover paired UI pages + 
   });
 
   // ── B: attachContact[s] bridge invocation POSITIVE (Tests 5-8) ──────────
-  // §13.A5-γ Opción A bridge NEW pattern emergent — preserves PayableWithContact
+  // §13.A5-γ Opción A bridge NEW pattern emergent — preserves PayableSnapshotWithContact
   // contract via mapper interno cementado C1b-α canonical R4 exception path.
 
   it("Test 5: app/api/organizations/[orgSlug]/cxp/route.ts contains `attachContact` (word boundary — covers list→attachContacts plural + create→attachContact singular bridge invocation)", () => {

@@ -1,15 +1,10 @@
 import type {
   AccountsPayable,
   PayableStatus,
-  Contact,
 } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
 export type { AccountsPayable, PayableStatus };
-
-export type PayableWithContact = AccountsPayable & {
-  contact: Contact;
-};
 
 export interface CreatePayableInput {
   contactId: string;
@@ -41,9 +36,4 @@ export interface PayableFilters {
   status?: PayableStatus;
   dueDateFrom?: Date;
   dueDateTo?: Date;
-}
-
-export interface OpenAggregate {
-  totalBalance: number;
-  count: number;
 }

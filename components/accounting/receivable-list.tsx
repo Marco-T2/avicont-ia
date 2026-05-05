@@ -40,7 +40,7 @@ import StatusBadge from "./status-badge";
 import StatusUpdateDialog from "./status-update-dialog";
 import ReceivableForm from "./receivable-form";
 import ContactSelector from "@/components/contacts/contact-selector";
-import type { ReceivableWithContact } from "@/features/receivables";
+import type { ReceivableSnapshotWithContact } from "@/modules/receivables/presentation/server";
 
 function formatCurrency(value: number | string): string {
   return new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2 }).format(
@@ -58,7 +58,7 @@ function formatDate(date: Date | string): string {
 
 interface ReceivableListProps {
   orgSlug: string;
-  receivables: ReceivableWithContact[];
+  receivables: ReceivableSnapshotWithContact[];
 }
 
 export default function ReceivableList({
@@ -69,9 +69,9 @@ export default function ReceivableList({
 
   const [showCreate, setShowCreate] = useState(false);
   const [statusDialogFor, setStatusDialogFor] =
-    useState<ReceivableWithContact | null>(null);
+    useState<ReceivableSnapshotWithContact | null>(null);
   const [cancelDialogFor, setCancelDialogFor] =
-    useState<ReceivableWithContact | null>(null);
+    useState<ReceivableSnapshotWithContact | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   // Filters
@@ -91,7 +91,7 @@ export default function ReceivableList({
   });
 
   async function handleStatusUpdate(
-    receivable: ReceivableWithContact,
+    receivable: ReceivableSnapshotWithContact,
     status: string,
     paidAmount?: number,
   ) {
@@ -114,7 +114,7 @@ export default function ReceivableList({
     router.refresh();
   }
 
-  async function executeCancel(receivable: ReceivableWithContact) {
+  async function executeCancel(receivable: ReceivableSnapshotWithContact) {
     setActioningId(receivable.id);
     try {
       const res = await fetch(

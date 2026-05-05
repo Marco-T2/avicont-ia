@@ -1,15 +1,10 @@
 import type {
   AccountsReceivable,
   ReceivableStatus,
-  Contact,
 } from "@/generated/prisma/client";
 import type { Prisma } from "@/generated/prisma/client";
 
 export type { AccountsReceivable, ReceivableStatus };
-
-export type ReceivableWithContact = AccountsReceivable & {
-  contact: Contact;
-};
 
 export interface CreateReceivableInput {
   contactId: string;
@@ -41,9 +36,4 @@ export interface ReceivableFilters {
   status?: ReceivableStatus;
   dueDateFrom?: Date;
   dueDateTo?: Date;
-}
-
-export interface OpenAggregate {
-  totalBalance: number;
-  count: number;
 }

@@ -1,4 +1,6 @@
 import "server-only";
+import type { Contact } from "@/generated/prisma/client";
+import type { PayableSnapshot } from "../domain/payable.entity";
 
 export {
   makePayablesService,
@@ -50,3 +52,5 @@ export {
 } from "../domain/errors/payable-errors";
 
 export { attachContact, attachContacts } from "./composition-root";
+
+export type PayableSnapshotWithContact = PayableSnapshot & { contact: Contact };

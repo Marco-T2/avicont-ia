@@ -4,10 +4,10 @@ import {
   attachContacts,
   makePayablesService,
   type PayablesService as InnerPayablesService,
+  type PayableSnapshotWithContact,
+  type OpenAggregate,
 } from "@/modules/payables/presentation/server";
 import type {
-  PayableWithContact,
-  OpenAggregate,
   CreatePayableInput,
   UpdatePayableInput,
   UpdatePayableStatusInput,
@@ -17,7 +17,7 @@ import type {
 /**
  * Backward-compat shim. Delegates business logic to the hexagonal
  * `modules/payables/` and re-attaches `contact` for legacy consumers
- * that expect the Prisma `PayableWithContact` shape.
+ * that expect the Prisma `PayableSnapshotWithContact` shape.
  */
 export class PayablesService {
   private readonly inner: InnerPayablesService;
@@ -29,7 +29,7 @@ export class PayablesService {
   async list(
     organizationId: string,
     filters?: PayableFilters,
-  ): Promise<PayableWithContact[]> {
+  ): Promise<PayableSnapshotWithContact[]> {
     const items = await this.inner.list(organizationId, filters);
     return attachContacts(organizationId, items);
   }
@@ -37,7 +37,7 @@ export class PayablesService {
   async getById(
     organizationId: string,
     id: string,
-  ): Promise<PayableWithContact> {
+  ): Promise<PayableSnapshotWithContact> {
     const p = await this.inner.getById(organizationId, id);
     return attachContact(organizationId, p);
   }
@@ -45,7 +45,7 @@ export class PayablesService {
   async create(
     organizationId: string,
     input: CreatePayableInput,
-  ): Promise<PayableWithContact> {
+  ): Promise<PayableSnapshotWithContact> {
     const p = await this.inner.create(organizationId, {
       ...input,
       amount: typeof input.amount === "number" || typeof input.amount === "string"
@@ -59,7 +59,7 @@ export class PayablesService {
     organizationId: string,
     id: string,
     input: UpdatePayableInput & { amount?: unknown },
-  ): Promise<PayableWithContact> {
+  ): Promise<PayableSnapshotWithContact> {
     const p = await this.inner.update(organizationId, id, input);
     return attachContact(organizationId, p);
   }
@@ -68,7 +68,7 @@ export class PayablesService {
     organizationId: string,
     id: string,
     input: UpdatePayableStatusInput,
-  ): Promise<PayableWithContact> {
+  ): Promise<PayableSnapshotWithContact> {
     const p = await this.inner.transitionStatus(organizationId, id, {
       status: input.status,
       paidAmount: input.paidAmount === undefined
@@ -83,7 +83,7 @@ export class PayablesService {
   async void(
     organizationId: string,
     id: string,
-  ): Promise<PayableWithContact> {
+  ): Promise<PayableSnapshotWithContact> {
     const p = await this.inner.void(organizationId, id);
     return attachContact(organizationId, p);
   }

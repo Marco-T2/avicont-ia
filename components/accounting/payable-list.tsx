@@ -40,7 +40,7 @@ import StatusBadge from "./status-badge";
 import StatusUpdateDialog from "./status-update-dialog";
 import PayableForm from "./payable-form";
 import ContactSelector from "@/components/contacts/contact-selector";
-import type { PayableWithContact } from "@/features/payables";
+import type { PayableSnapshotWithContact } from "@/modules/payables/presentation/server";
 
 function formatCurrency(value: number | string): string {
   return new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2 }).format(
@@ -58,7 +58,7 @@ function formatDate(date: Date | string): string {
 
 interface PayableListProps {
   orgSlug: string;
-  payables: PayableWithContact[];
+  payables: PayableSnapshotWithContact[];
 }
 
 export default function PayableList({ orgSlug, payables }: PayableListProps) {
@@ -66,9 +66,9 @@ export default function PayableList({ orgSlug, payables }: PayableListProps) {
 
   const [showCreate, setShowCreate] = useState(false);
   const [statusDialogFor, setStatusDialogFor] =
-    useState<PayableWithContact | null>(null);
+    useState<PayableSnapshotWithContact | null>(null);
   const [cancelDialogFor, setCancelDialogFor] =
-    useState<PayableWithContact | null>(null);
+    useState<PayableSnapshotWithContact | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
   // Filters
@@ -88,7 +88,7 @@ export default function PayableList({ orgSlug, payables }: PayableListProps) {
   });
 
   async function handleStatusUpdate(
-    payable: PayableWithContact,
+    payable: PayableSnapshotWithContact,
     status: string,
     paidAmount?: number,
   ) {
@@ -111,7 +111,7 @@ export default function PayableList({ orgSlug, payables }: PayableListProps) {
     router.refresh();
   }
 
-  async function executeCancel(payable: PayableWithContact) {
+  async function executeCancel(payable: PayableSnapshotWithContact) {
     setActioningId(payable.id);
     try {
       const res = await fetch(

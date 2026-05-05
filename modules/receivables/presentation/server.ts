@@ -1,4 +1,6 @@
 import "server-only";
+import type { Contact } from "@/generated/prisma/client";
+import type { ReceivableSnapshot } from "../domain/receivable.entity";
 
 export {
   makeReceivablesService,
@@ -50,3 +52,5 @@ export {
 } from "../domain/errors/receivable-errors";
 
 export { attachContact, attachContacts } from "./composition-root";
+
+export type ReceivableSnapshotWithContact = ReceivableSnapshot & { contact: Contact };

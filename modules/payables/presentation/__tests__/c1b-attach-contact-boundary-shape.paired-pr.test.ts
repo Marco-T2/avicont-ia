@@ -37,7 +37,7 @@
  *   - features/payables/payables.service.ts L114-122: attachContact (singular,
  *     getById/create/update-style: prisma.contact.findFirst scoped)
  *     → modules/payables/infrastructure/contact-attacher.ts (NEW file)
- *   - features/payables/payables.service.ts L124-146: toPayableWithContact
+ *   - features/payables/payables.service.ts L124-146: toPayableSnapshotWithContact
  *     (mapper privado Prisma.Decimal reconstruction MonetaryAmount.value→Prisma.Decimal
  *     en amount/paid/balance + contact attach)
  *     → modules/payables/infrastructure/contact-attacher.ts (NEW file)
@@ -98,18 +98,18 @@
  *
  * §13.A5-γ MATERIAL boundary preservation (refined CR1 α-A3):
  *   - Mapper Prisma.Decimal reconstruction (amount/paid/balance) preserves legacy
- *     POJO contract `PayableWithContact = AccountsPayable & { contact: Contact }`
+ *     POJO contract `PayableSnapshotWithContact = AccountsPayable & { contact: Contact }`
  *     en infrastructure/ layer post-cutover. NO callsite consumer migration
  *     required C1b — barrel re-export desde presentation/server.ts preserves
  *     consumer surface.
  *   - Public shim API `list/getById/create/update/updateStatus/void` retornos
- *     `Promise<PayableWithContact>` PRESERVED — C1b internal refactor only,
+ *     `Promise<PayableSnapshotWithContact>` PRESERVED — C1b internal refactor only,
  *     consumer-facing surface unchanged.
  *
  * §13.A5-ε method-level signature divergence — DESCARTADO C1b (verified Step 0
  * expand): NO method shim divergent — internal helper move (functional code
  * migration) NO signature divergence emergente. Mapper return type
- * `PayableWithContact` consistente shim (pre) ↔ infrastructure/ (post).
+ * `PayableSnapshotWithContact` consistente shim (pre) ↔ infrastructure/ (post).
  *
  * Sub-findings emergentes (Step 0 + post-GREEN runtime verify discovery):
  *   - EMERGENTE #1: bookmark heredado #1617 line range 114-146 omitía L101-112
@@ -179,7 +179,7 @@
  *   - engram `feedback_low_cost_verification_asymmetry` (single vitest gate suficiente post-RED-α Marco lock L6)
  *   - engram `feedback_jsdoc_atomic_revoke` (precedent C1a `47449d8` Opción A clean atomic 2 archivos)
  *   - features/payables/payables.service.ts L101-146 (3 privados shim source pre-cutover)
- *   - features/payables/payables.types.ts (PayableWithContact = AccountsPayable & { contact: Contact } legacy POJO contract preserved)
+ *   - features/payables/payables.types.ts (PayableSnapshotWithContact = AccountsPayable & { contact: Contact } legacy POJO contract preserved)
  *   - modules/payables/presentation/server.ts (target boundary hex barrel — barrel re-export pre-RED 51 LOC, post-GREEN +1 re-export line)
  *   - modules/payables/infrastructure/contact-attacher.ts (target NEW file pre-GREEN ENOENT, post-GREEN ~50 LOC functional code at infrastructure/ layer R5 honored)
  *   - modules/payables/presentation/composition-root.ts (factories pre-existing post C1a closure)
@@ -232,9 +232,9 @@ describe("POC paired payables↔receivables C1b-α — boundary attachContact Op
   // infrastructure/contact-attacher.ts. Honor R5 architectural invariant
   // (Prisma allowed at infrastructure layer per architecture canonical).
 
-  it("Test 3: modules/payables/infrastructure/contact-attacher.ts contains Prisma.Decimal reference (mapper reconstruction MonetaryAmount.value→Prisma.Decimal at infrastructure layer per Marco lock L3 + CR1 α-A3 R5 honor)", () => {
+  it("Test 3: modules/payables/infrastructure/contact-attacher.ts does NOT contain Prisma.Decimal reference (post-C5-C6 §13.B-paired DTO drop axis simplification — drop reconstruction mapper interno simplifies, .toSnapshot() Path α direct entity → snapshot mapping mirror Opción C precedent A5-C1 — invariant collision elevation R5 absorbed cascade DENTRO C5-C6 lock)", () => {
     const source = fs.readFileSync(PAYABLES_CONTACT_ATTACHER, "utf8");
-    expect(source).toMatch(PRISMA_DECIMAL_RE);
+    expect(source).not.toMatch(PRISMA_DECIMAL_RE);
   });
 
   it("Test 4: modules/payables/infrastructure/contact-attacher.ts contains prisma.contact.find reference (cross-module direct contact table query at infrastructure layer per Marco lock L4 F3-C + CR1 α-A3 R5 honor — TODO ContactHydratePort extraction future POC contacts)", () => {
