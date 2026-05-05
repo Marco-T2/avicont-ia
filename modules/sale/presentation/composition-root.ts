@@ -13,7 +13,7 @@ import {
 } from "@/modules/iva-books/presentation/composition-root";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/composition-root";
-import { PrismaReceivablesRepository } from "@/modules/receivables/infrastructure/prisma-receivables.repository";
+import { makeReceivablesRepository } from "@/modules/receivables/presentation/server";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 
 import { SaleService } from "../application/sale.service";
@@ -70,7 +70,7 @@ const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
 export function makeSaleService(): SaleService {
   return new SaleService({
     repo: new PrismaSaleRepository(),
-    receivables: new PrismaReceivablesRepository(),
+    receivables: makeReceivablesRepository(),
     contacts: new PrismaContactRepository(),
     uow: new PrismaSaleUnitOfWork(
       repoLike,

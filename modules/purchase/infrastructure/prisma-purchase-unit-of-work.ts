@@ -9,7 +9,7 @@ import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastruct
 import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
 import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
-import { PrismaPayablesRepository } from "@/modules/payables/infrastructure/prisma-payables.repository";
+import { PrismaPayablesRepository } from "@/modules/payables/presentation/server";
 import { PrismaJournalEntryFactoryAdapter } from "@/modules/sale/infrastructure/prisma-journal-entry-factory.adapter";
 import type { AuditContext } from "@/modules/shared/domain/ports/unit-of-work";
 import { PrismaFiscalPeriodsTxRepo } from "@/modules/shared/infrastructure/prisma-fiscal-periods-tx.repo";
@@ -62,7 +62,6 @@ import { PrismaPurchaseRepository } from "./prisma-purchase.repository";
  * root no puede capturar `tx` per-run. Cross-module concrete imports
  * cubiertos: `accounting/PrismaAccountBalancesRepo`,
  * `accounting/PrismaJournalEntriesRepository`,
- * `payables/PrismaPayablesRepository` (sustituye Receivables del sale C6),
  * `shared/PrismaFiscalPeriodsTxRepo`,
  * `sale/PrismaJournalEntryFactoryAdapter` (cross-module adicional vs sale
  * C6; bookmark E-2 POC #11.0c reorg cross-module ports por dominio target).

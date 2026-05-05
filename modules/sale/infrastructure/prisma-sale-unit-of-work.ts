@@ -8,7 +8,7 @@ import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastruct
 import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
 import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
-import { PrismaReceivablesRepository } from "@/modules/receivables/infrastructure/prisma-receivables.repository";
+import { PrismaReceivablesRepository } from "@/modules/receivables/presentation/server";
 import type { AuditContext } from "@/modules/shared/domain/ports/unit-of-work";
 import { PrismaFiscalPeriodsTxRepo } from "@/modules/shared/infrastructure/prisma-fiscal-periods-tx.repo";
 import { Prisma } from "@/generated/prisma/client";
@@ -53,7 +53,6 @@ import { PrismaSaleRepository } from "./prisma-sale.repository";
  * root no puede capturar `tx` per-run. Cross-module concrete imports
  * cubiertos: `accounting/PrismaAccountBalancesRepo`,
  * `accounting/PrismaJournalEntriesRepository`,
- * `receivables/PrismaReceivablesRepository`,
  * `shared/PrismaFiscalPeriodsTxRepo`. Cada uno implementa un port definido
  * en `domain/` del módulo dueño (R3 vigente — la flecha apunta al dominio).
  */
