@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { PayablesService } from "@/features/payables/server";
+import {
+  makePayablesService,
+  attachContacts,
+} from "@/modules/payables/presentation/server";
 import PayableList from "@/components/accounting/payable-list";
 
 interface CxPPageProps {
@@ -19,10 +21,10 @@ export default async function CxPPage({ params }: CxPPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
-  const payablesService = new PayablesService(contactsService);
+  const payablesService = makePayablesService();
 
-  const payables = await payablesService.list(orgId);
+  const items = await payablesService.list(orgId);
+  const payables = await attachContacts(orgId, items);
 
   return (
     <div className="space-y-6">

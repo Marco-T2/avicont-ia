@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesService } from "@/features/receivables/server";
+import {
+  makeReceivablesService,
+  attachContacts,
+} from "@/modules/receivables/presentation/server";
 import ReceivableList from "@/components/accounting/receivable-list";
 
 interface CxCPageProps {
@@ -19,10 +21,10 @@ export default async function CxCPage({ params }: CxCPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
-  const receivablesService = new ReceivablesService(contactsService);
+  const receivablesService = makeReceivablesService();
 
-  const receivables = await receivablesService.list(orgId);
+  const items = await receivablesService.list(orgId);
+  const receivables = await attachContacts(orgId, items);
 
   return (
     <div className="space-y-6">

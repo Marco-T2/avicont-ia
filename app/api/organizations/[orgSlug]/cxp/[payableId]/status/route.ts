@@ -1,11 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { PayablesService } from "@/features/payables/server";
+import {
+  makePayablesService,
+  attachContact,
+} from "@/modules/payables/presentation/server";
 import { payableStatusSchema } from "@/features/payables";
 
-const contactsService = new ContactsService();
-const payablesService = new PayablesService(contactsService);
+const payablesService = makePayablesService();
 
 export async function PATCH(
   request: Request,
@@ -18,7 +19,8 @@ export async function PATCH(
     const body = await request.json();
     const input = payableStatusSchema.parse(body);
 
-    const payable = await payablesService.updateStatus(orgId, payableId, input);
+    const item = await payablesService.transitionStatus(orgId, payableId, input);
+    const payable = await attachContact(orgId, item);
 
     return Response.json(payable);
   } catch (error) {

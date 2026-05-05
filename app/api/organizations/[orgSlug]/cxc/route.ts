@@ -1,14 +1,16 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesService } from "@/features/receivables/server";
+import {
+  makeReceivablesService,
+  attachContact,
+  attachContacts,
+} from "@/modules/receivables/presentation/server";
 import {
   createReceivableSchema,
   receivableFiltersSchema,
 } from "@/features/receivables";
 
-const contactsService = new ContactsService();
-const receivablesService = new ReceivablesService(contactsService);
+const receivablesService = makeReceivablesService();
 
 export async function GET(
   request: Request,
@@ -26,7 +28,8 @@ export async function GET(
       dueDateTo: searchParams.get("dueDateTo") ?? undefined,
     });
 
-    const receivables = await receivablesService.list(orgId, filters);
+    const items = await receivablesService.list(orgId, filters);
+    const receivables = await attachContacts(orgId, items);
 
     return Response.json(receivables);
   } catch (error) {
@@ -45,7 +48,8 @@ export async function POST(
     const body = await request.json();
     const input = createReceivableSchema.parse(body);
 
-    const receivable = await receivablesService.create(orgId, input);
+    const item = await receivablesService.create(orgId, input);
+    const receivable = await attachContact(orgId, item);
 
     return Response.json(receivable, { status: 201 });
   } catch (error) {

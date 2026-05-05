@@ -1,14 +1,16 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { PayablesService } from "@/features/payables/server";
+import {
+  makePayablesService,
+  attachContact,
+  attachContacts,
+} from "@/modules/payables/presentation/server";
 import {
   createPayableSchema,
   payableFiltersSchema,
 } from "@/features/payables";
 
-const contactsService = new ContactsService();
-const payablesService = new PayablesService(contactsService);
+const payablesService = makePayablesService();
 
 export async function GET(
   request: Request,
@@ -26,7 +28,8 @@ export async function GET(
       dueDateTo: searchParams.get("dueDateTo") ?? undefined,
     });
 
-    const payables = await payablesService.list(orgId, filters);
+    const items = await payablesService.list(orgId, filters);
+    const payables = await attachContacts(orgId, items);
 
     return Response.json(payables);
   } catch (error) {
@@ -45,7 +48,8 @@ export async function POST(
     const body = await request.json();
     const input = createPayableSchema.parse(body);
 
-    const payable = await payablesService.create(orgId, input);
+    const item = await payablesService.create(orgId, input);
+    const payable = await attachContact(orgId, item);
 
     return Response.json(payable, { status: 201 });
   } catch (error) {

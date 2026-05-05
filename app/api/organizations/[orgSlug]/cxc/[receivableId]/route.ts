@@ -1,11 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesService } from "@/features/receivables/server";
+import {
+  makeReceivablesService,
+  attachContact,
+} from "@/modules/receivables/presentation/server";
 import { updateReceivableSchema } from "@/features/receivables";
 
-const contactsService = new ContactsService();
-const receivablesService = new ReceivablesService(contactsService);
+const receivablesService = makeReceivablesService();
 
 export async function GET(
   _request: Request,
@@ -15,7 +16,8 @@ export async function GET(
     const { orgSlug, receivableId } = await params;
     const { orgId } = await requirePermission("sales", "read", orgSlug);
 
-    const receivable = await receivablesService.getById(orgId, receivableId);
+    const item = await receivablesService.getById(orgId, receivableId);
+    const receivable = await attachContact(orgId, item);
 
     return Response.json(receivable);
   } catch (error) {
@@ -34,7 +36,8 @@ export async function PATCH(
     const body = await request.json();
     const input = updateReceivableSchema.parse(body);
 
-    const receivable = await receivablesService.update(orgId, receivableId, input);
+    const item = await receivablesService.update(orgId, receivableId, input);
+    const receivable = await attachContact(orgId, item);
 
     return Response.json(receivable);
   } catch (error) {
@@ -50,7 +53,8 @@ export async function DELETE(
     const { orgSlug, receivableId } = await params;
     const { orgId } = await requirePermission("sales", "write", orgSlug);
 
-    const receivable = await receivablesService.void(orgId, receivableId);
+    const item = await receivablesService.void(orgId, receivableId);
+    const receivable = await attachContact(orgId, item);
 
     return Response.json(receivable);
   } catch (error) {

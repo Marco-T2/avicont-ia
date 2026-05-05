@@ -5,10 +5,16 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockRedirect, mockRequirePermission, mockList } = vi.hoisted(() => ({
+const {
+  mockRedirect,
+  mockRequirePermission,
+  mockList,
+  mockAttachContacts,
+} = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockList: vi.fn(),
+  mockAttachContacts: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -17,17 +23,10 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/contacts/server", () => {
-  class ContactsService {}
-  return { ContactsService };
-});
-
-vi.mock("@/features/receivables/server", () => {
-  class ReceivablesService {
-    list = mockList;
-  }
-  return { ReceivablesService };
-});
+vi.mock("@/modules/receivables/presentation/server", () => ({
+  makeReceivablesService: () => ({ list: mockList }),
+  attachContacts: mockAttachContacts,
+}));
 
 vi.mock("@/components/accounting/receivable-list", () => ({
   default: vi.fn().mockReturnValue(null),
@@ -44,6 +43,7 @@ function makeParams() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockList.mockResolvedValue([]);
+  mockAttachContacts.mockResolvedValue([]);
 });
 
 describe("/accounting/cxc — rbac gate", () => {

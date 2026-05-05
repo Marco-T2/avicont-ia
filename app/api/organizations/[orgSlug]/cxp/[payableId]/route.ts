@@ -1,11 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { PayablesService } from "@/features/payables/server";
+import {
+  makePayablesService,
+  attachContact,
+} from "@/modules/payables/presentation/server";
 import { updatePayableSchema } from "@/features/payables";
 
-const contactsService = new ContactsService();
-const payablesService = new PayablesService(contactsService);
+const payablesService = makePayablesService();
 
 export async function GET(
   _request: Request,
@@ -15,7 +16,8 @@ export async function GET(
     const { orgSlug, payableId } = await params;
     const { orgId } = await requirePermission("purchases", "read", orgSlug);
 
-    const payable = await payablesService.getById(orgId, payableId);
+    const item = await payablesService.getById(orgId, payableId);
+    const payable = await attachContact(orgId, item);
 
     return Response.json(payable);
   } catch (error) {
@@ -34,7 +36,8 @@ export async function PATCH(
     const body = await request.json();
     const input = updatePayableSchema.parse(body);
 
-    const payable = await payablesService.update(orgId, payableId, input);
+    const item = await payablesService.update(orgId, payableId, input);
+    const payable = await attachContact(orgId, item);
 
     return Response.json(payable);
   } catch (error) {
@@ -50,7 +53,8 @@ export async function DELETE(
     const { orgSlug, payableId } = await params;
     const { orgId } = await requirePermission("purchases", "write", orgSlug);
 
-    const payable = await payablesService.void(orgId, payableId);
+    const item = await payablesService.void(orgId, payableId);
+    const payable = await attachContact(orgId, item);
 
     return Response.json(payable);
   } catch (error) {

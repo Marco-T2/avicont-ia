@@ -1,11 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesService } from "@/features/receivables/server";
+import {
+  makeReceivablesService,
+  attachContact,
+} from "@/modules/receivables/presentation/server";
 import { receivableStatusSchema } from "@/features/receivables";
 
-const contactsService = new ContactsService();
-const receivablesService = new ReceivablesService(contactsService);
+const receivablesService = makeReceivablesService();
 
 export async function PATCH(
   request: Request,
@@ -18,7 +19,8 @@ export async function PATCH(
     const body = await request.json();
     const input = receivableStatusSchema.parse(body);
 
-    const receivable = await receivablesService.updateStatus(orgId, receivableId, input);
+    const item = await receivablesService.transitionStatus(orgId, receivableId, input);
+    const receivable = await attachContact(orgId, item);
 
     return Response.json(receivable);
   } catch (error) {
