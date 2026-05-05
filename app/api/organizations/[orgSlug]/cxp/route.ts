@@ -8,7 +8,7 @@ import {
 import {
   createPayableSchema,
   payableFiltersSchema,
-} from "@/features/payables";
+} from "@/modules/payables/presentation/validation";
 
 const payablesService = makePayablesService();
 

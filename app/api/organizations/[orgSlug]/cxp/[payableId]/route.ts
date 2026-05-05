@@ -4,7 +4,7 @@ import {
   makePayablesService,
   attachContact,
 } from "@/modules/payables/presentation/server";
-import { updatePayableSchema } from "@/features/payables";
+import { updatePayableSchema } from "@/modules/payables/presentation/validation";
 
 const payablesService = makePayablesService();
 

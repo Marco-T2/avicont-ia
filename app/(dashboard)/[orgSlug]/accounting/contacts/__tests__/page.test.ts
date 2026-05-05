@@ -24,20 +24,8 @@ vi.mock("@/features/permissions/server", () => ({
 vi.mock("@/features/contacts/server", () => {
   class ContactsService {
     listWithBalances = mockListWithBalances;
-    setReceivablesService = vi.fn();
-    setPayablesService = vi.fn();
   }
   return { ContactsService };
-});
-
-vi.mock("@/features/receivables/server", () => {
-  class ReceivablesService {}
-  return { ReceivablesService };
-});
-
-vi.mock("@/features/payables/server", () => {
-  class PayablesService {}
-  return { PayablesService };
 });
 
 vi.mock("@/components/contacts/contact-list", () => ({

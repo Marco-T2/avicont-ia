@@ -8,7 +8,7 @@ import {
 import {
   createReceivableSchema,
   receivableFiltersSchema,
-} from "@/features/receivables";
+} from "@/modules/receivables/presentation/validation";
 
 const receivablesService = makeReceivablesService();
 

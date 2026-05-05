@@ -10,15 +10,11 @@ const {
   mockRequirePermission,
   mockGetById,
   mockGetBalanceSummary,
-  mockSetReceivables,
-  mockSetPayables,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockGetById: vi.fn(),
   mockGetBalanceSummary: vi.fn(),
-  mockSetReceivables: vi.fn(),
-  mockSetPayables: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -31,20 +27,8 @@ vi.mock("@/features/contacts/server", () => {
   class ContactsService {
     getById = mockGetById;
     getBalanceSummary = mockGetBalanceSummary;
-    setReceivablesService = mockSetReceivables;
-    setPayablesService = mockSetPayables;
   }
   return { ContactsService };
-});
-
-vi.mock("@/features/receivables/server", () => {
-  class ReceivablesService {}
-  return { ReceivablesService };
-});
-
-vi.mock("@/features/payables/server", () => {
-  class PayablesService {}
-  return { PayablesService };
 });
 
 vi.mock("@/components/contacts/contact-detail", () => ({

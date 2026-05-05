@@ -4,7 +4,7 @@ import {
   makeReceivablesService,
   attachContact,
 } from "@/modules/receivables/presentation/server";
-import { updateReceivableSchema } from "@/features/receivables";
+import { updateReceivableSchema } from "@/modules/receivables/presentation/validation";
 
 const receivablesService = makeReceivablesService();
 
