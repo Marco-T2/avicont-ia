@@ -6,6 +6,10 @@ import {
   makePaymentsService,
   type PaymentsService as InnerPaymentsService,
 } from "@/modules/payment/presentation/server";
+import {
+  paymentInclude,
+  toPaymentWithRelations,
+} from "@/modules/payment/presentation/mappers/payment-with-relations.mapper";
 import type {
   PaymentWithRelations,
   CreatePaymentInput,
@@ -14,19 +18,6 @@ import type {
   AllocationInput,
   CreditAllocationSource,
 } from "./payment.types";
-
-const paymentInclude = {
-  contact: true,
-  period: true,
-  journalEntry: true,
-  operationalDocType: { select: { id: true, code: true, name: true } },
-  allocations: {
-    include: {
-      receivable: { include: { contact: true } },
-      payable: { include: { contact: true } },
-    },
-  },
-} as const;
 
 /**
  * Backward-compat shim. Delegates business logic to the hexagonal
@@ -276,19 +267,4 @@ async function fetchWithRelations(
     include: paymentInclude,
   });
   return row ? toPaymentWithRelations(row) : null;
-}
-
-function toPaymentWithRelations(row: unknown): PaymentWithRelations {
-  const r = row as Record<string, unknown>;
-  const result: Record<string, unknown> = {
-    ...r,
-    amount: Number(r.amount),
-  };
-  if (Array.isArray(r.allocations)) {
-    result.allocations = (r.allocations as Record<string, unknown>[]).map((a) => ({
-      ...a,
-      amount: Number(a.amount),
-    }));
-  }
-  return result as unknown as PaymentWithRelations;
 }
