@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { PaymentService } from "@/features/payment/server";
+import { PaymentService } from "@/modules/payment/presentation/server";
 import { ContactsService } from "@/features/contacts/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";

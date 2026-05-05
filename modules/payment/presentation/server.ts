@@ -21,8 +21,18 @@ export type {
   UpdatePaymentInput,
   AllocationDraft,
 } from "../domain/payment.entity";
+// `PaymentRepository` (TYPE port) intentionally NOT re-exported from this
+// barrel — collision avoidance with the legacy `PaymentRepository` class
+// re-exported at the bottom of this file from `@/features/payment/server` per
+// Marco lock #1 Opción A (C1 cutover). Internal hex consumers
+// (modules/payment/{infrastructure,application}/) import the TYPE port
+// directly from `../domain/payment.repository`. Forward-applicable cross-POC:
+// when hex barrel re-exports a legacy VALUE class with same name as a domain
+// TYPE port, drop the TYPE port from the barrel re-export (consumers should
+// import directly from domain/). §13 R-name-collision NEW invariant collision
+// category (TS namespace shadowing TYPE-vs-VALUE re-export ambiguity) —
+// cementación target D1 doc-only.
 export type {
-  PaymentRepository,
   PaymentFilters,
   UnappliedPaymentSnapshot,
   CustomerBalanceSnapshot,
@@ -64,3 +74,13 @@ export {
   type CreditAllocationSource,
   type PaymentResult,
 } from "../application/payments.service";
+
+// ── Opción A canonical re-export legacy class identity (Marco lock #1 C1) ──
+// Preserves DTO contract `PaymentWithRelations` defer C2 mapper centralizado
+// per Marco lock L3 original. Single-direction class re-export — features →
+// hex circular module import mitigated (features/payment/payment.service.ts
+// imports `makePaymentsService` from this hex barrel via `inner: makePaymentsService()`
+// at constructor invocation time, NO module-eval circular collision).
+// PaymentService/PaymentRepository wholesale delete defer C4 wholesale per
+// Marco lock L1 ESTRICTO.
+export { PaymentService, PaymentRepository } from "@/features/payment/server";

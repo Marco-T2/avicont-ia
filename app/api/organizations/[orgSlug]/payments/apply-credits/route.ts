@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { PaymentService } from "@/features/payment/server";
+import { PaymentService } from "@/modules/payment/presentation/server";
 
 const paymentService = new PaymentService();
 

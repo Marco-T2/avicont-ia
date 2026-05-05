@@ -2,7 +2,7 @@ import { z } from "zod";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { PaymentService } from "@/features/payment/server";
+import { PaymentService } from "@/modules/payment/presentation/server";
 
 const usersService = new UsersService();
 const paymentService = new PaymentService();

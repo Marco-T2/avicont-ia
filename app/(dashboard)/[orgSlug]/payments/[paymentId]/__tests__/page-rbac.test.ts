@@ -36,7 +36,7 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/payment/server", () => {
+vi.mock("@/modules/payment/presentation/server", () => {
   class PaymentService {
     getById = mockPaymentGetById;
   }
