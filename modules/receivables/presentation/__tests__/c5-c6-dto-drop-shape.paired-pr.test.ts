@@ -226,10 +226,6 @@ const REPO_ROOT = path.resolve(__dirname, "../../../..");
 
 // ── C5-C6 drop POJO + Snapshot+Contact hex DTO targets (7 archivos paired-receivables side) ──
 
-const FEATURES_RECEIVABLES_TYPES = path.join(
-  REPO_ROOT,
-  "features/receivables/receivables.types.ts",
-);
 const HEX_RECEIVABLES_SERVER = path.join(
   REPO_ROOT,
   "modules/receivables/presentation/server.ts",
@@ -241,10 +237,6 @@ const CONTACT_ATTACHER = path.join(
 const RECEIVABLE_LIST_COMPONENT = path.join(
   REPO_ROOT,
   "components/accounting/receivable-list.tsx",
-);
-const FEATURES_RECEIVABLES_SERVICE = path.join(
-  REPO_ROOT,
-  "features/receivables/receivables.service.ts",
 );
 const C1B_TEST_CASCADE = path.join(
   REPO_ROOT,
@@ -258,7 +250,6 @@ const C3_C4_TEST_CASCADE = path.join(
 // ── Regex patterns ───────────────────────────────────────────────────────────
 
 const RECEIVABLE_WITH_CONTACT_RE = /\bReceivableWithContact\b/;
-const OPEN_AGGREGATE_RE = /\bOpenAggregate\b/;
 const RECEIVABLE_SNAPSHOT_WITH_CONTACT_RE = /\bReceivableSnapshotWithContact\b/;
 const SNAPSHOT_CONTACT_COMPOSITION_RE =
   /ReceivableSnapshot\s*&\s*\{\s*contact\s*:\s*Contact\s*\}/;
@@ -270,18 +261,6 @@ const HEX_RECEIVABLES_SERVER_IMPORT_RE =
   /from\s+["']@\/modules\/receivables\/presentation\/server["']/;
 
 describe("POC paired payables↔receivables C5-C6 — drop legacy POJO type defs + DTO divergence paired axis (paired-receivables side, §13.B-paired NEW classification 'DTO drop axis paired' emergent + Path C5C drop POJO entirely + ReceivableSnapshotWithContact hex DTO + bridge mapper simplification + .toSnapshot() Opción C precedent A5-C1 4ta aplicación post-cementación cumulative, 9na evidencia §13.A5-α paired sister sub-cycle 5ta aplicación post-cementación cumulative)", () => {
-  // ── A: Legacy POJO type defs DROPPED features/receivables/receivables.types.ts (Tests 1-2) ──
-
-  it("Test 1: features/receivables/receivables.types.ts does NOT contain `ReceivableWithContact` literal (POJO Prisma DTO drop entirely §13.B-paired Path C5C wholesale)", () => {
-    const source = fs.readFileSync(FEATURES_RECEIVABLES_TYPES, "utf8");
-    expect(source).not.toMatch(RECEIVABLE_WITH_CONTACT_RE);
-  });
-
-  it("Test 2: features/receivables/receivables.types.ts does NOT contain `OpenAggregate` literal (POJO duplicate de hex drop — hex barrel re-exports canonical home modules/receivables/presentation/server.ts)", () => {
-    const source = fs.readFileSync(FEATURES_RECEIVABLES_TYPES, "utf8");
-    expect(source).not.toMatch(OPEN_AGGREGATE_RE);
-  });
-
   // ── B: NEW hex DTO exported modules/receivables/presentation/server.ts (Tests 3-4) ──
   // §13.B-paired NEW classification — ReceivableSnapshotWithContact replaces
   // legacy POJO Prisma DTO `ReceivableWithContact = AccountsReceivable & { contact:
@@ -332,23 +311,6 @@ describe("POC paired payables↔receivables C5-C6 — drop legacy POJO type defs
 
   it("Test 9: components/accounting/receivable-list.tsx does NOT contain `ReceivableWithContact` literal (legacy POJO consumer drop wholesale — prop type + state types + filter callbacks all swap a ReceivableSnapshotWithContact)", () => {
     const source = fs.readFileSync(RECEIVABLE_LIST_COMPONENT, "utf8");
-    expect(source).not.toMatch(RECEIVABLE_WITH_CONTACT_RE);
-  });
-
-  // ── E: Legacy shim service.ts swap a hex types (Tests 10-11) ──
-  // features/receivables/receivables.service.ts legacy shim — preserved hasta C7
-  // wholesale delete — swaps internal type imports a hex barrel pre-deletion
-  // for TSC invariant preservation (drop POJO defs from features/X/types.ts
-  // would break shim type references si NO swap).
-
-  it("Test 10: features/receivables/receivables.service.ts imports `ReceivableSnapshotWithContact` from `@/modules/receivables/presentation/server` (legacy shim swap hex types pre-C7 wholesale TSC invariant preservation)", () => {
-    const source = fs.readFileSync(FEATURES_RECEIVABLES_SERVICE, "utf8");
-    expect(source).toMatch(RECEIVABLE_SNAPSHOT_WITH_CONTACT_RE);
-    expect(source).toMatch(HEX_RECEIVABLES_SERVER_IMPORT_RE);
-  });
-
-  it("Test 11: features/receivables/receivables.service.ts does NOT contain `ReceivableWithContact` literal (legacy shim type drop pre-C7 wholesale — return types swap a ReceivableSnapshotWithContact hex)", () => {
-    const source = fs.readFileSync(FEATURES_RECEIVABLES_SERVICE, "utf8");
     expect(source).not.toMatch(RECEIVABLE_WITH_CONTACT_RE);
   });
 
