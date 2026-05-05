@@ -4,6 +4,7 @@ import { PayablesService } from "../application/payables.service";
 import { PrismaPayablesRepository } from "../infrastructure/prisma-payables.repository";
 
 export { PrismaPayablesRepository };
+export { attachContact, attachContacts } from "../infrastructure/contact-attacher";
 import { ContactsExistenceAdapter } from "../infrastructure/contacts-existence.adapter";
 import { makeContactsServiceForTx } from "@/modules/contacts/presentation/server";
 

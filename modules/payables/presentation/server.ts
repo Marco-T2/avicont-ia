@@ -48,3 +48,5 @@ export {
   PayableAmountImmutable,
   INVALID_PAYABLE_STATUS,
 } from "../domain/errors/payable-errors";
+
+export { attachContact, attachContacts } from "./composition-root";

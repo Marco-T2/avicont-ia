@@ -48,3 +48,5 @@ export {
   ReceivableAmountImmutable,
   INVALID_RECEIVABLE_STATUS,
 } from "../domain/errors/receivable-errors";
+
+export { attachContact, attachContacts } from "./composition-root";

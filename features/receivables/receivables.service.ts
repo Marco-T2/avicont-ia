@@ -1,10 +1,9 @@
 import "server-only";
-import { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import {
+  attachContact,
+  attachContacts,
   makeReceivablesService,
   type ReceivablesService as InnerReceivablesService,
-  type Receivable,
 } from "@/modules/receivables/presentation/server";
 import type {
   ReceivableWithContact,
@@ -32,7 +31,7 @@ export class ReceivablesService {
     filters?: ReceivableFilters,
   ): Promise<ReceivableWithContact[]> {
     const items = await this.inner.list(organizationId, filters);
-    return this.attachContacts(organizationId, items);
+    return attachContacts(organizationId, items);
   }
 
   async getById(
@@ -40,7 +39,7 @@ export class ReceivablesService {
     id: string,
   ): Promise<ReceivableWithContact> {
     const r = await this.inner.getById(organizationId, id);
-    return this.attachContact(organizationId, r);
+    return attachContact(organizationId, r);
   }
 
   async create(
@@ -53,7 +52,7 @@ export class ReceivablesService {
         ? input.amount
         : input.amount.toString(),
     });
-    return this.attachContact(organizationId, r);
+    return attachContact(organizationId, r);
   }
 
   async update(
@@ -62,7 +61,7 @@ export class ReceivablesService {
     input: UpdateReceivableInput & { amount?: unknown },
   ): Promise<ReceivableWithContact> {
     const r = await this.inner.update(organizationId, id, input);
-    return this.attachContact(organizationId, r);
+    return attachContact(organizationId, r);
   }
 
   async updateStatus(
@@ -78,7 +77,7 @@ export class ReceivablesService {
           ? input.paidAmount
           : input.paidAmount.toString(),
     });
-    return this.attachContact(organizationId, r);
+    return attachContact(organizationId, r);
   }
 
   async void(
@@ -86,7 +85,7 @@ export class ReceivablesService {
     id: string,
   ): Promise<ReceivableWithContact> {
     const r = await this.inner.void(organizationId, id);
-    return this.attachContact(organizationId, r);
+    return attachContact(organizationId, r);
   }
 
   async aggregateOpen(
@@ -94,54 +93,5 @@ export class ReceivablesService {
     contactId?: string,
   ): Promise<OpenAggregate> {
     return this.inner.aggregateOpen(organizationId, contactId);
-  }
-
-  // ── helpers ──
-
-  private async attachContacts(
-    organizationId: string,
-    items: Receivable[],
-  ): Promise<ReceivableWithContact[]> {
-    if (items.length === 0) return [];
-    const ids = [...new Set(items.map((r) => r.contactId))];
-    const rows = await prisma.contact.findMany({
-      where: { organizationId, id: { in: ids } },
-    });
-    const byId = new Map(rows.map((c) => [c.id, c]));
-    return items.map((r) => this.toReceivableWithContact(r, byId.get(r.contactId)!));
-  }
-
-  private async attachContact(
-    organizationId: string,
-    r: Receivable,
-  ): Promise<ReceivableWithContact> {
-    const contact = await prisma.contact.findFirst({
-      where: { id: r.contactId, organizationId },
-    });
-    return this.toReceivableWithContact(r, contact!);
-  }
-
-  private toReceivableWithContact(
-    r: Receivable,
-    contact: ReceivableWithContact["contact"],
-  ): ReceivableWithContact {
-    return {
-      id: r.id,
-      organizationId: r.organizationId,
-      contactId: r.contactId,
-      description: r.description,
-      amount: new Prisma.Decimal(r.amount.value),
-      paid: new Prisma.Decimal(r.paid.value),
-      balance: new Prisma.Decimal(r.balance.value),
-      dueDate: r.dueDate,
-      status: r.status as ReceivableWithContact["status"],
-      sourceType: r.sourceType,
-      sourceId: r.sourceId,
-      journalEntryId: r.journalEntryId,
-      notes: r.notes,
-      createdAt: r.createdAt,
-      updatedAt: r.updatedAt,
-      contact,
-    };
   }
 }

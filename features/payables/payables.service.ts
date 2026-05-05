@@ -1,10 +1,9 @@
 import "server-only";
-import { Prisma } from "@/generated/prisma/client";
-import { prisma } from "@/lib/prisma";
 import {
+  attachContact,
+  attachContacts,
   makePayablesService,
   type PayablesService as InnerPayablesService,
-  type Payable,
 } from "@/modules/payables/presentation/server";
 import type {
   PayableWithContact,
@@ -32,7 +31,7 @@ export class PayablesService {
     filters?: PayableFilters,
   ): Promise<PayableWithContact[]> {
     const items = await this.inner.list(organizationId, filters);
-    return this.attachContacts(organizationId, items);
+    return attachContacts(organizationId, items);
   }
 
   async getById(
@@ -40,7 +39,7 @@ export class PayablesService {
     id: string,
   ): Promise<PayableWithContact> {
     const p = await this.inner.getById(organizationId, id);
-    return this.attachContact(organizationId, p);
+    return attachContact(organizationId, p);
   }
 
   async create(
@@ -53,7 +52,7 @@ export class PayablesService {
         ? input.amount
         : input.amount.toString(),
     });
-    return this.attachContact(organizationId, p);
+    return attachContact(organizationId, p);
   }
 
   async update(
@@ -62,7 +61,7 @@ export class PayablesService {
     input: UpdatePayableInput & { amount?: unknown },
   ): Promise<PayableWithContact> {
     const p = await this.inner.update(organizationId, id, input);
-    return this.attachContact(organizationId, p);
+    return attachContact(organizationId, p);
   }
 
   async updateStatus(
@@ -78,7 +77,7 @@ export class PayablesService {
           ? input.paidAmount
           : input.paidAmount.toString(),
     });
-    return this.attachContact(organizationId, p);
+    return attachContact(organizationId, p);
   }
 
   async void(
@@ -86,7 +85,7 @@ export class PayablesService {
     id: string,
   ): Promise<PayableWithContact> {
     const p = await this.inner.void(organizationId, id);
-    return this.attachContact(organizationId, p);
+    return attachContact(organizationId, p);
   }
 
   async aggregateOpen(
@@ -94,54 +93,5 @@ export class PayablesService {
     contactId?: string,
   ): Promise<OpenAggregate> {
     return this.inner.aggregateOpen(organizationId, contactId);
-  }
-
-  // ── helpers ──
-
-  private async attachContacts(
-    organizationId: string,
-    items: Payable[],
-  ): Promise<PayableWithContact[]> {
-    if (items.length === 0) return [];
-    const ids = [...new Set(items.map((p) => p.contactId))];
-    const rows = await prisma.contact.findMany({
-      where: { organizationId, id: { in: ids } },
-    });
-    const byId = new Map(rows.map((c) => [c.id, c]));
-    return items.map((p) => this.toPayableWithContact(p, byId.get(p.contactId)!));
-  }
-
-  private async attachContact(
-    organizationId: string,
-    p: Payable,
-  ): Promise<PayableWithContact> {
-    const contact = await prisma.contact.findFirst({
-      where: { id: p.contactId, organizationId },
-    });
-    return this.toPayableWithContact(p, contact!);
-  }
-
-  private toPayableWithContact(
-    p: Payable,
-    contact: PayableWithContact["contact"],
-  ): PayableWithContact {
-    return {
-      id: p.id,
-      organizationId: p.organizationId,
-      contactId: p.contactId,
-      description: p.description,
-      amount: new Prisma.Decimal(p.amount.value),
-      paid: new Prisma.Decimal(p.paid.value),
-      balance: new Prisma.Decimal(p.balance.value),
-      dueDate: p.dueDate,
-      status: p.status as PayableWithContact["status"],
-      sourceType: p.sourceType,
-      sourceId: p.sourceId,
-      journalEntryId: p.journalEntryId,
-      notes: p.notes,
-      createdAt: p.createdAt,
-      updatedAt: p.updatedAt,
-      contact,
-    };
   }
 }

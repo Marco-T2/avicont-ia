@@ -4,6 +4,7 @@ import { ReceivablesService } from "../application/receivables.service";
 import { PrismaReceivablesRepository } from "../infrastructure/prisma-receivables.repository";
 
 export { PrismaReceivablesRepository };
+export { attachContact, attachContacts } from "../infrastructure/contact-attacher";
 import { ContactsExistenceAdapter } from "../infrastructure/contacts-existence.adapter";
 import { makeContactsServiceForTx } from "@/modules/contacts/presentation/server";
 
