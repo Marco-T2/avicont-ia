@@ -8,10 +8,12 @@ import type { PaymentWithRelations } from "./dto/payment-with-relations";
 import type {
   CreatePaymentInput,
   UpdatePaymentInput,
-  PaymentFilters,
   AllocationInput,
+} from "./dto/payment-input-types";
+import type {
+  PaymentFilters,
   CreditAllocationSource,
-} from "@/features/payment/payment.types";
+} from "./server";
 
 /**
  * Adapter Layer presentation/ delegate via reader port + composition-root chain

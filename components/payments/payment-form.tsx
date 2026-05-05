@@ -25,7 +25,7 @@ import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-re
 import { toast } from "sonner";
 import Link from "next/link";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
-import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/features/payment/payment.types";
+import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
 import type { PendingDocument } from "@/features/contacts/contacts.types";
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { todayLocal } from "@/lib/date-utils";

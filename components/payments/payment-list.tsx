@@ -53,7 +53,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
-import type { PaymentDirection } from "@/features/payment/payment.types";
+import type { PaymentDirection } from "@/modules/payment/presentation/server";
 
 // ── Helpers ──
 

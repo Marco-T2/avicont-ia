@@ -182,10 +182,6 @@ const UNAPPLIED_PAYMENTS_ROUTE_FILE = path.join(
   REPO_ROOT,
   "app/api/organizations/[orgSlug]/contacts/[contactId]/unapplied-payments/route.ts",
 );
-const LEGACY_SHIM_FILE = path.join(
-  REPO_ROOT,
-  "features/payment/payment.service.ts",
-);
 
 const PAYMENT_SERVICE_CALLSITES = [
   "app/(dashboard)/[orgSlug]/payments/page.tsx",
@@ -265,14 +261,6 @@ const UNAPPLIED_HEX_NEW_RE = /\bnew\s+PrismaPaymentsRepository\s*\(\s*\)/;
 // Test 13 — 7 PaymentService production callsites preservation positive
 const CALLSITE_PAYMENT_SERVICE_IMPORT_RE =
   /^import\s+\{[^}]*\bPaymentService\b[^}]*\}\s+from\s+["']@\/modules\/payment\/presentation\/server["']/m;
-
-// Test 14 — legacy shim cascade post-mapper-move
-const SHIM_PRISMA_VALUE_IMPORT_RE =
-  /^import\s+\{[^}]*\bprisma\b[^}]*\}\s+from\s+["']@\/lib\/prisma["']/m;
-const SHIM_LEGACY_MAPPER_IMPORT_RE =
-  /^import\s+\{[^}]*\b(paymentInclude|toPaymentWithRelations)\b[^}]*\}\s+from\s+["']@\/modules\/payment\/presentation\/mappers\/payment-with-relations\.mapper["']/m;
-const SHIM_INFRA_MAPPER_IMPORT_RE =
-  /^import\s+\{[^}]*\b(paymentInclude|toPaymentWithRelations)\b[^}]*\}\s+from\s+["']@\/modules\/payment\/infrastructure\/mappers\/payment-with-relations\.mapper["']/m;
 
 describe("POC nuevo payment C4-α — Adapter Layer presentation/ delegate via reader port + composition-root chain canonical R4 exception path EXACT mirror α-A3.B (Sub-opción 2 split + Sub-opción C role separation + Sub-opción B2 PaymentNotFound class hex domain)", () => {
   // ── A: NEW files existence (Tests 1-3) ────────────────────────────────────
@@ -413,18 +401,5 @@ describe("POC nuevo payment C4-α — Adapter Layer presentation/ delegate via r
         CALLSITE_PAYMENT_SERVICE_IMPORT_RE,
       );
     }
-  });
-
-  // ── K: legacy shim cascade post-mapper-move (Test 14) ────────────────────
-  // Post-C4-α GREEN: shim NO importa prisma value runtime (delegate moved a
-  // infrastructure reader) + mapper import path swap a infrastructure
-  // (cascade post-MOVE Test 4). Shim preserve transitorio post-C4-α, full
-  // removal C4-β wholesale.
-
-  it("Test 14 — legacy shim cascade NO Prisma value imports + mapper from infrastructure/mappers/", () => {
-    const content = fs.readFileSync(LEGACY_SHIM_FILE, "utf8");
-    expect(content).not.toMatch(SHIM_PRISMA_VALUE_IMPORT_RE);
-    expect(content).not.toMatch(SHIM_LEGACY_MAPPER_IMPORT_RE);
-    expect(content).toMatch(SHIM_INFRA_MAPPER_IMPORT_RE);
   });
 });
