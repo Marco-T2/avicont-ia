@@ -29,7 +29,10 @@ import {
 } from "@/features/accounting/server";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { ContactsService } from "@/features/contacts/server";
-import { ReceivablesRepository } from "@/features/receivables/server";
+import {
+  makeReceivablesRepository,
+  type PrismaReceivablesRepository,
+} from "@/modules/receivables/presentation/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { DispatchType } from "@/generated/prisma/client";
@@ -148,7 +151,7 @@ export class DispatchService {
   private readonly orgSettingsService: OrgSettingsService;
   private readonly autoEntryGenerator: AutoEntryGenerator;
   private readonly contactsService: ContactsService;
-  private readonly receivablesRepo: ReceivablesRepository;
+  private readonly receivablesRepo: PrismaReceivablesRepository;
   private readonly balancesService: AccountBalancesService;
   private readonly periodsService: FiscalPeriodsService;
   private readonly accountsRepo: AccountsRepository;
@@ -159,7 +162,7 @@ export class DispatchService {
     orgSettingsService?: OrgSettingsService,
     autoEntryGenerator?: AutoEntryGenerator,
     contactsService?: ContactsService,
-    receivablesRepo?: ReceivablesRepository,
+    receivablesRepo?: PrismaReceivablesRepository,
     balancesService?: AccountBalancesService,
     periodsService?: FiscalPeriodsService,
     accountsRepo?: AccountsRepository,
@@ -168,7 +171,7 @@ export class DispatchService {
     this.repo = repo ?? new DispatchRepository();
     this.orgSettingsService = orgSettingsService ?? makeOrgSettingsService();
     this.contactsService = contactsService ?? new ContactsService();
-    this.receivablesRepo = receivablesRepo ?? new ReceivablesRepository();
+    this.receivablesRepo = receivablesRepo ?? makeReceivablesRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? new FiscalPeriodsService();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();

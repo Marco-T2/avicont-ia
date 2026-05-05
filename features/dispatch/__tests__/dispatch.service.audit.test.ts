@@ -25,7 +25,7 @@ import * as auditCtx from "@/features/shared/audit-context";
 import { DispatchService } from "../dispatch.service";
 import type { DispatchRepository } from "../dispatch.repository";
 import type { OrgSettingsService } from "@/modules/org-settings/presentation/server";
-import type { ReceivablesRepository } from "@/features/receivables/server";
+import type { PrismaReceivablesRepository } from "@/modules/receivables/presentation/server";
 import type { AccountBalancesService } from "@/features/account-balances/server";
 import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import type { DispatchWithDetails } from "../dispatch.types";
@@ -160,7 +160,7 @@ function buildService(initial: DispatchWithDetails) {
   const receivablesRepo = {
     createTx: vi.fn().mockResolvedValue({ id: "recv-new" }),
     voidTx: vi.fn().mockResolvedValue(undefined),
-  } as unknown as ReceivablesRepository;
+  } as unknown as PrismaReceivablesRepository;
 
   const balancesService = {
     applyPost: vi.fn().mockResolvedValue(undefined),
