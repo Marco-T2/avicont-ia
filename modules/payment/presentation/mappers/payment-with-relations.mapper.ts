@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 
-import type { PaymentWithRelations } from "@/features/payment/payment.types";
+import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 
 /**
  * Payment-with-relations mapper (POC nuevo payment C2 GREEN — DTO mapper
@@ -16,16 +16,25 @@ import type { PaymentWithRelations } from "@/features/payment/payment.types";
  * defer drop axis C3).
  *
  * §13.A NEW emergent classification "hex presentation TYPE-only import desde
- * legacy features/" 1ra evidencia formal — Opción A cross-module type-only
- * import `import type { PaymentWithRelations } from "@/features/payment/payment.types"`.
- * Type-only NO violates R5 banPrismaInPresentation pattern (allowTypeImports
- * §13.V analog applicable a R-features-legacy-type-import temporal pre-wholesale-delete
- * C4). Distinto §13.A5-α multi-level composition delegation (VALUE class chain) +
- * §13.A5-γ DTO divergence (runtime path coverage) + §13 R-name-collision
- * (TYPE-vs-VALUE re-export ambiguity). Cementación target D1 doc-only post-mortem
- * cumulative POC nuevo payment closure. Forward-applicable Path γ pattern
- * reusable cualquier feature legacy con DTO type pendiente migration hex donde
- * mapper extraction precede type drop axis.
+ * legacy features/" 1ra evidencia C2 commit `0c79740` GREEN (Opción A
+ * cross-module type-only import `import type { PaymentWithRelations } from
+ * "@/features/payment/payment.types"` emergent) — RESUELTA NO-OP transitorio
+ * post-C3 commit `5d2aa20` RED + GREEN apply Path β-prod scope (mirror A3-C3
+ * sale-with-details EXACT precedent — hex local DTO canonical home
+ * modules/payment/presentation/dto/payment-with-relations.ts). Cross-module
+ * reverse import desde @/features/payment/payment.types DESAPARECE post-C3,
+ * import path resuelto a hex local DTO estable post-C4 wholesale delete
+ * features/payment/. Type-only NO violates R5 banPrismaInPresentation pattern
+ * (allowTypeImports §13.V analog applicable a R-features-legacy-type-import
+ * temporal pre-wholesale-delete C4 — historical context C2 — post-C3 NO aplica
+ * porque cross-module import desaparece). Distinto §13.A5-α multi-level
+ * composition delegation (VALUE class chain) + §13.A5-γ DTO divergence
+ * (runtime path coverage) + §13 R-name-collision (TYPE-vs-VALUE re-export
+ * ambiguity). Cementación target D1 doc-only post-mortem cumulative POC nuevo
+ * payment closure documenta clase emergent + resolution Path β-prod precedent
+ * forward-applicable cualquier feature single con DTO type pendiente migration
+ * hex donde mapper extraction precede type drop axis (Path γ + β-prod sequence
+ * pattern reusable cross-POC).
  *
  * §13.A5-γ DTO divergence runtime path coverage MATERIAL precedent A5-C1 5ta
  * aplicación post-cementación canonical cumulative cross-POC matures. Mapper
@@ -49,8 +58,16 @@ import type { PaymentWithRelations } from "@/features/payment/payment.types";
  * puro mapper exports. NO exportar fetchWithRelations helper (Prisma runtime
  * query container STAYS en shim layer).
  *
- * Marco lock #3 §13 emergente Opción A cross-module type-only import desde
- * legacy `import type { PaymentWithRelations } from "@/features/payment/payment.types"`.
+ * Marco lock #3 (C2 commit `6c35779` RED + `0c79740` GREEN) §13 emergente
+ * Opción A cross-module type-only import desde legacy `import type {
+ * PaymentWithRelations } from "@/features/payment/payment.types"` RESUELTA
+ * post-C3 commit `5d2aa20` RED + GREEN apply Path β-prod scope (mirror A3-C3
+ * EXACT) — import path swap a hex local DTO canonical home `import type {
+ * PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations"`.
+ * Cross-module reverse import NO-OP transitorio resolved post-C3 — §13.A NEW
+ * emergent classification 2da evidencia formal post-cementación canonical
+ * PROACTIVE pre-D1 (JSDoc atomic revoke per feedback_jsdoc_atomic_revoke este
+ * turn).
  *
  * Cross-ref:
  *   - architecture.md §13.A5-γ DTO divergence runtime path coverage (5ta
@@ -60,16 +77,23 @@ import type { PaymentWithRelations } from "@/features/payment/payment.types";
  *   - engram canonical home `arch/§13/A5-gamma-dto-divergence-runtime-path-coverage`
  *     #1582 (precedent — POC nuevo payment §13.A5-γ MATERIAL forward C2)
  *   - engram canonical home `arch/§13/A-features-legacy-type-only-import` (NEW
- *     canonical home target — 1ra evidencia formal cementación PROACTIVE pre-D1
- *     save post-GREEN canonical home this batch C2)
+ *     canonical home target — 1ra evidencia formal C2 + 2da evidencia
+ *     resolution C3 Path β-prod precedent forward-applicable, cementación
+ *     PROACTIVE pre-D1 doc-only)
+ *   - modules/payment/presentation/dto/payment-with-relations.ts (post-C3 hex
+ *     local DTO canonical home — type import path resolved a hex local stable
+ *     post-C4 wholesale delete features/payment/)
  *   - modules/sale/presentation/mappers/sale-to-with-details.mapper.ts (precedent
  *     A3-C5 build mappers presentation EXACT scope)
  *   - features/payment/payment.service.ts (consumer shim post-extract — imports
  *     paymentInclude + toPaymentWithRelations + invokes mapper post-fetch)
- *   - features/payment/payment.types.ts línea 32 (PaymentWithRelations type def
- *     preserved — defer drop axis C3 per Path γ)
+ *   - features/payment/payment.types.ts (PaymentWithRelations type def REMOVED
+ *     post-C3 commit `5d2aa20` — extracted a hex local DTO canonical home
+ *     modules/payment/presentation/dto/payment-with-relations.ts)
  *   - components/payments/payment-list.tsx + payment-form.tsx (TYPE consumers
- *     PaymentWithRelations — defer C3 drop type axis swap import path)
+ *     PaymentWithRelations swap import path post-C3 — desde
+ *     @/features/payment/payment.types → @/modules/payment/presentation/dto/
+ *     payment-with-relations)
  */
 
 // ── Prisma include shape: payment query con relations ─────────────────────────

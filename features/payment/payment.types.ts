@@ -1,13 +1,6 @@
 import type {
-  Payment,
   PaymentMethod,
   PaymentStatus,
-  Contact,
-  PaymentAllocation,
-  AccountsReceivable,
-  AccountsPayable,
-  FiscalPeriod,
-  JournalEntry,
 } from "@/generated/prisma/client";
 import type { UnappliedPaymentSnapshot } from "@/modules/payment/presentation/server";
 
@@ -26,21 +19,6 @@ export type {
 // ── Alias: module's UnappliedPaymentSnapshot is the legacy UnappliedPayment ──
 
 export type UnappliedPayment = UnappliedPaymentSnapshot;
-
-// ── Composite types (legacy Prisma shape — preserved for shim consumers) ──
-
-export type PaymentWithRelations = Omit<Payment, "amount"> & {
-  amount: number;
-  contact: Contact;
-  period: FiscalPeriod;
-  journalEntry: JournalEntry | null;
-  operationalDocType?: { id: string; code: string; name: string } | null;
-  allocations: (Omit<PaymentAllocation, "amount"> & {
-    amount: number;
-    receivable?: (AccountsReceivable & { contact: Contact }) | null;
-    payable?: (AccountsPayable & { contact: Contact }) | null;
-  })[];
-};
 
 // ── Input types ──
 

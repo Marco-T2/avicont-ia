@@ -10,8 +10,8 @@ import {
   paymentInclude,
   toPaymentWithRelations,
 } from "@/modules/payment/presentation/mappers/payment-with-relations.mapper";
+import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 import type {
-  PaymentWithRelations,
   CreatePaymentInput,
   UpdatePaymentInput,
   PaymentFilters,

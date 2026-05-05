@@ -52,7 +52,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
-import type { PaymentWithRelations, PaymentDirection } from "@/features/payment/payment.types";
+import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
+import type { PaymentDirection } from "@/features/payment/payment.types";
 
 // ── Helpers ──
 

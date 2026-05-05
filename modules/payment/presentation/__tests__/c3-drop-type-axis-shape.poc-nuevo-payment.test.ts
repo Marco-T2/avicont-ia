@@ -307,13 +307,13 @@ const SHIM_PAYMENT_SERVICE = path.join(
 const HEX_DTO_TYPE_ALIAS_RE =
   /export\s+type\s+PaymentWithRelations\s*=\s*Omit<\s*Payment\s*,\s*["']amount["']\s*>/;
 const HEX_DTO_5_RELATIONS_RE =
-  /export\s+type\s+PaymentWithRelations[\s\S]*?contact\s*:[\s\S]*?period\s*:[\s\S]*?journalEntry\s*:[\s\S]*?operationalDocType\s*:[\s\S]*?allocations\s*:/;
+  /export\s+type\s+PaymentWithRelations[\s\S]*?contact\s*:[\s\S]*?period\s*:[\s\S]*?journalEntry\s*:[\s\S]*?operationalDocType\??\s*:[\s\S]*?allocations\s*:/;
 const LEGACY_PAYMENT_WITH_RELATIONS_DEF_RE =
   /^export\s+type\s+PaymentWithRelations\s*=\s*Omit<\s*Payment\s*,\s*["']amount["']\s*>/m;
 const HEX_LOCAL_DTO_IMPORT_RE =
-  /import\s+type\s+\{[^}]*\bPaymentWithRelations\b[^}]*\}\s+from\s+["']@\/modules\/payment\/presentation\/dto\/payment-with-relations["']/;
+  /^import\s+type\s+\{[^}]*\bPaymentWithRelations\b[^}]*\}\s+from\s+["']@\/modules\/payment\/presentation\/dto\/payment-with-relations["']/m;
 const LEGACY_OPCION_A_IMPORT_RE =
-  /import\s+type\s+\{[^}]*\bPaymentWithRelations\b[^}]*\}\s+from\s+["']@\/features\/payment\/payment\.types["']/;
+  /^import\s+type\s+\{[^}]*\bPaymentWithRelations\b[^}]*\}\s+from\s+["']@\/features\/payment\/payment\.types["']/m;
 const VOUCHER_STATUS_BADGE_PAYMENT_RE =
   /<VoucherStatusBadge\s+status=\{\s*payment\.status\s*\}/;
 const ALLOCATIONS_REDUCE_RE = /payment\.allocations\.reduce\(/;
