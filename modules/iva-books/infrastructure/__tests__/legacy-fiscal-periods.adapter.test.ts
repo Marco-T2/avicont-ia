@@ -4,10 +4,10 @@ const { mockGetById } = vi.hoisted(() => ({
   mockGetById: vi.fn(),
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => ({
-  FiscalPeriodsService: class {
-    getById = mockGetById;
-  },
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: () => ({
+    getById: mockGetById,
+  }),
 }));
 
 import { NotFoundError, PERIOD_NOT_FOUND } from "@/features/shared/errors";
@@ -56,19 +56,21 @@ describe("LegacyFiscalPeriodsAdapter — narrow 13→2 con throw pass-through", 
     // Si el adapter cruzara args (e.g. service.getById(periodId, orgId)),
     // el `toHaveBeenCalledWith` los detectaría intercambiados.
     mockGetById.mockResolvedValue({
-      id: "p-2026-04",
-      organizationId: "org-1",
-      name: "Abril 2026",
-      year: 2026,
-      month: 4,
-      startDate: new Date("2026-04-01"),
-      endDate: new Date("2026-04-30"),
-      status: "OPEN",
-      closedAt: null,
-      closedBy: null,
-      createdById: "u-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      toSnapshot: () => ({
+        id: "p-2026-04",
+        organizationId: "org-1",
+        name: "Abril 2026",
+        year: 2026,
+        month: 4,
+        startDate: new Date("2026-04-01"),
+        endDate: new Date("2026-04-30"),
+        status: "OPEN",
+        closedAt: null,
+        closedBy: null,
+        createdById: "u-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
     });
 
     const adapter = new LegacyFiscalPeriodsAdapter();

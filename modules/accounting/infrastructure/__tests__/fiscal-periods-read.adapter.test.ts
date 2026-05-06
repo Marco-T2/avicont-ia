@@ -4,10 +4,10 @@ const { mockGetById } = vi.hoisted(() => ({
   mockGetById: vi.fn(),
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => ({
-  FiscalPeriodsService: class {
-    getById = mockGetById;
-  },
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: () => ({
+    getById: mockGetById,
+  }),
 }));
 
 import { NotFoundError, PERIOD_NOT_FOUND } from "@/features/shared/errors";
@@ -35,19 +35,21 @@ describe("FiscalPeriodsReadAdapter — narrow 13→2 con throw pass-through", ()
 
   it("getById: narrows aggregate to { id, status } and forwards args (orgId, periodId)", async () => {
     mockGetById.mockResolvedValue({
-      id: "p-2026-01",
-      organizationId: "org-1",
-      name: "Enero 2026",
-      year: 2026,
-      month: 1,
-      startDate: new Date("2026-01-01"),
-      endDate: new Date("2026-01-31"),
-      status: "OPEN",
-      closedAt: null,
-      closedBy: null,
-      createdById: "u-1",
-      createdAt: new Date(),
-      updatedAt: new Date(),
+      toSnapshot: () => ({
+        id: "p-2026-01",
+        organizationId: "org-1",
+        name: "Enero 2026",
+        year: 2026,
+        month: 1,
+        startDate: new Date("2026-01-01"),
+        endDate: new Date("2026-01-31"),
+        status: "OPEN",
+        closedAt: null,
+        closedBy: null,
+        createdById: "u-1",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }),
     });
 
     const adapter = new FiscalPeriodsReadAdapter();
