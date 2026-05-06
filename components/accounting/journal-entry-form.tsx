@@ -23,7 +23,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import JournalLineRow, { type JournalLineData } from "./journal-line-row";
 import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
-import { findPeriodCoveringDate } from "@/features/fiscal-periods";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
 import { todayLocal } from "@/lib/date-utils";
 

@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { MONTH_NAMES_ES } from "@/features/fiscal-periods";
+import { MONTH_NAMES_ES } from "@/modules/fiscal-periods/presentation/index";
 
 interface PeriodCreateDialogProps {
   open: boolean;
