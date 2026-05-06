@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Plus, CalendarDays } from "lucide-react";
 import PeriodCreateDialog from "./period-create-dialog";
-import type { FiscalPeriod } from "@/features/fiscal-periods";
+import type { FiscalPeriod } from "@/modules/fiscal-periods/presentation/index";
 
 function formatDate(date: Date | string): string {
   return new Date(date).toLocaleDateString("es-BO", {
