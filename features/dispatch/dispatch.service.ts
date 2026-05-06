@@ -34,7 +34,7 @@ import {
   type PrismaReceivablesRepository,
 } from "@/modules/receivables/presentation/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { FiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { DispatchType } from "@/generated/prisma/client";
 import type {
   DispatchWithDetails,

@@ -28,7 +28,7 @@ import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { FiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { OrgProfileService } from "@/features/org-profile/server";
