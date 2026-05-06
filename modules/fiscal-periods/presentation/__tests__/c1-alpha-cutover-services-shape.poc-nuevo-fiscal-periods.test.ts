@@ -237,7 +237,20 @@ describe("POC nuevo fiscal-periods C1-α — Opción A re-export bridge mecánic
   // collectively NO contain legacy barrel import. Single assertion replaces 3
   // per-callsite negatives.
 
-  it("Test 4: 3 services collectively NO contain `from \"@/features/fiscal-periods/server\"` (legacy barrel import dropped post-cutover ALL 3 services consolidated PROJECT-scope grep features/ paths)", () => {
+  // ── Test 4 RETIRED scope-expired C7 wholesale delete + DROP bridge ──
+  // C7 GREEN wholesale delete features/fiscal-periods/* + DROP línea 9 bridge
+  // re-export hex barrel `export { FiscalPeriodsService } from "@/features/
+  // fiscal-periods/server"`. Test 4 asserción NEG legacy path
+  // `from "@/features/fiscal-periods/server"` collapsed post-C7 — legacy path
+  // ABSENT en filesystem (3 archivos features/fiscal-periods/* DELETED + bridge
+  // línea DROPPED). Test cementación histórica preserved archaeology (skip +
+  // comentario, NO delete wholesale — preservar precedent EXACT intra-file
+  // T1-T3 retire pattern same file per Marco lock Opción C mixto retirement-
+  // strategy-mixto NEW canonical home 1ra evidencia POC fiscal-periods C7).
+  // Cross-ref c7-wholesale-delete-bridge-drop.poc-nuevo-fiscal-periods.test.ts
+  // T1-T3 NEG file ABSENT (3 archivos features/fiscal-periods/*) + T4 NEG
+  // bridge línea ABSENT (mismo regex shape Opción A reverso not.toMatch).
+  it.skip("Test 4: 3 services collectively NO contain `from \"@/features/fiscal-periods/server\"` (legacy barrel import dropped post-cutover ALL 3 services consolidated PROJECT-scope grep features/ paths)", () => {
     const sources = [
       fs.readFileSync(JOURNAL_SERVICE, "utf8"),
       fs.readFileSync(DISPATCH_SERVICE, "utf8"),
@@ -252,7 +265,18 @@ describe("POC nuevo fiscal-periods C1-α — Opción A re-export bridge mecánic
   // shim, NO hex application). Preserves toLegacyShape + zero-arg ctor + methods
   // + class identity end-to-end. Mirror contacts C1 EXACT literal precedent.
 
-  it("Test 5: modules/fiscal-periods/presentation/server.ts contains `export { FiscalPeriodsService } from \"@/features/fiscal-periods/server\"` (canonical Opción A re-export legacy shim class identity preserved — preserves zero-arg ctor + toLegacyShape entity → Prisma row cast + methods + class identity defer C7 wholesale delete features/fiscal-periods/*)", () => {
+  // ── Test 5 RETIRED scope-expired C7 wholesale delete + DROP bridge ──
+  // C7 GREEN DROPS línea 9 bridge re-export `export { FiscalPeriodsService }
+  // from "@/features/fiscal-periods/server"` post wholesale delete features/
+  // fiscal-periods/*. Test 5 asserción POS canonical Opción A re-export shim
+  // collapsed post-C7 — bridge línea ABSENT post-DROP. Test cementación
+  // histórica preserved archaeology (skip + comentario, NO delete wholesale —
+  // preservar precedent EXACT intra-file T1-T3 retire pattern same file per
+  // Marco lock Opción C mixto retirement-strategy-mixto NEW canonical home).
+  // Cross-ref c7-wholesale-delete-bridge-drop.poc-nuevo-fiscal-periods.test.ts
+  // T4 NEG bridge ABSENT (mismo regex shape Opción A reverso not.toMatch) +
+  // T5 POS preservation guard canonical hex exports preserved post-DROP.
+  it.skip("Test 5: modules/fiscal-periods/presentation/server.ts contains `export { FiscalPeriodsService } from \"@/features/fiscal-periods/server\"` (canonical Opción A re-export legacy shim class identity preserved — preserves zero-arg ctor + toLegacyShape entity → Prisma row cast + methods + class identity defer C7 wholesale delete features/fiscal-periods/*)", () => {
     const source = fs.readFileSync(HEX_BARREL_SERVER, "utf8");
     expect(source).toMatch(HEX_BARREL_OPCION_A_REEXPORT_RE);
   });

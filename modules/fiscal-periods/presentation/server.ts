@@ -3,11 +3,6 @@ import "server-only";
 export { makeFiscalPeriodsService } from "./composition-root";
 export { createFiscalPeriodSchema } from "./fiscal-period.validation";
 
-// Opción A re-export bridge — preserves FiscalPeriodsService class identity
-// (zero-arg ctor + toLegacyShape entity → Prisma row cast) defer C7 wholesale
-// delete features/fiscal-periods/*.
-export { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-
 // Domain re-exports for server callers (entity, VOs, errors, port).
 export { FiscalPeriod } from "../domain/fiscal-period.entity";
 export type {
