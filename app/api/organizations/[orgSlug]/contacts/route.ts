@@ -4,7 +4,7 @@ import { ContactsService } from "@/features/contacts/server";
 import {
   createContactSchema,
   contactFiltersSchema,
-} from "@/features/contacts";
+} from "@/modules/contacts/presentation/server";
 
 const service = new ContactsService();
 

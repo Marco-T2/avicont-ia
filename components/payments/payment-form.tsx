@@ -26,7 +26,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
-import type { PendingDocument } from "@/features/contacts/contacts.types";
+import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { todayLocal } from "@/lib/date-utils";
 import { Gated } from "@/components/common/gated";
