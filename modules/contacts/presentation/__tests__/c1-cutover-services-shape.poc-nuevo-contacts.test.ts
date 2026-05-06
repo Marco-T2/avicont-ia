@@ -419,17 +419,39 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 3: app/api/organizations/[orgSlug]/contacts/[contactId]/balance/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class Balance method consumer hex post-cutover)", () => {
+  // ── Tests 3-5 RETIRED scope-expired pre-C3 cutover ────────────────────────
+  // C3 invierte invariant cumulative cross-cycle scope evolution — Tests 3-5
+  // cementación histórica preserved archaeology (skip + comentario, NO delete
+  // wholesale). Los 3 tests cementaron en C1 GREEN (commit 5e3dc3b) que las
+  // 3 routes API Balance methods (balance/credit-balance/pending-documents)
+  // DEBEN importar `ContactsService` from `@/modules/contacts/presentation/server`
+  // (Opción A re-export legacy shim, class identity preserved). C3 RED (commit
+  // ed390af) invierte el invariant: las 3 routes cutover cross-module a
+  // `@/modules/contact-balances/presentation/server` factory `makeContactBalancesService`
+  // — el legacy shim ContactsService import dropped (C3 T4 NEG consolidated)
+  // + per-route hex barrel POSITIVE granularity (C3 T1-T3) reemplaza la
+  // cementación histórica de C1 Tests 3-5. Mantener Tests 3-5 activos
+  // contradiría C3 RED naturalmente — collision detected post-C3 GREEN attempt
+  // previo turno (sub-agent escaló honest revert clean).
+  //
+  // Lección NEW canonical home: `feedback/cross-cycle-red-test-cementacion-gate`
+  // 1ra evidencia POC contacts C3 pre-GREEN. Marco lock Opción C split 2 commits
+  // (C3-pre prerequisite gate retire Tests 3-5 + C3 GREEN routes cutover) mirror
+  // C0-pre prerequisite gate precedent EXACT. Skip vs delete wholesale: archaeology
+  // preserved + delete wholesale defer D1 doc-only post-mortem si surface cleanup
+  // preference futuro. `it.skip` (NO `describe.skip`) preserva diagnostic
+  // granularity per-test.
+  it.skip("Test 3: app/api/organizations/[orgSlug]/contacts/[contactId]/balance/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class Balance method consumer hex post-cutover)", () => {
     const source = fs.readFileSync(CONTACTS_BALANCE_ROUTE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 4: app/api/organizations/[orgSlug]/contacts/[contactId]/credit-balance/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class Balance method consumer hex post-cutover)", () => {
+  it.skip("Test 4: app/api/organizations/[orgSlug]/contacts/[contactId]/credit-balance/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class Balance method consumer hex post-cutover)", () => {
     const source = fs.readFileSync(CONTACTS_CREDIT_BALANCE_ROUTE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 5: app/api/organizations/[orgSlug]/contacts/[contactId]/pending-documents/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class Balance method consumer hex post-cutover)", () => {
+  it.skip("Test 5: app/api/organizations/[orgSlug]/contacts/[contactId]/pending-documents/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class Balance method consumer hex post-cutover)", () => {
     const source = fs.readFileSync(CONTACTS_PENDING_DOCS_ROUTE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
