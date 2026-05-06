@@ -4,37 +4,50 @@ const { mockGetActiveById } = vi.hoisted(() => ({
   mockGetActiveById: vi.fn(),
 }));
 
-vi.mock("@/features/contacts/server", () => ({
-  ContactsService: class {
-    getActiveById = mockGetActiveById;
-  },
-}));
+vi.mock("@/modules/contacts/presentation/server", async (importOriginal) => {
+  const actual =
+    await importOriginal<typeof import("@/modules/contacts/presentation/server")>();
+  return {
+    ...actual,
+    makeContactsService: vi.fn(() => ({
+      getActiveById: mockGetActiveById,
+    })),
+  };
+});
 
 import { ContactInactiveOrMissing } from "@/modules/contacts/presentation/server";
 
 import { ContactsReadAdapter } from "../contacts-read.adapter";
 
 /**
- * Mock-del-colaborador test for ContactsReadAdapter (POC #10 C3-C Ciclo 4 —
- * Block C). Forma estructural Forma 2 sub-variante method-on-instance: body-
- * shape idéntico a Block B (return/await sobre legacy sin transformación), la
- * única diferencia es legacy-method-on-class vs legacy-function-import.
+ * Mock-del-colaborador test for ContactsReadAdapter — pass-through con narrow
+ * de retorno `Contact -> void`. POC nuevo contacts C2 GREEN cutover dependency
+ * legacy shim → hex factory `makeContactsService()` mirror receivables/payables
+ * `contacts-existence.adapter.ts` precedent EXACT (constructor DI default
+ * factory pattern hex canonical adapter).
  *
- * El legacy `ContactsService.getActiveById` ya valida active+missing y throwa
- * `ContactInactiveOrMissing` (extends NotFoundError, code CONTACT_NOT_FOUND).
- * El adapter es pass-through con narrow de retorno `Contact -> void` — el use
- * case journal-entries sólo necesita la aserción de existencia, no la entity.
+ * El hex `ContactsService.getActiveById` (via `makeContactsService()` factory)
+ * ya valida active+missing y throwa `ContactInactiveOrMissing` (extends
+ * NotFoundError, code CONTACT_NOT_FOUND). El adapter es pass-through con
+ * narrow de retorno — el use case journal-entries sólo necesita la aserción
+ * de existencia, no la entity.
  *
- * §8.6 evaluado y descartado en Ciclo 4: la validación isActive NO es regla
- * local del use case journal-entries — vive en `ContactsService.getActiveById`
- * y se comparte con cualquier consumer cross-módulo. No hay regla local que
+ * vi.mock pattern post-cutover: factory return shape (NOT class identity
+ * preserved Opción A pattern from C1) — `makeContactsService` mocked como
+ * factory que retorna service instance con `getActiveById = mockGetActiveById`.
+ * `importOriginal` preserva named exports adicionales del barrel
+ * (`ContactInactiveOrMissing` importado below).
+ *
+ * §8.6 evaluado y descartado: la validación isActive NO es regla local del
+ * use case journal-entries — vive en `ContactsService.getActiveById` hex y
+ * se comparte con cualquier consumer cross-módulo. No hay regla local que
  * aislar, por lo tanto no hay JSDoc lock §8.6 que aplicar al adapter.
  *
  * Aspirational mock check (`feedback/aspirational_mock_signals_unimplemented_contract`):
- * el legacy `ContactsService.getActiveById` está implementado y verificado por
+ * el hex `ContactsService.getActiveById` está implementado y verificado por
  * sus propios tests (`modules/contacts/application/__tests__/`). El mock acá
- * testea pass-through del wrapper accounting, NO el contrato del legacy. NO
- * aspirational.
+ * testea pass-through del wrapper accounting, NO el contrato del hex
+ * service. NO aspirational.
  */
 
 describe("ContactsReadAdapter — method pass-through con narrow de retorno", () => {
@@ -53,25 +66,25 @@ describe("ContactsReadAdapter — method pass-through con narrow de retorno", ()
     expect(mockGetActiveById).toHaveBeenCalledWith("org-1", "c-123");
   });
 
-  it("getActiveById: propagates legacy throw without re-wrap (same instance)", async () => {
+  it("getActiveById: propagates throw without re-wrap (same instance)", async () => {
     // Guard contra refactors futuros que introduzcan lógica condicional en el
     // pass-through (try/catch + re-wrap, swallow, o cambio de clase). El
     // failure mode esperado ("adapter swallow / re-wrap / pérdida de code") NO
-    // es manifestable en `await legacyContactsService.getActiveById(...)` sin
+    // es manifestable en `await this.contactsService.getActiveById(...)` sin
     // código explícito — TypeScript no exige captura, sin sitio donde insertar
     // transform sin diff visible. Paridad Ciclo 3 test 1b
     // (`feedback/red-acceptance-failure-mode`): el test corre y pasa como guard
-    // de propagation literal, NO está con `.skip()`. `.rejects.toBe(legacyError)`
+    // de propagation literal, NO está con `.skip()`. `.rejects.toBe(thrownError)`
     // (identity, no `.toBeInstanceOf`) lockea que el adapter propaga el MISMO
-    // instance del legacy, no una clase distinta con el mismo code.
-    const legacyError = new ContactInactiveOrMissing();
-    mockGetActiveById.mockRejectedValue(legacyError);
+    // instance del hex service, no una clase distinta con el mismo code.
+    const thrownError = new ContactInactiveOrMissing();
+    mockGetActiveById.mockRejectedValue(thrownError);
 
     const adapter = new ContactsReadAdapter();
 
     await expect(
       adapter.getActiveById("org-1", "c-missing"),
-    ).rejects.toBe(legacyError);
+    ).rejects.toBe(thrownError);
     expect(mockGetActiveById).toHaveBeenCalledTimes(1);
     expect(mockGetActiveById).toHaveBeenCalledWith("org-1", "c-missing");
   });
