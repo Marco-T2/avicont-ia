@@ -34,7 +34,7 @@ import {
   type PrismaReceivablesRepository,
 } from "@/modules/receivables/presentation/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
-import { FiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { DispatchType } from "@/generated/prisma/client";
 import type {
   DispatchWithDetails,
@@ -153,7 +153,7 @@ export class DispatchService {
   private readonly contactsService: ReturnType<typeof makeContactsService>;
   private readonly receivablesRepo: PrismaReceivablesRepository;
   private readonly balancesService: AccountBalancesService;
-  private readonly periodsService: FiscalPeriodsService;
+  private readonly periodsService: ReturnType<typeof makeFiscalPeriodsService>;
   private readonly accountsRepo: AccountsRepository;
   private readonly journalRepo: JournalRepository;
 
@@ -164,7 +164,7 @@ export class DispatchService {
     contactsService?: ReturnType<typeof makeContactsService>,
     receivablesRepo?: PrismaReceivablesRepository,
     balancesService?: AccountBalancesService,
-    periodsService?: FiscalPeriodsService,
+    periodsService?: ReturnType<typeof makeFiscalPeriodsService>,
     accountsRepo?: AccountsRepository,
     journalRepo?: JournalRepository,
   ) {
@@ -173,7 +173,7 @@ export class DispatchService {
     this.contactsService = contactsService ?? makeContactsService();
     this.receivablesRepo = receivablesRepo ?? makeReceivablesRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
-    this.periodsService = periodsService ?? new FiscalPeriodsService();
+    this.periodsService = periodsService ?? makeFiscalPeriodsService();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.journalRepo = journalRepo ?? new JournalRepository();
 
@@ -435,7 +435,7 @@ export class DispatchService {
       validateLockedEdit(
         status,
         role!,
-        period.status as "OPEN" | "CLOSED",
+        period.status.value,
         justification,
       );
     } else {
@@ -945,7 +945,7 @@ export class DispatchService {
       validateLockedEdit(
         status,
         role!,
-        period.status as "OPEN" | "CLOSED",
+        period.status.value,
         justification,
       );
     }

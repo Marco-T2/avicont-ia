@@ -201,17 +201,33 @@ describe("POC nuevo fiscal-periods C1-α — Opción A re-export bridge mecánic
   // identity preserved, toLegacyShape entity → Prisma row cast preservado, methods
   // preserved end-to-end.
 
-  it("Test 1: features/accounting/journal.service.ts DOES import from `@/modules/fiscal-periods/presentation/server` (FiscalPeriodsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
+  // ── Tests 1-3 RETIRED scope-expired pre-C-bis class→factory swap ──
+  // C-bis invierte invariant cumulative cross-cycle scope evolution — Tests 1-3
+  // cementación histórica preserved archaeology (skip + comentario, NO delete
+  // wholesale). Los 3 tests cementaron en C1-α GREEN (commit 099553b) que las 3
+  // services DEBEN importar `FiscalPeriodsService` (legacy class) from
+  // `@/modules/fiscal-periods/presentation/server` (Opción A re-export bridge
+  // class identity preserved). C-bis GREEN invierte el invariant: las 3 services
+  // swap import a `makeFiscalPeriodsService` factory + ctor `new FiscalPeriodsService()`
+  // → `makeFiscalPeriodsService()`. Mantener Tests 1-3 activos contradiría C-bis
+  // GREEN naturalmente — collision detected proactively pre-RED este turno
+  // (cross-cycle-red-test-cementacion-gate 5ta evidencia POC fiscal-periods C-bis
+  // PROACTIVE — gate funcionó forward). Marco lock Opción A1 absorb cumulative
+  // single GREEN batch (mirror contacts Tests 7-10 retire C4-bis precedent EXACT).
+  // Test 4 (NEG legacy `from "@/features/fiscal-periods/server"`) preservado PASS
+  // — services no contienen legacy path post C1-α GREEN, invariant cumulative
+  // preserved forward C-bis-C7 unchanged.
+  it.skip("Test 1: features/accounting/journal.service.ts DOES import from `@/modules/fiscal-periods/presentation/server` (FiscalPeriodsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
     const source = fs.readFileSync(JOURNAL_SERVICE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 2: features/dispatch/dispatch.service.ts DOES import from `@/modules/fiscal-periods/presentation/server` (FiscalPeriodsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
+  it.skip("Test 2: features/dispatch/dispatch.service.ts DOES import from `@/modules/fiscal-periods/presentation/server` (FiscalPeriodsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
     const source = fs.readFileSync(DISPATCH_SERVICE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 3: features/monthly-close/monthly-close.service.ts DOES import from `@/modules/fiscal-periods/presentation/server` (FiscalPeriodsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
+  it.skip("Test 3: features/monthly-close/monthly-close.service.ts DOES import from `@/modules/fiscal-periods/presentation/server` (FiscalPeriodsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
     const source = fs.readFileSync(MONTHLY_CLOSE_SERVICE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });

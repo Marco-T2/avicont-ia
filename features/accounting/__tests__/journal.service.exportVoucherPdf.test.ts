@@ -11,7 +11,7 @@ import { NotFoundError } from "@/features/shared/errors";
 import type { JournalRepository } from "@/features/accounting/journal.repository";
 import type { OrgProfileService } from "@/features/org-profile/server";
 import type { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 import type { OrgProfile, FiscalPeriod } from "@/generated/prisma/client";
 import type { DocumentSignatureConfigView } from "@/features/document-signature-config/document-signature-config.types";
@@ -127,7 +127,7 @@ const SIG_CONFIG: DocumentSignatureConfigView = {
   showReceiverRow: true,
 };
 
-const PERIOD: FiscalPeriod = {
+const PERIOD = {
   id: "period-1",
   organizationId: ORG_ID,
   name: "2025-26",
@@ -135,7 +135,8 @@ const PERIOD: FiscalPeriod = {
   month: 1,
   startDate: new Date("2025-01-01"),
   endDate: new Date("2025-12-31"),
-  status: "OPEN",
+  isOpen: () => true,
+  status: { value: "OPEN" as const },
   closedAt: null,
   closedBy: null,
   createdById: "user-1",
@@ -165,7 +166,7 @@ function buildService(opts?: {
 
   const mockPeriodsService = {
     getById: vi.fn().mockResolvedValue(opts?.period ?? PERIOD),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 
   const service = new JournalService(
     mockRepo,

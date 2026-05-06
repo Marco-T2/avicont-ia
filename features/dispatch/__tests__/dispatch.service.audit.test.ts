@@ -27,7 +27,7 @@ import type { DispatchRepository } from "../dispatch.repository";
 import type { OrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type { PrismaReceivablesRepository } from "@/modules/receivables/presentation/server";
 import type { AccountBalancesService } from "@/features/account-balances/server";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { DispatchWithDetails } from "../dispatch.types";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -170,10 +170,11 @@ function buildService(initial: DispatchWithDetails) {
   const periodsService = {
     getById: vi.fn().mockResolvedValue({
       id: PERIOD_ID,
-      status: "OPEN",
+      isOpen: () => true,
+      status: { value: "OPEN" },
     }),
     list: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 
   const accountsRepo = {
     findByCode: vi.fn().mockResolvedValue({ id: "acc-1", isActive: true, isDetail: true }),

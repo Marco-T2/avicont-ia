@@ -24,7 +24,7 @@ import {
 } from "@/features/shared/errors";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { CloseRequest } from "../monthly-close.types";
 
 // ── Shared mock factory ──────────────────────────────────────────────────────
@@ -55,13 +55,14 @@ function buildRepoMock(): RepoMock {
   } as unknown as RepoMock;
 }
 
-function buildPeriodsServiceMock(): FiscalPeriodsService {
+function buildPeriodsServiceMock(): ReturnType<typeof makeFiscalPeriodsService> {
   return {
     getById: vi.fn().mockResolvedValue({
       id: "period-1",
-      status: "OPEN",
+      isOpen: () => true,
+      status: { value: "OPEN" },
     }),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 }
 
 const baseInput: CloseRequest = {

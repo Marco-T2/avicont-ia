@@ -18,7 +18,7 @@
 import { describe, it, expect, vi } from "vitest";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 
 // ── Shared mock factory ──────────────────────────────────────────────────────
 
@@ -43,10 +43,10 @@ function buildRepoMock(): RepoMock {
   } as unknown as RepoMock;
 }
 
-function buildPeriodsServiceMock(): FiscalPeriodsService {
+function buildPeriodsServiceMock(): ReturnType<typeof makeFiscalPeriodsService> {
   return {
     getById: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 }
 
 // ── T19b.1 — drafts exist → canClose=false, total=sum(5) ─────────────────────

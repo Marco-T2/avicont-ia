@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { MonthlyCloseRepository } from "../monthly-close.repository";
 import { MonthlyCloseService } from "../monthly-close.service";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { setAuditContext } from "@/features/shared/audit-context";
 
 let orgId: string;
@@ -217,7 +217,7 @@ describe("MonthlyCloseService.close — integration happy path (T30)", () => {
 
     const service = new MonthlyCloseService(
       new MonthlyCloseRepository(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     const result = await service.close({
@@ -301,7 +301,7 @@ describe("MonthlyCloseService.close — integration rollback (T31)", () => {
 
     const service = new MonthlyCloseService(
       new FailingRepo(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     await expect(
@@ -371,7 +371,7 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
 
     const service = new MonthlyCloseService(
       new MonthlyCloseRepository(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     await expect(
@@ -418,7 +418,7 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
 
     const service = new MonthlyCloseService(
       new MonthlyCloseRepository(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     await expect(
@@ -464,7 +464,7 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
 
     const service = new MonthlyCloseService(
       new MonthlyCloseRepository(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     await expect(
@@ -516,7 +516,7 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
 
     const service = new MonthlyCloseService(
       new MonthlyCloseRepository(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     await expect(
@@ -567,7 +567,7 @@ describe("MonthlyCloseService.close — DRAFT blocks close (T13-T17)", () => {
 
     const service = new MonthlyCloseService(
       new MonthlyCloseRepository(),
-      new FiscalPeriodsService(),
+      makeFiscalPeriodsService(),
     );
 
     await expect(

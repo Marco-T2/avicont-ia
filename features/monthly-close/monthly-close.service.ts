@@ -8,7 +8,7 @@ import {
   PERIOD_UNBALANCED,
 } from "@/features/shared/errors";
 import { setAuditContext } from "@/features/shared/audit-context";
-import { FiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { MonthlyCloseRepository } from "./monthly-close.repository";
 import type {
   CloseRequest,
@@ -18,14 +18,14 @@ import type {
 
 export class MonthlyCloseService {
   private readonly repo: MonthlyCloseRepository;
-  private readonly periodsService: FiscalPeriodsService;
+  private readonly periodsService: ReturnType<typeof makeFiscalPeriodsService>;
 
   constructor(
     repo?: MonthlyCloseRepository,
-    periodsService?: FiscalPeriodsService,
+    periodsService?: ReturnType<typeof makeFiscalPeriodsService>,
   ) {
     this.repo = repo ?? new MonthlyCloseRepository();
-    this.periodsService = periodsService ?? new FiscalPeriodsService();
+    this.periodsService = periodsService ?? makeFiscalPeriodsService();
   }
 
   // ── Validación compartida: ¿puede cerrarse el período? ──
@@ -95,7 +95,7 @@ export class MonthlyCloseService {
 
     return {
       periodId: period.id,
-      periodStatus: period.status,
+      periodStatus: period.status.value,
       posted: {
         dispatches: postedDispatches,
         payments: postedPayments,
@@ -142,7 +142,7 @@ export class MonthlyCloseService {
     const period = await this.periodsService.getById(organizationId, periodId);
 
     // 3. Already closed → 409.
-    if (period.status === "CLOSED") {
+    if (!period.isOpen()) {
       throw new ConflictError(
         "El período fiscal",
         PERIOD_ALREADY_CLOSED,

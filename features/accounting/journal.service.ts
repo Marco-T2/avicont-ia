@@ -28,7 +28,7 @@ import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import { AccountsRepository } from "./accounts.repository";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
-import { FiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { OrgProfileService } from "@/features/org-profile/server";
@@ -60,7 +60,7 @@ export class JournalService {
   private readonly repo: JournalRepository;
   private readonly accountsRepo: AccountsRepository;
   private readonly balancesService: AccountBalancesService;
-  private readonly periodsService: FiscalPeriodsService;
+  private readonly periodsService: ReturnType<typeof makeFiscalPeriodsService>;
   private readonly voucherTypesService: VoucherTypesService;
   private readonly contactsService: ReturnType<typeof makeContactsService>;
   private readonly orgProfileService: OrgProfileService;
@@ -70,7 +70,7 @@ export class JournalService {
     repo?: JournalRepository,
     accountsRepo?: AccountsRepository,
     balancesService?: AccountBalancesService,
-    periodsService?: FiscalPeriodsService,
+    periodsService?: ReturnType<typeof makeFiscalPeriodsService>,
     voucherTypesService?: VoucherTypesService,
     contactsService?: ReturnType<typeof makeContactsService>,
     orgProfileService?: OrgProfileService,
@@ -79,7 +79,7 @@ export class JournalService {
     this.repo = repo ?? new JournalRepository();
     this.accountsRepo = accountsRepo ?? new AccountsRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
-    this.periodsService = periodsService ?? new FiscalPeriodsService();
+    this.periodsService = periodsService ?? makeFiscalPeriodsService();
     this.voucherTypesService = voucherTypesService ?? makeVoucherTypesService();
     this.contactsService = contactsService ?? makeContactsService();
     this.orgProfileService = orgProfileService ?? new OrgProfileService();
@@ -113,7 +113,7 @@ export class JournalService {
 
     // Validar que el período fiscal esté OPEN
     const period = await this.periodsService.getById(organizationId, entryData.periodId);
-    if (period.status !== "OPEN") {
+    if (!period.isOpen()) {
       throw new ValidationError(
         "No se pueden crear asientos en un período cerrado",
         FISCAL_PERIOD_CLOSED,
@@ -208,7 +208,7 @@ export class JournalService {
 
     // Validar que el período fiscal esté OPEN
     const period = await this.periodsService.getById(organizationId, entryData.periodId);
-    if (period.status !== "OPEN") {
+    if (!period.isOpen()) {
       throw new ValidationError(
         "No se pueden crear asientos en un período cerrado",
         FISCAL_PERIOD_CLOSED,
@@ -333,7 +333,7 @@ export class JournalService {
       validateLockedEdit(
         status,
         role!,
-        period.status as "OPEN" | "CLOSED",
+        period.status.value,
         justification,
       );
     } else if (status === "POSTED") {
@@ -588,7 +588,7 @@ export class JournalService {
       validateLockedEdit(
         entry.status as DocumentStatus,
         role!,
-        period.status as "OPEN" | "CLOSED",
+        period.status.value,
         justification,
       );
     }
@@ -596,7 +596,7 @@ export class JournalService {
     // Al contabilizar (POST): validar que el período siga OPEN y la partida doble
     if (targetStatus === "POSTED") {
       const period = await this.periodsService.getById(organizationId, entry.periodId);
-      if (period.status !== "OPEN") {
+      if (!period.isOpen()) {
         throw new ValidationError(
           "No se puede contabilizar un asiento en un período cerrado",
           FISCAL_PERIOD_CLOSED,

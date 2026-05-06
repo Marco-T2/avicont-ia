@@ -17,7 +17,7 @@ import { describe, it, expect, vi } from "vitest";
 import { JournalService } from "@/features/accounting/journal.service";
 import { LOCKED_EDIT_REQUIRES_JUSTIFICATION } from "@/features/shared/errors";
 import type { JournalRepository } from "@/features/accounting/journal.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 
 const ORG_ID = "org-locked-edit-journal";
@@ -74,10 +74,11 @@ function buildService(periodStatus: "OPEN" | "CLOSED") {
   const mockPeriodsService = {
     getById: vi.fn().mockResolvedValue({
       id: PERIOD_ID,
-      status: periodStatus,
+      isOpen: () => periodStatus === "OPEN",
+      status: { value: periodStatus },
     }),
     list: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 
   const service = new JournalService(
     mockRepo,

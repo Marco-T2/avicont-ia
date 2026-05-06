@@ -12,7 +12,7 @@ import { JournalService } from "@/features/accounting/journal.service";
 import { AUTO_ENTRY_VOID_FORBIDDEN } from "@/features/shared/errors";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 import type { JournalRepository } from "@/features/accounting/journal.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { AccountBalancesService } from "@/features/account-balances/server";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -92,9 +92,9 @@ function buildService(entryOverrides: Partial<JournalEntryWithLines> = {}) {
   } as unknown as AccountBalancesService;
 
   const mockPeriodsService = {
-    getById: vi.fn().mockResolvedValue({ id: "period-001", status: "OPEN" }),
+    getById: vi.fn().mockResolvedValue({ id: "period-001", isOpen: () => true, status: { value: "OPEN" } }),
     list: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 
   const service = new JournalService(
     mockRepo,

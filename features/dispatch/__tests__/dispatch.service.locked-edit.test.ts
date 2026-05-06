@@ -22,7 +22,7 @@ import { describe, it, expect, vi } from "vitest";
 import { DispatchService } from "../dispatch.service";
 import { LOCKED_EDIT_REQUIRES_JUSTIFICATION } from "@/features/shared/errors";
 import type { DispatchRepository } from "../dispatch.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { DispatchWithDetails } from "../dispatch.types";
 
 const ORG_ID = "org-locked-edit-dispatch";
@@ -70,10 +70,11 @@ function buildService(periodStatus: "OPEN" | "CLOSED") {
   const mockPeriodsService = {
     getById: vi.fn().mockResolvedValue({
       id: PERIOD_ID,
-      status: periodStatus,
+      isOpen: () => periodStatus === "OPEN",
+      status: { value: periodStatus },
     }),
     list: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 
   const service = new DispatchService(
     mockRepo,

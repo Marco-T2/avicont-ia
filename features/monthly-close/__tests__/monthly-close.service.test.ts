@@ -21,7 +21,7 @@ import {
 } from "@/features/shared/errors";
 import { MonthlyCloseService } from "../monthly-close.service";
 import type { MonthlyCloseRepository } from "../monthly-close.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { CloseRequest } from "../monthly-close.types";
 
 // ── Shared mock factory ──────────────────────────────────────────────────────
@@ -53,10 +53,10 @@ function buildRepoMock(): RepoMock {
   } as unknown as RepoMock;
 }
 
-function buildPeriodsServiceMock(): FiscalPeriodsService {
+function buildPeriodsServiceMock(): ReturnType<typeof makeFiscalPeriodsService> {
   return {
     getById: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 }
 
 const baseInput: CloseRequest = {
@@ -103,8 +103,9 @@ describe("MonthlyCloseService.close — PERIOD_ALREADY_CLOSED (T25)", () => {
 
     vi.mocked(periodsService.getById).mockResolvedValueOnce({
       id: "period-1",
-      status: "CLOSED",
-    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+      isOpen: () => false,
+      status: { value: "CLOSED" },
+    } as unknown as Awaited<ReturnType<ReturnType<typeof makeFiscalPeriodsService>["getById"]>>);
 
     const service = new MonthlyCloseService(
       repo as unknown as MonthlyCloseRepository,
@@ -130,8 +131,9 @@ describe("MonthlyCloseService.close — PERIOD_HAS_DRAFT_ENTRIES (T26)", () => {
 
     vi.mocked(periodsService.getById).mockResolvedValueOnce({
       id: "period-1",
-      status: "OPEN",
-    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+      isOpen: () => true,
+      status: { value: "OPEN" },
+    } as unknown as Awaited<ReturnType<ReturnType<typeof makeFiscalPeriodsService>["getById"]>>);
 
     vi.mocked(repo.countDraftDocuments).mockResolvedValueOnce({
       dispatches: 2,
@@ -179,8 +181,9 @@ describe("MonthlyCloseService.close — PERIOD_UNBALANCED (T27)", () => {
 
     vi.mocked(periodsService.getById).mockResolvedValueOnce({
       id: "period-1",
-      status: "OPEN",
-    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+      isOpen: () => true,
+      status: { value: "OPEN" },
+    } as unknown as Awaited<ReturnType<ReturnType<typeof makeFiscalPeriodsService>["getById"]>>);
 
     vi.mocked(repo.countDraftDocuments).mockResolvedValueOnce({
       dispatches: 0,
@@ -231,8 +234,9 @@ describe("MonthlyCloseService.close — happy path (T28)", () => {
 
     vi.mocked(periodsService.getById).mockResolvedValueOnce({
       id: "period-1",
-      status: "OPEN",
-    } as Awaited<ReturnType<FiscalPeriodsService["getById"]>>);
+      isOpen: () => true,
+      status: { value: "OPEN" },
+    } as unknown as Awaited<ReturnType<ReturnType<typeof makeFiscalPeriodsService>["getById"]>>);
 
     vi.mocked(repo.countDraftDocuments).mockResolvedValueOnce({
       dispatches: 0,

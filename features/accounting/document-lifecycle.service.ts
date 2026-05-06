@@ -137,9 +137,9 @@ export interface TrimPreviewItem {
 // ── Validar que el período fiscal dado esté ABIERTO ──
 
 export async function validatePeriodOpen(
-  period: { status: string },
+  period: { isOpen: () => boolean },
 ): Promise<void> {
-  if (period.status !== "OPEN") {
+  if (!period.isOpen()) {
     throw new ValidationError(
       "No se puede operar en un período cerrado",
       FISCAL_PERIOD_CLOSED,

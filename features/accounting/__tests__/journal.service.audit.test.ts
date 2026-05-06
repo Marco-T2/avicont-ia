@@ -22,7 +22,7 @@ import * as auditCtx from "@/features/shared/audit-context";
 import * as permissions from "@/features/permissions/server";
 import { JournalService } from "../journal.service";
 import type { JournalRepository } from "../journal.repository";
-import type { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { AccountBalancesService } from "@/features/account-balances/server";
 import type { VoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import type { JournalEntryWithLines } from "../journal.types";
@@ -88,11 +88,11 @@ function makeBasicRepo(entry: JournalEntryWithLines): JournalRepository {
   } as unknown as JournalRepository;
 }
 
-function makePeriodsService(status = "OPEN"): FiscalPeriodsService {
+function makePeriodsService(status = "OPEN"): ReturnType<typeof makeFiscalPeriodsService> {
   return {
-    getById: vi.fn().mockResolvedValue({ id: PERIOD_ID, status }),
+    getById: vi.fn().mockResolvedValue({ id: PERIOD_ID, isOpen: () => status === "OPEN", status: { value: status } }),
     list: vi.fn(),
-  } as unknown as FiscalPeriodsService;
+  } as unknown as ReturnType<typeof makeFiscalPeriodsService>;
 }
 
 function makeBalancesService(): AccountBalancesService {
