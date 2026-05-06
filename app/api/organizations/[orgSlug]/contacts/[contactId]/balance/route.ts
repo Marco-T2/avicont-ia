@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 
 export async function GET(
   _request: Request,
@@ -10,7 +10,7 @@ export async function GET(
     const { orgSlug, contactId } = await params;
     const { orgId } = await requirePermission("contacts", "read", orgSlug);
 
-    const contactsService = new ContactsService();
+    const contactsService = makeContactBalancesService();
 
     const balance = await contactsService.getBalanceSummary(orgId, contactId);
 

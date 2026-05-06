@@ -1,8 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 
-const service = new ContactsService();
+const service = makeContactBalancesService();
 
 export async function GET(
   request: Request,
