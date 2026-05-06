@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
-import { createFiscalPeriodSchema } from "@/features/fiscal-periods";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { createFiscalPeriodSchema } from "@/modules/fiscal-periods/presentation/index";
 
 const usersService = new UsersService();
-const service = new FiscalPeriodsService();
+const service = makeFiscalPeriodsService();
 
 export async function GET(
   _request: Request,
@@ -15,7 +15,7 @@ export async function GET(
     const { orgSlug } = await params;
     const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
-    const periods = await service.list(orgId);
+    const periods = (await service.list(orgId)).map((p) => p.toSnapshot());
 
     return Response.json(periods);
   } catch (error) {
@@ -41,10 +41,12 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    const period = await service.create(orgId, {
-      ...input,
-      createdById: user.id,
-    });
+    const period = (
+      await service.create(orgId, {
+        ...input,
+        createdById: user.id,
+      })
+    ).toSnapshot();
 
     return Response.json(period, { status: 201 });
   } catch (error) {

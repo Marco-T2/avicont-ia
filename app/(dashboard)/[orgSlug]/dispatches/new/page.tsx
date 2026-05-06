@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import DispatchForm from "@/components/dispatches/dispatch-form";
@@ -32,13 +32,13 @@ export default async function NewDispatchPage({
   }
 
   const contactsService = makeContactsService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const productTypesService = new ProductTypesService();
   const orgSettingsService = makeOrgSettingsService();
 
   const [contacts, periods, productTypes, orgSettings] = await Promise.all([
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
   ]);

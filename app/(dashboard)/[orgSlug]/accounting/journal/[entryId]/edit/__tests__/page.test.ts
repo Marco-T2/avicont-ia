@@ -48,10 +48,8 @@ const { mockPeriodsList } = vi.hoisted(() => ({
   mockPeriodsList: vi.fn(),
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => ({
-  FiscalPeriodsService: vi.fn().mockImplementation(function () {
-    return { list: mockPeriodsList };
-  }),
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
 vi.mock("@/modules/voucher-types/presentation/server", () => ({
@@ -95,7 +93,7 @@ function makeEntry(
 }
 
 function makePeriod(id: string, status: "OPEN" | "CLOSED") {
-  return {
+  const snapshot = {
     id,
     organizationId: "org-db-id",
     name: `Período ${id}`,
@@ -104,6 +102,7 @@ function makePeriod(id: string, status: "OPEN" | "CLOSED") {
     startDate: new Date("2026-01-01"),
     endDate: new Date("2026-12-31"),
   };
+  return { toSnapshot: () => snapshot };
 }
 
 const ORG_SLUG = "test-org";

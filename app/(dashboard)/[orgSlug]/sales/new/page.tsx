@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { AccountsService } from "@/features/accounting/server";
 import SaleForm from "@/components/sales/sale-form";
 
@@ -21,12 +21,12 @@ export default async function NewSalePage({ params }: NewSalePageProps) {
   }
 
   const contactsService = makeContactsService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const accountsService = new AccountsService();
 
   const [contacts, periods, accounts] = await Promise.all([
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     accountsService.list(orgId, { type: "INGRESO", isDetail: true, isActive: true }),
   ]);
 

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import { prisma } from "@/lib/prisma";
 import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
@@ -33,7 +33,7 @@ export default async function PurchaseDetailPage({
 
   const purchaseService = makePurchaseService();
   const contactsService = makeContactsService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const productTypesService = new ProductTypesService();
 
   let purchase;
@@ -45,7 +45,7 @@ export default async function PurchaseDetailPage({
 
   const [contacts, periods, productTypes, contact, payable, ivaPurchaseBook] = await Promise.all([
     contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }),
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }),
     prisma.contact.findUnique({
       where: { id: purchase.contactId },

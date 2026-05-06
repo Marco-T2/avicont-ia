@@ -104,10 +104,8 @@ vi.mock("@/modules/voucher-types/presentation/server", () => ({
   }),
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => ({
-  FiscalPeriodsService: vi.fn().mockImplementation(function () {
-    return { findByDate: mockFindPeriodByDate };
-  }),
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ findByDate: mockFindPeriodByDate })),
 }));
 
 vi.mock("@/features/expenses/server", async (importOriginal) => {
@@ -198,10 +196,12 @@ beforeEach(() => {
     }),
   });
   mockFindPeriodByDate.mockResolvedValue({
-    id: "period-2026-04",
-    status: "OPEN",
-    year: 2026,
-    month: 4,
+    toSnapshot: () => ({
+      id: "period-2026-04",
+      status: "OPEN",
+      year: 2026,
+      month: 4,
+    }),
   });
   mockCreateEntry.mockResolvedValue({
     id: "entry-1",
@@ -298,10 +298,12 @@ describe("POST /api/organizations/[orgSlug]/agent?action=confirm — createJourn
 
   it("(d) período cerrado al momento del confirm → 422 con FISCAL_PERIOD_CLOSED", async () => {
     mockFindPeriodByDate.mockResolvedValueOnce({
-      id: "period-closed",
-      status: "CLOSED",
-      year: 2026,
-      month: 3,
+      toSnapshot: () => ({
+        id: "period-closed",
+        status: "CLOSED",
+        year: 2026,
+        month: 3,
+      }),
     });
     const data = { ...validSuggestionData(), date: "2026-03-15" };
     const req = makeRequest({ suggestion: { action: "createJournalEntry", data } });

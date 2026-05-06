@@ -31,13 +31,11 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => ({
-  FiscalPeriodsService: vi.fn().mockImplementation(function () {
-    return {
-      list: mockList,
-      create: mockCreate,
-    };
-  }),
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({
+    list: mockList,
+    create: mockCreate,
+  })),
 }));
 
 vi.mock("@/features/users/server", () => ({
@@ -92,7 +90,9 @@ beforeEach(() => {
     session: { userId: "clerk-01" },
   });
   mockResolveByClerkId.mockResolvedValue({ id: "user-01" });
-  mockCreate.mockResolvedValue({ id: "period-01", year: 2026, month: 1, status: "OPEN" });
+  mockCreate.mockResolvedValue({
+    toSnapshot: () => ({ id: "period-01", year: 2026, month: 1, status: "OPEN" }),
+  });
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

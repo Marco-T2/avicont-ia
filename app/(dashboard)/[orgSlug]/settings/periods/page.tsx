@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { Button } from "@/components/ui/button";
 import PeriodList from "@/components/accounting/period-list";
 
@@ -21,8 +21,8 @@ export default async function PeriodsPage({ params }: PeriodsPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const service = new FiscalPeriodsService();
-  const periods = await service.list(orgId);
+  const service = makeFiscalPeriodsService();
+  const periods = (await service.list(orgId)).map((p) => p.toSnapshot());
 
   return (
     <div className="space-y-6">

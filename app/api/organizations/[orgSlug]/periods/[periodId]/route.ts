@@ -1,9 +1,9 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { LEGACY_CLOSE_REMOVED } from "@/features/shared/errors";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 
-const service = new FiscalPeriodsService();
+const service = makeFiscalPeriodsService();
 
 export async function GET(
   _request: Request,
@@ -13,7 +13,7 @@ export async function GET(
     const { orgSlug, periodId } = await params;
     const { orgId } = await requirePermission("accounting-config", "read", orgSlug);
 
-    const period = await service.getById(orgId, periodId);
+    const period = (await service.getById(orgId, periodId)).toSnapshot();
 
     return Response.json(period);
   } catch (error) {

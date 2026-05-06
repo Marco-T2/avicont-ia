@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { AccountsService } from "@/features/accounting/server";
 import { prisma } from "@/lib/prisma";
 import type { IvaSalesBookDTO } from "@/features/accounting/iva-books";
@@ -30,7 +30,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
 
   const saleService = makeSaleService();
   const contactsService = makeContactsService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const accountsService = new AccountsService();
 
   let sale;
@@ -42,7 +42,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
 
   const [contacts, periods, accounts, contact, receivable, ivaSalesBook] = await Promise.all([
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     accountsService.list(orgId, { type: "INGRESO", isDetail: true, isActive: true }),
     prisma.contact.findUnique({
       where: { id: sale.contactId },

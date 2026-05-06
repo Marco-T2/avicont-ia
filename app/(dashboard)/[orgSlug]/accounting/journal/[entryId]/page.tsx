@@ -1,7 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { JournalService } from "@/features/accounting/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryDetail from "@/components/accounting/journal-entry-detail";
 
@@ -23,7 +23,7 @@ export default async function EntryDetailPage({
   }
 
   const journalService = new JournalService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
 
   let entry;
@@ -42,7 +42,7 @@ export default async function EntryDetailPage({
   }
 
   const [periods, voucherTypes] = await Promise.all([
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     voucherTypesService.list(orgId),
   ]);
 

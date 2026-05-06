@@ -2,7 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { PaymentService } from "@/modules/payment/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
 import { AccountsRepository } from "@/features/accounting/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
@@ -27,7 +27,7 @@ export default async function PaymentDetailPage({
 
   const paymentService = new PaymentService();
   const contactsService = makeContactsService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const docTypesService = new OperationalDocTypesService();
   const orgSettingsService = makeOrgSettingsService();
   const accountsRepo = new AccountsRepository();
@@ -41,7 +41,7 @@ export default async function PaymentDetailPage({
 
   const [contacts, periods, docTypes, orgSettings] = await Promise.all([
     contactsService.list(orgId),
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     docTypesService.list(orgId, { isActive: true }),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
   ]);

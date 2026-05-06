@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { IvaBooksPageClient } from "@/components/iva-books/iva-books-page-client";
 
 interface LibroVentasPageProps {
@@ -23,8 +23,8 @@ export default async function LibroVentasPage({ params }: LibroVentasPageProps) 
     redirect(`/${orgSlug}`);
   }
 
-  const periodsService = new FiscalPeriodsService();
-  const periods = await periodsService.list(orgId);
+  const periodsService = makeFiscalPeriodsService();
+  const periods = (await periodsService.list(orgId)).map((p) => p.toSnapshot());
 
   return (
     <div className="space-y-6">

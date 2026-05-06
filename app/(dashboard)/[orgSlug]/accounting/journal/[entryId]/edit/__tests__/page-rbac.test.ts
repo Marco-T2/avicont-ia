@@ -44,12 +44,9 @@ vi.mock("@/features/accounting/server", () => {
   return { JournalService, AccountsService };
 });
 
-vi.mock("@/features/fiscal-periods/server", () => {
-  class FiscalPeriodsService {
-    list = mockPeriodsList;
-  }
-  return { FiscalPeriodsService };
-});
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
+}));
 
 vi.mock("@/modules/voucher-types/presentation/server", () => ({
   makeVoucherTypesService: () => ({ list: mockVoucherTypesList }),
@@ -82,7 +79,9 @@ beforeEach(() => {
     referenceNumber: null,
     lines: [],
   });
-  mockPeriodsList.mockResolvedValue([{ id: "p-1", status: "OPEN" }]);
+  mockPeriodsList.mockResolvedValue([
+    { toSnapshot: () => ({ id: "p-1", status: "OPEN" }) },
+  ]);
   mockVoucherTypesList.mockResolvedValue([]);
   mockAccountsList.mockResolvedValue([]);
 });

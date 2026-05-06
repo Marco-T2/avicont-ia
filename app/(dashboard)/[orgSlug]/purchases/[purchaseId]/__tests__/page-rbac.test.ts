@@ -79,12 +79,9 @@ vi.mock("@/modules/contacts/presentation/server", () => {
   return { makeContactsService };
 });
 
-vi.mock("@/features/fiscal-periods/server", () => {
-  class FiscalPeriodsService {
-    list = mockPeriodsList;
-  }
-  return { FiscalPeriodsService };
-});
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
+}));
 
 vi.mock("@/features/product-types/server", () => {
   class ProductTypesService {
@@ -121,7 +118,7 @@ beforeEach(() => {
   });
   mockContactsList.mockResolvedValue([]);
   mockPeriodsList.mockResolvedValue([
-    { id: PERIOD_ID, name: "Test Period", status: "OPEN" },
+    { toSnapshot: () => ({ id: PERIOD_ID, name: "Test Period", status: "OPEN" }) },
   ]);
   mockProductTypesList.mockResolvedValue([]);
   mockContactFindUnique.mockResolvedValue({

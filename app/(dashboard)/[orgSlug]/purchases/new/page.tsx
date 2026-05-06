@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import PurchaseForm from "@/components/purchases/purchase-form";
 import type { PurchaseType } from "@/modules/purchase/presentation/dto/purchase-with-details";
@@ -41,12 +41,12 @@ export default async function NewPurchasePage({
   }
 
   const contactsService = makeContactsService();
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const productTypesService = new ProductTypesService();
 
   const [contacts, periods, productTypes] = await Promise.all([
     contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }),
-    periodsService.list(orgId),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }),
   ]);
 

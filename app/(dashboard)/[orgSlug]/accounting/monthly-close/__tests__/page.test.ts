@@ -24,12 +24,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => {
-  class FiscalPeriodsService {
-    list = mockList;
-  }
-  return { FiscalPeriodsService };
-});
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ list: mockList })),
+}));
 
 vi.mock("@/components/accounting/monthly-close-panel", () => ({
   MonthlyClosePanel: mockMonthlyClosePanel,
@@ -47,7 +44,7 @@ function makeSearchParams(params: Record<string, string> = {}) {
   return Promise.resolve(params);
 }
 
-const OPEN_PERIOD = {
+const OPEN_PERIOD_SNAPSHOT = {
   id: "p-01",
   organizationId: "org-1",
   name: "Enero 2026",
@@ -55,13 +52,14 @@ const OPEN_PERIOD = {
   month: 1,
   startDate: new Date("2026-01-01"),
   endDate: new Date("2026-01-31"),
-  status: "OPEN",
+  status: "OPEN" as const,
   closedAt: null,
   closedBy: null,
   createdById: "user-1",
   createdAt: new Date("2026-01-01"),
   updatedAt: new Date("2026-01-01"),
 };
+const OPEN_PERIOD = { toSnapshot: () => OPEN_PERIOD_SNAPSHOT };
 
 beforeEach(() => {
   vi.clearAllMocks();

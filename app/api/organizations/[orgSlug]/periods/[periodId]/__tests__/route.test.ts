@@ -24,13 +24,11 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/fiscal-periods/server", () => ({
-  FiscalPeriodsService: vi.fn().mockImplementation(function () {
-    return {
-      getById: mockGetById,
-      close: vi.fn(),
-    };
-  }),
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({
+    getById: mockGetById,
+    close: vi.fn(),
+  })),
 }));
 
 vi.mock("@/features/shared/middleware", () => ({
@@ -79,7 +77,9 @@ function makeGetRequest() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
-  mockGetById.mockResolvedValue({ id: PERIOD_ID, name: "Abril 2026", status: "OPEN" });
+  mockGetById.mockResolvedValue({
+    toSnapshot: () => ({ id: PERIOD_ID, name: "Abril 2026", status: "OPEN" }),
+  });
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

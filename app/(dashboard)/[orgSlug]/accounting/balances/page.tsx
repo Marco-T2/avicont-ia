@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { AccountBalancesService } from "@/features/account-balances/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import BalanceTable from "@/components/accounting/balance-table";
 
 interface BalancesPageProps {
@@ -24,10 +24,10 @@ export default async function BalancesPage({
     redirect(`/${orgSlug}`);
   }
 
-  const periodsService = new FiscalPeriodsService();
+  const periodsService = makeFiscalPeriodsService();
   const balancesService = new AccountBalancesService();
 
-  const periods = await periodsService.list(orgId);
+  const periods = (await periodsService.list(orgId)).map((p) => p.toSnapshot());
 
   const periodId =
     typeof sp.periodId === "string" ? sp.periodId : undefined;

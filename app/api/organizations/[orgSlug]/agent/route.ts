@@ -20,7 +20,7 @@ import {
 import { requirePermission } from "@/features/permissions/server";
 import { JournalService, parseEntryDate } from "@/features/accounting/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import {
   ValidationError,
   FISCAL_PERIOD_CLOSED,
@@ -35,7 +35,7 @@ const expensesService = new ExpensesService();
 const mortalityService = makeMortalityService();
 const journalService = new JournalService();
 const voucherTypesService = makeVoucherTypesService();
-const fiscalPeriodsService = new FiscalPeriodsService();
+const fiscalPeriodsService = makeFiscalPeriodsService();
 
 export async function POST(
   request: Request,
@@ -242,7 +242,7 @@ async function handleCreateJournalEntryConfirm(
   // el modal serializan como YYYY-MM-DD; esta normalización es resiliente al
   // caso donde el LLM (o un cliente futuro) mande datetime con offset.
   const date = parseEntryDate(validated.date);
-  const period = await fiscalPeriodsService.findByDate(organizationId, date);
+  const period = (await fiscalPeriodsService.findByDate(organizationId, date))?.toSnapshot();
   if (!period) {
     throw new ValidationError(
       `No existe un período fiscal para la fecha ${validated.date}. Pedí al admin que lo abra primero.`,

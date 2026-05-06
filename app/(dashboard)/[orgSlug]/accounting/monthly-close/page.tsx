@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { MonthlyClosePanel } from "@/components/accounting/monthly-close-panel";
 
-const periodsService = new FiscalPeriodsService();
+const periodsService = makeFiscalPeriodsService();
 
 interface MonthlyClosePageProps {
   params: Promise<{ orgSlug: string }>;
@@ -22,7 +22,7 @@ export default async function MonthlyClosePage({ params, searchParams }: Monthly
     redirect(`/${orgSlug}`);
   }
 
-  const periods = await periodsService.list(orgId);
+  const periods = (await periodsService.list(orgId)).map((p) => p.toSnapshot());
 
   // REQ-2: validate periodId against the server-side period list (org-scoped, no extra round-trip).
   // Only OPEN periods can be pre-selected (a CLOSED period would have nothing to close).
