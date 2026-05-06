@@ -535,12 +535,32 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
     expect(matches.length).toBe(0);
   });
 
-  // ── D: Hex barrel canonical Opción A re-export (Test 14) ─────────────────
-  // Opción A Marco lock #1 — hex barrel re-export legacy class identity
-  // `{ ContactsService }` from `@/features/contacts/server` (LEGACY shim, NO
-  // hex application). Mirror payment C1 EXACT literal precedent.
-
-  it("Test 14: modules/contacts/presentation/server.ts contains `export { ContactsService } from \"@/features/contacts/server\"` (canonical Opción A re-export legacy shim class identity preserved — preserves zero-arg ctor + ContactRow POJO shape + Balance methods + class identity defer C4 wholesale delete features/contacts/*)", () => {
+  // ── Test 14 RETIRED scope-expired pre-C4 wholesale delete ────────────────
+  // C4 invierte invariant cumulative cross-cycle scope evolution — Test 14
+  // cementación histórica preserved archaeology (skip + comentario, NO delete
+  // wholesale). Test 14 cementó en C1 GREEN (commit 5e3dc3b) que el hex barrel
+  // `modules/contacts/presentation/server.ts` DEBE re-exportar Opción A
+  // `export { ContactsService } from "@/features/contacts/server"` (línea 13)
+  // como legacy shim re-export class identity preserved + zero-arg ctor +
+  // ContactRow POJO shape + Balance methods end-to-end. C4 GREEN wholesale
+  // delete `features/contacts/*` invierte el invariant: la línea 13 se DROP
+  // (no hay source legacy shim para re-exportar) + ContactsService class
+  // deja de existir como entry point. Mantener Test 14 activo contradiría C4
+  // GREEN naturalmente — collision detected proactively pre-RED este turno
+  // (cross-cycle-red-test-cementacion-gate 2da evidencia PROACTIVE — gate
+  // funcionó forward, distinto C3 retroactive 1ra evidencia).
+  //
+  // Lección NEW canonical home: `feedback/cross-cycle-red-test-cementacion-gate`
+  // 2da evidencia POC contacts C4 pre-RED (1ra C3 retroactive surface post-edits;
+  // 2da C4 PROACTIVE surface pre-edits — pattern matures cumulative). Marco
+  // lock P-δ revised split C4-pre prerequisite gate (re-exports Contact POJO
+  // + ContactFilters + ContactWithBalance flat isomorphic + Test 14 retire
+  // skip+comment archaeology) mirror C3-pre + C0-pre prerequisite gate
+  // precedent EXACT. Skip vs delete wholesale: archaeology preserved + delete
+  // wholesale defer D1 doc-only post-mortem si surface cleanup preference
+  // futuro. `it.skip` (NO `describe.skip`) preserva diagnostic granularity
+  // per-test.
+  it.skip("Test 14: modules/contacts/presentation/server.ts contains `export { ContactsService } from \"@/features/contacts/server\"` (canonical Opción A re-export legacy shim class identity preserved — preserves zero-arg ctor + ContactRow POJO shape + Balance methods + class identity defer C4 wholesale delete features/contacts/*)", () => {
     const source = fs.readFileSync(HEX_BARREL_SERVER, "utf8");
     expect(source).toMatch(HEX_BARREL_OPCION_A_REEXPORT_RE);
   });
