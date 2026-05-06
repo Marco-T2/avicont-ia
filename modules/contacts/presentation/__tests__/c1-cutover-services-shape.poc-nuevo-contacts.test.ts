@@ -395,8 +395,6 @@ const HEX_CANONICAL_SERVER_IMPORT_GLOBAL_RE =
   /import\s*\{[^}]*\bContactsService\b[^}]*\}\s*from\s+["']@\/modules\/contacts\/presentation\/server["']/g;
 const LEGACY_FEATURES_CONTACTS_SERVER_IMPORT_RE =
   /from\s+["']@\/features\/contacts\/server["']/;
-const LEGACY_FEATURES_CONTACTS_SERVER_VI_MOCK_RE =
-  /vi\.mock\(\s*["']@\/features\/contacts\/server["']/;
 const HEX_CANONICAL_SERVER_VI_MOCK_GLOBAL_RE =
   /vi\.mock\(\s*["']@\/modules\/contacts\/presentation\/server["']/g;
 const LEGACY_FEATURES_CONTACTS_SERVER_VI_MOCK_GLOBAL_RE =

@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { defineTool } from "../llm";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import type { ContactType } from "@/generated/prisma/client";
 
 // ── Tool definition ──

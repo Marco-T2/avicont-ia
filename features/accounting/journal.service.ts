@@ -30,7 +30,7 @@ import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import { OrgProfileService } from "@/features/org-profile/server";
 import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
 import { buildVoucherPdfInput } from "./exporters/voucher-pdf.composer";

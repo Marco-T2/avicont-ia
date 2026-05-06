@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import ContactDetail from "@/components/contacts/contact-detail";
 
 interface ContactDetailPageProps {

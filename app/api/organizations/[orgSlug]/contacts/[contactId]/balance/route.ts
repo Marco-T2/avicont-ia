@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 
 export async function GET(
   _request: Request,

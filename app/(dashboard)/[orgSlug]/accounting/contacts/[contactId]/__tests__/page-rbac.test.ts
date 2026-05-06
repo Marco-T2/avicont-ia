@@ -23,7 +23,7 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/contacts/server", () => {
+vi.mock("@/modules/contacts/presentation/server", () => {
   class ContactsService {
     getById = mockGetById;
     getBalanceSummary = mockGetBalanceSummary;

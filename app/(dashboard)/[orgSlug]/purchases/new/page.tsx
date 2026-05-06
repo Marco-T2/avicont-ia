@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import PurchaseForm from "@/components/purchases/purchase-form";

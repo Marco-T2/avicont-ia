@@ -36,7 +36,7 @@ vi.mock("@/features/dispatch/server", () => {
   return { DispatchService };
 });
 
-vi.mock("@/features/contacts/server", () => {
+vi.mock("@/modules/contacts/presentation/server", () => {
   class ContactsService {
     list = mockContactsList;
   }

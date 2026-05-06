@@ -62,7 +62,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/features/contacts/server", () => {
+vi.mock("@/modules/contacts/presentation/server", () => {
   class ContactsService {
     list = mockContactsList;
   }

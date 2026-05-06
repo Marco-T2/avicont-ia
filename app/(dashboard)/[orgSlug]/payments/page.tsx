@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { PaymentService } from "@/modules/payment/presentation/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import PaymentList from "@/components/payments/payment-list";
 
 const paymentService = new PaymentService();

@@ -12,7 +12,7 @@ import type {
   ResolvedContactInfo,
 } from "../agent.types";
 import { AccountsRepository } from "@/features/accounting/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import {
   ValidationError,
   ACCOUNT_NOT_POSTABLE,

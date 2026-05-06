@@ -28,7 +28,7 @@ import {
   type DocumentStatus,
 } from "@/features/accounting/server";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
-import { ContactsService } from "@/features/contacts/server";
+import { ContactsService } from "@/modules/contacts/presentation/server";
 import {
   makeReceivablesRepository,
   type PrismaReceivablesRepository,

@@ -10,6 +10,8 @@ export {
   contactFiltersSchema,
 } from "./contact.validation";
 
+export { ContactsService } from "@/features/contacts/server";
+
 export { Contact } from "../domain/contact.entity";
 export type {
   ContactProps,
