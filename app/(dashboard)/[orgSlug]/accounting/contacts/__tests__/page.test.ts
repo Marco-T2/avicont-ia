@@ -21,12 +21,11 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/modules/contacts/presentation/server", () => {
-  class ContactsService {
-    listWithBalances = mockListWithBalances;
-  }
-  return { ContactsService };
-});
+vi.mock("@/modules/contact-balances/presentation/server", () => ({
+  makeContactBalancesService: vi.fn(() => ({
+    listWithBalancesFlat: mockListWithBalances,
+  })),
+}));
 
 vi.mock("@/components/contacts/contact-list", () => ({
   default: vi.fn().mockReturnValue(null),

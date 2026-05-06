@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 import ContactList from "@/components/contacts/contact-list";
 
 interface ContactsPageProps {
@@ -18,9 +18,9 @@ export default async function ContactsPage({ params }: ContactsPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
-
-  const contacts = await contactsService.listWithBalances(orgId);
+  const contacts = await makeContactBalancesService().listWithBalancesFlat(
+    orgId,
+  );
 
   return (
     <div className="space-y-6">

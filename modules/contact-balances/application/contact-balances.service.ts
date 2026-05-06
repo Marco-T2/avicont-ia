@@ -2,7 +2,10 @@ import type { ContactExistencePort } from "../domain/ports/contact-existence.por
 import type { PaymentCreditPort } from "../domain/ports/payment-credit.port";
 import type { ReceivablesQueryPort } from "../domain/ports/receivables-query.port";
 import type { PayablesQueryPort } from "../domain/ports/payables-query.port";
-import type { Contact } from "@/modules/contacts/domain/contact.entity";
+import type {
+  Contact,
+  ContactSnapshot,
+} from "@/modules/contacts/domain/contact.entity";
 import type { ContactsService } from "@/modules/contacts/application/contacts.service";
 import type { ContactFilters } from "@/modules/contacts/domain/contact.repository";
 import { CreditBalance } from "../domain/value-objects/credit-balance";
@@ -31,6 +34,10 @@ export interface PendingDocument {
 
 export interface ContactWithBalance {
   contact: Contact;
+  balanceSummary: ContactBalanceSummary;
+}
+
+export interface ContactWithBalanceFlat extends ContactSnapshot {
   balanceSummary: ContactBalanceSummary;
 }
 
@@ -106,5 +113,16 @@ export class ContactBalancesService {
         balanceSummary: await this.getBalanceSummary(orgId, contact.id),
       })),
     );
+  }
+
+  async listWithBalancesFlat(
+    orgId: string,
+    filters?: ContactFilters,
+  ): Promise<ContactWithBalanceFlat[]> {
+    const items = await this.listWithBalances(orgId, filters);
+    return items.map(({ contact, balanceSummary }) => ({
+      ...contact.toSnapshot(),
+      balanceSummary,
+    }));
   }
 }
