@@ -461,7 +461,34 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
   // ≥ 11 occurrences (one per file post-cutover). Consolidated for 14-total
   // target.
 
-  it("Test 6: 11 pages collectively contain `from \"@/modules/contacts/presentation/server\"` ≥ 11 occurrences (consolidated POSITIVE hex import ALL pages post-cutover Opción A class identity preserved)", () => {
+  // ── Test 6 RETIRED scope-expired pre-C5 page.tsx callsite cutover VALUE-axis ──
+  // C5 invierte invariant cumulative cross-cycle scope evolution — Test 6
+  // cementación histórica preserved archaeology (skip + comentario, NO delete
+  // wholesale). Test 6 cementó en C1 GREEN (commit 5e3dc3b) que las 11 page.tsx
+  // files DEBEN contener `from "@/modules/contacts/presentation/server"` ≥ 11
+  // occurrences (consolidated POSITIVE hex import ALL pages post-cutover Opción
+  // A class identity preserved). C5 GREEN page.tsx callsite cutover
+  // `app/(dashboard)/[orgSlug]/accounting/contacts/page.tsx` (1 de los 11) swap
+  // import target a `@/modules/contact-balances/presentation/server` factory
+  // `makeContactBalancesService().listWithBalancesFlat()` (Marco lock A1 flat
+  // POJO via contact.toSnapshot() mirror legacy shim shape EXACT + B1 factory
+  // mock pattern + Sub-α ADD listWithBalancesFlat() a GREEN). Count baja 11 → 10
+  // occurrences → assertion `≥ 11` FAIL. Mantener Test 6 activo contradiría C5
+  // GREEN naturalmente — collision detected proactively pre-RED este turno
+  // (cross-cycle-red-test-cementacion-gate 3ra evidencia PROACTIVE matures
+  // cumulative cross-POC: 1ra C3 retroactive surface post-edits + 2da C4
+  // PROACTIVE surface pre-edits + 3ra C5 PROACTIVE surface pre-edits — gate
+  // matures cumulative forward).
+  //
+  // Lección NEW canonical home: `feedback/cross-cycle-red-test-cementacion-gate`
+  // 3ra evidencia POC contacts C5 pre-RED. Marco lock C-α' split C5-pre
+  // prerequisite gate (Test 6 + Test 12 retire absorb Opción 1 same-axis
+  // cementación count POSITIVE retire pre-cutover) + C5 RED + C5 GREEN mirror
+  // C3-pre + C4-pre prerequisite gate precedent EXACT cumulative. Skip vs
+  // delete wholesale: archaeology preserved + delete wholesale defer D1
+  // doc-only post-mortem si surface cleanup preference futuro. `it.skip` (NO
+  // `describe.skip`) preserva diagnostic granularity per-test.
+  it.skip("Test 6: 11 pages collectively contain `from \"@/modules/contacts/presentation/server\"` ≥ 11 occurrences (consolidated POSITIVE hex import ALL pages post-cutover Opción A class identity preserved)", () => {
     const sources = PAGES.map((p) => fs.readFileSync(p, "utf8")).join("\n");
     const matches = sources.match(HEX_CANONICAL_SERVER_IMPORT_GLOBAL_RE) ?? [];
     expect(matches.length).toBeGreaterThanOrEqual(11);
@@ -517,7 +544,35 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
   // identity preserved (Opción A re-export legacy shim) — vi.mock shape
   // `class ContactsService { method }` stays unchanged. Only target path swaps.
 
-  it("Test 12: 11 page test files collectively contain `vi.mock(\"@/modules/contacts/presentation/server\", ...)` ≥ 11 occurrences (consolidated POSITIVE vi.mock target swap §13.A4-η LOAD-BEARING render path coverage MATERIAL — page renders require ContactsService class with CRUD + Balance methods mocked, target path swap Opción A class identity preserved)", () => {
+  // ── Test 12 RETIRED scope-expired pre-C5 page.test.ts vi.mock SHAPE swap VALUE-axis ──
+  // C5 invierte invariant cumulative cross-cycle scope evolution — Test 12
+  // cementación histórica preserved archaeology (skip + comentario, NO delete
+  // wholesale). Test 12 cementó en C1 GREEN (commit 5e3dc3b) que las 11 page
+  // test files DEBEN contener `vi.mock("@/modules/contacts/presentation/server",
+  // ...)` ≥ 11 occurrences (consolidated POSITIVE vi.mock target swap §13.A4-η
+  // LOAD-BEARING render path coverage MATERIAL — page renders require
+  // ContactsService class con CRUD + Balance methods mocked, target path swap
+  // Opción A class identity preserved). C5 GREEN page.test.ts vi.mock SHAPE
+  // cutover `app/(dashboard)/[orgSlug]/accounting/contacts/__tests__/page.test.ts`
+  // (1 de los 11) swap target a `@/modules/contact-balances/presentation/server`
+  // factory pattern (Marco lock B1 `vi.mock(.., () => ({ makeContactBalancesService:
+  // vi.fn(() => ({ listWithBalancesFlat: mockListWithBalances })) }))` NO class
+  // identity preserved como C1 Opción A) + Sub-α ADD listWithBalancesFlat() a
+  // GREEN. Count baja 11 → 10 occurrences → assertion `≥ 11` FAIL. Mantener
+  // Test 12 activo contradiría C5 GREEN naturalmente — collision detected
+  // proactively pre-RED este turno (cross-cycle-red-test-cementacion-gate 3ra
+  // evidencia PROACTIVE matures cumulative cross-POC: 1ra C3 retroactive +
+  // 2da C4 PROACTIVE + 3ra C5 PROACTIVE — gate matures cumulative forward).
+  //
+  // Lección NEW canonical home: `feedback/cross-cycle-red-test-cementacion-gate`
+  // 3ra evidencia POC contacts C5 pre-RED. Marco lock C-α' split C5-pre
+  // prerequisite gate (Test 6 + Test 12 retire absorb Opción 1 same-axis
+  // cementación count POSITIVE retire pre-cutover) + C5 RED + C5 GREEN mirror
+  // C3-pre + C4-pre prerequisite gate precedent EXACT cumulative. Skip vs
+  // delete wholesale: archaeology preserved + delete wholesale defer D1
+  // doc-only post-mortem si surface cleanup preference futuro. `it.skip` (NO
+  // `describe.skip`) preserva diagnostic granularity per-test.
+  it.skip("Test 12: 11 page test files collectively contain `vi.mock(\"@/modules/contacts/presentation/server\", ...)` ≥ 11 occurrences (consolidated POSITIVE vi.mock target swap §13.A4-η LOAD-BEARING render path coverage MATERIAL — page renders require ContactsService class with CRUD + Balance methods mocked, target path swap Opción A class identity preserved)", () => {
     const sources = PAGE_TESTS.map((p) => fs.readFileSync(p, "utf8")).join(
       "\n",
     );
