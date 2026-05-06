@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { defineTool } from "../llm";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { ContactType } from "@/generated/prisma/client";
 
 // ── Tool definition ──
@@ -43,7 +43,7 @@ const RESULT_CAP = 10;
 const EXCLUDED_TYPES: readonly ContactType[] = ["CLIENTE"];
 
 export interface FindContactDeps {
-  contactsService?: ContactsService;
+  contactsService?: ReturnType<typeof makeContactsService>;
 }
 
 export async function executeFindContact(
@@ -51,7 +51,7 @@ export async function executeFindContact(
   input: { query: string },
   deps: FindContactDeps = {},
 ): Promise<FindContactResult> {
-  const contactsService = deps.contactsService ?? new ContactsService();
+  const contactsService = deps.contactsService ?? makeContactsService();
 
   const all = await contactsService.list(organizationId, {
     search: input.query,

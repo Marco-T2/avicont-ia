@@ -409,12 +409,28 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
   // shim). 5 routes swap import path únicamente — class identity preserved,
   // ContactRow POJO shape preservado, Balance methods preservadas.
 
-  it("Test 1: app/api/organizations/[orgSlug]/contacts/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
+  // ── Tests 1-2 RETIRED scope-expired pre-C4-ter route.ts factory cutover ──
+  // C4-ter invierte invariant cumulative cross-cycle scope evolution — Tests
+  // 1-2 cementación histórica preserved archaeology (skip + comentario, NO
+  // delete wholesale). Los 2 tests cementaron en C1 GREEN (commit 5e3dc3b)
+  // que las 2 routes API CRUD (api/.../contacts + api/.../contacts/[contactId])
+  // DEBEN importar `ContactsService` from `@/modules/contacts/presentation/server`
+  // (Opción A re-export legacy shim, class identity preserved). C4-ter RED
+  // (commit 0252624) invierte el invariant: las 2 routes cutover VALUE-axis
+  // legacy `ContactsService` class → factory `makeContactsService()` pattern
+  // hex same barrel path. Same axis que Tests 7-10 retired este mismo commit
+  // (cross-module services cutover). Mantener Tests 1-2 activos contradiría
+  // C4-ter GREEN naturalmente.
+  //
+  // Lección NEW canonical home: `feedback/retirement-reinventory-gate-class-symbol-grep`
+  // 10mo axis cumulative cross-POC. Marco lock Opción A4 — retire Tests 1-2
+  // mismo C4 GREEN commit mirror Tests 7-10 retire precedent EXACT cumulative.
+  it.skip("Test 1: app/api/organizations/[orgSlug]/contacts/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover Opción A canonical re-export legacy shim class identity preserved)", () => {
     const source = fs.readFileSync(CONTACTS_ROUTE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 2: app/api/organizations/[orgSlug]/contacts/[contactId]/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover)", () => {
+  it.skip("Test 2: app/api/organizations/[orgSlug]/contacts/[contactId]/route.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover)", () => {
     const source = fs.readFileSync(CONTACTS_BY_ID_ROUTE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
@@ -494,26 +510,52 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
     expect(matches.length).toBeGreaterThanOrEqual(11);
   });
 
-  // ── A3: 4 cross-module POSITIVE per file (Tests 7-10) ─────────────────────
-  // Cross-feature/cross-module services. Per-file diagnostic granularity
-  // preserved (high signal — services consumed by multiple consumers downstream).
-
-  it("Test 7: features/accounting/journal.service.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
+  // ── A3: Tests 7-10 RETIRED scope-expired pre-C4-bis cross-module factory cutover ──
+  // C4-bis invierte invariant cumulative cross-cycle scope evolution — Tests 7-10
+  // cementación histórica preserved archaeology (skip + comentario, NO delete
+  // wholesale). Los 4 tests cementaron en C1 GREEN (commit 5e3dc3b) que las 4
+  // cross-module services (journal.service + find-contact + parse-operation +
+  // dispatch.service) DEBEN importar `ContactsService` from
+  // `@/modules/contacts/presentation/server` (Opción A re-export legacy shim,
+  // class identity preserved). C4-bis RED (commit e6104be) invierte el invariant:
+  // los 4 archivos cutover VALUE-axis legacy `ContactsService` class →
+  // factory `makeContactsService()` pattern hex same barrel path (Marco lock 2
+  // Sub-B inline `ReturnType<typeof makeContactsService>` cast-silenced
+  // equivalent structurally — preserva DI pattern hex consistent NO standalone
+  // function export Marco lock Q-pre2 Q2.3 (c) heredado). El import line cambia
+  // de `import { ContactsService }` a `import { makeContactsService }`, y `new
+  // ContactsService()` cambia a `makeContactsService()` factory call. Mantener
+  // Tests 7-10 activos contradiría C4-bis GREEN naturalmente — collision
+  // detected pre-RED este turno (cross-cycle-red-test-cementacion-gate 4ta
+  // evidencia PROACTIVE matures cumulative cross-POC: 1ra C3 retroactive + 2da
+  // C4-pre PROACTIVE + 3ra C5-pre PROACTIVE + 4ta C4 PROACTIVE — gate funcionó
+  // forward).
+  //
+  // Lección NEW canonical home: `feedback/retirement-reinventory-gate-class-symbol-grep`
+  // 10mo axis cumulative cross-POC — class symbol grep PROJECT-scope MANDATORY
+  // cuando wholesale delete + DROP re-export bridge (Step 0 9-axis classification
+  // expand axis 10mo). Marco lock Opción A4 — C4-ter NEW RED + GREEN cumulative
+  // single batch + retire Tests 7-10 mismo C4 GREEN commit mirror Tests 3-5
+  // retire C3-pre + Tests 6+12 retire C5-pre + Test 14 retire C4-pre precedent
+  // EXACT cumulative. Skip vs delete wholesale: archaeology preserved + delete
+  // wholesale defer D1 doc-only post-mortem si surface cleanup preference futuro.
+  // `it.skip` (NO `describe.skip`) preserva diagnostic granularity per-test.
+  it.skip("Test 7: features/accounting/journal.service.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
     const source = fs.readFileSync(JOURNAL_SERVICE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 8: features/ai-agent/tools/find-contact.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
+  it.skip("Test 8: features/ai-agent/tools/find-contact.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
     const source = fs.readFileSync(AI_AGENT_FIND_CONTACT, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 9: features/ai-agent/tools/parse-operation.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
+  it.skip("Test 9: features/ai-agent/tools/parse-operation.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
     const source = fs.readFileSync(AI_AGENT_PARSE_OPERATION, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 10: features/dispatch/dispatch.service.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
+  it.skip("Test 10: features/dispatch/dispatch.service.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
     const source = fs.readFileSync(DISPATCH_SERVICE, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });

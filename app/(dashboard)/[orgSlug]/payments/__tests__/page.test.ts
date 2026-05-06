@@ -31,10 +31,10 @@ vi.mock("@/modules/payment/presentation/server", () => {
 });
 
 vi.mock("@/modules/contacts/presentation/server", () => {
-  class ContactsService {
-    list = mockContactsList;
-  }
-  return { ContactsService };
+  const makeContactsService = () => ({
+    list: mockContactsList,
+  });
+  return { makeContactsService };
 });
 
 vi.mock("@/components/payments/payment-list", () => ({

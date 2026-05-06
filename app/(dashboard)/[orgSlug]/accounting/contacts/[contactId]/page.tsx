@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 import ContactDetail from "@/components/contacts/contact-detail";
 
 interface ContactDetailPageProps {
@@ -18,11 +19,12 @@ export default async function ContactDetailPage({ params }: ContactDetailPagePro
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
+  const contactsService = makeContactsService();
+  const balancesService = makeContactBalancesService();
 
   const [contact, balanceSummary] = await Promise.all([
     contactsService.getById(orgId, contactId),
-    contactsService.getBalanceSummary(orgId, contactId),
+    balancesService.getBalanceSummary(orgId, contactId),
   ]);
 
   const contactWithBalance = { ...contact, balanceSummary };

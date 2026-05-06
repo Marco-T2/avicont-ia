@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import PurchaseForm from "@/components/purchases/purchase-form";
@@ -40,7 +40,7 @@ export default async function NewPurchasePage({
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
+  const contactsService = makeContactsService();
   const periodsService = new FiscalPeriodsService();
   const productTypesService = new ProductTypesService();
 

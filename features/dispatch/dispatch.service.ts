@@ -28,7 +28,7 @@ import {
   type DocumentStatus,
 } from "@/features/accounting/server";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import {
   makeReceivablesRepository,
   type PrismaReceivablesRepository,
@@ -150,7 +150,7 @@ export class DispatchService {
   private readonly repo: DispatchRepository;
   private readonly orgSettingsService: OrgSettingsService;
   private readonly autoEntryGenerator: AutoEntryGenerator;
-  private readonly contactsService: ContactsService;
+  private readonly contactsService: ReturnType<typeof makeContactsService>;
   private readonly receivablesRepo: PrismaReceivablesRepository;
   private readonly balancesService: AccountBalancesService;
   private readonly periodsService: FiscalPeriodsService;
@@ -161,7 +161,7 @@ export class DispatchService {
     repo?: DispatchRepository,
     orgSettingsService?: OrgSettingsService,
     autoEntryGenerator?: AutoEntryGenerator,
-    contactsService?: ContactsService,
+    contactsService?: ReturnType<typeof makeContactsService>,
     receivablesRepo?: PrismaReceivablesRepository,
     balancesService?: AccountBalancesService,
     periodsService?: FiscalPeriodsService,
@@ -170,7 +170,7 @@ export class DispatchService {
   ) {
     this.repo = repo ?? new DispatchRepository();
     this.orgSettingsService = orgSettingsService ?? makeOrgSettingsService();
-    this.contactsService = contactsService ?? new ContactsService();
+    this.contactsService = contactsService ?? makeContactsService();
     this.receivablesRepo = receivablesRepo ?? makeReceivablesRepository();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? new FiscalPeriodsService();

@@ -24,11 +24,11 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 
 vi.mock("@/modules/contacts/presentation/server", () => {
-  class ContactsService {
-    getById = mockGetById;
-    getBalanceSummary = mockGetBalanceSummary;
-  }
-  return { ContactsService };
+  const makeContactsService = () => ({
+    getById: mockGetById,
+    getBalanceSummary: mockGetBalanceSummary,
+  });
+  return { makeContactsService };
 });
 
 vi.mock("@/components/contacts/contact-detail", () => ({

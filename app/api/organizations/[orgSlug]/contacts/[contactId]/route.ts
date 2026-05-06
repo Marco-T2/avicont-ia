@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import {
-  ContactsService,
+  makeContactsService,
   updateContactSchema,
 } from "@/modules/contacts/presentation/server";
 
-const service = new ContactsService();
+const service = makeContactsService();
 
 export async function GET(
   _request: Request,

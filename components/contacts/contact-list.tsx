@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import ContactFiltersBar from "./contact-filters";
 import ContactForm from "./contact-form";
-import type { ContactWithBalance, ContactFilters, Contact } from "@/features/contacts";
+import type { ContactWithBalance, ContactFilters, Contact } from "@/modules/contacts/presentation/index";
 
 const TYPE_BADGE_STYLES: Record<string, string> = {
   CLIENTE: "bg-info/10 text-info dark:bg-info/20",

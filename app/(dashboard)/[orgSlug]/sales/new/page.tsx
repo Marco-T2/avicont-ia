@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { AccountsService } from "@/features/accounting/server";
 import SaleForm from "@/components/sales/sale-form";
@@ -20,7 +20,7 @@ export default async function NewSalePage({ params }: NewSalePageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
+  const contactsService = makeContactsService();
   const periodsService = new FiscalPeriodsService();
   const accountsService = new AccountsService();
 

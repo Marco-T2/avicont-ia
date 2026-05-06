@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
 import { AccountsRepository } from "@/features/accounting/server";
@@ -27,7 +27,7 @@ export default async function NewPaymentPage({
     redirect(`/${orgSlug}`);
   }
 
-  const contactsService = new ContactsService();
+  const contactsService = makeContactsService();
   const periodsService = new FiscalPeriodsService();
   const docTypesService = new OperationalDocTypesService();
   const orgSettingsService = makeOrgSettingsService();

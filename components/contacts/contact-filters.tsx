@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import type { ContactFilters } from "@/features/contacts";
+import type { ContactFilters } from "@/modules/contacts/presentation/index";
 
 const CONTACT_TYPE_LABELS: Record<string, string> = {
   CLIENTE: "Cliente",

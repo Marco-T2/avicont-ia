@@ -13,7 +13,7 @@ vi.hoisted(() => {
 });
 
 import { executeFindContact } from "../tools/find-contact";
-import type { ContactsService } from "@/features/contacts/server";
+import type { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact, ContactType } from "@/generated/prisma/client";
 
 // ── Fixtures ──
@@ -40,7 +40,7 @@ function makeContact(overrides: Partial<Contact> = {}): Contact {
 function makeDeps(contacts: Contact[]) {
   const contactsService = {
     list: vi.fn(async () => contacts),
-  } as unknown as ContactsService;
+  } as unknown as ReturnType<typeof makeContactsService>;
   return { contactsService };
 }
 

@@ -13,7 +13,7 @@ vi.hoisted(() => {
 
 import { executeParseAccountingOperation } from "../tools/parse-operation";
 import type { AccountsRepository } from "@/features/accounting/accounts.repository";
-import type { ContactsService } from "@/features/contacts/server";
+import type { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Account, Contact, ContactType } from "@/generated/prisma/client";
 import { NotFoundError, CONTACT_NOT_FOUND } from "@/features/shared/errors";
 
@@ -81,7 +81,7 @@ function makeDeps(opts?: {
       }
       return opts?.contact ?? makeContact();
     }),
-  } as unknown as ContactsService;
+  } as unknown as ReturnType<typeof makeContactsService>;
 
   return { accountsRepo, contactsService };
 }

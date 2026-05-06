@@ -21,7 +21,7 @@ import {
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { CONTACT_NIT_EXISTS } from "@/features/shared/errors";
-import type { Contact } from "@/features/contacts";
+import type { Contact } from "@/modules/contacts/presentation/index";
 
 const CONTACT_TYPE_OPTIONS = [
   { value: "CLIENTE", label: "Cliente" },

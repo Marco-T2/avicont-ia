@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { DispatchService } from "@/features/dispatch/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { FiscalPeriodsService } from "@/features/fiscal-periods/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
@@ -25,7 +25,7 @@ export default async function DispatchDetailPage({
   }
 
   const dispatchService = new DispatchService();
-  const contactsService = new ContactsService();
+  const contactsService = makeContactsService();
   const periodsService = new FiscalPeriodsService();
   const productTypesService = new ProductTypesService();
   const orgSettingsService = makeOrgSettingsService();

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronsUpDown, X } from "lucide-react";
 import { Popover } from "radix-ui";
-import type { Contact } from "@/features/contacts";
+import type { Contact } from "@/modules/contacts/presentation/index";
 
 function formatContact(contact: Contact): string {
   return `[${contact.type}] ${contact.name}`;

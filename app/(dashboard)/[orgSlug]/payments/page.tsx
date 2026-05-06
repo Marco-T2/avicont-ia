@@ -1,11 +1,11 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { PaymentService } from "@/modules/payment/presentation/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import PaymentList from "@/components/payments/payment-list";
 
 const paymentService = new PaymentService();
-const contactsService = new ContactsService();
+const contactsService = makeContactsService();
 
 interface PaymentsPageProps {
   params: Promise<{ orgSlug: string }>;

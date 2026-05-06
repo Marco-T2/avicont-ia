@@ -28,10 +28,10 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 
 vi.mock("@/modules/contacts/presentation/server", () => {
-  class ContactsService {
-    list = mockContactsList;
-  }
-  return { ContactsService };
+  const makeContactsService = () => ({
+    list: mockContactsList,
+  });
+  return { makeContactsService };
 });
 
 vi.mock("@/features/fiscal-periods/server", () => {

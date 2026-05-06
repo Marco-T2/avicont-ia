@@ -12,7 +12,7 @@ import type {
   ResolvedContactInfo,
 } from "../agent.types";
 import { AccountsRepository } from "@/features/accounting/server";
-import { ContactsService } from "@/modules/contacts/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import {
   ValidationError,
   ACCOUNT_NOT_POSTABLE,
@@ -52,7 +52,7 @@ function deriveVoucherTypeCode(template: JournalEntryAiTemplate): JournalEntryAi
 
 export interface ParseAccountingOperationDeps {
   accountsRepo?: AccountsRepository;
-  contactsService?: ContactsService;
+  contactsService?: ReturnType<typeof makeContactsService>;
 }
 
 /**
@@ -66,7 +66,7 @@ export async function executeParseAccountingOperation(
   deps: ParseAccountingOperationDeps = {},
 ): Promise<CreateJournalEntrySuggestion> {
   const accountsRepo = deps.accountsRepo ?? new AccountsRepository();
-  const contactsService = deps.contactsService ?? new ContactsService();
+  const contactsService = deps.contactsService ?? makeContactsService();
 
   // 1. Validación Zod (discriminator + cross-field).
   const parsed = journalEntryAiInputSchema.safeParse(rawInput);
