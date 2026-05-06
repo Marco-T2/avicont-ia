@@ -8,9 +8,9 @@ import {
   AgentRateLimitService,
 } from "@/features/ai-agent/server";
 import { ExpensesService } from "@/features/expenses/server";
-import { MortalityService } from "@/features/mortality/server";
+import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import { createExpenseSchema } from "@/features/expenses/server";
-import { logMortalitySchema } from "@/features/mortality/server";
+import { logMortalitySchema } from "@/modules/mortality/presentation/server";
 import {
   agentQuerySchema,
   confirmActionSchema,
@@ -32,7 +32,7 @@ const orgService = new OrganizationsService();
 const agentService = new AgentService();
 const rateLimitService = new AgentRateLimitService();
 const expensesService = new ExpensesService();
-const mortalityService = new MortalityService();
+const mortalityService = makeMortalityService();
 const journalService = new JournalService();
 const voucherTypesService = makeVoucherTypesService();
 const fiscalPeriodsService = new FiscalPeriodsService();
@@ -183,7 +183,7 @@ async function handleConfirm(
       return Response.json(
         {
           message: "Mortalidad registrada exitosamente.",
-          data: log,
+          data: log.toJSON(),
         },
         { status: 201 },
       );

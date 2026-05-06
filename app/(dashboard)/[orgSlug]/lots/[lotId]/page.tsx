@@ -3,7 +3,7 @@ import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { LotsService } from "@/features/lots/server";
 import { ExpensesService } from "@/features/expenses/server";
-import { MortalityService } from "@/features/mortality/server";
+import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import LotDetailClient from "./lot-detail-client";
 
 interface LotDetailPageProps {
@@ -37,10 +37,11 @@ export default async function LotDetailPage({ params }: LotDetailPageProps) {
     redirect(`/${orgSlug}/farms`);
   }
 
-  const [expenses, mortalityLogs] = await Promise.all([
+  const [expenses, mortalityEntities] = await Promise.all([
     new ExpensesService().listByLot(orgId, lotId),
-    new MortalityService().listByLot(orgId, lotId),
+    makeMortalityService().listByLot(orgId, lotId),
   ]);
+  const mortalityLogs = mortalityEntities.map((e) => e.toJSON());
 
   return (
     <LotDetailClient

@@ -20,7 +20,7 @@ import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
 import type { LotSummary } from "@/features/lots";
 import type { ExpenseWithRelations } from "@/features/expenses";
-import type { MortalityLogWithRelations } from "@/features/mortality";
+import type { Mortality } from "@/modules/mortality/presentation/server";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   ACTIVE: {
@@ -107,7 +107,7 @@ interface LotDetailClientProps {
   orgSlug: string;
   summary: LotSummary;
   expenses: ExpenseWithRelations[];
-  mortalityLogs: MortalityLogWithRelations[];
+  mortalityLogs: ReturnType<Mortality["toJSON"]>[];
 }
 
 export default function LotDetailClient({

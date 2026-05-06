@@ -120,13 +120,13 @@ vi.mock("@/features/expenses/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/mortality/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/mortality/server")>();
+vi.mock("@/modules/mortality/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/mortality/presentation/server")>();
   return {
     ...actual,
-    MortalityService: vi.fn().mockImplementation(function () {
-      return { log: vi.fn() };
-    }),
+    makeMortalityService: vi.fn().mockImplementation(() => ({
+      log: vi.fn(),
+    })),
   };
 });
 

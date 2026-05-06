@@ -1,22 +1,24 @@
 import "server-only";
 import { LotsService } from "@/features/lots/server";
 import { ExpensesService } from "@/features/expenses/server";
-import { MortalityService } from "@/features/mortality/server";
+import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import type { LotPricingResult } from "./pricing.types";
+
+type MortalityServiceImpl = ReturnType<typeof makeMortalityService>;
 
 export class PricingService {
   private readonly lotsService: LotsService;
   private readonly expensesService: ExpensesService;
-  private readonly mortalityService: MortalityService;
+  private readonly mortalityService: MortalityServiceImpl;
 
   constructor(
     lotsService?: LotsService,
     expensesService?: ExpensesService,
-    mortalityService?: MortalityService,
+    mortalityService?: MortalityServiceImpl,
   ) {
     this.lotsService = lotsService ?? new LotsService();
     this.expensesService = expensesService ?? new ExpensesService();
-    this.mortalityService = mortalityService ?? new MortalityService();
+    this.mortalityService = mortalityService ?? makeMortalityService();
   }
 
   // ── Calculate cost per chicken for a lot ──

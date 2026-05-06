@@ -1,11 +1,13 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { UsersService } from "@/features/users/server";
-import { MortalityService } from "@/features/mortality/server";
-import { logMortalitySchema } from "@/features/mortality";
+import {
+  makeMortalityService,
+  logMortalitySchema,
+} from "@/modules/mortality/presentation/server";
 
 const usersService = new UsersService();
-const service = new MortalityService();
+const service = makeMortalityService();
 
 export async function GET(
   request: Request,
@@ -28,7 +30,7 @@ export async function GET(
 
     const logs = await service.listByLot(orgId, lotId);
 
-    return Response.json(logs);
+    return Response.json(logs.map((e) => e.toJSON()));
   } catch (error) {
     return handleError(error);
   }
@@ -53,7 +55,7 @@ export async function POST(
       createdById: user.id,
     });
 
-    return Response.json(log, { status: 201 });
+    return Response.json(log.toJSON(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }
