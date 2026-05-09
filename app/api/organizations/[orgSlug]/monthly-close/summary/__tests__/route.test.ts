@@ -25,10 +25,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/monthly-close/server", () => ({
-  MonthlyCloseService: vi.fn().mockImplementation(function () {
-    return { getSummary: mockGetSummary };
-  }),
+vi.mock("@/modules/monthly-close/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/monthly-close/presentation/server")>()),
+  makeMonthlyCloseService: vi.fn().mockImplementation(() => ({ getSummary: mockGetSummary })),
 }));
 
 vi.mock("@/features/shared/middleware", () => ({

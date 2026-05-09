@@ -1,8 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { MonthlyCloseService } from "@/features/monthly-close/server";
+import { makeMonthlyCloseService } from "@/modules/monthly-close/presentation/server";
 
-const service = new MonthlyCloseService();
+const service = makeMonthlyCloseService();
 
 export async function GET(
   request: Request,
