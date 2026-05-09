@@ -3,6 +3,10 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { toNoonUtc } from "@/lib/date-utils";
 import { prisma } from "@/lib/prisma";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import { Sale } from "@/modules/sale/domain/sale.entity";
 import { SaleDetail } from "@/modules/sale/domain/sale-detail.entity";
 import type { SaleStatus } from "@/modules/sale/domain/value-objects/sale-status";
@@ -71,6 +75,53 @@ export class PrismaSaleRepository implements SaleRepository {
       orderBy: { createdAt: "desc" },
     });
     return rows.map(hydrateSaleFromRow);
+  }
+
+  async findPaginated(
+    organizationId: string,
+    filters?: SaleFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Sale>> {
+    const where = {
+      organizationId,
+      ...(filters?.status ? { status: filters.status as SaleStatus } : {}),
+      ...(filters?.contactId ? { contactId: filters.contactId } : {}),
+      ...(filters?.periodId ? { periodId: filters.periodId } : {}),
+      ...(filters?.dateFrom || filters?.dateTo
+        ? {
+            date: {
+              ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+              ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+            },
+          }
+        : {}),
+    };
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+    // Promise.all (NOT $transaction) — DbClient type Pick<PrismaClient,
+    // "sale"|"saleDetail"> NO incluye `$transaction`. Read-only count + items
+    // sin tx isolation aceptable para offset pagination — page-shift bajo
+    // writes concurrentes es expected behavior offset pattern.
+    const [rows, total] = await Promise.all([
+      this.db.sale.findMany({
+        where,
+        include: saleInclude,
+        orderBy: { createdAt: "desc" },
+        skip: skip,
+        take: take,
+      }),
+      this.db.sale.count({ where }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items: rows.map(hydrateSaleFromRow),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   async findByIdTx(

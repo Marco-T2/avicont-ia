@@ -1,4 +1,8 @@
 import type { Sale } from "../sale.entity";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 export interface SaleFilters {
   contactId?: string;
@@ -11,8 +15,13 @@ export interface SaleFilters {
 /**
  * Read/write port for the `Sale` aggregate. Methods come in two flavours:
  *
- *   - Non-tx (`findById`, `findAll`): used by read-only use cases that resolve
- *     before the UoW opens.
+ *   - Non-tx (`findById`, `findAll`, `findPaginated`): used by read-only use
+ *     cases that resolve before the UoW opens. `findAll` returns the full
+ *     unbounded list (legacy contract preserved for HubService cross-feature
+ *     consumer per axis-η Categ C++ DEFER #1782); `findPaginated` is the NEW
+ *     dual-method paralelo introducido en POC pagination-sale C1-MACRO Opción
+ *     C ADDITIVE — cleanup pending engram `feedback/sale-find-all-legacy-vs-
+ *     find-paginated-dual-method-cleanup-pending` (4to cumulative cross-POC).
  *   - Tx-aware (`saveTx`, `updateTx`, `findByIdTx`, `deleteTx`): used by write
  *     use cases inside `SaleUnitOfWork.run`. The Prisma adapter (A3) is
  *     constructed against the open `Prisma.TransactionClient`; the in-memory
@@ -27,6 +36,11 @@ export interface SaleFilters {
 export interface SaleRepository {
   findById(organizationId: string, id: string): Promise<Sale | null>;
   findAll(organizationId: string, filters?: SaleFilters): Promise<Sale[]>;
+  findPaginated(
+    organizationId: string,
+    filters?: SaleFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Sale>>;
 
   /** Tx-aware load — used by edit/post/void use cases that mutate inside UoW. */
   findByIdTx(

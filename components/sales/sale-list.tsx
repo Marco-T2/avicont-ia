@@ -28,6 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   TrendingUp,
   FileText,
   Plus,
@@ -42,6 +50,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
+import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
 import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
@@ -53,22 +62,44 @@ function formatCurrency(amount: number): string {
   })}`;
 }
 
-// ── Props ──
-
-interface SaleListProps {
-  orgSlug: string;
-  initialSales: SaleWithDetails[];
+function buildHref(
+  orgSlug: string,
+  page: number,
+  statusFilter: string | undefined,
+): string {
+  const sp = new URLSearchParams();
+  if (page > 1) sp.set("page", String(page));
+  if (statusFilter) sp.set("status", statusFilter);
+  const q = sp.toString();
+  return `/${orgSlug}/sales${q ? `?${q}` : ""}`;
 }
 
-export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
+// ── Props ──
+
+type SaleListProps = PaginatedResult<SaleWithDetails> & {
+  orgSlug: string;
+  statusFilter?: string;
+};
+
+export default function SaleList({
+  orgSlug,
+  items,
+  total,
+  page,
+  pageSize,
+  totalPages,
+  statusFilter,
+}: SaleListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const currentStatus = statusFilter ?? "all";
 
-  const filtered = initialSales.filter((s) => {
-    if (statusFilter !== "all" && s.status !== statusFilter) return false;
-    return true;
-  });
+  function handleStatusChange(next: string) {
+    const sp = new URLSearchParams();
+    if (next !== "all") sp.set("status", next);
+    const q = sp.toString();
+    router.push(`/${orgSlug}/sales${q ? `?${q}` : ""}`);
+  }
 
   async function handlePost(saleId: string) {
     if (!window.confirm("¿Contabilizar esta venta? Esta acción generará el asiento contable y la cuenta por cobrar.")) return;
@@ -174,7 +205,7 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
               <Label className="text-sm">Estado</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={currentStatus} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -207,20 +238,20 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {items.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay ventas registradas</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {statusFilter !== "all"
+                        {statusFilter
                           ? "Ninguna venta coincide con los filtros aplicados"
                           : "Cree la primera venta para comenzar"}
                       </p>
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((sale) => {
+                  items.map((sale) => {
                     const isLoading = actioningId === sale.id;
 
                     return (
@@ -318,6 +349,46 @@ export default function SaleList({ orgSlug, initialSales }: SaleListProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={buildHref(orgSlug, Math.max(1, page - 1), statusFilter)}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                text="Anterior"
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  href={buildHref(orgSlug, p, statusFilter)}
+                  isActive={p === page}
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href={buildHref(orgSlug, Math.min(totalPages, page + 1), statusFilter)}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                text="Siguiente"
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {total > 0 && (
+        <p className="text-sm text-muted-foreground text-center">
+          Mostrando {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} de {total}
+        </p>
+      )}
     </>
   );
 }

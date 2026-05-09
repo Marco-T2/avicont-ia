@@ -57,18 +57,18 @@ const SALE = {
 
 describe("SaleList — date cell format (REQ-B.3)", () => {
   it("B.3.1 — date cell renders DD/MM/YYYY format", () => {
-    render(<SaleList orgSlug="test-org" initialSales={[SALE as any]} />);
+    render(<SaleList orgSlug="test-org" items={[SALE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     expect(screen.getByText("17/04/2026")).toBeInTheDocument();
   });
 
   it("B.3.2 — date cell does NOT render old locale short-month format", () => {
-    render(<SaleList orgSlug="test-org" initialSales={[SALE as any]} />);
+    render(<SaleList orgSlug="test-org" items={[SALE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // Old format was "17 abr. 2026" or "17 abr 2026"
     expect(screen.queryByText(/abr/i)).not.toBeInTheDocument();
   });
 
   it("B.3.3 — UTC-midnight date shows correct local day (17/04, not 16/04)", () => {
-    render(<SaleList orgSlug="test-org" initialSales={[SALE as any]} />);
+    render(<SaleList orgSlug="test-org" items={[SALE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // formatDateBO slices ISO string directly — never converts to local Date
     expect(screen.getByText("17/04/2026")).toBeInTheDocument();
     expect(screen.queryByText("16/04/2026")).not.toBeInTheDocument();

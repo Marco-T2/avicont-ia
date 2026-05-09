@@ -4,6 +4,7 @@ import {
   createSaleSchema,
   saleFiltersSchema,
 } from "@/modules/sale/presentation/schemas/sale.schemas";
+import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 import { UsersService } from "@/features/users/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 
@@ -26,10 +27,11 @@ export async function GET(
       dateTo: searchParams.get("dateTo") ?? undefined,
       periodId: searchParams.get("periodId") ?? undefined,
     });
+    const pagination = parsePaginationParams(searchParams);
 
-    const sales = await saleService.list(orgId, filters);
+    const result = await saleService.listPaginated(orgId, filters, pagination);
 
-    return Response.json(sales);
+    return Response.json(result);
   } catch (error) {
     return handleError(error);
   }

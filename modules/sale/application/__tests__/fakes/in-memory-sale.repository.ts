@@ -3,12 +3,18 @@ import type {
   SaleFilters,
   SaleRepository,
 } from "../../../domain/ports/sale.repository";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
- * In-memory `SaleRepository` fake. Read methods (`findById`, `findAll`) are
- * implemented for Ciclo 2; tx-aware writes throw "not implemented" until the
- * use cases that need them land in Ciclos 4-7 (strict TDD per-test, no
- * speculative scaffolding — parity with POC #10 fakes).
+ * In-memory `SaleRepository` fake. Read methods (`findById`, `findAll`,
+ * `findPaginated`) are implemented; tx-aware writes throw "not implemented"
+ * until the use cases that need them land in Ciclos 4-7 (strict TDD per-test,
+ * no speculative scaffolding — parity with POC #10 fakes). `findPaginated` is
+ * the NEW dual-method paralelo (POC pagination-sale C1-MACRO Opción C
+ * ADDITIVE — paralelo a findAll legacy preserved).
  */
 export class InMemorySaleRepository implements SaleRepository {
   private readonly store = new Map<string, Sale>();
@@ -39,6 +45,20 @@ export class InMemorySaleRepository implements SaleRepository {
       if (filters?.dateTo && sale.date > filters.dateTo) return false;
       return true;
     });
+  }
+
+  async findPaginated(
+    organizationId: string,
+    filters?: SaleFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Sale>> {
+    const all = await this.findAll(organizationId, filters);
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const total = all.length;
+    const items = all.slice((page - 1) * pageSize, page * pageSize);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return { items, total, page, pageSize, totalPages };
   }
 
   saveTxCalls: Sale[] = [];

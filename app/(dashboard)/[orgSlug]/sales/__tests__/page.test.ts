@@ -17,14 +17,14 @@ const {
   mockRedirect,
   mockRequirePermission,
   mockMakeSaleService,
-  mockList,
+  mockListPaginated,
   mockContactFindMany,
   mockPeriodFindMany,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockMakeSaleService: vi.fn(),
-  mockList: vi.fn(),
+  mockListPaginated: vi.fn(),
   mockContactFindMany: vi.fn(),
   mockPeriodFindMany: vi.fn(),
 }));
@@ -58,10 +58,20 @@ function makeParams() {
   return Promise.resolve({ orgSlug: ORG_SLUG });
 }
 
+function makeSearchParams() {
+  return Promise.resolve({});
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockMakeSaleService.mockReturnValue({ list: mockList });
-  mockList.mockResolvedValue([]);
+  mockMakeSaleService.mockReturnValue({ listPaginated: mockListPaginated });
+  mockListPaginated.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+  });
   mockContactFindMany.mockResolvedValue([]);
   mockPeriodFindMany.mockResolvedValue([]);
 });
@@ -70,7 +80,7 @@ describe("/sales — rbac gate", () => {
   it("renders when requirePermission resolves", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
 
-    await SalesPage({ params: makeParams() });
+    await SalesPage({ params: makeParams(), searchParams: makeSearchParams() });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
       "sales",
@@ -83,7 +93,7 @@ describe("/sales — rbac gate", () => {
   it("redirects to org root when requirePermission throws", async () => {
     mockRequirePermission.mockRejectedValue(new Error("forbidden"));
 
-    await SalesPage({ params: makeParams() });
+    await SalesPage({ params: makeParams(), searchParams: makeSearchParams() });
 
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });

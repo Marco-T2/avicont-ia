@@ -30,6 +30,10 @@ import type { IvaBookReaderPort } from "../domain/ports/iva-book-reader.port";
 import type { SalePermissionsPort } from "../domain/ports/sale-permissions.port";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import {
   SaleAccountNotFound,
   SaleContactChangeWithAllocations,
@@ -96,6 +100,14 @@ export class SaleService {
     filters?: SaleFilters,
   ): Promise<Sale[]> {
     return this.deps.repo.findAll(organizationId, filters);
+  }
+
+  async listPaginated(
+    organizationId: string,
+    filters?: SaleFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Sale>> {
+    return this.deps.repo.findPaginated(organizationId, filters, pagination);
   }
 
   async getById(organizationId: string, id: string): Promise<Sale> {

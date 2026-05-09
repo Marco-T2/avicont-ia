@@ -7,14 +7,17 @@ import {
   computeDisplayCode,
   SALE_PREFIX,
 } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
+import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
 import SaleList from "@/components/sales/sale-list";
 
 interface SalesPageProps {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function SalesPage({ params }: SalesPageProps) {
+export default async function SalesPage({ params, searchParams }: SalesPageProps) {
   const { orgSlug } = await params;
+  const sp = await searchParams;
 
   let orgId: string;
   try {
@@ -24,8 +27,19 @@ export default async function SalesPage({ params }: SalesPageProps) {
     redirect(`/${orgSlug}`);
   }
 
+  const pagination = paginationQuerySchema.parse({
+    page: sp.page,
+    pageSize: sp.pageSize,
+  });
+  const statusFilter = typeof sp.status === "string" ? sp.status : undefined;
+
   const saleService = makeSaleService();
-  const sales = await saleService.list(orgId);
+  const result = await saleService.listPaginated(
+    orgId,
+    statusFilter ? { status: statusFilter } : undefined,
+    pagination,
+  );
+  const sales = result.items;
 
   const contactIds = [...new Set(sales.map((s) => s.contactId))];
   const periodIds = [...new Set(sales.map((s) => s.periodId))];
@@ -78,7 +92,12 @@ export default async function SalesPage({ params }: SalesPageProps) {
 
       <SaleList
         orgSlug={orgSlug}
-        initialSales={JSON.parse(JSON.stringify(salesWithDetails))}
+        items={JSON.parse(JSON.stringify(salesWithDetails))}
+        total={result.total}
+        page={result.page}
+        pageSize={result.pageSize}
+        totalPages={result.totalPages}
+        statusFilter={statusFilter}
       />
     </div>
   );
