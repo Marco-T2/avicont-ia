@@ -1,5 +1,10 @@
+import { Money } from "@/modules/shared/domain/value-objects/money";
 import type { FiscalPeriodReaderPort } from "../domain/ports/fiscal-period-reader.port";
 import type { DraftDocumentsReaderPort } from "../domain/ports/draft-documents-reader.port";
+import type {
+  MonthlyCloseSummaryReaderPort,
+  MonthlyCloseVoucherTypeSummary,
+} from "../domain/ports/monthly-close-summary-reader.port";
 import type { MonthlyCloseUnitOfWork } from "./monthly-close-unit-of-work";
 import {
   PeriodAlreadyClosedError,
@@ -29,10 +34,61 @@ export interface CloseResult {
   };
 }
 
+/**
+ * Monthly close summary DTO C2.5 — read-only outside-tx use case axis-distinct.
+ * Inline service file mirror `CloseResult` precedent EXACT 2da ev matures
+ * cumulative (Lock #5). Shape EXACT mirror legacy
+ * `features/monthly-close/monthly-close.types.ts:28-55` driver-anchored
+ * (`balance.totalDebit/totalCredit/difference: string` `.toFixed(2)` legacy
+ * format preservation regla #1 fidelidad — Money VO formatted via inline
+ * `moneyToFixed` helper bit-perfect SQL `::numeric(18,2)` pre-2-decimals).
+ */
+export interface MonthlyCloseSummary {
+  periodId: string;
+  periodStatus: string;
+  posted: {
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+  };
+  drafts: {
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+    sales: number;
+    purchases: number;
+  };
+  journalsByVoucherType: MonthlyCloseVoucherTypeSummary[];
+  balance: {
+    balanced: boolean;
+    totalDebit: string;
+    totalCredit: string;
+    difference: string;
+  };
+}
+
 export interface MonthlyCloseServiceDeps {
   fiscalPeriods: FiscalPeriodReaderPort;
   draftDocuments: DraftDocumentsReaderPort;
+  summaryReader: MonthlyCloseSummaryReaderPort;
   uow: MonthlyCloseUnitOfWork;
+}
+
+/**
+ * Format Money VO to fixed-places decimal string bit-perfect — pad with zeros
+ * cuando decimal places < `places`, truncate cuando > `places`. SQL aggregation
+ * `::numeric(18,2)` cast garantiza ≤2 decimals input → padding-only path
+ * preserves bit-perfect Decimal value (NO float drift via `Number()` parse).
+ */
+function moneyToFixed(m: Money, places: number): string {
+  const s = m.toString();
+  const dotIdx = s.indexOf(".");
+  if (dotIdx === -1) return `${s}.${"0".repeat(places)}`;
+  const decPart = s.slice(dotIdx + 1);
+  if (decPart.length >= places) {
+    return `${s.slice(0, dotIdx)}.${decPart.slice(0, places)}`;
+  }
+  return `${s.slice(0, dotIdx)}.${decPart.padEnd(places, "0")}`;
 }
 
 /**
@@ -76,6 +132,68 @@ export interface MonthlyCloseServiceDeps {
  */
 export class MonthlyCloseService {
   constructor(private readonly deps: MonthlyCloseServiceDeps) {}
+
+  /**
+   * Read-only summary outside-tx — 4 reads composite: fiscal period getById +
+   * `Promise.all` (countPostedByPeriod + countDraftsByPeriod +
+   * getJournalSummaryByVoucherType + sumDebitCreditNoTx). Mirror legacy
+   * `features/monthly-close/monthly-close.service.ts:70-119` shape EXACT
+   * (fidelidad regla #1) — flow EXACT preserved con simplificación 7 reads
+   * legacy → 4 reads hex (3 `countByStatus` POSTED collapsed en
+   * `countPostedByPeriod` single Promise.all aggregating shape mirror
+   * DraftDocuments precedent EXACT). Service-level computa
+   * `balanced`/`difference` via Money VO API (`equals` + comparator +
+   * `minus` non-negative branching) — paridad C2.2 `Money.equals` precedent.
+   */
+  async getSummary(
+    organizationId: string,
+    periodId: string,
+  ): Promise<MonthlyCloseSummary> {
+    const period = await this.deps.fiscalPeriods.getById(
+      organizationId,
+      periodId,
+    );
+
+    const [posted, drafts, journalsByVoucherType, balance] = await Promise.all([
+      this.deps.summaryReader.countPostedByPeriod(organizationId, periodId),
+      this.deps.draftDocuments.countDraftsByPeriod(organizationId, periodId),
+      this.deps.summaryReader.getJournalSummaryByVoucherType(
+        organizationId,
+        periodId,
+      ),
+      this.deps.summaryReader.sumDebitCreditNoTx(organizationId, periodId),
+    ]);
+
+    const balanced = balance.debit.equals(balance.credit);
+    let difference: Money;
+    if (balanced) {
+      difference = Money.zero();
+    } else if (balance.debit.isGreaterThan(balance.credit)) {
+      difference = balance.debit.minus(balance.credit);
+    } else {
+      difference = balance.credit.minus(balance.debit);
+    }
+
+    return {
+      periodId: period.id,
+      periodStatus: period.status,
+      posted,
+      drafts: {
+        dispatches: drafts.dispatches,
+        payments: drafts.payments,
+        journalEntries: drafts.journalEntries,
+        sales: drafts.sales,
+        purchases: drafts.purchases,
+      },
+      journalsByVoucherType,
+      balance: {
+        balanced,
+        totalDebit: moneyToFixed(balance.debit, 2),
+        totalCredit: moneyToFixed(balance.credit, 2),
+        difference: moneyToFixed(difference, 2),
+      },
+    };
+  }
 
   async close(
     organizationId: string,

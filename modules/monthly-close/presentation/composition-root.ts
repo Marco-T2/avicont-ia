@@ -6,6 +6,7 @@ import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-
 import { MonthlyCloseService } from "../application/monthly-close.service";
 import { FiscalPeriodReaderAdapter } from "../infrastructure/fiscal-period-reader.adapter";
 import { PrismaDraftDocumentsReaderAdapter } from "../infrastructure/prisma-draft-documents-reader.adapter";
+import { PrismaMonthlyCloseSummaryReaderAdapter } from "../infrastructure/prisma-monthly-close-summary-reader.adapter";
 import { PrismaMonthlyCloseUnitOfWork } from "../infrastructure/prisma-monthly-close-unit-of-work";
 
 /**
@@ -86,6 +87,7 @@ export function makeMonthlyCloseService(): MonthlyCloseService {
   return new MonthlyCloseService({
     fiscalPeriods: new FiscalPeriodReaderAdapter(),
     draftDocuments: new PrismaDraftDocumentsReaderAdapter(prisma),
+    summaryReader: new PrismaMonthlyCloseSummaryReaderAdapter(prisma),
     uow: new PrismaMonthlyCloseUnitOfWork(repoLike),
   });
 }
