@@ -37,11 +37,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/monthly-close/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/monthly-close/server")>()),
-  MonthlyCloseService: vi.fn().mockImplementation(function () {
-    return { close: mockClose };
-  }),
+vi.mock("@/modules/monthly-close/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/monthly-close/presentation/server")>()),
+  makeMonthlyCloseService: vi.fn().mockImplementation(() => ({ close: mockClose })),
 }));
 
 vi.mock("@/features/users/server", () => ({
@@ -107,24 +105,25 @@ describe("POST /api/.../monthly-close — success", () => {
       correlationId: "corr-abc",
       locked: expect.objectContaining({ dispatches: 5 }),
     });
-    // Verify service was called with the new CloseRequest shape
-    expect(mockClose).toHaveBeenCalledWith({
-      organizationId: "org-1",
-      periodId: "period-1",
-      userId: "db-user-1",
-      justification: undefined,
-    });
+    // Verify service was called with hex positional signature
+    // close(organizationId, periodId, userId, justification?)
+    expect(mockClose).toHaveBeenCalledWith(
+      "org-1",
+      "period-1",
+      "db-user-1",
+      undefined,
+    );
   });
 
   it("(a) passes justification when provided", async () => {
     await POST(makeRequest({ periodId: "period-2", justification: "End of month" }), { params: makeParams() });
 
-    expect(mockClose).toHaveBeenCalledWith({
-      organizationId: "org-1",
-      periodId: "period-2",
-      userId: "db-user-1",
-      justification: "End of month",
-    });
+    expect(mockClose).toHaveBeenCalledWith(
+      "org-1",
+      "period-2",
+      "db-user-1",
+      "End of month",
+    );
   });
 });
 

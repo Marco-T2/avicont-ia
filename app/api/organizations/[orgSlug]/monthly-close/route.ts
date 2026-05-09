@@ -1,10 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { MonthlyCloseService } from "@/features/monthly-close/server";
+import {
+  makeMonthlyCloseService,
+  closeRequestSchema,
+} from "@/modules/monthly-close/presentation/server";
 import { UsersService } from "@/features/users/server";
-import { closeRequestSchema } from "@/features/monthly-close/server";
 
-const service = new MonthlyCloseService();
+const service = makeMonthlyCloseService();
 const usersService = new UsersService();
 
 export async function POST(
@@ -20,12 +22,12 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(session.userId);
 
-    const result = await service.close({
-      organizationId: orgId,
-      periodId: parsed.periodId,
-      userId: user.id,
-      justification: parsed.justification,
-    });
+    const result = await service.close(
+      orgId,
+      parsed.periodId,
+      user.id,
+      parsed.justification,
+    );
 
     return Response.json(result);
   } catch (error) {
