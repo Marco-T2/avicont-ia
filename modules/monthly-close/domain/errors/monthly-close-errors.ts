@@ -2,6 +2,7 @@ import {
   ConflictError,
   ValidationError,
   PERIOD_ALREADY_CLOSED,
+  PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_UNBALANCED,
 } from "@/features/shared/errors";
 import type { Money } from "@/modules/shared/domain/value-objects/money";
@@ -38,6 +39,42 @@ export class BalanceNotZeroError extends ValidationError {
         debit: debit.toString(),
         credit: credit.toString(),
         diff: diff.toFixed(2),
+      },
+    );
+  }
+}
+
+/**
+ * 15ª evidencia single bundle errors file matures cumulative cross-module —
+ * wrap PERIOD_HAS_DRAFT_ENTRIES legacy parity
+ * `features/monthly-close/monthly-close.service.ts:166-176` 5 readonly fields
+ * cross-entity counts mirror BalanceNotZeroError shape EXACT (readonly fields
+ * + super(message, code, details)).
+ */
+export class DraftEntriesPresentError extends ValidationError {
+  constructor(
+    public readonly dispatches: number,
+    public readonly payments: number,
+    public readonly journalEntries: number,
+    public readonly sales: number,
+    public readonly purchases: number,
+  ) {
+    const parts: string[] = [];
+    if (dispatches > 0) parts.push(`${dispatches} despacho(s)`);
+    if (payments > 0) parts.push(`${payments} pago(s)`);
+    if (journalEntries > 0)
+      parts.push(`${journalEntries} asiento(s) de diario`);
+    if (sales > 0) parts.push(`${sales} venta(s)`);
+    if (purchases > 0) parts.push(`${purchases} compra(s)`);
+    super(
+      `El periodo tiene registros en borrador: ${parts.join(", ")}. Debe publicarlos o eliminarlos antes de cerrar`,
+      PERIOD_HAS_DRAFT_ENTRIES,
+      {
+        dispatches,
+        payments,
+        journalEntries,
+        sales,
+        purchases,
       },
     );
   }
