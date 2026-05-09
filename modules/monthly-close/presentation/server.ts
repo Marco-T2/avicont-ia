@@ -1,3 +1,3 @@
 import "server-only";
 
-export {};
+export { makeMonthlyCloseService } from "./composition-root";
