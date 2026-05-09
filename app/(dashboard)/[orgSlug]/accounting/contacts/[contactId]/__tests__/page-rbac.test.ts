@@ -46,7 +46,12 @@ function makeParams() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockGetById.mockResolvedValue({ id: CONTACT_ID, name: "Contact" });
+  // Mock returns entity-shape stub con toSnapshot() method — page.tsx hex
+  // factory consumer hace contactsService.getById().then((c) => c.toSnapshot())
+  // post-cutover §13 RSC boundary serialization adapter pattern.
+  mockGetById.mockResolvedValue({
+    toSnapshot: () => ({ id: CONTACT_ID, name: "Contact" }),
+  });
   mockGetBalanceSummary.mockResolvedValue({});
 });
 
