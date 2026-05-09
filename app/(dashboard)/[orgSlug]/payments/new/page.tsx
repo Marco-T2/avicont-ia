@@ -34,7 +34,7 @@ export default async function NewPaymentPage({
   const accountsRepo = new AccountsRepository();
 
   const [contacts, periods, docTypes, orgSettings] = await Promise.all([
-    contactsService.list(orgId),
+    contactsService.list(orgId).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     docTypesService.list(orgId, { isActive: true }),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
@@ -68,7 +68,7 @@ export default async function NewPaymentPage({
     <div className="space-y-6">
       <PaymentForm
         orgSlug={orgSlug}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts}
         periods={JSON.parse(JSON.stringify(openPeriods))}
         defaultType={defaultType}
         operationalDocTypes={JSON.parse(JSON.stringify(docTypes))}

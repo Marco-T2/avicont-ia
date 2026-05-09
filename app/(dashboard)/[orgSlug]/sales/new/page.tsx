@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { AccountsService } from "@/features/accounting/server";
 import SaleForm from "@/components/sales/sale-form";
@@ -25,7 +26,7 @@ export default async function NewSalePage({ params }: NewSalePageProps) {
   const accountsService = new AccountsService();
 
   const [contacts, periods, accounts] = await Promise.all([
-    contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
+    contactsService.list(orgId, { type: "CLIENTE", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     accountsService.list(orgId, { type: "INGRESO", isDetail: true, isActive: true }),
   ]);
@@ -37,7 +38,7 @@ export default async function NewSalePage({ params }: NewSalePageProps) {
     <div className="space-y-6">
       <SaleForm
         orgSlug={orgSlug}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(openPeriods))}
         incomeAccounts={JSON.parse(JSON.stringify(accounts))}
         mode="new"

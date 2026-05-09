@@ -40,7 +40,7 @@ export default async function PaymentDetailPage({
   }
 
   const [contacts, periods, docTypes, orgSettings] = await Promise.all([
-    contactsService.list(orgId),
+    contactsService.list(orgId).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     docTypesService.list(orgId, { isActive: true }),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
@@ -67,7 +67,7 @@ export default async function PaymentDetailPage({
     <div className="space-y-6">
       <PaymentForm
         orgSlug={orgSlug}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts}
         periods={JSON.parse(JSON.stringify(openPeriods))}
         existingPayment={JSON.parse(JSON.stringify(payment))}
         operationalDocTypes={JSON.parse(JSON.stringify(docTypes))}

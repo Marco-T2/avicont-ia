@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { ContactWithBalance } from "@/modules/contacts/presentation/index";
 import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 import ContactDetail from "@/components/contacts/contact-detail";
 
@@ -23,7 +24,7 @@ export default async function ContactDetailPage({ params }: ContactDetailPagePro
   const balancesService = makeContactBalancesService();
 
   const [contact, balanceSummary] = await Promise.all([
-    contactsService.getById(orgId, contactId),
+    contactsService.getById(orgId, contactId).then((c) => c.toSnapshot()),
     balancesService.getBalanceSummary(orgId, contactId),
   ]);
 
@@ -33,7 +34,7 @@ export default async function ContactDetailPage({ params }: ContactDetailPagePro
     <div className="space-y-6">
       <ContactDetail
         orgSlug={orgSlug}
-        contact={JSON.parse(JSON.stringify(contactWithBalance))}
+        contact={contactWithBalance as unknown as ContactWithBalance}
       />
     </div>
   );

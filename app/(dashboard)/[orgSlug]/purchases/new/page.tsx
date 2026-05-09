@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import PurchaseForm from "@/components/purchases/purchase-form";
@@ -45,7 +46,7 @@ export default async function NewPurchasePage({
   const productTypesService = new ProductTypesService();
 
   const [contacts, periods, productTypes] = await Promise.all([
-    contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }),
+    contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }),
   ]);
@@ -58,7 +59,7 @@ export default async function NewPurchasePage({
       <PurchaseForm
         orgSlug={orgSlug}
         purchaseType={purchaseType}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(openPeriods))}
         productTypes={JSON.parse(JSON.stringify(productTypes))}
         mode="new"

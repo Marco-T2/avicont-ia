@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import { prisma } from "@/lib/prisma";
@@ -44,7 +45,7 @@ export default async function PurchaseDetailPage({
   }
 
   const [contacts, periods, productTypes, contact, payable, ivaPurchaseBook] = await Promise.all([
-    contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }),
+    contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }),
     prisma.contact.findUnique({
@@ -122,7 +123,7 @@ export default async function PurchaseDetailPage({
       <PurchaseForm
         orgSlug={orgSlug}
         purchaseType={purchase.purchaseType as PurchaseType}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(availablePeriods))}
         productTypes={JSON.parse(JSON.stringify(productTypes))}
         purchase={JSON.parse(JSON.stringify(purchaseWithDetails))}

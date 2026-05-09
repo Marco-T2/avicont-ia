@@ -17,7 +17,7 @@ export async function GET(
 
     const contact = await service.getById(orgId, contactId);
 
-    return Response.json(contact);
+    return Response.json(contact.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
@@ -36,7 +36,7 @@ export async function PATCH(
 
     const contact = await service.update(orgId, contactId, input);
 
-    return Response.json(contact);
+    return Response.json(contact.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
@@ -52,7 +52,7 @@ export async function DELETE(
 
     const contact = await service.deactivate(orgId, contactId);
 
-    return Response.json(contact);
+    return Response.json(contact.toSnapshot());
   } catch (error) {
     return handleError(error);
   }

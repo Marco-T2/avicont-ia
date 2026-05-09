@@ -24,7 +24,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
 
   const [payments, contacts] = await Promise.all([
     paymentService.list(orgId),
-    contactsService.list(orgId),
+    contactsService.list(orgId).then((entities) => entities.map((c) => c.toSnapshot())),
   ]);
 
   return (
@@ -39,7 +39,7 @@ export default async function PaymentsPage({ params }: PaymentsPageProps) {
       <PaymentList
         orgSlug={orgSlug}
         payments={JSON.parse(JSON.stringify(payments))}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts}
       />
     </div>
   );

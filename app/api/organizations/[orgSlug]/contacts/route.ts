@@ -33,7 +33,7 @@ export async function GET(
 
     const contacts = await service.list(orgId, filters);
 
-    return Response.json({ contacts });
+    return Response.json({ contacts: contacts.map((c) => c.toSnapshot()) });
   } catch (error) {
     return handleError(error);
   }
@@ -52,7 +52,7 @@ export async function POST(
 
     const contact = await service.create(orgId, input);
 
-    return Response.json(contact, { status: 201 });
+    return Response.json(contact.toSnapshot(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }

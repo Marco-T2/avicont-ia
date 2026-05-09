@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { ProductTypesService } from "@/features/product-types/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
@@ -37,7 +38,7 @@ export default async function NewDispatchPage({
   const orgSettingsService = makeOrgSettingsService();
 
   const [contacts, periods, productTypes, orgSettings] = await Promise.all([
-    contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
+    contactsService.list(orgId, { type: "CLIENTE", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
@@ -51,7 +52,7 @@ export default async function NewDispatchPage({
       <DispatchForm
         orgSlug={orgSlug}
         dispatchType={type}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(openPeriods))}
         productTypes={JSON.parse(JSON.stringify(productTypes))}
         roundingThreshold={Number(orgSettings.roundingThreshold)}

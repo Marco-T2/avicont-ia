@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { AccountsService } from "@/features/accounting/server";
 import { prisma } from "@/lib/prisma";
@@ -41,7 +42,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
   }
 
   const [contacts, periods, accounts, contact, receivable, ivaSalesBook] = await Promise.all([
-    contactsService.list(orgId, { type: "CLIENTE", isActive: true }),
+    contactsService.list(orgId, { type: "CLIENTE", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     accountsService.list(orgId, { type: "INGRESO", isDetail: true, isActive: true }),
     prisma.contact.findUnique({
@@ -117,7 +118,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
     <div className="space-y-6">
       <SaleForm
         orgSlug={orgSlug}
-        contacts={JSON.parse(JSON.stringify(contacts))}
+        contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(availablePeriods))}
         incomeAccounts={JSON.parse(JSON.stringify(accounts))}
         sale={JSON.parse(JSON.stringify(saleWithDetails))}
