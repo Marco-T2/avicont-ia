@@ -96,7 +96,42 @@ function paymentToPrismaData(payment: Payment) {
   };
 }
 
-function allocationsToPrismaCreate(payment: Payment) {
+/**
+ * Mapper para nested create dentro de `payment.create({ data: { allocations: { create: [...] } } })`.
+ * Retorna shape SIN `paymentId` — Prisma infiere el `paymentId` por la
+ * relación parent en nested write y rechaza `paymentId` explicit.
+ *
+ * Mirror precedent EXACT canonical Sale+Purchase `buildDetailCreate`
+ * Without-Parent-Input pattern:
+ *   - modules/sale/infrastructure/prisma-sale.repository.ts:213
+ *     `Prisma.SaleDetailUncheckedCreateWithoutSaleInput`
+ *   - modules/purchase/infrastructure/prisma-purchase.repository.ts:272
+ *     `Prisma.PurchaseDetailUncheckedCreateWithoutPurchaseInput`
+ */
+function allocationsToPrismaNestedCreate(
+  payment: Payment,
+): Prisma.PaymentAllocationUncheckedCreateWithoutPaymentInput[] {
+  const snap = payment.toSnapshot();
+  return snap.allocations.map((a) => ({
+    id: a.id,
+    receivableId: a.receivableId,
+    payableId: a.payableId,
+    amount: new Prisma.Decimal(a.amount),
+  }));
+}
+
+/**
+ * Mapper para standalone `paymentAllocation.createMany({ data: [...] })`.
+ * Retorna shape CON `paymentId` — createMany requiere `paymentId` explicit
+ * porque NO hay parent relation context.
+ *
+ * Mirror precedent EXACT canonical Sale+Purchase callsite createMany pattern:
+ *   `details.map(d => ({ saleId: sale.id, ...buildDetailCreate(d) }))`
+ *   `details.map(d => ({ purchaseId: purchase.id, ...buildDetailCreate(d) }))`
+ *
+ * Usado en `update`/`updateTx` flow delete-then-recreate (mirrors legacy).
+ */
+function allocationsToPrismaCreateMany(payment: Payment) {
   const snap = payment.toSnapshot();
   return snap.allocations.map((a) => ({
     id: a.id,
@@ -206,7 +241,7 @@ export class PrismaPaymentsRepository implements PaymentRepository {
 
   async save(payment: Payment): Promise<void> {
     const data = paymentToPrismaData(payment);
-    const allocations = allocationsToPrismaCreate(payment);
+    const allocations = allocationsToPrismaNestedCreate(payment);
 
     await this.db.payment.create({
       data: {
@@ -223,7 +258,7 @@ export class PrismaPaymentsRepository implements PaymentRepository {
   async saveTx(tx: unknown, payment: Payment): Promise<void> {
     const txClient = tx as Prisma.TransactionClient;
     const data = paymentToPrismaData(payment);
-    const allocations = allocationsToPrismaCreate(payment);
+    const allocations = allocationsToPrismaNestedCreate(payment);
 
     await txClient.payment.create({
       data: {
@@ -239,7 +274,7 @@ export class PrismaPaymentsRepository implements PaymentRepository {
 
   async update(payment: Payment): Promise<void> {
     const data = paymentToPrismaData(payment);
-    const allocations = allocationsToPrismaCreate(payment);
+    const allocations = allocationsToPrismaCreateMany(payment);
     const { id, organizationId, ...fields } = data;
 
     // Delete existing allocations first, then update payment scalar fields,
@@ -259,7 +294,7 @@ export class PrismaPaymentsRepository implements PaymentRepository {
   async updateTx(tx: unknown, payment: Payment): Promise<void> {
     const txClient = tx as Prisma.TransactionClient;
     const data = paymentToPrismaData(payment);
-    const allocations = allocationsToPrismaCreate(payment);
+    const allocations = allocationsToPrismaCreateMany(payment);
     const { id, organizationId, ...fields } = data;
 
     await txClient.paymentAllocation.deleteMany({ where: { paymentId: id } });
