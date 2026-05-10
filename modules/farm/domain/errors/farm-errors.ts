@@ -11,3 +11,10 @@ export class FarmNotFound extends Error {
     this.name = "FarmNotFound";
   }
 }
+
+export class MemberInactiveOrMissing extends Error {
+  constructor(memberId: string) {
+    super(`Miembro ${memberId} inactivo o no existe`);
+    this.name = "MemberInactiveOrMissing";
+  }
+}
