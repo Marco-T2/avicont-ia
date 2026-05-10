@@ -190,7 +190,11 @@ describe("FarmService", () => {
 
     // α17
     it("accepts null location", async () => {
-      const f = await svc.create(ORG, baseInput({ location: null }));
+      const f = await svc.create(ORG, {
+        name: "Granja Sin Ubicación",
+        location: null,
+        memberId: MEMBER,
+      });
       expect(f.location).toBeNull();
     });
   });
