@@ -1,10 +1,10 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { LotsService } from "@/features/lots/server";
-import { createLotSchema } from "@/features/lots";
+import { makeLotService } from "@/modules/lot/presentation/server";
+import { createLotSchema } from "@/modules/lot/presentation/validation";
 import type { NextRequest } from "next/server";
 
-const service = new LotsService();
+const service = makeLotService();
 
 export async function GET(
   request: NextRequest,

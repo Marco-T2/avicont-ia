@@ -1,9 +1,9 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { FarmsService } from "@/features/farms/server";
-import { createFarmSchema } from "@/features/farms";
+import { makeFarmService } from "@/modules/farm/presentation/server";
+import { createFarmSchema } from "@/modules/farm/presentation/validation";
 
-const service = new FarmsService();
+const service = makeFarmService();
 
 export async function GET(
   _request: Request,

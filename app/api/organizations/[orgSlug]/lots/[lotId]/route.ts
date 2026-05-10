@@ -1,9 +1,9 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { LotsService } from "@/features/lots/server";
-import { closeLotSchema } from "@/features/lots";
+import { makeLotService } from "@/modules/lot/presentation/server";
+import { closeLotSchema } from "@/modules/lot/presentation/validation";
 
-const service = new LotsService();
+const service = makeLotService();
 
 export async function GET(
   _request: Request,
