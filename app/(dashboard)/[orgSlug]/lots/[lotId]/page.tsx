@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { LotsService } from "@/features/lots/server";
+import { makeLotService } from "@/modules/lot/presentation/server";
 import { ExpensesService } from "@/features/expenses/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import LotDetailClient from "./lot-detail-client";
@@ -29,13 +29,17 @@ export default async function LotDetailPage({ params }: LotDetailPageProps) {
     redirect("/select-org");
   }
 
-  const lotsService = new LotsService();
+  const lotsService = makeLotService();
+  let lotEntity;
   let summary;
   try {
-    summary = await lotsService.getSummary(orgId, lotId);
+    const result = await lotsService.getSummary(orgId, lotId);
+    lotEntity = result.lot;
+    summary = result.summary;
   } catch {
     redirect(`/${orgSlug}/farms`);
   }
+  const lot = lotEntity.toSnapshot();
 
   const [expenses, mortalityEntities] = await Promise.all([
     new ExpensesService().listByLot(orgId, lotId),
@@ -46,6 +50,7 @@ export default async function LotDetailPage({ params }: LotDetailPageProps) {
   return (
     <LotDetailClient
       orgSlug={orgSlug}
+      lot={lot}
       summary={summary}
       expenses={expenses}
       mortalityLogs={mortalityLogs}

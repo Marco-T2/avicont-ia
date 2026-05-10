@@ -10,8 +10,8 @@ import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, ArrowRight, Egg } from "lucide-react";
 import Link from "next/link";
 import CreateLotDialog from "@/components/lots/create-lot-dialog";
-import type { FarmWithLots } from "@/features/farms";
-import type { ChickenLot } from "@/generated/prisma/client";
+import type { FarmSnapshot } from "@/modules/farm/presentation/server";
+import type { LotSnapshot } from "@/modules/lot/presentation/server";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   ACTIVE: {
@@ -33,8 +33,8 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
 
 interface FarmDetailClientProps {
   orgSlug: string;
-  farm: FarmWithLots;
-  lots: ChickenLot[];
+  farm: FarmSnapshot;
+  lots: LotSnapshot[];
 }
 
 export default function FarmDetailClient({

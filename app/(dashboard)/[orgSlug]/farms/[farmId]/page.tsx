@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { FarmsService } from "@/features/farms/server";
-import { LotsService } from "@/features/lots/server";
+import { makeFarmService } from "@/modules/farm/presentation/server";
+import { makeLotService } from "@/modules/lot/presentation/server";
 import FarmDetailClient from "./farm-detail-client";
 
 interface FarmDetailPageProps {
@@ -28,16 +28,18 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
     redirect("/select-org");
   }
 
-  const farmsService = new FarmsService();
-  let farm;
+  const farmsService = makeFarmService();
+  let farmEntity;
   try {
-    farm = await farmsService.getById(orgId, farmId);
+    farmEntity = await farmsService.getById(orgId, farmId);
   } catch {
     redirect(`/${orgSlug}/farms`);
   }
+  const farm = farmEntity.toSnapshot();
 
-  const lotsService = new LotsService();
-  const lots = await lotsService.listByFarm(orgId, farmId);
+  const lotsService = makeLotService();
+  const lotEntities = await lotsService.listByFarm(orgId, farmId);
+  const lots = lotEntities.map((l) => l.toSnapshot());
 
   return (
     <FarmDetailClient

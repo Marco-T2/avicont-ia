@@ -9,12 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { MapPin, Home, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import CreateFarmDialog from "@/components/farms/create-farm-dialog";
-import type { FarmWithLots } from "@/features/farms";
+import type { FarmSnapshotWithLots } from "@/modules/farm/presentation/server";
 
 interface FarmsPageClientProps {
   orgSlug: string;
   memberId: string;
-  farms: FarmWithLots[];
+  farms: FarmSnapshotWithLots[];
 }
 
 export default function FarmsPageClient({

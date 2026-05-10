@@ -6,10 +6,10 @@ export interface ComputeLotSummaryInput {
 
 export class LotSummary {
   private constructor(
-    private readonly _totalExpenses: number,
-    private readonly _totalMortality: number,
-    private readonly _aliveCount: number,
-    private readonly _costPerChicken: number,
+    public readonly totalExpenses: number,
+    public readonly totalMortality: number,
+    public readonly aliveCount: number,
+    public readonly costPerChicken: number,
   ) {}
 
   static compute(input: ComputeLotSummaryInput): LotSummary {
@@ -19,9 +19,4 @@ export class LotSummary {
     const costPerChicken = aliveCount > 0 ? totalExpenses / aliveCount : 0;
     return new LotSummary(totalExpenses, totalMortality, aliveCount, costPerChicken);
   }
-
-  get totalExpenses(): number { return this._totalExpenses; }
-  get totalMortality(): number { return this._totalMortality; }
-  get aliveCount(): number { return this._aliveCount; }
-  get costPerChicken(): number { return this._costPerChicken; }
 }

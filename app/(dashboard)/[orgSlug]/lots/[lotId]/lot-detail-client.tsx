@@ -18,7 +18,7 @@ import {
 import Link from "next/link";
 import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
-import type { LotSummary } from "@/features/lots";
+import type { LotSnapshot, LotSummary } from "@/modules/lot/presentation/server";
 import type { ExpenseWithRelations } from "@/features/expenses";
 import type { Mortality } from "@/modules/mortality/presentation/server";
 
@@ -105,6 +105,7 @@ function formatDate(date: Date | string): string {
 
 interface LotDetailClientProps {
   orgSlug: string;
+  lot: LotSnapshot;
   summary: LotSummary;
   expenses: ExpenseWithRelations[];
   mortalityLogs: ReturnType<Mortality["toJSON"]>[];
@@ -112,6 +113,7 @@ interface LotDetailClientProps {
 
 export default function LotDetailClient({
   orgSlug,
+  lot,
   summary,
   expenses,
   mortalityLogs,
@@ -121,7 +123,7 @@ export default function LotDetailClient({
     "expenses",
   );
 
-  const { lot, totalExpenses, totalMortality, aliveCount, costPerChicken } =
+  const { totalExpenses, totalMortality, aliveCount, costPerChicken } =
     summary;
 
   const status = STATUS_CONFIG[lot.status] ?? {

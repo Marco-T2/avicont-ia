@@ -1,4 +1,6 @@
 import "server-only";
+import type { ChickenLot } from "@/generated/prisma/client";
+import type { FarmSnapshot } from "../domain/farm.entity";
 
 export {
   makeFarmService,
@@ -26,3 +28,7 @@ export {
   FarmNotFound,
   MemberInactiveOrMissing,
 } from "../domain/errors/farm-errors";
+
+export { attachLots } from "./composition-root";
+
+export type FarmSnapshotWithLots = FarmSnapshot & { lots: ChickenLot[] };

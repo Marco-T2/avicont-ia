@@ -15,3 +15,5 @@ export function makeFarmService(): FarmService {
 export function makeFarmRepository(): PrismaFarmRepository {
   return new PrismaFarmRepository();
 }
+
+export { attachLots } from "../infrastructure/lots-attacher";

@@ -3,7 +3,7 @@ import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { canAccess } from "@/features/permissions/server";
 import { OrganizationsService } from "@/features/organizations/server";
-import { FarmsService } from "@/features/farms/server";
+import { makeFarmService, attachLots } from "@/modules/farm/presentation/server";
 import FarmsPageClient from "./farms-client";
 
 const orgService = new OrganizationsService();
@@ -38,11 +38,12 @@ export default async function FarmsPage({ params }: FarmsPageProps) {
     redirect("/select-org");
   }
 
-  const farmsService = new FarmsService();
+  const farmsService = makeFarmService();
   const canManageFarms = await canAccess(member.role, "members", "write", orgId);
-  const farms = canManageFarms
+  const farmEntities = canManageFarms
     ? await farmsService.list(orgId)
-    : await farmsService.listByMember(orgId, member.id);
+    : await farmsService.list(orgId, { memberId: member.id });
+  const farms = await attachLots(orgId, farmEntities);
 
   return (
     <div className="space-y-8">
