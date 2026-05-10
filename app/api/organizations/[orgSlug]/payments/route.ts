@@ -5,6 +5,7 @@ import {
   createPaymentSchema,
   paymentFiltersSchema,
 } from "@/modules/payment/presentation/validation";
+import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 import { UsersService } from "@/features/users/server";
 
 const paymentService = new PaymentService();
@@ -27,10 +28,11 @@ export async function GET(
       dateTo: searchParams.get("dateTo") ?? undefined,
       periodId: searchParams.get("periodId") ?? undefined,
     });
+    const pagination = parsePaginationParams(searchParams);
 
-    const payments = await paymentService.list(orgId, filters);
+    const result = await paymentService.listPaginated(orgId, filters, pagination);
 
-    return Response.json(payments);
+    return Response.json(result);
   } catch (error) {
     return handleError(error);
   }

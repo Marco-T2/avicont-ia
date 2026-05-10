@@ -14,6 +14,10 @@ import type {
   PaymentFilters,
   CreditAllocationSource,
 } from "./server";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
  * Adapter Layer presentation/ delegate via reader port + composition-root chain
@@ -54,6 +58,19 @@ export class PaymentService {
     filters?: PaymentFilters,
   ): Promise<PaymentWithRelations[]> {
     return this.readAll(organizationId, filters);
+  }
+
+  async listPaginated(
+    organizationId: string,
+    filters?: PaymentFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<PaymentWithRelations>> {
+    const result = await this.reader.findPaginatedWithRelations(
+      organizationId,
+      filters,
+      pagination,
+    );
+    return result as unknown as PaginatedResult<PaymentWithRelations>;
   }
 
   async getById(

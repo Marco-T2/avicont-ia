@@ -58,7 +58,11 @@ describe("PaymentList — actions dropdown", () => {
     render(
       <PaymentList
         orgSlug="test-org"
-        payments={payments as any}
+        items={payments as any}
+        total={payments.length}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         contacts={CONTACTS}
       />,
     );
@@ -71,7 +75,11 @@ describe("PaymentList — actions dropdown", () => {
     render(
       <PaymentList
         orgSlug="test-org"
-        payments={payments as any}
+        items={payments as any}
+        total={payments.length}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         contacts={CONTACTS}
       />,
     );
@@ -84,7 +92,15 @@ describe("PaymentList — actions dropdown", () => {
 
   it("empty state usa colSpan=9 (columna Acciones preservada)", () => {
     render(
-      <PaymentList orgSlug="test-org" payments={[]} contacts={CONTACTS} />,
+      <PaymentList
+        orgSlug="test-org"
+        items={[]}
+        total={0}
+        page={1}
+        pageSize={25}
+        totalPages={1}
+        contacts={CONTACTS}
+      />,
     );
     const emptyCell = screen
       .getByText(/no hay cobros ni pagos registrados/i)

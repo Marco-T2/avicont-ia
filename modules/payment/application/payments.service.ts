@@ -35,6 +35,10 @@ import type {
   PaymentFilters,
   CustomerBalanceSnapshot,
 } from "../domain/payment.repository";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import type { PaymentMethod } from "../domain/value-objects/payment-method";
 import type { PaymentDirection } from "../domain/value-objects/payment-direction";
 import type { ReceivablesPort } from "../domain/ports/receivables.port";
@@ -172,6 +176,14 @@ export class PaymentsService {
     filters?: PaymentFilters,
   ): Promise<Payment[]> {
     return this.repo.findAll(organizationId, filters);
+  }
+
+  async listPaginated(
+    organizationId: string,
+    filters?: PaymentFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Payment>> {
+    return this.repo.findPaginated(organizationId, filters, pagination);
   }
 
   async getById(organizationId: string, id: string): Promise<Payment> {

@@ -7,6 +7,10 @@ import type {
   UnappliedPaymentSnapshot,
   CustomerBalanceSnapshot,
 } from "../domain/payment.repository";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import { Payment } from "../domain/payment.entity";
 import { PaymentAllocation } from "../domain/payment-allocation.entity";
 import { AllocationTarget } from "../domain/value-objects/allocation-target";
@@ -152,6 +156,50 @@ export class PrismaPaymentsRepository implements PaymentRepository {
     });
 
     return rows.map((r) => rowToPayment(r as unknown as Record<string, unknown>));
+  }
+
+  // ── findPaginated ─────────────────────────────────────────────────────────
+
+  async findPaginated(
+    organizationId: string,
+    filters?: PaymentFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Payment>> {
+    const where: Record<string, unknown> = { organizationId };
+    if (filters?.status) where.status = filters.status;
+    if (filters?.method) where.method = filters.method;
+    if (filters?.contactId) where.contactId = filters.contactId;
+    if (filters?.periodId) where.periodId = filters.periodId;
+    if (filters?.dateFrom || filters?.dateTo) {
+      where.date = {
+        ...(filters.dateFrom && { gte: filters.dateFrom }),
+        ...(filters.dateTo && { lte: filters.dateTo }),
+      };
+    }
+
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+
+    const [rows, total] = await Promise.all([
+      this.db.payment.findMany({
+        where,
+        include: paymentInclude,
+        orderBy: { createdAt: "desc" },
+        skip: skip,
+        take: take,
+      }),
+      this.db.payment.count({ where }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items: rows.map((r) => rowToPayment(r as unknown as Record<string, unknown>)),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   // ── save ──────────────────────────────────────────────────────────────────

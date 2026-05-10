@@ -1,6 +1,10 @@
 import type { Payment } from "./payment.entity";
 import type { PaymentStatus } from "./value-objects/payment-status";
 import type { PaymentMethod } from "./value-objects/payment-method";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 export interface PaymentFilters {
   status?: PaymentStatus;
@@ -51,6 +55,12 @@ export interface PaymentRepository {
     organizationId: string,
     filters?: PaymentFilters,
   ): Promise<Payment[]>;
+
+  findPaginated(
+    organizationId: string,
+    filters?: PaymentFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Payment>>;
 
   findById(organizationId: string, id: string): Promise<Payment | null>;
 

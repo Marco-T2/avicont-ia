@@ -1,4 +1,8 @@
 import type { PaymentFilters } from "../payment.repository";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
  * Reader port for the payment envelope shape — read-side queries for the
@@ -47,6 +51,12 @@ export interface PaymentWithRelationsReaderPort {
     organizationId: string,
     filters?: PaymentFilters,
   ): Promise<PaymentWithRelationsSnapshot[]>;
+
+  findPaginatedWithRelations(
+    organizationId: string,
+    filters?: PaymentFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<PaymentWithRelationsSnapshot>>;
 
   findByIdWithRelations(
     organizationId: string,

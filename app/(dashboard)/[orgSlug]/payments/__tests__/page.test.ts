@@ -8,12 +8,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockRedirect,
   mockRequirePermission,
-  mockPaymentList,
+  mockListPaginated,
   mockContactsList,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
-  mockPaymentList: vi.fn(),
+  mockListPaginated: vi.fn(),
   mockContactsList: vi.fn(),
 }));
 
@@ -25,7 +25,7 @@ vi.mock("@/features/permissions/server", () => ({
 
 vi.mock("@/modules/payment/presentation/server", () => {
   class PaymentService {
-    list = mockPaymentList;
+    listPaginated = mockListPaginated;
   }
   return { PaymentService };
 });
@@ -49,9 +49,19 @@ function makeParams() {
   return Promise.resolve({ orgSlug: ORG_SLUG });
 }
 
+function makeSearchParams() {
+  return Promise.resolve({});
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockPaymentList.mockResolvedValue([]);
+  mockListPaginated.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+  });
   mockContactsList.mockResolvedValue([]);
 });
 
@@ -59,7 +69,10 @@ describe("/payments — rbac gate", () => {
   it("renders when requirePermission resolves", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
 
-    await PaymentsPage({ params: makeParams() });
+    await PaymentsPage({
+      params: makeParams(),
+      searchParams: makeSearchParams(),
+    });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
       "payments",
@@ -72,7 +85,10 @@ describe("/payments — rbac gate", () => {
   it("redirects to org root when requirePermission throws", async () => {
     mockRequirePermission.mockRejectedValue(new Error("forbidden"));
 
-    await PaymentsPage({ params: makeParams() });
+    await PaymentsPage({
+      params: makeParams(),
+      searchParams: makeSearchParams(),
+    });
 
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });

@@ -37,6 +37,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   ArrowDownCircle,
   ArrowUpCircle,
   FileText,
@@ -54,6 +62,7 @@ import Link from "next/link";
 import { toast } from "sonner";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 import type { PaymentDirection } from "@/modules/payment/presentation/server";
+import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
 
 // ── Helpers ──
 
@@ -70,6 +79,22 @@ function formatDate(date: Date | string): string {
     month: "short",
     year: "numeric",
   });
+}
+
+function buildHref(
+  orgSlug: string,
+  page: number,
+  status: string | undefined,
+  contactId: string | undefined,
+  method: string | undefined,
+): string {
+  const sp = new URLSearchParams();
+  if (page > 1) sp.set("page", String(page));
+  if (status) sp.set("status", status);
+  if (contactId) sp.set("contactId", contactId);
+  if (method) sp.set("method", method);
+  const q = sp.toString();
+  return `/${orgSlug}/payments${q ? `?${q}` : ""}`;
 }
 
 const METHOD_LABEL: Record<string, string> = {
@@ -99,11 +124,13 @@ interface ContactOption {
   type: string;
 }
 
-interface PaymentListProps {
+type PaymentListProps = PaginatedResult<PaymentWithRelations> & {
   orgSlug: string;
-  payments: PaymentWithRelations[];
   contacts: ContactOption[];
-}
+  statusFilter?: string;
+  contactIdFilter?: string;
+  methodFilter?: string;
+};
 
 // ── Row sub-component with actions dropdown ──
 
@@ -250,8 +277,15 @@ function PaymentRow({
 
 export default function PaymentList({
   orgSlug,
-  payments,
+  items,
+  total,
+  page,
+  pageSize,
+  totalPages,
   contacts,
+  statusFilter,
+  contactIdFilter,
+  methodFilter,
 }: PaymentListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
@@ -259,48 +293,52 @@ export default function PaymentList({
   const [voidPayment, setVoidPayment] = useState<PaymentWithRelations | null>(null);
   const [deletePayment, setDeletePayment] = useState<PaymentWithRelations | null>(null);
 
-  // ── Client-side filters ──
-  const params =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search)
-      : new URLSearchParams();
+  // ── Server-side filters via URL searchParams nav (page resets a 1 al cambiar filtro) ──
+  const filterStatus = statusFilter ?? "";
+  const filterContactId = contactIdFilter ?? "";
+  const filterMethod = methodFilter ?? "";
+  const hasFilters = !!(filterStatus || filterContactId || filterMethod);
 
-  const filterStatus = params.get("status") ?? "";
-  const filterContactId = params.get("contactId") ?? "";
-  const filterMethod = params.get("method") ?? "";
+  function navigateFilter(
+    nextStatus: string | undefined,
+    nextContactId: string | undefined,
+    nextMethod: string | undefined,
+  ) {
+    router.push(buildHref(orgSlug, 1, nextStatus, nextContactId, nextMethod));
+  }
 
-  function applyFilter(key: string, value: string) {
-    const p = new URLSearchParams(
-      typeof window !== "undefined" ? window.location.search : "",
+  function handleStatusChange(v: string) {
+    navigateFilter(
+      v === "all" ? undefined : v,
+      filterContactId || undefined,
+      filterMethod || undefined,
     );
+  }
 
-    if (value && value !== "all") {
-      p.set(key, value);
-    } else {
-      p.delete(key);
-    }
+  function handleContactIdChange(v: string) {
+    navigateFilter(
+      filterStatus || undefined,
+      v === "all" ? undefined : v,
+      filterMethod || undefined,
+    );
+  }
 
-    const query = p.toString();
-    router.push(`/${orgSlug}/payments${query ? `?${query}` : ""}`);
+  function handleMethodChange(v: string) {
+    navigateFilter(
+      filterStatus || undefined,
+      filterContactId || undefined,
+      v === "all" ? undefined : v,
+    );
   }
 
   function clearFilters() {
     router.push(`/${orgSlug}/payments`);
   }
 
-  const hasFilters = !!(filterStatus || filterContactId || filterMethod);
-
-  // ── Filter payments locally ──
-  const filteredPayments = payments.filter((p) => {
-    if (filterStatus && p.status !== filterStatus) return false;
-    if (filterContactId && p.contactId !== filterContactId) return false;
-    if (filterMethod && p.method !== filterMethod) return false;
-    return true;
-  });
-
-  // ── Summary stats ──
-  const cobros = payments.filter((p) => inferDirection(p, contacts) === "COBRO");
-  const pagos = payments.filter((p) => inferDirection(p, contacts) === "PAGO");
+  // ── Summary stats (page-only — items is current page slice; total counts
+  // los registros que matchean filtros server-side aplicados) ──
+  const cobros = items.filter((p) => inferDirection(p, contacts) === "COBRO");
+  const pagos = items.filter((p) => inferDirection(p, contacts) === "PAGO");
   const cobrosTotal = cobros.reduce((s, p) => s + p.amount, 0);
   const pagosTotal = pagos.reduce((s, p) => s + p.amount, 0);
 
@@ -434,7 +472,7 @@ export default function PaymentList({
               <Label className="text-sm">Estado</Label>
               <Select
                 value={filterStatus || "all"}
-                onValueChange={(v) => applyFilter("status", v)}
+                onValueChange={handleStatusChange}
               >
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Todos" />
@@ -453,7 +491,7 @@ export default function PaymentList({
               <Label className="text-sm">Contacto</Label>
               <Select
                 value={filterContactId || "all"}
-                onValueChange={(v) => applyFilter("contactId", v)}
+                onValueChange={handleContactIdChange}
               >
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Todos" />
@@ -473,7 +511,7 @@ export default function PaymentList({
               <Label className="text-sm">Método</Label>
               <Select
                 value={filterMethod || "all"}
-                onValueChange={(v) => applyFilter("method", v)}
+                onValueChange={handleMethodChange}
               >
                 <SelectTrigger className="w-44">
                   <SelectValue placeholder="Todos" />
@@ -535,7 +573,7 @@ export default function PaymentList({
                 </tr>
               </thead>
               <tbody>
-                {filteredPayments.length === 0 ? (
+                {items.length === 0 ? (
                   <tr>
                     <td colSpan={9} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
@@ -550,7 +588,7 @@ export default function PaymentList({
                     </td>
                   </tr>
                 ) : (
-                  filteredPayments.map((payment) => (
+                  items.map((payment) => (
                     <PaymentRow
                       key={payment.id}
                       orgSlug={orgSlug}
@@ -568,6 +606,64 @@ export default function PaymentList({
           </div>
         </CardContent>
       </Card>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={buildHref(
+                  orgSlug,
+                  Math.max(1, page - 1),
+                  filterStatus || undefined,
+                  filterContactId || undefined,
+                  filterMethod || undefined,
+                )}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                text="Anterior"
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  href={buildHref(
+                    orgSlug,
+                    p,
+                    filterStatus || undefined,
+                    filterContactId || undefined,
+                    filterMethod || undefined,
+                  )}
+                  isActive={p === page}
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href={buildHref(
+                  orgSlug,
+                  Math.min(totalPages, page + 1),
+                  filterStatus || undefined,
+                  filterContactId || undefined,
+                  filterMethod || undefined,
+                )}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                text="Siguiente"
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {total > 0 && (
+        <p className="text-sm text-muted-foreground text-center">
+          Mostrando {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} de {total}
+        </p>
+      )}
 
       {/* Dialog — CONTABILIZAR */}
       <Dialog

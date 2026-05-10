@@ -5,6 +5,10 @@ import type {
   UnappliedPaymentSnapshot,
   CustomerBalanceSnapshot,
 } from "../../../domain/payment.repository";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
  * In-memory PaymentRepository used by the application-layer test suite.
@@ -95,6 +99,21 @@ export class InMemoryPaymentRepository implements PaymentRepository {
       if (filters?.periodId && p.periodId !== filters.periodId) return false;
       return true;
     });
+  }
+
+  async findPaginated(
+    orgId: string,
+    filters?: PaymentFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Payment>> {
+    const all = await this.findAll(orgId, filters);
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const start = (page - 1) * pageSize;
+    const items = all.slice(start, start + pageSize);
+    const total = all.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return { items, total, page, pageSize, totalPages };
   }
 
   async findById(orgId: string, id: string): Promise<Payment | null> {
