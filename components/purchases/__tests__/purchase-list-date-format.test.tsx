@@ -69,12 +69,12 @@ const BASE_PURCHASE = {
 
 describe("PurchaseList — date cell format (REQ-D.2)", () => {
   it("D.2.5 — date cell renders DD/MM/YYYY format", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     expect(screen.getByText("17/04/2026")).toBeInTheDocument();
   });
 
   it("D.2.6 — date cell does NOT render old locale short-month format", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // Old format was "17 abr. 2026" or "17 abr 2026"
     expect(screen.queryByText(/abr/i)).not.toBeInTheDocument();
   });

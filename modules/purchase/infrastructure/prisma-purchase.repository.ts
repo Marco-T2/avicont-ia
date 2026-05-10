@@ -3,6 +3,10 @@ import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { toNoonUtc } from "@/lib/date-utils";
 import { prisma } from "@/lib/prisma";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import { Purchase, type PurchaseType } from "@/modules/purchase/domain/purchase.entity";
 import { PurchaseDetail } from "@/modules/purchase/domain/purchase-detail.entity";
 import type { PurchaseStatus } from "@/modules/purchase/domain/value-objects/purchase-status";
@@ -38,6 +42,29 @@ const purchaseInclude = {
   details: { orderBy: { order: "asc" as const } },
 } as const;
 
+function buildPurchaseWhere(
+  organizationId: string,
+  filters?: PurchaseFilters,
+): Prisma.PurchaseWhereInput {
+  return {
+    organizationId,
+    ...(filters?.purchaseType ? { purchaseType: filters.purchaseType } : {}),
+    ...(filters?.purchaseTypeIn
+      ? { purchaseType: { in: filters.purchaseTypeIn } }
+      : {}),
+    ...(filters?.status ? { status: filters.status as PurchaseStatus } : {}),
+    ...(filters?.contactId ? { contactId: filters.contactId } : {}),
+    ...(filters?.dateFrom || filters?.dateTo
+      ? {
+          date: {
+            ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
+            ...(filters.dateTo ? { lte: filters.dateTo } : {}),
+          },
+        }
+      : {}),
+  };
+}
+
 export class PrismaPurchaseRepository implements PurchaseRepository {
   constructor(private readonly db: DbClient = prisma) {}
 
@@ -54,24 +81,46 @@ export class PrismaPurchaseRepository implements PurchaseRepository {
     filters?: PurchaseFilters,
   ): Promise<Purchase[]> {
     const rows = await this.db.purchase.findMany({
-      where: {
-        organizationId,
-        ...(filters?.purchaseType ? { purchaseType: filters.purchaseType } : {}),
-        ...(filters?.status ? { status: filters.status as PurchaseStatus } : {}),
-        ...(filters?.contactId ? { contactId: filters.contactId } : {}),
-        ...(filters?.dateFrom || filters?.dateTo
-          ? {
-              date: {
-                ...(filters.dateFrom ? { gte: filters.dateFrom } : {}),
-                ...(filters.dateTo ? { lte: filters.dateTo } : {}),
-              },
-            }
-          : {}),
-      },
+      where: buildPurchaseWhere(organizationId, filters),
       include: purchaseInclude,
       orderBy: { createdAt: "desc" },
     });
     return rows.map(hydratePurchaseFromRow);
+  }
+
+  async findPaginated(
+    organizationId: string,
+    filters?: PurchaseFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Purchase>> {
+    const where = buildPurchaseWhere(organizationId, filters);
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+    // Promise.all (NOT $transaction) — DbClient type Pick<PrismaClient,
+    // "purchase"|"purchaseDetail"> NO incluye `$transaction`. Read-only
+    // count + items sin tx isolation aceptable para offset pagination —
+    // page-shift bajo writes concurrentes es expected behavior offset
+    // pattern. Heredado Sale pilot canonical EXACT (#1789).
+    const [rows, total] = await Promise.all([
+      this.db.purchase.findMany({
+        where,
+        include: purchaseInclude,
+        orderBy: { createdAt: "desc" },
+        skip: skip,
+        take: take,
+      }),
+      this.db.purchase.count({ where }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items: rows.map(hydratePurchaseFromRow),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   async findByIdTx(

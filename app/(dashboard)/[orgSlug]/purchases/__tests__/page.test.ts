@@ -10,6 +10,10 @@
  * Mock anomaly absorbed inline GREEN sub-§13 in-flight surface mirror
  * A3-C4a.5 sales/__tests__/page.test.ts precedent. Test semantics RBAC-only
  * preserved (data path empty array — mapper never invoked).
+ *
+ * POC pagination-replication C1-MACRO Purchase: cascade adapt mismo batch
+ * — `mockList` → `mockListPaginated` + searchParams Promise pass +
+ * PaginatedResult shape mock (mirror Sale pilot precedent EXACT).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -17,14 +21,14 @@ const {
   mockRedirect,
   mockRequirePermission,
   mockMakePurchaseService,
-  mockList,
+  mockListPaginated,
   mockContactFindMany,
   mockPeriodFindMany,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockMakePurchaseService: vi.fn(),
-  mockList: vi.fn(),
+  mockListPaginated: vi.fn(),
   mockContactFindMany: vi.fn(),
   mockPeriodFindMany: vi.fn(),
 }));
@@ -58,10 +62,20 @@ function makeParams() {
   return Promise.resolve({ orgSlug: ORG_SLUG });
 }
 
+function makeSearchParams() {
+  return Promise.resolve({});
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
-  mockMakePurchaseService.mockReturnValue({ list: mockList });
-  mockList.mockResolvedValue([]);
+  mockMakePurchaseService.mockReturnValue({ listPaginated: mockListPaginated });
+  mockListPaginated.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+  });
   mockContactFindMany.mockResolvedValue([]);
   mockPeriodFindMany.mockResolvedValue([]);
 });
@@ -70,7 +84,7 @@ describe("/purchases — rbac gate", () => {
   it("renders when requirePermission resolves", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
 
-    await PurchasesPage({ params: makeParams() });
+    await PurchasesPage({ params: makeParams(), searchParams: makeSearchParams() });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
       "purchases",
@@ -83,7 +97,7 @@ describe("/purchases — rbac gate", () => {
   it("redirects to org root when requirePermission throws", async () => {
     mockRequirePermission.mockRejectedValue(new Error("forbidden"));
 
-    await PurchasesPage({ params: makeParams() });
+    await PurchasesPage({ params: makeParams(), searchParams: makeSearchParams() });
 
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });

@@ -3,6 +3,10 @@ import type {
   PurchaseFilters,
   PurchaseRepository,
 } from "../../../domain/ports/purchase.repository";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
  * In-memory `PurchaseRepository` fake. Read methods (`findById`, `findAll`)
@@ -39,12 +43,27 @@ export class InMemoryPurchaseRepository implements PurchaseRepository {
     return [...this.store.values()].filter((purchase) => {
       if (purchase.organizationId !== organizationId) return false;
       if (filters?.purchaseType && purchase.purchaseType !== filters.purchaseType) return false;
+      if (filters?.purchaseTypeIn && !filters.purchaseTypeIn.includes(purchase.purchaseType)) return false;
       if (filters?.contactId && purchase.contactId !== filters.contactId) return false;
       if (filters?.status && purchase.status !== filters.status) return false;
       if (filters?.dateFrom && purchase.date < filters.dateFrom) return false;
       if (filters?.dateTo && purchase.date > filters.dateTo) return false;
       return true;
     });
+  }
+
+  async findPaginated(
+    organizationId: string,
+    filters?: PurchaseFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Purchase>> {
+    const all = await this.findAll(organizationId, filters);
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const total = all.length;
+    const items = all.slice((page - 1) * pageSize, page * pageSize);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return { items, total, page, pageSize, totalPages };
   }
 
   saveTxCalls: Purchase[] = [];

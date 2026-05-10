@@ -1,4 +1,8 @@
 import type { Purchase, PurchaseType } from "../purchase.entity";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 export interface PurchaseFilters {
   /**
@@ -9,6 +13,15 @@ export interface PurchaseFilters {
    * #11.0c). Paralelo D-A3-1 (`getNextSequenceNumberTx` scoped).
    */
   purchaseType?: PurchaseType;
+  /**
+   * Server-side array unification axis-distinct extension (POC pagination-
+   * replication C1-MACRO Path 2). Permite filtrar por múltiples
+   * `purchaseType` valores en single query — REQ-C.2 unification UI label
+   * `COMPRA_GENERAL_O_SERVICIO` maps a `[COMPRA_GENERAL, SERVICIO]`.
+   * Mutuamente exclusivo con `purchaseType` single — schema refine en
+   * presentation layer enforce.
+   */
+  purchaseTypeIn?: PurchaseType[];
   contactId?: string;
   status?: string;
   dateFrom?: Date;
@@ -37,6 +50,11 @@ export interface PurchaseFilters {
 export interface PurchaseRepository {
   findById(organizationId: string, id: string): Promise<Purchase | null>;
   findAll(organizationId: string, filters?: PurchaseFilters): Promise<Purchase[]>;
+  findPaginated(
+    organizationId: string,
+    filters?: PurchaseFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Purchase>>;
 
   /** Tx-aware load — used by edit/post/void use cases that mutate inside UoW. */
   findByIdTx(

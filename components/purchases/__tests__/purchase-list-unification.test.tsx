@@ -77,33 +77,33 @@ const SERVICIO_PURCHASE = {
 
 describe("PurchaseList — unified entry button (T7.1/T7.2 REQ-C.1)", () => {
   it("C.1.1 — exactly ONE button/link labelled 'Nueva Compra / Servicio' is rendered", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     const unifiedLinks = screen.getAllByRole("link", { name: /nueva compra \/ servicio/i });
     expect(unifiedLinks).toHaveLength(1);
   });
 
   it("C.1.2 — NO button/link with text 'Compra General' standalone entry", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // The entry card titles should not have a standalone 'Compra General' card
     const compraGeneralCards = screen.queryAllByText(/^compra general$/i);
     expect(compraGeneralCards).toHaveLength(0);
   });
 
   it("C.1.3 — NO button/link with text 'Servicio' standalone entry card title", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // There should be no standalone 'Servicio' entry card title
     const servicioCards = screen.queryAllByText(/^servicio$/i);
     expect(servicioCards).toHaveLength(0);
   });
 
   it("C.1.4 — unified button href contains type=COMPRA_GENERAL", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     const unifiedLink = screen.getByRole("link", { name: /nueva compra \/ servicio/i });
     expect(unifiedLink).toHaveAttribute("href", expect.stringContaining("type=COMPRA_GENERAL"));
   });
 
   it("C.1.5 — historical SV-xxx (SERVICIO) rows still render in the list", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any, SERVICIO_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any, SERVICIO_PURCHASE as any]} total={2} page={1} pageSize={25} totalPages={1} />);
     const svRow = screen.getByText("SV-001");
     expect(svRow).toBeInTheDocument();
   });
@@ -113,7 +113,7 @@ describe("PurchaseList — unified entry button (T7.1/T7.2 REQ-C.1)", () => {
 
 describe("PurchaseList — filter unification (T7.3/T7.4 REQ-C.2)", () => {
   it("C.2.1 — filter dropdown has item 'Compras y Servicios' covering both types", () => {
-    const { container } = render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    const { container } = render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // Open the Tipo select trigger (first select in the page)
     const typeTrigger = container.querySelector("[data-slot='select-trigger']") as HTMLElement;
     fireEvent.pointerDown(typeTrigger, { button: 0, ctrlKey: false });
@@ -123,7 +123,7 @@ describe("PurchaseList — filter unification (T7.3/T7.4 REQ-C.2)", () => {
   });
 
   it("C.2.2 — NO separate filter item 'Compra General' in the type select", () => {
-    const { container } = render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    const { container } = render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     const typeTrigger = container.querySelector("[data-slot='select-trigger']") as HTMLElement;
     fireEvent.pointerDown(typeTrigger, { button: 0, ctrlKey: false });
     fireEvent.click(typeTrigger);
@@ -132,7 +132,7 @@ describe("PurchaseList — filter unification (T7.3/T7.4 REQ-C.2)", () => {
   });
 
   it("C.2.3 — NO separate filter item 'Servicio' in the type select", () => {
-    const { container } = render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    const { container } = render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     const typeTrigger = container.querySelector("[data-slot='select-trigger']") as HTMLElement;
     fireEvent.pointerDown(typeTrigger, { button: 0, ctrlKey: false });
     fireEvent.click(typeTrigger);
@@ -141,14 +141,14 @@ describe("PurchaseList — filter unification (T7.3/T7.4 REQ-C.2)", () => {
   });
 
   it("C.2.4 — PURCHASE_TYPE_LABEL maps COMPRA_GENERAL to 'Compra / Servicio' in the table", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[BASE_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     // Row type column shows merged label
     const typeCells = screen.getAllByText("Compra / Servicio");
     expect(typeCells.length).toBeGreaterThanOrEqual(1);
   });
 
   it("C.2.5 — PURCHASE_TYPE_LABEL maps SERVICIO to 'Compra / Servicio' in the table (legacy rows)", () => {
-    render(<PurchaseList orgSlug="test-org" purchases={[SERVICIO_PURCHASE as any]} />);
+    render(<PurchaseList orgSlug="test-org" items={[SERVICIO_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
     const typeCells = screen.getAllByText("Compra / Servicio");
     expect(typeCells.length).toBeGreaterThanOrEqual(1);
   });

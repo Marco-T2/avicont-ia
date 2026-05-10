@@ -28,6 +28,14 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
   ShoppingCart,
   Truck,
   Package,
@@ -44,6 +52,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import type { PurchaseWithDetails } from "@/modules/purchase/presentation/dto/purchase-with-details";
+import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
 import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──
@@ -55,6 +64,20 @@ function formatCurrency(amount: number): string {
   })}`;
 }
 
+function buildHref(
+  orgSlug: string,
+  page: number,
+  typeFilter: string | undefined,
+  statusFilter: string | undefined,
+): string {
+  const sp = new URLSearchParams();
+  if (page > 1) sp.set("page", String(page));
+  if (typeFilter) sp.set("purchaseType", typeFilter);
+  if (statusFilter) sp.set("status", statusFilter);
+  const q = sp.toString();
+  return `/${orgSlug}/purchases${q ? `?${q}` : ""}`;
+}
+
 const PURCHASE_TYPE_LABEL: Record<string, string> = {
   FLETE: "Flete",
   POLLO_FAENADO: "Pollo Faenado",
@@ -64,28 +87,42 @@ const PURCHASE_TYPE_LABEL: Record<string, string> = {
 
 // ── Props ──
 
-interface PurchaseListProps {
+type PurchaseListProps = PaginatedResult<PurchaseWithDetails> & {
   orgSlug: string;
-  purchases: PurchaseWithDetails[];
-}
+  typeFilter?: string;
+  statusFilter?: string;
+};
 
-export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) {
+export default function PurchaseList({
+  orgSlug,
+  items,
+  total,
+  page,
+  pageSize,
+  totalPages,
+  typeFilter,
+  statusFilter,
+}: PurchaseListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const currentType = typeFilter ?? "all";
+  const currentStatus = statusFilter ?? "all";
 
-  const filtered = purchases.filter((p) => {
-    if (typeFilter !== "all") {
-      if (typeFilter === "COMPRA_GENERAL_O_SERVICIO") {
-        if (p.purchaseType !== "COMPRA_GENERAL" && p.purchaseType !== "SERVICIO") return false;
-      } else if (p.purchaseType !== typeFilter) {
-        return false;
-      }
-    }
-    if (statusFilter !== "all" && p.status !== statusFilter) return false;
-    return true;
-  });
+  function handleTypeChange(next: string) {
+    const sp = new URLSearchParams();
+    if (next !== "all") sp.set("purchaseType", next);
+    if (statusFilter) sp.set("status", statusFilter);
+    const q = sp.toString();
+    router.push(`/${orgSlug}/purchases${q ? `?${q}` : ""}`);
+  }
+
+  function handleStatusChange(next: string) {
+    const sp = new URLSearchParams();
+    if (typeFilter) sp.set("purchaseType", typeFilter);
+    if (next !== "all") sp.set("status", next);
+    const q = sp.toString();
+    router.push(`/${orgSlug}/purchases${q ? `?${q}` : ""}`);
+  }
 
   async function handlePost(purchaseId: string) {
     if (!window.confirm("¿Contabilizar esta compra? Esta acción generará el asiento contable y la cuenta por pagar.")) return;
@@ -235,7 +272,7 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
               <Label className="text-sm">Tipo</Label>
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
+              <Select value={currentType} onValueChange={handleTypeChange}>
                 <SelectTrigger className="w-48">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -250,7 +287,7 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
 
             <div className="space-y-1">
               <Label className="text-sm">Estado</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <Select value={currentStatus} onValueChange={handleStatusChange}>
                 <SelectTrigger className="w-40">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
@@ -284,20 +321,20 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
                 </tr>
               </thead>
               <tbody>
-                {filtered.length === 0 ? (
+                {items.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay compras registradas</p>
                       <p className="text-sm text-muted-foreground mt-1">
-                        {typeFilter !== "all" || statusFilter !== "all"
+                        {typeFilter || statusFilter
                           ? "Ninguna compra coincide con los filtros aplicados"
                           : "Cree la primera compra para comenzar"}
                       </p>
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((purchase) => {
+                  items.map((purchase) => {
                     const typeName = PURCHASE_TYPE_LABEL[purchase.purchaseType] ?? purchase.purchaseType;
                     const isLoading = actioningId === purchase.id;
 
@@ -397,6 +434,46 @@ export default function PurchaseList({ orgSlug, purchases }: PurchaseListProps) 
           </div>
         </CardContent>
       </Card>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={buildHref(orgSlug, Math.max(1, page - 1), typeFilter, statusFilter)}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                text="Anterior"
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  href={buildHref(orgSlug, p, typeFilter, statusFilter)}
+                  isActive={p === page}
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href={buildHref(orgSlug, Math.min(totalPages, page + 1), typeFilter, statusFilter)}
+                aria-disabled={page >= totalPages}
+                className={page >= totalPages ? "pointer-events-none opacity-50" : undefined}
+                text="Siguiente"
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {total > 0 && (
+        <p className="text-sm text-muted-foreground text-center">
+          Mostrando {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} de {total}
+        </p>
+      )}
     </>
   );
 }

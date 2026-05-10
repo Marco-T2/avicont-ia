@@ -63,13 +63,20 @@ export const updatePurchaseSchema = z.object({
   details: z.array(purchaseDetailSchema).optional(),
 });
 
-export const purchaseFiltersSchema = z.object({
-  purchaseType: z
-    .enum(["FLETE", "POLLO_FAENADO", "COMPRA_GENERAL", "SERVICIO"])
-    .optional(),
-  status: z.enum(["DRAFT", "POSTED", "LOCKED", "VOIDED"]).optional(),
-  contactId: z.string().optional(),
-  periodId: z.string().optional(),
-  dateFrom: z.coerce.date().optional(),
-  dateTo: z.coerce.date().optional(),
-});
+export const purchaseFiltersSchema = z
+  .object({
+    purchaseType: z
+      .enum(["FLETE", "POLLO_FAENADO", "COMPRA_GENERAL", "SERVICIO"])
+      .optional(),
+    purchaseTypeIn: z
+      .array(z.enum(["FLETE", "POLLO_FAENADO", "COMPRA_GENERAL", "SERVICIO"]))
+      .optional(),
+    status: z.enum(["DRAFT", "POSTED", "LOCKED", "VOIDED"]).optional(),
+    contactId: z.string().optional(),
+    periodId: z.string().optional(),
+    dateFrom: z.coerce.date().optional(),
+    dateTo: z.coerce.date().optional(),
+  })
+  .refine((data) => !(data.purchaseType && data.purchaseTypeIn), {
+    message: "purchaseType y purchaseTypeIn son mutuamente exclusivos",
+  });

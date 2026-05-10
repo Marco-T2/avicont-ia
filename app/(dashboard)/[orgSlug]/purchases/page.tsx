@@ -7,14 +7,26 @@ import {
   computeDisplayCode,
   TYPE_PREFIXES,
 } from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
+import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
+import type { PurchaseFilters } from "@/modules/purchase/domain/ports/purchase.repository";
+import type { PurchaseType } from "@/modules/purchase/domain/purchase.entity";
 import PurchaseList from "@/components/purchases/purchase-list";
 
 interface PurchasesPageProps {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
-export default async function PurchasesPage({ params }: PurchasesPageProps) {
+const VALID_PURCHASE_TYPES: PurchaseType[] = [
+  "FLETE",
+  "POLLO_FAENADO",
+  "COMPRA_GENERAL",
+  "SERVICIO",
+];
+
+export default async function PurchasesPage({ params, searchParams }: PurchasesPageProps) {
   const { orgSlug } = await params;
+  const sp = await searchParams;
 
   let orgId: string;
   try {
@@ -24,8 +36,31 @@ export default async function PurchasesPage({ params }: PurchasesPageProps) {
     redirect(`/${orgSlug}`);
   }
 
+  const pagination = paginationQuerySchema.parse({
+    page: sp.page,
+    pageSize: sp.pageSize,
+  });
+  const typeUiParam = typeof sp.purchaseType === "string" ? sp.purchaseType : undefined;
+  const statusFilter = typeof sp.status === "string" ? sp.status : undefined;
+
+  const filtersBuild: PurchaseFilters = {};
+  if (typeUiParam === "COMPRA_GENERAL_O_SERVICIO") {
+    filtersBuild.purchaseTypeIn = ["COMPRA_GENERAL", "SERVICIO"];
+  } else if (
+    typeUiParam &&
+    VALID_PURCHASE_TYPES.includes(typeUiParam as PurchaseType)
+  ) {
+    filtersBuild.purchaseType = typeUiParam as PurchaseType;
+  }
+  if (statusFilter) {
+    filtersBuild.status = statusFilter;
+  }
+  const filters: PurchaseFilters | undefined =
+    Object.keys(filtersBuild).length > 0 ? filtersBuild : undefined;
+
   const purchaseService = makePurchaseService();
-  const purchases = await purchaseService.list(orgId);
+  const result = await purchaseService.listPaginated(orgId, filters, pagination);
+  const purchases = result.items;
 
   const contactIds = [...new Set(purchases.map((p) => p.contactId))];
   const periodIds = [...new Set(purchases.map((p) => p.periodId))];
@@ -78,7 +113,13 @@ export default async function PurchasesPage({ params }: PurchasesPageProps) {
 
       <PurchaseList
         orgSlug={orgSlug}
-        purchases={JSON.parse(JSON.stringify(purchasesWithDetails))}
+        items={JSON.parse(JSON.stringify(purchasesWithDetails))}
+        total={result.total}
+        page={result.page}
+        pageSize={result.pageSize}
+        totalPages={result.totalPages}
+        typeFilter={typeUiParam}
+        statusFilter={statusFilter}
       />
     </div>
   );

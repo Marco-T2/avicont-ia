@@ -1,5 +1,9 @@
 import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import type { ContactRepository } from "@/modules/contacts/domain/contact.repository";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
@@ -111,6 +115,14 @@ export class PurchaseService {
     filters?: PurchaseFilters,
   ): Promise<Purchase[]> {
     return this.deps.repo.findAll(organizationId, filters);
+  }
+
+  async listPaginated(
+    organizationId: string,
+    filters?: PurchaseFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Purchase>> {
+    return this.deps.repo.findPaginated(organizationId, filters, pagination);
   }
 
   async getById(organizationId: string, id: string): Promise<Purchase> {

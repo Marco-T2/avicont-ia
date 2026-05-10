@@ -4,6 +4,7 @@ import {
   createPurchaseSchema,
   purchaseFiltersSchema,
 } from "@/modules/purchase/presentation/schemas/purchase.schemas";
+import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 import { UsersService } from "@/features/users/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 
@@ -19,18 +20,21 @@ export async function GET(
     const { orgId } = await requirePermission("purchases", "read", orgSlug);
 
     const { searchParams } = new URL(request.url);
+    const purchaseTypeInRaw = searchParams.get("purchaseTypeIn");
     const filters = purchaseFiltersSchema.parse({
       purchaseType: searchParams.get("purchaseType") ?? undefined,
+      purchaseTypeIn: purchaseTypeInRaw ? purchaseTypeInRaw.split(",") : undefined,
       status: searchParams.get("status") ?? undefined,
       contactId: searchParams.get("contactId") ?? undefined,
       dateFrom: searchParams.get("dateFrom") ?? undefined,
       dateTo: searchParams.get("dateTo") ?? undefined,
       periodId: searchParams.get("periodId") ?? undefined,
     });
+    const pagination = parsePaginationParams(searchParams);
 
-    const purchases = await purchaseService.list(orgId, filters);
+    const result = await purchaseService.listPaginated(orgId, filters, pagination);
 
-    return Response.json(purchases);
+    return Response.json(result);
   } catch (error) {
     return handleError(error);
   }
