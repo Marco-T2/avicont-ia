@@ -1,8 +1,4 @@
-export interface LotSnapshot {
-  id: string;
-  initialCount: number;
-}
-
-export interface LotInquiryPort {
-  findById(organizationId: string, lotId: string): Promise<LotSnapshot | null>;
-}
+export type {
+  LotInquiryPort,
+  LotSnapshot,
+} from "@/modules/lot/domain/ports/lot-inquiry.port";

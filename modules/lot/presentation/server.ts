@@ -4,6 +4,7 @@ export {
   makeLotService,
   makeLotRepository,
   PrismaLotRepository,
+  LocalLotInquiryAdapter,
 } from "./composition-root";
 
 export { createLotSchema, closeLotSchema } from "./validation";
@@ -11,7 +12,6 @@ export { createLotSchema, closeLotSchema } from "./validation";
 export { Lot } from "../domain/lot.entity";
 export type {
   LotProps,
-  LotSnapshot,
   CreateLotInput,
   CloseLotInput,
 } from "../domain/lot.entity";
@@ -31,6 +31,10 @@ export {
   LotService,
   type CreateLotServiceInput,
 } from "../application/lot.service";
+export type {
+  LotInquiryPort,
+  LotSnapshot,
+} from "../domain/ports/lot-inquiry.port";
 export {
   InvalidLotStatus,
   InvalidLotStatusTransition,

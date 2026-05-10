@@ -2,8 +2,10 @@ import "server-only";
 import { FarmService } from "../application/farm.service";
 import { PrismaFarmRepository } from "../infrastructure/prisma-farm.repository";
 import { LocalMemberInquiryAdapter } from "../infrastructure/local-member-inquiry.adapter";
+import { LocalFarmInquiryAdapter } from "../infrastructure/local-farm-inquiry.adapter";
 
 export { PrismaFarmRepository };
+export { LocalFarmInquiryAdapter };
 
 export function makeFarmService(): FarmService {
   return new FarmService(

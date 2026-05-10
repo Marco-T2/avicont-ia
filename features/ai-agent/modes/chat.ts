@@ -11,8 +11,8 @@ import type { Role } from "@/features/permissions";
 import type { AgentResponse, AgentSuggestion } from "../agent.types";
 import type { InvocationOutcome } from "../agent.utils";
 import type { ChatMemoryRepository } from "../memory.repository";
-import type { FarmsService } from "@/features/farms/server";
-import type { LotsService } from "@/features/lots/server";
+import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
+import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 import type { PricingService } from "@/features/pricing/server";
 
 type AgentLabel = "socio" | "contador" | "admin";
@@ -27,8 +27,8 @@ const AGENT_ROLE_LABELS: Record<Role, AgentLabel> = {
 
 export interface ChatModeDeps {
   memoryRepo: ChatMemoryRepository;
-  farmsService: FarmsService;
-  lotsService: LotsService;
+  farmInquiry: FarmInquiryPort;
+  lotInquiry: LotInquiryPort;
   pricingService: PricingService;
 }
 
@@ -48,7 +48,7 @@ export async function executeChatMode(
   deps: ChatModeDeps,
   args: ChatModeArgs,
 ): Promise<AgentResponse> {
-  const { memoryRepo, farmsService, lotsService, pricingService } = deps;
+  const { memoryRepo, farmInquiry, lotInquiry, pricingService } = deps;
   const { orgId, userId, role, prompt, sessionId } = args;
   const startedAt = performance.now();
 
@@ -138,7 +138,7 @@ export async function executeChatMode(
       }
 
       const exec = await handleReadCall(
-        { farmsService, lotsService, pricingService },
+        { farmInquiry, lotInquiry, pricingService },
         orgId,
         role,
         call,
@@ -292,8 +292,8 @@ async function handleWriteCall(
 }
 
 interface ReadCallDeps {
-  farmsService: FarmsService;
-  lotsService: LotsService;
+  farmInquiry: FarmInquiryPort;
+  lotInquiry: LotInquiryPort;
   pricingService: PricingService;
 }
 
@@ -304,7 +304,7 @@ async function handleReadCall(
   call: ToolCall,
   text: string,
 ): Promise<{ response: AgentResponse; outcome: InvocationOutcome }> {
-  const { farmsService, lotsService, pricingService } = deps;
+  const { farmInquiry, lotInquiry, pricingService } = deps;
   const validation = validateToolInput(call);
   if (!validation.ok) {
     return { response: validation.response, outcome: "validation_failed" };
@@ -316,10 +316,12 @@ async function handleReadCall(
 
     switch (call.name) {
       case "listFarms":
-        data = await farmsService.list(orgId);
+        data = await farmInquiry.list(orgId);
         break;
       case "listLots":
-        data = await lotsService.listByFarm(orgId, args.farmId as string);
+        data = await lotInquiry.list(orgId, {
+          farmId: args.farmId as string,
+        });
         break;
       case "getLotSummary":
         data = await pricingService.calculateLotCost(

@@ -1,7 +1,15 @@
 import "server-only";
 import { ChatMemoryRepository } from "./memory.repository";
-import { FarmsService } from "@/features/farms/server";
-import { LotsService } from "@/features/lots/server";
+import {
+  LocalFarmInquiryAdapter,
+  makeFarmService,
+  type FarmInquiryPort,
+} from "@/modules/farm/presentation/server";
+import {
+  LocalLotInquiryAdapter,
+  makeLotService,
+  type LotInquiryPort,
+} from "@/modules/lot/presentation/server";
 import { PricingService } from "@/features/pricing/server";
 import { normalizeRole } from "./agent.utils";
 import type { AgentMode } from "./agent.validation";
@@ -30,8 +38,12 @@ import type {
  */
 export class AgentService {
   private readonly memoryRepo = new ChatMemoryRepository();
-  private readonly farmsService = new FarmsService();
-  private readonly lotsService = new LotsService();
+  private readonly farmInquiry: FarmInquiryPort = new LocalFarmInquiryAdapter(
+    makeFarmService(),
+  );
+  private readonly lotInquiry: LotInquiryPort = new LocalLotInquiryAdapter(
+    makeLotService(),
+  );
   private readonly pricingService = new PricingService();
 
   async query(
@@ -58,8 +70,8 @@ export class AgentService {
     return executeChatMode(
       {
         memoryRepo: this.memoryRepo,
-        farmsService: this.farmsService,
-        lotsService: this.lotsService,
+        farmInquiry: this.farmInquiry,
+        lotInquiry: this.lotInquiry,
         pricingService: this.pricingService,
       },
       {

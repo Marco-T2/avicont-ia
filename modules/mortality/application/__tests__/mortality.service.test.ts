@@ -14,6 +14,7 @@ const fakeRepo = (overrides: Partial<MortalityRepository> = {}): MortalityReposi
 });
 
 const fakeLots = (initialCount = 100): LotInquiryPort => ({
+  list: vi.fn().mockResolvedValue([]),
   findById: vi.fn().mockResolvedValue({ id: "lot-1", initialCount }),
 });
 
@@ -36,7 +37,10 @@ describe("MortalityService.log", () => {
   });
 
   it("throws NotFoundError when lot does not exist", async () => {
-    const lots: LotInquiryPort = { findById: vi.fn().mockResolvedValue(null) };
+    const lots: LotInquiryPort = {
+      list: vi.fn().mockResolvedValue([]),
+      findById: vi.fn().mockResolvedValue(null),
+    };
     const service = new MortalityService(fakeRepo(), lots);
 
     await expect(service.log("org-1", baseInput)).rejects.toThrow(NotFoundError);

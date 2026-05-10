@@ -36,10 +36,10 @@ describe("C0 domain shape — Lot module (existence-only regex)", () => {
     expect(src).toMatch(/^export (interface|type) LotRepository\b/m);
   });
 
-  // α16
-  it("LotExistencePort + LotSnapshot types are exported from domain/ports/lot-existence.port.ts (mortality C6 reuse)", () => {
-    const src = readLotFile("domain/ports/lot-existence.port.ts");
-    expect(src).toMatch(/^export (interface|type) LotExistencePort\b/m);
+  // α16 — post-C6 D5 CONSOLIDATE: lot-existence.port.ts → lot-inquiry.port.ts canonical home
+  it("LotInquiryPort + LotSnapshot types are exported from domain/ports/lot-inquiry.port.ts (D5 canonical home post-C6 consolidate paired sister contacts EXACT mirror precedent)", () => {
+    const src = readLotFile("domain/ports/lot-inquiry.port.ts");
+    expect(src).toMatch(/^export (interface|type) LotInquiryPort\b/m);
     expect(src).toMatch(/^export (interface|type) LotSnapshot\b/m);
   });
 

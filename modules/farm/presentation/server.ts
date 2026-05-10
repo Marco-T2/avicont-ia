@@ -1,11 +1,12 @@
 import "server-only";
 import type { ChickenLot } from "@/generated/prisma/client";
-import type { FarmSnapshot } from "../domain/farm.entity";
+import type { FarmSnapshot } from "../domain/ports/farm-inquiry.port";
 
 export {
   makeFarmService,
   makeFarmRepository,
   PrismaFarmRepository,
+  LocalFarmInquiryAdapter,
 } from "./composition-root";
 
 export { createFarmSchema, updateFarmSchema } from "./validation";
@@ -13,12 +14,15 @@ export { createFarmSchema, updateFarmSchema } from "./validation";
 export { Farm } from "../domain/farm.entity";
 export type {
   FarmProps,
-  FarmSnapshot,
   CreateFarmInput,
   UpdateFarmInput,
 } from "../domain/farm.entity";
 export type { FarmRepository, FarmFilters } from "../domain/farm.repository";
 export type { MemberInquiryPort } from "../domain/ports/member-inquiry.port";
+export type {
+  FarmInquiryPort,
+  FarmSnapshot,
+} from "../domain/ports/farm-inquiry.port";
 export {
   FarmService,
   type CreateFarmServiceInput,

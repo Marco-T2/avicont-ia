@@ -48,16 +48,20 @@ vi.mock("../agent.context", () => ({
   buildRagContext: vi.fn().mockResolvedValue(""),
 }));
 
-vi.mock("@/features/farms/server", () => ({
-  FarmsService: class {
+vi.mock("@/modules/farm/presentation/server", () => ({
+  LocalFarmInquiryAdapter: class {
     list = vi.fn().mockResolvedValue([]);
+    findById = vi.fn().mockResolvedValue(null);
   },
+  makeFarmService: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock("@/features/lots/server", () => ({
-  LotsService: class {
-    listByFarm = vi.fn().mockResolvedValue([]);
+vi.mock("@/modules/lot/presentation/server", () => ({
+  LocalLotInquiryAdapter: class {
+    list = vi.fn().mockResolvedValue([]);
+    findById = vi.fn().mockResolvedValue(null);
   },
+  makeLotService: vi.fn().mockReturnValue({}),
 }));
 
 vi.mock("@/features/pricing/server", () => ({

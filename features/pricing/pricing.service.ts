@@ -1,5 +1,10 @@
 import "server-only";
-import { LotsService } from "@/features/lots/server";
+import { NotFoundError } from "@/features/shared/errors";
+import {
+  LocalLotInquiryAdapter,
+  makeLotService,
+  type LotInquiryPort,
+} from "@/modules/lot/presentation/server";
 import { ExpensesService } from "@/features/expenses/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import type { LotPricingResult } from "./pricing.types";
@@ -7,16 +12,17 @@ import type { LotPricingResult } from "./pricing.types";
 type MortalityServiceImpl = ReturnType<typeof makeMortalityService>;
 
 export class PricingService {
-  private readonly lotsService: LotsService;
+  private readonly lotInquiry: LotInquiryPort;
   private readonly expensesService: ExpensesService;
   private readonly mortalityService: MortalityServiceImpl;
 
   constructor(
-    lotsService?: LotsService,
+    lotInquiry?: LotInquiryPort,
     expensesService?: ExpensesService,
     mortalityService?: MortalityServiceImpl,
   ) {
-    this.lotsService = lotsService ?? new LotsService();
+    this.lotInquiry =
+      lotInquiry ?? new LocalLotInquiryAdapter(makeLotService());
     this.expensesService = expensesService ?? new ExpensesService();
     this.mortalityService = mortalityService ?? makeMortalityService();
   }
@@ -27,7 +33,8 @@ export class PricingService {
     organizationId: string,
     lotId: string,
   ): Promise<LotPricingResult> {
-    const lot = await this.lotsService.getById(organizationId, lotId);
+    const lot = await this.lotInquiry.findById(organizationId, lotId);
+    if (!lot) throw new NotFoundError("Lote");
 
     const [totalExpenses, totalMortality] = await Promise.all([
       this.expensesService.getTotalByLot(organizationId, lotId),
