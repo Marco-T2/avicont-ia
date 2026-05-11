@@ -6,10 +6,19 @@ import type { JournalEntryAiContextHints } from "./journal-entry-ai.prompt";
 
 // ── Types del payload del cliente ─────────────────────────────────────────
 
+// Chat-mode contextHints — granjos lot/farm awareness page → modal → backend.
+// Discriminated union per-mode (chat vs journal-entry-ai) — shape distinct axis.
+export interface ChatContextHints {
+  lotId?: string;
+  farmId?: string;
+  lotName?: string;
+  farmName?: string;
+}
+
 export interface AgentQueryParams {
   prompt: string;
   mode?: "chat" | "journal-entry-ai";
-  contextHints?: JournalEntryAiContextHints;
+  contextHints?: JournalEntryAiContextHints | ChatContextHints;
   /** session_id se omite en mode='journal-entry-ai' (stateless por diseño v1) */
   sessionId?: string;
 }

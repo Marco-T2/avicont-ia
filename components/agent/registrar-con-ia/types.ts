@@ -8,6 +8,8 @@ export type Message =
 export type ContextHints = {
   lotId?: string;
   farmId?: string;
+  lotName?: string;
+  farmName?: string;
 };
 
 export type ModalStatus = "idle" | "thinking" | "confirming" | "done" | "error";
