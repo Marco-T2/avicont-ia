@@ -15,10 +15,12 @@ describe("C0 domain shape — Expense module (existence-only regex)", () => {
     expect(src).toMatch(/^export class Expense\b/m);
   });
 
-  // α2 — paired sister Lot α13 REDUCED (Opt B re-export Prisma enum, NO VO scope creep — no functions/const)
-  it("ExpenseCategory type is re-exported from domain/expense.entity.ts (Opt B Prisma re-export paired sister mortality precedent)", () => {
-    const src = readExpenseFile("domain/expense.entity.ts");
-    expect(src).toMatch(/^export type \{ ExpenseCategory \}/m);
+  // α2 — paired sister Lot α13 LOT_STATUSES EXACT mirror REDUCED (no parseExpenseCategory + no canTransition — no state transition semantics)
+  // Hotfix evidence-supersedes-assumption-lock 54ma: D2 Opt B re-export Prisma enum SUPERSEDED por R5 absoluta domain ZERO Prisma imports (verificado textual modules/{lot,mortality,farm}/domain/ ZERO hits)
+  it("EXPENSE_CATEGORIES const + ExpenseCategory type are exported from domain/value-objects/expense-category.ts (paired sister Lot LOT_STATUSES const array + type pattern EXACT mirror — R5 absoluta domain ZERO Prisma imports)", () => {
+    const src = readExpenseFile("domain/value-objects/expense-category.ts");
+    expect(src).toMatch(/^export const EXPENSE_CATEGORIES\b/m);
+    expect(src).toMatch(/^export type ExpenseCategory\b/m);
   });
 
   // α3 — paired sister Lot α15 EXACT mirror
