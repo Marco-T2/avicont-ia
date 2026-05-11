@@ -31,7 +31,7 @@
 | `modules/org-profile` | HEX ✅ | 54 | 10 | POC org-profile hex closed — config-entity + BlobStoragePort NEW |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy — hex migration candidates (5)
+## Features legacy — hex migration candidates (4)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
@@ -39,10 +39,9 @@
 | `features/dispatch` | 2,199 | 5 | 15 | 3 — domain aggregate |
 | `features/organizations` | 1,643 | 13 | 49 | 4 |
 | `features/audit` | 833 | 7 | 15 | 4 |
-| `features/reports` | 330 | 2 | 4 | 4 |
 | `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting |
 
-## Features — cross-cutting infrastructure (NOT hex target) (8)
+## Features — cross-cutting infrastructure (NOT hex target) (9)
 
 > Reclasificación 2026-05-11 post recon profundo ai-agent. Estas features son infraestructura transversal, orquestación, o integración — sin domain aggregates. Hex 4-layer no aporta valor.
 
@@ -54,14 +53,15 @@
 | `features/documents` | 422 | 1 | 5 | Integración file mgmt + rag |
 | `features/rag` | 193 | 0 | 2 | Infraestructura pgvector + embeddings |
 | `features/pricing` | 70 | 0 | 2 | Cálculo puro — satellite ai-agent |
+| `features/reports` | 330 | 2 | 4 | Static catalog — readonly const arrays, zero service/DB/domain |
 | `features/users` | 82 | 0 | 19 | Identity resolution — 19/22 consumers use resolveByClerkId auth plumbing |
 | `features/auth` | 57 | 1 | 1 | Auth wrapper thin |
 
 ## Métricas clave
 
 - **Total hex cementados**: 22/22 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Hex candidates pending**: 5 features ≈ **17,678 LOC** (domain aggregate shapes + 1 deferred shim)
-- **Cross-cutting infrastructure (NOT hex)**: 8 features ≈ **5,715 LOC** (reclasificación 2026-05-11)
+- **Hex candidates pending**: 4 features ≈ **17,348 LOC** (domain aggregate shapes + 1 deferred shim)
+- **Cross-cutting infrastructure (NOT hex)**: 9 features ≈ **6,045 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 
 ## Híbridos detectados (8 módulos hex importan legacy)
