@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ExpenseService } from "../expense.service";
 import { Expense } from "../../domain/expense.entity";
-import type { ExpensesRepository } from "../../domain/expense.repository";
+import type {
+  ExpensesRepository,
+  ExpenseTotalByCategory,
+} from "../../domain/expense.repository";
 import { ExpenseNotFoundError } from "../../domain/errors/expense-errors";
 import type { ExpenseCategory } from "../../domain/value-objects/expense-category";
 
@@ -38,6 +41,27 @@ class InMemoryExpensesRepository implements ExpensesRepository {
     if (e && e.organizationId === orgId) {
       this.store.delete(id);
     }
+  }
+
+  async sumByLot(orgId: string, lotId: string): Promise<number> {
+    return [...this.store.values()]
+      .filter((e) => e.organizationId === orgId && e.lotId === lotId)
+      .reduce((sum, e) => sum + e.amount, 0);
+  }
+
+  async totalsByCategory(
+    orgId: string,
+    lotId: string,
+  ): Promise<ExpenseTotalByCategory[]> {
+    const map = new Map<ExpenseCategory, number>();
+    for (const e of this.store.values()) {
+      if (e.organizationId !== orgId || e.lotId !== lotId) continue;
+      map.set(e.category, (map.get(e.category) ?? 0) + e.amount);
+    }
+    return [...map.entries()].map(([category, total]) => ({
+      category,
+      total,
+    }));
   }
 }
 
@@ -155,6 +179,48 @@ describe("ExpenseService", () => {
       await expect(svc.delete(ORG, "missing")).rejects.toThrow(
         ExpenseNotFoundError,
       );
+    });
+  });
+
+  describe("getTotalByLot", () => {
+    // α18
+    it("returns sum of expense amounts for lot within org", async () => {
+      await svc.create(ORG, baseInput({ amount: 300 }));
+      await svc.create(ORG, baseInput({ amount: 200 }));
+      const total = await svc.getTotalByLot(ORG, LOT);
+      expect(total).toBe(500);
+    });
+
+    // α19
+    it("returns 0 when no expenses for lot", async () => {
+      const total = await svc.getTotalByLot(ORG, LOT);
+      expect(total).toBe(0);
+    });
+  });
+
+  describe("getTotalsByCategory", () => {
+    // α20
+    it("returns totals grouped by category for lot", async () => {
+      await svc.create(
+        ORG,
+        baseInput({ amount: 300, category: "ALIMENTO" as ExpenseCategory }),
+      );
+      await svc.create(
+        ORG,
+        baseInput({ amount: 200, category: "AGUA" as ExpenseCategory }),
+      );
+      const totals = await svc.getTotalsByCategory(ORG, LOT);
+      expect(totals).toHaveLength(2);
+      const alimento = totals.find((t) => t.category === "ALIMENTO");
+      const agua = totals.find((t) => t.category === "AGUA");
+      expect(alimento?.total).toBe(300);
+      expect(agua?.total).toBe(200);
+    });
+
+    // α21
+    it("returns empty when no expenses for lot", async () => {
+      const totals = await svc.getTotalsByCategory(ORG, LOT);
+      expect(totals).toEqual([]);
     });
   });
 });
