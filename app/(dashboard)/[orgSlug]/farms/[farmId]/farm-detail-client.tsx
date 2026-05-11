@@ -17,8 +17,12 @@ import { MapPin, ArrowLeft, Egg, DollarSign, Skull } from "lucide-react";
 import Link from "next/link";
 import CreateLotDialog from "@/components/lots/create-lot-dialog";
 import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
+import CreateExpenseForm from "@/components/expenses/create-expense-form";
+import LogMortalityForm from "@/components/mortality/log-mortality-form";
 import type { FarmSnapshot } from "@/modules/farm/presentation/server";
 import type { LotSnapshot, LotSummaryShape } from "@/modules/lot/presentation/server";
+import type { ExpenseWithRelations } from "@/features/expenses";
+import type { Mortality } from "@/modules/mortality/presentation/server";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   ACTIVE: {
@@ -38,6 +42,54 @@ const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   },
 };
 
+const CATEGORY_CONFIG: Record<string, { label: string; className: string }> = {
+  ALIMENTO: {
+    label: "Alimento",
+    className:
+      "bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200",
+  },
+  CHALA: {
+    label: "Chala",
+    className:
+      "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200",
+  },
+  AGUA: {
+    label: "Agua",
+    className:
+      "bg-cyan-100 dark:bg-cyan-900/30 text-cyan-800 dark:text-cyan-200",
+  },
+  GARRAFAS: {
+    label: "Garrafas",
+    className:
+      "bg-orange-100 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200",
+  },
+  MANTENIMIENTO: {
+    label: "Mantenimiento",
+    className:
+      "bg-slate-100 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200",
+  },
+  GALPONERO: {
+    label: "Galponero",
+    className:
+      "bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200",
+  },
+  MEDICAMENTOS: {
+    label: "Medicamentos",
+    className:
+      "bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200",
+  },
+  VETERINARIO: {
+    label: "Veterinario",
+    className:
+      "bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-200",
+  },
+  OTROS: {
+    label: "Otros",
+    className:
+      "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
+  },
+};
+
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
     minimumFractionDigits: 2,
@@ -45,10 +97,26 @@ function formatCurrency(amount: number): string {
   })}`;
 }
 
+function formatDate(date: Date | string): string {
+  return new Date(date).toLocaleDateString("es-BO", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
+type ExpenseClient = Omit<ExpenseWithRelations, "amount"> & { amount: number };
+type MortalityClient = ReturnType<Mortality["toJSON"]>;
+
 interface FarmDetailClientProps {
   orgSlug: string;
   farm: FarmSnapshot;
-  lots: Array<{ lot: LotSnapshot; summary: LotSummaryShape }>;
+  lots: Array<{
+    lot: LotSnapshot;
+    summary: LotSummaryShape;
+    recentExpenses: ExpenseClient[];
+    recentMortality: MortalityClient[];
+  }>;
   farmMetrics: { pollosTotales: number; gastoMes: number; mortalidadMes: number };
 }
 
@@ -156,7 +224,7 @@ export default function FarmDetailClient({
             Lotes ({lots.length})
           </h2>
           <Accordion type="single" collapsible className="w-full">
-            {lots.map(({ lot, summary }) => {
+            {lots.map(({ lot, summary, recentExpenses, recentMortality }) => {
               const status = STATUS_CONFIG[lot.status] ?? {
                 label: lot.status,
                 className:
@@ -201,10 +269,133 @@ export default function FarmDetailClient({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
-                    {/* C1 expanded scope: 10 expenses + 5 mortality + 3 botones (AI + manual gasto + manual mortalidad) — placeholder pre-C1 */}
-                    <p className="text-sm text-muted-foreground py-2">
-                      Detalles ampliados próximamente (C1 expand).
-                    </p>
+                    <div className="space-y-4 pt-2">
+                      {/* 3 botones cluster — AI + manual gasto + manual mortalidad scoped per-lot */}
+                      <div className="flex flex-wrap gap-2">
+                        <RegistrarConIABoton
+                          orgSlug={orgSlug}
+                          contextHints={{
+                            lotId: lot.id,
+                            lotName: lot.name,
+                            farmId: lot.farmId ?? farm.id,
+                          }}
+                        />
+                        {lot.status === "ACTIVE" && (
+                          <>
+                            <CreateExpenseForm
+                              orgSlug={orgSlug}
+                              lotId={lot.id}
+                              onCreated={() => router.refresh()}
+                            />
+                            <LogMortalityForm
+                              orgSlug={orgSlug}
+                              lotId={lot.id}
+                              aliveCount={summary.aliveCount}
+                              onCreated={() => router.refresh()}
+                            />
+                          </>
+                        )}
+                      </div>
+
+                      {/* Gastos recientes — 10 max desc by date (server-sliced) */}
+                      <div>
+                        <h4 className="font-semibold mb-2 text-sm sm:text-base">
+                          Gastos recientes
+                        </h4>
+                        {recentExpenses.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Sin gastos registrados.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {recentExpenses.map((expense) => {
+                              const cat = CATEGORY_CONFIG[expense.category] ?? {
+                                label: expense.category,
+                                className:
+                                  "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
+                              };
+                              return (
+                                <Card key={expense.id}>
+                                  <CardContent className="py-3">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <Badge className={cat.className}>
+                                          {cat.label}
+                                        </Badge>
+                                        <div className="min-w-0">
+                                          <p className="font-medium text-sm">
+                                            {formatCurrency(Number(expense.amount))}
+                                          </p>
+                                          {expense.description && (
+                                            <p className="text-xs text-muted-foreground truncate">
+                                              {expense.description}
+                                            </p>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground shrink-0">
+                                        {formatDate(expense.date)}
+                                      </p>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Mortalidad reciente — 5 max desc by date (server-sliced) */}
+                      <div>
+                        <h4 className="font-semibold mb-2 text-sm sm:text-base">
+                          Mortalidad reciente
+                        </h4>
+                        {recentMortality.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">
+                            Sin mortalidad registrada.
+                          </p>
+                        ) : (
+                          <div className="space-y-2">
+                            {recentMortality.map((m) => (
+                              <Card key={m.id}>
+                                <CardContent className="py-3">
+                                  <div className="flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <Badge variant="destructive">
+                                        -{m.count}
+                                      </Badge>
+                                      <div className="min-w-0">
+                                        {m.cause ? (
+                                          <p className="font-medium text-sm truncate">
+                                            {m.cause}
+                                          </p>
+                                        ) : (
+                                          <p className="text-xs text-muted-foreground italic">
+                                            Sin causa
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground shrink-0">
+                                      {formatDate(m.date)}
+                                    </p>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Ver más — preserved /lots/[lotId] route deep-link (D-POC-1-NEW-LOTS-ROUTE-PRESERVATION sinergia) */}
+                      <div className="pt-1">
+                        <Link href={`/${orgSlug}/lots/${lot.id}`}>
+                          <Button variant="outline" size="sm" className="w-full">
+                            Ver más detalles →
+                          </Button>
+                        </Link>
+                      </div>
+                    </div>
                   </AccordionContent>
                 </AccordionItem>
               );

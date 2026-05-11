@@ -46,7 +46,7 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
   const lotEntities = await lotsService.listByFarm(orgId, farmId);
   const lotSnapshots = lotEntities.map((l) => l.toSnapshot());
 
-  const [lotsWithSummary, allExpenses, allMortality] = await Promise.all([
+  const [lotsWithSummaryRaw, allExpenses, allMortality] = await Promise.all([
     Promise.all(
       lotSnapshots.map(async (lot) => {
         const { summary } = await lotsService.getSummary(orgId, lot.id);
@@ -60,6 +60,23 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
       lotSnapshots.map((l) => mortalityService.listByLot(orgId, l.id)),
     ),
   ]);
+
+  // C1 server-slice per-lot recent N (sort desc by date + slice top N) — granjero expand AccordionContent
+  const lotsWithSummary = lotsWithSummaryRaw.map((entry, i) => {
+    const recentExpenses = [...allExpenses[i]]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 10)
+      .map((e) => ({ ...e, amount: Number(e.amount) }));
+    const recentMortality = allMortality[i]
+      .map((m) => m.toJSON())
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 5);
+    return {
+      ...entry,
+      recentExpenses,
+      recentMortality,
+    };
+  });
 
   // farmMetrics aggregation — current-month scoping (granjero operativo mes corriente)
   const now = new Date();
