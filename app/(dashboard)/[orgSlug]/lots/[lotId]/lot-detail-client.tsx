@@ -18,6 +18,7 @@ import {
 import Link from "next/link";
 import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
+import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
 import type { LotSnapshot, LotSummary, LotSummaryShape } from "@/modules/lot/presentation/server";
 import type { ExpenseWithRelations } from "@/features/expenses";
 import type { Mortality } from "@/modules/mortality/presentation/server";
@@ -161,6 +162,14 @@ export default function LotDetailClient({
               {lot.endDate && ` &middot; Cierre: ${formatDate(lot.endDate)}`}
             </p>
           </div>
+          <RegistrarConIABoton
+            orgSlug={orgSlug}
+            contextHints={{
+              lotId: lot.id,
+              lotName: lot.name,
+              farmId: lot.farmId,
+            }}
+          />
         </div>
       </div>
 

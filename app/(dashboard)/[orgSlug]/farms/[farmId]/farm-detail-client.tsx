@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { MapPin, ArrowLeft, ArrowRight, Egg } from "lucide-react";
 import Link from "next/link";
 import CreateLotDialog from "@/components/lots/create-lot-dialog";
+import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
 import type { FarmSnapshot } from "@/modules/farm/presentation/server";
 import type { LotSnapshot } from "@/modules/lot/presentation/server";
 
@@ -65,11 +66,20 @@ export default function FarmDetailClient({
               </p>
             )}
           </div>
-          <CreateLotDialog
-            orgSlug={orgSlug}
-            farmId={farm.id}
-            onCreated={() => router.refresh()}
-          />
+          <div className="flex gap-2">
+            <RegistrarConIABoton
+              orgSlug={orgSlug}
+              contextHints={{
+                farmId: farm.id,
+                farmName: farm.name,
+              }}
+            />
+            <CreateLotDialog
+              orgSlug={orgSlug}
+              farmId={farm.id}
+              onCreated={() => router.refresh()}
+            />
+          </div>
         </div>
       </div>
 
