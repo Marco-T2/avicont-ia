@@ -2,9 +2,9 @@
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
-> **Total LOC pending migration**: ~24,008 LOC across 17 features legacy (post POC operational-doc-type hex closure).
+> **Total LOC pending migration**: ~23,789 LOC across 16 features legacy (post POC product-type hex closure).
 
-## Módulos hex cementados (19/19)
+## Módulos hex cementados (20/20)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
@@ -20,6 +20,7 @@
 | `modules/mortality` | HEX ✅ | 4 | 6 | ⚠️ usa `features/shared` — primer POC histórico |
 | `modules/operational-doc-type` | HEX ✅ | 51 | 7 | POC operational-doc-type hex closed — oleada 1 quick win |
 | `modules/org-settings` | HEX ✅ | 9 | 3 | - |
+| `modules/product-type` | HEX ✅ | 57 | 9 | POC product-type hex closed — oleada 1 quick win |
 | `modules/payables` | HEX ✅ | 10 | 8 | ⚠️ usa `features/shared` |
 | `modules/payment` | HEX ✅ | 17 | 11 | POC #8 closed |
 | `modules/purchase` | HEX ✅ | 26 | 19 | ⚠️ usa accounting + permissions |
@@ -28,7 +29,7 @@
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy — hex migration candidates (10)
+## Features legacy — hex migration candidates (8)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
@@ -38,7 +39,6 @@
 | `features/audit` | 833 | 7 | 15 | 4 |
 | `features/reports` | 330 | 2 | 4 | 4 |
 | `features/document-signature-config` | 222 | 3 | 5 | 1 — quick win |
-| `features/product-types` | 219 | 0 | 9 | 1 — quick win |
 | `features/org-profile` | 174 | 3 | 10 | 3 |
 | `features/account-balances` | 150 | 0 | 2 | 1 — quick win |
 | `features/users` | 82 | 0 | 19 | 3 |
@@ -59,8 +59,8 @@
 
 ## Métricas clave
 
-- **Total hex cementados**: 19/19 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Hex candidates pending**: 10 features ≈ **18,375 LOC** (domain aggregate shapes)
+- **Total hex cementados**: 20/20 módulos completos (4 capas: domain + application + infrastructure + presentation)
+- **Hex candidates pending**: 8 features ≈ **18,156 LOC** (domain aggregate shapes)
 - **Cross-cutting infrastructure (NOT hex)**: 7 features ≈ **5,633 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 
