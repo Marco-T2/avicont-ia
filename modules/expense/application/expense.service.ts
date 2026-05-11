@@ -2,7 +2,10 @@ import {
   Expense,
   type CreateExpenseInput,
 } from "../domain/expense.entity";
-import type { ExpensesRepository } from "../domain/expense.repository";
+import type {
+  ExpensesRepository,
+  ExpenseTotalByCategory,
+} from "../domain/expense.repository";
 import { ExpenseNotFoundError } from "../domain/errors/expense-errors";
 
 export type CreateExpenseServiceInput = Omit<CreateExpenseInput, "organizationId">;
@@ -36,5 +39,16 @@ export class ExpenseService {
   async delete(organizationId: string, id: string): Promise<void> {
     await this.getById(organizationId, id);
     await this.repo.delete(organizationId, id);
+  }
+
+  async getTotalByLot(organizationId: string, lotId: string): Promise<number> {
+    return this.repo.sumByLot(organizationId, lotId);
+  }
+
+  async getTotalsByCategory(
+    organizationId: string,
+    lotId: string,
+  ): Promise<ExpenseTotalByCategory[]> {
+    return this.repo.totalsByCategory(organizationId, lotId);
   }
 }
