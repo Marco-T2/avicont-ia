@@ -80,6 +80,7 @@ export class AgentService {
         role: normalizedRole,
         prompt,
         sessionId,
+        contextHints,
       },
     );
   }

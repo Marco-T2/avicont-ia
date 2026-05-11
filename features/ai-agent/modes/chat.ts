@@ -38,6 +38,29 @@ export interface ChatModeArgs {
   role: Role;
   prompt: string;
   sessionId?: string;
+  contextHints?: unknown;
+}
+
+interface ChatContextHintsResolved {
+  lotId?: string;
+  farmId?: string;
+  lotName?: string;
+  farmName?: string;
+}
+
+// Coerce defensivo paired sister journal-entry-ai.prompt.ts:190 EXACT mirror — frontend
+// input degradación graceful si shape no matchea.
+function coerceChatContextHints(
+  input: unknown,
+): ChatContextHintsResolved | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const obj = input as Record<string, unknown>;
+  const result: ChatContextHintsResolved = {};
+  if (typeof obj.lotId === "string") result.lotId = obj.lotId;
+  if (typeof obj.farmId === "string") result.farmId = obj.farmId;
+  if (typeof obj.lotName === "string") result.lotName = obj.lotName;
+  if (typeof obj.farmName === "string") result.farmName = obj.farmName;
+  return Object.keys(result).length > 0 ? result : undefined;
 }
 
 /**
@@ -49,7 +72,8 @@ export async function executeChatMode(
   args: ChatModeArgs,
 ): Promise<AgentResponse> {
   const { memoryRepo, farmInquiry, lotInquiry, pricingService } = deps;
-  const { orgId, userId, role, prompt, sessionId } = args;
+  const { orgId, userId, role, prompt, sessionId, contextHints } = args;
+  const resolvedHints = coerceChatContextHints(contextHints);
   const startedAt = performance.now();
 
   let outcome: InvocationOutcome = "ok";
@@ -94,7 +118,7 @@ export async function executeChatMode(
     const contextWithHistory = historyContext
       ? `${historyContext}\n\n${fullContext}`
       : fullContext;
-    const systemPrompt = buildSystemPrompt(role, contextWithHistory);
+    const systemPrompt = buildSystemPrompt(role, contextWithHistory, resolvedHints);
 
     // Persistimos el mensaje del usuario DENTRO del try: si falla (DB caída,
     // timeout) queremos cortocircuitar antes de llamar al LLM y devolver
@@ -191,7 +215,11 @@ export async function executeChatMode(
   }
 }
 
-function buildSystemPrompt(role: Role, context: string): string {
+function buildSystemPrompt(
+  role: Role,
+  context: string,
+  contextHints: ChatContextHintsResolved | undefined,
+): string {
   const roleDescriptions: Record<AgentLabel, string> = {
     socio:
       "Eres un asistente para un socio avicultor. Ayudas a registrar gastos, mortalidad y consultar información sobre sus lotes y granjas.",
@@ -202,17 +230,66 @@ function buildSystemPrompt(role: Role, context: string): string {
   };
   const label = AGENT_ROLE_LABELS[role];
 
+  const dateFormatter = new Intl.DateTimeFormat("es-BO", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "America/La_Paz",
+  });
+  const todayContext = `Hoy es ${dateFormatter.format(new Date())}.`;
+  const todayISO = new Date().toISOString().split("T")[0];
+
+  const contextHintsLines: string[] = [];
+  if (contextHints?.lotId && contextHints.lotName) {
+    const farmPart =
+      contextHints.farmId && contextHints.farmName
+        ? ` de granja '${contextHints.farmName}' [id: ${contextHints.farmId}]`
+        : "";
+    contextHintsLines.push(
+      "",
+      "CONTEXTO ACTUAL DE NAVEGACIÓN:",
+      `El usuario está actualmente en Lote '${contextHints.lotName}' [id: ${contextHints.lotId}]${farmPart}.`,
+      "Usar estos IDs cuando el usuario refiera al lote/granja actual sin verificar primero.",
+    );
+  } else if (contextHints?.farmId && contextHints.farmName) {
+    contextHintsLines.push(
+      "",
+      "CONTEXTO ACTUAL DE NAVEGACIÓN:",
+      `El usuario está actualmente en Granja '${contextHints.farmName}' [id: ${contextHints.farmId}].`,
+      "Usar este ID cuando el usuario refiera a la granja actual sin verificar primero.",
+    );
+  }
+
   return [
     "Eres un asistente de IA para Avicont, un sistema de contabilidad avícola.",
     roleDescriptions[label],
     "",
+    todayContext,
+    "",
     "REGLAS IMPORTANTES:",
-    "- Responde siempre en ESPAÑOL y de forma corta.",
+    "- Responde siempre en ESPAÑOL.",
+    "- Responder MÁXIMO 1-2 oraciones cortas. NO listar enums Spanish completos (ALIMENTO/CHALA/AGUA/etc). NO explicar workflow internal.",
     "- Tu conocimiento contable proviene EXCLUSIVAMENTE de los documentos indexados (RAG). Si no encontrás información relevante en los documentos, decilo claramente. NO inventes datos contables, códigos de cuenta ni información que no esté en los documentos.",
     "- Cuando refieras a una cuenta contable, SIEMPRE incluí el código y el nombre completo. Ejemplo: '1.2.3.1 — Vehículos'. Nunca menciones una cuenta sin su código.",
     "- NUNCA muestres al usuario el contexto RAG, los fragmentos de documentos, ni los datos internos en bruto. Usa esa información para responder de forma natural, pero no la copies textualmente en tu respuesta.",
     "- Si NO se te proporciona un bloque 'Contexto de Documentos (RAG)', significa que no se encontraron documentos relevantes. En ese caso, responde únicamente con los datos estructurados disponibles y, si la pregunta requiere información documental que no tenés, indicalo claramente al usuario en vez de inventar.",
-    `- La fecha actual es: ${new Date().toISOString().split("T")[0]}`,
+    "",
+    "REGLAS TOOL SELECTION:",
+    "- Cuando el usuario expresa intent REGISTRAR/CREAR/GUARDAR/COMPRAR (gasto, mortalidad, compra), invocá DIRECTAMENTE write tool (createExpense/logMortality) con la info disponible. NO uses getLotSummary/listLots/listFarms para verificar primero — los IDs vienen pre-resueltos en el contexto.",
+    "",
+    "REGLAS FECHAS:",
+    "- Si el usuario NO menciona fecha explícita NI relativa, asumir HOY automáticamente. NO preguntar fecha.",
+    "- Resolver fechas relativas Spanish al formato YYYY-MM-DD usando 'hoy' como referencia:",
+    "  - hoy → fecha actual",
+    "  - ayer → -1 día",
+    "  - antier o anteayer → -2 días",
+    "  - el [día semana] → último ocurrencia día (Bolivia: lunes/martes/miércoles/jueves/viernes/sábado/domingo)",
+    "  - el [día semana] pasado → último anterior hoy",
+    "  - hace N días → -N días",
+    `- La fecha actual (HOY) es: ${todayISO}`,
+    "- Si el usuario menciona fecha ambigua sin día específico ('la semana pasada', 'hace tiempo', 'el mes pasado'), preguntar clarification corto ('¿qué día exacto?') en lugar de asumir.",
+    ...contextHintsLines,
     "",
     "CONTEXTO DE DATOS DISPONIBLES:",
     context,

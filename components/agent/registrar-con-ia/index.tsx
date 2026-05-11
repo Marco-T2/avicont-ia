@@ -78,7 +78,7 @@ export default function RegistrarConIAModal({
           farmId: contextHints.farmId,
         },
       });
-      if (res.suggestion) {
+      if (res.suggestion && res.requiresConfirmation) {
         const suggestion = res.suggestion;
         setPendingSuggestion(suggestion);
         setMessages((prev) => [
@@ -140,7 +140,7 @@ export default function RegistrarConIAModal({
           farmId: contextHints.farmId,
         },
       });
-      if (res.suggestion) {
+      if (res.suggestion && res.requiresConfirmation) {
         const suggestion = res.suggestion;
         setPendingSuggestion(suggestion);
         setMessages((prev) => [
@@ -188,7 +188,7 @@ export default function RegistrarConIAModal({
         </>
       );
     }
-    return <div>Acción: {suggestion.action}</div>;
+    return null;
   };
 
   return (
