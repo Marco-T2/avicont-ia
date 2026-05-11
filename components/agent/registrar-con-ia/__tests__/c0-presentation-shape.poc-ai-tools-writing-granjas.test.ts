@@ -54,8 +54,8 @@ describe("C0 presentation shape — Registrar con IA modal (existence-only regex
   });
 
   // α5
-  it("types.ts re-exports AgentSuggestion type from features/ai-agent/server", () => {
+  it("types.ts re-exports AgentSuggestion type from features/ai-agent (canonical non-server barrel)", () => {
     const src = readModalFile("types.ts");
-    expect(src).toMatch(/^export\s+type\s*\{[^}]*\bAgentSuggestion\b[^}]*\}\s*from\s*["']@\/features\/ai-agent\/server["']/m);
+    expect(src).toMatch(/^export\s+type\s*\{[^}]*\bAgentSuggestion\b[^}]*\}\s*from\s*["']@\/features\/ai-agent["']/m);
   });
 });
