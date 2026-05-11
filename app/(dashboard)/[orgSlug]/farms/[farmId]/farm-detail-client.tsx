@@ -167,7 +167,7 @@ export default function FarmDetailClient({
       </div>
 
       {/* 3 granja-header métricas globales — big-picture context awareness pre-accordion */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4">
         <Card>
           <CardContent className="pt-4 sm:pt-6">
             <div className="flex items-center gap-2 mb-2">
