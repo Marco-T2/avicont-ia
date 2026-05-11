@@ -133,7 +133,7 @@ describe("RegistrarConIAModal — C1 wire-up backend integration state transitio
       requiresConfirmation: true,
     });
     renderModal();
-    fireEvent.change(screen.getByRole("textbox"), { target: { value: "15 muertes enfermedad" } });
+    fireEvent.change(screen.getByRole("textbox"), { target: { value: "15 muertes pollos" } });
     fireEvent.click(screen.getByRole("button", { name: /enviar/i }));
     expect(await screen.findByText(/\b15\b/)).toBeTruthy();
     expect(screen.getByText(/enfermedad/i)).toBeTruthy();
