@@ -4,7 +4,7 @@
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
 > **Total LOC pending migration**: ~23,567 LOC across 15 features legacy (post POC document-signature-config hex closure).
 
-## Módulos hex cementados (21/21)
+## Módulos hex cementados (22/22)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
@@ -28,9 +28,10 @@
 | `modules/receivables` | HEX ✅ | 11 | 7 | POC #6 closed |
 | `modules/sale` | HEX ✅ | 30 | 16 | ⚠️ usa accounting + permissions |
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
+| `modules/org-profile` | HEX ✅ | 54 | 10 | POC org-profile hex closed — config-entity + BlobStoragePort NEW |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy — hex migration candidates (6)
+## Features legacy — hex migration candidates (5)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
@@ -39,7 +40,6 @@
 | `features/organizations` | 1,643 | 13 | 49 | 4 |
 | `features/audit` | 833 | 7 | 15 | 4 |
 | `features/reports` | 330 | 2 | 4 | 4 |
-| `features/org-profile` | 174 | 3 | 10 | 2 — quick win config-entity |
 | `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting |
 
 ## Features — cross-cutting infrastructure (NOT hex target) (8)
@@ -59,8 +59,8 @@
 
 ## Métricas clave
 
-- **Total hex cementados**: 21/21 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Hex candidates pending**: 6 features ≈ **17,852 LOC** (domain aggregate shapes + 1 deferred shim)
+- **Total hex cementados**: 22/22 módulos completos (4 capas: domain + application + infrastructure + presentation)
+- **Hex candidates pending**: 5 features ≈ **17,678 LOC** (domain aggregate shapes + 1 deferred shim)
 - **Cross-cutting infrastructure (NOT hex)**: 8 features ≈ **5,715 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 
