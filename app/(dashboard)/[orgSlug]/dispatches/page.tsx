@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { HubService, DispatchService } from "@/features/dispatch/server";
+import { HubService, DispatchService } from "@/modules/dispatch/presentation/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import DispatchList from "@/components/dispatches/dispatch-list";
-import type { HubFilters } from "@/features/dispatch";
+import type { HubFilters } from "@/modules/dispatch/presentation";
 
 interface DispatchesPageProps {
   params: Promise<{ orgSlug: string }>;

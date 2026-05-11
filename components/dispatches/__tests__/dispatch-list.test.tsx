@@ -13,7 +13,7 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import DispatchList from "../dispatch-list";
-import type { HubItem } from "@/features/dispatch/hub.types";
+import type { HubItem } from "@/modules/dispatch/presentation";
 
 afterEach(() => cleanup());
 

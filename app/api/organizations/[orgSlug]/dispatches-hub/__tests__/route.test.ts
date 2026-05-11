@@ -51,7 +51,7 @@ vi.mock("@/features/permissions/server", () => ({
 
 const mockListHub = vi.fn();
 
-vi.mock("@/features/dispatch/hub.service", () => ({
+vi.mock("@/modules/dispatch/presentation/server", () => ({
   HubService: vi.fn().mockImplementation(function () {
     return { listHub: mockListHub };
   }),
@@ -68,7 +68,7 @@ vi.mock("@/features/dispatch/hub.service", () => ({
 // NO importa de `@/features/sale/sale.service`. Path siendo deleted A3-C7 GREEN
 // sub-pasos 1-19 (features/sale/ wholesale removal). Sub-paso 21 atomic batch.
 
-vi.mock("@/features/dispatch/dispatch.service", () => ({
+vi.mock("@/modules/dispatch/presentation/server", () => ({
   DispatchService: vi.fn().mockImplementation(function () {
     return {};
   }),

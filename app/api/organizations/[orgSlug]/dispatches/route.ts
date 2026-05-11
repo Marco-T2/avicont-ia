@@ -1,10 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { DispatchService } from "@/features/dispatch/server";
+import { DispatchService } from "@/modules/dispatch/presentation/server";
 import {
   createDispatchSchema,
   dispatchFiltersSchema,
-} from "@/features/dispatch";
+} from "@/modules/dispatch/presentation";
 import { UsersService } from "@/features/users/server";
 
 const dispatchService = new DispatchService();

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { DispatchService } from "@/features/dispatch/server";
+import { DispatchService } from "@/modules/dispatch/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";

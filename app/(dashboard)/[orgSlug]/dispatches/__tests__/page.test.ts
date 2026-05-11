@@ -23,7 +23,7 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/dispatch/server", () => {
+vi.mock("@/modules/dispatch/presentation/server", () => {
   class HubService {
     listHub = mockListHub;
   }

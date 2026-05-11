@@ -35,7 +35,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { HubItem } from "@/features/dispatch/hub.types";
+import type { HubItem } from "@/modules/dispatch/presentation";
 import { formatDateBO } from "@/lib/date-utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
