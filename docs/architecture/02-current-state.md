@@ -4,13 +4,14 @@
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
 > **Total LOC pending migration**: ~23,567 LOC across 15 features legacy (post POC document-signature-config hex closure).
 
-## Módulos hex cementados (23/23)
+## Módulos hex cementados (24/24)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
 | `modules/accounting` | HEX ✅ | 15 | 45 | POC #10 closed |
 | `modules/audit` | HEX ✅ | 54 | 8 | POC audit hex closed — READ-only + raw SQL CTE preserved + UserNameResolver port |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
+| `modules/dispatch` | HEX ✅ | 89 | 15 | POC dispatch hex closed — Sale architectural mirror + state machine + legacy accounting adapter ports |
 | `modules/contacts` | HEX ✅ | 15 | 12 | - |
 | `modules/expense` | HEX ✅ | 45 | 11 | POC expense hex closed |
 | `modules/farm` | HEX ✅ | 11 | 18 | POC farms+lots |
@@ -32,12 +33,11 @@
 | `modules/org-profile` | HEX ✅ | 54 | 10 | POC org-profile hex closed — config-entity + BlobStoragePort NEW |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy — hex migration candidates (3)
+## Features legacy — hex migration candidates (2)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
 | `features/accounting` | 12,523 | 65 | 128 | 5 — residual POST-POC #10 shim |
-| `features/dispatch` | 2,199 | 5 | 15 | 3 — domain aggregate |
 | `features/organizations` | 1,643 | 13 | 49 | 4 |
 | `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting |
 
@@ -59,8 +59,8 @@
 
 ## Métricas clave
 
-- **Total hex cementados**: 23/23 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Hex candidates pending**: 3 features ≈ **16,515 LOC** (domain aggregate shapes + 1 deferred shim)
+- **Total hex cementados**: 24/24 módulos completos (4 capas: domain + application + infrastructure + presentation)
+- **Hex candidates pending**: 2 features ≈ **14,316 LOC** (accounting residual + organizations + account-balances deferred shim)
 - **Cross-cutting infrastructure (NOT hex)**: 9 features ≈ **6,045 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 
