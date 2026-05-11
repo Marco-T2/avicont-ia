@@ -196,4 +196,64 @@ describe("Hotfix retroactivo POC #2 behavioral integration — chat mode context
     expect(args.systemPrompt).toContain("Lote 1 - Galpón 5");
     expect(args.systemPrompt).toContain("lot-cuid-xyz");
   });
+
+  // α47
+  it("AgentService.query(mode='chat') → mockLLMQuery system prompt contains today's date Spanish format (año + mes Spanish + día)", async () => {
+    mockLLMQuery.mockResolvedValueOnce({
+      text: "ok",
+      toolCalls: [],
+      usage: undefined,
+    });
+    const service = new AgentService();
+
+    await service.query(
+      "org-1",
+      "user-1",
+      "member",
+      "200 bs alimento",
+      undefined,
+      "chat",
+      { lotId: "lot-1" },
+    );
+
+    expect(mockLLMQuery).toHaveBeenCalledTimes(1);
+    const args = mockLLMQuery.mock.calls[0][0] as { systemPrompt: string };
+    // Today's date Spanish format — Intl.DateTimeFormat es-BO renders meses Spanish nativo
+    // (enero/febrero/marzo/abril/mayo/junio/julio/agosto/septiembre/octubre/noviembre/diciembre)
+    // + año YYYY + día numeric DD. Regex captures presence dynamic date context render.
+    expect(args.systemPrompt).toMatch(
+      /(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)[\s\S]{0,100}?20[2-9]\d|20[2-9]\d[\s\S]{0,100}?(?:enero|febrero|marzo|abril|mayo|junio|julio|agosto|septiembre|octubre|noviembre|diciembre)/i,
+    );
+    expect(args.systemPrompt).toMatch(
+      /(?:lunes|martes|miércoles|miercoles|jueves|viernes|sábado|sabado|domingo)/i,
+    );
+  });
+});
+
+// ── Shape file regex Opt A extend — temporal context + fechas relativas + ambiguous clarification ──
+
+describe("Hotfix retroactivo POC #2 shape extend — temporal context + fechas relativas resolución + ambiguous date clarification (existence-only regex)", () => {
+  // α45
+  it("chat.ts buildSystemPrompt renders current date context dynamic (Intl.DateTimeFormat es-BO + Hoy es [día semana])", () => {
+    const src = readFileSync(CHAT_MODE, "utf-8");
+    expect(src).toMatch(
+      /Intl\.DateTimeFormat\s*\(\s*["']es-BO["']|new\s+Intl\.DateTimeFormat\s*\(\s*["']es/,
+    );
+    expect(src).toMatch(/Hoy\s+es\s+\$\{|Hoy\s+es\s+\$\{[\s\S]{0,200}\}/);
+  });
+
+  // α46
+  it("chat.ts REGLAS section includes fechas relativas resolución directive enumerated (hoy + ayer + antier examples)", () => {
+    const src = readFileSync(CHAT_MODE, "utf-8");
+    expect(src).toMatch(/fechas?\s+relativas?/i);
+    expect(src).toMatch(/\bayer\b[\s\S]{0,500}?\b(?:antier|anteayer)\b|\b(?:antier|anteayer)\b[\s\S]{0,500}?\bayer\b/i);
+  });
+
+  // α48
+  it("chat.ts REGLAS section includes ambiguous date phrases clarification directive (la semana pasada / hace tiempo → pedir clarification)", () => {
+    const src = readFileSync(CHAT_MODE, "utf-8");
+    expect(src).toMatch(
+      /(?:semana\s+pasada|hace\s+tiempo|ambig[uü]o|ambig[uü]a)[\s\S]{0,300}?(?:clarif|aclarar|pregunt[áa]r?)|(?:clarif|aclarar|pregunt[áa]r?)[\s\S]{0,300}?(?:semana\s+pasada|hace\s+tiempo|ambig[uü]o|ambig[uü]a)/i,
+    );
+  });
 });
