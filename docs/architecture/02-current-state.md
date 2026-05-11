@@ -30,7 +30,7 @@
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy — hex migration candidates (7)
+## Features legacy — hex migration candidates (6)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
@@ -39,11 +39,10 @@
 | `features/organizations` | 1,643 | 13 | 49 | 4 |
 | `features/audit` | 833 | 7 | 15 | 4 |
 | `features/reports` | 330 | 2 | 4 | 4 |
-| `features/org-profile` | 174 | 3 | 10 | 3 |
-| `features/account-balances` | 150 | 0 | 2 | 1 — quick win |
-| `features/users` | 82 | 0 | 19 | 3 |
+| `features/org-profile` | 174 | 3 | 10 | 2 — quick win config-entity |
+| `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting |
 
-## Features — cross-cutting infrastructure (NOT hex target) (7)
+## Features — cross-cutting infrastructure (NOT hex target) (8)
 
 > Reclasificación 2026-05-11 post recon profundo ai-agent. Estas features son infraestructura transversal, orquestación, o integración — sin domain aggregates. Hex 4-layer no aporta valor.
 
@@ -55,13 +54,14 @@
 | `features/documents` | 422 | 1 | 5 | Integración file mgmt + rag |
 | `features/rag` | 193 | 0 | 2 | Infraestructura pgvector + embeddings |
 | `features/pricing` | 70 | 0 | 2 | Cálculo puro — satellite ai-agent |
+| `features/users` | 82 | 0 | 19 | Identity resolution — 19/22 consumers use resolveByClerkId auth plumbing |
 | `features/auth` | 57 | 1 | 1 | Auth wrapper thin |
 
 ## Métricas clave
 
 - **Total hex cementados**: 21/21 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Hex candidates pending**: 7 features ≈ **17,934 LOC** (domain aggregate shapes)
-- **Cross-cutting infrastructure (NOT hex)**: 7 features ≈ **5,633 LOC** (reclasificación 2026-05-11)
+- **Hex candidates pending**: 6 features ≈ **17,852 LOC** (domain aggregate shapes + 1 deferred shim)
+- **Cross-cutting infrastructure (NOT hex)**: 8 features ≈ **5,715 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 
 ## Híbridos detectados (8 módulos hex importan legacy)
