@@ -28,34 +28,41 @@
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy pending migration (17)
+## Features legacy — hex migration candidates (10)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
 | `features/accounting` | 12,523 | 65 | 128 | 5 — residual POST-POC #10 shim |
-| `features/ai-agent` | 3,912 | 20 | 14 | 5 — deuda heredada |
-| `features/dispatch` | 2,199 | 5 | 15 | 5 |
+| `features/dispatch` | 2,199 | 5 | 15 | 3 — domain aggregate |
 | `features/organizations` | 1,643 | 13 | 49 | 4 |
 | `features/audit` | 833 | 7 | 15 | 4 |
-| `features/permissions` | 561 | 6 | **183** | 2 — transversal |
-| `features/shared` | 418 | 6 | **230** | 2 — transversal |
-| `features/documents` | 422 | 1 | 5 | 4 |
 | `features/reports` | 330 | 2 | 4 | 4 |
-| `features/document-signature-config` | 222 | 3 | 5 | 3 |
-| `features/product-types` | 219 | 0 | 9 | 3 |
-| `features/rag` | 193 | 0 | 2 | defer — consumers ai-agent+documents |
+| `features/document-signature-config` | 222 | 3 | 5 | 1 — quick win |
+| `features/product-types` | 219 | 0 | 9 | 1 — quick win |
 | `features/org-profile` | 174 | 3 | 10 | 3 |
-| `features/account-balances` | 150 | 0 | 2 | 3 |
+| `features/account-balances` | 150 | 0 | 2 | 1 — quick win |
 | `features/users` | 82 | 0 | 19 | 3 |
-| `features/pricing` | 70 | 0 | 2 | defer — consumers ai-agent ×2 |
-| `features/auth` | 57 | 1 | 1 | 3 |
+
+## Features — cross-cutting infrastructure (NOT hex target) (7)
+
+> Reclasificación 2026-05-11 post recon profundo ai-agent. Estas features son infraestructura transversal, orquestación, o integración — sin domain aggregates. Hex 4-layer no aporta valor.
+
+| Feature | LOC | Tests | Consumers | Razón NO hex |
+|---|---|---|---|---|
+| `features/permissions` | 561 | 6 | **183** | Transversal cross-cutting — guards/middleware |
+| `features/shared` | 418 | 6 | **230** | Base classes + errors compartidos |
+| `features/ai-agent` | 3,912 | 20 | 14 | Orquestación LLM — zero domain aggregates, ya consume hex via ports |
+| `features/documents` | 422 | 1 | 5 | Integración file mgmt + rag |
+| `features/rag` | 193 | 0 | 2 | Infraestructura pgvector + embeddings |
+| `features/pricing` | 70 | 0 | 2 | Cálculo puro — satellite ai-agent |
+| `features/auth` | 57 | 1 | 1 | Auth wrapper thin |
 
 ## Métricas clave
 
 - **Total hex cementados**: 19/19 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Total legacy pending**: 17 features ≈ **24,008 LOC** + ~1,500 tests cementados legacy
+- **Hex candidates pending**: 10 features ≈ **18,375 LOC** (domain aggregate shapes)
+- **Cross-cutting infrastructure (NOT hex)**: 7 features ≈ **5,633 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
-- **Huérfanos SUPERSEDED**: `features/{rag, pricing}` claim "0 consumers" FALSE post recon 2026-05-11 — rag 2 consumers (ai-agent+documents), pricing 2 consumers (ai-agent ×2). Defer post ai-agent recon profundo.
 
 ## Híbridos detectados (8 módulos hex importan legacy)
 
@@ -66,4 +73,4 @@
 ## Anomalías honest surface
 
 1. **`features/accounting` 12,523 LOC + 128 consumers DESPITE POC #10 closed**: ratio sospechoso shim residual cumulative cross-POC matures. Recon profundo needed clasificar HYBRID vs CLEANUP-PENDING-POST-POC pre-oleada 5.
-2. **`features/ai-agent` deuda heredada**: 3,912 LOC sin POC histórico asociado — NO planificado en POCs históricos previos.
+2. **`features/ai-agent` reclasificado**: 3,912 LOC recon profundo 2026-05-11 — NO hex candidate (orchestration/integration, zero domain aggregates, ya consume hex via ports). Reclasificado cross-cutting infrastructure.
