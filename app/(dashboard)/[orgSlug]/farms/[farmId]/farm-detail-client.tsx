@@ -129,7 +129,7 @@ export default function FarmDetailClient({
   const router = useRouter();
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Back + Header */}
       <div>
         <Link href={`/${orgSlug}/farms`}>
