@@ -1,9 +1,9 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { OrgProfileService } from "@/features/org-profile/server";
+import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { IncomeStatementPageClient } from "@/components/financial-statements/income-statement-page-client";
 
-const orgProfileService = new OrgProfileService();
+const orgProfileService = makeOrgProfileService();
 
 interface IncomeStatementPageProps {
   params: Promise<{ orgSlug: string }>;

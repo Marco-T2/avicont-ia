@@ -1,9 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { OrgProfileService } from "@/features/org-profile/server";
-import { updateOrgProfileSchema } from "@/features/org-profile";
+import {
+  makeOrgProfileService,
+  updateOrgProfileSchema,
+} from "@/modules/org-profile/presentation/server";
 
-const orgProfileService = new OrgProfileService();
+const orgProfileService = makeOrgProfileService();
 
 /**
  * GET /api/organizations/[orgSlug]/profile

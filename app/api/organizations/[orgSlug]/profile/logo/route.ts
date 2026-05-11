@@ -2,8 +2,10 @@ import { put } from "@vercel/blob";
 import { handleError } from "@/features/shared/middleware";
 import { AppError } from "@/features/shared/errors";
 import { requirePermission } from "@/features/permissions/server";
-import { OrgProfileService } from "@/features/org-profile/server";
-import { logoUploadConstraints } from "@/features/org-profile";
+import {
+  makeOrgProfileService,
+  logoUploadConstraints,
+} from "@/modules/org-profile/presentation/server";
 
 /** 400 Bad Request — local helper used only by this route. */
 class LogoUploadError extends AppError {
@@ -12,7 +14,7 @@ class LogoUploadError extends AppError {
   }
 }
 
-const orgProfileService = new OrgProfileService();
+const orgProfileService = makeOrgProfileService();
 
 /**
  * POST /api/organizations/[orgSlug]/profile/logo

@@ -8,7 +8,7 @@ import type {
   OrgProfile,
   SignatureLabel,
 } from "@/generated/prisma/client";
-import type { UpdateOrgProfileInput } from "@/features/org-profile/org-profile.types";
+import type { UpdateOrgProfileInput } from "@/modules/org-profile/presentation";
 import {
   Card,
   CardContent,

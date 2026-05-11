@@ -9,7 +9,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { JournalService } from "@/features/accounting/journal.service";
 import { NotFoundError } from "@/features/shared/errors";
 import type { JournalRepository } from "@/features/accounting/journal.repository";
-import type { OrgProfileService } from "@/features/org-profile/server";
+import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
 import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";

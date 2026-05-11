@@ -31,7 +31,7 @@ import { AccountBalancesService } from "@/features/account-balances/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { OrgProfileService } from "@/features/org-profile/server";
+import { OrgProfileService, makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeDocumentSignatureConfigService, type DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import { buildVoucherPdfInput } from "./exporters/voucher-pdf.composer";
 import { exportVoucherPdf as renderVoucherPdf } from "./exporters/voucher-pdf.exporter";
@@ -82,7 +82,7 @@ export class JournalService {
     this.periodsService = periodsService ?? makeFiscalPeriodsService();
     this.voucherTypesService = voucherTypesService ?? makeVoucherTypesService();
     this.contactsService = contactsService ?? makeContactsService();
-    this.orgProfileService = orgProfileService ?? new OrgProfileService();
+    this.orgProfileService = orgProfileService ?? makeOrgProfileService();
     this.sigConfigService = sigConfigService ?? makeDocumentSignatureConfigService();
   }
 
