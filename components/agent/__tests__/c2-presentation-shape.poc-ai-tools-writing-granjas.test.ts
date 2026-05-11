@@ -49,8 +49,9 @@ const IMPORT_BOTON_RE =
   /^import\s+(?:\{[^}]*\bRegistrarConIABoton\b[^}]*\}|RegistrarConIABoton)\s*from\s*["']@\/components\/agent\/registrar-con-ia-boton["']/m;
 const RENDER_BOTON_LOT_RE =
   /<RegistrarConIABoton\b[\s\S]*?contextHints\s*=\s*\{\{[\s\S]*?\blotId\b[\s\S]*?\blotName\b[\s\S]*?\bfarmId\b/;
-const RENDER_BOTON_FARM_RE =
-  /<RegistrarConIABoton\b[\s\S]*?contextHints\s*=\s*\{\{[\s\S]*?\bfarmId\b[\s\S]*?\bfarmName\b/;
+// POST-C2h SPLIT: RENDER_BOTON_FARM_RE removed — farm-level scope superseded por per-lote
+// scope única single source of truth (POC #1 C2h hotfix retroactivo Marco UX intuition catches
+// button context ambiguity granjero mayor ≥2 lotes activos).
 
 describe("C2 presentation shape — Botón Registrar con IA inject pages 2 contextos (existence-only regex)", () => {
   // α26
@@ -71,9 +72,9 @@ describe("C2 presentation shape — Botón Registrar con IA inject pages 2 conte
     expect(src).toMatch(RENDER_BOTON_LOT_RE);
   });
 
-  // α29
-  it("farm-detail-client.tsx renders <RegistrarConIABoton> with contextHints {farmId, farmName}", () => {
-    const src = readFileSync(FARM_DETAIL_CLIENT, "utf-8");
-    expect(src).toMatch(RENDER_BOTON_FARM_RE);
-  });
+  // α29 DELETED — POST-C2h SPLIT: farm-level scope farm-detail-client superseded por per-lote
+  // scope única (single source of truth). Per-lote assertion preserved via α28 sobre
+  // lot-detail-client.tsx + α27 farm import preserved (component still used per-lote dentro
+  // AccordionContent expanded). Marco UX intuition runtime smoke catches farm-level button
+  // context ambiguity granjero mayor ≥2 lotes activos (POC #1 hotfix C2h retroactivo).
 });

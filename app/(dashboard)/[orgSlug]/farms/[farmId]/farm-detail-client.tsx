@@ -150,13 +150,6 @@ export default function FarmDetailClient({
             )}
           </div>
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
-            <RegistrarConIABoton
-              orgSlug={orgSlug}
-              contextHints={{
-                farmId: farm.id,
-                farmName: farm.name,
-              }}
-            />
             <CreateLotDialog
               orgSlug={orgSlug}
               farmId={farm.id}
