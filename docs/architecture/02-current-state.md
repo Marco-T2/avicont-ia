@@ -2,9 +2,9 @@
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
-> **Total LOC pending migration**: ~24,264 LOC across 18 features legacy (post POC expense hex closure).
+> **Total LOC pending migration**: ~24,008 LOC across 17 features legacy (post POC operational-doc-type hex closure).
 
-## Módulos hex cementados (18/18)
+## Módulos hex cementados (19/19)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
@@ -18,6 +18,7 @@
 | `modules/lot` | HEX ✅ | 13 | 14 | POC farms+lots |
 | `modules/monthly-close` | HEX ✅ | 12 | 5 | - |
 | `modules/mortality` | HEX ✅ | 4 | 6 | ⚠️ usa `features/shared` — primer POC histórico |
+| `modules/operational-doc-type` | HEX ✅ | 51 | 7 | POC operational-doc-type hex closed — oleada 1 quick win |
 | `modules/org-settings` | HEX ✅ | 9 | 3 | - |
 | `modules/payables` | HEX ✅ | 10 | 8 | ⚠️ usa `features/shared` |
 | `modules/payment` | HEX ✅ | 17 | 11 | POC #8 closed |
@@ -27,7 +28,7 @@
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy pending migration (18)
+## Features legacy pending migration (17)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
@@ -40,26 +41,27 @@
 | `features/shared` | 418 | 6 | **230** | 2 — transversal |
 | `features/documents` | 422 | 1 | 5 | 4 |
 | `features/reports` | 330 | 2 | 4 | 4 |
-| `features/operational-doc-types` | 256 | 0 | 7 | 1 — quick win |
 | `features/document-signature-config` | 222 | 3 | 5 | 3 |
 | `features/product-types` | 219 | 0 | 9 | 3 |
-| `features/rag` | 193 | 0 | 0 | 1 — delete directo huérfano |
+| `features/rag` | 193 | 0 | 2 | defer — consumers ai-agent+documents |
 | `features/org-profile` | 174 | 3 | 10 | 3 |
 | `features/account-balances` | 150 | 0 | 2 | 3 |
 | `features/users` | 82 | 0 | 19 | 3 |
-| `features/pricing` | 70 | 0 | 0 | 1 — delete directo huérfano |
+| `features/pricing` | 70 | 0 | 2 | defer — consumers ai-agent ×2 |
 | `features/auth` | 57 | 1 | 1 | 3 |
 
 ## Métricas clave
 
-- **Total hex cementados**: 18/18 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Total legacy pending**: 18 features ≈ **24,264 LOC** + ~1,500 tests cementados legacy
+- **Total hex cementados**: 19/19 módulos completos (4 capas: domain + application + infrastructure + presentation)
+- **Total legacy pending**: 17 features ≈ **24,008 LOC** + ~1,500 tests cementados legacy
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
-- **Huérfanos**: `features/{rag, pricing}` — 263 LOC, 0 consumers, 0 tests → delete directo
+- **Huérfanos SUPERSEDED**: `features/{rag, pricing}` claim "0 consumers" FALSE post recon 2026-05-11 — rag 2 consumers (ai-agent+documents), pricing 2 consumers (ai-agent ×2). Defer post ai-agent recon profundo.
 
 ## Híbridos detectados (8 módulos hex importan legacy)
 
 8 módulos hex (fiscal-periods, mortality, payables, payment, purchase, receivables, sale + 1 más) importan de `features/{shared, accounting, permissions}`. Migración parcelada esperada cumulative cross-POC matures heredado.
+
+> `modules/operational-doc-type` NO híbrido — zero imports from features/ (standalone hex completo).
 
 ## Anomalías honest surface
 

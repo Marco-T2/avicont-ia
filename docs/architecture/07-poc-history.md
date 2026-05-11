@@ -67,3 +67,4 @@ Protocolo cross-POC aplicable a TODAS las sub-fases paired RED+GREEN futuras —
 | #1 ux-accordion-granjero-mayor | UX ✅ closed | [pocs/poc-1-ux-accordion-d1.md](pocs/poc-1-ux-accordion-d1.md) | `9b313e4` definitivo push final origin master |
 | docs-refactor (this) | DOCS ✅ closed | [pocs/poc-docs-refactor-d1.md](pocs/poc-docs-refactor-d1.md) | architecture.md split modular 9 archivos + folder pocs/ |
 | expense-hex | HEX ✅ closed | [pocs/poc-expense-hex-d1.md](pocs/poc-expense-hex-d1.md) | 17 commits cumulative 6934bf4..D1 oleada 1 quick win — paired sister farms+lots EXACT mirror reduced single-aggregate 64α cumulative + 7 §13 NEW canonical homes |
+| operational-doc-type-hex | HEX ✅ closed | [pocs/poc-operational-doc-type-hex-d1.md](pocs/poc-operational-doc-type-hex-d1.md) | 12 commits cumulative oleada 1 quick win — paired sister expense EXACT mirror + α5 EXPANDED 3 errors + entity mutations + upsert save |
