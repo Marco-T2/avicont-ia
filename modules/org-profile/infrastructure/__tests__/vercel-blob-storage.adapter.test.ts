@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 
 vi.mock("@vercel/blob", () => ({
   del: vi.fn(),
@@ -11,6 +11,10 @@ vi.mock("@/lib/logging/structured", () => ({
 import { del } from "@vercel/blob";
 import { logStructured } from "@/lib/logging/structured";
 import { VercelBlobStorageAdapter } from "../vercel-blob-storage.adapter";
+
+beforeEach(() => {
+  vi.clearAllMocks();
+});
 
 describe("VercelBlobStorageAdapter", () => {
   // α26
