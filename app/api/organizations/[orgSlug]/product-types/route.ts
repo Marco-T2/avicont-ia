@@ -1,9 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ProductTypesService } from "@/features/product-types/server";
-import { createProductTypeSchema } from "@/features/product-types";
+import {
+  makeProductTypeService,
+  createProductTypeSchema,
+} from "@/modules/product-type/presentation/server";
 
-const service = new ProductTypesService();
+const service = makeProductTypeService();
 
 export async function GET(
   request: Request,
@@ -22,7 +24,7 @@ export async function GET(
 
     const productTypes = await service.list(orgId, filters);
 
-    return Response.json({ productTypes });
+    return Response.json({ productTypes: productTypes.map((pt) => pt.toSnapshot()) });
   } catch (error) {
     return handleError(error);
   }
@@ -41,7 +43,7 @@ export async function POST(
 
     const productType = await service.create(orgId, input);
 
-    return Response.json(productType, { status: 201 });
+    return Response.json(productType.toSnapshot(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }

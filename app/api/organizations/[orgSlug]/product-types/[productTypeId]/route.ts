@@ -1,9 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { ProductTypesService } from "@/features/product-types/server";
-import { updateProductTypeSchema } from "@/features/product-types";
+import {
+  makeProductTypeService,
+  updateProductTypeSchema,
+} from "@/modules/product-type/presentation/server";
 
-const service = new ProductTypesService();
+const service = makeProductTypeService();
 
 export async function GET(
   _request: Request,
@@ -15,7 +17,7 @@ export async function GET(
 
     const productType = await service.getById(orgId, productTypeId);
 
-    return Response.json(productType);
+    return Response.json(productType.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
@@ -34,7 +36,7 @@ export async function PATCH(
 
     const updated = await service.update(orgId, productTypeId, input);
 
-    return Response.json(updated);
+    return Response.json(updated.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
@@ -50,7 +52,7 @@ export async function DELETE(
 
     const deactivated = await service.deactivate(orgId, productTypeId);
 
-    return Response.json(deactivated);
+    return Response.json(deactivated.toSnapshot());
   } catch (error) {
     return handleError(error);
   }

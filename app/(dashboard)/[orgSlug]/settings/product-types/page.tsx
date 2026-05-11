@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { ProductTypesService } from "@/features/product-types/server";
+import { makeProductTypeService } from "@/modules/product-type/presentation/server";
 import { Button } from "@/components/ui/button";
 import ProductTypesManager from "@/components/product-types/product-types-manager";
 
@@ -21,11 +21,11 @@ export default async function ProductTypesPage({ params }: ProductTypesPageProps
     redirect(`/${orgSlug}`);
   }
 
-  const service = new ProductTypesService();
+  const service = makeProductTypeService();
   // Fetch both active and inactive to show all in management view
   const [activeTypes, inactiveTypes] = await Promise.all([
-    service.list(orgId, { isActive: true }),
-    service.list(orgId, { isActive: false }),
+    service.list(orgId, { isActive: true }).then((entities) => entities.map((pt) => pt.toSnapshot())),
+    service.list(orgId, { isActive: false }).then((entities) => entities.map((pt) => pt.toSnapshot())),
   ]);
   const productTypes = [...activeTypes, ...inactiveTypes].sort(
     (a, b) => a.sortOrder - b.sortOrder || a.name.localeCompare(b.name),

@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
-import { ProductTypesService } from "@/features/product-types/server";
+import { makeProductTypeService } from "@/modules/product-type/presentation/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import DispatchForm from "@/components/dispatches/dispatch-form";
 
@@ -34,13 +34,13 @@ export default async function NewDispatchPage({
 
   const contactsService = makeContactsService();
   const periodsService = makeFiscalPeriodsService();
-  const productTypesService = new ProductTypesService();
+  const productTypesService = makeProductTypeService();
   const orgSettingsService = makeOrgSettingsService();
 
   const [contacts, periods, productTypes, orgSettings] = await Promise.all([
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
-    productTypesService.list(orgId, { isActive: true }),
+    productTypesService.list(orgId, { isActive: true }).then((entities) => entities.map((pt) => pt.toSnapshot())),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
   ]);
 
