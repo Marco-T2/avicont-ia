@@ -3,6 +3,8 @@ import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { makeFarmService } from "@/modules/farm/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
+import { ExpensesService } from "@/features/expenses/server";
+import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import FarmDetailClient from "./farm-detail-client";
 
 interface FarmDetailPageProps {
@@ -38,14 +40,58 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
   const farm = farmEntity.toSnapshot();
 
   const lotsService = makeLotService();
+  const expensesService = new ExpensesService();
+  const mortalityService = makeMortalityService();
+
   const lotEntities = await lotsService.listByFarm(orgId, farmId);
-  const lots = lotEntities.map((l) => l.toSnapshot());
+  const lotSnapshots = lotEntities.map((l) => l.toSnapshot());
+
+  const [lotsWithSummary, allExpenses, allMortality] = await Promise.all([
+    Promise.all(
+      lotSnapshots.map(async (lot) => {
+        const { summary } = await lotsService.getSummary(orgId, lot.id);
+        return { lot, summary: summary.toJSON() };
+      }),
+    ),
+    Promise.all(
+      lotSnapshots.map((l) => expensesService.listByLot(orgId, l.id)),
+    ),
+    Promise.all(
+      lotSnapshots.map((l) => mortalityService.listByLot(orgId, l.id)),
+    ),
+  ]);
+
+  // farmMetrics aggregation — current-month scoping (granjero operativo mes corriente)
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
+  const inCurrentMonth = (d: Date | string): boolean => {
+    const date = typeof d === "string" ? new Date(d) : d;
+    return date.getMonth() === currentMonth && date.getFullYear() === currentYear;
+  };
+
+  const pollosTotales = lotsWithSummary.reduce(
+    (sum, { summary }) => sum + summary.aliveCount,
+    0,
+  );
+  const gastoMes = allExpenses
+    .flat()
+    .filter((e) => inCurrentMonth(e.date))
+    .reduce((sum, e) => sum + Number(e.amount), 0);
+  const mortalidadMes = allMortality
+    .flat()
+    .map((m) => m.toJSON())
+    .filter((m) => inCurrentMonth(m.date))
+    .reduce((sum, m) => sum + m.count, 0);
+
+  const farmMetrics = { pollosTotales, gastoMes, mortalidadMes };
 
   return (
     <FarmDetailClient
       orgSlug={orgSlug}
       farm={farm}
-      lots={lots}
+      lots={lotsWithSummary}
+      farmMetrics={farmMetrics}
     />
   );
 }
