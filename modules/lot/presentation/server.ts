@@ -26,7 +26,9 @@ export {
   canTransitionLot,
 } from "../domain/value-objects/lot-status";
 export { LotSummary } from "../domain/value-objects/lot-summary";
+import type { LotSummary as _LotSummaryType } from "../domain/value-objects/lot-summary";
 export type { ComputeLotSummaryInput } from "../domain/value-objects/lot-summary";
+export type LotSummaryShape = ReturnType<_LotSummaryType["toJSON"]>;
 export {
   LotService,
   type CreateLotServiceInput,

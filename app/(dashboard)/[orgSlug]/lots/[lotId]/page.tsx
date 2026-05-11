@@ -46,13 +46,14 @@ export default async function LotDetailPage({ params }: LotDetailPageProps) {
     makeMortalityService().listByLot(orgId, lotId),
   ]);
   const mortalityLogs = mortalityEntities.map((e) => e.toJSON());
+  const plainExpenses = expenses.map((e) => ({ ...e, amount: Number(e.amount) }));
 
   return (
     <LotDetailClient
       orgSlug={orgSlug}
       lot={lot}
-      summary={summary}
-      expenses={expenses}
+      summary={summary.toJSON()}
+      expenses={plainExpenses}
       mortalityLogs={mortalityLogs}
     />
   );

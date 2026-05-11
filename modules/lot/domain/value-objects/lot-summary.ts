@@ -19,4 +19,13 @@ export class LotSummary {
     const costPerChicken = aliveCount > 0 ? totalExpenses / aliveCount : 0;
     return new LotSummary(totalExpenses, totalMortality, aliveCount, costPerChicken);
   }
+
+  toJSON() {
+    return {
+      totalExpenses: this.totalExpenses,
+      totalMortality: this.totalMortality,
+      aliveCount: this.aliveCount,
+      costPerChicken: this.costPerChicken,
+    };
+  }
 }
