@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { PaymentService } from "@/modules/payment/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
-import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
+import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
 import { AccountsRepository } from "@/features/accounting/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import PaymentForm from "@/components/payments/payment-form";
@@ -28,7 +28,7 @@ export default async function PaymentDetailPage({
   const paymentService = new PaymentService();
   const contactsService = makeContactsService();
   const periodsService = makeFiscalPeriodsService();
-  const docTypesService = new OperationalDocTypesService();
+  const docTypesService = makeOperationalDocTypeService();
   const orgSettingsService = makeOrgSettingsService();
   const accountsRepo = new AccountsRepository();
 
@@ -42,7 +42,7 @@ export default async function PaymentDetailPage({
   const [contacts, periods, docTypes, orgSettings] = await Promise.all([
     contactsService.list(orgId).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
-    docTypesService.list(orgId, { isActive: true }),
+    docTypesService.list(orgId, { isActive: true }).then((entities) => entities.map((d) => d.toSnapshot())),
     orgSettingsService.getOrCreate(orgId).then((s) => s.toSnapshot()),
   ]);
 

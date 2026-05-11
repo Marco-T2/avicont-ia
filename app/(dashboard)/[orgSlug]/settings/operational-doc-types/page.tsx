@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
+import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
 import { Button } from "@/components/ui/button";
 import OperationalDocTypesManager from "@/components/settings/operational-doc-types-manager";
 
@@ -23,10 +23,10 @@ export default async function OperationalDocTypesPage({
     redirect(`/${orgSlug}`);
   }
 
-  const service = new OperationalDocTypesService();
+  const service = makeOperationalDocTypeService();
   const [activeTypes, inactiveTypes] = await Promise.all([
-    service.list(orgId, { isActive: true }),
-    service.list(orgId, { isActive: false }),
+    service.list(orgId, { isActive: true }).then((entities) => entities.map((d) => d.toSnapshot())),
+    service.list(orgId, { isActive: false }).then((entities) => entities.map((d) => d.toSnapshot())),
   ]);
   const docTypes = [...activeTypes, ...inactiveTypes].sort((a, b) =>
     a.name.localeCompare(b.name),

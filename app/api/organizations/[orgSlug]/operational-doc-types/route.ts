@@ -1,10 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { OperationalDocTypesService } from "@/features/operational-doc-types/server";
-import { createOperationalDocTypeSchema } from "@/features/operational-doc-types";
-import { OperationalDocDirection } from "@/generated/prisma/client";
+import {
+  makeOperationalDocTypeService,
+  createOperationalDocTypeSchema,
+} from "@/modules/operational-doc-type/presentation/server";
+import type { OperationalDocDirection } from "@/modules/operational-doc-type/presentation/server";
 
-const service = new OperationalDocTypesService();
+const service = makeOperationalDocTypeService();
 
 export async function GET(
   request: Request,
@@ -30,7 +32,7 @@ export async function GET(
       Object.keys(filters).length > 0 ? filters : undefined,
     );
 
-    return Response.json({ docTypes });
+    return Response.json({ docTypes: docTypes.map((d) => d.toSnapshot()) });
   } catch (error) {
     return handleError(error);
   }
@@ -49,7 +51,7 @@ export async function POST(
 
     const docType = await service.create(orgId, input);
 
-    return Response.json(docType, { status: 201 });
+    return Response.json(docType.toSnapshot(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }
