@@ -66,4 +66,4 @@ Protocolo cross-POC aplicable a TODAS las sub-fases paired RED+GREEN futuras —
 | #11 iva-books | HEX ✅ closed | [pocs/poc-11-iva-books-d1.md](pocs/poc-11-iva-books-d1.md) | 5 use cases regenerate/recompute/void/reactivate/applyVoidCascade |
 | #1 ux-accordion-granjero-mayor | UX ✅ closed | [pocs/poc-1-ux-accordion-d1.md](pocs/poc-1-ux-accordion-d1.md) | `9b313e4` definitivo push final origin master |
 | docs-refactor (this) | DOCS ✅ closed | [pocs/poc-docs-refactor-d1.md](pocs/poc-docs-refactor-d1.md) | architecture.md split modular 9 archivos + folder pocs/ |
-| expense-hex | placeholder próximo | [pocs/poc-expense-hex-d1.md](pocs/poc-expense-hex-d1.md) | oleada 1 quick win |
+| expense-hex | HEX ✅ closed | [pocs/poc-expense-hex-d1.md](pocs/poc-expense-hex-d1.md) | 17 commits cumulative 6934bf4..D1 oleada 1 quick win — paired sister farms+lots EXACT mirror reduced single-aggregate 64α cumulative + 7 §13 NEW canonical homes |

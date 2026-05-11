@@ -72,3 +72,40 @@ Esta drift es 4ta evidencia cumulative cross-POC matures de `evidence-supersedes
 - **1ra evidencia**: POC docs-refactor D-DOCS-8 lock
 - **Decisión**: forward-compatible NO sufijo numérico (e.g. `03-rules-hard-rules.md`) vs rename retroactivo per POC nuevo que agregue Rn (e.g. `03-rules-R1-R9.md`)
 - **Opt B aprobado**: forward-compat preserve future POCs add R10..Rn sin rename overhead cumulative cross-POC matures
+
+## §13.DOMAIN/PORTS/APPLICATION/INFRASTRUCTURE/PRESENTATION — Canonical Homes POC expense hex (NEW 7 evidencias cumulative cross-POC closure)
+
+### §13.DOMAIN R5-absoluta-zero-prisma-imports-const-array-pattern
+- **1ra evidencia**: POC expense hex C0
+- **Decisión**: domain MUST NOT import Prisma — enums Prisma↔domain via local `export const FOO_VALUES = [...] as const; export type Foo = typeof FOO_VALUES[number]` paired sister Lot LOT_STATUSES precedent EXACT mirror
+- **Cementado**: D2 Opt B "re-export Prisma enum" SUPERSEDED por verificación textual `modules/{lot,mortality,farm}/domain/` ZERO Prisma imports — Path A LOT_STATUSES pattern EXACT mirror. Mapper Prisma↔domain bidirectional en infrastructure layer C2.
+
+### §13.PORTS expenses-inquiry-port-creation-R7-read-non-tx-separation
+- **1ra evidencia**: POC expense hex C0
+- **Decisión**: ExpensesRepository (write-tx) + ExpensesInquiryPort (read-non-tx) separation R7 paired sister farms+lots cementado cumulative cross-POC matures heredado absoluto
+- **Cementado**: NEW ExpensesInquiryPort + LocalExpensesInquiryAdapter wraps ExpenseService para cross-feature consumers (pricing.service.ts C4 cutover)
+
+### §13.DOMAIN expense-amount-number-paired-sister-lot-lossy-boundary
+- **1ra evidencia**: POC expense hex C0 (D1 Opt B Marco lock)
+- **Decisión**: Expense.amount = `number` paired sister Lot precedent EXACT mirror (vs Opt A Money VO). Precision lossy boundary aceptable scope MVP. Decimal→number conversion en mapper boundary C2 via Number() coercion.
+- **Cementado**: paired sister `LotSummary.compute(expenses: { amount: number }[], ...)` precedent EXACT mirror — Money VO NO scope creep domain
+
+### §13.APPLICATION expense-service-7-methods-legacy-parity-divergent-vs-paired-lot-totals
+- **1ra evidencia**: POC expense hex C1 (Path b hotfix)
+- **Decisión**: ExpenseService 7 methods legacy parity (vs paired Lot 5 methods). Service expone getTotalByLot + getTotalsByCategory delegando ExpensesRepository (sumByLot + totalsByCategory) thin pass-through. Path b revert L-C1-AGGREGATIONS-SCOPE Opt 1 drop totals → Opt 2 keep totals legacy parity completo.
+- **Cementado**: pricing.service.ts cross-module DI consume getTotalByLot (legacy parity preserve — Marco repo interface expand intentional post-C1 GREEN initial)
+
+### §13.INFRASTRUCTURE expense-mapper-asymmetric-decimal-number-boundary
+- **1ra evidencia**: POC expense hex C2
+- **Decisión**: expense.mapper.ts toDomain + toPersistence bidirectional paired sister lot.mapper.ts EXACT mirror reduced (no toWithRelationsSnapshot — single aggregate). Decimal→number via Number() coercion at boundary (works real Prisma.Decimal + test mock { toString: () => "..." } since Number() valueOf→toString fallback).
+- **Cementado**: Schema enum runtime safety guarantee allows direct cast `row.category as ExpenseCategory` mapper boundary (avoid parseExpenseCategory scope creep — schema NOT NULL constraint enforces)
+
+### §13.PRESENTATION expense-cutover-toSnapshot-canonical-bridge-supersedes-legacy-number-workaround
+- **1ra evidencia**: POC expense hex C4 (Path X resolution)
+- **Decisión**: Hex `.toSnapshot()` ES canonical bridge Decimal→number boundary D1 Opt B paired sister cementado heredado matures SUPERSEDES legacy `amount: Number(...)` workaround. Hotfix-retroactivo test α3 regex update legacy `/amount:\s*Number\(/` → hex `/\.toSnapshot\(\)/`.
+- **Cementado**: evidence-supersedes-assumption-lock 59ma matures cumulative cross-POC — hex canonical patterns SUPERSEDE legacy workarounds atomic cascade resolution mismo batch GREEN
+
+### §13.A5-ζ wholesale-7ma-evidencia-matures-cumulative-cross-POC
+- **7ma evidencia matures cumulative cross-POC**: POC expense hex C5 (paired farms+lots C7 6ta + 5 anteriores)
+- **Decisión**: Wholesale delete features/expenses/ atomic single batch 6 archivos DELETE -ϕ LOC + DIR auto-removed por git rm (zero residual) paired sister farms+lots C7 EXACT mirror reduced single-aggregate
+- **Cementado**: retirement-reinventory-gate PROJECT-scope grep classification 5-axis APPLIED pre-RED ZERO CONSUMER PROD verified post-C4 cutover cumulative (5 hits TEST-SHAPE-ASSERTION-NEGATIVE absorbed self-references inside __tests__/ excluded por walkProductionSources)

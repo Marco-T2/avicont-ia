@@ -17,7 +17,7 @@
 | POC | Source | LOC | Tests | Consumers | Paired sister |
 |---|---|---|---|---|---|
 | `poc-quick-cleanup` | delete `features/{rag, pricing}` huérfanos | 263 | 0 | 0 | N/A — delete directo |
-| `poc-expense-hex` | `features/expenses` → `modules/expense` | 281 | 0 | 10 | farms+lots paired sister |
+| `poc-expense-hex` ✅ CLOSED | `features/expenses` → `modules/expense` | 281 | 0 | 11 | farms+lots paired sister — 17 commits 6 ciclos 64α |
 | `poc-operational-doc-types` | `features/operational-doc-types` → `modules/` | 256 | 0 | 7 | farms+lots paired sister |
 
 ## OLEADA 2 — Transversales desbloquean otros (2 POCs scope mayor)

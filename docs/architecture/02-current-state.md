@@ -2,15 +2,16 @@
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
-> **Total LOC pending migration**: ~24,545 LOC across 19 features legacy.
+> **Total LOC pending migration**: ~24,264 LOC across 18 features legacy (post POC expense hex closure).
 
-## Módulos hex cementados (17/17)
+## Módulos hex cementados (18/18)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
 | `modules/accounting` | HEX ✅ | 15 | 45 | POC #10 closed |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
 | `modules/contacts` | HEX ✅ | 15 | 12 | - |
+| `modules/expense` | HEX ✅ | 45 | 11 | POC expense hex closed |
 | `modules/farm` | HEX ✅ | 11 | 18 | POC farms+lots |
 | `modules/fiscal-periods` | HEX ✅ | 9 | 7 | ⚠️ usa `features/shared` |
 | `modules/iva-books` | HEX ✅ | 16 | 22 | POC #11 closed |
@@ -26,7 +27,7 @@
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
 
-## Features legacy pending migration (19)
+## Features legacy pending migration (18)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
@@ -39,7 +40,6 @@
 | `features/shared` | 418 | 6 | **230** | 2 — transversal |
 | `features/documents` | 422 | 1 | 5 | 4 |
 | `features/reports` | 330 | 2 | 4 | 4 |
-| `features/expenses` | 281 | 0 | 10 | 1 — quick win |
 | `features/operational-doc-types` | 256 | 0 | 7 | 1 — quick win |
 | `features/document-signature-config` | 222 | 3 | 5 | 3 |
 | `features/product-types` | 219 | 0 | 9 | 3 |
@@ -52,8 +52,8 @@
 
 ## Métricas clave
 
-- **Total hex cementados**: 17/17 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Total legacy pending**: 19 features ≈ **24,545 LOC** + ~1,500 tests cementados legacy
+- **Total hex cementados**: 18/18 módulos completos (4 capas: domain + application + infrastructure + presentation)
+- **Total legacy pending**: 18 features ≈ **24,264 LOC** + ~1,500 tests cementados legacy
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 - **Huérfanos**: `features/{rag, pricing}` — 263 LOC, 0 consumers, 0 tests → delete directo
 
