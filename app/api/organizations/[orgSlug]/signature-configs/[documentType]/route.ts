@@ -1,12 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
 import {
+  makeDocumentSignatureConfigService,
   documentPrintTypeEnum,
   updateSignatureConfigSchema,
-} from "@/features/document-signature-config";
+} from "@/modules/document-signature-config/presentation/server";
 
-const documentSignatureConfigService = new DocumentSignatureConfigService();
+const documentSignatureConfigService = makeDocumentSignatureConfigService();
 
 /**
  * PATCH /api/organizations/[orgSlug]/signature-configs/[documentType]

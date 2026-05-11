@@ -1,8 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
+import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 
-const documentSignatureConfigService = new DocumentSignatureConfigService();
+const documentSignatureConfigService = makeDocumentSignatureConfigService();
 
 /**
  * GET /api/organizations/[orgSlug]/signature-configs

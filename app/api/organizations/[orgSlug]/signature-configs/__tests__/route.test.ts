@@ -36,11 +36,15 @@ const mockServiceInstance = {
   listAll: vi.fn(),
 };
 
-vi.mock("@/features/document-signature-config/server", () => ({
-  DocumentSignatureConfigService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
-  }),
-}));
+vi.mock("@/modules/document-signature-config/presentation/server", async () => {
+  const actual = await import("@/modules/document-signature-config/domain/document-signature-config.entity");
+  return {
+    makeDocumentSignatureConfigService: vi.fn().mockImplementation(function () {
+      return mockServiceInstance;
+    }),
+    ALL_DOCUMENT_PRINT_TYPES: actual.ALL_DOCUMENT_PRINT_TYPES,
+  };
+});
 
 import { requireAuth } from "@/features/shared/middleware";
 vi.mock("@/features/organizations/server", () => ({
@@ -53,7 +57,7 @@ import {
   UnauthorizedError,
   ForbiddenError,
 } from "@/features/shared/errors";
-import { ALL_DOCUMENT_PRINT_TYPES } from "@/features/document-signature-config";
+import { ALL_DOCUMENT_PRINT_TYPES } from "@/modules/document-signature-config/presentation/server";
 
 const ORG_SLUG = "test-org";
 const ORG_ID = "org-test-id";

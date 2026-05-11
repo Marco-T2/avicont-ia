@@ -52,11 +52,16 @@ const mockServiceInstance = {
   upsert: vi.fn(),
 };
 
-vi.mock("@/features/document-signature-config/server", () => ({
-  DocumentSignatureConfigService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
-  }),
-}));
+vi.mock("@/modules/document-signature-config/presentation/server", async () => {
+  const actual = await import("@/modules/document-signature-config/presentation/validation");
+  return {
+    makeDocumentSignatureConfigService: vi.fn().mockImplementation(function () {
+      return mockServiceInstance;
+    }),
+    documentPrintTypeEnum: actual.documentPrintTypeEnum,
+    updateSignatureConfigSchema: actual.updateSignatureConfigSchema,
+  };
+});
 
 import { requireAuth } from "@/features/shared/middleware";
 vi.mock("@/features/organizations/server", () => ({

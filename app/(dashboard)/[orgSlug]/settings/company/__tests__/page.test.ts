@@ -31,12 +31,11 @@ vi.mock("@/features/org-profile/server", () => {
   return { OrgProfileService };
 });
 
-vi.mock("@/features/document-signature-config/server", () => {
-  class DocumentSignatureConfigService {
-    listAll = mockListAll;
-  }
-  return { DocumentSignatureConfigService };
-});
+vi.mock("@/modules/document-signature-config/presentation/server", () => ({
+  makeDocumentSignatureConfigService: vi.fn().mockImplementation(() => ({
+    listAll: mockListAll,
+  })),
+}));
 
 vi.mock(
   "@/components/settings/company/company-profile-form",

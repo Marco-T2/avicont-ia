@@ -12,7 +12,7 @@
 
 import type { OrgProfile } from "@/generated/prisma/client";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
-import type { DocumentSignatureConfigView, SignatureLabel } from "@/features/document-signature-config/server";
+import type { DocumentSignatureConfigView, SignatureLabel } from "@/modules/document-signature-config/presentation/server";
 import type {
   VoucherPdfInput,
   VoucherPdfOrganization,

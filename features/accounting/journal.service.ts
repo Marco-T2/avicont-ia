@@ -32,7 +32,7 @@ import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/
 import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { OrgProfileService } from "@/features/org-profile/server";
-import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
+import { makeDocumentSignatureConfigService, type DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import { buildVoucherPdfInput } from "./exporters/voucher-pdf.composer";
 import { exportVoucherPdf as renderVoucherPdf } from "./exporters/voucher-pdf.exporter";
 import { fetchLogoAsDataUrl } from "./exporters/logo-fetcher";
@@ -83,7 +83,7 @@ export class JournalService {
     this.voucherTypesService = voucherTypesService ?? makeVoucherTypesService();
     this.contactsService = contactsService ?? makeContactsService();
     this.orgProfileService = orgProfileService ?? new OrgProfileService();
-    this.sigConfigService = sigConfigService ?? new DocumentSignatureConfigService();
+    this.sigConfigService = sigConfigService ?? makeDocumentSignatureConfigService();
   }
 
   // ── Listar asientos contables ──

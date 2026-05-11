@@ -3,12 +3,12 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { OrgProfileService } from "@/features/org-profile/server";
-import { DocumentSignatureConfigService } from "@/features/document-signature-config/server";
+import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import { Button } from "@/components/ui/button";
 import { CompanyProfileForm } from "@/components/settings/company/company-profile-form";
 
 const orgProfileService = new OrgProfileService();
-const documentSignatureConfigService = new DocumentSignatureConfigService();
+const documentSignatureConfigService = makeDocumentSignatureConfigService();
 
 interface CompanyProfilePageProps {
   params: Promise<{ orgSlug: string }>;
