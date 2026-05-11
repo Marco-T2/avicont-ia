@@ -5,7 +5,10 @@ import {
   makeLotService,
   type LotInquiryPort,
 } from "@/modules/lot/presentation/server";
-import { ExpensesService } from "@/features/expenses/server";
+import {
+  ExpenseService,
+  makeExpenseService,
+} from "@/modules/expense/presentation/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import type { LotPricingResult } from "./pricing.types";
 
@@ -13,17 +16,17 @@ type MortalityServiceImpl = ReturnType<typeof makeMortalityService>;
 
 export class PricingService {
   private readonly lotInquiry: LotInquiryPort;
-  private readonly expensesService: ExpensesService;
+  private readonly expensesService: ExpenseService;
   private readonly mortalityService: MortalityServiceImpl;
 
   constructor(
     lotInquiry?: LotInquiryPort,
-    expensesService?: ExpensesService,
+    expensesService?: ExpenseService,
     mortalityService?: MortalityServiceImpl,
   ) {
     this.lotInquiry =
       lotInquiry ?? new LocalLotInquiryAdapter(makeLotService());
-    this.expensesService = expensesService ?? new ExpensesService();
+    this.expensesService = expensesService ?? makeExpenseService();
     this.mortalityService = mortalityService ?? makeMortalityService();
   }
 

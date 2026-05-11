@@ -21,7 +21,7 @@ import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
 import type { FarmSnapshot } from "@/modules/farm/presentation/server";
 import type { LotSnapshot, LotSummaryShape } from "@/modules/lot/presentation/server";
-import type { ExpenseWithRelations } from "@/features/expenses";
+import type { ExpenseSnapshot } from "@/modules/expense/presentation/server";
 import type { Mortality } from "@/modules/mortality/presentation/server";
 
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
@@ -105,7 +105,7 @@ function formatDate(date: Date | string): string {
   });
 }
 
-type ExpenseClient = Omit<ExpenseWithRelations, "amount"> & { amount: number };
+type ExpenseClient = ExpenseSnapshot;
 type MortalityClient = ReturnType<Mortality["toJSON"]>;
 
 interface FarmDetailClientProps {

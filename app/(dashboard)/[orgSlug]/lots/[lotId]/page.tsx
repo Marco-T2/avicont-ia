@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
-import { ExpensesService } from "@/features/expenses/server";
+import { makeExpenseService } from "@/modules/expense/presentation/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import LotDetailClient from "./lot-detail-client";
 
@@ -42,11 +42,11 @@ export default async function LotDetailPage({ params }: LotDetailPageProps) {
   const lot = lotEntity.toSnapshot();
 
   const [expenses, mortalityEntities] = await Promise.all([
-    new ExpensesService().listByLot(orgId, lotId),
+    makeExpenseService().listByLot(orgId, lotId),
     makeMortalityService().listByLot(orgId, lotId),
   ]);
   const mortalityLogs = mortalityEntities.map((e) => e.toJSON());
-  const plainExpenses = expenses.map((e) => ({ ...e, amount: Number(e.amount) }));
+  const plainExpenses = expenses.map((e) => e.toSnapshot());
 
   return (
     <LotDetailClient

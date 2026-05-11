@@ -7,9 +7,9 @@ import {
   AgentService,
   AgentRateLimitService,
 } from "@/features/ai-agent/server";
-import { ExpensesService } from "@/features/expenses/server";
+import { makeExpenseService } from "@/modules/expense/presentation/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
-import { createExpenseSchema } from "@/features/expenses/server";
+import { createExpenseSchema } from "@/modules/expense/presentation/server";
 import { logMortalitySchema } from "@/modules/mortality/presentation/server";
 import {
   agentQuerySchema,
@@ -31,7 +31,7 @@ import { logStructured } from "@/lib/logging/structured";
 const orgService = new OrganizationsService();
 const agentService = new AgentService();
 const rateLimitService = new AgentRateLimitService();
-const expensesService = new ExpensesService();
+const expensesService = makeExpenseService();
 const mortalityService = makeMortalityService();
 const journalService = new JournalService();
 const voucherTypesService = makeVoucherTypesService();

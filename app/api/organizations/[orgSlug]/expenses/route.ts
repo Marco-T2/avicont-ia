@@ -1,14 +1,13 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { UsersService } from "@/features/users/server";
-import { ExpensesService } from "@/features/expenses/server";
 import {
+  makeExpenseService,
   createExpenseSchema,
-  expenseFiltersSchema,
-} from "@/features/expenses/server";
+} from "@/modules/expense/presentation/server";
 
 const usersService = new UsersService();
-const service = new ExpensesService();
+const service = makeExpenseService();
 
 export async function GET(
   request: Request,
@@ -20,18 +19,13 @@ export async function GET(
     const orgId = await requireOrgAccess(clerkUserId, orgSlug);
 
     const { searchParams } = new URL(request.url);
-    const filters = expenseFiltersSchema.parse({
-      lotId: searchParams.get("lotId") ?? undefined,
-      category: searchParams.get("category") ?? undefined,
-      dateFrom: searchParams.get("dateFrom") ?? undefined,
-      dateTo: searchParams.get("dateTo") ?? undefined,
-    });
+    const lotId = searchParams.get("lotId") ?? undefined;
 
-    const expenses = filters.lotId
-      ? await service.listByLot(orgId, filters.lotId)
-      : await service.list(orgId, filters);
+    const entities = lotId
+      ? await service.listByLot(orgId, lotId)
+      : await service.list(orgId);
 
-    return Response.json(expenses);
+    return Response.json(entities.map((e) => e.toSnapshot()));
   } catch (error) {
     return handleError(error);
   }
@@ -56,7 +50,7 @@ export async function POST(
       createdById: user.id,
     });
 
-    return Response.json(expense, { status: 201 });
+    return Response.json(expense.toSnapshot(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }

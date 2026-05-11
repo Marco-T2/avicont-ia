@@ -83,13 +83,11 @@ vi.mock("@/features/ai-agent/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/expenses/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/expenses/server")>();
+vi.mock("@/modules/expense/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/expense/presentation/server")>();
   return {
     ...actual,
-    ExpensesService: vi.fn().mockImplementation(function () {
-      return { create: mockExpenseCreate };
-    }),
+    makeExpenseService: vi.fn(() => ({ create: mockExpenseCreate })),
   };
 });
 

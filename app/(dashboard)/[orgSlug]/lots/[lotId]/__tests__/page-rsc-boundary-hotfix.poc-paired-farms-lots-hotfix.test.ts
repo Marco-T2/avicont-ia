@@ -77,12 +77,14 @@ const PAGE_PATH = "app/(dashboard)/[orgSlug]/lots/[lotId]/page.tsx";
 // α2 — POS textual JSX prop: `summary={summary.toJSON()}` post-hotfix call site
 const SUMMARY_TO_JSON_JSX_REGEX = /summary=\{summary\.toJSON\(\)\}/m;
 
-// α3 — POS textual: expenses Decimal→Number conversion in page.tsx
-// Matches the conversion pattern `amount: Number(...)` (covers spread/map
-// variants: `expenses.map((e) => ({ ...e, amount: Number(e.amount) }))` o
-// inline equivalent). NO false-positive vs existing client-side
-// `Number(expense.amount)` (read() scoped a PAGE_PATH only).
-const AMOUNT_NUMBER_CONVERSION_REGEX = /amount:\s*Number\(/m;
+// α3 — POS textual: expenses Decimal→number canonical bridge via `.toSnapshot()` in page.tsx
+// Post POC expense hex C4 cutover (1fc4ba0 + 87789a5 + 7495f0e cumulative) — hex
+// Expense.toSnapshot() returns amount as number (D1 Opt B lossy boundary domain
+// Decimal→number via mapper Number() coercion C2 cementado). SUPERSEDES legacy
+// page-level `amount: Number(...)` workaround per evidence-supersedes-assumption-lock
+// 59ma matures cumulative cross-POC — hex .toSnapshot() canonical bridge single
+// source of truth paired sister cementado heredado matures forward absoluto.
+const TO_SNAPSHOT_BRIDGE_REGEX = /\.toSnapshot\(\)/m;
 
 describe("POC paired farms+lots hotfix retroactivo pre-D1 — RED textual + behavioral gate /lots/[lotId] RSC boundary serialization (LotSummary class identity + Decimal Prisma)", () => {
   // ── α1 Behavioral LotSummary.toJSON() existence + shape + plain object ──
@@ -109,8 +111,8 @@ describe("POC paired farms+lots hotfix retroactivo pre-D1 — RED textual + beha
     expect(read(PAGE_PATH)).toMatch(SUMMARY_TO_JSON_JSX_REGEX);
   });
 
-  // ── α3 Textual page.tsx expenses Decimal→Number map ──
-  it("Test α3: page.tsx contains `amount: Number(...)` conversion pre-pass expenses to Client (POS — paired sister hotfix-correctivo-contacts retroactive precedent EXACT mirror page-level conversion minimal scope)", () => {
-    expect(read(PAGE_PATH)).toMatch(AMOUNT_NUMBER_CONVERSION_REGEX);
+  // ── α3 Textual page.tsx expenses hex .toSnapshot() canonical bridge (post-C4 cutover) ──
+  it("Test α3: page.tsx contains `.toSnapshot()` bridge pre-pass expenses to Client (POS — hex canonical Decimal→number boundary D1 Opt B paired sister cementado heredado matures SUPERSEDES legacy `amount: Number(...)` workaround per evidence-supersedes-assumption-lock 59ma matures cumulative cross-POC)", () => {
+    expect(read(PAGE_PATH)).toMatch(TO_SNAPSHOT_BRIDGE_REGEX);
   });
 });

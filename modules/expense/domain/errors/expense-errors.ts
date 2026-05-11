@@ -1,4 +1,5 @@
 export class ExpenseNotFoundError extends Error {
+  readonly statusCode = 404;
   constructor(id: string) {
     super(`Gasto no encontrado: ${id}`);
     this.name = "ExpenseNotFoundError";

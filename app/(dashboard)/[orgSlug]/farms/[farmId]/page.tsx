@@ -3,7 +3,7 @@ import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/features/organizations/server";
 import { makeFarmService } from "@/modules/farm/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
-import { ExpensesService } from "@/features/expenses/server";
+import { makeExpenseService } from "@/modules/expense/presentation/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import FarmDetailClient from "./farm-detail-client";
 
@@ -40,7 +40,7 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
   const farm = farmEntity.toSnapshot();
 
   const lotsService = makeLotService();
-  const expensesService = new ExpensesService();
+  const expensesService = makeExpenseService();
   const mortalityService = makeMortalityService();
 
   const lotEntities = await lotsService.listByFarm(orgId, farmId);
@@ -66,7 +66,7 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
     const recentExpenses = [...allExpenses[i]]
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(0, 10)
-      .map((e) => ({ ...e, amount: Number(e.amount) }));
+      .map((e) => e.toSnapshot());
     const recentMortality = allMortality[i]
       .map((m) => m.toJSON())
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())

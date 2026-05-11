@@ -20,7 +20,7 @@ import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
 import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
 import type { LotSnapshot, LotSummary, LotSummaryShape } from "@/modules/lot/presentation/server";
-import type { ExpenseWithRelations } from "@/features/expenses";
+import type { ExpenseSnapshot } from "@/modules/expense/presentation/server";
 import type { Mortality } from "@/modules/mortality/presentation/server";
 
 type _LotSummaryClassPreserved = LotSummary;
@@ -110,7 +110,7 @@ interface LotDetailClientProps {
   orgSlug: string;
   lot: LotSnapshot;
   summary: LotSummaryShape;
-  expenses: (Omit<ExpenseWithRelations, "amount"> & { amount: number })[];
+  expenses: ExpenseSnapshot[];
   mortalityLogs: ReturnType<Mortality["toJSON"]>[];
 }
 

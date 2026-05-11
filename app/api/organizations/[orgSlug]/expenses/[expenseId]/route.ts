@@ -1,10 +1,11 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/features/organizations/server";
-import { ExpensesService } from "@/features/expenses/server";
-import { expenseIdSchema } from "@/features/expenses/server";
-import { NotFoundError } from "@/features/shared/errors";
+import {
+  makeExpenseService,
+  expenseIdSchema,
+} from "@/modules/expense/presentation/server";
 
-const service = new ExpensesService();
+const service = makeExpenseService();
 
 export async function GET(
   _request: Request,
@@ -18,9 +19,8 @@ export async function GET(
     expenseIdSchema.parse(expenseId);
 
     const expense = await service.getById(orgId, expenseId);
-    if (!expense) throw new NotFoundError("Gasto");
 
-    return Response.json(expense);
+    return Response.json(expense.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
