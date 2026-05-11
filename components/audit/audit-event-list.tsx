@@ -26,7 +26,7 @@ import {
   type AuditCursor,
   type AuditEntityType,
   type AuditGroup,
-} from "@/features/audit";
+} from "@/modules/audit/presentation";
 import { formatDateTimeBO, formatTimeBO } from "@/lib/date-utils";
 import { ActionBadge, ClassificationBadge } from "./audit-event-badges";
 import { AuditDiffViewer } from "./audit-diff-viewer";

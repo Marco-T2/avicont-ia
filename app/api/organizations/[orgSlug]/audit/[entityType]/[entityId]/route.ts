@@ -1,9 +1,9 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import {
-  AuditService,
+  makeAuditService,
   voucherHistoryParamsSchema,
-} from "@/features/audit/server";
+} from "@/modules/audit/presentation/server";
 
 /**
  * GET /api/organizations/[orgSlug]/audit/[entityType]/[entityId]
@@ -32,7 +32,7 @@ export async function GET(
 
     const { entityType, entityId } = voucherHistoryParamsSchema.parse(raw);
 
-    const events = await new AuditService().getVoucherHistory(
+    const events = await makeAuditService().getVoucherHistory(
       orgId,
       entityType,
       entityId,

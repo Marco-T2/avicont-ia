@@ -24,7 +24,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { AuditEvent, AuditGroup } from "@/features/audit";
+import type { AuditEvent, AuditGroup } from "@/modules/audit/presentation";
 import { AuditEventList } from "@/components/audit/audit-event-list";
 
 // ── Mocks (≤3 — project rule) ──────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import {
   STATUS_BADGE_LABELS,
   type AuditEvent,
   type DiffField,
-} from "@/features/audit";
+} from "@/modules/audit/presentation";
 import { formatDateBO } from "@/lib/date-utils";
 
 const MISSING = "—";

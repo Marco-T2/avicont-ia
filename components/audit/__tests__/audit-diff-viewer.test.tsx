@@ -8,7 +8,7 @@
 import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
-import type { AuditEvent } from "@/features/audit";
+import type { AuditEvent } from "@/modules/audit/presentation";
 import { AuditDiffViewer } from "../audit-diff-viewer";
 
 afterEach(() => cleanup());

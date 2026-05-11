@@ -2,11 +2,11 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { ENTITY_TYPE_LABELS } from "@/features/audit";
+import { ENTITY_TYPE_LABELS } from "@/modules/audit/presentation";
 import {
-  AuditService,
+  makeAuditService,
   voucherHistoryParamsSchema,
-} from "@/features/audit/server";
+} from "@/modules/audit/presentation/server";
 import { Button } from "@/components/ui/button";
 import { AuditDetailTimeline } from "@/components/audit/audit-detail-timeline";
 
@@ -39,7 +39,7 @@ export default async function AuditDetailPage({
 
   const { entityType, entityId } = parsed.data;
 
-  const events = await new AuditService().getVoucherHistory(
+  const events = await makeAuditService().getVoucherHistory(
     orgId,
     entityType,
     entityId,

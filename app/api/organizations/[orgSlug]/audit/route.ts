@@ -1,10 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import {
-  AuditService,
+  makeAuditService,
   auditListQuerySchema,
   parseCursor,
-} from "@/features/audit/server";
+} from "@/modules/audit/presentation/server";
 import {
   AUDIT_DATE_RANGE_INVALID,
   ValidationError,
@@ -67,7 +67,7 @@ export async function GET(
       limit: parsed.limit ?? 50,
     };
 
-    const result = await new AuditService().listGrouped(orgId, filters);
+    const result = await makeAuditService().listGrouped(orgId, filters);
     return Response.json(result);
   } catch (error) {
     return handleError(error);

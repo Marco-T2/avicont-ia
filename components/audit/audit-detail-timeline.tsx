@@ -7,7 +7,7 @@ import {
   buildTimelineSummary,
   isHeaderEvent,
   type AuditEvent,
-} from "@/features/audit";
+} from "@/modules/audit/presentation";
 import { formatDateTimeBO } from "@/lib/date-utils";
 import { ActionBadge, ClassificationBadge } from "./audit-event-badges";
 import { AuditDiffViewer } from "./audit-diff-viewer";

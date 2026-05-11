@@ -11,12 +11,12 @@
  * 0 mocks (pure functions — no I/O, no external deps).
  */
 import { describe, it, expect } from "vitest";
-import type { AuditEvent, AuditGroup } from "@/features/audit";
+import type { AuditEvent, AuditGroup } from "@/modules/audit/presentation";
 import {
   isHeaderEvent,
   buildGroupSummary,
   getVoucherDetailUrl,
-} from "@/features/audit";
+} from "@/modules/audit/presentation";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

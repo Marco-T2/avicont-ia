@@ -1,13 +1,13 @@
 import { redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/features/permissions/server";
-import { AuditService, parseCursor } from "@/features/audit/server";
+import { makeAuditService, parseCursor } from "@/modules/audit/presentation/server";
 import type {
   AuditAction,
   AuditCursor,
   AuditEntityType,
-} from "@/features/audit";
-import { AUDIT_ACTIONS, AUDITED_ENTITY_TYPES } from "@/features/audit";
+} from "@/modules/audit/presentation";
+import { AUDIT_ACTIONS, AUDITED_ENTITY_TYPES } from "@/modules/audit/presentation";
 import { AuditEventList } from "@/components/audit/audit-event-list";
 import { endOfMonth, startOfMonth } from "@/lib/date-utils";
 
@@ -69,7 +69,7 @@ export default async function AuditPage({
       ? action
       : undefined;
 
-  const result = await new AuditService().listGrouped(orgId, {
+  const result = await makeAuditService().listGrouped(orgId, {
     dateFrom,
     dateTo,
     entityType: entityTypeSafe,

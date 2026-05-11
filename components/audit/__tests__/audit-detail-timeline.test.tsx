@@ -13,7 +13,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import type { AuditEvent } from "@/features/audit";
+import type { AuditEvent } from "@/modules/audit/presentation";
 
 // ── Imports under test ────────────────────────────────────────────────────────
 // E1: groupByCorrelation exported from audit-detail-timeline for testing.

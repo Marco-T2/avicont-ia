@@ -5,7 +5,7 @@ import {
   ACTION_LABELS,
   type AuditAction,
   type AuditClassification,
-} from "@/features/audit";
+} from "@/modules/audit/presentation";
 
 // ── ClassificationBadge ──────────────────────────────────────────────────────
 
