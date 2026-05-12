@@ -2,7 +2,7 @@ import "server-only";
 import { uploadToBlob, deleteFromBlob } from "@/lib/blob";
 import { NotFoundError, ForbiddenError, ValidationError } from "@/features/shared/errors";
 import { canUploadToScope, type DocumentScope } from "@/features/permissions";
-import { RagService } from "@/features/rag/server";
+import { RagService } from "@/features/documents/rag/server";
 import { DocumentsRepository } from "./documents.repository";
 import type {
   DocumentListResult,

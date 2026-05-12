@@ -46,7 +46,7 @@ vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   GlobalWorkerOptions: {},
 }));
 
-vi.mock("@/features/rag/server", () => ({
+vi.mock("@/features/documents/rag/server", () => ({
   RagService: class {
     indexDocument = mockIndexDocument;
     deleteByDocument = mockRagDeleteByDocument;

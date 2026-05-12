@@ -1,6 +1,6 @@
 import type { Role } from "@/features/permissions";
 import { getRagScopes } from "@/features/permissions";
-import { RagService } from "@/features/rag/server";
+import { RagService } from "@/features/documents/rag/server";
 import { logStructured } from "@/lib/logging/structured";
 import { AgentContextRepository } from "./agent-context.repository";
 

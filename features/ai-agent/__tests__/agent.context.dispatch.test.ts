@@ -37,7 +37,7 @@ vi.mock("../agent-context.repository", () => ({
   },
 }));
 
-vi.mock("@/features/rag/server", () => ({
+vi.mock("@/features/documents/rag/server", () => ({
   RagService: class {
     search = mockRagSearch;
   },
