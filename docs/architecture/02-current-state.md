@@ -8,7 +8,7 @@
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
-| `modules/accounting` | HEX ✅ | 15 | 45 | POC #10 closed; public barrel (server.ts) POC poc-hex-public-barrels |
+| `modules/accounting` | HEX ✅ | 21 | 45 | POC #2a types + POC #2b utils → hex; public barrel (server.ts) POC poc-hex-public-barrels |
 | `modules/audit` | HEX ✅ | 54 | 8 | POC audit hex closed — READ-only + raw SQL CTE preserved + UserNameResolver port |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
 | `modules/dispatch` | HEX ✅ | 89 | 15 | POC dispatch hex closed — Sale architectural mirror + state machine + legacy accounting adapter ports |
@@ -38,7 +38,7 @@
 
 | Feature | LOC | Tests | Consumers | Oleada target | Notes |
 |---|---|---|---|---|---|
-| `features/accounting` | 12,523 | 65 | 128 | 5 — residual POST-POC #2a shim | 3 type files → SHIM (journal/accounts/ledger.types.ts); canonical home `/modules/accounting/presentation/dto/` POC #2a |
+| `features/accounting` | 12,373 | 65 | 128 | 5 — residual POST-POC #2b shim | 3 type files → SHIM (POC #2a); 4 utils files → SHIM (POC #2b: account-code, correlative, accounting-helpers, journal.dates); canonical homes `/modules/accounting/presentation/dto/` + `/modules/accounting/domain/` |
 | `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting | |
 
 ## Features — cross-cutting infrastructure (NOT hex target) (9)
