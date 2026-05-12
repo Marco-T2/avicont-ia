@@ -641,4 +641,24 @@ POC #1 "UX accordion granjero mayor — farm-detail-client.tsx Accordion lotes e
 
 ---
 
+### 19.20. ADDENDUM POC correctivo dispatch-instantiation retroactivo bugfix build-blocking post-D1 poc-dispatch-hex
+
+**ADDENDUM verify retroactivo POC correctivo dispatch-instantiation — build-blocking TSC regression detected post-D1 poc-dispatch-hex** (paired sister §19.12 contacts correctivo RSC boundary precedent — instantiation axis distinct vs return-shape axis): `poc-dispatch-hex` C4 cutover commit `e3e6ad8b` switched `DispatchService` constructor to require `DispatchServiceDeps` arg (dependency injection). 7 consumer sites in `app/` were NOT updated — still calling `new DispatchService()` (zero-args form) post-cutover. `pnpm build` fails at TSC `Expected 1 arguments, but got 0` at `app/(dashboard)/[orgSlug]/dispatches/[dispatchId]/page.tsx:28` (first stop). Build-blocking debt hidden by repo rule "Never build after changes" — surfaced post-OLEADA 4 first build gate. Cascade TSC error also uncovered: `status/route.ts:37` called `dispatchService.void()` — method named `voidDispatch()` on `DispatchService`; fixed atomically in same file (declared consumer site, scope-bound).
+
+**Root cause (instantiation axis)**: dependency injection via `DispatchServiceDeps` was added to `DispatchService` constructor during `poc-dispatch-hex` C4, but the 7 runtime consumer sites in `app/` import from the `server.ts` barrel which did NOT re-export `makeDispatchService()`. Factory existed in `modules/dispatch/presentation/composition-root.ts` but was unreachable from consumers. Fix: add barrel re-export (`server.ts` → `./composition-root`) + replace all 7 `new DispatchService()` call sites with `makeDispatchService()`.
+
+**4-commit chain (paired sister poc-correctivo-contacts precedent — instantiation axis variant)**:
+- C0 RED `4a16c9a7` — `modules/dispatch/presentation/__tests__/c0-shape.poc-correctivo-dispatch-instantiation.test.ts` NEW 18α sentinel gate (15 FAIL + 3 PASS-pre-existing at RED — mocks already had `makeDispatchService` key pre-C1a; α16-α18 PASS-locked)
+- C1a mock-preceding `8386914f` — 3 vi.mock factory files verified already complete per [[mock_hygiene_commit_scope]] (no-op confirming state)
+- C1b GREEN `2781c649` — 8-file atomic: `modules/dispatch/presentation/server.ts` barrel export + 7 consumer sites `new DispatchService()` → `makeDispatchService()` + `status/route.ts` `void()` → `voidDispatch()` cascade TSC fix
+- C2 D1 (this commit) — doc-only §19.20 ADDENDUM append-only
+
+**REQ-005 NEGATIVE sentinel**: `new DispatchService()` (zero-args form) MUST NOT appear anywhere in `app/`. 18α gate α2+α4+α6+α8+α10+α12+α14 NEG per-site confirms zero-args form absent all 7 sites post-C1b. `pnpm build` advances past all dispatch TSC errors post-C1b (pre-existing cascade in `purchases/route.ts` MonetaryAmount type mismatch — separate module, out of scope).
+
+**Scope (11 file edits total — per proposal §2)**: `modules/dispatch/presentation/server.ts` (barrel) + 7 `app/` consumer sites (2 pages + 4 API routes + 1 hub route) + 3 test mock factory files. Suite: 18/18 α PASS post-C1b. Full suite: 67 failed | 548 passed (baseline 68/547 — net improvement, 0 new failures; [[diagnostic_stash_gate_pattern]] confirmed page-rbac.test.ts P1001 Prisma + dispatches-hub/route.test.ts duplicate vi.mock collision both pre-existing). Duplicate vi.mock collapse OUT-OF-SCOPE per proposal §2 — DEFER.
+
+**Cross-ref engrams**: `sdd/poc-correctivo-dispatch-instantiation/apply-progress` (4-commit chain + suite delta + build gate) + `sdd/poc-correctivo-dispatch-instantiation/baseline-ledger` (pre-C0 baseline 68f/547p). Paired sister: §19.12 contacts correctivo (RSC boundary serialization axis) — same 4-commit corrective shape, distinct technical problem axis.
+
+---
+
 
