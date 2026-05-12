@@ -14,3 +14,6 @@ export * from "../domain/accounting-helpers";
 export * from "../domain/journal.dates";
 export * from "../domain/account-subtype.utils";
 export * from "../domain/account-subtype.resolve";
+
+// ── Domain UI helpers ──
+export * from "../domain/journal.ui";
