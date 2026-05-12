@@ -4,7 +4,22 @@
 > **Source**: Inventory cumulative cross-POC matures heredado [02-current-state.md](02-current-state.md).
 > **Estimación cumulative migration completa**: ~60-80 sesiones cortas.
 
-## Principios cumulative cross-POC matures heredados
+## 10-POC Framework — Cementación 2026-05-11 POC poc-hex-public-barrels (POC #1 COMPLETE)
+
+| POC | Objetivo | Estado | LOC | Consumers |
+|---|---|---|---|---|
+| **POC #1** | Public barrels (accounting + iva-books server.ts) | ✅ ARCHIVED | +11 | unblock #2+ |
+| **POC #2** | utils-types sweep B-batch | pending | ~200 | fast-path reuse |
+| **POC #3** | iva-books completion (types+validation+exporters, DUAL-IMPORT cleanup) | pending | ~400 | accounting-linked |
+| **POC #4** | accounts hex | pending | ~500 | financial-statements prep |
+| **POC #5** | auto-entry + lifecycle + validation | pending | ~600 | journal-driver |
+| **POC #6** | reports paired-sister 4-batch (trial/equity/worksheet/initial) | pending | ~800 | journal-consumer |
+| **POC #7** | financial-statements XL POC | pending | ~1500 | reporting-stack |
+| **POC #8** | journal completion + parallel-impl reconciliation (JournalService→JournalsService) | pending | ~700 | core-rename |
+| **POC #9** | account-balances + ledger paired (resuelve circular) | pending | ~400 | final-cycle |
+| **POC #10** | server.ts barrel delete final | pending | -11+ | total cleanup |
+
+### Principios cumulative cross-POC matures heredados
 
 - **Paired sister reuse aggressive** per POC nuevo — EXACT mirror precedent matures cumulative
 - **Bundling sesiones POC pequeño** (1 sesión = 1 huérfano delete viable)

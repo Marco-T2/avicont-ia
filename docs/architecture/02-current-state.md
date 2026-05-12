@@ -8,7 +8,7 @@
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
-| `modules/accounting` | HEX ✅ | 15 | 45 | POC #10 closed |
+| `modules/accounting` | HEX ✅ | 15 | 45 | POC #10 closed; public barrel (server.ts) POC poc-hex-public-barrels |
 | `modules/audit` | HEX ✅ | 54 | 8 | POC audit hex closed — READ-only + raw SQL CTE preserved + UserNameResolver port |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
 | `modules/dispatch` | HEX ✅ | 89 | 15 | POC dispatch hex closed — Sale architectural mirror + state machine + legacy accounting adapter ports |
@@ -16,7 +16,7 @@
 | `modules/expense` | HEX ✅ | 45 | 11 | POC expense hex closed |
 | `modules/farm` | HEX ✅ | 11 | 18 | POC farms+lots |
 | `modules/fiscal-periods` | HEX ✅ | 9 | 7 | ⚠️ usa `features/shared` |
-| `modules/iva-books` | HEX ✅ | 16 | 22 | POC #11 closed |
+| `modules/iva-books` | HEX ✅ | 16 | 22 | POC #11 closed; public barrel (server.ts) POC poc-hex-public-barrels |
 | `modules/lot` | HEX ✅ | 13 | 14 | POC farms+lots |
 | `modules/monthly-close` | HEX ✅ | 12 | 5 | - |
 | `modules/mortality` | HEX ✅ | 4 | 6 | ⚠️ usa `features/shared` — primer POC histórico |
@@ -69,6 +69,12 @@
 8 módulos hex (fiscal-periods, mortality, payables, payment, purchase, receivables, sale + 1 más) importan de `features/{shared, accounting, permissions}`. Migración parcelada esperada cumulative cross-POC matures heredado.
 
 > `modules/operational-doc-type` NO híbrido — zero imports from features/ (standalone hex completo).
+
+## Public barrels POC cementación (25/25 COMPLETE as of 2026-05-11)
+
+✅ **modules/accounting/presentation/server.ts** — JournalsService + types + factories  
+✅ **modules/iva-books/presentation/server.ts** — IvaBookService + factories  
+⚠️ **NOTE**: Non-hex outliers `features/{purchase, sale, shared}` ALSO lack server.ts (surface honest — outside POC poc-hex-public-barrels scope, defer to future consolidation).
 
 ## Anomalías honest surface
 
