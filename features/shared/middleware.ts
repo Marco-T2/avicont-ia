@@ -1,10 +1,2 @@
-import { auth } from "@clerk/nextjs/server";
-import { UnauthorizedError } from "./errors";
-
-export { handleError } from "./http-error-serializer";
-
-export async function requireAuth() {
-  const session = await auth();
-  if (!session.userId) throw new UnauthorizedError();
-  return session;
-}
+/** Re-exports moved to hex (§13.X canonical home). */
+export * from "@/modules/shared/presentation/middleware";

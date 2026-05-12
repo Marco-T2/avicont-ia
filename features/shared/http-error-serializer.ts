@@ -1,26 +1,2 @@
-import { ZodError } from "zod";
-import { AppError } from "./errors";
-
-export function handleError(error: unknown): Response {
-  if (error instanceof ZodError) {
-    return Response.json(
-      { error: "Datos inválidos", details: error.flatten() },
-      { status: 400 },
-    );
-  }
-  if (error instanceof AppError) {
-    return Response.json(
-      {
-        error: error.message,
-        code: error.code,
-        ...(error.details ? { details: error.details } : {}),
-      },
-      { status: error.statusCode },
-    );
-  }
-  console.error("Unhandled error:", error);
-  return Response.json(
-    { error: "Error interno del servidor" },
-    { status: 500 },
-  );
-}
+/** Re-exports moved to hex (§13.X canonical home). */
+export * from "@/modules/shared/presentation/http-error-serializer";
