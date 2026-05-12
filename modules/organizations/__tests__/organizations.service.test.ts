@@ -24,7 +24,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { OrganizationsService } from "../organizations.service";
+import { OrganizationsService } from "../application/organizations.service";
 
 describe("OrganizationsService.syncOrganization — transaction boundary (Audit F #1)", () => {
   const INPUT = { clerkOrgId: "clerk_org_new", name: "New Org" };
@@ -52,27 +52,32 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
         .mockImplementation(async (cb: (tx: unknown) => Promise<unknown>) =>
           cb(txClient),
         ),
-    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[0]>;
+    } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["repo"];
 
     const voucherTypesService = {
       seedDefaultsForOrg: vi.fn().mockResolvedValue([]),
-    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[1]>;
+    } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["voucherTypeSeed"];
 
     const usersService = {
       findOrCreate: vi.fn().mockResolvedValue(CREATED_USER),
-    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[2]>;
+    } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["users"];
 
     const accountsService = {
       seedChartOfAccounts: vi.fn().mockResolvedValue(undefined),
-    } as unknown as NonNullable<ConstructorParameters<typeof OrganizationsService>[3]>;
+    } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["accountSeed"];
+
+    const systemRoleSeed = {
+      buildSystemRolePayloads: vi.fn().mockReturnValue([]),
+    } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["systemRoleSeed"];
 
     return {
-      service: new OrganizationsService(
+      service: new OrganizationsService({
         repo,
-        voucherTypesService,
-        usersService,
-        accountsService,
-      ),
+        users: usersService,
+        voucherTypeSeed: voucherTypesService,
+        accountSeed: accountsService,
+        systemRoleSeed,
+      }),
       repo,
       voucherTypesService,
       usersService,

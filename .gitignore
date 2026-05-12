@@ -46,6 +46,9 @@ next-env.d.ts
 # Windows Zone.Identifier metadata
 *:Zone.Identifier
 
+# Editor settings (personal)
+.vscode/
+
 # Documentación de referencia (no es código)
 /propuestaContabilidad
 /public/estrutura.md

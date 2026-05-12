@@ -26,10 +26,10 @@ import { ZodError } from "zod";
 import {
   buildAddMemberSchema,
   buildUpdateMemberRoleSchema,
-} from "../members.validation";
-import { rolesService } from "../roles.service.singleton";
+} from "../domain/members.validation";
+import { rolesService } from "../presentation/roles.service.singleton";
 
-vi.mock("../roles.service.singleton", () => ({
+vi.mock("../presentation/roles.service.singleton", () => ({
   rolesService: {
     exists: vi.fn<(orgId: string, slug: string) => Promise<boolean>>(),
   },

@@ -1,8 +1,8 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import {
   requireOrgAccess,
-  OrganizationsService,
-} from "@/features/organizations/server";
+  makeOrganizationsService,
+} from "@/modules/organizations/presentation/server";
 import {
   AgentService,
   AgentRateLimitService,
@@ -28,7 +28,7 @@ import {
 import { formatCorrelativeNumber } from "@/features/accounting/server";
 import { logStructured } from "@/lib/logging/structured";
 
-const orgService = new OrganizationsService();
+const orgService = makeOrganizationsService();
 const agentService = new AgentService();
 const rateLimitService = new AgentRateLimitService();
 const expensesService = makeExpenseService();

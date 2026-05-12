@@ -25,8 +25,10 @@ vi.mock("@/features/shared/middleware", () => ({
 // the hex factory intercepts both direct and transitive consumers.
 vi.mock("@/modules/voucher-types/presentation/server", () => ({
   makeVoucherTypesService: () => ({
+    seedDefaultsForOrg: vi.fn().mockResolvedValue([]),
     seedForOrg: vi.fn().mockResolvedValue([]),
   }),
+  VoucherTypesService: vi.fn(),
   makeVoucherTypesServiceForTx: () => ({
     seedForOrg: vi.fn().mockResolvedValue([]),
   }),
@@ -56,6 +58,11 @@ vi.mock("@/lib/prisma", () => {
     },
     voucherTypeTemplate: {
       findMany: vi.fn().mockResolvedValue([]),
+    },
+    account: {
+      createMany: vi.fn().mockResolvedValue({ count: 0 }),
+      findMany: vi.fn().mockResolvedValue([]),
+      upsert: vi.fn().mockResolvedValue({ id: "acc-1", code: "1" }),
     },
   };
   // $transaction invokes the callback with the same client so mocked methods

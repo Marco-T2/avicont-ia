@@ -1,0 +1,268 @@
+@startuml grafo_sistema_avicont
+title Grafo de Control del Sistema avicont-ia (McCabe)\nN = 64 nodos | A = 96 aristas | V(G) = 34
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam ArrowColor Black
+skinparam rectangle {
+  BackgroundColor White
+  BorderColor Black
+  RoundCorner 12
+}
+
+' =====================================================
+' NODOS INICIALES (1-5) — Login y autenticación
+' =====================================================
+rectangle "1" as N1
+rectangle "2" as N2
+rectangle "3" as N3
+rectangle "4" as N4
+rectangle "5" as N5
+
+' =====================================================
+' MÓDULOS PRINCIPALES (6-17)
+' =====================================================
+rectangle "6" as N6
+rectangle "7" as N7
+rectangle "8" as N8
+rectangle "9" as N9
+rectangle "10" as N10
+rectangle "11" as N11
+rectangle "12" as N12
+rectangle "13" as N13
+rectangle "14" as N14
+rectangle "15" as N15
+rectangle "16" as N16
+rectangle "17" as N17
+
+' =====================================================
+' SUB-FUNCIONALIDADES (18-50)
+' =====================================================
+rectangle "18" as N18
+rectangle "19" as N19
+rectangle "20" as N20
+rectangle "21" as N21
+rectangle "22" as N22
+rectangle "23" as N23
+rectangle "24" as N24
+rectangle "25" as N25
+rectangle "26" as N26
+rectangle "27" as N27
+rectangle "28" as N28
+rectangle "29" as N29
+rectangle "30" as N30
+rectangle "31" as N31
+rectangle "32" as N32
+rectangle "33" as N33
+rectangle "34" as N34
+rectangle "35" as N35
+rectangle "36" as N36
+rectangle "37" as N37
+rectangle "38" as N38
+rectangle "39" as N39
+rectangle "40" as N40
+rectangle "41" as N41
+rectangle "42" as N42
+rectangle "43" as N43
+rectangle "44" as N44
+rectangle "45" as N45
+rectangle "46" as N46
+rectangle "47" as N47
+rectangle "48" as N48
+rectangle "49" as N49
+rectangle "50" as N50
+
+' =====================================================
+' FINES DE MÓDULO (51-62)
+' =====================================================
+rectangle "51" as N51
+rectangle "52" as N52
+rectangle "53" as N53
+rectangle "54" as N54
+rectangle "55" as N55
+rectangle "56" as N56
+rectangle "57" as N57
+rectangle "58" as N58
+rectangle "59" as N59
+rectangle "60" as N60
+rectangle "61" as N61
+rectangle "62" as N62
+
+' =====================================================
+' FIN DEL CICLO Y FIN DEL SISTEMA (63-64)
+' =====================================================
+rectangle "63" as N63
+rectangle "64" as N64
+
+' =====================================================
+' ARISTAS — Flujo inicial (login y autenticación)
+' =====================================================
+N1 --> N2
+N2 --> N3
+N3 --> N2 : error
+N3 --> N4
+N4 --> N5
+
+' =====================================================
+' ARISTAS — Menú Principal hacia los 12 módulos
+' =====================================================
+N5 --> N6
+N5 --> N7
+N5 --> N8
+N5 --> N9
+N5 --> N10
+N5 --> N11
+N5 --> N12
+N5 --> N13
+N5 --> N14
+N5 --> N15
+N5 --> N16
+N5 --> N17
+
+' =====================================================
+' ARISTAS — Módulos hacia sus sub-funcionalidades
+' =====================================================
+' Módulo 6 — Usuarios y Organización
+N6 --> N18
+N6 --> N19
+N6 --> N20
+
+' Módulo 7 — Plan de Cuentas
+N7 --> N21
+N7 --> N22
+N7 --> N23
+
+' Módulo 8 — Contactos
+N8 --> N24
+N8 --> N25
+N8 --> N26
+
+' Módulo 9 — Libro Diario
+N9 --> N27
+N9 --> N28
+N9 --> N29
+
+' Módulo 10 — Operaciones Comerciales
+N10 --> N30
+N10 --> N31
+N10 --> N32
+
+' Módulo 11 — Cartera
+N11 --> N33
+N11 --> N34
+N11 --> N35
+
+' Módulo 12 — Períodos Fiscales
+N12 --> N36
+N12 --> N37
+N12 --> N38
+
+' Módulo 13 — Libros Tributarios (IVA)
+N13 --> N39
+N13 --> N40
+N13 --> N41
+
+' Módulo 14 — Reportes Financieros
+N14 --> N42
+N14 --> N43
+
+' Módulo 15 — Operativo Avícola
+N15 --> N44
+N15 --> N45
+N15 --> N46
+
+' Módulo 16 — Documentos y Asistente IA
+N16 --> N47
+N16 --> N48
+
+' Módulo 17 — Auditoría y Configuración
+N17 --> N49
+N17 --> N50
+
+' =====================================================
+' ARISTAS — Sub-funcionalidades hacia el Fin de Módulo
+' =====================================================
+N18 --> N51
+N19 --> N51
+N20 --> N51
+
+N21 --> N52
+N22 --> N52
+N23 --> N52
+
+N24 --> N53
+N25 --> N53
+N26 --> N53
+
+N27 --> N54
+N28 --> N54
+N29 --> N54
+
+N30 --> N55
+N31 --> N55
+N32 --> N55
+
+N33 --> N56
+N34 --> N56
+N35 --> N56
+
+N36 --> N57
+N37 --> N57
+N38 --> N57
+
+N39 --> N58
+N40 --> N58
+N41 --> N58
+
+N42 --> N59
+N43 --> N59
+
+N44 --> N60
+N45 --> N60
+N46 --> N60
+
+N47 --> N61
+N48 --> N61
+
+N49 --> N62
+N50 --> N62
+
+' =====================================================
+' ARISTAS — Fines de módulo hacia el Fin del Ciclo
+' =====================================================
+N51 --> N63
+N52 --> N63
+N53 --> N63
+N54 --> N63
+N55 --> N63
+N56 --> N63
+N57 --> N63
+N58 --> N63
+N59 --> N63
+N60 --> N63
+N61 --> N63
+N62 --> N63
+
+' =====================================================
+' ARISTA — Fin del Ciclo hacia Fin del Sistema
+' =====================================================
+N63 --> N64
+
+' =====================================================
+' LEYENDA — Referencia de nodos
+' =====================================================
+legend right
+  | Nodo | Descripción |
+  |   1  | Inicio del Sistema |
+  |   2  | Ventana de Login |
+  |   3  | Validación de credenciales |
+  |   4  | Selección de Organización |
+  |   5  | Menú Principal / Dashboard |
+  |  6-17 | Módulos principales |
+  | 18-50 | Sub-funcionalidades |
+  | 51-62 | Fines de módulo |
+  |  63  | Fin del Ciclo del Sistema |
+  |  64  | Fin del Sistema |
+endlegend
+
+@enduml

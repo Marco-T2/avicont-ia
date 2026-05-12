@@ -1,6 +1,6 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { OrganizationsService } from "@/features/organizations/server";
+import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
 import { FinancialStatementsService } from "@/features/accounting/financial-statements/server";
 import { balanceSheetQuerySchema } from "@/features/accounting/financial-statements/server";
 import { AgentService, AgentRateLimitService } from "@/features/ai-agent/server";
@@ -9,7 +9,7 @@ import type { Role } from "@/features/permissions";
 
 export const runtime = "nodejs";
 
-const orgService = new OrganizationsService();
+const orgService = makeOrganizationsService();
 const fsService = new FinancialStatementsService();
 const agentService = new AgentService();
 const rateLimitService = new AgentRateLimitService();

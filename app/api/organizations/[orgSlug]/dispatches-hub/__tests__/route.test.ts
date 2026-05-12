@@ -77,12 +77,12 @@ vi.mock("@/modules/dispatch/presentation/server", () => ({
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
 import { requireAuth } from "@/features/shared/middleware";
-vi.mock("@/features/organizations/server", () => ({
+vi.mock("@/modules/organizations/presentation/server", () => ({
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
 }));
 
-import { requireOrgAccess, requireRole } from "@/features/organizations/server";
+import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { requirePermission } from "@/features/permissions/server";
 import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
 

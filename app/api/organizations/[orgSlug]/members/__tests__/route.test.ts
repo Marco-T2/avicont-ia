@@ -54,26 +54,24 @@ const mockMembersServiceInstance = {
   removeMember: vi.fn(),
 };
 
-vi.mock("@/features/organizations/server", async (importOriginal) => {
+vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/features/organizations/server")>();
+    await importOriginal<typeof import("@/modules/organizations/presentation/server")>();
   return {
     ...actual,
-    MembersService: vi.fn().mockImplementation(function () {
-      return mockMembersServiceInstance;
-    }),
+    makeMembersService: vi.fn().mockReturnValue(mockMembersServiceInstance),
   };
 });
 
 // The async refine inside the factory calls rolesService.exists — mock that singleton.
-vi.mock("@/features/organizations/roles.service.singleton", () => ({
+vi.mock("@/modules/organizations/presentation/roles.service.singleton", () => ({
   rolesService: {
     exists: vi.fn<(orgId: string, slug: string) => Promise<boolean>>(),
   },
 }));
 
 import { requirePermission } from "@/features/permissions/server";
-import { rolesService } from "@/features/organizations/roles.service.singleton";
+import { rolesService } from "@/modules/organizations/presentation/roles.service.singleton";
 
 const ORG_SLUG = "acme";
 const ORG_ID = "org_acme_id";

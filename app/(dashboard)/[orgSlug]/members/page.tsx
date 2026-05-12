@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { MembersService } from "@/features/organizations/server";
+import { makeMembersService } from "@/modules/organizations/presentation/server";
 import MembersPageClient from "@/components/members/members-page-client";
 
 interface MembersPageProps {
@@ -18,7 +18,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const service = new MembersService();
+  const service = makeMembersService();
   const members = await service.listMembers(orgId);
 
   return (

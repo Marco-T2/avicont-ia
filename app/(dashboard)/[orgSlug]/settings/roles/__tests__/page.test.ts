@@ -20,14 +20,12 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-// Mock RolesService — inject mockListRoles so we control what the page receives
-vi.mock("@/features/organizations/server", () => {
-  class RolesRepository {}
-  class RolesService {
-    listRoles = mockListRoles;
-  }
-  return { RolesRepository, RolesService };
-});
+// Mock makeRolesService — inject mockListRoles so we control what the page receives
+vi.mock("@/modules/organizations/presentation/server", () => ({
+  makeRolesService: () => ({
+    listRoles: mockListRoles,
+  }),
+}));
 
 // Mock the client component — server-rendering it in node env fails
 vi.mock("@/components/settings/roles-list-client", () => ({

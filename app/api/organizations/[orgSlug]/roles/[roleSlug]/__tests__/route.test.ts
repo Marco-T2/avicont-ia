@@ -52,17 +52,12 @@ const mockRolesServiceInstance = {
   exists: vi.fn(),
 };
 
-vi.mock("@/features/organizations/server", async (importOriginal) => {
+vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/features/organizations/server")>();
+    await importOriginal<typeof import("@/modules/organizations/presentation/server")>();
   return {
     ...actual,
-    RolesService: vi.fn().mockImplementation(function () {
-      return mockRolesServiceInstance;
-    }),
-    RolesRepository: vi.fn().mockImplementation(function () {
-      return {};
-    }),
+    makeRolesService: vi.fn().mockReturnValue(mockRolesServiceInstance),
   };
 });
 

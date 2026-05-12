@@ -47,10 +47,10 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/organizations/server", () => ({
-  OrganizationsService: class {
-    getMemberWithUserByClerkUserId = mockGetMember;
-  },
+vi.mock("@/modules/organizations/presentation/server", () => ({
+  makeOrganizationsService: () => ({
+    getMemberWithUserByClerkUserId: mockGetMember,
+  }),
 }));
 
 vi.mock("@/features/accounting/financial-statements/server", async (importOriginal) => ({

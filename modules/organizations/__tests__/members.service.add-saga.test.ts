@@ -48,7 +48,7 @@ vi.mock("@clerk/nextjs/server", () => ({
   }),
 }));
 
-import { MembersService } from "../members.service";
+import { MembersService } from "../application/members.service";
 import { ExternalSyncError } from "@/features/shared/errors";
 
 const ORG_ID = "org_test";
@@ -77,15 +77,21 @@ function buildService() {
     reactivateMember: vi.fn(),
     deactivateMember: vi.fn(),
     findMemberById: vi.fn(),
-  } as unknown as ConstructorParameters<typeof MembersService>[0];
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
 
   const usersService = {
     findByEmail: vi.fn().mockResolvedValue(USER_DB),
     create: vi.fn(),
-  } as unknown as ConstructorParameters<typeof MembersService>[1];
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["users"];
+
+  const clerkAuth = {
+    getUsersByEmail: mockGetUserList,
+    createOrganizationMembership: mockCreateOrganizationMembership,
+    deleteOrganizationMembership: mockDeleteOrganizationMembership,
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["clerkAuth"];
 
   return {
-    service: new MembersService(repo, usersService),
+    service: new MembersService({ repo, users: usersService, clerkAuth }),
     repo,
     usersService,
   };
@@ -348,14 +354,20 @@ function buildServiceForReactivation() {
     reactivateMember: vi.fn().mockResolvedValue(REACTIVATED_MEMBER),
     deactivateMember: vi.fn().mockResolvedValue({ ...DEACTIVATED_MEMBER, deactivatedAt: new Date() }),
     findMemberById: vi.fn(),
-  } as unknown as ConstructorParameters<typeof MembersService>[0];
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
 
   const usersService = {
     findByEmail: vi.fn().mockResolvedValue(USER_DB),
     create: vi.fn(),
-  } as unknown as ConstructorParameters<typeof MembersService>[1];
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["users"];
 
-  return { service: new MembersService(repo, usersService), repo, usersService };
+  const clerkAuth = {
+    getUsersByEmail: mockGetUserList,
+    createOrganizationMembership: mockCreateOrganizationMembership,
+    deleteOrganizationMembership: mockDeleteOrganizationMembership,
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["clerkAuth"];
+
+  return { service: new MembersService({ repo, users: usersService, clerkAuth }), repo, usersService };
 }
 
 describe("MembersService.addMember — reactivation saga (REQ-MCS.2)", () => {
@@ -509,12 +521,17 @@ describe("MembersService.addMember — reactivation saga (REQ-MCS.2)", () => {
       reactivateMember: vi.fn(),
       deactivateMember: vi.fn(),
       findMemberById: vi.fn(),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
     const usersService = {
       findByEmail: vi.fn().mockResolvedValue(USER_DB),
       create: vi.fn(),
-    } as unknown as ConstructorParameters<typeof MembersService>[1];
-    const service = new MembersService(repo, usersService);
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["users"];
+    const clerkAuth = {
+      getUsersByEmail: mockGetUserList,
+      createOrganizationMembership: mockCreateOrganizationMembership,
+      deleteOrganizationMembership: mockDeleteOrganizationMembership,
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["clerkAuth"];
+    const service = new MembersService({ repo, users: usersService, clerkAuth });
 
     await expect(
       service.addMember(ORG_ID, EMAIL, "contador"),

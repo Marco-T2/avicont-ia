@@ -1,7 +1,7 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { OrganizationsService } from "@/features/organizations/server";
+import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
 
-const service = new OrganizationsService();
+const service = makeOrganizationsService();
 
 export async function POST(request: Request) {
   try {

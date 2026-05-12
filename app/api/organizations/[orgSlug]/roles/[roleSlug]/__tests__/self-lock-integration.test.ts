@@ -96,27 +96,31 @@ const fakeRepoState: {
   countMembers: vi.fn(),
 };
 
-// CRITICAL: mock ONLY the repository. Leave `RolesService` as the REAL class so
-// the route module constructs the REAL service with the REAL closure.
-vi.mock("@/features/organizations/server", async (importOriginal) => {
+// CRITICAL: mock makeRolesService to return a REAL RolesService with the fake
+// repo. The route module calls `makeRolesService(getCallerRoleSlug)` at module-load
+// time. We intercept the factory so the REAL service algorithm runs end-to-end.
+vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
   const actual =
-    await importOriginal<typeof import("@/features/organizations/server")>();
+    await importOriginal<typeof import("@/modules/organizations/presentation/server")>();
   return {
     ...actual,
-    // Keep RolesService = the REAL class
-    RolesRepository: vi.fn().mockImplementation(function () {
-      return {
-        findAllByOrg: (orgId: string) => fakeRepoState.findAllByOrg(orgId),
-        findBySlug: (orgId: string, slug: string) =>
-          fakeRepoState.findBySlug(orgId, slug),
-        create: (data: Partial<FakeRoleRow>) => fakeRepoState.create(data),
-        update: (orgId: string, id: string, patch: Partial<FakeRoleRow>) =>
-          fakeRepoState.update(orgId, id, patch),
-        delete: (orgId: string, id: string) => fakeRepoState.delete(orgId, id),
-        countMembers: (slug: string, orgId: string) =>
-          fakeRepoState.countMembers(slug, orgId),
-      };
-    }),
+    makeRolesService: (getCallerRoleSlug: (...args: unknown[]) => Promise<string | null>) => {
+      return new actual.RolesService({
+        repo: {
+          findAllByOrg: (orgId: string) => fakeRepoState.findAllByOrg(orgId),
+          findBySlug: (orgId: string, slug: string) =>
+            fakeRepoState.findBySlug(orgId, slug),
+          create: (data: Partial<FakeRoleRow>) => fakeRepoState.create(data),
+          update: (orgId: string, id: string, patch: Partial<FakeRoleRow>) =>
+            fakeRepoState.update(orgId, id, patch),
+          delete: (orgId: string, id: string) => fakeRepoState.delete(orgId, id),
+          countMembers: (slug: string, orgId: string) =>
+            fakeRepoState.countMembers(slug, orgId),
+        } as any,
+        permissionCache: { revalidateOrgMatrix: vi.fn() },
+        getCallerRoleSlug: getCallerRoleSlug as any,
+      });
+    },
   };
 });
 

@@ -35,7 +35,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { OrganizationsRepository } from "../organizations.repository";
+import { PrismaOrganizationsRepository as OrganizationsRepository } from "../infrastructure/prisma-organizations.repository";
 
 const mockUpdate = vi.mocked(prisma.organizationMember.update);
 const mockDelete = vi.mocked(prisma.organizationMember.delete);

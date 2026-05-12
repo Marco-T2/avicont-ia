@@ -1,9 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { MembersService } from "@/features/organizations/server";
-import { buildAddMemberSchema } from "@/features/organizations/server";
+import { makeMembersService, buildAddMemberSchema } from "@/modules/organizations/presentation/server";
 
-const service = new MembersService();
+const service = makeMembersService();
 
 export async function GET(
   _request: Request,

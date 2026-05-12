@@ -1,5 +1,5 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { requireOrgAccess } from "@/features/organizations/server";
+import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { UsersService } from "@/features/users/server";
 import {
   makeMortalityService,

@@ -1,5 +1,5 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { requireOrgAccess } from "@/features/organizations/server";
+import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
 import { createLotSchema } from "@/modules/lot/presentation/validation";
 import type { NextRequest } from "next/server";

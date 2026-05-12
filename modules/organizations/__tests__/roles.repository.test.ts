@@ -29,7 +29,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 import { prisma } from "@/lib/prisma";
-import { RolesRepository } from "../roles.repository";
+import { PrismaRolesRepository as RolesRepository } from "../infrastructure/prisma-roles.repository";
 
 const mockFindMany = vi.mocked(prisma.customRole.findMany);
 const mockFindUnique = vi.mocked(prisma.customRole.findUnique);

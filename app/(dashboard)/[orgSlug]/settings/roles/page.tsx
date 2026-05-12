@@ -3,7 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
-import { RolesService, RolesRepository } from "@/features/organizations/server";
+import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { Button } from "@/components/ui/button";
 import RolesListClient from "@/components/settings/roles-list-client";
 import type { CustomRoleShape } from "@/components/settings/role-edit-drawer";
@@ -16,10 +16,7 @@ export const metadata: Metadata = {
   title: "Roles y Permisos",
 };
 
-const service = new RolesService({
-  repo: new RolesRepository(),
-  getCallerRoleSlug: async () => null,
-});
+const service = makeRolesService(async () => null);
 
 export default async function RolesPage({ params }: RolesPageProps) {
   const { orgSlug } = await params;

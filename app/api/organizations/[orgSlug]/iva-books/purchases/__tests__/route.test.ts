@@ -58,12 +58,12 @@ vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
 }));
 
 import { requireAuth } from "@/features/shared/middleware";
-vi.mock("@/features/organizations/server", () => ({
+vi.mock("@/modules/organizations/presentation/server", () => ({
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
 }));
 
-import { requireOrgAccess, requireRole } from "@/features/organizations/server";
+import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { UnauthorizedError, ForbiddenError, ConflictError } from "@/features/shared/errors";
 
 vi.mock("@/features/permissions/server", () => ({

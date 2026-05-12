@@ -23,7 +23,7 @@
  *   E — custom role "org_admin" (not literal "admin") — guard is role-based
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { RolesService } from "../roles.service";
+import { RolesService } from "../application/roles.service";
 import {
   ForbiddenError,
   ConflictError,
@@ -98,12 +98,13 @@ function buildService(opts: {
   };
 
   const revalidateOrgMatrix = vi.fn();
+  const permissionCache = { revalidateOrgMatrix };
 
   const getCallerRoleSlug = vi.fn().mockResolvedValue(opts.callerRoleSlug ?? null);
 
   const service = new RolesService({
     repo: repo as unknown as ConstructorParameters<typeof RolesService>[0]["repo"],
-    revalidateOrgMatrix,
+    permissionCache,
     getCallerRoleSlug,
   });
 

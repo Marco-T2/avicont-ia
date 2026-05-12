@@ -16,13 +16,10 @@
  */
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { RolesRepository, RolesService } from "@/features/organizations/server";
+import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { z } from "zod";
 
-const service = new RolesService({
-  repo: new RolesRepository(),
-  getCallerRoleSlug: async () => null,
-});
+const service = makeRolesService(async () => null);
 
 const createRoleSchema = z.object({
   name: z.string().min(1).max(64),

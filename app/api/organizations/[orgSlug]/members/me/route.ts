@@ -1,8 +1,7 @@
 import { requireAuth, handleError } from "@/features/shared";
-import { requireOrgAccess } from "@/features/organizations/server";
-import { OrganizationsService } from "@/features/organizations/server";
+import { requireOrgAccess, makeOrganizationsService } from "@/modules/organizations/presentation/server";
 
-const orgService = new OrganizationsService();
+const orgService = makeOrganizationsService();
 
 export async function GET(
   _request: Request,

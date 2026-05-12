@@ -21,7 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { slugify } from "@/features/organizations/roles.validation";
+import { slugify } from "@/modules/organizations/presentation";
 import { SYSTEM_ROLES } from "@/features/permissions";
 
 interface RoleCreateDialogProps {

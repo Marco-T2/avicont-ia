@@ -18,7 +18,7 @@ import {
   slugify,
   assertNotReserved,
   resolveUniqueSlug,
-} from "../roles.validation";
+} from "../domain/roles.validation";
 import {
   RESERVED_SLUG,
   SLUG_TAKEN,

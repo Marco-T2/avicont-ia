@@ -1,6 +1,6 @@
 import "server-only";
 import { requireAuth } from "@/features/shared/middleware";
-import { requireOrgAccess, requireRole } from "@/features/organizations/server";
+import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { ensureOrgSeeded, getMatrix } from "./permissions.cache";
 import type { Action, Resource, PostableResource } from "./permissions";
 import type { OrgMatrix } from "./permissions.cache";

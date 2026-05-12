@@ -17,8 +17,8 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ExternalSyncError } from "@/features/shared/errors";
-import * as loggerModule from "../member-clerk-saga.logger";
-import { runMemberClerkSaga, type MemberSagaContext } from "../member-clerk-saga";
+import * as loggerModule from "../domain/member-clerk-saga.logger";
+import { runMemberClerkSaga, type MemberSagaContext } from "../application/member-clerk-saga";
 
 const baseCtx = (): MemberSagaContext => ({
   operation: "add",

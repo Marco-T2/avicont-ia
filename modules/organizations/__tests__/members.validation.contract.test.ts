@@ -23,7 +23,7 @@ const ROOT = resolve(__dirname, "../../..");
 const CALL_SITES = [
   "app/api/organizations/[orgSlug]/members/route.ts",
   "app/api/organizations/[orgSlug]/members/[memberId]/route.ts",
-  "features/organizations/members.service.ts",
+  "modules/organizations/application/members.service.ts",
 ];
 
 /**

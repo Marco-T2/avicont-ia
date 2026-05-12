@@ -26,8 +26,8 @@ import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { ClerkAPIResponseError } from "@clerk/shared/error";
 import { ExternalSyncError } from "@/features/shared/errors";
-import { MembersService } from "../members.service";
-import { OrganizationsRepository } from "../organizations.repository";
+import { MembersService } from "../application/members.service";
+import { PrismaOrganizationsRepository as OrganizationsRepository } from "../infrastructure/prisma-organizations.repository";
 
 // ── Clerk mock ────────────────────────────────────────────────────────────────
 // Clerk is mocked because we have no live credentials in tests.
@@ -111,9 +111,15 @@ function buildService() {
       name: "MCS62 Test User",
     }),
     create: vi.fn(),
-  } as unknown as ConstructorParameters<typeof MembersService>[1];
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["users"];
 
-  return new MembersService(repo, usersService);
+  const clerkAuth = {
+    getUsersByEmail: vi.fn().mockResolvedValue([]),
+    createOrganizationMembership: mockCreateOrganizationMembership,
+    deleteOrganizationMembership: vi.fn(),
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["clerkAuth"];
+
+  return new MembersService({ repo, users: usersService, clerkAuth });
 }
 
 // ── Test suite ─────────────────────────────────────────────────────────────────

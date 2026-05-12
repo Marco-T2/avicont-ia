@@ -57,13 +57,13 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/organizations/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/organizations/server")>();
+vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/organizations/presentation/server")>();
   return {
     ...actual,
     requireOrgAccess: mockRequireOrgAccess,
-    OrganizationsService: vi.fn().mockImplementation(function () {
-      return { getMemberWithUserByClerkUserId: mockGetMember };
+    makeOrganizationsService: vi.fn().mockReturnValue({
+      getMemberWithUserByClerkUserId: mockGetMember,
     }),
   };
 });

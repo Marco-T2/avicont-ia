@@ -2,11 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import { DashboardShell } from "@/components/sidebar/dashboard-shell";
 import { RolesMatrixProvider } from "@/components/common/roles-matrix-provider";
 import { buildClientMatrixSnapshot } from "@/features/permissions/server";
-import { OrganizationsService } from "@/features/organizations/server";
+import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 
-const orgService = new OrganizationsService();
+const orgService = makeOrganizationsService();
 
 interface OrgLayoutProps {
   children: React.ReactNode;

@@ -30,7 +30,7 @@
  */
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { RolesRepository, RolesService } from "@/features/organizations/server";
+import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { z } from "zod";
 
 // ─── Caller-role cache for the service's DI hook ────────────────────────────
@@ -43,11 +43,8 @@ function pairKey(orgId: string, clerkUserId: string): string {
   return `${orgId}::${clerkUserId}`;
 }
 
-const service = new RolesService({
-  repo: new RolesRepository(),
-  getCallerRoleSlug: async (orgId, caller) => {
-    return callerRoleSlugByPair.get(pairKey(orgId, caller.clerkUserId)) ?? null;
-  },
+const service = makeRolesService(async (orgId, caller) => {
+  return callerRoleSlugByPair.get(pairKey(orgId, caller.clerkUserId)) ?? null;
 });
 
 // ─── Zod schema (D.5: slug immutable on UPDATE — reject via .strict()) ─────

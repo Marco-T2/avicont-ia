@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
-import { requireOrgAccess } from "@/features/organizations/server";
+import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
 import { makeExpenseService } from "@/modules/expense/presentation/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";

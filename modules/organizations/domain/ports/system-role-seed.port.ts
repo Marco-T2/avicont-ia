@@ -7,7 +7,6 @@ export interface SystemRoleSeedPort {
     organizationId: string;
     slug: string;
     name: string;
-    description: string;
     isSystem: boolean;
     permissionsRead: string[];
     permissionsWrite: string[];

@@ -53,7 +53,7 @@ vi.mock("@clerk/nextjs/server", () => ({
   }),
 }));
 
-import { MembersService } from "../members.service";
+import { MembersService } from "../application/members.service";
 import { ExternalSyncError } from "@/features/shared/errors";
 
 const ORG_ID = "org_test";
@@ -88,9 +88,15 @@ function buildService() {
     hardDelete: vi.fn(),
     addMember: vi.fn(),
     findMemberByEmail: vi.fn(),
-  } as unknown as ConstructorParameters<typeof MembersService>[0];
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
 
-  return { service: new MembersService(repo), repo };
+  const clerkAuth = {
+    getUsersByEmail: vi.fn(),
+    createOrganizationMembership: mockCreateOrganizationMembership,
+    deleteOrganizationMembership: mockDeleteOrganizationMembership,
+  } as unknown as ConstructorParameters<typeof MembersService>[0]["clerkAuth"];
+
+  return { service: new MembersService({ repo, users: {} as any, clerkAuth }), repo };
 }
 
 function notFoundClerkError(): ClerkAPIResponseError {
@@ -260,8 +266,13 @@ describe("MembersService.removeMember — saga (REQ-MCS.3)", () => {
       hardDelete: vi.fn(),
       addMember: vi.fn(),
       findMemberByEmail: vi.fn(),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
-    const service = new MembersService(repo);
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
+    const clerkAuth2 = {
+      getUsersByEmail: vi.fn(),
+      createOrganizationMembership: mockCreateOrganizationMembership,
+      deleteOrganizationMembership: mockDeleteOrganizationMembership,
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["clerkAuth"];
+    const service = new MembersService({ repo, users: {} as any, clerkAuth: clerkAuth2 });
     mockDeleteOrganizationMembership.mockRejectedValueOnce(nonNotFoundClerkError());
 
     await service

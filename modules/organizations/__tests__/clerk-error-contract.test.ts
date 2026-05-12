@@ -46,7 +46,7 @@ import {
   isClerkMembershipNotFoundError,
   clerkRetryAfterSeconds,
   clerkErrorFingerprint,
-} from "../clerk-error-classifiers";
+} from "../domain/clerk-error-classifiers";
 
 type ClerkFixture = {
   status: number;

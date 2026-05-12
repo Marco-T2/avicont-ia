@@ -140,7 +140,7 @@ const DISPATCH_SERVICE = path.join(
 );
 const ORGANIZATIONS_SERVICE = path.join(
   REPO_ROOT,
-  "features/organizations/organizations.service.ts",
+  "modules/organizations/infrastructure/adapters/legacy-voucher-type-seed.adapter.ts",
 );
 
 // ── Hex addition new factory targets (2 archivos) ────────────────────────────

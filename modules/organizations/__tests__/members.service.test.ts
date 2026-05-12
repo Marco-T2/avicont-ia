@@ -16,7 +16,7 @@
  *   REQ-R.3-S1 — admin updates different member (happy path)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MembersService } from "../members.service";
+import { MembersService } from "../application/members.service";
 import {
   ForbiddenError,
   ConflictError,
@@ -43,8 +43,8 @@ describe("MembersService.updateRole — self-role-change (REQ-R.3 / D.4)", () =>
         },
       }),
       updateMemberRole: vi.fn(),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
-    return { service: new MembersService(repo), repo };
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
+    return { service: new MembersService({ repo, users: {} as any, clerkAuth: {} as any }), repo };
   }
 
   beforeEach(() => {
@@ -120,8 +120,8 @@ describe("MembersService.removeMember — self-deactivate guard (PR7 7.4 / D.4 c
       }),
       findById: vi.fn(),
       deactivateMember: vi.fn(),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
-    return { service: new MembersService(repo), repo };
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
+    return { service: new MembersService({ repo, users: {} as any, clerkAuth: {} as any }), repo };
   }
 
   beforeEach(() => {
@@ -173,8 +173,8 @@ describe("MembersService — per-org scope (REQ-R.2)", () => {
         const members = orgMap[organizationId] ?? [];
         return Promise.resolve({ members });
       }),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
-    return new MembersService(repo);
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
+    return new MembersService({ repo, users: {} as any, clerkAuth: {} as any });
   }
 
   beforeEach(() => {
@@ -247,13 +247,13 @@ describe("MembersService.addMember — duplicate detection (REQ-R.2-S2)", () => 
       findMemberByEmail: vi.fn().mockResolvedValue(activeMember),
       addMember: vi.fn(),
       findById: vi.fn(),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
 
     const usersService = {
       findByEmail: vi.fn().mockResolvedValue(existingUser),
-    } as unknown as ConstructorParameters<typeof MembersService>[1];
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["users"];
 
-    return { service: new MembersService(repo, usersService), repo, usersService };
+    return { service: new MembersService({ repo, users: usersService as any, clerkAuth: {} as any }), repo, usersService };
   }
 
   beforeEach(() => {
@@ -329,9 +329,9 @@ describe("MembersService.updateRole — admin modifies another member (REQ-R.3-S
     const repo = {
       findMemberById: vi.fn().mockResolvedValue(targetMember),
       updateMemberRole: vi.fn().mockResolvedValue(updatedMember),
-    } as unknown as ConstructorParameters<typeof MembersService>[0];
+    } as unknown as ConstructorParameters<typeof MembersService>[0]["repo"];
 
-    return { service: new MembersService(repo), repo, targetMember, updatedMember };
+    return { service: new MembersService({ repo, users: {} as any, clerkAuth: {} as any }), repo, targetMember, updatedMember };
   }
 
   beforeEach(() => {
