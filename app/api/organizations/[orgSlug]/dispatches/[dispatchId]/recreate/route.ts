@@ -1,10 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { DispatchService } from "@/modules/dispatch/presentation/server";
+import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 
 const usersService = new UsersService();
-const dispatchService = new DispatchService();
+const dispatchService = makeDispatchService();
 
 export async function POST(
   _request: Request,

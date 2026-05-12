@@ -2,10 +2,10 @@ import { z } from "zod";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { DispatchService } from "@/modules/dispatch/presentation/server";
+import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 
 const usersService = new UsersService();
-const dispatchService = new DispatchService();
+const dispatchService = makeDispatchService();
 
 const dispatchActionSchema = z.object({
   status: z.enum(["POSTED", "VOIDED"]),
@@ -34,7 +34,7 @@ export async function PATCH(
     if (status === "POSTED") {
       dispatch = await dispatchService.post(orgId, dispatchId, user.id);
     } else {
-      dispatch = await dispatchService.void(orgId, dispatchId, user.id, justification);
+      dispatch = await dispatchService.voidDispatch(orgId, dispatchId, user.id, justification);
     }
 
     return Response.json(dispatch);

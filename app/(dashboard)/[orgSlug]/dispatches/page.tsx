@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { HubService, DispatchService } from "@/modules/dispatch/presentation/server";
+import { HubService, makeDispatchService } from "@/modules/dispatch/presentation/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import DispatchList from "@/components/dispatches/dispatch-list";
 import type { HubFilters } from "@/modules/dispatch/presentation";
@@ -26,7 +26,7 @@ export default async function DispatchesPage({
   }
 
   // SSR: call HubService directly — no network round-trip (D5 of design)
-  const hubService = new HubService(makeSaleService(), new DispatchService());
+  const hubService = new HubService(makeSaleService(), makeDispatchService());
 
   const filters: HubFilters = {};
   if (sp.type && typeof sp.type === "string") {

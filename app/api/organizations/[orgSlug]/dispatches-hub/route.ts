@@ -1,8 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { HubService } from "@/modules/dispatch/presentation/server";
+import { HubService, makeDispatchService } from "@/modules/dispatch/presentation/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
-import { DispatchService } from "@/modules/dispatch/presentation/server";
 import { hubQuerySchema } from "@/modules/dispatch/presentation/server";
 
 /**
@@ -17,7 +16,7 @@ import { hubQuerySchema } from "@/modules/dispatch/presentation/server";
  */
 const hubService = new HubService(
   makeSaleService(),
-  new DispatchService(),
+  makeDispatchService(),
 );
 
 /**

@@ -1,9 +1,9 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { DispatchService } from "@/modules/dispatch/presentation/server";
+import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 import { updateDispatchSchema } from "@/modules/dispatch/presentation";
 
-const dispatchService = new DispatchService();
+const dispatchService = makeDispatchService();
 
 export async function GET(
   _request: Request,

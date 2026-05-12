@@ -1,13 +1,13 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { DispatchService } from "@/modules/dispatch/presentation/server";
+import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 import {
   createDispatchSchema,
   dispatchFiltersSchema,
 } from "@/modules/dispatch/presentation";
 import { UsersService } from "@/features/users/server";
 
-const dispatchService = new DispatchService();
+const dispatchService = makeDispatchService();
 const usersService = new UsersService();
 
 export async function GET(
