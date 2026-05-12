@@ -33,7 +33,7 @@ vi.mock("@/modules/dispatch/presentation/server", () => {
   class DispatchService {
     getById = mockDispatchGetById;
   }
-  return { DispatchService };
+  return { DispatchService, makeDispatchService: () => new DispatchService() };
 });
 
 vi.mock("@/modules/contacts/presentation/server", () => {

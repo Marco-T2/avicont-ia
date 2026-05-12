@@ -28,7 +28,7 @@ vi.mock("@/modules/dispatch/presentation/server", () => {
     listHub = mockListHub;
   }
   class DispatchService {}
-  return { HubService, DispatchService };
+  return { HubService, DispatchService, makeDispatchService: () => new DispatchService() };
 });
 
 // vi.mock("@/features/sale/server") REMOVED en A3-C7 GREEN (mock_hygiene_commit_scope

@@ -58,6 +58,7 @@ vi.mock("@/modules/dispatch/presentation/server", () => ({
   // These are only imported for type information — stub them so the import resolves
   SaleServiceForHub: undefined,
   DispatchServiceForHub: undefined,
+  makeDispatchService: vi.fn(() => ({})),
 }));
 
 // ── SaleService / DispatchService mocks (constructor deps) ───────────────────
@@ -72,6 +73,7 @@ vi.mock("@/modules/dispatch/presentation/server", () => ({
   DispatchService: vi.fn().mockImplementation(function () {
     return {};
   }),
+  makeDispatchService: vi.fn(() => ({})),
 }));
 
 // ── Imports after mocks ───────────────────────────────────────────────────────
