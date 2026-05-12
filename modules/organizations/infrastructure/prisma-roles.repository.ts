@@ -1,0 +1,62 @@
+/**
+ * prisma-roles.repository.ts -- Thin Prisma wrappers for CustomRole + member count.
+ *
+ * Scope: D.1 -- Prisma schema access layer. NO business logic, no normalization,
+ * no validation. The service layer owns the domain rules.
+ */
+import "server-only";
+import { BaseRepository } from "@/features/shared/base.repository";
+import type { CustomRole, Prisma } from "@/generated/prisma/client";
+import type {
+  RolesRepositoryPort,
+  CreateCustomRoleInput,
+  UpdateCustomRolePatch,
+} from "../domain/ports/roles.repository.port";
+
+export class PrismaRolesRepository extends BaseRepository implements RolesRepositoryPort {
+  async findAllByOrg(organizationId: string): Promise<CustomRole[]> {
+    return this.db.customRole.findMany({
+      where: { organizationId },
+      orderBy: [{ isSystem: "desc" }, { slug: "asc" }],
+    });
+  }
+
+  async findBySlug(
+    organizationId: string,
+    slug: string,
+  ): Promise<CustomRole | null> {
+    return this.db.customRole.findUnique({
+      where: { organizationId_slug: { organizationId, slug } },
+    });
+  }
+
+  async create(data: CreateCustomRoleInput): Promise<CustomRole> {
+    return this.db.customRole.create({ data: data as Prisma.CustomRoleUncheckedCreateInput });
+  }
+
+  async update(
+    organizationId: string,
+    id: string,
+    patch: UpdateCustomRolePatch,
+  ): Promise<CustomRole> {
+    return this.db.customRole.update({
+      where: { id, organizationId },
+      data: patch,
+    });
+  }
+
+  async delete(organizationId: string, id: string): Promise<CustomRole> {
+    return this.db.customRole.delete({ where: { id, organizationId } });
+  }
+
+  /**
+   * Count active OrganizationMember rows that currently carry the given role slug.
+   * Used by the delete guard (CR.7) -- a role with members assigned cannot be
+   * deleted.
+   */
+  async countMembers(roleSlug: string, organizationId: string): Promise<number> {
+    return this.db.organizationMember.count({
+      where: { organizationId, role: roleSlug },
+    });
+  }
+}
