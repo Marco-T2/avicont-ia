@@ -17,12 +17,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/accounting/server", () => {
-  class AccountsService {
-    list = mockList;
-  }
-  return { AccountsService };
-});
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: mockList }),
+}));
 
 vi.mock("@/components/accounting/ledger-page-client", () => ({
   default: vi.fn().mockReturnValue(null),

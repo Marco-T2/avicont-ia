@@ -39,9 +39,10 @@ vi.mock("@/features/accounting/server", () => ({
   JournalService: vi.fn().mockImplementation(function () {
     return { getById: mockGetById };
   }),
-  AccountsService: vi.fn().mockImplementation(function () {
-    return { list: vi.fn().mockResolvedValue([]) };
-  }),
+}));
+
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: vi.fn().mockResolvedValue([]) }),
 }));
 
 const { mockPeriodsList } = vi.hoisted(() => ({

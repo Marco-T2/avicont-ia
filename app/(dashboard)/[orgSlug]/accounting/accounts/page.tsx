@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { AccountsService } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import AccountsPageClient from "@/components/accounting/accounts-page-client";
 
 interface AccountsPageProps {
@@ -18,7 +18,7 @@ export default async function AccountsPage({ params }: AccountsPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const service = new AccountsService();
+  const service = makeAccountsService();
   const tree = await service.getTree(orgId);
   const allAccounts = await service.list(orgId);
 

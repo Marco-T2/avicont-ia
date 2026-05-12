@@ -1,6 +1,7 @@
 import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { JournalService, AccountsService } from "@/features/accounting/server";
+import { JournalService } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryForm from "@/components/accounting/journal-entry-form";
@@ -23,7 +24,7 @@ export default async function EditJournalEntryPage({
   }
 
   const journalService = new JournalService();
-  const accountsService = new AccountsService();
+  const accountsService = makeAccountsService();
   const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
 

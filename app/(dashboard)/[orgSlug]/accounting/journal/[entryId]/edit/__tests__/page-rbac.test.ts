@@ -38,11 +38,12 @@ vi.mock("@/features/accounting/server", () => {
   class JournalService {
     getById = mockGetById;
   }
-  class AccountsService {
-    list = mockAccountsList;
-  }
-  return { JournalService, AccountsService };
+  return { JournalService };
 });
+
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: mockAccountsList }),
+}));
 
 vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),

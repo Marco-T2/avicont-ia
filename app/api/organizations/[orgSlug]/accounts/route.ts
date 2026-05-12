@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { AccountsService } from "@/features/accounting/server";
-import { createAccountSchema } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
+import { createAccountSchema } from "@/modules/accounting/presentation/validation";
 import { AccountSubtype } from "@/generated/prisma/client";
 import { executeFindAccountsByPurpose } from "@/features/ai-agent/server";
 
-const service = new AccountsService();
+const service = makeAccountsService();
 
 const PURPOSES = ["cash", "bank", "expense"] as const;
 type AccountPurpose = (typeof PURPOSES)[number];

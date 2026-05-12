@@ -4,8 +4,8 @@
  * bit-exact via Prisma queries directas — NO wrap-thin shim. Paired-sister
  * precedent: `PrismaSaleRepository` / `PrismaPurchaseRepository` (constructor
  * `Pick<PrismaClient,…>=prisma`); tx pattern inline `as Prisma.TransactionClient`
- * (payment precedent). `findActiveChildren` excluded from port surface fix 15
- * métodos (#3a lock); legacy method preserved untouched.
+ * (payment precedent). 15-method port surface fija (#3a lock); incluye
+ * `findActiveChildren` cementado en `accounts-crud.port.ts` §15-method.
  */
 
 import {

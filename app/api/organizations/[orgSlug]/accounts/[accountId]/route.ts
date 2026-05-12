@@ -1,9 +1,9 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { AccountsService } from "@/features/accounting/server";
-import { updateAccountSchema } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
+import { updateAccountSchema } from "@/modules/accounting/presentation/validation";
 
-const service = new AccountsService();
+const service = makeAccountsService();
 
 export async function GET(
   _request: Request,

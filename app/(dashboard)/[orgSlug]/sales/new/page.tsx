@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
-import { AccountsService } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import SaleForm from "@/components/sales/sale-form";
 
 interface NewSalePageProps {
@@ -23,7 +23,7 @@ export default async function NewSalePage({ params }: NewSalePageProps) {
 
   const contactsService = makeContactsService();
   const periodsService = makeFiscalPeriodsService();
-  const accountsService = new AccountsService();
+  const accountsService = makeAccountsService();
 
   const [contacts, periods, accounts] = await Promise.all([
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),

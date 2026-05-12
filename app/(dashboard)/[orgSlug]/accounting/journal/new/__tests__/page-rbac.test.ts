@@ -25,12 +25,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/accounting/server", () => {
-  class AccountsService {
-    list = mockAccountsList;
-  }
-  return { AccountsService };
-});
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: mockAccountsList }),
+}));
 
 vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),

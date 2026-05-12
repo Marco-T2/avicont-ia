@@ -201,12 +201,12 @@ export class AccountsService {
 
     // 10. Crear la cuenta + cambiar isDetail del padre si es necesario (atómico)
     // D3 lock: port has no .transaction() — service calls prisma.$transaction directly.
-    // tx arrives as Prisma.TransactionClient from $transaction; passes as unknown into port
-    // (adapter casts internally — no cast at service layer per hex purity).
+    // tx arrives as Prisma.TransactionClient from $transaction; passes directly
+    // to port (typed as `tx?: unknown`; adapter narrows internally per hex purity).
     if (parent && parent.isDetail) {
       return this.prisma.$transaction(async (tx) => {
-        await this.repo.update(organizationId, parent!.id, { isDetail: false }, tx as unknown);
-        return this.repo.create(organizationId, resolved, tx as unknown);
+        await this.repo.update(organizationId, parent!.id, { isDetail: false }, tx);
+        return this.repo.create(organizationId, resolved, tx);
       });
     }
 

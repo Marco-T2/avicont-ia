@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { AccountsService } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import LedgerPageClient from "@/components/accounting/ledger-page-client";
 
 interface LedgerPageProps {
@@ -18,7 +18,7 @@ export default async function LedgerPage({ params }: LedgerPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const accountsService = new AccountsService();
+  const accountsService = makeAccountsService();
   const accounts = await accountsService.list(orgId);
 
   return (
