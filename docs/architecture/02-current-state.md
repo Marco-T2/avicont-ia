@@ -8,7 +8,7 @@
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
-| `modules/accounting` | HEX ✅ | 21 | 45 | POC #2a types + POC #2b utils + POC #2c account-subtype → hex; public barrel (server.ts) POC poc-hex-public-barrels |
+| `modules/accounting` | HEX ✅ | 21 | 45 | POC #2a types + POC #2b utils + POC #2c account-subtype + POC #2d ui-helpers → hex; public barrel (server.ts) 2-block structure (Domain utils 6 + Domain UI helpers 1 = 7 domain exports) |
 | `modules/audit` | HEX ✅ | 54 | 8 | POC audit hex closed — READ-only + raw SQL CTE preserved + UserNameResolver port |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
 | `modules/dispatch` | HEX ✅ | 89 | 15 | POC dispatch hex closed — Sale architectural mirror + state machine + legacy accounting adapter ports |
@@ -38,7 +38,7 @@
 
 | Feature | LOC | Tests | Consumers | Oleada target | Notes |
 |---|---|---|---|---|---|
-| `features/accounting` | 12,293 | 65 | 128 | 5 — residual POST-POC #2c shim | 3 type files → SHIM (POC #2a); 4 utils files → SHIM (POC #2b: account-code, correlative, accounting-helpers, journal.dates); 2 account-subtype files → SHIM (POC #2c: utils + resolve); canonical homes `/modules/accounting/presentation/dto/` + `/modules/accounting/domain/` |
+| `features/accounting` | ~12,252 | 65 | 128 | 5 — residual POST-POC #2d shim | 3 type files → SHIM (POC #2a); 4 utils files → SHIM (POC #2b: account-code, correlative, accounting-helpers, journal.dates); 2 account-subtype files → SHIM (POC #2c: utils + resolve); 1 ui-helper file → SHIM (POC #2d: journal.ui, −41 net LOC); canonical homes `/modules/accounting/presentation/dto/` + `/modules/accounting/domain/` |
 | `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting | |
 
 ## Features — cross-cutting infrastructure (NOT hex target) (9)
@@ -72,11 +72,11 @@
 
 ## Public barrels POC cementación (25/25 COMPLETE as of 2026-05-12)
 
-✅ **modules/accounting/presentation/server.ts** — JournalsService + types + 6 domain utils (POC #2a dto/ + POC #2b 4 pure utils + POC #2c 2 account-subtype)  
+✅ **modules/accounting/presentation/server.ts** — JournalsService + types + 7 domain exports in 2 blocks: `// ── Domain utils ──` (6 exports: 4 utils-pure + 2 account-subtype) + `// ── Domain UI helpers ──` (1 export: journal.ui) (POC #2a dto/ + POC #2b + POC #2c + POC #2d)  
 ✅ **modules/iva-books/presentation/server.ts** — IvaBookService + factories  
 ⚠️ **NOTE**: Non-hex outliers `features/{purchase, sale, shared}` ALSO lack server.ts (surface honest — outside POC poc-hex-public-barrels scope, defer to future consolidation).
 
 ## Anomalías honest surface
 
-1. **`features/accounting` 12,293 LOC + 128 consumers DESPITE POC #2c closed**: shim residual cumulative cross-POC #2a+#2b+#2c (80 LOC migrated POC #2c). Recon profundo needed clasificar HYBRID vs CLEANUP-PENDING POST-POC #2d pre-oleada 5.
+1. **`features/accounting` ~12,252 LOC + 128 consumers DESPITE POC #2d closed**: shim residual cumulative cross-POC #2a+#2b+#2c+#2d (~41 LOC net migrated POC #2d). utils-types sweep COMPLETE (4-way subdivision done). Remaining LOC = core accounting logic deferred to oleada 5.
 2. **`features/ai-agent` reclasificado**: 3,912 LOC recon profundo 2026-05-11 — NO hex candidate (orchestration/integration, zero domain aggregates, ya consume hex via ports). Reclasificado cross-cutting infrastructure.

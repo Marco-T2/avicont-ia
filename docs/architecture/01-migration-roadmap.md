@@ -4,7 +4,7 @@
 > **Source**: Inventory cumulative cross-POC matures heredado [02-current-state.md](02-current-state.md).
 > **Estimación cumulative migration completa**: ~60-80 sesiones cortas.
 
-## 10-POC Framework — Cementación 2026-05-12 POC poc-accounting-account-subtype-to-hex (POC #2a–#2c COMPLETE, #2d PENDING)
+## 10-POC Framework — Cementación 2026-05-12 POC poc-accounting-ui-helpers-to-hex (POC #2a–#2d COMPLETE)
 
 | POC | Objetivo | Estado | LOC | Consumers |
 |---|---|---|---|---|
@@ -12,7 +12,7 @@
 | **POC #2a** | types-to-hex (3 DTO files moved to hex, SHIM barrel reconciled) | ✅ ARCHIVED | +193 | 6/6 REQs PASS |
 | **POC #2b** | utils-pure-to-hex (account-code, correlative, accounting-helpers, journal.dates) | ✅ ARCHIVED | +150 | 6/6 REQs PASS |
 | **POC #2c** | account-subtype-to-hex (utils + resolve) | ✅ ARCHIVED | +80 | 6/6 REQs PASS |
-| **POC #2d** | ui-helpers-to-hex (journal.ui) | pending | ~60 | fast-path reuse |
+| **POC #2d** | ui-helpers-to-hex (journal.ui) | ✅ ARCHIVED | +43 | RED 57603898 · GREEN deb6872e |
 | **POC #3** | iva-books completion (types+validation+exporters, DUAL-IMPORT cleanup) | pending | ~400 | accounting-linked |
 | **POC #4** | accounts hex | pending | ~500 | financial-statements prep |
 | **POC #5** | auto-entry + lifecycle + validation | pending | ~600 | journal-driver |
@@ -46,7 +46,7 @@
 | `poc-accounting-types-to-hex` ✅ CLOSED | `features/accounting/journal/accounts/ledger.types.ts` → `modules/accounting/presentation/dto/` | +193 | 15α | 6/6 REQs PASS | POC #2a — types canonical home hex |
 | `poc-utils-pure-to-hex` ✅ CLOSED | `features/accounting/{account-code, correlative, accounting-helpers, journal.dates}` → `modules/accounting/domain/` | +150 | 21α | 6/6 REQs PASS | POC #2b — paired sister #2a |
 | `poc-account-subtype-to-hex` ✅ CLOSED | `features/accounting/{utils + resolve}` account-subtype | +80 | 23α | 6/6 REQs PASS | POC #2c — paired sister #2b |
-| `poc-ui-helpers-to-hex` (PENDING) | `features/accounting/journal.ui` | ~60 | TBD | fast-path | POC #2d — paired sister #2c |
+| `poc-ui-helpers-to-hex` ✅ CLOSED | `features/accounting/journal.ui` | +43 | 13α | 6/6 REQs PASS | POC #2d — paired sister #2c; NEW barrel block Domain UI helpers |
 | `poc-shared-canonical` | `features/shared` → `modules/shared` expand | 418 | 6 | **230** | ALTO IMPACT cross-codebase |
 | `poc-permissions-hex` | `features/permissions` → `modules/permissions` | 561 | 6 | **183** | RBAC transversal |
 
