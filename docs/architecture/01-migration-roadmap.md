@@ -42,7 +42,7 @@
 |---|---|---|---|---|---|
 | `poc-quick-cleanup` | inline + delete `features/{rag, pricing}` CONSUMERS-LIGHT | 263 | 0 | **4** (rag→ai-agent+documents; pricing→ai-agent×2) | NOT TRUE-ORPHAN — mechanical inline cutover precedent #3e — ✅ **COMPLETE** (pricing: RED 11a00455 · GREEN 65f66e0c · D1 995e2ea9; rag: RED 0c1a52f7 · GREEN 285337ab · D1 ea47485c; W-01 706d3b84); 36α PASS (18 pricing + 18 rag); features/pricing + features/rag DELETED |
 | `poc-expense-hex` ✅ CLOSED | `features/expenses` → `modules/expense` | 281 | 0 | 11 | farms+lots paired sister — 17 commits 6 ciclos 64α |
-| `poc-operational-doc-types` | `features/operational-doc-types` → `modules/` | 256 | 0 | 7 | farms+lots paired sister |
+| `poc-operational-doc-types` ✅ DONE | `features/operational-doc-types` → `modules/operational-doc-type` | +428 hex / -256 legacy | 0 | 7 | farms+lots paired sister — 13 commits 6 ciclos 57α; C0 RED 4049a0af · GREEN dedf612c; C1 RED 3bee72b2 · GREEN 21cce2f2; C2 RED b2407b44 · GREEN 066b0146; C3 RED 528157da · GREEN 32223887; C4 RED b8ad5bf8 · GREEN 7be0bfed; C5 RED 62a505f3 · GREEN f2657943; D1 3218b520 |
 
 ## OLEADA 2 — Accounting utils sweep 4-way sub-divided + transversales (6 POCs)
 

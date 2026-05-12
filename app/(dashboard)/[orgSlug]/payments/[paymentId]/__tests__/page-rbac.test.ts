@@ -54,12 +54,9 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/features/operational-doc-types/server", () => {
-  class OperationalDocTypesService {
-    list = mockDocTypesList;
-  }
-  return { OperationalDocTypesService };
-});
+vi.mock("@/modules/operational-doc-type/presentation/server", () => ({
+  makeOperationalDocTypeService: vi.fn(() => ({ list: mockDocTypesList })),
+}));
 
 vi.mock("@/modules/accounting/infrastructure/prisma-accounts.repo", () => {
   class PrismaAccountsRepo {

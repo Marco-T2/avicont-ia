@@ -17,12 +17,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/operational-doc-types/server", () => {
-  class OperationalDocTypesService {
-    list = mockList;
-  }
-  return { OperationalDocTypesService };
-});
+vi.mock("@/modules/operational-doc-type/presentation/server", () => ({
+  makeOperationalDocTypeService: vi.fn(() => ({ list: mockList })),
+}));
 
 vi.mock("@/components/settings/operational-doc-types-manager", () => ({
   default: vi.fn().mockReturnValue(null),
