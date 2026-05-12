@@ -12,7 +12,7 @@
  */
 import { vi, describe, it, expect, beforeEach, afterEach } from "vitest";
 import type { Prisma } from "@/generated/prisma/client";
-import * as auditCtx from "../audit-context";
+import * as auditCtx from "@/modules/shared/infrastructure/audit-context";
 import { withAuditTx } from "../audit-tx";
 
 const UUID_V4_REGEX =
