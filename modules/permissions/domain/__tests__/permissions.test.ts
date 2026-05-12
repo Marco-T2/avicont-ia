@@ -18,13 +18,16 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Cross-layer import paths: domain test references infrastructure (cache) + application
-// (permissions.server) via @/features/permissions/* aliases — these resolve to source pre-B2/B3,
-// then to SHIM (forwarding to hex) after B2/B3 land. Honest divergence from design §4
-// (cross-layer relative ../../infrastructure/...) because at B1 GREEN time the infrastructure
-// and application hex paths do not yet exist.
-vi.mock("@/features/permissions/permissions.cache", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/permissions/permissions.cache")>();
+// Post-B3 cutover: cross-layer mock targets the hex infrastructure path directly.
+// Rationale: canAccess (hex application) internally imports getMatrix from
+// "../infrastructure/permissions.cache" (intra-hex sibling, not via SHIM alias).
+// Mocking the SHIM alias @/features/permissions/permissions.cache does NOT intercept the
+// hex internal sibling import — they resolve to DIFFERENT module entries even though they
+// re-export the same symbols. Mock the hex path to ensure interception.
+// (B1 GREEN initially mocked the SHIM alias because B2/B3 hex did not exist yet; B3 GREEN
+// updates this mock target atomically with the application-layer relocation.)
+vi.mock("@/modules/permissions/infrastructure/permissions.cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/permissions/infrastructure/permissions.cache")>();
   return {
     ...actual,
     getMatrix: vi.fn(),
@@ -32,8 +35,8 @@ vi.mock("@/features/permissions/permissions.cache", async (importOriginal) => {
     _setLoader: actual._setLoader,
   };
 });
-import { getMatrix } from "@/features/permissions/permissions.cache";
-import type { OrgMatrix } from "@/features/permissions/permissions.cache";
+import { getMatrix } from "@/modules/permissions/infrastructure/permissions.cache";
+import type { OrgMatrix } from "@/modules/permissions/infrastructure/permissions.cache";
 
 import {
   PERMISSIONS_READ,
@@ -45,7 +48,7 @@ import {
   type Resource,
   type Action,
 } from "../permissions";
-import { canAccess } from "@/features/permissions/permissions.server";
+import { canAccess } from "@/modules/permissions/application/permissions.server";
 
 const ALL_ROLES: Role[] = [
   "owner",
