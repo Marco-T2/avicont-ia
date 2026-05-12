@@ -57,14 +57,14 @@
 
 ## OLEADA 3 — Features small-medium sin POC histórico (6 POCs)
 
-| POC | Source | LOC | Tests | Consumers |
-|---|---|---|---|---|
-| `poc-product-types-hex` | `features/product-types` | 219 | 0 | 9 |
-| `poc-document-signature-config-hex` | `features/document-signature-config` | 222 | 3 | 5 |
-| `poc-org-profile-hex` | `features/org-profile` | 174 | 3 | 10 |
-| `poc-account-balances-hex` | `features/account-balances` | 150 | 0 | 2 |
-| `poc-users-hex` | `features/users` | 82 | 0 | 19 |
-| `poc-auth-hex` | `features/auth` | 57 | 1 | 1 |
+| POC | Source | LOC | Tests | Consumers | Notas |
+|---|---|---|---|---|---|
+| `poc-product-types-hex` | `features/product-types` | 219 | 0 | 9 | - |
+| `poc-document-signature-config-hex` | `features/document-signature-config` | 222 | 3 | 5 | - |
+| `poc-org-profile-hex` | `features/org-profile` | 174 | 3 | 10 | - |
+| `poc-account-balances-hex` | `features/account-balances` | 150 | 0 | 2 | - |
+| `poc-users-hex` ✅ CLOSED | `features/users` → `modules/users` (application + infrastructure) | 82 | 0 | **21** | RED `6b41ce09` · GREEN `274ecd2e` · D1 (this row); 14α (13 FAIL + 1 PASS-lock α4 server-only); paired sister poc-shared-base-repo EXACT mirror axis-distinct on 2-layer split + single SHIM barrel named re-export; Option A SHIM preserves `@/features/users/server` mock-target path → 8 vi.mock decls + 21 runtime consumers transit zero touch; REQ-004 canonical-import-bypass applied (NotFoundError + BaseRepository direct from `@/modules/shared/*`); final SHIM deletion deferred until poc-auth-hex closes (features/auth/sync-user.service.ts SHIM consumer). Consumer count corrected 19 → 21 (recon discovered 17 app routes + 1 features/auth + 1 modules/organizations adapter + 2 misc; prior count stale) |
+| `poc-auth-hex` | `features/auth` | 57 | 1 | 1 | - |
 
 ## OLEADA 4 — Features medianos sin POC histórico (4 POCs)
 
