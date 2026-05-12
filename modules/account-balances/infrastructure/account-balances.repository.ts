@@ -1,8 +1,8 @@
 import "server-only";
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import { Prisma } from "@/generated/prisma/client";
 import type { AccountNature } from "@/generated/prisma/client";
-import type { AccountBalanceWithRelations } from "./account-balances.types";
+import type { AccountBalanceWithRelations } from "@/modules/account-balances/infrastructure/account-balances.types";
 
 const balanceInclude = {
   account: {

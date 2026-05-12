@@ -1,2 +1,3 @@
 import "server-only";
-export { AccountBalancesService } from "./account-balances.service";
+
+export { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
