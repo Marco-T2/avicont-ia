@@ -32,7 +32,7 @@ import {
   type OrgMatrix,
 } from "../permissions.cache";
 import { seedOrgSystemRoles } from "@/prisma/seed-system-roles";
-import type { Resource, PostableResource } from "../permissions";
+import type { Resource, PostableResource } from "../../domain/permissions";
 
 vi.mock("@/prisma/seed-system-roles", () => ({
   buildSystemRolePayloads: vi.fn(),
