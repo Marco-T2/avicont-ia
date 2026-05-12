@@ -13,9 +13,9 @@
 | **POC #2b** | utils-pure-to-hex (account-code, correlative, accounting-helpers, journal.dates) | ✅ ARCHIVED | +150 | 6/6 REQs PASS |
 | **POC #2c** | account-subtype-to-hex (utils + resolve) | ✅ ARCHIVED | +80 | 6/6 REQs PASS |
 | **POC #2d** | ui-helpers-to-hex (journal.ui) | ✅ ARCHIVED | +43 | RED 57603898 · GREEN deb6872e |
-| **POC #3a** | accounts-crud-port (domain port interface, 15 methods verbatim legacy) | ✅ DONE | +133 | RED 45568edf · GREEN 01656b96 |
-| **POC #3b** | PrismaAccountsRepo adapter (hex infra — implements AccountsCrudPort) | ✅ DONE | +302 | RED 02284e0d · GREEN 10df7d1e |
-| **POC #3c** | AccountsService app layer + composition root | pending | ~150 | #3b |
+| **POC #3a** | accounts-crud-port (domain port interface, 15 methods verbatim legacy) | ✅ DONE | +133 | RED 45568edf · GREEN 01656b96 · D1 863b6665 |
+| **POC #3b** | PrismaAccountsRepo adapter (hex infra — implements AccountsCrudPort) | ✅ DONE | +302 | RED 02284e0d · GREEN 10df7d1e · D1 f739b609 |
+| **POC #3c** | AccountsService app layer + composition root | ✅ DONE | +298 | RED 62d4728a · GREEN d58dd1a2 · D1 TBD |
 | **POC #3d** | routes + pages cutover + Zod schemas | pending | ~300 | #3c |
 | **POC #3e** | cross-module cutover (sale/purchase/dispatch/org-settings/ai-agent/payments) | pending | ~400 | #3d |
 | **POC #4** | accounts hex (replaces original broad #3 scope — now handled by #3a–#3e) | ✅ SUBDIVIDED | → #3a–#3e | accounts CRUD migration sub-divided |

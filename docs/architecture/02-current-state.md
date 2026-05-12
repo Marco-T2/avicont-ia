@@ -1,4 +1,4 @@
-# 02. Current State — Inventory Snapshot 2026-05-12 (updated POC #3a)
+# 02. Current State — Inventory Snapshot 2026-05-12 (updated POC #3c)
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
@@ -8,7 +8,7 @@
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
-| `modules/accounting` | HEX ✅ | 58 | 45 | POC #2a types + POC #2b utils + POC #2c account-subtype + POC #2d ui-helpers → hex; **POC #3a** NEW domain port `accounts-crud.port.ts` (+133 LOC, 15 methods, interface-only); **POC #3b** NEW infra adapter `prisma-accounts.repo.ts` (+302 LOC, 15 methods, hybrid constructor Option A, 2 NEW integration+unit test files); public barrel (server.ts) 2-block structure; domain/ports/ now has 9 ports |
+| `modules/accounting` | HEX ✅ | 115 | 45 | POC #2a types + POC #2b utils + POC #2c account-subtype + POC #2d ui-helpers → hex; **POC #3a** NEW domain port `accounts-crud.port.ts` (+133 LOC, 15 methods, interface-only, RED 45568edf · GREEN 01656b96 · D1 863b6665); **POC #3b** NEW infra adapter `prisma-accounts.repo.ts` (+302 LOC, 15 methods, hybrid constructor Option A, 2 NEW integration+unit test files, RED 02284e0d · GREEN 10df7d1e · D1 f739b609); **POC #3c** NEW app service `accounts.service.ts` (+298 LOC, 7 methods, deps-object pattern, atomic $transaction for parent.isDetail flip, 2 NEW unit+shape test files, RED 62d4728a · GREEN d58dd1a2); composition-root extended with `makeAccountsService()`; server.ts barrel extended (AccountsService + AccountsServiceDeps + makeAccountsService); domain/ports/ now has 9 ports |
 | `modules/audit` | HEX ✅ | 54 | 8 | POC audit hex closed — READ-only + raw SQL CTE preserved + UserNameResolver port |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
 | `modules/dispatch` | HEX ✅ | 89 | 15 | POC dispatch hex closed — Sale architectural mirror + state machine + legacy accounting adapter ports |
@@ -72,8 +72,8 @@
 
 ## Public barrels POC cementación (25/25 COMPLETE as of 2026-05-12)
 
-✅ **modules/accounting/presentation/server.ts** — JournalsService + types + 7 domain exports in 2 blocks: `// ── Domain utils ──` (6 exports: 4 utils-pure + 2 account-subtype) + `// ── Domain UI helpers ──` (1 export: journal.ui) (POC #2a dto/ + POC #2b + POC #2c + POC #2d)  
-✅ **modules/accounting/domain/ports/accounts-crud.port.ts** (~133 LOC) — AccountsCrudPort interface, 15 methods verbatim 1:1 legacy AccountsRepository. First port-creation POC (#3a). No impl — adapter in #3b. tx?: unknown opaque on create/update/seedChartOfAccounts. countJournalLines TODO comment for AccountUsagePort future split. Port count in domain/ports/: 9 total (RED 45568edf · GREEN 01656b96)  
+✅ **modules/accounting/presentation/server.ts** — JournalsService + types + 7 domain exports in 2 blocks: `// ── Domain utils ──` (6 exports: 4 utils-pure + 2 account-subtype) + `// ── Domain UI helpers ──` (1 export: journal.ui) (POC #2a dto/ + POC #2b + POC #2c + POC #2d). **POC #3c** added: `AccountsService` class export + `AccountsServiceDeps` type export + `makeAccountsService` factory export in `// ── Accounts hex service (POC #3c) ──` block.  
+✅ **modules/accounting/domain/ports/accounts-crud.port.ts** (~133 LOC) — AccountsCrudPort interface, 15 methods verbatim 1:1 legacy AccountsRepository. First port-creation POC (#3a). No impl — adapter in #3b. tx?: unknown opaque on create/update/seedChartOfAccounts. countJournalLines TODO comment for AccountUsagePort future split. Port count in domain/ports/: 9 total (RED 45568edf · GREEN 01656b96 · D1 863b6665)  
 ✅ **modules/iva-books/presentation/server.ts** — IvaBookService + factories  
 ⚠️ **NOTE**: Non-hex outliers `features/{purchase, sale, shared}` ALSO lack server.ts (surface honest — outside POC poc-hex-public-barrels scope, defer to future consolidation).
 
