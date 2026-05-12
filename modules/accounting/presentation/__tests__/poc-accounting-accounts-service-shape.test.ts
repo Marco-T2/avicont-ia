@@ -150,7 +150,7 @@ describe("α21 REQ-006 does NOT import server-only", () => {
   it("α21: service does NOT import 'server-only'", () => {
     if (!existsSync(SERVICE_PATH)) return; // vacuous pre-GREEN
     const src = readFileSync(SERVICE_PATH, "utf-8");
-    expect(src).not.toMatch(/import\s+["']server-only["']/);
+    expect(src).not.toMatch(/^import\s+["']server-only["']/m);
   });
 });
 

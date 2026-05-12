@@ -11,6 +11,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountsService } from "../accounts.service";
 import type { AccountsCrudPort } from "../../domain/ports/accounts-crud.port";
+import type { Account, AccountSubtype } from "@/generated/prisma/client";
 import {
   NotFoundError,
   ValidationError,
@@ -43,31 +44,14 @@ const makeMockPrisma = () => ({
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 
-const makeAccount = (overrides: Partial<{
-  id: string;
-  organizationId: string;
-  code: string;
-  name: string;
-  type: "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
-  nature: "DEUDORA" | "ACREEDORA";
-  subtype: string | null;
-  parentId: string | null;
-  level: number;
-  isDetail: boolean;
-  isActive: boolean;
-  requiresContact: boolean;
-  description: string | null;
-  isContraAccount: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}> = {}) => ({
+const makeAccount = (overrides: Partial<Account> = {}): Account => ({
   id: "acc-1",
   organizationId: "org-1",
   code: "1",
   name: "Activos",
-  type: "ACTIVO" as const,
-  nature: "DEUDORA" as const,
-  subtype: null,
+  type: "ACTIVO",
+  nature: "DEUDORA",
+  subtype: null as AccountSubtype | null,
   parentId: null,
   level: 1,
   isDetail: false,
@@ -75,10 +59,8 @@ const makeAccount = (overrides: Partial<{
   requiresContact: false,
   description: null,
   isContraAccount: false,
-  createdAt: new Date("2025-01-01"),
-  updatedAt: new Date("2025-01-01"),
   ...overrides,
-});
+} as Account);
 
 // ── Test suite ─────────────────────────────────────────────────────────────
 
@@ -189,7 +171,8 @@ describe("AccountsService", () => {
       vi.mocked(repo.findSiblings).mockResolvedValueOnce([]);
       vi.mocked(repo.findByCode).mockResolvedValueOnce(null);
       vi.mocked(repo.create).mockResolvedValueOnce(created);
-      await service.create("org-1", { name: "Child", parentId: "parent-1" });
+      // subtype required for level-2 accounts (resolveAccountSubtype rule)
+      await service.create("org-1", { name: "Child", parentId: "parent-1", subtype: "ACTIVO_CORRIENTE" });
       expect(prisma.$transaction).not.toHaveBeenCalled();
       expect(repo.create).toHaveBeenCalledTimes(1);
     });
@@ -202,7 +185,8 @@ describe("AccountsService", () => {
       vi.mocked(repo.findByCode).mockResolvedValueOnce(null);
       vi.mocked(repo.update).mockResolvedValueOnce(parent);
       vi.mocked(repo.create).mockResolvedValueOnce(created);
-      await service.create("org-1", { name: "Child", parentId: "parent-1" });
+      // subtype required for level-2 accounts (resolveAccountSubtype rule)
+      await service.create("org-1", { name: "Child", parentId: "parent-1", subtype: "ACTIVO_CORRIENTE" });
       expect(prisma.$transaction).toHaveBeenCalledTimes(1);
       expect(repo.update).toHaveBeenCalledWith("org-1", "parent-1", { isDetail: false }, "TX_TOKEN");
       expect(repo.create).toHaveBeenCalledWith("org-1", expect.objectContaining({ level: 2 }), "TX_TOKEN");
