@@ -1,4 +1,4 @@
-# 02. Current State — Inventory Snapshot 2026-05-12 (updated POC #3d)
+# 02. Current State — Inventory Snapshot 2026-05-12 (updated POC #3f)
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures. Updated POC #3f 2026-05-12.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.

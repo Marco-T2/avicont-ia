@@ -40,7 +40,7 @@
 
 | POC | Source | LOC | Tests | Consumers | Paired sister |
 |---|---|---|---|---|---|
-| `poc-quick-cleanup` | delete `features/{rag, pricing}` huérfanos | 263 | 0 | 0 | N/A — delete directo |
+| `poc-quick-cleanup` | inline + delete `features/{rag, pricing}` CONSUMERS-LIGHT | 263 | 0 | **4** (rag→ai-agent+documents; pricing→ai-agent×2) | NOT TRUE-ORPHAN — mechanical inline cutover precedent #3e |
 | `poc-expense-hex` ✅ CLOSED | `features/expenses` → `modules/expense` | 281 | 0 | 11 | farms+lots paired sister — 17 commits 6 ciclos 64α |
 | `poc-operational-doc-types` | `features/operational-doc-types` → `modules/` | 256 | 0 | 7 | farms+lots paired sister |
 
