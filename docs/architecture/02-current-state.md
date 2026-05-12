@@ -1,4 +1,4 @@
-# 02. Current State — Inventory Snapshot 2026-05-12 (updated POC #3f)
+# 02. Current State — Inventory Snapshot 2026-05-12 (updated poc-quick-cleanup PRICING C2)
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures. Updated POC #3f 2026-05-12.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
@@ -52,7 +52,7 @@
 | `features/ai-agent` | 3,912 | 20 | 14 | Orquestación LLM — zero domain aggregates, ya consume hex via ports |
 | `features/documents` | 422 | 1 | 5 | Integración file mgmt + rag |
 | `features/rag` | 193 | 0 | 2 | Infraestructura pgvector + embeddings |
-| `features/pricing` | 70 | 0 | 2 | Cálculo puro — satellite ai-agent |
+| `features/pricing` | 70 | 0 | 0 | **DELETED** → relocated to `features/ai-agent/pricing/` (poc-quick-cleanup C2 65f66e0c); consumers=0 post-cutover |
 | `features/reports` | 330 | 2 | 4 | Static catalog — readonly const arrays, zero service/DB/domain |
 | `features/users` | 82 | 0 | 19 | Identity resolution — 19/22 consumers use resolveByClerkId auth plumbing |
 | `features/auth` | 57 | 1 | 1 | Auth wrapper thin |
