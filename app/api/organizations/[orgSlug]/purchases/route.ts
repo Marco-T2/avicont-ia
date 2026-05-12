@@ -7,9 +7,13 @@ import {
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 import { UsersService } from "@/features/users/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const purchaseService = makePurchaseService();
 const usersService = new UsersService();
+
+const M = (v: number | undefined): MonetaryAmount =>
+  v === undefined ? MonetaryAmount.zero() : MonetaryAmount.of(v);
 
 export async function GET(
   request: Request,
@@ -58,12 +62,17 @@ export async function POST(
     const input = createPurchaseSchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(userId);
+    const wrappedInput = {
+      ...input,
+      date: new Date(input.date),
+      details: input.details.map((d) => ({ ...d, lineAmount: M(d.lineAmount) })),
+    };
     const result = postImmediately
-      ? await purchaseService.createAndPost(orgId, input, {
+      ? await purchaseService.createAndPost(orgId, wrappedInput, {
           userId: user.id,
           role,
         })
-      : await purchaseService.createDraft(orgId, input, user.id);
+      : await purchaseService.createDraft(orgId, wrappedInput, user.id);
 
     return Response.json(result, { status: 201 });
   } catch (error) {

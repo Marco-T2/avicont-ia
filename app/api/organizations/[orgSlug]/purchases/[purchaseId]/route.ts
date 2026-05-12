@@ -3,9 +3,13 @@ import { requirePermission } from "@/features/permissions/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";
 import { UsersService } from "@/features/users/server";
+import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const purchaseService = makePurchaseService();
 const usersService = new UsersService();
+
+const M = (v: number | undefined): MonetaryAmount =>
+  v === undefined ? MonetaryAmount.zero() : MonetaryAmount.of(v);
 
 export async function GET(
   _request: Request,
@@ -65,7 +69,12 @@ export async function PATCH(
 
     // confirmTrim: true OR no trim needed → proceed with normal edit
     const user = await usersService.resolveByClerkId(clerkUserId);
-    const purchase = await purchaseService.update(orgId, purchaseId, input, { userId: user.id, role, justification });
+    const wrappedInput = {
+      ...input,
+      date: input.date !== undefined ? new Date(input.date) : undefined,
+      details: input.details?.map((d) => ({ ...d, lineAmount: M(d.lineAmount) })),
+    };
+    const purchase = await purchaseService.update(orgId, purchaseId, wrappedInput, { userId: user.id, role, justification });
 
     return Response.json(purchase);
   } catch (error) {
