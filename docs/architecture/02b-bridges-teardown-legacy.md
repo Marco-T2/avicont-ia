@@ -661,4 +661,35 @@ POC #1 "UX accordion granjero mayor — farm-detail-client.tsx Accordion lotes e
 
 ---
 
+### 19.21. ADDENDUM POC correctivo monetary-amount-routes retroactivo bugfix build-blocking TSC mismatch MonetaryAmount + Date ↔ number|undefined + string 4 route files
+
+**ADDENDUM POC correctivo monetary-amount-routes — build-blocking TSC2345 type mismatch detected in corrective sweep OLEADA 5 post-dispatch-instantiation fix** (paired sister §19.20 dispatch-instantiation corrective — instantiation-arity axis distinct vs branded-VO/primitive-coercion axis):
+
+Half-finished `poc-purchases-hex` / `poc-sales-hex` migration left zod schemas producing `lineAmount?: number | undefined` and `date: string` while service input types (`CreateDraftInput`, `UpdatePurchaseInput`, `UpdateSaleInput`) upgraded to required `MonetaryAmount` class + `Date` objects. `pnpm build` fails at TSC2345 on 6 sites across 4 route files. Same corrective sweep shape as sister §19.20 — unmasked by first `pnpm build` gate post-dispatch fix.
+
+**Root cause (branded VO + primitive coercion axes)**: route handler passes `input` (which contains `lineAmount?: number | undefined` AND `date: string` per zod parse) directly to service. Service input type requires `MonetaryAmount` (value object) for lineAmount AND `Date` for date — both `number | undefined` and `string` are not assignable. Adapter at route seam was the established fix pattern (iva-books precedent §7 — same pattern for both monetary and date axes).
+
+**A1 decision — undefined-handling**: `MonetaryAmount.of(undefined)` throws `InvalidMonetaryAmount`. LOCK: fallback to `MonetaryAmount.zero()` when `lineAmount === undefined`. Rationale: preserves zod `.optional()` semantic (clients may legitimately omit `lineAmount` in partial PATCH); service-layer total/sum invariants catch malformed input. Strict-mode (throw) deferred pending zod schema strictness decision (separate POC). Surfaced as honest §4 per [[honest_surface]].
+
+**Honest divergence #8 (NEW — surface mid-apply)**: proposal/spec scoped only to `lineAmount` axis. C1 GREEN partial application (lineAmount wrap only) UNMASKED a second TSC2345 axis: `date: string → Date` mismatch on the same 4 routes. TSC reports one incompatible property per TS2345 error; `lineAmount` was the visible surface, `date` was beneath. Surfaced honest mid-apply per [[honest_surface]] — same architectural pattern (route seam adapter), same 4 files, scope still bounded. iva-books precedent literally does `fechaFactura: new Date(dto.fechaFactura)` at the identical seam (`iva-books/purchases/route.ts:31`). Applied symmetric `date: new Date(input.date)` for POST (date required) + `date: input.date !== undefined ? new Date(input.date) : undefined` for PATCH (date optional). Alternative considered + rejected: changing zod to `.coerce.date()` — rejected per REQ-005 (zod schemas MUST NOT be modified, preserves API client contract).
+
+**3-commit chain (sister §19.20 shape — 4-commit diverges: no vi.mock surface → no C1a mock-preceding step)**:
+- C0 RED `73ef1b6b` — `modules/purchase/presentation/__tests__/c0-shape.poc-correctivo-monetary-amount-routes.test.ts` NEW 12α sentinel gate (12 FAIL all — no PASS-locks; no pre-existing MonetaryAmount adapter in any target file)
+- C1 GREEN `3dcec55d` — 4-file atomic: `purchases/route.ts` + `purchases/[purchaseId]/route.ts` + `sales/route.ts` + `sales/[saleId]/route.ts`; add `MonetaryAmount` import + `M` adapter + `details.map(d => ({ ...d, lineAmount: M(d.lineAmount) }))` wrapping + `date: new Date(...)` coercion (POST required + PATCH optional variants); `computeNewTotal()` helpers PRESERVED unchanged (local number utility, not domain call)
+- C2 D1 (this commit) — doc-only §19.21 ADDENDUM append-only
+
+**Honest Divergence #7 — from iva-books sister-route precedent** (NOT the POC sister): iva-books adapter (`app/api/organizations/[orgSlug]/iva-books/{purchases,sales}/route.ts`) uses `const M = (v: string) => MonetaryAmount.of(v);` — string input (iva-books zod schema: `.string()`). This POC adapter: `const M = (v: number | undefined): MonetaryAmount => v === undefined ? MonetaryAmount.zero() : MonetaryAmount.of(v);` — number+undefined input (schema: `.number().optional()`). Same seam pattern (named `M`, route-level, pre-service-call), type-adjusted signature.
+
+**Scope (4 file edits — symmetric purchase ↔ sale)**:
+- `app/api/organizations/[orgSlug]/purchases/route.ts` (POST: createAndPost + createDraft — 2 sites via wrappedInput)
+- `app/api/organizations/[orgSlug]/purchases/[purchaseId]/route.ts` (PATCH: update — 1 site via wrappedInput)
+- `app/api/organizations/[orgSlug]/sales/route.ts` (POST: createAndPost + createDraft — 2 sites via wrappedInput)
+- `app/api/organizations/[orgSlug]/sales/[saleId]/route.ts` (PATCH: update — 1 site via wrappedInput)
+
+**Suite post-C1**: 12/12 α PASS. Full suite NO NEW FAIL vs pre-C0 baseline (67 failed files / 83 failed tests baseline → 68 failed files / 84 failed tests post-C1 = +1 file delta from C0 test file inclusion, NET 6202 passes vs 6191 baseline = +11 NEW passes from α flips and incidental). TSC: 6 target errors GONE (30 → 24 total); remaining 24 errors from other groups (findManyByCodes, regex s-flag, etc.) unaffected. REQ-005 (zod schemas unchanged) + REQ-006 (service types unchanged) PRESERVED. `pnpm build` COMPILED SUCCESSFULLY (regression gate PASS).
+
+**Cross-ref**: `sdd/poc-correctivo-monetary-amount-routes/apply-progress` (3-commit chain + suite delta + build gate) + `sdd/poc-correctivo-monetary-amount-routes/baseline-ledger`. Paired sister: §19.20 dispatch-instantiation corrective (constructor-arity axis) — same corrective sweep cohort OLEADA 5.
+
+---
+
 
