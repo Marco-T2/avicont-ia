@@ -36,10 +36,10 @@
 
 ## Features legacy — hex migration candidates (1)
 
-| Feature | LOC | Tests | Consumers | Oleada target |
-|---|---|---|---|---|
-| `features/accounting` | 12,523 | 65 | 128 | 5 — residual POST-POC #10 shim |
-| `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting |
+| Feature | LOC | Tests | Consumers | Oleada target | Notes |
+|---|---|---|---|---|---|
+| `features/accounting` | 12,523 | 65 | 128 | 5 — residual POST-POC #2a shim | 3 type files → SHIM (journal/accounts/ledger.types.ts); canonical home `/modules/accounting/presentation/dto/` POC #2a |
+| `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting | |
 
 ## Features — cross-cutting infrastructure (NOT hex target) (9)
 

@@ -4,12 +4,15 @@
 > **Source**: Inventory cumulative cross-POC matures heredado [02-current-state.md](02-current-state.md).
 > **Estimación cumulative migration completa**: ~60-80 sesiones cortas.
 
-## 10-POC Framework — Cementación 2026-05-11 POC poc-hex-public-barrels (POC #1 COMPLETE)
+## 10-POC Framework — Cementación 2026-05-12 POC poc-accounting-types-to-hex (POC #2a COMPLETE, #2b–#2d PENDING)
 
 | POC | Objetivo | Estado | LOC | Consumers |
 |---|---|---|---|---|
 | **POC #1** | Public barrels (accounting + iva-books server.ts) | ✅ ARCHIVED | +11 | unblock #2+ |
-| **POC #2** | utils-types sweep B-batch | pending | ~200 | fast-path reuse |
+| **POC #2a** | types-to-hex (3 DTO files moved to hex, SHIM barrel reconciled) | ✅ ARCHIVED | +193 | 6/6 REQs PASS |
+| **POC #2b** | utils-pure-to-hex (account-code, correlative, accounting-helpers, journal.dates) | pending | ~150 | fast-path reuse |
+| **POC #2c** | account-subtype-to-hex (utils + resolve) | pending | ~80 | fast-path reuse |
+| **POC #2d** | ui-helpers-to-hex (journal.ui) | pending | ~60 | fast-path reuse |
 | **POC #3** | iva-books completion (types+validation+exporters, DUAL-IMPORT cleanup) | pending | ~400 | accounting-linked |
 | **POC #4** | accounts hex | pending | ~500 | financial-statements prep |
 | **POC #5** | auto-entry + lifecycle + validation | pending | ~600 | journal-driver |
@@ -24,6 +27,7 @@
 - **Paired sister reuse aggressive** per POC nuevo — EXACT mirror precedent matures cumulative
 - **Bundling sesiones POC pequeño** (1 sesión = 1 huérfano delete viable)
 - **Skip Step 0 expand verbose** en POCs simples (huérfanos sin tests + 0 consumers)
+- **Single-axis atomic discipline** — POC #2 original (utils-types sweep B-batch) sub-dividido 4-way (types→hex, pure-utils→hex, account-subtype→hex, ui-helpers→hex) por pairing & reusability
 - **Defer accounting big bang** scope dedicado ÚLTIMO (12.5k LOC + 128 consumers residual POC #10 shim cleanup)
 - **Cycle-start cold próxima sesión**: read SOLO docs relevantes scope (NO architecture.md complete cumulative)
 
@@ -35,10 +39,14 @@
 | `poc-expense-hex` ✅ CLOSED | `features/expenses` → `modules/expense` | 281 | 0 | 11 | farms+lots paired sister — 17 commits 6 ciclos 64α |
 | `poc-operational-doc-types` | `features/operational-doc-types` → `modules/` | 256 | 0 | 7 | farms+lots paired sister |
 
-## OLEADA 2 — Transversales desbloquean otros (2 POCs scope mayor)
+## OLEADA 2 — Accounting utils sweep 4-way sub-divided + transversales (6 POCs)
 
 | POC | Source | LOC | Tests | Consumers | Notas |
 |---|---|---|---|---|---|
+| `poc-accounting-types-to-hex` ✅ CLOSED | `features/accounting/journal/accounts/ledger.types.ts` → `modules/accounting/presentation/dto/` | +193 | 15α | 6/6 REQs PASS | POC #2a — types canonical home hex |
+| `poc-utils-pure-to-hex` (PENDING) | `features/accounting/{account-code, correlative, accounting-helpers, journal.dates}` | ~150 | TBD | fast-path | POC #2b — paired sister #2a |
+| `poc-account-subtype-to-hex` (PENDING) | `features/accounting/{utils + resolve}` account-subtype | ~80 | TBD | fast-path | POC #2c — paired sister #2a |
+| `poc-ui-helpers-to-hex` (PENDING) | `features/accounting/journal.ui` | ~60 | TBD | fast-path | POC #2d — paired sister #2a |
 | `poc-shared-canonical` | `features/shared` → `modules/shared` expand | 418 | 6 | **230** | ALTO IMPACT cross-codebase |
 | `poc-permissions-hex` | `features/permissions` → `modules/permissions` | 561 | 6 | **183** | RBAC transversal |
 
