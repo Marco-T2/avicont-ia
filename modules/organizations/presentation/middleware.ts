@@ -1,0 +1,19 @@
+import "server-only";
+import { makeOrganizationsService } from "./composition-root";
+
+const orgsService = makeOrganizationsService();
+
+export async function requireOrgAccess(
+  clerkUserId: string,
+  orgSlug: string,
+): Promise<string> {
+  return orgsService.verifyMembership(clerkUserId, orgSlug);
+}
+
+export async function requireRole(
+  clerkUserId: string,
+  orgId: string,
+  roles: string[],
+) {
+  return orgsService.requireMemberWithRoles(orgId, clerkUserId, roles);
+}
