@@ -38,6 +38,16 @@ vi.mock("@/features/users/server", () => ({
   },
 }));
 
+// Canonical path mock — service now imports UsersService direct post-REQ-004 bypass.
+// @/features/users/server declaration above preserved for α12 shape sentinel.
+vi.mock("@/modules/users/application/users.service", () => ({
+  UsersService: class {
+    resolveByClerkId = mockResolveByClerkId;
+    findOrCreate = mockFindOrCreate;
+    update = mockUpdate;
+  },
+}));
+
 vi.mock("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));

@@ -1,7 +1,8 @@
 import "server-only";
 import { currentUser } from "@clerk/nextjs/server";
-import { UsersService } from "@/features/users/server";
-import { AppError, NotFoundError } from "@/features/shared/errors";
+import { UsersService } from "@/modules/users/application/users.service";
+import { AppError } from "@/modules/shared/domain/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 
 const usersService = new UsersService();
 
