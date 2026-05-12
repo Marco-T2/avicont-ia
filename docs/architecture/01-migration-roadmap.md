@@ -18,7 +18,8 @@
 | **POC #3c** | AccountsService app layer + composition root | ✅ DONE | +298 | RED 62d4728a · GREEN d58dd1a2 · D1 da8165d5 |
 | **POC #3d** | routes + pages cutover + Zod schemas | ✅ DONE | +95 / -93 | RED 2e993d35 · GREEN 3062ba16 · D1 1b41fcfe |
 | **POC #3e** | cross-module cutover (sale/purchase/dispatch/org-settings/ai-agent/payments) + AutoEntryGenerator ctor structural widening (Marco-locked Option 3) + 2 hidden importers fixed (W-#3e-01 inventory miss) | ✅ DONE | +68 / -524 | RED 37b57951 · GREEN c6af8468 · D1 0d3423c2 |
-| **POC #4** | accounts hex (replaces original broad #3 scope — now handled by #3a–#3e) | ✅ SUBDIVIDED | → #3a–#3e | accounts CRUD migration sub-divided |
+| **POC #3f** | legacy retirement — 2 sibling PORT-widens (ledger.service + journal.service → AccountsCrudPort + PrismaAccountsRepo) + accounts.repository.ts DELETE + SHIM trim (accounting.validation.ts L4–L9 removed); R-01 auto-closed; W-01 cross-cycle α34+α35 revoked atomic | ✅ DONE | -267 net | RED 3fdb737c · GREEN 20dce277 · D1 TBD |
+| **POC #4** | accounts hex (replaces original broad #3 scope — now handled by #3a–#3f) | ✅ SUBDIVIDED | → #3a–#3f | accounts CRUD migration sub-divided |
 | **POC #5** | auto-entry + lifecycle + validation | pending | ~600 | journal-driver |
 | **POC #6** | reports paired-sister 4-batch (trial/equity/worksheet/initial) | pending | ~800 | journal-consumer |
 | **POC #7** | financial-statements XL POC | pending | ~1500 | reporting-stack |
