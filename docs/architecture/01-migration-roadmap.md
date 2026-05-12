@@ -4,7 +4,7 @@
 > **Source**: Inventory cumulative cross-POC matures heredado [02-current-state.md](02-current-state.md).
 > **Estimación cumulative migration completa**: ~60-80 sesiones cortas.
 
-## 10-POC Framework — Cementación 2026-05-12 POC poc-accounting-accounts-crud-port (POC #3a COMPLETE)
+## 10-POC Framework — Cementación 2026-05-12 POC poc-accounting-routes-pages-cutover (POC #3d COMPLETE)
 
 | POC | Objetivo | Estado | LOC | Consumers |
 |---|---|---|---|---|
@@ -16,7 +16,7 @@
 | **POC #3a** | accounts-crud-port (domain port interface, 15 methods verbatim legacy) | ✅ DONE | +133 | RED 45568edf · GREEN 01656b96 · D1 863b6665 |
 | **POC #3b** | PrismaAccountsRepo adapter (hex infra — implements AccountsCrudPort) | ✅ DONE | +302 | RED 02284e0d · GREEN 10df7d1e · D1 f739b609 |
 | **POC #3c** | AccountsService app layer + composition root | ✅ DONE | +298 | RED 62d4728a · GREEN d58dd1a2 · D1 da8165d5 |
-| **POC #3d** | routes + pages cutover + Zod schemas | pending | ~300 | #3c |
+| **POC #3d** | routes + pages cutover + Zod schemas | ✅ DONE | +95 / -93 | RED 2e993d35 · GREEN 3062ba16 · D1 _PENDING_SHA_ |
 | **POC #3e** | cross-module cutover (sale/purchase/dispatch/org-settings/ai-agent/payments) | pending | ~400 | #3d |
 | **POC #4** | accounts hex (replaces original broad #3 scope — now handled by #3a–#3e) | ✅ SUBDIVIDED | → #3a–#3e | accounts CRUD migration sub-divided |
 | **POC #5** | auto-entry + lifecycle + validation | pending | ~600 | journal-driver |
