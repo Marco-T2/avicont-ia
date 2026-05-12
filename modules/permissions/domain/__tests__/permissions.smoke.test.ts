@@ -38,19 +38,19 @@ describe("permissions.ts — client-safe module (no server deps)", () => {
 
 describe("permissions.server.ts — async facades now server-only", () => {
   it("canAccess is exported and callable", async () => {
-    const mod = await import("../permissions.server");
+    const mod = await import("@/features/permissions/permissions.server");
     expect(typeof mod.canAccess).toBe("function");
   });
 
   it("canPost is exported and callable", async () => {
-    const mod = await import("../permissions.server");
+    const mod = await import("@/features/permissions/permissions.server");
     expect(typeof mod.canPost).toBe("function");
   });
 
   it("canAccess returns a Promise (async 4-param signature)", async () => {
     // We cannot call canAccess for real without a DB, but we can assert it returns
     // a Promise (getMatrix will throw with no mock — we just care about the type contract).
-    const { canAccess } = await import("../permissions.server");
+    const { canAccess } = await import("@/features/permissions/permissions.server");
     // canAccess without a mocked getMatrix will reject, but the return IS a Promise.
     const result = canAccess("owner", "sales", "read", "any-org");
     expect(result).toBeInstanceOf(Promise);
@@ -59,7 +59,7 @@ describe("permissions.server.ts — async facades now server-only", () => {
   });
 
   it("canPost returns a Promise (async 3-param signature)", async () => {
-    const { canPost } = await import("../permissions.server");
+    const { canPost } = await import("@/features/permissions/permissions.server");
     const result = canPost("owner", "sales", "any-org");
     expect(result).toBeInstanceOf(Promise);
     await result.catch(() => {});
