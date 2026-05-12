@@ -66,11 +66,11 @@
 | `poc-users-hex` ✅ CLOSED | `features/users` → `modules/users` (application + infrastructure) | 82 | 0 | **21** | RED `6b41ce09` · GREEN `274ecd2e` · D1 (this row); 14α (13 FAIL + 1 PASS-lock α4 server-only); paired sister poc-shared-base-repo EXACT mirror axis-distinct on 2-layer split + single SHIM barrel named re-export; Option A SHIM preserves `@/features/users/server` mock-target path → 8 vi.mock decls + 21 runtime consumers transit zero touch; REQ-004 canonical-import-bypass applied (NotFoundError + BaseRepository direct from `@/modules/shared/*`); SHIM deletion deferred retirement bundle (poc-auth-hex + poc-users-hex + poc-account-balances-hex per OLEADA 3 pattern — poc-auth-hex NOW CLOSED, features/auth/sync-user.service.ts no longer imports through SHIM). Consumer count corrected 19 → 21 (recon discovered 17 app routes + 1 features/auth + 1 modules/organizations adapter + 2 misc; prior count stale) |
 | `poc-auth-hex` ✅ CLOSED | `features/auth` → `modules/auth/application` (application-only flat) | 205 | 1 | **1** | RED `ac497dda` · GREEN `693a51c4` · D1 (this row); 14α (13 FAIL + 1 PASS-lock α4 server-only); paired sister poc-users-hex EXACT mirror axis-distinct on application-only flat (no infrastructure/) + 4-file atomic (+1 test relocation vs sister 3-file); Option A SHIM preserves `import "server-only"` + named re-export; REQ-004 canonical-import-bypass applied (UsersService + NotFoundError/AppError direct from `@/modules/*`); dual-mock wiring: `@/features/users/server` vi.mock PRESERVED + `@/modules/users/application/users.service` canonical mock ADDED alongside; SHIM deletion deferred retirement bundle (poc-auth-hex + poc-users-hex + poc-account-balances-hex per OLEADA 3 pattern). LOC retrofix: stale 57 → actual 205 (56 src + 146 test + 3 SHIM). **OLEADA 3: 6/6 CLOSED** (FINAL — poc-account-balances-hex CLOSED as last sub-POC) |
 
-## OLEADA 4 — Features medianos sin POC histórico (4 POCs)
+## OLEADA 4 — Features medianos sin POC histórico (4 POCs) — **1/4 CLOSED**
 
 | POC | Source | LOC | Tests | Consumers |
 |---|---|---|---|---|
-| `poc-reports-hex` | `features/reports` | 330 | 2 | 4 |
+| ✅ `poc-reports-hex` | `features/reports` | 330 | 2 | 4 | C0 `db46f0c0` · C1 `c5c2caa0` · C2 D1 (this commit)
 | `poc-documents-hex` | `features/documents` | 422 | 1 | 5 |
 | `poc-audit-hex` | `features/audit` | 833 | 7 | 15 |
 | `poc-organizations-hex` | `features/organizations` | 1,643 | 13 | 49 |
