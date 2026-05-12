@@ -121,7 +121,7 @@ const ROUTE_AGENT = path.join(
 );
 const PRICING_SERVICE = path.join(
   REPO_ROOT,
-  "features/pricing/pricing.service.ts",
+  "features/ai-agent/pricing/pricing.service.ts",
 );
 
 // ── Cat 2 vi.mock factory cutover target (1 test file) ────────────────────────

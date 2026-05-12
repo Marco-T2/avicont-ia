@@ -335,7 +335,7 @@ describe("POC paired farms+lots C6 — cross-feature ports migration paired-lot 
   // ── F: Pricing cross-feature cutover (α26) ─────────────────────────────────
 
   it("α26: features/pricing/pricing.service.ts does NOT import `LotsService` from `@/features/lots/server` (D7 cutover legacy `new LotsService()` → LotInquiryPort DI + lot.name access preserved via expand canonical `{id, name, initialCount}` driver-anchored)", () => {
-    const src = readRepoFile("features/pricing/pricing.service.ts");
+    const src = readRepoFile("features/ai-agent/pricing/pricing.service.ts");
     expect(src).not.toMatch(LEGACY_LOTS_SERVICE_IMPORT_RE);
   });
 });
