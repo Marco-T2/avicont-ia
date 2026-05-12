@@ -109,3 +109,8 @@ Esta drift es 4ta evidencia cumulative cross-POC matures de `evidence-supersedes
 - **7ma evidencia matures cumulative cross-POC**: POC expense hex C5 (paired farms+lots C7 6ta + 5 anteriores)
 - **Decisión**: Wholesale delete features/expenses/ atomic single batch 6 archivos DELETE -ϕ LOC + DIR auto-removed por git rm (zero residual) paired sister farms+lots C7 EXACT mirror reduced single-aggregate
 - **Cementado**: retirement-reinventory-gate PROJECT-scope grep classification 5-axis APPLIED pre-RED ZERO CONSUMER PROD verified post-C4 cutover cumulative (5 hits TEST-SHAPE-ASSERTION-NEGATIVE absorbed self-references inside __tests__/ excluded por walkProductionSources)
+
+### §13.DOMAIN shared-errors-class-rich-relocation-paired-sister-account-subtype-axis-distinct
+- **1ra evidencia**: POC poc-shared-errors C2 (OLEADA 2 transversal foundational)
+- **Decisión**: `features/shared/errors.ts` (215 LOC, 7 classes, 78 const codes, 2 types) → `modules/shared/domain/errors/index.ts` canonical home single file 1:1 verbatim mirror + 2-line SHIM at original location (§13.X precedent placeholder). Resolves 1 stranded fwd-dep `modules/shared/domain/errors/monetary-errors.ts` (modules/* → features/* violation) atomic same GREEN commit.
+- **Cementado**: paired sister poc-#2c account-subtype-to-hex EXACT mirror — single source file relocated 1:1, 2-line SHIM shape literal verified textual, sibling relative import convention (`./index`) preserved. 154 consumers (149 deep + 5 barrel) transit via SHIM zero touch — future cleanup POC #10 (retirement-reinventory-gate v3).
