@@ -150,7 +150,7 @@ vi.mock("@/modules/lot/presentation/server", () => ({
   LocalLotInquiryAdapter: class {},
 }));
 
-vi.mock("@/features/pricing/server", () => ({
+vi.mock("@/features/ai-agent/pricing/server", () => ({
   PricingService: class {
     calculateLotCost = vi.fn();
   },

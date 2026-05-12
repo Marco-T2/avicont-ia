@@ -13,7 +13,7 @@ import type { InvocationOutcome } from "../agent.utils";
 import type { ChatMemoryRepository } from "../memory.repository";
 import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
 import type { LotInquiryPort } from "@/modules/lot/presentation/server";
-import type { PricingService } from "@/features/pricing/server";
+import type { PricingService } from "@/features/ai-agent/pricing/server";
 
 type AgentLabel = "socio" | "contador" | "admin";
 

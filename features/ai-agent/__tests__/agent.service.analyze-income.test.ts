@@ -64,7 +64,7 @@ vi.mock("@/modules/lot/presentation/server", () => ({
   makeLotService: vi.fn().mockReturnValue({}),
 }));
 
-vi.mock("@/features/pricing/server", () => ({
+vi.mock("@/features/ai-agent/pricing/server", () => ({
   PricingService: class {
     calculateLotCost = vi.fn().mockResolvedValue({});
   },

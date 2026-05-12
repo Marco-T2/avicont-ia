@@ -10,7 +10,7 @@ import {
   makeLotService,
   type LotInquiryPort,
 } from "@/modules/lot/presentation/server";
-import { PricingService } from "@/features/pricing/server";
+import { PricingService } from "@/features/ai-agent/pricing/server";
 import { normalizeRole } from "./agent.utils";
 import type { AgentMode } from "./agent.validation";
 import type {
