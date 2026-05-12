@@ -1,4 +1,4 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "./index";
 
 // Código de dominio compartido para violaciones de invariantes monetarios.
 // Vive en shared/ porque MonetaryAmount es un VO cross-feature (rule of three:
