@@ -52,7 +52,7 @@
 | `poc-utils-pure-to-hex` ✅ CLOSED | `features/accounting/{account-code, correlative, accounting-helpers, journal.dates}` → `modules/accounting/domain/` | +150 | 21α | 6/6 REQs PASS | POC #2b — paired sister #2a |
 | `poc-account-subtype-to-hex` ✅ CLOSED | `features/accounting/{utils + resolve}` account-subtype | +80 | 23α | 6/6 REQs PASS | POC #2c — paired sister #2b |
 | `poc-ui-helpers-to-hex` ✅ CLOSED | `features/accounting/journal.ui` | +43 | 13α | 6/6 REQs PASS | POC #2d — paired sister #2c; NEW barrel block Domain UI helpers |
-| `poc-shared-canonical` | `features/shared` → `modules/shared` expand | 418 | 6 | **230** | ALTO IMPACT cross-codebase |
+| `poc-shared-canonical` ✅ CLOSED | `features/shared` → `modules/shared` expand | 418 | 6 | **230** | **4 sub-POCs ARCHIVED** (errors: dffaeb15 · middleware-auth: c56a1360 · audit: 69178f3f · base-repo: c242f858); 12 commits total; Option A/B SHIM strategic divergence; spy-consumer-namespace NEW invariant; 0 prod consumer edits (all via SHIMs, final deletion deferred POC #10) |
 | `poc-permissions-hex` | `features/permissions` → `modules/permissions` | 561 | 6 | **183** | RBAC transversal |
 
 ## OLEADA 3 — Features small-medium sin POC histórico (6 POCs)
