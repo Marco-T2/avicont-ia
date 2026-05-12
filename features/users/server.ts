@@ -1,3 +1,3 @@
 import "server-only";
 
-export { UsersService } from "./users.service";
+export { UsersService } from "@/modules/users/application/users.service";

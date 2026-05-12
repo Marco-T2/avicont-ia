@@ -1,6 +1,6 @@
 import "server-only";
-import { NotFoundError } from "@/features/shared/errors";
-import { UsersRepository, type CreateUserInput } from "./users.repository";
+import { NotFoundError } from "@/modules/shared/domain/errors";
+import { UsersRepository, type CreateUserInput } from "@/modules/users/infrastructure/users.repository";
 import type { User } from "@/generated/prisma/client";
 
 export class UsersService {
