@@ -1,6 +1,17 @@
 /** Canonical hex DTO — account input/composite types (§13.X). */
 import type { Account, AccountType, AccountNature, AccountSubtype } from "@/generated/prisma/client";
 
+// ── Filter types ──
+
+/** List filters for accounts. Mirrors legacy AccountsRepository.findAll params. */
+export interface AccountListFilters {
+  type?: AccountType;
+  /** Filtro por subtipo de cuenta (corriente, no corriente, operativo, etc.). */
+  subtype?: AccountSubtype;
+  isDetail?: boolean;
+  isActive?: boolean;
+}
+
 // ── Input types ──
 
 export interface CreateAccountInput {
