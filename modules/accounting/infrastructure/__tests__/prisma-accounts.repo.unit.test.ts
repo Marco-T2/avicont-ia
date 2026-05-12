@@ -53,9 +53,9 @@ describe("findAll filter where-shape", () => {
   it("subtype filter: where includes subtype", async () => {
     vi.mocked(prisma.account.findMany).mockResolvedValueOnce([]);
     const repo = new PrismaAccountsRepo();
-    await repo.findAll("org-1", { subtype: "CORRIENTE" });
+    await repo.findAll("org-1", { subtype: "ACTIVO_CORRIENTE" });
     expect(prisma.account.findMany).toHaveBeenCalledWith({
-      where: { organizationId: "org-1", subtype: "CORRIENTE" },
+      where: { organizationId: "org-1", subtype: "ACTIVO_CORRIENTE" },
       orderBy: { code: "asc" },
     });
   });
