@@ -17,7 +17,7 @@
 | **POC #3b** | PrismaAccountsRepo adapter (hex infra — implements AccountsCrudPort) | ✅ DONE | +302 | RED 02284e0d · GREEN 10df7d1e · D1 f739b609 |
 | **POC #3c** | AccountsService app layer + composition root | ✅ DONE | +298 | RED 62d4728a · GREEN d58dd1a2 · D1 da8165d5 |
 | **POC #3d** | routes + pages cutover + Zod schemas | ✅ DONE | +95 / -93 | RED 2e993d35 · GREEN 3062ba16 · D1 1b41fcfe |
-| **POC #3e** | cross-module cutover (sale/purchase/dispatch/org-settings/ai-agent/payments) + AutoEntryGenerator ctor structural widening (Marco-locked Option 3) + 2 hidden importers fixed (W-#3e-01 inventory miss) | ✅ DONE | +68 / -524 | RED 37b57951 · GREEN c6af8468 · D1 _pending_ |
+| **POC #3e** | cross-module cutover (sale/purchase/dispatch/org-settings/ai-agent/payments) + AutoEntryGenerator ctor structural widening (Marco-locked Option 3) + 2 hidden importers fixed (W-#3e-01 inventory miss) | ✅ DONE | +68 / -524 | RED 37b57951 · GREEN c6af8468 · D1 0d3423c2 |
 | **POC #4** | accounts hex (replaces original broad #3 scope — now handled by #3a–#3e) | ✅ SUBDIVIDED | → #3a–#3e | accounts CRUD migration sub-divided |
 | **POC #5** | auto-entry + lifecycle + validation | pending | ~600 | journal-driver |
 | **POC #6** | reports paired-sister 4-batch (trial/equity/worksheet/initial) | pending | ~800 | journal-consumer |
