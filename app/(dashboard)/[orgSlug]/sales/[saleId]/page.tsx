@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
-import { AccountsService } from "@/features/accounting/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
 import type { IvaSalesBookDTO } from "@/features/accounting/iva-books";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
@@ -32,7 +32,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
   const saleService = makeSaleService();
   const contactsService = makeContactsService();
   const periodsService = makeFiscalPeriodsService();
-  const accountsService = new AccountsService();
+  const accountsService = makeAccountsService();
 
   let sale;
   try {

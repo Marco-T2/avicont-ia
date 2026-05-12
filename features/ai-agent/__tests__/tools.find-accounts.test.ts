@@ -19,7 +19,7 @@ vi.hoisted(() => {
 });
 
 import { executeFindAccountsByPurpose } from "../tools/find-accounts";
-import type { AccountsRepository } from "@/features/accounting/accounts.repository";
+import type { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import type { OrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type { Account, OrgSettings } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";
@@ -89,7 +89,7 @@ function makeDeps(opts?: {
     }),
     findDetailChildrenByParentCodes: vi.fn(async () => opts?.byParents ?? []),
     findByType: vi.fn(async () => opts?.byType ?? []),
-  } as unknown as AccountsRepository;
+  } as unknown as PrismaAccountsRepo;
 
   return { accountsRepo, orgSettingsService };
 }

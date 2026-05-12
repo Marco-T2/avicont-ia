@@ -1,9 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import {
-  AutoEntryGenerator,
-  AccountsRepository,
-} from "@/features/accounting/server";
+import { AutoEntryGenerator } from "@/features/accounting/server";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import type {
   DispatchJournalEntryFactoryPort,
@@ -19,10 +17,10 @@ export class LegacyJournalEntryFactoryAdapter
   implements DispatchJournalEntryFactoryPort
 {
   private readonly generator: AutoEntryGenerator;
-  private readonly accountsRepo: AccountsRepository;
+  private readonly accountsRepo: PrismaAccountsRepo;
 
   constructor() {
-    this.accountsRepo = new AccountsRepository();
+    this.accountsRepo = new PrismaAccountsRepo();
     const voucherTypesRepo = makeVoucherTypeRepository();
     this.generator = new AutoEntryGenerator(
       this.accountsRepo,

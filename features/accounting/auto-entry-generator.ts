@@ -6,7 +6,7 @@ import {
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
 import type { Prisma } from "@/generated/prisma/client";
-import type { AccountsRepository } from "./accounts.repository";
+import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { JournalRepository } from "./journal.repository";
 import type { JournalEntryWithLines } from "./journal.types";
@@ -41,7 +41,7 @@ export class AutoEntryGenerator {
   private readonly journalRepo: JournalRepository;
 
   constructor(
-    private readonly accountsRepo: AccountsRepository,
+    private readonly accountsRepo: AccountsCrudPort,
     private readonly voucherTypesRepo: VoucherTypeRepository,
     journalRepo?: JournalRepository,
   ) {

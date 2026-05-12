@@ -1,16 +1,19 @@
 import "server-only";
-import { AccountsService } from "@/features/accounting/accounts.service";
+import {
+  makeAccountsService,
+  type AccountsService,
+} from "@/modules/accounting/presentation/server";
 import type { Prisma } from "@/generated/prisma/client";
 import type { AccountSeedPort } from "../../domain/ports/account-seed.port";
 
 /**
- * Legacy adapter: wraps features/accounting AccountsService.seedChartOfAccounts.
+ * Legacy adapter: wraps hex AccountsService.seedChartOfAccounts (POC #3e cutover).
  */
 export class LegacyAccountSeedAdapter implements AccountSeedPort {
   private readonly service: AccountsService;
 
   constructor() {
-    this.service = new AccountsService();
+    this.service = makeAccountsService();
   }
 
   async seedChartOfAccounts(

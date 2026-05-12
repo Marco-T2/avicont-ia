@@ -1,6 +1,6 @@
 import "server-only";
 
-import { AccountsRepository } from "@/features/accounting/accounts.repository";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { prisma } from "@/lib/prisma";
@@ -51,7 +51,7 @@ const repoLike: UnitOfWorkRepoLike = {
 // Legacy cross-module singletons — instanciados una sola vez. `accountsRepo`
 // se reusa entre AutoEntryGenerator (in-tx code→id resolution) y
 // LegacyAccountLookupAdapter (pre-tx id→code resolution) — D-4 lockeada Ciclo 4.
-const accountsRepo = new AccountsRepository();
+const accountsRepo = new PrismaAccountsRepo();
 const voucherTypesRepo = makeVoucherTypeRepository();
 const autoEntryGen = new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
 const journalEntriesReadAdapter = new LegacyJournalEntriesReadAdapter();

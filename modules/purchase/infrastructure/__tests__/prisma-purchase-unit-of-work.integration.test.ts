@@ -8,7 +8,7 @@ import {
   it,
 } from "vitest";
 
-import { AccountsRepository } from "@/features/accounting/accounts.repository";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { Prisma } from "@/generated/prisma/client";
@@ -80,7 +80,7 @@ const repo: UnitOfWorkRepoLike = {
 const journalEntriesReadPort = new LegacyJournalEntriesReadAdapter();
 const accountLookupPort = new LegacyAccountLookupAdapter();
 const autoEntryGen = new AutoEntryGenerator(
-  new AccountsRepository(),
+  new PrismaAccountsRepo(),
   makeVoucherTypeRepository(),
 );
 

@@ -73,12 +73,9 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/features/accounting/server", () => {
-  class AccountsService {
-    list = mockAccountsList;
-  }
-  return { AccountsService };
-});
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: mockAccountsList }),
+}));
 
 vi.mock("@/components/sales/sale-form", () => ({
   default: vi.fn().mockReturnValue(null),

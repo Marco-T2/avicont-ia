@@ -10,7 +10,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { LegacyAccountLookupAdapter } from "../legacy-account-lookup.adapter";
-import type { AccountsRepository } from "@/features/accounting/server";
+import type { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import type { Account } from "@/generated/prisma/client";
 
 function makeAccount(overrides: Partial<Account> = {}): Account {
@@ -37,7 +37,7 @@ describe("LegacyAccountLookupAdapter", () => {
   it("delega en AccountsRepository.findManyByIds con (orgId, ids)", async () => {
     const repo = {
       findManyByIds: vi.fn(async () => [makeAccount({ id: "acc-1" })]),
-    } as unknown as AccountsRepository;
+    } as unknown as PrismaAccountsRepo;
     const adapter = new LegacyAccountLookupAdapter(repo);
 
     await adapter.findManyByIds("org-1", ["acc-1", "acc-2"]);
@@ -61,7 +61,7 @@ describe("LegacyAccountLookupAdapter", () => {
           type: "ACTIVO",
         }),
       ]),
-    } as unknown as AccountsRepository;
+    } as unknown as PrismaAccountsRepo;
     const adapter = new LegacyAccountLookupAdapter(repo);
 
     const result = await adapter.findManyByIds("org-1", ["acc-1"]);
@@ -81,7 +81,7 @@ describe("LegacyAccountLookupAdapter", () => {
       findManyByIds: vi.fn(async () => [
         makeAccount({ id: "acc-1", isDetail: false, isActive: false }),
       ]),
-    } as unknown as AccountsRepository;
+    } as unknown as PrismaAccountsRepo;
     const adapter = new LegacyAccountLookupAdapter(repo);
 
     const [ref] = await adapter.findManyByIds("org-1", ["acc-1"]);
@@ -92,7 +92,7 @@ describe("LegacyAccountLookupAdapter", () => {
   it("devuelve array vacío cuando AccountsRepository no encuentra ninguna cuenta", async () => {
     const repo = {
       findManyByIds: vi.fn(async () => []),
-    } as unknown as AccountsRepository;
+    } as unknown as PrismaAccountsRepo;
     const adapter = new LegacyAccountLookupAdapter(repo);
 
     const result = await adapter.findManyByIds("org-1", ["acc-missing"]);
@@ -106,7 +106,7 @@ describe("LegacyAccountLookupAdapter", () => {
         makeAccount({ id: "acc-1" }),
         makeAccount({ id: "acc-2" }),
       ]),
-    } as unknown as AccountsRepository;
+    } as unknown as PrismaAccountsRepo;
     const adapter = new LegacyAccountLookupAdapter(repo);
 
     const result = await adapter.findManyByIds("org-1", ["acc-1", "acc-2", "acc-3"]);

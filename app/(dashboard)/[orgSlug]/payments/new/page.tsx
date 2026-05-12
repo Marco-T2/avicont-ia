@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
-import { AccountsRepository } from "@/features/accounting/server";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import PaymentForm from "@/components/payments/payment-form";
 
@@ -31,7 +31,7 @@ export default async function NewPaymentPage({
   const periodsService = makeFiscalPeriodsService();
   const docTypesService = makeOperationalDocTypeService();
   const orgSettingsService = makeOrgSettingsService();
-  const accountsRepo = new AccountsRepository();
+  const accountsRepo = new PrismaAccountsRepo();
 
   const [contacts, periods, docTypes, orgSettings] = await Promise.all([
     contactsService.list(orgId).then((entities) => entities.map((c) => c.toSnapshot())),

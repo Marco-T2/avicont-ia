@@ -61,11 +61,11 @@ vi.mock("@/features/operational-doc-types/server", () => {
   return { OperationalDocTypesService };
 });
 
-vi.mock("@/features/accounting/server", () => {
-  class AccountsRepository {
+vi.mock("@/modules/accounting/infrastructure/prisma-accounts.repo", () => {
+  class PrismaAccountsRepo {
     findDetailChildrenByParentCodes = mockAccountsFindChildren;
   }
-  return { AccountsRepository };
+  return { PrismaAccountsRepo };
 });
 
 vi.mock("@/modules/org-settings/presentation/server", () => ({

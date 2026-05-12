@@ -2,7 +2,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
-import { AccountsRepository } from "@/features/accounting/server";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
 import {
   ACCOUNT_NOT_POSTABLE,
@@ -230,7 +230,7 @@ describe("PrismaJournalEntryFactoryAdapter — Postgres integration", () => {
     const lookupPort = new LegacyAccountLookupAdapter();
     const writeRepo = new PrismaJournalEntriesRepository(tx);
     const autoEntryGen = new AutoEntryGenerator(
-      new AccountsRepository(),
+      new PrismaAccountsRepo(),
       makeVoucherTypeRepository(),
     );
     return new PrismaJournalEntryFactoryAdapter(

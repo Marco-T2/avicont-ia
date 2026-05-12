@@ -11,7 +11,7 @@ import type {
   ResolvedAccountInfo,
   ResolvedContactInfo,
 } from "../agent.types";
-import { AccountsRepository } from "@/features/accounting/server";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import {
   ValidationError,
@@ -51,7 +51,7 @@ function deriveVoucherTypeCode(template: JournalEntryAiTemplate): JournalEntryAi
 // ── Executor ──
 
 export interface ParseAccountingOperationDeps {
-  accountsRepo?: AccountsRepository;
+  accountsRepo?: PrismaAccountsRepo;
   contactsService?: ReturnType<typeof makeContactsService>;
 }
 
@@ -65,7 +65,7 @@ export async function executeParseAccountingOperation(
   rawInput: unknown,
   deps: ParseAccountingOperationDeps = {},
 ): Promise<CreateJournalEntrySuggestion> {
-  const accountsRepo = deps.accountsRepo ?? new AccountsRepository();
+  const accountsRepo = deps.accountsRepo ?? new PrismaAccountsRepo();
   const contactsService = deps.contactsService ?? makeContactsService();
 
   // 1. Validación Zod (discriminator + cross-field).

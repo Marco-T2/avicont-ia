@@ -2,10 +2,10 @@ import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import {
   AutoEntryGenerator,
-  AccountsRepository,
   JournalRepository,
   type JournalEntryWithLines,
 } from "@/features/accounting/server";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { type VoucherTypeRepository, makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import type {
   AccountingPort,
@@ -21,7 +21,7 @@ import type {
  *
  *   - AutoEntryGenerator   → generateEntryTx
  *   - JournalRepository    → findEntryByIdTx, voidEntryTx, updateEntryTx
- *   - AccountsRepository   → findAccountByCodeTx
+ *   - PrismaAccountsRepo   → findAccountByCodeTx
  *
  * Voucher types is consumed indirectly via AutoEntryGenerator (no separate
  * port — closed decision #4 of POC #8 plan).
@@ -32,17 +32,17 @@ import type {
  * round-trip).
  */
 export class LegacyAccountingAdapter implements AccountingPort {
-  private readonly accountsRepo: AccountsRepository;
+  private readonly accountsRepo: PrismaAccountsRepo;
   private readonly journalRepo: JournalRepository;
   private readonly autoEntryGenerator: AutoEntryGenerator;
 
   constructor(deps?: {
-    accountsRepo?: AccountsRepository;
+    accountsRepo?: PrismaAccountsRepo;
     journalRepo?: JournalRepository;
     autoEntryGenerator?: AutoEntryGenerator;
     voucherTypesRepo?: VoucherTypeRepository;
   }) {
-    this.accountsRepo = deps?.accountsRepo ?? new AccountsRepository();
+    this.accountsRepo = deps?.accountsRepo ?? new PrismaAccountsRepo();
     this.journalRepo = deps?.journalRepo ?? new JournalRepository();
     this.autoEntryGenerator =
       deps?.autoEntryGenerator ??

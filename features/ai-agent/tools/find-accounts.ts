@@ -1,7 +1,7 @@
 import "server-only";
 import { z } from "zod";
 import { defineTool } from "../llm";
-import { AccountsRepository } from "@/features/accounting/server";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { OrgSettingsService, makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import type { Account } from "@/generated/prisma/client";
 
@@ -47,7 +47,7 @@ export interface FindAccountsResult {
 const RESULT_CAP = 20;
 
 export interface FindAccountsByPurposeDeps {
-  accountsRepo?: AccountsRepository;
+  accountsRepo?: PrismaAccountsRepo;
   orgSettingsService?: OrgSettingsService;
 }
 
@@ -56,7 +56,7 @@ export async function executeFindAccountsByPurpose(
   input: { purpose: "expense" | "bank" | "cash"; query?: string },
   deps: FindAccountsByPurposeDeps = {},
 ): Promise<FindAccountsResult> {
-  const accountsRepo = deps.accountsRepo ?? new AccountsRepository();
+  const accountsRepo = deps.accountsRepo ?? new PrismaAccountsRepo();
   const orgSettingsService = deps.orgSettingsService ?? makeOrgSettingsService();
 
   // Capa 1 — Defaults curados por la org (solo bank y cash; expense no tiene defaults).
@@ -115,7 +115,7 @@ export async function executeFindAccountsByPurpose(
 async function runHeuristic(
   organizationId: string,
   purpose: "expense" | "bank" | "cash",
-  accountsRepo: AccountsRepository,
+  accountsRepo: PrismaAccountsRepo,
   orgSettingsService: OrgSettingsService,
 ): Promise<Account[]> {
   if (purpose === "expense") {

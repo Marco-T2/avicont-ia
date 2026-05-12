@@ -12,7 +12,7 @@ vi.hoisted(() => {
 });
 
 import { executeParseAccountingOperation } from "../tools/parse-operation";
-import type { AccountsRepository } from "@/features/accounting/accounts.repository";
+import type { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import type { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Account, Contact, ContactType } from "@/generated/prisma/client";
 import { NotFoundError, CONTACT_NOT_FOUND } from "@/features/shared/errors";
@@ -72,7 +72,7 @@ function makeDeps(opts?: {
     findManyByIds: vi.fn(async (_orgId: string, ids: string[]) =>
       accounts.filter((a) => ids.includes(a.id)),
     ),
-  } as unknown as AccountsRepository;
+  } as unknown as PrismaAccountsRepo;
 
   const contactsService = {
     getActiveById: vi.fn(async (_orgId: string, _id: string) => {

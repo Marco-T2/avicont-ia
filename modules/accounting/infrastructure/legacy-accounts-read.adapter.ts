@@ -1,11 +1,11 @@
-import { AccountsRepository as LegacyAccountsRepository } from "@/features/accounting/accounts.repository";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import type {
   AccountReadDto,
   AccountsReadPort,
 } from "@/modules/accounting/domain/ports/accounts-read.port";
 
 /**
- * Tx-less wrapper over `LegacyAccountsRepository.findById` (POC #10 C3-C Ciclo 2).
+ * Tx-less wrapper over `PrismaAccountsRepo.findById` (POC #10 C3-C Ciclo 2; POC #3e hex cutover).
  *
  * Implements `AccountsReadPort` for non-tx reads BEFORE the UoW tx opens
  * (parity with legacy `accountsRepo.findById` calls in journal.service.ts).
@@ -29,14 +29,14 @@ import type {
  *     fila `accounts` (vive en `features/accounting/`).
  */
 
-const legacyRepo = new LegacyAccountsRepository();
+const prismaAccountsRepo = new PrismaAccountsRepo();
 
 export class LegacyAccountsReadAdapter implements AccountsReadPort {
   async findById(
     organizationId: string,
     accountId: string,
   ): Promise<AccountReadDto | null> {
-    const row = await legacyRepo.findById(organizationId, accountId);
+    const row = await prismaAccountsRepo.findById(organizationId, accountId);
     if (!row) return null;
     return {
       id: row.id,
