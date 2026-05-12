@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import * as LucideIcons from "lucide-react";
-import { reportRegistry } from "@/features/reports/catalog";
+import { reportRegistry } from "../catalog";
 
 // ── Validación de íconos Lucide contra exportaciones reales ──────────────────
 // Garantiza que cada nombre de ícono en el catálogo corresponde a un export

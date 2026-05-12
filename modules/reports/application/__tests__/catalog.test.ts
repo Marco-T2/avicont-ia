@@ -2,8 +2,8 @@ import { describe, it, expect } from "vitest";
 import {
   reportRegistry,
   reportCategories,
-} from "@/features/reports/catalog";
-import type { ReportEntry, ReportCategory, ReportStatus } from "@/features/reports/catalog";
+} from "../catalog";
+import type { ReportEntry, ReportCategory, ReportStatus } from "../catalog";
 
 // ── Helpers de validación puros — triangulación con fixtures ─────────────────
 
