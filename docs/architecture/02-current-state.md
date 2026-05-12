@@ -51,8 +51,8 @@
 | `features/shared` | 418 | 6 | **230** | Base classes + errors compartidos |
 | `features/ai-agent` | 3,912 | 20 | 14 | Orquestación LLM — zero domain aggregates, ya consume hex via ports |
 | `features/documents` | 422 | 1 | 5 | Integración file mgmt + rag |
-| `features/rag` | 193 | 0 | 0 | **DELETED** → relocated to `features/documents/rag/` (poc-quick-cleanup C5 285337ab); consumers=0 post-cutover |
-| `features/pricing` | 70 | 0 | 0 | **DELETED** → relocated to `features/ai-agent/pricing/` (poc-quick-cleanup C2 65f66e0c); consumers=0 post-cutover |
+| `features/rag` | 193 | 0 | 0 | **DELETED** → relocated to `features/documents/rag/` (poc-quick-cleanup C5 285337ab · W-01 706d3b84); consumers=0 post-cutover |
+| `features/pricing` | 70 | 0 | 0 | **DELETED** → relocated to `features/ai-agent/pricing/` (poc-quick-cleanup C2 65f66e0c · W-01 706d3b84); consumers=0 post-cutover |
 | `features/reports` | 330 | 2 | 4 | Static catalog — readonly const arrays, zero service/DB/domain |
 | `features/users` | 82 | 0 | 19 | Identity resolution — 19/22 consumers use resolveByClerkId auth plumbing |
 | `features/auth` | 57 | 1 | 1 | Auth wrapper thin |
