@@ -12,3 +12,5 @@ export * from "../domain/account-code.utils";
 export * from "../domain/correlative.utils";
 export * from "../domain/accounting-helpers";
 export * from "../domain/journal.dates";
+export * from "../domain/account-subtype.utils";
+export * from "../domain/account-subtype.resolve";
