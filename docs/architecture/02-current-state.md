@@ -1,10 +1,10 @@
-# 02. Current State — Inventory Snapshot 2026-05-11
+# 02. Current State — Inventory Snapshot 2026-05-12
 
 > **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
-> **Total LOC pending migration**: ~23,567 LOC across 15 features legacy (post POC document-signature-config hex closure).
+> **Total LOC pending migration**: ~12,673 LOC across 2 features legacy (post POC organizations hex closure).
 
-## Módulos hex cementados (24/24)
+## Módulos hex cementados (25/25)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
@@ -32,13 +32,13 @@
 | `modules/shared` | HEX ✅ | 6 | 2 | - |
 | `modules/org-profile` | HEX ✅ | 54 | 10 | POC org-profile hex closed — config-entity + BlobStoragePort NEW |
 | `modules/voucher-types` | HEX ✅ | 11 | 4 | - |
+| `modules/organizations` | HEX ✅ | 139 | 50+ | POC organizations hex closed — 3 aggregates + DB-first Clerk saga + 7 adapter ports |
 
-## Features legacy — hex migration candidates (2)
+## Features legacy — hex migration candidates (1)
 
 | Feature | LOC | Tests | Consumers | Oleada target |
 |---|---|---|---|---|
 | `features/accounting` | 12,523 | 65 | 128 | 5 — residual POST-POC #10 shim |
-| `features/organizations` | 1,643 | 13 | 49 | 4 |
 | `features/account-balances` | 150 | 0 | 2 | defer — shim+redirect, circular dep accounting |
 
 ## Features — cross-cutting infrastructure (NOT hex target) (9)
@@ -59,8 +59,8 @@
 
 ## Métricas clave
 
-- **Total hex cementados**: 24/24 módulos completos (4 capas: domain + application + infrastructure + presentation)
-- **Hex candidates pending**: 2 features ≈ **14,316 LOC** (accounting residual + organizations + account-balances deferred shim)
+- **Total hex cementados**: 25/25 módulos completos (4 capas: domain + application + infrastructure + presentation)
+- **Hex candidates pending**: 1 feature ≈ **12,673 LOC** (accounting residual + account-balances deferred shim)
 - **Cross-cutting infrastructure (NOT hex)**: 9 features ≈ **6,045 LOC** (reclasificación 2026-05-11)
 - **Top cross-consumers**: `features/shared` (230), `features/permissions` (183), `features/accounting` (128)
 
