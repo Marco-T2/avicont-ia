@@ -25,7 +25,8 @@ import {
 } from "./document-lifecycle.service";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
-import { AccountsRepository } from "./accounts.repository";
+import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
@@ -58,7 +59,7 @@ const VALID_TRANSITIONS: Record<JournalEntryStatus, JournalEntryStatus[]> = {
 
 export class JournalService {
   private readonly repo: JournalRepository;
-  private readonly accountsRepo: AccountsRepository;
+  private readonly accountsRepo: AccountsCrudPort;
   private readonly balancesService: AccountBalancesService;
   private readonly periodsService: ReturnType<typeof makeFiscalPeriodsService>;
   private readonly voucherTypesService: VoucherTypesService;
@@ -68,7 +69,7 @@ export class JournalService {
 
   constructor(
     repo?: JournalRepository,
-    accountsRepo?: AccountsRepository,
+    accountsRepo?: AccountsCrudPort,
     balancesService?: AccountBalancesService,
     periodsService?: ReturnType<typeof makeFiscalPeriodsService>,
     voucherTypesService?: VoucherTypesService,
@@ -77,7 +78,7 @@ export class JournalService {
     sigConfigService?: DocumentSignatureConfigService,
   ) {
     this.repo = repo ?? new JournalRepository();
-    this.accountsRepo = accountsRepo ?? new AccountsRepository();
+    this.accountsRepo = accountsRepo ?? new PrismaAccountsRepo();
     this.balancesService = balancesService ?? new AccountBalancesService();
     this.periodsService = periodsService ?? makeFiscalPeriodsService();
     this.voucherTypesService = voucherTypesService ?? makeVoucherTypesService();

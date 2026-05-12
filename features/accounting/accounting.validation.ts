@@ -1,12 +1,7 @@
 import { z } from "zod";
 import { JournalEntryStatus } from "@/generated/prisma/client";
 
-// SHIM: schemas migrated to hex (POC #3d). Re-export for backward compatibility.
-// Removal scheduled for POC #3e (final legacy cleanup).
-export {
-  createAccountSchema,
-  updateAccountSchema,
-} from "@/modules/accounting/presentation/validation";
+// Account schemas migrated to hex (POC #3d). Removed from SHIM in POC #3f.
 
 const journalLineSchema = z
   .object({

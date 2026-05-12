@@ -165,18 +165,22 @@ describe("α31–α33 Block F hex validation.ts (REQ-001)", () => {
 });
 
 // ── Block G — α34-α36: SHIM in legacy validation ─────────────────────────────
+// α34+α35 revoked atomically in POC #3f GREEN (poc-accounting-legacy-retirement):
+// SHIM re-export block (L4–L9) removed per REQ-004. These flip from positive to
+// negative — the transitional SHIM state encoded in #3d no longer applies.
+// α36 survives unchanged (inline declaration absent — still true post-#3f).
 
 describe("α34–α36 Block G legacy validation SHIM (REQ-003)", () => {
-  it("α34: legacy validation re-exports createAccountSchema from hex", () => {
+  it("α34: legacy validation NO LONGER re-exports createAccountSchema from hex (revoked POC #3f REQ-004)", () => {
     const src = readFileSync(LEGACY_VALIDATION_PATH, "utf-8");
-    expect(src).toMatch(
+    expect(src).not.toMatch(
       /export\s*\{[^}]*\bcreateAccountSchema\b[^}]*\}\s*from\s*["']@\/modules\/accounting\/presentation\/validation["']/,
     );
   });
 
-  it("α35: legacy validation re-exports updateAccountSchema from hex", () => {
+  it("α35: legacy validation NO LONGER re-exports updateAccountSchema from hex (revoked POC #3f REQ-004)", () => {
     const src = readFileSync(LEGACY_VALIDATION_PATH, "utf-8");
-    expect(src).toMatch(
+    expect(src).not.toMatch(
       /export\s*\{[^}]*\bupdateAccountSchema\b[^}]*\}\s*from\s*["']@\/modules\/accounting\/presentation\/validation["']/,
     );
   });

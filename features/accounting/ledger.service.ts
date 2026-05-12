@@ -1,22 +1,23 @@
 import "server-only";
 import { NotFoundError } from "@/features/shared/errors";
-import { AccountsRepository } from "./accounts.repository";
+import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
+import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { JournalRepository } from "./journal.repository";
 import { AccountBalancesService } from "@/features/account-balances/server";
 import type { LedgerEntry, TrialBalanceRow, DateRangeFilter } from "./ledger.types";
 import type { AccountType } from "@/generated/prisma/client";
 
 export class LedgerService {
-  private readonly accountsRepo: AccountsRepository;
+  private readonly accountsRepo: AccountsCrudPort;
   private readonly journalRepo: JournalRepository;
   private readonly accountBalancesService: AccountBalancesService;
 
   constructor(
-    accountsRepo?: AccountsRepository,
+    accountsRepo?: AccountsCrudPort,
     journalRepo?: JournalRepository,
     accountBalancesService?: AccountBalancesService,
   ) {
-    this.accountsRepo = accountsRepo ?? new AccountsRepository();
+    this.accountsRepo = accountsRepo ?? new PrismaAccountsRepo();
     this.journalRepo = journalRepo ?? new JournalRepository();
     this.accountBalancesService =
       accountBalancesService ?? new AccountBalancesService();
