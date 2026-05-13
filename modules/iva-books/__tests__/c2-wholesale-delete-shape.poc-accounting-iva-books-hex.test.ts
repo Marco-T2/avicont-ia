@@ -118,13 +118,16 @@ describe("Block 2 — features/accounting/iva-books/ directory should NOT exist 
 // ─── Block 3 — REQ-001 FINAL: zero project-wide imports (1α: α57) ─────────────
 // FAIL pre-GREEN — features/ tree self-refs still exist (file content references features/ paths)
 // Post-GREEN: git rm removes all files → zero matches
+// Filter: exclude test files (sentinels contain the string as string literals in assertions)
+//         exclude comment-only lines (JSDoc lines mentioning the path as documentation)
 describe("Block 3 — REQ-001 FINAL: zero @/features/accounting/iva-books references project-wide", () => {
-  it("α57: git grep @/features/accounting/iva-books project-wide returns zero hits post-C2", () => {
+  it("α57: git grep @/features/accounting/iva-books project-wide returns zero non-test import hits post-C2", () => {
     // FAIL pre-GREEN — features/ tree contains files that self-reference features/ paths
+    // NOTE: openspec/archive and .md files are excluded (dead archive docs per exploration #2343)
     let output = "";
     try {
       output = execSync(
-        'git grep "@/features/accounting/iva-books" -- . 2>/dev/null || true',
+        "git grep \"@/features/accounting/iva-books\" -- . ':!*.md' ':!openspec/archive/**' 2>/dev/null || true",
         { cwd: process.cwd(), encoding: "utf8" },
       );
     } catch {
@@ -132,8 +135,25 @@ describe("Block 3 — REQ-001 FINAL: zero @/features/accounting/iva-books refere
     }
     const hits = output
       .split("\n")
-      .filter((line) => line.trim() !== "");
-    expect(hits.join("\n")).toHaveLength(0);
+      .filter((line) => line.trim() !== "")
+      // Exclude test/sentinel files (string literals in assertions are expected)
+      .filter((line) => !line.includes("__tests__"))
+      .filter((line) => !line.includes(".test.ts"))
+      .filter((line) => !line.includes(".test.tsx"))
+      .filter((line) => !line.includes(".spec.ts"))
+      .filter((line) => !line.includes(".spec.tsx"))
+      // Exclude comment-only lines (JSDoc mentions the path as documentation, not actual import)
+      .filter((line) => {
+        const colonIdx = line.indexOf(":");
+        const content = colonIdx >= 0 ? line.slice(colonIdx + 1) : line;
+        const trimmed = content.trim();
+        return (
+          !trimmed.startsWith("*") &&
+          !trimmed.startsWith("//") &&
+          !trimmed.startsWith("/*")
+        );
+      });
+    expect(hits).toHaveLength(0);
   });
 });
 
@@ -199,8 +219,9 @@ describe("Block 5 — Sibling modules: zero imports from @/features/accounting/i
     expect(hits).toHaveLength(0);
   });
 
-  it("α62: modules/iva-books/** does NOT import from @/features/accounting/iva-books", () => {
+  it("α62: modules/iva-books/** does NOT import from @/features/accounting/iva-books (non-test files)", () => {
     // PASS pre-GREEN — iva-books hex module never imported from features/ (pre-existing hex)
+    // Exclude test/sentinel files: sentinels contain the string as string literals in assertions
     let output = "";
     try {
       output = execSync(
@@ -210,7 +231,12 @@ describe("Block 5 — Sibling modules: zero imports from @/features/accounting/i
     } catch {
       output = "";
     }
-    const hits = output.split("\n").filter((line) => line.trim() !== "");
+    const hits = output
+      .split("\n")
+      .filter((line) => line.trim() !== "")
+      .filter((line) => !line.includes("__tests__"))
+      .filter((line) => !line.includes(".test.ts"))
+      .filter((line) => !line.includes(".test.tsx"));
     expect(hits).toHaveLength(0);
   });
 
