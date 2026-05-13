@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -45,6 +45,7 @@ import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purc
 import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
 import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 
 // ── Helpers ──
@@ -204,12 +205,21 @@ export default function PurchaseForm({
 
   // ── Header state ──
   const [contactId, setContactId] = useState(purchase?.contactId ?? "");
-  const [periodId, setPeriodId] = useState(purchase?.periodId ?? (periods[0]?.id ?? ""));
+  const [periodId, setPeriodId] = useState(
+    purchase?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
+  );
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [date, setDate] = useState(
     purchase?.date
       ? new Date(purchase.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+
+  useEffect(() => {
+    if (periodManuallySelected || !date) return;
+    const match = findPeriodCoveringDate(date, periods);
+    setPeriodId(match?.id ?? "");
+  }, [date, periods, periodManuallySelected]);
   const [referenceNumber, setReferenceNumber] = useState(
     purchase?.referenceNumber != null ? String(purchase.referenceNumber) : "",
   );
@@ -799,7 +809,13 @@ export default function PurchaseForm({
                       className="bg-muted cursor-default"
                     />
                   ) : (
-                    <Select value={periodId} onValueChange={setPeriodId}>
+                    <Select
+                      value={periodId}
+                      onValueChange={(value) => {
+                        setPeriodManuallySelected(true);
+                        setPeriodId(value);
+                      }}
+                    >
                       <SelectTrigger id="period" className="w-full">
                         <SelectValue placeholder="Seleccione período" />
                       </SelectTrigger>
@@ -814,6 +830,16 @@ export default function PurchaseForm({
                   )}
                 </div>
               </div>
+
+              {!isReadOnly && date && !periodId && periods.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
+                >
+                  No hay un período abierto que cubra esta fecha. Abrí el período
+                  correspondiente o elegí otra fecha.
+                </div>
+              )}
 
               {/* Row 2: Proveedor / Total / LCV */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
