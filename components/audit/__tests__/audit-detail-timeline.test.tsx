@@ -17,7 +17,7 @@ import type { AuditEvent } from "@/modules/audit/presentation";
 
 // ── Imports under test ────────────────────────────────────────────────────────
 // E1: groupByCorrelation exported from audit-detail-timeline for testing.
-// E2: buildTimelineSummary exported from features/audit/audit.types (via index).
+// E2: buildTimelineSummary exported from @/modules/audit/presentation (hex barrel).
 // E3: AuditDetailTimeline component.
 
 import {

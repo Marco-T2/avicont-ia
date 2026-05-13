@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -6,6 +6,10 @@ const REPO_ROOT = resolve(__dirname, "../../..");
 
 function readRepoFile(rel: string): string {
   return readFileSync(resolve(REPO_ROOT, rel), "utf-8");
+}
+
+function repoFileExists(rel: string): boolean {
+  return existsSync(resolve(REPO_ROOT, rel));
 }
 
 // ── Regex patterns ──
@@ -100,8 +104,14 @@ describe("POC audit hex C4 — cross-feature cutover shape", () => {
   // ── D: Test files cutover ──
 
   // α36
-  it("α36: audit-types-helpers.test.ts imports from hex client barrel + NO legacy", () => {
-    const src = readRepoFile("features/audit/__tests__/audit-types-helpers.test.ts");
+  it("α36: audit-types-helpers.test.ts (if present) imports from hex client barrel + NO legacy", () => {
+    // C5 wholesale-delete removed features/audit/ entirely; this sentinel pre-dates
+    // that deletion. Guard with existsSync: post-C5 the file is gone (assertion
+    // satisfied vacuously); pre-C5 the cutover invariant still applies. See
+    // §13.audit-c5-wholesale-delete entry in 04-sigma-13-canonical-homes.md.
+    const rel = "features/audit/__tests__/audit-types-helpers.test.ts";
+    if (!repoFileExists(rel)) return;
+    const src = readRepoFile(rel);
     expect(src).toMatch(HEX_CLIENT_IMPORT_RE);
     expect(src).not.toMatch(LEGACY_FEATURES_AUDIT_BARREL_IMPORT_RE);
   });
