@@ -120,7 +120,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     _receivableId: string,
     items: ReceivableTrimItem[],
   ): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     for (const item of items) {
       if (item.newAmount <= 0) {
         await txClient.paymentAllocation.delete({
@@ -171,7 +171,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     tx: unknown,
     data: CreateReceivableTxData,
   ): Promise<{ id: string }> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     return txClient.accountsReceivable.create({
       data: {
         organizationId: data.organizationId,
@@ -191,7 +191,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
   }
 
   async voidTx(tx: unknown, organizationId: string, id: string): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsReceivable.update({
       where: { id, organizationId },
       data: { status: "VOIDED", balance: new Prisma.Decimal(0) },
@@ -203,7 +203,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     organizationId: string,
     id: string,
   ): Promise<Receivable | null> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     const row = await txClient.accountsReceivable.findFirst({
       where: { id, organizationId },
     });
@@ -218,7 +218,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     balance: MonetaryAmount,
     status: ReceivableStatus,
   ): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsReceivable.update({
       where: { id, organizationId },
       data: {
@@ -237,7 +237,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     balance: MonetaryAmount,
     status: ReceivableStatus,
   ): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsReceivable.update({
       where: { id, organizationId },
       data: {

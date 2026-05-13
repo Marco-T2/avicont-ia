@@ -133,7 +133,7 @@ export class PrismaPayablesRepository implements PayableRepository {
     _payableId: string,
     items: PayableTrimItem[],
   ): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     for (const item of items) {
       if (item.newAmount <= 0) {
         await txClient.paymentAllocation.delete({
@@ -171,7 +171,7 @@ export class PrismaPayablesRepository implements PayableRepository {
     tx: unknown,
     data: CreatePayableTxData,
   ): Promise<{ id: string }> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     return txClient.accountsPayable.create({
       data: {
         organizationId: data.organizationId,
@@ -191,7 +191,7 @@ export class PrismaPayablesRepository implements PayableRepository {
   }
 
   async voidTx(tx: unknown, organizationId: string, id: string): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsPayable.update({
       where: { id, organizationId },
       data: { status: "VOIDED", balance: new Prisma.Decimal(0) },
@@ -203,7 +203,7 @@ export class PrismaPayablesRepository implements PayableRepository {
     organizationId: string,
     id: string,
   ): Promise<Payable | null> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     const row = await txClient.accountsPayable.findFirst({
       where: { id, organizationId },
     });
@@ -218,7 +218,7 @@ export class PrismaPayablesRepository implements PayableRepository {
     balance: MonetaryAmount,
     status: PayableStatus,
   ): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsPayable.update({
       where: { id, organizationId },
       data: {
@@ -237,7 +237,7 @@ export class PrismaPayablesRepository implements PayableRepository {
     balance: MonetaryAmount,
     status: PayableStatus,
   ): Promise<void> {
-    const txClient = tx as Prisma.TransactionClient;
+    const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsPayable.update({
       where: { id, organizationId },
       data: {
