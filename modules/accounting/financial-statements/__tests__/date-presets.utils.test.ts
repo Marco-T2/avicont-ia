@@ -5,7 +5,7 @@ import {
   generateBreakdownBuckets,
   resolveComparativePeriod,
   computeDiffPercent,
-} from "@/features/accounting/financial-statements/date-presets.utils";
+} from "@/modules/accounting/financial-statements/domain/date-presets.utils";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 

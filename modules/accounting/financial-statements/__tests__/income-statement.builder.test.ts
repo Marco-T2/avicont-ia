@@ -1,12 +1,12 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { AccountSubtype } from "@/generated/prisma/enums";
-import { buildIncomeStatement } from "@/features/accounting/financial-statements/income-statement.builder";
+import { buildIncomeStatement } from "@/modules/accounting/financial-statements/domain/income-statement.builder";
 import type {
   AccountMetadata,
   MovementAggregation,
   BuildISInput,
-} from "@/features/accounting/financial-statements/financial-statements.types";
+} from "@/modules/accounting/financial-statements/domain/types/financial-statements.types";
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 

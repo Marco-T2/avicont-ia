@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { resolveBalances } from "@/features/accounting/financial-statements/balance-source.resolver";
+import { resolveBalances } from "@/modules/accounting/financial-statements/domain/balance-source.resolver";
 import { NotFoundError } from "@/features/shared/errors";
 
 const D = (v: string | number) => new Prisma.Decimal(v);

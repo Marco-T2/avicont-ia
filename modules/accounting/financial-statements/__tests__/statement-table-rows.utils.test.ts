@@ -3,7 +3,7 @@ import {
   buildBalanceSheetTableRows,
   buildIncomeStatementTableRows,
   buildRowId,
-} from "../statement-table-rows.utils";
+} from "../domain/value-objects/statement-table-rows.utils";
 
 // ── Fixtures mínimos para pruebas ──
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { calculateRetainedEarnings } from "@/features/accounting/financial-statements/retained-earnings.calculator";
-import type { IncomeStatementCurrent } from "@/features/accounting/financial-statements/financial-statements.types";
+import { calculateRetainedEarnings } from "@/modules/accounting/financial-statements/domain/retained-earnings.calculator";
+import type { IncomeStatementCurrent } from "@/modules/accounting/financial-statements/domain/types/financial-statements.types";
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 

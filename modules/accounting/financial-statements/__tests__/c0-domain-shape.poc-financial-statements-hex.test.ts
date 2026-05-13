@@ -108,29 +108,32 @@ describe("POC financial-statements-hex C0 — domain layer shape", () => {
   // ───────────────────────────────────────────────────────────────────────────
 
   describe("Block 3 — Money utils (REQ-005: money math precision; R1-permissible-value-type-exception)", () => {
-    it("α9: roundHalfUp is a function exported from domain/money.utils", () => {
-      const roundHalfUp = requireDomainExport("money.utils.ts", "roundHalfUp");
-      expect(typeof roundHalfUp).toBe("function");
+    // money.utils runtime-imports Prisma (R1 exception); require() at test time
+    // cannot resolve @/ aliases (Vitest 4.1 strip-types loader). Use regex on
+    // export declarations — sister C0 ai-agent precedent for same constraint.
+    it("α9: roundHalfUp is exported from domain/money.utils", () => {
+      const content = readDomainFile("money.utils.ts");
+      expect(content).toMatch(/export\s+function\s+roundHalfUp/m);
     });
 
-    it("α10: sumDecimals is a function exported from domain/money.utils", () => {
-      const sumDecimals = requireDomainExport("money.utils.ts", "sumDecimals");
-      expect(typeof sumDecimals).toBe("function");
+    it("α10: sumDecimals is exported from domain/money.utils", () => {
+      const content = readDomainFile("money.utils.ts");
+      expect(content).toMatch(/export\s+function\s+sumDecimals/m);
     });
 
-    it("α11: eq is a function exported from domain/money.utils", () => {
-      const eq = requireDomainExport("money.utils.ts", "eq");
-      expect(typeof eq).toBe("function");
+    it("α11: eq is exported from domain/money.utils", () => {
+      const content = readDomainFile("money.utils.ts");
+      expect(content).toMatch(/export\s+function\s+eq/m);
     });
 
-    it("α12: formatBolivianAmount is a function exported from domain/money.utils", () => {
-      const formatBolivianAmount = requireDomainExport("money.utils.ts", "formatBolivianAmount");
-      expect(typeof formatBolivianAmount).toBe("function");
+    it("α12: formatBolivianAmount is exported from domain/money.utils", () => {
+      const content = readDomainFile("money.utils.ts");
+      expect(content).toMatch(/export\s+function\s+formatBolivianAmount/m);
     });
 
-    it("α13: serializeStatement is a function exported from domain/money.utils", () => {
-      const serializeStatement = requireDomainExport("money.utils.ts", "serializeStatement");
-      expect(typeof serializeStatement).toBe("function");
+    it("α13: serializeStatement is exported from domain/money.utils", () => {
+      const content = readDomainFile("money.utils.ts");
+      expect(content).toMatch(/export\s+function\s+serializeStatement/m);
     });
   });
 
@@ -147,12 +150,11 @@ describe("POC financial-statements-hex C0 — domain layer shape", () => {
       expect(typeof calculateRetainedEarnings).toBe("function");
     });
 
-    it("α15: resolveBalances is a function exported from domain/balance-source.resolver", () => {
-      const resolveBalances = requireDomainExport(
-        "balance-source.resolver.ts",
-        "resolveBalances",
-      );
-      expect(typeof resolveBalances).toBe("function");
+    it("α15: resolveBalances is exported from domain/balance-source.resolver", () => {
+      // balance-source.resolver runtime-imports @/features/shared/errors;
+      // require() cannot resolve the alias — regex on export declaration.
+      const content = readDomainFile("balance-source.resolver.ts");
+      expect(content).toMatch(/export\s+async\s+function\s+resolveBalances/m);
     });
 
     it("α16: resolveDatePreset is a function exported from domain/date-presets.utils", () => {
@@ -193,20 +195,17 @@ describe("POC financial-statements-hex C0 — domain layer shape", () => {
   // ───────────────────────────────────────────────────────────────────────────
 
   describe("Block 5 — Pure builders (REQ-006: balance-sheet + income-statement aggregators)", () => {
-    it("α20: buildBalanceSheet is a function exported from domain/balance-sheet.builder", () => {
-      const buildBalanceSheet = requireDomainExport(
-        "balance-sheet.builder.ts",
-        "buildBalanceSheet",
-      );
-      expect(typeof buildBalanceSheet).toBe("function");
+    // Builders runtime-import @/generated/prisma/enums + the canonical
+    // formatSubtypeLabel from @/modules/accounting/domain; require() cannot
+    // resolve @/ aliases — regex on export declaration.
+    it("α20: buildBalanceSheet is exported from domain/balance-sheet.builder", () => {
+      const content = readDomainFile("balance-sheet.builder.ts");
+      expect(content).toMatch(/export\s+function\s+buildBalanceSheet/m);
     });
 
-    it("α21: buildIncomeStatement is a function exported from domain/income-statement.builder", () => {
-      const buildIncomeStatement = requireDomainExport(
-        "income-statement.builder.ts",
-        "buildIncomeStatement",
-      );
-      expect(typeof buildIncomeStatement).toBe("function");
+    it("α21: buildIncomeStatement is exported from domain/income-statement.builder", () => {
+      const content = readDomainFile("income-statement.builder.ts");
+      expect(content).toMatch(/export\s+function\s+buildIncomeStatement/m);
     });
   });
 

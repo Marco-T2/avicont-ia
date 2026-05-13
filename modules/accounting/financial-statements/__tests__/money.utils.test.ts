@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { roundHalfUp, sumDecimals, eq, serializeStatement } from "@/features/accounting/financial-statements/money.utils";
+import { roundHalfUp, sumDecimals, eq, serializeStatement } from "@/modules/accounting/financial-statements/domain/money.utils";
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 
