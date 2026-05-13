@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatDateBO } from "@/lib/date-utils";
 import {
   Card,
   CardContent,
@@ -74,13 +75,6 @@ function formatCurrency(amount: number): string {
   })}`;
 }
 
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 function buildHref(
   orgSlug: string,
@@ -172,7 +166,7 @@ function PaymentRow({
       onClick={() => router.push(viewPath)}
     >
       <td className="py-3 px-4 text-muted-foreground">{payment.period?.name ?? "—"}</td>
-      <td className="py-3 px-4 whitespace-nowrap">{formatDate(payment.date)}</td>
+      <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(payment.date)}</td>
       <td className="py-3 px-4">
         <Badge
           className={

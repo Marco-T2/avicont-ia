@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { formatDateBO } from "@/lib/date-utils";
 import {
   Card,
   CardContent,
@@ -98,13 +99,6 @@ function formatCurrency(amount: number): string {
   })}`;
 }
 
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 interface LotDetailClientProps {
   orgSlug: string;
@@ -158,8 +152,8 @@ export default function LotDetailClient({
             </div>
             <p className="text-muted-foreground mt-1">
               Galpon #{lot.barnNumber} &middot; Inicio:{" "}
-              {formatDate(lot.startDate)}
-              {lot.endDate && ` &middot; Cierre: ${formatDate(lot.endDate)}`}
+              {formatDateBO(lot.startDate)}
+              {lot.endDate && ` &middot; Cierre: ${formatDateBO(lot.endDate)}`}
             </p>
           </div>
           <RegistrarConIABoton
@@ -306,7 +300,7 @@ export default function LotDetailClient({
                             </div>
                           </div>
                           <p className="text-sm text-muted-foreground">
-                            {formatDate(expense.date)}
+                            {formatDateBO(expense.date)}
                           </p>
                         </div>
                       </CardContent>
@@ -364,7 +358,7 @@ export default function LotDetailClient({
                           </div>
                         </div>
                         <p className="text-sm text-muted-foreground">
-                          {formatDate(log.date)}
+                          {formatDateBO(log.date)}
                         </p>
                       </div>
                     </CardContent>

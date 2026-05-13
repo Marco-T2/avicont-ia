@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { formatDateBO } from "@/lib/date-utils";
 import {
   Card,
   CardContent,
@@ -97,13 +98,6 @@ function formatCurrency(amount: number): string {
   })}`;
 }
 
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
 
 type ExpenseClient = ExpenseSnapshot;
 type MortalityClient = ReturnType<Mortality["toJSON"]>;
@@ -327,7 +321,7 @@ export default function FarmDetailClient({
                                         </div>
                                       </div>
                                       <p className="text-xs text-muted-foreground shrink-0">
-                                        {formatDate(expense.date)}
+                                        {formatDateBO(expense.date)}
                                       </p>
                                     </div>
                                   </CardContent>
@@ -370,7 +364,7 @@ export default function FarmDetailClient({
                                       </div>
                                     </div>
                                     <p className="text-xs text-muted-foreground shrink-0">
-                                      {formatDate(m.date)}
+                                      {formatDateBO(m.date)}
                                     </p>
                                   </div>
                                 </CardContent>

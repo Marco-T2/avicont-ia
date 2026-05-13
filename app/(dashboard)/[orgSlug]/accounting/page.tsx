@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from "lucide-react";
 import Link from "next/link";
+import { formatDateBO } from "@/lib/date-utils";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { JournalService } from "@/features/accounting/server";
@@ -51,11 +52,7 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
       const sorted = entries.sort(
         (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
       );
-      lastEntryDate = new Date(sorted[0].date).toLocaleDateString("es-BO", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
+      lastEntryDate = formatDateBO(sorted[0].date);
     }
   } catch {
     // Services may not be ready yet

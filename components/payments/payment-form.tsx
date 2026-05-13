@@ -29,7 +29,7 @@ import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/pa
 import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
 import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
 import { JustificationModal } from "@/components/shared/justification-modal";
-import { todayLocal } from "@/lib/date-utils";
+import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 
@@ -40,14 +40,6 @@ function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 const PAYMENT_METHODS = [
@@ -1495,7 +1487,7 @@ export default function PaymentForm({
                             </p>
                             {alloc.dueDate && (
                               <p className="text-xs text-muted-foreground">
-                                Vence: {formatDate(alloc.dueDate)}
+                                Vence: {formatDateBO(alloc.dueDate)}
                               </p>
                             )}
                           </div>
@@ -1674,7 +1666,7 @@ export default function PaymentForm({
                                 {credit.description}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {formatDate(credit.date)}
+                                {formatDateBO(credit.date)}
                               </p>
                             </div>
                           </td>
