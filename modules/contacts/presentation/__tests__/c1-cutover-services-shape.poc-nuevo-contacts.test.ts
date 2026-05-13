@@ -89,7 +89,7 @@
  *     preserved (high signal — services consumed by multiple consumers
  *     downstream).
  *       T7 features/accounting/journal.service.ts
- *       T8 features/ai-agent/tools/find-contact.ts
+ *       T8 modules/ai-agent/application/tools/find-contact.ts
  *       T9 features/ai-agent/tools/parse-operation.ts
  *       T10 features/dispatch/dispatch.service.ts
  *
@@ -281,7 +281,7 @@
  *   - app/api/organizations/[orgSlug]/contacts/[contactId]/pending-documents/route.ts (target T5)
  *   - app/(dashboard)/[orgSlug]/accounting/contacts/page.tsx + 10 more pages (target T6 collective)
  *   - features/accounting/journal.service.ts (target T7)
- *   - features/ai-agent/tools/find-contact.ts (target T8)
+ *   - modules/ai-agent/application/tools/find-contact.ts (target T8)
  *   - features/ai-agent/tools/parse-operation.ts (target T9)
  *   - features/dispatch/dispatch.service.ts (target T10)
  *   - 11 page test files (target T12 + T13 vi.mock collective §13.A4-η LOAD-BEARING)
@@ -347,11 +347,11 @@ const JOURNAL_SERVICE = path.join(
 );
 const AI_AGENT_FIND_CONTACT = path.join(
   REPO_ROOT,
-  "features/ai-agent/tools/find-contact.ts",
+  "modules/ai-agent/application/tools/find-contact.ts",
 );
 const AI_AGENT_PARSE_OPERATION = path.join(
   REPO_ROOT,
-  "features/ai-agent/tools/parse-operation.ts",
+  "modules/ai-agent/application/tools/parse-operation.ts",
 );
 const DISPATCH_SERVICE = path.join(
   REPO_ROOT,
@@ -545,7 +545,7 @@ describe("POC nuevo contacts C1 — cross-feature/cross-module presentation cuto
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it.skip("Test 8: features/ai-agent/tools/find-contact.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
+  it.skip("Test 8: modules/ai-agent/application/tools/find-contact.ts DOES import from `@/modules/contacts/presentation/server` (ContactsService class hex post-cutover cross-module)", () => {
     const source = fs.readFileSync(AI_AGENT_FIND_CONTACT, "utf8");
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });

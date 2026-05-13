@@ -225,7 +225,7 @@ describe("POC nuevo A4-C1 — org-settings consumers cutover shape (Path α'' at
 
   // ── NEGATIVE Cat 1 source-shape (Tests 8-14) — legacy import absent ────────
   // Future-proof contra accidental re-import legacy shim. NO toca
-  // features/dispatch/dispatch.service.ts + features/ai-agent/tools/find-accounts.ts
+  // features/dispatch/dispatch.service.ts + modules/ai-agent/application/tools/find-accounts.ts
   // + modules/payment/infrastructure/adapters/legacy-org-settings.adapter.ts
   // (A4-C2 cleanup scope deferred — Cat 3 cross-feature/cross-module).
 

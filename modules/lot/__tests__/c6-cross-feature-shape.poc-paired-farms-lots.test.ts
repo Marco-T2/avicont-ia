@@ -322,20 +322,20 @@ describe("POC paired farms+lots C6 — cross-feature ports migration paired-lot 
 
   // ── E: AI-agent cross-feature cutover (α24-α25) ────────────────────────────
 
-  it("α24: features/ai-agent/agent.service.ts does NOT import `LotsService` from `@/features/lots/server` (legacy class dropped post-cutover, ADDITIVE strategy preserva features/lots/* intactos hasta C7 wholesale delete per Marco lock heredado D1 Opt C C4 precedent EXACT)", () => {
-    const src = readRepoFile("features/ai-agent/agent.service.ts");
+  it("α24: modules/ai-agent/application/agent.service.ts does NOT import `LotsService` from `@/features/lots/server` (legacy class dropped post-cutover, ADDITIVE strategy preserva features/lots/* intactos hasta C7 wholesale delete per Marco lock heredado D1 Opt C C4 precedent EXACT; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/agent.service.ts");
     expect(src).not.toMatch(LEGACY_LOTS_SERVICE_IMPORT_RE);
   });
 
-  it("α25: features/ai-agent/modes/chat.ts imports `LotInquiryPort` from `@/modules/lot/presentation/server` (consumer ChatModeDeps type migration LotsService → LotInquiryPort paired sister cross-feature consumer migration inline mismo batch D8)", () => {
-    const src = readRepoFile("features/ai-agent/modes/chat.ts");
+  it("α25: modules/ai-agent/application/modes/chat.ts imports `LotInquiryPort` from `@/modules/lot/presentation/server` (consumer ChatModeDeps type migration LotsService → LotInquiryPort paired sister cross-feature consumer migration inline mismo batch D8; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/modes/chat.ts");
     expect(src).toMatch(IMPORT_LOT_INQUIRY_PORT_HEX_RE);
   });
 
   // ── F: Pricing cross-feature cutover (α26) ─────────────────────────────────
 
-  it("α26: features/pricing/pricing.service.ts does NOT import `LotsService` from `@/features/lots/server` (D7 cutover legacy `new LotsService()` → LotInquiryPort DI + lot.name access preserved via expand canonical `{id, name, initialCount}` driver-anchored)", () => {
-    const src = readRepoFile("features/ai-agent/pricing/pricing.service.ts");
+  it("α26: modules/ai-agent/application/pricing/pricing.service.ts does NOT import `LotsService` from `@/features/lots/server` (D7 cutover legacy `new LotsService()` → LotInquiryPort DI + lot.name access preserved via expand canonical `{id, name, initialCount}` driver-anchored; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/pricing/pricing.service.ts");
     expect(src).not.toMatch(LEGACY_LOTS_SERVICE_IMPORT_RE);
   });
 });

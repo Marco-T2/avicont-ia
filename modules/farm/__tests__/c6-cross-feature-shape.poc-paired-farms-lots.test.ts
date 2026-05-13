@@ -287,30 +287,30 @@ describe("POC paired farms+lots C6 — cross-feature ports migration paired-farm
 
   // ── D: AI-agent agent.service.ts cutover (α9-α11) ──────────────────────────
 
-  it("α9: features/ai-agent/agent.service.ts imports `FarmInquiryPort` from `@/modules/farm/presentation/server` (cutover legacy class ctor `new FarmsService()` → FarmInquiryPort DI Path α direct mecánico mirror C4 routes precedent EXACT — D7 cross-feature SERVICE consumer cutover)", () => {
-    const src = readRepoFile("features/ai-agent/agent.service.ts");
+  it("α9: modules/ai-agent/application/agent.service.ts imports `FarmInquiryPort` from `@/modules/farm/presentation/server` (cutover legacy class ctor `new FarmsService()` → FarmInquiryPort DI Path α direct mecánico mirror C4 routes precedent EXACT — D7 cross-feature SERVICE consumer cutover; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/agent.service.ts");
     expect(src).toMatch(IMPORT_FARM_INQUIRY_PORT_HEX_RE);
   });
 
-  it("α10: features/ai-agent/agent.service.ts does NOT import `FarmsService` from `@/features/farms/server` (legacy class dropped post-cutover, ADDITIVE strategy preserva features/farms/* intactos hasta C7 wholesale delete per Marco lock heredado D1 Opt C C4 precedent EXACT)", () => {
-    const src = readRepoFile("features/ai-agent/agent.service.ts");
+  it("α10: modules/ai-agent/application/agent.service.ts does NOT import `FarmsService` from `@/features/farms/server` (legacy class dropped post-cutover, ADDITIVE strategy preserva features/farms/* intactos hasta C7 wholesale delete per Marco lock heredado D1 Opt C C4 precedent EXACT; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/agent.service.ts");
     expect(src).not.toMatch(LEGACY_FARMS_SERVICE_IMPORT_RE);
   });
 
-  it("α11: features/ai-agent/agent.service.ts does NOT contain `new FarmsService(` literal (legacy class ctor instantiation dropped post-cutover, ADDITIVE preserve legacy intactos features/farms/farms.service.ts hasta C7)", () => {
-    const src = readRepoFile("features/ai-agent/agent.service.ts");
+  it("α11: modules/ai-agent/application/agent.service.ts does NOT contain `new FarmsService(` literal (legacy class ctor instantiation dropped post-cutover, ADDITIVE preserve legacy intactos features/farms/farms.service.ts hasta C7; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/agent.service.ts");
     expect(src).not.toMatch(NEW_FARMS_SERVICE_CTOR_RE);
   });
 
   // ── E: AI-agent chat.ts consumer type cutover (α12-α13) ────────────────────
 
-  it("α12: features/ai-agent/modes/chat.ts imports `FarmInquiryPort` from `@/modules/farm/presentation/server` (consumer ChatModeDeps type migration FarmsService → FarmInquiryPort paired sister cross-feature consumer migration inline mismo batch D8)", () => {
-    const src = readRepoFile("features/ai-agent/modes/chat.ts");
+  it("α12: modules/ai-agent/application/modes/chat.ts imports `FarmInquiryPort` from `@/modules/farm/presentation/server` (consumer ChatModeDeps type migration FarmsService → FarmInquiryPort paired sister cross-feature consumer migration inline mismo batch D8; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/modes/chat.ts");
     expect(src).toMatch(IMPORT_FARM_INQUIRY_PORT_HEX_RE);
   });
 
-  it("α13: features/ai-agent/modes/chat.ts does NOT import `FarmsService` from `@/features/farms/server` (legacy type dropped post-cutover)", () => {
-    const src = readRepoFile("features/ai-agent/modes/chat.ts");
+  it("α13: modules/ai-agent/application/modes/chat.ts does NOT import `FarmsService` from `@/features/farms/server` (legacy type dropped post-cutover; path migrated from features/ to modules/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/modes/chat.ts");
     expect(src).not.toMatch(LEGACY_FARMS_SERVICE_IMPORT_RE);
   });
 });

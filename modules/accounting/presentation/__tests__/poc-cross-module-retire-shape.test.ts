@@ -78,13 +78,14 @@ const REPO_CONSUMER_FILES = [
       "modules/accounting/infrastructure/legacy-accounts-read.adapter.ts",
     ),
   },
+  // NOTE: find-accounts.ts and parse-operation.ts were moved from features/ai-agent/tools/
+  // to modules/ai-agent/application/tools/ at poc-ai-agent-hex C5. The NEW files use
+  // AccountsLookupPort (REQ-004 insulation) instead of importing PrismaAccountsRepo directly.
+  // The insulation adapter is modules/ai-agent/infrastructure/legacy-accounts.adapter.ts.
+  // These files are no longer "direct repo consumers" — removed from REPO_CONSUMER_FILES.
   {
-    label: "tool ai-agent/find-accounts.ts",
-    path: resolve(REPO_ROOT, "features/ai-agent/tools/find-accounts.ts"),
-  },
-  {
-    label: "tool ai-agent/parse-operation.ts",
-    path: resolve(REPO_ROOT, "features/ai-agent/tools/parse-operation.ts"),
+    label: "adapter ai-agent/legacy-accounts.adapter.ts",
+    path: resolve(REPO_ROOT, "modules/ai-agent/infrastructure/legacy-accounts.adapter.ts"),
   },
   {
     label: "page payments/new/page.tsx",

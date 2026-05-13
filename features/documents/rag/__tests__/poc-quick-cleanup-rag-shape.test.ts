@@ -72,13 +72,15 @@ describe("NEGATIVE-absence: old home files absent", () => {
 // ---------------------------------------------------------------------------
 
 describe("agent.context.ts consumer import", () => {
-  it("α11: POSITIVE — agent.context.ts imports from @/features/documents/rag/server", () => {
-    const src = read("features/ai-agent/agent.context.ts");
+  // Path migrated at poc-ai-agent-hex C5: features/ai-agent/agent.context.ts deleted.
+  // Rag import now lives at modules/ai-agent/infrastructure/legacy-rag.adapter.ts (REQ-004 insulation)
+  it("α11: POSITIVE — modules/ai-agent/infrastructure/legacy-rag.adapter.ts imports from @/features/documents/rag/server (migrated from features/ai-agent/agent.context.ts at poc-ai-agent-hex C5)", () => {
+    const src = read("modules/ai-agent/infrastructure/legacy-rag.adapter.ts");
     expect(/^import.*@\/features\/documents\/rag\/server/m.test(src)).toBe(true);
   });
 
-  it("α12: NEGATIVE — agent.context.ts does NOT import from @/features/rag/server", () => {
-    const src = read("features/ai-agent/agent.context.ts");
+  it("α12: NEGATIVE — modules/ai-agent/infrastructure/legacy-rag.adapter.ts does NOT import from @/features/rag/server (old path — migrated to features/documents/rag/server)", () => {
+    const src = read("modules/ai-agent/infrastructure/legacy-rag.adapter.ts");
     expect(/^import.*@\/features\/rag\/server/m.test(src)).toBe(false);
   });
 });
@@ -104,14 +106,16 @@ describe("documents.service.ts consumer import", () => {
 // ---------------------------------------------------------------------------
 
 describe("agent.context.dispatch.test.ts vi.mock path", () => {
-  it("α15: NEGATIVE — vi.mock NOT on old path @/features/rag/server", () => {
-    const src = read("features/ai-agent/__tests__/agent.context.dispatch.test.ts");
-    expect(/vi\.mock\("@\/features\/rag\/server"/m.test(src)).toBe(false);
+  // features/ai-agent/__tests__/agent.context.dispatch.test.ts was deleted at poc-ai-agent-hex C5.
+  // The rag invariant is now covered by legacy-rag.adapter.ts (REQ-004 insulation point).
+  // vi.mock for rag in modules/ai-agent is covered by modules/ai-agent __tests__ sentinel c2.
+  it("α15: features/ai-agent/__tests__/agent.context.dispatch.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5)", () => {
+    expect(existsSync(join(ROOT, "features/ai-agent/__tests__/agent.context.dispatch.test.ts"))).toBe(false);
   });
 
-  it("α16: POSITIVE — vi.mock on new path @/features/documents/rag/server", () => {
-    const src = read("features/ai-agent/__tests__/agent.context.dispatch.test.ts");
-    expect(/vi\.mock\("@\/features\/documents\/rag\/server"/m.test(src)).toBe(true);
+  it("α16: modules/ai-agent/infrastructure/legacy-rag.adapter.ts imports @/features/documents/rag/server (rag import insulation — replaces agent.context.ts direct import, deleted at poc-ai-agent-hex C5)", () => {
+    const src = read("modules/ai-agent/infrastructure/legacy-rag.adapter.ts");
+    expect(/^import.*@\/features\/documents\/rag\/server/m.test(src)).toBe(true);
   });
 });
 

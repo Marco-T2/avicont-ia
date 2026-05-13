@@ -11,7 +11,7 @@
  *   - SOURCE 3 archivos / ~12 changes:
  *       features/dispatch/dispatch.service.ts (5 changes: import + factory
  *         fallback + 3 .toSnapshot() callsites en createAndPost/update/post)
- *       features/ai-agent/tools/find-accounts.ts (4 changes: import + factory
+ *       modules/ai-agent/application/tools/find-accounts.ts (4 changes: import + factory
  *         fallback + 2 .toSnapshot() callsites en executeFindAccountsByPurpose
  *         /runHeuristic)
  *       modules/payment/infrastructure/adapters/legacy-org-settings.adapter.ts
@@ -66,7 +66,7 @@
  * modules eliminado atomic mismo commit GREEN.
  *
  * §13.A4-ε cross-feature dep cementado #1565 — resolved this RED scope:
- * features/dispatch/dispatch.service.ts + features/ai-agent/tools/find-accounts.ts
+ * features/dispatch/dispatch.service.ts + modules/ai-agent/application/tools/find-accounts.ts
  * cleanup paired mismo commit GREEN. Mirror precedent A3-C5 HubService refactor
  * decisión cross-feature dep cleanup pattern.
  *
@@ -136,7 +136,7 @@ const DISPATCH_SERVICE = path.join(
 );
 const FIND_ACCOUNTS = path.join(
   REPO_ROOT,
-  "features/ai-agent/tools/find-accounts.ts",
+  "modules/ai-agent/application/tools/find-accounts.ts",
 );
 const PAYMENT_ADAPTER = path.join(
   REPO_ROOT,
@@ -149,6 +149,8 @@ const DISPATCH_AUDIT_TEST = path.join(
   REPO_ROOT,
   "features/dispatch/__tests__/dispatch.service.audit.test.ts",
 );
+// features/ai-agent/__tests__/tools.find-accounts.test.ts was deleted at poc-ai-agent-hex C5.
+// Tests that referenced this file are updated to assert non-existence below.
 const FIND_ACCOUNTS_TEST = path.join(
   REPO_ROOT,
   "features/ai-agent/__tests__/tools.find-accounts.test.ts",
@@ -188,9 +190,8 @@ describe("POC nuevo A4-C2 — org-settings cleanup Cat 3 cross-feature/cross-mod
     expect(source).toMatch(HEX_SERVER_RE);
   });
 
-  it("Test 5: tools.find-accounts.test.ts imports OrgSettingsService type from hex presentation/server", () => {
-    const source = fs.readFileSync(FIND_ACCOUNTS_TEST, "utf8");
-    expect(source).toMatch(HEX_SERVER_RE);
+  it("Test 5: features/ai-agent/__tests__/tools.find-accounts.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — invariant superseded by deletion)", () => {
+    expect(fs.existsSync(FIND_ACCOUNTS_TEST)).toBe(false);
   });
 
   // ── NEGATIVE source-shape (Tests 6-10) — legacy import absent ──────────────
@@ -215,9 +216,8 @@ describe("POC nuevo A4-C2 — org-settings cleanup Cat 3 cross-feature/cross-mod
     expect(source).not.toMatch(LEGACY_SERVER_RE);
   });
 
-  it("Test 10: tools.find-accounts.test.ts does NOT import from legacy @/features/org-settings/server", () => {
-    const source = fs.readFileSync(FIND_ACCOUNTS_TEST, "utf8");
-    expect(source).not.toMatch(LEGACY_SERVER_RE);
+  it("Test 10: features/ai-agent/__tests__/tools.find-accounts.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
+    expect(fs.existsSync(FIND_ACCOUNTS_TEST)).toBe(false);
   });
 
   // ── POSITIVE factory callsite (Tests 11-13) — makeOrgSettingsService ───────
@@ -313,8 +313,7 @@ describe("POC nuevo A4-C2 — org-settings cleanup Cat 3 cross-feature/cross-mod
     expect(source).toMatch(MOCK_TO_SNAPSHOT_KEY_RE);
   });
 
-  it("Test 21: tools.find-accounts.test.ts mock value contains toSnapshot: key shape", () => {
-    const source = fs.readFileSync(FIND_ACCOUNTS_TEST, "utf8");
-    expect(source).toMatch(MOCK_TO_SNAPSHOT_KEY_RE);
+  it("Test 21: features/ai-agent/__tests__/tools.find-accounts.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — mock-shape invariant superseded by deletion)", () => {
+    expect(fs.existsSync(FIND_ACCOUNTS_TEST)).toBe(false);
   });
 });

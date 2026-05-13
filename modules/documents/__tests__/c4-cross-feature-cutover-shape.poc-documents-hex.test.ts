@@ -56,9 +56,11 @@ describe("C4 cross-feature cutover shape — Documents module (3 API routes + ra
     expect(src).not.toMatch(NEW_DOCUMENTS_SERVICE_CTOR_RE);
   });
 
-  // α44 — rag carve-out invariant: agent.context.ts STILL imports @/features/documents/rag/server
-  it("α44: features/ai-agent/agent.context.ts STILL imports @/features/documents/rag/server (rag carve-out invariant — EXPECTED PASS at RED)", () => {
-    const src = readRepoFile("features/ai-agent/agent.context.ts");
+  // α44 — rag carve-out invariant: legacy-rag.adapter.ts imports @/features/documents/rag/server
+  // Path migrated at poc-ai-agent-hex C5: features/ai-agent/agent.context.ts deleted;
+  // rag import now lives at modules/ai-agent/infrastructure/legacy-rag.adapter.ts (REQ-004 insulation point)
+  it("α44: modules/ai-agent/infrastructure/legacy-rag.adapter.ts imports @/features/documents/rag/server (rag carve-out invariant — REQ-004 insulation; poc-ai-agent-hex C5 wholesale delete migrated path)", () => {
+    const src = readRepoFile("modules/ai-agent/infrastructure/legacy-rag.adapter.ts");
     expect(src).toMatch(RAG_FEATURES_PATH_RE);
   });
 

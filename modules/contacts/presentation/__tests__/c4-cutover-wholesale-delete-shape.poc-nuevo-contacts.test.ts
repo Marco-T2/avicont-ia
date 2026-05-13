@@ -138,26 +138,24 @@ describe("POC nuevo contacts C4 — wholesale delete features/contacts/* atomic 
   // ── Section D: 2 ai-agent tests TYPE swap Sub-B inline ReturnType<typeof makeContactsService> ──
 
   // tools.find-contact.test.ts
-  it("Test 15: tools.find-contact.test.ts contains Sub-B inline `as unknown as ReturnType<typeof makeContactsService>` cast pattern hex barrel target (POSITIVE TYPE swap Marco lock 2 + Sub-B confirmed NO hex barrel surface contamination)", () => {
-    const src = read("features/ai-agent/__tests__/tools.find-contact.test.ts");
-    expect(src).toMatch(
-      /as\s+unknown\s+as\s+ReturnType<typeof\s+makeContactsService>/,
-    );
+  // Deleted at poc-ai-agent-hex C5 (features/ai-agent/__tests__/ wholesale delete).
+  it("Test 15: features/ai-agent/__tests__/tools.find-contact.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — Sub-B cast invariant superseded by deletion)", () => {
+    const { existsSync, join } = require("fs"), p = require("path");
+    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
   });
-  it("Test 16: tools.find-contact.test.ts NO contains legacy import `from \"@/features/contacts/server\"` (NEGATIVE legacy shim path dropped post-cutover)", () => {
-    const src = read("features/ai-agent/__tests__/tools.find-contact.test.ts");
-    expect(src).not.toMatch(/from\s*["']@\/features\/contacts\/server["']/);
+  it("Test 16: features/ai-agent/__tests__/tools.find-contact.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
+    const { existsSync } = require("fs"), p = require("path");
+    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
   });
 
   // tools.parse-operation.test.ts
-  it("Test 17: tools.parse-operation.test.ts contains Sub-B inline `as unknown as ReturnType<typeof makeContactsService>` cast pattern hex barrel target (POSITIVE TYPE swap Marco lock 2 + Sub-B confirmed NO hex barrel surface contamination)", () => {
-    const src = read("features/ai-agent/__tests__/tools.parse-operation.test.ts");
-    expect(src).toMatch(
-      /as\s+unknown\s+as\s+ReturnType<typeof\s+makeContactsService>/,
-    );
+  // Deleted at poc-ai-agent-hex C5 (features/ai-agent/__tests__/ wholesale delete).
+  it("Test 17: features/ai-agent/__tests__/tools.parse-operation.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — Sub-B cast invariant superseded by deletion)", () => {
+    const { existsSync } = require("fs"), p = require("path");
+    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
   });
-  it("Test 18: tools.parse-operation.test.ts NO contains legacy import `from \"@/features/contacts/server\"` (NEGATIVE legacy shim path dropped post-cutover)", () => {
-    const src = read("features/ai-agent/__tests__/tools.parse-operation.test.ts");
-    expect(src).not.toMatch(/from\s*["']@\/features\/contacts\/server["']/);
+  it("Test 18: features/ai-agent/__tests__/tools.parse-operation.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
+    const { existsSync } = require("fs"), p = require("path");
+    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
   });
 });

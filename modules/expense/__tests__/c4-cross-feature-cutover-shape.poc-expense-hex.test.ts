@@ -95,9 +95,13 @@ describe("POC expense hex C4 — cross-feature cutover shape (paired sister farm
 
   // ── D: Cross-module pricing.service.ts cutover ──
   // α53
-  it("α53: features/pricing/pricing.service.ts imports from hex + NO legacy + NO new ExpensesService(", () => {
-    const src = readRepoFile("features/ai-agent/pricing/pricing.service.ts");
-    expect(src).toMatch(IMPORT_MAKE_EXPENSE_SERVICE_HEX_RE);
+  it("α53: modules/ai-agent/application/pricing/pricing.service.ts imports from hex + NO legacy + NO new ExpensesService( (path migrated from features/ai-agent/pricing/ to modules/ai-agent/application/pricing/ at poc-ai-agent-hex C5)", () => {
+    const src = readRepoFile("modules/ai-agent/application/pricing/pricing.service.ts");
+    // New file uses `import type { ..., makeExpenseService as _makeExpenseService, ... }` (multiline type import).
+    // IMPORT_MAKE_EXPENSE_SERVICE_HEX_RE requires non-type import — use broader pattern for this file.
+    const importHexRe =
+      /^import\s*(?:type\s+)?\{[\s\S]*?\bmakeExpenseService\b[\s\S]*?\}\s*from\s*["']@\/modules\/expense\/presentation\/server["']/m;
+    expect(src).toMatch(importHexRe);
     expect(src).not.toMatch(LEGACY_FEATURES_EXPENSES_IMPORT_RE);
     expect(src).not.toMatch(NEW_EXPENSES_SERVICE_CTOR_RE);
   });

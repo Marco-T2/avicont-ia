@@ -18,8 +18,8 @@
  *
  * 4 archivos VALUE consumers FULL (NO type-only):
  *   - features/accounting/journal.service.ts (field type + ctor DI default + new ContactsService())
- *   - features/ai-agent/tools/find-contact.ts (deps type + new ContactsService() fallback)
- *   - features/ai-agent/tools/parse-operation.ts (deps type + new ContactsService() fallback)
+ *   - modules/ai-agent/application/tools/find-contact.ts (deps type + new ContactsService() fallback)
+ *   - modules/ai-agent/application/tools/parse-operation.ts (deps type + new ContactsService() fallback)
  *   - features/dispatch/dispatch.service.ts (field type + ctor DI default + new ContactsService())
  *
  * 8α single test file homogeneous granularity per archivo bisect-friendly:
@@ -61,28 +61,28 @@ describe("POC nuevo contacts C4-bis — 4 archivos cross-feature consumers VALUE
   });
 
   // find-contact.ts
-  it("Test 3: find-contact.ts contains `import { makeContactsService } from \"@/modules/contacts/presentation/server\"` (POSITIVE hex factory swap target post-cutover)", () => {
-    const src = read("features/ai-agent/tools/find-contact.ts");
+  it("Test 3: find-contact.ts contains `import { makeContactsService } from \"@/modules/contacts/presentation/server\"` (POSITIVE hex factory swap target post-cutover; new modules/ uses import type — regex updated for type-import variant)", () => {
+    const src = read("modules/ai-agent/application/tools/find-contact.ts");
     expect(src).toMatch(
-      /^import \{ makeContactsService \} from "@\/modules\/contacts\/presentation\/server";$/m,
+      /^import\s+(?:type\s+)?\{[^}]*\bmakeContactsService\b[^}]*\}\s+from\s+["']@\/modules\/contacts\/presentation\/server["']/m,
     );
   });
   it("Test 4: find-contact.ts NO contains legacy `import { ContactsService } from` o `new ContactsService(` instanciación (NEGATIVE alternation legacy class drop post-cutover Marco lock C1 Opción A re-export DROP línea 13)", () => {
-    const src = read("features/ai-agent/tools/find-contact.ts");
+    const src = read("modules/ai-agent/application/tools/find-contact.ts");
     expect(src).not.toMatch(
       /(?:import\s*\{\s*ContactsService\s*\}\s*from|new\s+ContactsService\s*\()/,
     );
   });
 
   // parse-operation.ts
-  it("Test 5: parse-operation.ts contains `import { makeContactsService } from \"@/modules/contacts/presentation/server\"` (POSITIVE hex factory swap target post-cutover)", () => {
-    const src = read("features/ai-agent/tools/parse-operation.ts");
+  it("Test 5: parse-operation.ts contains `import { makeContactsService } from \"@/modules/contacts/presentation/server\"` (POSITIVE hex factory swap target post-cutover; new modules/ uses import type — regex updated for type-import variant)", () => {
+    const src = read("modules/ai-agent/application/tools/parse-operation.ts");
     expect(src).toMatch(
-      /^import \{ makeContactsService \} from "@\/modules\/contacts\/presentation\/server";$/m,
+      /^import\s+(?:type\s+)?\{[^}]*\bmakeContactsService\b[^}]*\}\s+from\s+["']@\/modules\/contacts\/presentation\/server["']/m,
     );
   });
   it("Test 6: parse-operation.ts NO contains legacy `import { ContactsService } from` o `new ContactsService(` instanciación (NEGATIVE alternation legacy class drop post-cutover Marco lock C1 Opción A re-export DROP línea 13)", () => {
-    const src = read("features/ai-agent/tools/parse-operation.ts");
+    const src = read("modules/ai-agent/application/tools/parse-operation.ts");
     expect(src).not.toMatch(
       /(?:import\s*\{\s*ContactsService\s*\}\s*from|new\s+ContactsService\s*\()/,
     );
