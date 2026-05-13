@@ -7,8 +7,8 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
 import { Prisma } from "@/generated/prisma/client";
-import { exportEquityStatementXlsx } from "../equity-statement-xlsx.exporter";
-import type { EquityStatement } from "../../equity-statement.types";
+import { exportEquityStatementXlsx } from "../infrastructure/exporters/equity-statement-xlsx.exporter";
+import type { EquityStatement } from "../domain/equity-statement.types";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 

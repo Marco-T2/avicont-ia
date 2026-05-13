@@ -9,11 +9,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { prisma } from "@/lib/prisma";
 import { Prisma } from "@/generated/prisma/client";
-import { EquityStatementRepository } from "../equity-statement.repository";
+import { PrismaEquityStatementRepo } from "../infrastructure/prisma-equity-statement.repo";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 
-const repo = new EquityStatementRepository();
+const repo = new PrismaEquityStatementRepo();
 
 let orgAId: string;
 let orgBId: string;
@@ -429,9 +429,9 @@ afterAll(async () => {
   }
 });
 
-describe("EquityStatementRepository — server-only boundary", () => {
+describe("PrismaEquityStatementRepo — server-only boundary", () => {
   it("repository file starts with import 'server-only'", () => {
-    const repoPath = path.join(__dirname, "../equity-statement.repository.ts");
+    const repoPath = path.join(__dirname, "../infrastructure/prisma-equity-statement.repo.ts");
     const content = fs.readFileSync(repoPath, "utf8");
     expect(content.startsWith(`import "server-only"`)).toBe(true);
   });

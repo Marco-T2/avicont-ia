@@ -6,8 +6,8 @@
 
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { exportEquityStatementPdf, MissingOrgNameError } from "../equity-statement-pdf.exporter";
-import type { EquityStatement } from "../../equity-statement.types";
+import { exportEquityStatementPdf, MissingOrgNameError } from "../infrastructure/exporters/equity-statement-pdf.exporter";
+import type { EquityStatement } from "../domain/equity-statement.types";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 
