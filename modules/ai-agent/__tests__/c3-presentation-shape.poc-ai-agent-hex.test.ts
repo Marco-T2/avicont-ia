@@ -1,3 +1,10 @@
+// Pre-set GEMINI_API_KEY before any module evaluation. GeminiLLMAdapter (which
+// the server barrel imports transitively at module-load time) validates this
+// env var at top-level — same precedent as features/ai-agent/__tests__/
+// tools.find-accounts.test.ts L18 and 7 other pre-migration ai-agent tests.
+// This is a test-precondition pattern, not a sentinel guard.
+process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "test-key-for-vitest";
+
 import { describe, it, expect } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
