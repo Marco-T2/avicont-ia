@@ -187,15 +187,15 @@ function JournalEntryRow({
       }`}
       onClick={() => router.push(viewPath)}
     >
+      <td className="py-3 px-4 text-muted-foreground">{periodName}</td>
+      <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(entry.date)}</td>
+      <td className="py-3 px-4">{voucherName}</td>
       <td className="py-3 px-4 font-mono text-info font-medium">
         {displayNumber ?? entry.number}
       </td>
       <td className="py-3 px-4 font-mono text-muted-foreground">
         {entry.referenceNumber ?? "—"}
       </td>
-      <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(entry.date)}</td>
-      <td className="py-3 px-4">{voucherName}</td>
-      <td className="py-3 px-4 text-muted-foreground">{periodName}</td>
       <td className="py-3 px-4 max-w-xs truncate">{entry.description}</td>
       <td className="py-3 px-4 text-muted-foreground">{entry.contact?.name ?? "—"}</td>
       <td className="py-3 px-4 text-center">
@@ -493,15 +493,15 @@ export default function JournalEntryList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Comprobante</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                    Período
+                  </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Tipo
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Período
-                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Comprobante</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Descripción
                   </th>
