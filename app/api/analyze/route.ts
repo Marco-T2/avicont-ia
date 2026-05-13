@@ -1,9 +1,11 @@
 import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { DocumentsService } from "@/features/documents/server";
-import { analyzeDocumentSchema } from "@/features/documents/server";
+import {
+  makeDocumentsService,
+  analyzeDocumentSchema,
+} from "@/modules/documents/presentation/server";
 
-const docsService = new DocumentsService();
+const docsService = makeDocumentsService();
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +23,9 @@ export async function POST(request: Request) {
       );
     }
 
-    const content = document.content || document.name;
+    type DocAnalysisRow = { content: string | null; name: string; organizationId: string; id: string };
+    const docRow = document as DocAnalysisRow;
+    const content = docRow.content || docRow.name;
     if (!content || content.trim().length < 5) {
       return Response.json(
         { error: "El documento no tiene contenido para analizar" },
@@ -31,15 +35,15 @@ export async function POST(request: Request) {
 
     const summary = await analyzeWithGemini(content, analysisType);
 
-    const updatedDocument = await docsService.updateAnalysis(
-      document.organizationId,
+    const updatedDocument = (await docsService.updateAnalysis(
+      docRow.organizationId,
       documentId,
       {
         aiSummary: summary,
         aiKeywords: ["analyzed"],
         sentiment: "analyzed",
       },
-    );
+    )) as { id: string; name: string; aiSummary: string | null };
 
     return Response.json({
       success: true,

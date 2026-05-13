@@ -1,11 +1,11 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
-import { DocumentsService } from "@/features/documents/server";
 import {
+  makeDocumentsService,
   createDocumentSchema,
   listDocumentsSchema,
-} from "@/features/documents/server";
+} from "@/modules/documents/presentation/server";
 
-const service = new DocumentsService();
+const service = makeDocumentsService();
 
 export async function POST(request: Request) {
   try {
