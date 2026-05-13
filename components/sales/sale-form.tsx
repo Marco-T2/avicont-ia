@@ -30,7 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
+import type { Account, Contact, FiscalPeriod } from "@/generated/prisma/client";
+import AccountSelector from "@/components/accounting/account-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
@@ -85,12 +86,14 @@ interface SaleDetailLine {
   unitPrice: string;
 }
 
-// ── Cuenta de ingreso para el selector ──
+// ── Cuenta de ingreso para el selector (subset de Account compatible con AccountSelector) ──
 
 interface IncomeAccountOption {
   id: string;
   code: string;
   name: string;
+  isActive?: boolean;
+  isDetail?: boolean;
 }
 
 // ── Contador para IDs únicos de línea ──
@@ -726,11 +729,11 @@ export default function SaleForm({
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
+                  <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-56">Cuenta Contable de Ingreso</th>
                   <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Descripción</th>
-                  <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Cuenta de Ingreso</th>
                   <th className="text-right py-3 px-2 font-medium text-muted-foreground w-24">Cantidad</th>
                   <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Precio Unitario</th>
-                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Importe</th>
+                  <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Monto</th>
                   {!isReadOnly && <th className="w-10" />}
                 </tr>
               </thead>
@@ -743,6 +746,14 @@ export default function SaleForm({
                     <tr key={line.id} className="border-b hover:bg-accent/50">
                       <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
                       <td className="py-2 px-2">
+                        <AccountSelector
+                          accounts={incomeAccounts as unknown as Account[]}
+                          value={line.incomeAccountId}
+                          onChange={(v) => updateLine(line.id, "incomeAccountId", v)}
+                          disabled={isReadOnly}
+                        />
+                      </td>
+                      <td className="py-2 px-2">
                         <Input
                           value={line.description}
                           onChange={(e) => updateLine(line.id, "description", e.target.value)}
@@ -750,35 +761,6 @@ export default function SaleForm({
                           className={`h-8 min-w-44 ${isReadOnly ? "bg-muted cursor-default" : ""}`}
                           readOnly={isReadOnly}
                         />
-                      </td>
-                      <td className="py-2 px-2">
-                        {isReadOnly ? (
-                          <Input
-                            value={
-                              incomeAccounts.find((a) => a.id === line.incomeAccountId)
-                                ? `${incomeAccounts.find((a) => a.id === line.incomeAccountId)!.code} - ${incomeAccounts.find((a) => a.id === line.incomeAccountId)!.name}`
-                                : line.incomeAccountId
-                            }
-                            readOnly
-                            className="h-8 min-w-44 bg-muted cursor-default"
-                          />
-                        ) : (
-                          <Select
-                            value={line.incomeAccountId}
-                            onValueChange={(val) => updateLine(line.id, "incomeAccountId", val)}
-                          >
-                            <SelectTrigger className="h-8 min-w-44">
-                              <SelectValue placeholder="Seleccione cuenta" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {incomeAccounts.map((a) => (
-                                <SelectItem key={a.id} value={a.id}>
-                                  {a.code} - {a.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
                       </td>
                       <td className="py-2 px-2">
                         <Input
