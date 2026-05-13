@@ -9,14 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Plus, CalendarDays } from "lucide-react";
 import PeriodCreateDialog from "./period-create-dialog";
 import type { FiscalPeriod } from "@/modules/fiscal-periods/presentation/index";
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
-}
+import { formatDateBO } from "@/lib/date-utils";
 
 interface PeriodListProps {
   orgSlug: string;
@@ -81,10 +74,10 @@ export default function PeriodList({ orgSlug, periods }: PeriodListProps) {
                       <td className="py-3 px-4 font-medium">{period.name}</td>
                       <td className="py-3 px-4 font-mono">{period.year}</td>
                       <td className="py-3 px-4">
-                        {formatDate(period.startDate)}
+                        {formatDateBO(period.startDate)}
                       </td>
                       <td className="py-3 px-4">
-                        {formatDate(period.endDate)}
+                        {formatDateBO(period.endDate)}
                       </td>
                       <td className="py-3 px-4">
                         {period.status === "OPEN" ? (
