@@ -182,7 +182,7 @@ describe("buildEquityStatement", () => {
 
   it("10. grandTotal = sum of all columnTotals", async () => {
     const { buildEquityStatement } = await import("../equity-statement.builder");
-    const { sumDecimals } = await import("@/features/accounting/financial-statements/money.utils");
+    const { sumDecimals } = await import("@/modules/accounting/financial-statements/presentation/server");
     const stmt = buildEquityStatement(makeInput({
       accounts: [capitalAccount, reservaAccount, resultadosAccount],
       finalBalances: new Map([

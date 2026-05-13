@@ -6,9 +6,9 @@ import { EquityStatementRepository } from "./equity-statement.repository";
 import { buildEquityStatement } from "./equity-statement.builder";
 import type { EquityStatement } from "./equity-statement.types";
 // Reutilización de FS — fuente única de verdad del Resultado del Ejercicio (REQ-4)
-import { FinancialStatementsRepository } from "@/features/accounting/financial-statements/financial-statements.repository";
-import { buildIncomeStatement } from "@/features/accounting/financial-statements/income-statement.builder";
-import { calculateRetainedEarnings } from "@/features/accounting/financial-statements/retained-earnings.calculator";
+import { PrismaFinancialStatementsRepo } from "@/modules/accounting/financial-statements/infrastructure/prisma-financial-statements.repo";
+import { buildIncomeStatement } from "@/modules/accounting/financial-statements/domain/income-statement.builder";
+import { calculateRetainedEarnings } from "@/modules/accounting/financial-statements/domain/retained-earnings.calculator";
 
 const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
 
@@ -17,7 +17,7 @@ type GenerateEquityStatementInput = { dateFrom: Date; dateTo: Date };
 export class EquityStatementService {
   constructor(
     private readonly repo = new EquityStatementRepository(),
-    private readonly fsRepo = new FinancialStatementsRepository(),
+    private readonly fsRepo = new PrismaFinancialStatementsRepo(),
   ) {}
 
   async generate(

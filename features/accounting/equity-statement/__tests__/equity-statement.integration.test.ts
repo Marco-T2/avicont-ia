@@ -21,9 +21,9 @@ import { Prisma } from "@/generated/prisma/client";
 import { EquityStatementRepository } from "../equity-statement.repository";
 import { buildEquityStatement } from "../equity-statement.builder";
 import { EquityStatementService } from "../equity-statement.service";
-import { FinancialStatementsRepository } from "@/features/accounting/financial-statements/financial-statements.repository";
-import { buildIncomeStatement } from "@/features/accounting/financial-statements/income-statement.builder";
-import { calculateRetainedEarnings } from "@/features/accounting/financial-statements/retained-earnings.calculator";
+import { PrismaFinancialStatementsRepo } from "@/modules/accounting/financial-statements/infrastructure/prisma-financial-statements.repo";
+import { buildIncomeStatement } from "@/modules/accounting/financial-statements/domain/income-statement.builder";
+import { calculateRetainedEarnings } from "@/modules/accounting/financial-statements/domain/retained-earnings.calculator";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,7 +48,7 @@ let gastoAccountId: string;    // 5.x Gastos — GASTO
 const range = { dateFrom: new Date("2025-01-01"), dateTo: new Date("2025-12-31") };
 
 const eqRepo = new EquityStatementRepository();
-const fsRepo = new FinancialStatementsRepository();
+const fsRepo = new PrismaFinancialStatementsRepo();
 
 // ── DB Fixture setup ──────────────────────────────────────────────────────────
 

@@ -19,12 +19,12 @@
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { AccountSubtype } from "@/generated/prisma/enums";
-import { buildBalanceSheet } from "@/features/accounting/financial-statements/balance-sheet.builder";
+import { buildBalanceSheet } from "@/modules/accounting/financial-statements/domain/balance-sheet.builder";
 import type {
   AccountMetadata,
   ResolvedBalance,
   BuildBalanceSheetInput,
-} from "@/features/accounting/financial-statements/financial-statements.types";
+} from "@/modules/accounting/financial-statements/domain/types/financial-statements.types";
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 

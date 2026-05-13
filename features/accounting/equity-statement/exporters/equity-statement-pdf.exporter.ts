@@ -1,6 +1,6 @@
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
-import { fmtDecimal } from "../../financial-statements/exporters/pdf.helpers";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
+import { fmtDecimal } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.helpers";
 import type { EquityStatement } from "../equity-statement.types";
 import {
   COLUMNS_ORDER,

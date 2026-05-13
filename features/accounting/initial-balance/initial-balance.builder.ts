@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import { AccountSubtype } from "@/generated/prisma/enums";
-import { sumDecimals } from "@/features/accounting/financial-statements/money.utils";
+import { sumDecimals } from "@/modules/accounting/financial-statements/presentation/server";
 import { formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
 import type {
   BuildInitialBalanceInput,

@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 
-import { roundHalfUp } from "@/features/accounting/financial-statements/money.utils";
+import { roundHalfUp } from "@/modules/accounting/financial-statements/presentation/server";
 
 // Alias local para legibilidad — no rompe el tipo Prisma.Decimal
 type Decimal = Prisma.Decimal;

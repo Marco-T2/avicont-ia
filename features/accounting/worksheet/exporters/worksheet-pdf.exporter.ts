@@ -17,8 +17,8 @@
  */
 
 import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "../../financial-statements/exporters/pdf.fonts";
-import { fmtDecimal, type DecimalLike } from "../../financial-statements/exporters/pdf.helpers";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
+import { fmtDecimal, type DecimalLike } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.helpers";
 import type { WorksheetReport, WorksheetRow, WorksheetTotals } from "../worksheet.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────

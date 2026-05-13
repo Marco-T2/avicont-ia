@@ -20,7 +20,7 @@ import type { Content, TDocumentDefinitions, TableCell } from "pdfmake/interface
 import {
   registerFonts,
   pdfmakeRuntime,
-} from "@/features/accounting/financial-statements/exporters/pdf.fonts";
+} from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
 import type { VoucherPdfInput } from "./voucher-pdf.types";
 
 const STYLE = {

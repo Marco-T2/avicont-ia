@@ -11,7 +11,7 @@ import * as path from "path";
 import { Prisma } from "@/generated/prisma/client";
 import { EquityStatementService } from "../equity-statement.service";
 import { EquityStatementRepository } from "../equity-statement.repository";
-import { FinancialStatementsRepository } from "@/features/accounting/financial-statements/financial-statements.repository";
+import { PrismaFinancialStatementsRepo } from "@/modules/accounting/financial-statements/infrastructure/prisma-financial-statements.repo";
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
 import type { EquityAccountMetadata } from "../equity-statement.types";
 
@@ -37,14 +37,14 @@ function createMockRepo(): EquityStatementRepository {
   } as unknown as EquityStatementRepository;
 }
 
-function createMockFsRepo(): FinancialStatementsRepository {
+function createMockFsRepo(): PrismaFinancialStatementsRepo {
   return {
     findAccountsWithSubtype: vi.fn().mockResolvedValue([]),
     aggregateJournalLinesInRange: vi.fn().mockResolvedValue([]),
     requireOrg: vi.fn().mockReturnValue({ organizationId: "org-1" }),
     transaction: vi.fn(),
     db: {} as unknown,
-  } as unknown as FinancialStatementsRepository;
+  } as unknown as PrismaFinancialStatementsRepo;
 }
 
 const INPUT_VALID = {

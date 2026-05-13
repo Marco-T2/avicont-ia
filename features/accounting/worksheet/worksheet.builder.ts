@@ -1,6 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { AccountType } from "@/generated/prisma/enums";
-import { sumDecimals, eq } from "@/features/accounting/financial-statements/money.utils";
+import { sumDecimals, eq } from "@/modules/accounting/financial-statements/presentation/server";
 import type { WorksheetAccountMetadata, WorksheetMovementAggregation } from "./worksheet.repository";
 import type {
   WorksheetRow,
