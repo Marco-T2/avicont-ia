@@ -1,17 +1,21 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { TrialBalanceService, TrialBalanceRepository } from "@/features/accounting/trial-balance/server";
+import {
+  TrialBalanceService,
+  makeTrialBalanceService,
+  trialBalanceQuerySchema,
+  exportTrialBalancePdf,
+  exportTrialBalanceXlsx,
+} from "@/modules/accounting/trial-balance/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
-import { trialBalanceQuerySchema } from "@/features/accounting/trial-balance/server";
-import { exportTrialBalancePdf } from "@/features/accounting/trial-balance/server";
-import { exportTrialBalanceXlsx } from "@/features/accounting/trial-balance/server";
+import { PrismaTrialBalanceRepo } from "@/modules/accounting/trial-balance/infrastructure/prisma-trial-balance.repo";
 import type { Role } from "@/features/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";
 
-const service = new TrialBalanceService();
-const repo = new TrialBalanceRepository();
+const service = makeTrialBalanceService();
+const repo = new PrismaTrialBalanceRepo();
 
 /**
  * GET /api/organizations/[orgSlug]/trial-balance

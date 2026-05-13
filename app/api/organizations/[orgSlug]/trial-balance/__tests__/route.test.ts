@@ -57,24 +57,26 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/trial-balance/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/accounting/trial-balance/server")>()),
+vi.mock("@/modules/accounting/trial-balance/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/accounting/trial-balance/presentation/server")>()),
   TrialBalanceService: vi.fn().mockImplementation(function () {
     return { generate: mockGenerate };
   }),
-  TrialBalanceRepository: vi.fn().mockImplementation(function () {
-    return { getOrgMetadata: mockGetOrgMetadata };
-  }),
+  // [[mock_hygiene_commit_scope]] + [[cross_module_boundary_mock_target_rewrite]]:
+  // factory mock required because route.ts post-C4 calls makeTrialBalanceService() (not new TrialBalanceService()).
+  // Mock returns a service stub with mockGenerate — symmetric with class mock above.
+  // Sister archive #2282 NEW INVARIANT #3: vi.mock must return BOTH class AND factory.
+  makeTrialBalanceService: vi.fn().mockReturnValue({ generate: mockGenerate }),
 }));
 
-vi.mock("@/features/accounting/trial-balance/exporters/trial-balance-pdf.exporter", () => ({
+vi.mock("@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-pdf.exporter", () => ({
   exportTrialBalancePdf: vi.fn().mockResolvedValue({
     buffer: Buffer.from("%PDF-1.4 minimal"),
     docDef: {},
   }),
 }));
 
-vi.mock("@/features/accounting/trial-balance/exporters/trial-balance-xlsx.exporter", () => ({
+vi.mock("@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-xlsx.exporter", () => ({
   exportTrialBalanceXlsx: vi.fn().mockResolvedValue(Buffer.from("PK xlsx content")),
 }));
 
@@ -83,6 +85,16 @@ vi.mock("@/modules/accounting/financial-statements/presentation/server", () => (
   sumDecimals: vi.fn(),
   eq: vi.fn(),
   roundHalfUp: vi.fn(),
+}));
+
+// [[cross_module_boundary_mock_target_rewrite]]: PrismaTrialBalanceRepo mock — intercepts
+// the direct `new PrismaTrialBalanceRepo()` instantiation in route.ts (used for getOrgMetadata
+// calls in PDF/XLSX paths). Route.ts instantiates repo separately from the service factory
+// because getOrgMetadata is an infra call not exposed through the service.
+vi.mock("@/modules/accounting/trial-balance/infrastructure/prisma-trial-balance.repo", () => ({
+  PrismaTrialBalanceRepo: vi.fn().mockImplementation(function () {
+    return { getOrgMetadata: mockGetOrgMetadata };
+  }),
 }));
 
 // ── Minimal report fixture ────────────────────────────────────────────────────
@@ -108,8 +120,8 @@ const minimalReport = {
 // ── Import after mocks ────────────────────────────────────────────────────────
 
 import { GET, runtime } from "../route";
-import { exportTrialBalancePdf } from "@/features/accounting/trial-balance/exporters/trial-balance-pdf.exporter";
-import { exportTrialBalanceXlsx } from "@/features/accounting/trial-balance/exporters/trial-balance-xlsx.exporter";
+import { exportTrialBalancePdf } from "@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-pdf.exporter";
+import { exportTrialBalanceXlsx } from "@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-xlsx.exporter";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
