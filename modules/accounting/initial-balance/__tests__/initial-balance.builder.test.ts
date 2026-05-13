@@ -19,7 +19,7 @@ import type {
   BuildInitialBalanceInput,
   InitialBalanceOrgHeader,
   InitialBalanceRow,
-} from "../initial-balance.types";
+} from "../domain/initial-balance.types";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 
@@ -57,7 +57,7 @@ describe("buildInitialBalance — balanced CA (T06)", () => {
   ];
 
   it("returns two sections in order [ACTIVO, PASIVO_PATRIMONIO]", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: balancedRows }));
     expect(stmt.sections).toHaveLength(2);
     expect(stmt.sections[0].key).toBe("ACTIVO");
@@ -65,7 +65,7 @@ describe("buildInitialBalance — balanced CA (T06)", () => {
   });
 
   it("ACTIVO section groups rows by subtype with correct subtotals", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: balancedRows }));
     const activo = stmt.sections[0];
     expect(activo.groups).toHaveLength(2);
@@ -80,7 +80,7 @@ describe("buildInitialBalance — balanced CA (T06)", () => {
   });
 
   it("PASIVO_PATRIMONIO section groups rows by subtype with correct subtotals", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: balancedRows }));
     const pasivo = stmt.sections[1];
     expect(pasivo.groups).toHaveLength(2);
@@ -95,14 +95,14 @@ describe("buildInitialBalance — balanced CA (T06)", () => {
   });
 
   it("imbalanced: false and imbalanceDelta: 0 when totals match", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: balancedRows }));
     expect(stmt.imbalanced).toBe(false);
     expect(stmt.imbalanceDelta.equals(D("0"))).toBe(true);
   });
 
   it("uses es-BO labels from formatSubtypeLabel for groups", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: balancedRows }));
     const corriente = stmt.sections[0].groups.find(
       (g) => g.subtype === AccountSubtype.ACTIVO_CORRIENTE,
@@ -122,19 +122,19 @@ describe("buildInitialBalance — imbalanced CA (T07)", () => {
   ];
 
   it("imbalanced: true when ACTIVO total differs from PASIVO+PATRIMONIO", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: imbalancedRows }));
     expect(stmt.imbalanced).toBe(true);
   });
 
   it("imbalanceDelta equals the absolute Bs. difference between sections", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: imbalancedRows }));
     expect(stmt.imbalanceDelta.equals(D("80"))).toBe(true);
   });
 
   it("imbalanceDelta is non-negative even when PASIVO_PATRIMONIO > ACTIVO", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     // Swap: ACTIVO 100, PASIVO+PATRIMONIO 300 → delta should still be 200 (abs)
     const flippedRows: InitialBalanceRow[] = [
       { accountId: "a-caja",    code: "1.1.1", name: "Caja",           subtype: AccountSubtype.ACTIVO_CORRIENTE,   amount: D("100") },
@@ -155,21 +155,21 @@ describe("buildInitialBalance — multiple CAs (T08)", () => {
   ];
 
   it("caCount: 2 → multipleCA: true and caCount: 2 on statement", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: minimalRows, caCount: 2 }));
     expect(stmt.multipleCA).toBe(true);
     expect(stmt.caCount).toBe(2);
   });
 
   it("caCount: 1 → multipleCA: false and caCount: 1", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: minimalRows, caCount: 1 }));
     expect(stmt.multipleCA).toBe(false);
     expect(stmt.caCount).toBe(1);
   });
 
   it("caCount: 5 → multipleCA: true and caCount: 5", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: minimalRows, caCount: 5 }));
     expect(stmt.multipleCA).toBe(true);
     expect(stmt.caCount).toBe(5);
@@ -178,7 +178,7 @@ describe("buildInitialBalance — multiple CAs (T08)", () => {
 
 describe("buildInitialBalance — edge cases", () => {
   it("skips rows whose subtype is not a balance-sheet subtype (INGRESO/GASTO)", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const rowsWithNoise: InitialBalanceRow[] = [
       { accountId: "a-caja",    code: "1.1.1", name: "Caja",           subtype: AccountSubtype.ACTIVO_CORRIENTE,   amount: D("100") },
       { accountId: "a-capital", code: "3.1.1", name: "Capital Social", subtype: AccountSubtype.PATRIMONIO_CAPITAL, amount: D("100") },
@@ -194,7 +194,7 @@ describe("buildInitialBalance — edge cases", () => {
   });
 
   it("empty rows → two sections with zero totals and balanced", async () => {
-    const { buildInitialBalance } = await import("../initial-balance.builder");
+    const { buildInitialBalance } = await import("../domain/initial-balance.builder");
     const stmt = buildInitialBalance(makeInput({ rows: [], caCount: 0 }));
     expect(stmt.sections[0].key).toBe("ACTIVO");
     expect(stmt.sections[0].groups).toHaveLength(0);

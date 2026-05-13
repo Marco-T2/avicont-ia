@@ -14,7 +14,7 @@ import type {
   InitialBalanceSection,
   InitialBalanceStatement,
   BuildInitialBalanceInput,
-} from "../initial-balance.types";
+} from "../domain/initial-balance.types";
 
 describe("initial-balance.types — type shape", () => {
   it("InitialBalanceRow has accountId, code, name, subtype, amount fields", () => {
