@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -84,10 +84,12 @@ export default function JournalEntryForm({
     editEntry?.date ?? todayLocal(),
   );
   const [description, setDescription] = useState(editEntry?.description ?? "");
-  const [periodId, setPeriodId] = useState(
-    editEntry?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
-  );
+  const [periodId, setPeriodId] = useState(() => {
+    if (editEntry?.periodId) return editEntry.periodId;
+    return findPeriodCoveringDate(editEntry?.date ?? todayLocal(), periods)?.id ?? "";
+  });
   const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
+  const isFirstPeriodSync = useRef(true);
   const [voucherTypeId, setVoucherTypeId] = useState(editEntry?.voucherTypeId ?? "");
   const [referenceNumber, setReferenceNumber] = useState<string>(
     editEntry?.referenceNumber?.toString() ?? "",
@@ -110,6 +112,10 @@ export default function JournalEntryForm({
   });
 
   useEffect(() => {
+    if (isFirstPeriodSync.current) {
+      isFirstPeriodSync.current = false;
+      return;
+    }
     if (periodManuallySelected || !date) return;
     const match = findPeriodCoveringDate(date, periods);
     setPeriodId(match?.id ?? "");
