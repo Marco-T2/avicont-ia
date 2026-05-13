@@ -10,8 +10,8 @@
 
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { exportWorksheetPdf } from "../worksheet-pdf.exporter";
-import type { WorksheetReport } from "../../worksheet.types";
+import { exportWorksheetPdf } from "../infrastructure/exporters/worksheet-pdf.exporter";
+import type { WorksheetReport } from "../domain/worksheet.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

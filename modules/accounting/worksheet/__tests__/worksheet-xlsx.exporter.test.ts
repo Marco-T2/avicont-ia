@@ -8,8 +8,8 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
 import { Prisma } from "@/generated/prisma/client";
-import { exportWorksheetXlsx } from "../worksheet-xlsx.exporter";
-import type { WorksheetReport } from "../../worksheet.types";
+import { exportWorksheetXlsx } from "../infrastructure/exporters/worksheet-xlsx.exporter";
+import type { WorksheetReport } from "../domain/worksheet.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
