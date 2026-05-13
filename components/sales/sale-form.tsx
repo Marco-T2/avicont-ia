@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -47,6 +47,7 @@ import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
 import { ReactivateLcvConfirmDialog } from "@/components/sales/reactivate-lcv-confirm-dialog";
 import { useLcvReactivate } from "@/components/sales/use-lcv-reactivate";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 
 // ── Helpers ──
@@ -146,12 +147,21 @@ export default function SaleForm({
 
   // ── Estado del encabezado ──
   const [contactId, setContactId] = useState(sale?.contactId ?? "");
-  const [periodId, setPeriodId] = useState(sale?.periodId ?? (periods[0]?.id ?? ""));
+  const [periodId, setPeriodId] = useState(
+    sale?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
+  );
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [date, setDate] = useState(
     sale?.date
       ? new Date(sale.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+
+  useEffect(() => {
+    if (periodManuallySelected || !date) return;
+    const match = findPeriodCoveringDate(date, periods);
+    setPeriodId(match?.id ?? "");
+  }, [date, periods, periodManuallySelected]);
   const [referenceNumber, setReferenceNumber] = useState(
     sale?.referenceNumber != null ? String(sale.referenceNumber) : "",
   );
@@ -601,7 +611,13 @@ export default function SaleForm({
                       className="bg-muted cursor-default"
                     />
                   ) : (
-                    <Select value={periodId} onValueChange={setPeriodId}>
+                    <Select
+                      value={periodId}
+                      onValueChange={(value) => {
+                        setPeriodManuallySelected(true);
+                        setPeriodId(value);
+                      }}
+                    >
                       <SelectTrigger id="period" className="w-full">
                         <SelectValue placeholder="Seleccione período" />
                       </SelectTrigger>
@@ -631,6 +647,16 @@ export default function SaleForm({
                   />
                 </div>
               </div>
+
+              {!isReadOnly && date && !periodId && periods.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
+                >
+                  No hay un período abierto que cubra esta fecha. Abrí el período
+                  correspondiente o elegí otra fecha.
+                </div>
+              )}
 
               {/* Fila 2: Cliente / Total / LCV */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
