@@ -1,20 +1,17 @@
-import type { EquityStatementService } from "./equity-statement.service";
-
 /**
- * Placeholder factory re-export for EquityStatementService.
+ * Wrapper re-export for the composition-root factory.
  *
- * Real wiring (PrismaEquityStatementRepo + PrismaIncomeStatementSourceAdapter
- * injection) lives in `presentation/composition-root.ts` created at C3 GREEN.
- * This file satisfies the factory export reference without requiring C3 files.
+ * Delegates to presentation/composition-root.ts which wires both infrastructure
+ * adapters into the application service:
+ *   PrismaEquityStatementRepo   → EquityStatementQueryPort (6 methods)
+ *   PrismaIncomeStatementSourceAdapter → IncomeStatementSourcePort (2 methods)
+ *
+ * This indirection keeps the application/ layer importable from tests without
+ * pulling in presentation/ directly — consumers may import factory from either:
+ *   - `application/make-equity-statement-service` (this wrapper)
+ *   - `presentation/server` (canonical server-only barrel, REQ-002)
  *
  * AXIS-DISTINCT vs TB: 2-adapter factory (repo + incomeSource) vs TB single-adapter.
- *
- * At C3 GREEN this placeholder is updated to re-export from composition-root:
- *   export { makeEquityStatementService } from "../presentation/composition-root";
+ * Sister precedent: modules/accounting/trial-balance/application/make-trial-balance-service.ts
  */
-export function makeEquityStatementService(): EquityStatementService {
-  throw new Error(
-    "makeEquityStatementService: composition root not yet wired. " +
-      "Real factory available after C3 GREEN (presentation/composition-root.ts).",
-  );
-}
+export { makeEquityStatementService } from "../presentation/composition-root";
