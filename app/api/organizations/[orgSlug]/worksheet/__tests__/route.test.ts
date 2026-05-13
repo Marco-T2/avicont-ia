@@ -74,7 +74,7 @@ vi.mock("@/features/accounting/worksheet/exporters/worksheet-xlsx.exporter", () 
 }));
 
 // serializeStatement re-export from financial-statements barrel
-vi.mock("@/features/accounting/financial-statements", () => ({
+vi.mock("@/modules/accounting/financial-statements/presentation", () => ({
   serializeStatement: vi.fn((obj: unknown) => obj),
 }));
 

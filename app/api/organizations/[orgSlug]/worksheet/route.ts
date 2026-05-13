@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { WorksheetService } from "@/features/accounting/worksheet/server";
-import { serializeStatement } from "@/features/accounting/financial-statements";
+import { serializeStatement } from "@/modules/accounting/financial-statements/presentation";
 import { worksheetQuerySchema } from "@/features/accounting/worksheet/server";
 import { exportWorksheetPdf } from "@/features/accounting/worksheet/server";
 import { exportWorksheetXlsx } from "@/features/accounting/worksheet/server";

@@ -53,14 +53,19 @@ vi.mock("@/modules/organizations/presentation/server", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/financial-statements/server", async (importOriginal) => ({
-  ...(await importOriginal<
-    typeof import("@/features/accounting/financial-statements/server")
-  >()),
-  FinancialStatementsService: class {
+vi.mock("@/modules/accounting/financial-statements/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/modules/accounting/financial-statements/presentation/server")
+  >();
+  class FinancialStatementsServiceMock {
     generateBalanceSheet = mockGenerate;
-  },
-}));
+  }
+  return {
+    ...actual,
+    FinancialStatementsService: FinancialStatementsServiceMock,
+    makeFinancialStatementsService: () => new FinancialStatementsServiceMock(),
+  };
+});
 
 vi.mock("@/modules/ai-agent/presentation/server", () => {
   class AgentServiceMock {

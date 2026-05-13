@@ -18,7 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
-import type { DatePresetId, BreakdownBy, CompareWith } from "@/features/accounting/financial-statements/financial-statements.types";
+import type { DatePresetId, BreakdownBy, CompareWith } from "@/modules/accounting/financial-statements/presentation";
 
 type StatementMode = "balance-sheet" | "income-statement";
 

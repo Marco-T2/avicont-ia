@@ -14,8 +14,8 @@ import {
   type ExpandedState,
 } from "@tanstack/react-table";
 import { ChevronRight, ChevronDown } from "lucide-react";
-import type { StatementTableRow } from "@/features/accounting/financial-statements/statement-table-rows.utils";
-import type { SerializedColumn } from "@/features/accounting/financial-statements/statement-table-rows.utils";
+import type { StatementTableRow } from "@/modules/accounting/financial-statements/presentation";
+import type { SerializedColumn } from "@/modules/accounting/financial-statements/presentation";
 
 interface StatementTableProps {
   columns: SerializedColumn[];

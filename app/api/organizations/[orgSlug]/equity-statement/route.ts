@@ -4,7 +4,7 @@ import {
   EquityStatementService,
   EquityStatementRepository,
 } from "@/features/accounting/equity-statement/server";
-import { serializeStatement } from "@/features/accounting/financial-statements/server";
+import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import { equityStatementQuerySchema } from "@/features/accounting/equity-statement/server";
 import { exportEquityStatementPdf } from "@/features/accounting/equity-statement/server";
 import { exportEquityStatementXlsx } from "@/features/accounting/equity-statement/server";

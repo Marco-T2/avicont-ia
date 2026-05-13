@@ -8,7 +8,7 @@ import type {
   BalanceSheet,
   BalanceSheetCurrent,
   IncomeStatementCurrent,
-} from "@/features/accounting/financial-statements/financial-statements.types";
+} from "@/modules/accounting/financial-statements/presentation";
 
 import type { LLMProviderPort } from "../domain/ports/llm-provider.port";
 import type { ChatMemoryPort } from "../domain/ports/chat-memory.port";

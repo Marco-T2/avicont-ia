@@ -71,7 +71,7 @@ vi.mock(
   }),
 );
 
-vi.mock("@/features/accounting/financial-statements/money.utils", () => ({
+vi.mock("@/modules/accounting/financial-statements/presentation/server", () => ({
   serializeStatement: vi.fn((obj: unknown) => obj),
   sumDecimals: vi.fn(),
   eq: vi.fn(),

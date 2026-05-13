@@ -1,10 +1,10 @@
 import type { Prisma } from "@/generated/prisma/client";
-import { formatBolivianAmount } from "@/features/accounting/financial-statements/money.utils";
+import { formatBolivianAmount } from "@/modules/accounting/financial-statements/presentation/server";
 import type {
   BalanceSheet,
   BalanceSheetCurrent,
   SubtypeGroup,
-} from "@/features/accounting/financial-statements/financial-statements.types";
+} from "@/modules/accounting/financial-statements/presentation";
 
 // ── Tipos del JSON curado para el LLM ──
 

@@ -61,7 +61,7 @@ vi.mock("@/features/accounting/equity-statement/exporters/equity-statement-xlsx.
   exportEquityStatementXlsx: vi.fn().mockResolvedValue(Buffer.from("PK xlsx content")),
 }));
 
-vi.mock("@/features/accounting/financial-statements/money.utils", () => ({
+vi.mock("@/modules/accounting/financial-statements/presentation/server", () => ({
   serializeStatement: vi.fn((obj: unknown) => obj),
   sumDecimals: vi.fn(),
   eq: vi.fn(),

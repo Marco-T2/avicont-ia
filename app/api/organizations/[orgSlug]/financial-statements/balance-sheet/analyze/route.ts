@@ -1,8 +1,8 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
-import { FinancialStatementsService } from "@/features/accounting/financial-statements/server";
-import { balanceSheetQuerySchema } from "@/features/accounting/financial-statements/server";
+import { makeFinancialStatementsService } from "@/modules/accounting/financial-statements/presentation/server";
+import { balanceSheetQuerySchema } from "@/modules/accounting/financial-statements/presentation/server";
 import { makeAgentService, makeAgentRateLimitService } from "@/modules/ai-agent/presentation/server";
 import { logStructured } from "@/lib/logging/structured";
 import type { Role } from "@/features/permissions";
@@ -10,7 +10,7 @@ import type { Role } from "@/features/permissions";
 export const runtime = "nodejs";
 
 const orgService = makeOrganizationsService();
-const fsService = new FinancialStatementsService();
+const fsService = makeFinancialStatementsService();
 const agentService = makeAgentService();
 const rateLimitService = makeAgentRateLimitService();
 

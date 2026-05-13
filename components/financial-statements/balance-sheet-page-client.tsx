@@ -18,11 +18,11 @@ import {
 } from "./balance-sheet-analysis-card";
 import {
   buildBalanceSheetTableRows,
-} from "@/features/accounting/financial-statements/statement-table-rows.utils";
+} from "@/modules/accounting/financial-statements/presentation";
 import type {
   SerializedBalanceSheetResponse,
   SerializedColumn,
-} from "@/features/accounting/financial-statements/statement-table-rows.utils";
+} from "@/modules/accounting/financial-statements/presentation";
 
 interface BalanceSheetPageClientProps {
   orgSlug: string;

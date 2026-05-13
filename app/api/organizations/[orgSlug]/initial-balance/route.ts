@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { InitialBalanceService } from "@/features/accounting/initial-balance/server";
-import { serializeStatement } from "@/features/accounting/financial-statements/server";
+import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import { initialBalanceQuerySchema } from "@/features/accounting/initial-balance/server";
 import { exportInitialBalancePdf } from "@/features/accounting/initial-balance/server";
 import { exportInitialBalanceXlsx } from "@/features/accounting/initial-balance/server";

@@ -4,7 +4,7 @@ import type { AnalyzeIncomeStatementResponse } from "../../domain/types/agent.ty
 import type {
   BalanceSheetCurrent,
   IncomeStatementCurrent,
-} from "@/features/accounting/financial-statements/financial-statements.types";
+} from "@/modules/accounting/financial-statements/presentation";
 
 export interface IncomeStatementAnalysisDeps {
   llmProvider: LLMProviderPort;

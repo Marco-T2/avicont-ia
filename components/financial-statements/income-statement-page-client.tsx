@@ -17,11 +17,11 @@ import {
 } from "./income-statement-analysis-card";
 import {
   buildIncomeStatementTableRows,
-} from "@/features/accounting/financial-statements/statement-table-rows.utils";
+} from "@/modules/accounting/financial-statements/presentation";
 import type {
   SerializedIncomeStatementResponse,
   SerializedColumn,
-} from "@/features/accounting/financial-statements/statement-table-rows.utils";
+} from "@/modules/accounting/financial-statements/presentation";
 
 interface IncomeStatementPageClientProps {
   orgSlug: string;

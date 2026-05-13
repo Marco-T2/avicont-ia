@@ -1,7 +1,7 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { TrialBalanceService, TrialBalanceRepository } from "@/features/accounting/trial-balance/server";
-import { serializeStatement } from "@/features/accounting/financial-statements/server";
+import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import { trialBalanceQuerySchema } from "@/features/accounting/trial-balance/server";
 import { exportTrialBalancePdf } from "@/features/accounting/trial-balance/server";
 import { exportTrialBalanceXlsx } from "@/features/accounting/trial-balance/server";

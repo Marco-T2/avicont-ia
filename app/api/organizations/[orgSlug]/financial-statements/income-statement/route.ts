@@ -1,14 +1,14 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { FinancialStatementsService } from "@/features/accounting/financial-statements/server";
-import { serializeStatement } from "@/features/accounting/financial-statements";
-import { incomeStatementQuerySchema } from "@/features/accounting/financial-statements/server";
+import { makeFinancialStatementsService } from "@/modules/accounting/financial-statements/presentation/server";
+import { serializeStatement } from "@/modules/accounting/financial-statements/presentation";
+import { incomeStatementQuerySchema } from "@/modules/accounting/financial-statements/presentation/server";
 import type { Role } from "@/features/permissions";
 
 // Node.js runtime requerido por los exporters de PR4 (pdfmake + exceljs usan Buffer/streams nativos)
 export const runtime = "nodejs";
 
-const service = new FinancialStatementsService();
+const service = makeFinancialStatementsService();
 
 /**
  * GET /api/organizations/[orgSlug]/financial-statements/income-statement

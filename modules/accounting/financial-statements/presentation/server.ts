@@ -25,9 +25,17 @@ export {
 } from "../domain/financial-statements.validation";
 
 // ── RUNTIME exports (server-side consumers) ──
+// `serializeStatement` is environment-neutral (no server-only deps) but is also
+// re-exported here for SYMMETRY with the old features/.../server.ts surface
+// (which re-exported `* from "./money.utils"`). Routes already importing
+// `serializeStatement` from the server barrel (initial-balance, trial-balance,
+// equity-statement) continue to use the same barrel post-cutover. Composition
+// root extension precedent: ai-agent C4 GREEN ccab3a77 added makeAgentRateLimitService
+// to presentation/server.ts for symmetric post-cutover surface preservation.
 export {
   formatBolivianAmount,
   roundHalfUp,
   sumDecimals,
   eq,
+  serializeStatement,
 } from "../domain/money.utils";

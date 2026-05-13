@@ -1,11 +1,11 @@
 import { Prisma } from "@/generated/prisma/client";
 import { AccountSubtype } from "@/generated/prisma/enums";
-import { formatBolivianAmount } from "@/features/accounting/financial-statements/money.utils";
+import { formatBolivianAmount } from "@/modules/accounting/financial-statements/presentation/server";
 import type {
   BalanceSheetCurrent,
   IncomeStatementCurrent,
   SubtypeGroup,
-} from "@/features/accounting/financial-statements/financial-statements.types";
+} from "@/modules/accounting/financial-statements/presentation";
 
 type Decimal = Prisma.Decimal;
 

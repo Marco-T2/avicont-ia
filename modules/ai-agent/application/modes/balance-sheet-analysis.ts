@@ -1,7 +1,7 @@
 import type { TokenUsage, LLMProviderPort } from "../../domain/ports/llm-provider.port";
 import type { Role } from "@/modules/permissions/domain/permissions";
 import type { AnalyzeBalanceSheetResponse } from "../../domain/types/agent.types";
-import type { BalanceSheet } from "@/features/accounting/financial-statements/financial-statements.types";
+import type { BalanceSheet } from "@/modules/accounting/financial-statements/presentation";
 
 export interface BalanceSheetAnalysisDeps {
   llmProvider: LLMProviderPort;
