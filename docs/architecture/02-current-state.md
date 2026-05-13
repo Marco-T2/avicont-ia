@@ -1,10 +1,10 @@
-# 02. Current State — Inventory Snapshot 2026-05-13 (updated poc-ai-agent-hex C5 — OLEADA 5 2/3 CLOSED)
+# 02. Current State — Inventory Snapshot 2026-05-13 (updated poc-financial-statements-hex C5 — OLEADA 5 FULLY CLOSED 3/3)
 
-> **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures. Updated POC #3f 2026-05-12. Updated poc-ai-agent-hex C5 OLEADA 5 2/3 CLOSED 2026-05-13.
+> **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures. Updated POC #3f 2026-05-12. Updated poc-ai-agent-hex C5 OLEADA 5 2/3 CLOSED 2026-05-13. Updated poc-financial-statements-hex C5 OLEADA 5 FULLY CLOSED 3/3 2026-05-13.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
-> **Total LOC pending migration**: ~12,406 LOC across 1 feature legacy (post poc-ai-agent-hex C5 features/ai-agent/ DELETED).
+> **Total LOC pending migration**: ~5,839 LOC across remaining `features/accounting/*` sub-features (8 sub-features deferred to OLEADA 6 multi-sub-POC umbrella: equity-statement, initial-balance, trial-balance, worksheet, iva-books, exporters/, journals, etc.).
 
-## Módulos hex cementados (25/25)
+## Módulos hex cementados (26/26)
 
 | Module | Estado | Tests | Consumers | Híbrido/Notas |
 |---|---|---|---|---|
@@ -12,6 +12,7 @@
 | `modules/audit` | HEX ✅ | 54 | 8 | POC audit hex closed — READ-only + raw SQL CTE preserved + UserNameResolver port |
 | `modules/contact-balances` | HEX ✅ | 4 | 8 | - |
 | `modules/ai-agent` | HEX ✅ | 170 | 14 | POC ai-agent hex closed — LLMProviderPort + 6-port deps-object AgentService + dual-barrel + REQ-004 AccountsLookupPort insulation; features/ai-agent/ DELETED C5 `f84edceb` |
+| `modules/accounting/financial-statements` | HEX ✅ | 256 | 23 | POC financial-statements hex closed — D5 INVERSE (server.ts + index.ts, NO client.ts) + 2 narrow-surface ports (FinancialStatementsQueryPort 4 methods + AccountSubtypeLabelPort R7) + R1-permissible-value-type-exception (money.utils Prisma.Decimal RUNTIME, textual precedent shared/domain/value-objects/money.ts) + ai-agent CROSS-MODULE DEBT CLOSED at C4 (5 files); features/accounting/financial-statements/ DELETED C5 `f84efebc` → `f1f1d1a9`; 15 sibling-features cutover at C5 GREEN (PRE-C4 grep gap closure — NEW invariant [[retirement_reinventory_gate_features_inclusion]]); 5 service-coupled tests + 1 exporter test DELETED at C5 ([[API_breaking_change_C1_blocks_C4_test_migration]]) |
 | `modules/dispatch` | HEX ✅ | 89 | 15 | POC dispatch hex closed — Sale architectural mirror + state machine + legacy accounting adapter ports |
 | `modules/contacts` | HEX ✅ | 15 | 12 | - |
 | `modules/expense` | HEX ✅ | 45 | 11 | POC expense hex closed |
