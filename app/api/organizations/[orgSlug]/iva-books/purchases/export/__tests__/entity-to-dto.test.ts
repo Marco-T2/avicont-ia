@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { TASA_IVA } from "@/features/accounting/iva-books";
+import { TASA_IVA } from "@/modules/iva-books/presentation/server";
 import { Prisma } from "@/generated/prisma/client";
 import { computeIvaTotals } from "@/modules/iva-books/domain/compute-iva-totals";
 import { IvaPurchaseBookEntry } from "@/modules/iva-books/domain/iva-purchase-book-entry.entity";

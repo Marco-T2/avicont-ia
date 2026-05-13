@@ -2,7 +2,7 @@ import type {
   Sale,
   SaleDetail,
 } from "@/generated/prisma/client";
-import type { IvaSalesBookDTO } from "@/features/accounting/iva-books";
+import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 
 /**
  * Hydrates Sale read-side responses for routes/components — migrado bit-exact

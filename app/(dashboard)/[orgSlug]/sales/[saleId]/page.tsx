@@ -5,7 +5,7 @@ import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
-import type { IvaSalesBookDTO } from "@/features/accounting/iva-books";
+import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import {
   toSaleWithDetails,

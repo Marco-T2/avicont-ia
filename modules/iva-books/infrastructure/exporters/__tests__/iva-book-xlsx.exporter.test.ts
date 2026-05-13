@@ -15,15 +15,15 @@ import { describe, it, expect } from "vitest";
 import path from "path";
 import ExcelJS from "exceljs";
 import { Prisma } from "@/generated/prisma/client";
-import { exportIvaBookExcel } from "../exporters/excel.exporter";
-import { PURCHASES_COLUMNS, SALES_COLUMNS } from "../exporters/sheet.builder";
-import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../iva-books.types";
+import { exportIvaBookExcel } from "../iva-book-xlsx.exporter";
+import { PURCHASES_COLUMNS, SALES_COLUMNS } from "../iva-book-xlsx.sheet-builder";
+import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../../../domain/iva-books.types";
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
 const FIXTURES_DIR = path.join(
   path.dirname(new URL(import.meta.url).pathname),
-  "../exporters/__fixtures__",
+  "../__fixtures__",
 );
 
 const COMPRAS_FIXTURE = path.join(FIXTURES_DIR, "PlantillaRegistro_ComprasEstandar.xlsx");

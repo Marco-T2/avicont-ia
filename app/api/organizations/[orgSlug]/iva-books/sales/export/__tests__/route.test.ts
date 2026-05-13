@@ -45,7 +45,7 @@ vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
   makeIvaBookService: vi.fn(() => mockServiceInstance),
 }));
 
-vi.mock("@/features/accounting/iva-books/server", () => ({
+vi.mock("@/modules/iva-books/presentation/server", () => ({
   exportIvaBookExcel: vi.fn().mockResolvedValue(FAKE_BUFFER),
 }));
 

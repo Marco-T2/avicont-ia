@@ -4,7 +4,7 @@ import {
   createPurchaseInputSchema,
   listQuerySchema,
   type CreatePurchaseInputDto,
-} from "@/features/accounting/iva-books";
+} from "@/modules/iva-books/presentation/server";
 import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
 import type { RegenerateIvaPurchaseBookInput } from "@/modules/iva-books/application/iva-book.service";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";

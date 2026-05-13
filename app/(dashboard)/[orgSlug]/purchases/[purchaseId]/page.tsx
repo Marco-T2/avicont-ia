@@ -6,7 +6,7 @@ import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/
 import { makeProductTypeService } from "@/modules/product-type/presentation/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
+import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import {
   toPurchaseWithDetails,

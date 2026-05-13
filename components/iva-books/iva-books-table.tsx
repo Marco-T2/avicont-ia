@@ -9,7 +9,7 @@
  * Usa scrollX horizontal para acomodar las 23-24 columnas SIN.
  */
 
-import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "@/features/accounting/iva-books";
+import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 

@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import {
   updatePurchaseInputSchema,
   type UpdatePurchaseInputDto,
-} from "@/features/accounting/iva-books";
+} from "@/modules/iva-books/presentation/server";
 import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
 import type {
   RecomputeIvaPurchaseBookInput,

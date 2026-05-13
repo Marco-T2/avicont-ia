@@ -14,8 +14,8 @@
 
 import ExcelJS from "exceljs";
 import type { Prisma } from "@/generated/prisma/client";
-import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../iva-books.types";
-import { getColumns } from "./sheet.builder";
+import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../../domain/iva-books.types";
+import { getColumns } from "./iva-book-xlsx.sheet-builder";
 
 // ── Formato numérico Bolivia (2 decimales, negativo entre paréntesis) ─────────
 

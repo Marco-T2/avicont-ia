@@ -4,7 +4,7 @@ import type {
   PurchaseType,
   PurchaseStatus,
 } from "@/generated/prisma/client";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
+import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index";
 
 /**
  * Hydrates Purchase read-side responses for routes/components — migrado

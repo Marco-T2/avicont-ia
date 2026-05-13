@@ -35,5 +35,5 @@ export type {
 // ── Legacy-bridge Decimal TASA_IVA (REQ-005, IVA-D2) ─────────────────────────
 export { TASA_IVA } from "./legacy-bridge-constants";
 
-// ── Exporter re-export (wired at C1 GREEN) ────────────────────────────────────
-// export { exportIvaBookExcel } from "../infrastructure/exporters/iva-book-xlsx.exporter"; // TODO: wired at C1 GREEN
+// ── Exporter re-export (wired at C1 GREEN — REQ-006) ─────────────────────────
+export { exportIvaBookExcel } from "../infrastructure/exporters/iva-book-xlsx.exporter";

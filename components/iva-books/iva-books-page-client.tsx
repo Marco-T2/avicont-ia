@@ -16,7 +16,7 @@ import { IvaBooksToolbar } from "./iva-books-toolbar";
 import { IvaBooksTable } from "./iva-books-table";
 import { IvaBookPurchaseModal } from "./iva-book-purchase-modal";
 import { IvaBookSaleModal } from "./iva-book-sale-modal";
-import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "@/features/accounting/iva-books";
+import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 
 interface FiscalPeriodOption {
   id: string;

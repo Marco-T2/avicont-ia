@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
-import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
+import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index";
 
 import type { Purchase, PurchaseType } from "../../domain/purchase.entity";
 import type { PurchaseDetail } from "../../domain/purchase-detail.entity";

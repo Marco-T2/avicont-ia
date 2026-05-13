@@ -24,8 +24,10 @@ export const runtime = "nodejs";
 
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { exportIvaBookExcel } from "@/features/accounting/iva-books/server";
-import { listQuerySchema } from "@/features/accounting/iva-books";
+import {
+  exportIvaBookExcel,
+  listQuerySchema,
+} from "@/modules/iva-books/presentation/server";
 import { makeIvaBookService } from "@/modules/iva-books/presentation/composition-root";
 
 import { entriesToDto } from "./entity-to-dto";

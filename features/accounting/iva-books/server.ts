@@ -5,4 +5,4 @@
  */
 import "server-only";
 
-export { exportIvaBookExcel } from "./exporters/excel.exporter";
+export { exportIvaBookExcel } from "@/modules/iva-books/infrastructure/exporters/iva-book-xlsx.exporter";
