@@ -191,3 +191,35 @@ Esta drift es 4ta evidencia cumulative cross-POC matures de `evidence-supersedes
 - **1ra evidencia**: POC poc-documents-hex (OLEADA 4 sub-POC #2/4 — partial closure)
 - **Decisión**: `features/documents/` directory NOT deleted this POC. `rag/` subfolder still resident (rag.service.ts, chunking.ts, embedding.service.ts, vector.repository.ts, server.ts — 18α PASS shape from poc-quick-cleanup) — blocks parent dir removal. SHIM at `features/documents/server.ts` keeps consumers + vi.mock targets. C5 wholesale delete DEFERRED to `poc-rag-hex` closure (rag/ migrates to its own hex module; then features/documents/ becomes empty + can be removed).
 - **Cementado**: 5-cycle chain C0–C4 closed; C5 explicitly deferred (NOT 6-cycle sister mirror). Test file `features/documents/rag/__tests__/poc-quick-cleanup-rag-shape.test.ts` updated atomic to reference the relocated `modules/documents/application/__tests__/documents.service.error-propagation.test.ts` path (cross-POC residual cementación adjusted per [[mock_hygiene_commit_scope]]).
+
+## §13.audit — Canonical Homes Audit hex (NEW poc-audit-hex — OLEADA 4 sub-POC #3/4)
+
+### §13.audit-domain types-classifier-repo-interface-AuditInquiryPort-R5-absoluta-READ-ONLY
+- **1ra evidencia**: POC poc-audit-hex C0 (OLEADA 4 sub-POC #3/4)
+- **Decisión**: `modules/audit/domain/` contains audit types, event classifier, repo interface, and `AuditInquiryPort` — port surface is READ-ONLY by design (NO create/update/delete methods). Differs from paired sister poc-documents-hex on axis: documents has R/W lifecycle (BlobStoragePort upload+del); audit is inquiry-only (CTE-based read paths). R5 absoluta zero prisma imports enforced.
+- **Cementado**: C0 RED `a7036e43` · GREEN `bce5b981`. 8α PASS sentinels (types + classifier + port + repo-interface shape). Paired sister poc-documents-hex C0 EXACT mirror axis-distinct on READ-ONLY (no mutation in port surface).
+
+### §13.audit-application AuditService-UserNameResolver-port-READ-ONLY
+- **1ra evidencia**: POC poc-audit-hex C1 (OLEADA 4 sub-POC #3/4)
+- **Decisión**: `modules/audit/application/` contains `AuditService` + `UserNameResolver` port — second READ-ONLY port (resolves user display names by id; NO create/update). Both audit ports lack mutation methods — invariant LOCKED for the full hex module (READ-ONLY pattern). Differs from poc-documents-hex (DocumentsService persists files via BlobStoragePort.upload).
+- **Cementado**: C1 RED `09ecb23e` · GREEN `154ff73f`. 7α PASS sentinels (service shape + port + R5 absoluta + server-only-free in domain+application). READ-ONLY pattern axis-distinct from documents-hex sister.
+
+### §13.audit-infrastructure PrismaAuditRepository-raw-SQL-CTE-preserved-tenant-guard-PrismaUserNameResolver
+- **1ra evidencia**: POC poc-audit-hex C2 (OLEADA 4 sub-POC #3/4)
+- **Decisión**: `modules/audit/infrastructure/` contains `PrismaAuditRepository` (raw SQL CTE preserved verbatim from legacy — architectural exception to typical Prisma ORM-only repo pattern; CTE drives correlated-event grouping that ORM can't express cleanly) + `PrismaUserNameResolver` adapter + tenant guard (organizationId scoping in every query — security-relevant). Raw SQL exception accepted same precedent as REQ-007 pdfjs-dist (processing-library carve-out) — boundary is "in-process computation NOT I/O port".
+- **Cementado**: C2 RED `cb4f6ec0` · GREEN `2a74c69b`. 7α PASS sentinels (repo shape + raw SQL preservation + tenant guard + UserNameResolver adapter). Raw SQL CTE LOCKED architectural exception; tenant guard LOCKED security invariant.
+
+### §13.audit-presentation composition-root-server-index-validation-barrels
+- **1ra evidencia**: POC poc-audit-hex C3 (OLEADA 4 sub-POC #3/4)
+- **Decisión**: `modules/audit/presentation/` contains composition-root + `server.ts` (with `import "server-only"` + `makeAuditService` factory) + `index.ts` client barrel + `validation.ts` barrel. Server barrel pattern EXACT mirror of paired sister poc-documents-hex; client barrel exposes types (AuditEvent + helpers) consumed by 4 client components.
+- **Cementado**: C3 RED `5aebf296` · GREEN `9f78b9ac`. 5α PASS sentinels (server barrel + client barrel + validation + composition-root shape). Paired sister documents-hex presentation barrel EXACT mirror.
+
+### §13.audit-cross-feature-cutover 12-consumers-atomic-RSC-API-client-tests
+- **1ra evidencia**: POC poc-audit-hex C4 (OLEADA 4 sub-POC #3/4)
+- **Decisión**: 12 cross-feature consumers cutover atomic in a single GREEN: 2 RSC pages (`app/(dashboard)/[orgSlug]/audit/page.tsx` + `[entityType]/[entityId]/page.tsx`) + 2 API routes + 4 client components (audit-detail-timeline, audit-event-list, audit-diff-viewer, audit-event-badges) + 4 test files. Differs from paired sister documents-hex (3 consumers) — 4× consumer surface absorbed atomic per [[mock_hygiene_commit_scope]].
+- **Cementado**: C4 RED `b68aa8f9` · GREEN `939934a9`. 12α PASS sentinels (one per consumer; hex-import POSITIVE + legacy-import NEGATIVE). α36 sentinel for `features/audit/__tests__/audit-types-helpers.test.ts` later guarded with existsSync (commit `67f437d0`) — file deleted at C5 wholesale.
+
+### §13.audit-c5-wholesale-delete 14-files-DELETE-atomic-DIR-auto-removed-first-in-POC-execution
+- **1ra evidencia**: POC poc-audit-hex C5 (OLEADA 4 sub-POC #3/4 — FULL CLOSURE)
+- **Decisión**: `features/audit/` directory DELETED wholesale atomic (14 files removed: server.ts, index.ts, audit.service.ts, audit.types.ts, audit-event-classifier.ts, audit.repository.ts, user-name-resolver.ts + 7 test files). Directory auto-removed by git when last file deleted. FIRST hex POC to EXECUTE C5 in-POC (sister documents-hex deferred C5 to poc-rag-hex because rag/ subfolder blocked parent dir removal; audit had no carve-out). 6-cycle full closure pattern (vs documents 5-cycle partial).
+- **Cementado**: C5 RED `53758f0f` · GREEN `2da91e58`. 9α PASS sentinels (NEGATIVE: 8 deleted-file existsSync false + 1 parent-dir nonexistent). In-POC C5 execution axis-distinct from documents-hex sister. SHIMs NOT required (no deferred consumers — all 12 cutover atomic in C4).
