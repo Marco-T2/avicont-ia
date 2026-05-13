@@ -48,14 +48,22 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/initial-balance/initial-balance.service", () => ({
+// [[cross_module_boundary_mock_target_rewrite]] C4: server barrel repointed to hex presentation.
+// [[mock_hygiene_commit_scope]]: vi.mock includes BOTH class AND makeInitialBalanceService factory
+// because route.ts post-C4 calls makeInitialBalanceService() (not new InitialBalanceService()).
+// Sister archive #2327 NEW INVARIANT: vi.mock must return BOTH class AND factory.
+// Internal source: @/modules/accounting/initial-balance/application/initial-balance.service
+vi.mock("@/modules/accounting/initial-balance/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/accounting/initial-balance/presentation/server")>()),
   InitialBalanceService: vi.fn().mockImplementation(function () {
     return { generate: mockGenerate };
   }),
+  makeInitialBalanceService: vi.fn().mockReturnValue({ generate: mockGenerate }),
 }));
 
+// [[cross_module_boundary_mock_target_rewrite]] C4: repointed to hex infrastructure path.
 vi.mock(
-  "@/features/accounting/initial-balance/exporters/initial-balance-pdf.exporter",
+  "@/modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter",
   () => ({
     exportInitialBalancePdf: vi.fn().mockResolvedValue({
       buffer: Buffer.from("%PDF-1.4 minimal"),
@@ -64,8 +72,9 @@ vi.mock(
   }),
 );
 
+// [[cross_module_boundary_mock_target_rewrite]] C4: repointed to hex infrastructure path.
 vi.mock(
-  "@/features/accounting/initial-balance/exporters/initial-balance-xlsx.exporter",
+  "@/modules/accounting/initial-balance/infrastructure/exporters/initial-balance-xlsx.exporter",
   () => ({
     exportInitialBalanceXlsx: vi.fn().mockResolvedValue(Buffer.from("PK xlsx content")),
   }),
@@ -114,8 +123,8 @@ const minimalStatement = {
 // ── Import after mocks ────────────────────────────────────────────────────────
 
 import { GET, runtime } from "../route";
-import { exportInitialBalancePdf } from "@/features/accounting/initial-balance/exporters/initial-balance-pdf.exporter";
-import { exportInitialBalanceXlsx } from "@/features/accounting/initial-balance/exporters/initial-balance-xlsx.exporter";
+import { exportInitialBalancePdf } from "@/modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter";
+import { exportInitialBalanceXlsx } from "@/modules/accounting/initial-balance/infrastructure/exporters/initial-balance-xlsx.exporter";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

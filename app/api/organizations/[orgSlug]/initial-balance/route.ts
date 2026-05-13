@@ -1,15 +1,18 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { InitialBalanceService } from "@/features/accounting/initial-balance/server";
+import {
+  InitialBalanceService,
+  makeInitialBalanceService,
+  initialBalanceQuerySchema,
+  exportInitialBalancePdf,
+  exportInitialBalanceXlsx,
+} from "@/modules/accounting/initial-balance/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
-import { initialBalanceQuerySchema } from "@/features/accounting/initial-balance/server";
-import { exportInitialBalancePdf } from "@/features/accounting/initial-balance/server";
-import { exportInitialBalanceXlsx } from "@/features/accounting/initial-balance/server";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";
 
-const service = new InitialBalanceService();
+const service = makeInitialBalanceService();
 
 /**
  * GET /api/organizations/[orgSlug]/initial-balance
