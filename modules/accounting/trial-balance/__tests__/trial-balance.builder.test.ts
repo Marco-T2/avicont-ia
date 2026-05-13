@@ -20,8 +20,8 @@ import { describe, it, expect, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
 import { Prisma } from "@/generated/prisma/client";
-import { buildTrialBalance, type BuildTrialBalanceInput } from "../trial-balance.builder";
-import type { TrialBalanceAccountMetadata, TrialBalanceMovement } from "../trial-balance.repository";
+import { buildTrialBalance, type BuildTrialBalanceInput } from "../domain/trial-balance.builder";
+import type { TrialBalanceAccountMetadata, TrialBalanceMovement } from "../domain/trial-balance.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -271,7 +271,7 @@ describe("C4.S5 — rowNumber NOT in TrialBalanceRow domain type", () => {
 
 describe("C4.E1 — Decimal purity: no Number(), parseFloat(), or unary +decimal in builder", () => {
   it("builder source code has zero Number(), parseFloat(), or +decimal coercions", () => {
-    const builderPath = path.join(__dirname, "../trial-balance.builder.ts");
+    const builderPath = path.join(__dirname, "../domain/trial-balance.builder.ts");
     const source = fs.readFileSync(builderPath, "utf8");
 
     // Check for forbidden patterns

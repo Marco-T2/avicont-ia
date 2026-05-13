@@ -15,7 +15,7 @@ const D = (v: string | number) => new Prisma.Decimal(String(v));
 
 describe("trial-balance domain types", () => {
   it("C4.E1 — TrialBalanceRow fields are Prisma.Decimal instances at runtime", async () => {
-    const { } = await import("../trial-balance.types");
+    const { } = await import("../domain/trial-balance.types");
 
     // Construct a conformant TrialBalanceRow manually and verify Decimal fields
     const row = {
@@ -35,7 +35,7 @@ describe("trial-balance domain types", () => {
   });
 
   it("C5.S4 — TrialBalanceTotals has exactly 4 Decimal fields", async () => {
-    await import("../trial-balance.types");
+    await import("../domain/trial-balance.types");
 
     const totals = {
       sumasDebe: D("0"),
@@ -52,7 +52,7 @@ describe("trial-balance domain types", () => {
   });
 
   it("C12.S1 — SerializedTrialBalanceRow numeric fields are strings at compile-time", async () => {
-    await import("../trial-balance.types");
+    await import("../domain/trial-balance.types");
 
     // Construct a conformant SerializedTrialBalanceRow — numeric fields must be string-assignable
     const serialized = {
@@ -71,14 +71,11 @@ describe("trial-balance domain types", () => {
     expect(typeof serialized.saldoAcreedor).toBe("string");
   });
 
-  it("C13.S1 — all module files can be imported without error", async () => {
-    await expect(import("../trial-balance.types")).resolves.toBeDefined();
-    await expect(import("../index")).resolves.toBeDefined();
-    // server.ts imports server-only which is stubbed in vitest
-    await expect(import("../server")).resolves.toBeDefined();
-    // repository and service are also server-side
-    await expect(import("../trial-balance.repository")).resolves.toBeDefined();
-    await expect(import("../trial-balance.builder")).resolves.toBeDefined();
-    await expect(import("../trial-balance.service")).resolves.toBeDefined();
+  it("C13.S1 — domain files can be imported without error", async () => {
+    await expect(import("../domain/trial-balance.types")).resolves.toBeDefined();
+    await expect(import("../domain/trial-balance.builder")).resolves.toBeDefined();
+    await expect(import("../domain/trial-balance.validation")).resolves.toBeDefined();
+    await expect(import("../domain/money.utils")).resolves.toBeDefined();
+    await expect(import("../domain/ports/trial-balance-query.port")).resolves.toBeDefined();
   });
 });
