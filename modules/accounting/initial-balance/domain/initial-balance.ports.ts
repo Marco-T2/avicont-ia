@@ -18,15 +18,12 @@ export interface InitialBalanceQueryPort {
    * Returns all initial-balance rows for a given Chart of Accounts (CA).
    * Rows are signed-net: DEUDORA = debit − credit; ACREEDORA = credit − debit.
    */
-  getInitialBalanceFromCA(
-    orgId: string,
-    caId: string,
-  ): Promise<InitialBalanceRow[]>;
+  getInitialBalanceFromCA(orgId: string): Promise<InitialBalanceRow[]>;
 
   /**
    * Returns organization header metadata needed for PDF/XLSX export layout.
    */
-  getOrgMetadata(orgId: string): Promise<InitialBalanceOrgHeader>;
+  getOrgMetadata(orgId: string): Promise<InitialBalanceOrgHeader | null>;
 
   /**
    * Returns the count of POSTED CA vouchers for the organization.
