@@ -239,13 +239,18 @@ export default function SaleForm({
   // ── Construcción del payload ──
 
   function buildDetailsPayload() {
-    return lines.map((l, i) => ({
-      description: l.description.trim(),
-      quantity: parseFloat(l.quantity) || 1,
-      unitPrice: parseFloat(l.unitPrice) || 0,
-      incomeAccountId: l.incomeAccountId,
-      order: i,
-    }));
+    return lines.map((l, i) => {
+      const qty = parseFloat(l.quantity) || 1;
+      const price = parseFloat(l.unitPrice) || 0;
+      return {
+        description: l.description.trim(),
+        quantity: qty,
+        unitPrice: price,
+        lineAmount: Math.round(qty * price * 100) / 100,
+        incomeAccountId: l.incomeAccountId,
+        order: i,
+      };
+    });
   }
 
   function buildBody(postImmediately: boolean) {
