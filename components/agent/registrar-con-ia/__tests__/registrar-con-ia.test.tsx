@@ -20,7 +20,7 @@ import { cleanup, render, screen } from "@testing-library/react";
 
 afterEach(() => cleanup());
 
-vi.mock("@/features/ai-agent/client", () => ({
+vi.mock("@/modules/ai-agent/presentation/client", () => ({
   useAgentQuery: vi.fn(() => ({
     query: vi.fn(),
     confirm: vi.fn(),

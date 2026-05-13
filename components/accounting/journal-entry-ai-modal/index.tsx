@@ -15,8 +15,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useAgentQuery } from "@/features/ai-agent/client";
-import type { JournalEntryAiContextHints } from "@/features/ai-agent/server";
+import { useAgentQuery } from "@/modules/ai-agent/presentation/client";
+import type { JournalEntryAiContextHints } from "@/modules/ai-agent/presentation/server";
 import { ParsedForm } from "./parsed-form";
 import { useCatalogPrefetch } from "./use-catalog-prefetch";
 import { journalEntryAiReducer, initialState } from "./fsm";

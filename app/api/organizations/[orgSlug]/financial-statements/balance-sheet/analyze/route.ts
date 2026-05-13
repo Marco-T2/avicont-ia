@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
 import { FinancialStatementsService } from "@/features/accounting/financial-statements/server";
 import { balanceSheetQuerySchema } from "@/features/accounting/financial-statements/server";
-import { AgentService, AgentRateLimitService } from "@/features/ai-agent/server";
+import { makeAgentService, makeAgentRateLimitService } from "@/modules/ai-agent/presentation/server";
 import { logStructured } from "@/lib/logging/structured";
 import type { Role } from "@/features/permissions";
 
@@ -11,8 +11,8 @@ export const runtime = "nodejs";
 
 const orgService = makeOrganizationsService();
 const fsService = new FinancialStatementsService();
-const agentService = new AgentService();
-const rateLimitService = new AgentRateLimitService();
+const agentService = makeAgentService();
+const rateLimitService = makeAgentRateLimitService();
 
 /**
  * POST /api/organizations/[orgSlug]/financial-statements/balance-sheet/analyze

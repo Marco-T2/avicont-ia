@@ -3,7 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { createAccountSchema } from "@/modules/accounting/presentation/validation";
 import { AccountSubtype } from "@/generated/prisma/client";
-import { executeFindAccountsByPurpose } from "@/features/ai-agent/server";
+import { executeFindAccountsByPurpose } from "@/modules/ai-agent/presentation/server";
 
 const service = makeAccountsService();
 

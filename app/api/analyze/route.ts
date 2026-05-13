@@ -1,4 +1,4 @@
-import { analyzeDocument as analyzeWithGemini } from "@/features/ai-agent";
+import { analyzeDocument as analyzeWithGemini } from "@/modules/ai-agent/presentation";
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import {
   makeDocumentsService,

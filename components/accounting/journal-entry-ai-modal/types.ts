@@ -1,9 +1,9 @@
 // Tipos compartidos entre los componentes del modal de captura asistida.
 // El shape principal (CreateJournalEntrySuggestion["data"]) viaja por reference
 // desde el wire format del backend; lo re-aliasamos acá para no acoplar todos
-// los componentes hijos a @/features/ai-agent/agent.types directamente.
+// los componentes hijos a @/modules/ai-agent/domain/types/agent.types directamente.
 
-import type { CreateJournalEntrySuggestion } from "@/features/ai-agent/server";
+import type { CreateJournalEntrySuggestion } from "@/modules/ai-agent/presentation/server";
 
 export type SuggestionData = CreateJournalEntrySuggestion["data"];
 

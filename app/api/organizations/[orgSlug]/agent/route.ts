@@ -4,9 +4,9 @@ import {
   makeOrganizationsService,
 } from "@/modules/organizations/presentation/server";
 import {
-  AgentService,
-  AgentRateLimitService,
-} from "@/features/ai-agent/server";
+  makeAgentService,
+  makeAgentRateLimitService,
+} from "@/modules/ai-agent/presentation/server";
 import { makeExpenseService } from "@/modules/expense/presentation/server";
 import { makeMortalityService } from "@/modules/mortality/presentation/server";
 import { createExpenseSchema } from "@/modules/expense/presentation/server";
@@ -16,7 +16,7 @@ import {
   confirmActionSchema,
   createJournalEntryConfirmSchema,
   type CreateJournalEntryConfirmInput,
-} from "@/features/ai-agent/server";
+} from "@/modules/ai-agent/presentation/server";
 import { requirePermission } from "@/features/permissions/server";
 import { JournalService, parseEntryDate } from "@/features/accounting/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
@@ -29,8 +29,8 @@ import { formatCorrelativeNumber } from "@/features/accounting/server";
 import { logStructured } from "@/lib/logging/structured";
 
 const orgService = makeOrganizationsService();
-const agentService = new AgentService();
-const rateLimitService = new AgentRateLimitService();
+const agentService = makeAgentService();
+const rateLimitService = makeAgentRateLimitService();
 const expensesService = makeExpenseService();
 const mortalityService = makeMortalityService();
 const journalService = new JournalService();

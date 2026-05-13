@@ -73,6 +73,17 @@ export function makeAgentService(): AgentService {
   });
 }
 
+/**
+ * Composition root — zero-arg factory for AgentRateLimitService.
+ * Wires PrismaRateLimitRepository → AgentRateLimitService. Mirror of
+ * makeAgentService shape — preserves zero-arg call site at consumers
+ * after C4 cutover (old `new AgentRateLimitService()` was zero-arg).
+ */
+export function makeAgentRateLimitService(): AgentRateLimitService {
+  const rateLimitRepo = new PrismaRateLimitRepository();
+  return new AgentRateLimitService(rateLimitRepo);
+}
+
 // ── Service re-exports (orchestrators) ──────────────────────────────────────
 export { AgentService } from "../application/agent.service";
 export { AgentRateLimitService } from "../application/rate-limit.service";
@@ -90,9 +101,33 @@ export type {
 } from "../domain/prompts/journal-entry-ai.prompt";
 
 // ── Tool executors (consumed by route handlers for assisted-capture flow) ──
-export {
-  executeFindAccountsByPurpose,
+import {
+  executeFindAccountsByPurpose as _executeFindAccountsByPurpose,
+  type FindAccountsByPurposeDeps,
 } from "../application/tools/find-accounts";
+import type {
+  FindAccountsResult,
+} from "../domain/tools/tool-output.types";
+
+/**
+ * Composition-root wrapper for executeFindAccountsByPurpose — preserves the
+ * pre-migration two-arg call site at `app/api/.../accounts/route.ts`
+ * (consumer calls `executeFindAccountsByPurpose(orgId, args)` with no deps).
+ * Wires LegacyAccountsAdapter at the composition boundary so the consumer
+ * stays barrel-clean per D1 zero-arg factory convention.
+ */
+export async function executeFindAccountsByPurpose(
+  organizationId: string,
+  input: { purpose: "expense" | "bank" | "cash"; query?: string },
+  deps?: Partial<FindAccountsByPurposeDeps>,
+): Promise<FindAccountsResult> {
+  const accountsLookup = deps?.accountsLookup ?? new LegacyAccountsAdapter();
+  return _executeFindAccountsByPurpose(organizationId, input, {
+    accountsLookup,
+    orgSettingsService: deps?.orgSettingsService,
+  });
+}
+
 export {
   executeFindContact,
 } from "../application/tools/find-contact";

@@ -34,7 +34,7 @@ const { mockQuery, mockConfirm, mockReportEvent } = vi.hoisted(() => ({
   mockReportEvent: vi.fn(),
 }));
 
-vi.mock("@/features/ai-agent/client", () => ({
+vi.mock("@/modules/ai-agent/presentation/client", () => ({
   useAgentQuery: vi.fn(() => ({
     query: mockQuery,
     confirm: mockConfirm,

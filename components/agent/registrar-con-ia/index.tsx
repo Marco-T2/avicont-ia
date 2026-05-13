@@ -9,7 +9,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { useAgentQuery } from "@/features/ai-agent/client";
+import { useAgentQuery } from "@/modules/ai-agent/presentation/client";
 import { formatDateBO } from "@/lib/date-utils";
 import { cn } from "@/lib/utils";
 import type {

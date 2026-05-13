@@ -1,4 +1,4 @@
-import type { AgentSuggestion } from "@/features/ai-agent";
+import type { AgentSuggestion } from "@/modules/ai-agent/presentation";
 
 export type Message =
   | { role: "user"; content: string }
@@ -19,4 +19,4 @@ export type RegistrarConIAState = {
   status: ModalStatus;
 };
 
-export type { AgentSuggestion } from "@/features/ai-agent";
+export type { AgentSuggestion } from "@/modules/ai-agent/presentation";

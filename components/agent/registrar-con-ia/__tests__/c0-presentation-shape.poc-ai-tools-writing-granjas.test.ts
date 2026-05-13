@@ -33,9 +33,9 @@ describe("C0 presentation shape — Registrar con IA modal (existence-only regex
   });
 
   // α2
-  it("index.tsx imports useAgentQuery from features/ai-agent/client", () => {
+  it("index.tsx imports useAgentQuery from modules/ai-agent/presentation/client", () => {
     const src = readModalFile("index.tsx");
-    expect(src).toMatch(/import\s*\{[^}]*\buseAgentQuery\b[^}]*\}\s*from\s*["']@\/features\/ai-agent\/client["']/);
+    expect(src).toMatch(/import\s*\{[^}]*\buseAgentQuery\b[^}]*\}\s*from\s*["']@\/modules\/ai-agent\/presentation\/client["']/);
   });
 
   // α3
@@ -54,8 +54,8 @@ describe("C0 presentation shape — Registrar con IA modal (existence-only regex
   });
 
   // α5
-  it("types.ts re-exports AgentSuggestion type from features/ai-agent (canonical non-server barrel)", () => {
+  it("types.ts re-exports AgentSuggestion type from modules/ai-agent/presentation (canonical non-server barrel)", () => {
     const src = readModalFile("types.ts");
-    expect(src).toMatch(/^export\s+type\s*\{[^}]*\bAgentSuggestion\b[^}]*\}\s*from\s*["']@\/features\/ai-agent["']/m);
+    expect(src).toMatch(/^export\s+type\s*\{[^}]*\bAgentSuggestion\b[^}]*\}\s*from\s*["']@\/modules\/ai-agent\/presentation["']/m);
   });
 });

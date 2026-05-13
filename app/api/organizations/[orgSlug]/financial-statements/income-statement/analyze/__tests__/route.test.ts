@@ -66,14 +66,20 @@ vi.mock("@/features/accounting/financial-statements/server", async (importOrigin
   },
 }));
 
-vi.mock("@/features/ai-agent/server", () => ({
-  AgentService: class {
+vi.mock("@/modules/ai-agent/presentation/server", () => {
+  class AgentServiceMock {
     analyzeIncomeStatement = mockAnalyze;
-  },
-  AgentRateLimitService: class {
+  }
+  class AgentRateLimitServiceMock {
     check = mockRateCheck;
-  },
-}));
+  }
+  return {
+    AgentService: AgentServiceMock,
+    AgentRateLimitService: AgentRateLimitServiceMock,
+    makeAgentService: () => new AgentServiceMock(),
+    makeAgentRateLimitService: () => new AgentRateLimitServiceMock(),
+  };
+});
 
 import { POST } from "../route";
 

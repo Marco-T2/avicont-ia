@@ -72,8 +72,8 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/ai-agent/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/ai-agent/server")>();
+vi.mock("@/modules/ai-agent/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/ai-agent/presentation/server")>();
   return {
     ...actual,
     AgentService: vi.fn().mockImplementation(function () {
