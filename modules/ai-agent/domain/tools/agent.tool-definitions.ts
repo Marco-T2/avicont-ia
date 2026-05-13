@@ -1,6 +1,6 @@
 import { z } from "zod";
-import { defineTool, type Tool } from "../ports/llm-provider.port";
-import { journalEntryAiInputSchema } from "../validation/agent.validation";
+import { defineTool, type Tool } from "../ports/llm-provider.port.ts";
+import { journalEntryAiInputSchema } from "../validation/agent.validation.ts";
 import type { Role } from "@/modules/permissions/domain/permissions";
 
 // ── Socio tools (farming operations) ──

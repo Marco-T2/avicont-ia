@@ -3,19 +3,30 @@
  * Domain layer: no server-only, no Prisma, no SDK deps.
  */
 
+import type { ContactType } from "@/generated/prisma/client";
+
 export interface FindAccountsResultItem {
   id: string;
   code: string;
   name: string;
-  requiresContact?: boolean;
+  isDefault: boolean;
+  requiresContact: boolean;
 }
 
-export type FindAccountsResult = FindAccountsResultItem[];
+export interface FindAccountsResult {
+  accounts: FindAccountsResultItem[];
+  configRequired: boolean;
+  message?: string;
+}
 
 export interface FindContactResultItem {
   id: string;
   name: string;
   nit: string | null;
+  type: ContactType;
 }
 
-export type FindContactResult = FindContactResultItem[];
+export interface FindContactResult {
+  contacts: FindContactResultItem[];
+  matchedExactly?: string;
+}
