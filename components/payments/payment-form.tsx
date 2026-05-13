@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import VoucherStatusBadge from "@/components/common/voucher-status-badge";
+import ContactSelector from "@/components/contacts/contact-selector";
 import {
   Select,
   SelectContent,
@@ -1200,22 +1201,15 @@ export default function PaymentForm({
                   className="bg-muted cursor-default"
                 />
               ) : (
-                <Select
-                  value={contactId}
-                  onValueChange={setContactId}
+                <ContactSelector
+                  orgSlug={orgSlug}
+                  value={contactId || null}
+                  onChange={(v) => setContactId(v ?? "")}
+                  typeFilter={paymentType === "COBRO" ? "CLIENTE" : "PROVEEDOR"}
+                  placeholder="Seleccione contacto"
                   disabled={!!existingPayment}
-                >
-                  <SelectTrigger id="contact" className="w-full">
-                    <SelectValue placeholder="Seleccione contacto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contacts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  initialContact={existingPayment?.contact}
+                />
               )}
             </div>
 

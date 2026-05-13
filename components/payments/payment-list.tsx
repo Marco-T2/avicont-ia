@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import VoucherStatusBadge from "@/components/common/voucher-status-badge";
+import ContactSelector from "@/components/contacts/contact-selector";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
@@ -489,22 +490,14 @@ export default function PaymentList({
 
             <div className="space-y-1">
               <Label className="text-sm">Contacto</Label>
-              <Select
-                value={filterContactId || "all"}
-                onValueChange={handleContactIdChange}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los contactos</SelectItem>
-                  {contacts.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="w-48">
+                <ContactSelector
+                  orgSlug={orgSlug}
+                  value={filterContactId || null}
+                  onChange={(v) => handleContactIdChange(v ?? "all")}
+                  placeholder="Todos los contactos"
+                />
+              </div>
             </div>
 
             <div className="space-y-1">
