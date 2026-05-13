@@ -2,6 +2,16 @@
  * T07 — RED: API route tests for GET /api/organizations/[orgSlug]/equity-statement
  *
  * Covers: REQ-9 (RBAC 403), REQ-10 (date validation 400), REQ-11 (format dispatch)
+ *
+ * C4 cutover [[cross_module_boundary_mock_target_rewrite]]:
+ * - vi.mock for server barrel → modules/accounting/equity-statement/presentation/server
+ * - vi.mock for pdf exporter → modules/accounting/equity-statement/infrastructure/exporters/equity-statement-pdf.exporter
+ * - vi.mock for xlsx exporter → modules/accounting/equity-statement/infrastructure/exporters/equity-statement-xlsx.exporter
+ *
+ * [[mock_hygiene_commit_scope]]: factory shape extended — vi.mock for server barrel now includes
+ * makeEquityStatementService factory mock returning { generate, getOrgMetadata }.
+ * AXIS-DISTINCT vs TB: route.ts uses service.getOrgMetadata() (design §9.1 Option A), so
+ * factory mock stub MUST include getOrgMetadata — no separate PrismaEquityStatementRepo mock needed.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -40,24 +50,32 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/equity-statement/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/accounting/equity-statement/server")>()),
+// [[cross_module_boundary_mock_target_rewrite]]: repointed from @/features/ → @/modules/
+// [[mock_hygiene_commit_scope]]: factory shape extended — added makeEquityStatementService mock.
+// [[mock_hygiene_commit_scope]] + sister archive #2282 NEW INVARIANT #3:
+//   vi.mock MUST return BOTH class AND factory.
+// AXIS-DISTINCT vs TB: factory stub includes getOrgMetadata (route.ts uses service.getOrgMetadata)
+vi.mock("@/modules/accounting/equity-statement/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/accounting/equity-statement/presentation/server")>()),
   EquityStatementService: vi.fn().mockImplementation(function () {
-    return { generate: mockGenerate };
+    return { generate: mockGenerate, getOrgMetadata: mockGetOrgMetadata };
   }),
-  EquityStatementRepository: vi.fn().mockImplementation(function () {
-    return { getOrgMetadata: mockGetOrgMetadata };
+  makeEquityStatementService: vi.fn().mockReturnValue({
+    generate: mockGenerate,
+    getOrgMetadata: mockGetOrgMetadata,
   }),
 }));
 
-vi.mock("@/features/accounting/equity-statement/exporters/equity-statement-pdf.exporter", () => ({
+// [[cross_module_boundary_mock_target_rewrite]]: repointed from exporters/ → infrastructure/exporters/
+vi.mock("@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-pdf.exporter", () => ({
   exportEquityStatementPdf: vi.fn().mockResolvedValue({
     buffer: Buffer.from("%PDF-1.4 minimal"),
     docDef: {},
   }),
 }));
 
-vi.mock("@/features/accounting/equity-statement/exporters/equity-statement-xlsx.exporter", () => ({
+// [[cross_module_boundary_mock_target_rewrite]]: repointed from exporters/ → infrastructure/exporters/
+vi.mock("@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-xlsx.exporter", () => ({
   exportEquityStatementXlsx: vi.fn().mockResolvedValue(Buffer.from("PK xlsx content")),
 }));
 
@@ -93,8 +111,8 @@ const minimalStatement = {
 // ── Import after mocks ────────────────────────────────────────────────────────
 
 import { GET, runtime } from "../route";
-import { exportEquityStatementPdf } from "@/features/accounting/equity-statement/exporters/equity-statement-pdf.exporter";
-import { exportEquityStatementXlsx } from "@/features/accounting/equity-statement/exporters/equity-statement-xlsx.exporter";
+import { exportEquityStatementPdf } from "@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-pdf.exporter";
+import { exportEquityStatementXlsx } from "@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-xlsx.exporter";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

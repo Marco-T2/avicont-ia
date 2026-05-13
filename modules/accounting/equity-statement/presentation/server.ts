@@ -39,3 +39,8 @@ export type {
   SerializedEquityRow,
   SerializedEquityStatement,
 } from "../domain/equity-statement.types";
+
+// ── Port companion DTOs (consumed by route.ts via service.getOrgMetadata) ──
+// Added at C4 GREEN: route.ts calls service.getOrgMetadata(orgId) — return type is EquityOrgMetadata.
+// Design §9.1 Option A: route no longer imports infra directly; DTO type flows via this barrel.
+export type { EquityOrgMetadata } from "../domain/ports/equity-statement-query.port";

@@ -1,20 +1,18 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import {
-  EquityStatementService,
-  EquityStatementRepository,
-} from "@/features/accounting/equity-statement/server";
+  makeEquityStatementService,
+  equityStatementQuerySchema,
+  exportEquityStatementPdf,
+  exportEquityStatementXlsx,
+} from "@/modules/accounting/equity-statement/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
-import { equityStatementQuerySchema } from "@/features/accounting/equity-statement/server";
-import { exportEquityStatementPdf } from "@/features/accounting/equity-statement/server";
-import { exportEquityStatementXlsx } from "@/features/accounting/equity-statement/server";
 import type { Role } from "@/features/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";
 
-const service = new EquityStatementService();
-const repo = new EquityStatementRepository();
+const service = makeEquityStatementService();
 
 /**
  * GET /api/organizations/[orgSlug]/equity-statement
@@ -25,6 +23,11 @@ const repo = new EquityStatementRepository();
  * - dateFrom (YYYY-MM-DD): requerido
  * - dateTo   (YYYY-MM-DD): requerido
  * - format (opcional): "json" | "pdf" | "xlsx" — por defecto "json"
+ *
+ * C4 cutover (design §9.1 Option A, AXIS-DISTINCT vs TB):
+ * - Route uses makeEquityStatementService() factory — no direct service instantiation.
+ * - repo.getOrgMetadata(orgId) → service.getOrgMetadata(orgId) (service delegates to port).
+ * - Direct infra reference removed from route (composition-root handles wiring).
  */
 export async function GET(
   request: Request,
@@ -50,7 +53,7 @@ export async function GET(
     const periodLabel = `${query.dateFrom}_${query.dateTo}`.replace(/[^a-zA-Z0-9_-]/g, "-");
 
     if (query.format === "pdf") {
-      const orgMeta = await repo.getOrgMetadata(orgId);
+      const orgMeta = await service.getOrgMetadata(orgId);
       const { buffer } = await exportEquityStatementPdf(
         statement,
         orgMeta?.name ?? orgSlug,
@@ -66,7 +69,7 @@ export async function GET(
     }
 
     if (query.format === "xlsx") {
-      const orgMeta = await repo.getOrgMetadata(orgId);
+      const orgMeta = await service.getOrgMetadata(orgId);
       const buffer = await exportEquityStatementXlsx(
         statement,
         orgMeta?.name ?? orgSlug,
