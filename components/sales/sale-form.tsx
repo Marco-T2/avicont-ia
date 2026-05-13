@@ -32,6 +32,7 @@ import { toast } from "sonner";
 import Link from "next/link";
 import type { Account, Contact, FiscalPeriod } from "@/generated/prisma/client";
 import AccountSelector from "@/components/accounting/account-selector";
+import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
@@ -642,18 +643,14 @@ export default function SaleForm({
                       className="bg-muted cursor-default"
                     />
                   ) : (
-                    <Select value={contactId} onValueChange={setContactId}>
-                      <SelectTrigger id="contact" className="w-full">
-                        <SelectValue placeholder="Seleccione cliente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {contacts.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <ContactSelector
+                      orgSlug={orgSlug}
+                      value={contactId || null}
+                      onChange={(v) => setContactId(v ?? "")}
+                      typeFilter="CLIENTE"
+                      placeholder="Seleccione cliente"
+                      initialContact={sale?.contact}
+                    />
                   )}
                 </div>
 

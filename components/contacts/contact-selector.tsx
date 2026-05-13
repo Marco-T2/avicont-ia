@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { ChevronsUpDown, X } from "lucide-react";
 import { Popover } from "radix-ui";
 import type { Contact } from "@/modules/contacts/presentation/index";
+import type { ContactType } from "@/generated/prisma/client";
 
 function formatContact(contact: Contact): string {
   return `[${contact.type}] ${contact.name}`;
@@ -17,6 +18,18 @@ interface ContactSelectorProps {
   onChange: (value: string | null) => void;
   required?: boolean;
   disabled?: boolean;
+  typeFilter?: ContactType;
+  placeholder?: string;
+  /**
+   * Contacto pre-seleccionado para mostrar el display sin requerir
+   * el fetch del popover. Útil en modo edit cuando value viene poblado.
+   */
+  initialContact?: {
+    id: string;
+    name: string;
+    type: string;
+    nit?: string | null;
+  };
 }
 
 export default function ContactSelector({
@@ -25,6 +38,9 @@ export default function ContactSelector({
   onChange,
   required,
   disabled,
+  typeFilter,
+  placeholder,
+  initialContact,
 }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
@@ -32,7 +48,11 @@ export default function ContactSelector({
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const selectedContact = contacts.find((c) => c.id === value) ?? null;
+  const selectedContact =
+    contacts.find((c) => c.id === value)
+    ?? (value && initialContact && initialContact.id === value
+      ? (initialContact as unknown as Contact)
+      : null);
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +60,9 @@ export default function ContactSelector({
     const load = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/organizations/${orgSlug}/contacts?isActive=true`);
+        const qs = new URLSearchParams({ isActive: "true" });
+        if (typeFilter) qs.set("type", typeFilter);
+        const res = await fetch(`/api/organizations/${orgSlug}/contacts?${qs.toString()}`);
         const data: { contacts: Contact[] } = await res.json();
         setContacts(data.contacts ?? []);
       } catch {
@@ -50,7 +72,7 @@ export default function ContactSelector({
       }
     };
     load();
-  }, [open, orgSlug]);
+  }, [open, orgSlug, typeFilter]);
 
   useEffect(() => {
     if (open) {
@@ -93,7 +115,9 @@ export default function ContactSelector({
           className="w-full justify-between font-normal"
         >
           <span className={selectedContact ? "text-foreground" : "text-muted-foreground"}>
-            {selectedContact ? formatContact(selectedContact) : "Seleccionar contacto..."}
+            {selectedContact
+              ? formatContact(selectedContact)
+              : placeholder ?? "Seleccionar contacto..."}
           </span>
           <div className="flex items-center gap-1 ml-2 shrink-0">
             {value && !disabled && (
