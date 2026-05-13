@@ -9,7 +9,7 @@ import { ZodError } from "zod";
 
 describe("equityStatementQuerySchema", () => {
   it("valid range → parses OK; format defaults to 'json'", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     const result = equityStatementQuerySchema.parse({
       dateFrom: "2024-01-01",
       dateTo: "2024-12-31",
@@ -20,7 +20,7 @@ describe("equityStatementQuerySchema", () => {
   });
 
   it("missing dateFrom → ZodError with path ['dateFrom']", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     let caught: unknown;
     try {
       equityStatementQuerySchema.parse({ dateTo: "2024-12-31" });
@@ -35,14 +35,14 @@ describe("equityStatementQuerySchema", () => {
   });
 
   it("missing dateTo → ZodError", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     expect(() =>
       equityStatementQuerySchema.parse({ dateFrom: "2024-01-01" }),
     ).toThrow(ZodError);
   });
 
   it("dateFrom > dateTo → ZodError with path ['dateFrom'] and message about 'anterior o igual'", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     let caught: unknown;
     try {
       equityStatementQuerySchema.parse({ dateFrom: "2024-12-31", dateTo: "2024-01-01" });
@@ -58,21 +58,21 @@ describe("equityStatementQuerySchema", () => {
   });
 
   it("invalid date format 'not-a-date' → ZodError", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     expect(() =>
       equityStatementQuerySchema.parse({ dateFrom: "not-a-date", dateTo: "2024-12-31" }),
     ).toThrow(ZodError);
   });
 
   it("format='csv' (not in enum) → ZodError", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     expect(() =>
       equityStatementQuerySchema.parse({ dateFrom: "2024-01-01", dateTo: "2024-12-31", format: "csv" }),
     ).toThrow(ZodError);
   });
 
   it("format='pdf' → parses OK with result.format === 'pdf'", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     const result = equityStatementQuerySchema.parse({
       dateFrom: "2024-01-01",
       dateTo: "2024-12-31",
@@ -82,7 +82,7 @@ describe("equityStatementQuerySchema", () => {
   });
 
   it("format='xlsx' → parses OK", async () => {
-    const { equityStatementQuerySchema } = await import("../equity-statement.validation");
+    const { equityStatementQuerySchema } = await import("../domain/equity-statement.validation");
     const result = equityStatementQuerySchema.parse({
       dateFrom: "2024-01-01",
       dateTo: "2024-12-31",

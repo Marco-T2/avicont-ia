@@ -11,13 +11,15 @@ const D = (v: string | number) => new Prisma.Decimal(String(v));
 
 describe("equity-statement domain types", () => {
   it("module files can be imported without error", async () => {
-    await expect(import("../equity-statement.types")).resolves.toBeDefined();
-    await expect(import("../index")).resolves.toBeDefined();
-    await expect(import("../server")).resolves.toBeDefined();
+    await expect(import("../domain/equity-statement.types")).resolves.toBeDefined();
+    await expect(import("../domain/equity-statement.builder")).resolves.toBeDefined();
+    await expect(import("../domain/equity-statement.validation")).resolves.toBeDefined();
+    await expect(import("../domain/money.utils")).resolves.toBeDefined();
+    await expect(import("../domain/ports/equity-statement-query.port")).resolves.toBeDefined();
   });
 
   it("EquityStatement has expected fields as Decimal instances at runtime", async () => {
-    await import("../equity-statement.types");
+    await import("../domain/equity-statement.types");
 
     const statement = {
       orgId: "org-1",
@@ -47,7 +49,7 @@ describe("equity-statement domain types", () => {
   });
 
   it("SerializedEquityStatement numeric fields are typed as strings", async () => {
-    await import("../equity-statement.types");
+    await import("../domain/equity-statement.types");
 
     // Construct a conformant SerializedEquityStatement — numeric fields must be strings
     const serialized = {
@@ -85,7 +87,7 @@ describe("equity-statement domain types", () => {
   });
 
   it("EquityAccountMetadata has fields { id, code, name, nature }", async () => {
-    await import("../equity-statement.types");
+    await import("../domain/equity-statement.types");
 
     const meta = {
       id: "acc-1",
@@ -102,8 +104,8 @@ describe("equity-statement domain types", () => {
   });
 
   it("RowKey includes typed patrimony rows (APORTE_CAPITAL, CONSTITUCION_RESERVA, DISTRIBUCION_DIVIDENDO)", async () => {
-    const mod = await import("../equity-statement.types");
-    type R = import("../equity-statement.types").RowKey;
+    const mod = await import("../domain/equity-statement.types");
+    type R = import("../domain/equity-statement.types").RowKey;
 
     const keys: R[] = [
       "SALDO_INICIAL",
@@ -119,16 +121,16 @@ describe("equity-statement domain types", () => {
   });
 
   it("PatrimonyVoucherCode accepts CP, CL, CV", async () => {
-    await import("../equity-statement.types");
-    type V = import("../equity-statement.types").PatrimonyVoucherCode;
+    await import("../domain/equity-statement.types");
+    type V = import("../domain/equity-statement.types").PatrimonyVoucherCode;
 
     const codes: V[] = ["CP", "CL", "CV"];
     expect(codes).toEqual(["CP", "CL", "CV"]);
   });
 
   it("TypedPatrimonyMovements is Map<PatrimonyVoucherCode, Map<accountId, Decimal>>", async () => {
-    await import("../equity-statement.types");
-    type T = import("../equity-statement.types").TypedPatrimonyMovements;
+    await import("../domain/equity-statement.types");
+    type T = import("../domain/equity-statement.types").TypedPatrimonyMovements;
 
     const movements: T = new Map([
       ["CP", new Map([["acc-1", D("200000")]])],
@@ -141,8 +143,8 @@ describe("equity-statement domain types", () => {
   });
 
   it("BuildEquityStatementInput accepts typedMovements field", async () => {
-    await import("../equity-statement.types");
-    type Input = import("../equity-statement.types").BuildEquityStatementInput;
+    await import("../domain/equity-statement.types");
+    type Input = import("../domain/equity-statement.types").BuildEquityStatementInput;
 
     const input: Input = {
       initialBalances: new Map(),
