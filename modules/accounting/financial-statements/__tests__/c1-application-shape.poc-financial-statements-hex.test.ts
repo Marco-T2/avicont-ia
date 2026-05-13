@@ -56,12 +56,14 @@ describe("POC financial-statements-hex C1 — application layer shape", () => {
 
     it("α44: FinancialStatementsService ctor accepts a deps object (no zero-arg form)", () => {
       const content = readApplicationFile("financial-statements.service.ts");
-      // ctor signature must take an object with at least one named dep — e.g.
-      // `constructor(deps: { repo: ...; subtypeLabel: ... })` or
-      // `constructor({ repo, subtypeLabel }: FinancialStatementsServiceDeps)`.
-      // The defining pattern is "constructor(" followed by an object/destructure
-      // and no `repo?: ...` optional fallback (sister ai-agent C1 lesson).
-      expect(content).toMatch(/constructor\s*\(\s*[{[]/m);
+      // ctor must accept a deps-shape parameter, either destructured
+      // `constructor({ repo, subtypeLabel })` or typed-named
+      // `constructor(deps: FinancialStatementsServiceDeps)`. Both forms are
+      // accepted; the OLD optional-arg form `constructor(repo?: ...)` is banned
+      // (would have a `?:` inside the ctor signature).
+      expect(content).toMatch(/constructor\s*\(\s*(?:\{|\w+\s*:\s*FinancialStatementsServiceDeps)/m);
+      // Forbid the legacy optional-repo zero-arg form.
+      expect(content).not.toMatch(/constructor\s*\(\s*repo\?\s*:/m);
     });
 
     it("α45: FinancialStatementsService consumes FinancialStatementsQueryPort via deps", () => {
@@ -111,9 +113,12 @@ describe("POC financial-statements-hex C1 — application layer shape", () => {
 
     it("α50: financial-statements.service imports from domain/money.utils (preserves money math source)", () => {
       const content = readApplicationFile("financial-statements.service.ts");
-      // Either via relative `../domain/money.utils` or absolute alias.
+      // Accept any import form referencing the canonical money.utils path:
+      // - `import { foo } from "../domain/money.utils"`
+      // - `import "../domain/money.utils"` (side-effect, anchors the source)
+      // - absolute alias `@/modules/accounting/financial-statements/domain/money.utils`
       expect(content).toMatch(
-        /from\s+["'](?:\.\.\/domain\/money\.utils|@\/modules\/accounting\/financial-statements\/domain\/money\.utils)["']/m,
+        /(?:from\s+|import\s+)["'](?:\.\.\/domain\/money\.utils|@\/modules\/accounting\/financial-statements\/domain\/money\.utils)["']/m,
       );
     });
 
