@@ -1,16 +1,19 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { WorksheetService } from "@/features/accounting/worksheet/server";
+import {
+  WorksheetService,
+  makeWorksheetService,
+  worksheetQuerySchema,
+  exportWorksheetPdf,
+  exportWorksheetXlsx,
+} from "@/modules/accounting/worksheet/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation";
-import { worksheetQuerySchema } from "@/features/accounting/worksheet/server";
-import { exportWorksheetPdf } from "@/features/accounting/worksheet/server";
-import { exportWorksheetXlsx } from "@/features/accounting/worksheet/server";
 import type { Role } from "@/features/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)
 export const runtime = "nodejs";
 
-const service = new WorksheetService();
+const service = makeWorksheetService();
 
 /**
  * GET /api/organizations/[orgSlug]/worksheet

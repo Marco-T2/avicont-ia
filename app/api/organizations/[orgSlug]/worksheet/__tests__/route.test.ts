@@ -53,15 +53,21 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/worksheet/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/accounting/worksheet/server")>()),
+// [[cross_module_boundary_mock_target_rewrite]] C4: server barrel repointed to hex presentation.
+// [[mock_hygiene_commit_scope]]: vi.mock includes BOTH class AND makeWorksheetService factory mock
+// because route.ts post-C4 calls makeWorksheetService() (not new WorksheetService()).
+// Sister archive #2298 + #2312 NEW INVARIANT #3: vi.mock must return BOTH class AND factory.
+vi.mock("@/modules/accounting/worksheet/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/accounting/worksheet/presentation/server")>()),
   WorksheetService: vi.fn().mockImplementation(function () {
     return { generateWorksheet: mockGenerateWorksheet };
   }),
+  makeWorksheetService: vi.fn().mockReturnValue({ generateWorksheet: mockGenerateWorksheet }),
 }));
 
 // PDF exporter mock — returns a minimal Buffer starting with %PDF
-vi.mock("@/features/accounting/worksheet/exporters/worksheet-pdf.exporter", () => ({
+// [[cross_module_boundary_mock_target_rewrite]] C4: repointed to hex infrastructure path.
+vi.mock("@/modules/accounting/worksheet/infrastructure/exporters/worksheet-pdf.exporter", () => ({
   exportWorksheetPdf: vi.fn().mockResolvedValue({
     buffer: Buffer.from("%PDF-1.4 minimal"),
     docDef: {},
@@ -69,7 +75,8 @@ vi.mock("@/features/accounting/worksheet/exporters/worksheet-pdf.exporter", () =
 }));
 
 // XLSX exporter mock — returns a minimal Buffer
-vi.mock("@/features/accounting/worksheet/exporters/worksheet-xlsx.exporter", () => ({
+// [[cross_module_boundary_mock_target_rewrite]] C4: repointed to hex infrastructure path.
+vi.mock("@/modules/accounting/worksheet/infrastructure/exporters/worksheet-xlsx.exporter", () => ({
   exportWorksheetXlsx: vi.fn().mockResolvedValue(Buffer.from("PK xlsx content")),
 }));
 
