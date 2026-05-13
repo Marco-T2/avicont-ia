@@ -10,7 +10,7 @@ import type {
   WorksheetTotals,
   WorksheetFilters,
   WorksheetReport,
-} from "../worksheet.types";
+} from "../domain/worksheet.types";
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 

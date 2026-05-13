@@ -9,8 +9,8 @@
 
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { buildWorksheet, type BuildWorksheetInput } from "../worksheet.builder";
-import type { WorksheetAccountMetadata } from "../worksheet.repository";
+import { buildWorksheet, type BuildWorksheetInput } from "../domain/worksheet.builder";
+import type { WorksheetAccountMetadata } from "../domain/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
