@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -196,17 +196,26 @@ export default function PaymentForm({
     existingPayment ? inferDirection(existingPayment) : (defaultType ?? "COBRO"),
   );
   const [contactId, setContactId] = useState(existingPayment?.contactId ?? "");
-  const [periodId, setPeriodId] = useState(
-    existingPayment?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
-  );
-  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [date, setDate] = useState(
     existingPayment
       ? new Date(existingPayment.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+  const [periodId, setPeriodId] = useState(() => {
+    if (existingPayment?.periodId) return existingPayment.periodId;
+    const initialDate = existingPayment
+      ? new Date(existingPayment.date).toISOString().split("T")[0]
+      : todayLocal();
+    return findPeriodCoveringDate(initialDate, periods)?.id ?? "";
+  });
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
+  const isFirstPeriodSync = useRef(true);
 
   useEffect(() => {
+    if (isFirstPeriodSync.current) {
+      isFirstPeriodSync.current = false;
+      return;
+    }
     if (periodManuallySelected || !date) return;
     const match = findPeriodCoveringDate(date, periods);
     setPeriodId(match?.id ?? "");

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -147,17 +147,26 @@ export default function SaleForm({
 
   // ── Estado del encabezado ──
   const [contactId, setContactId] = useState(sale?.contactId ?? "");
-  const [periodId, setPeriodId] = useState(
-    sale?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
-  );
-  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [date, setDate] = useState(
     sale?.date
       ? new Date(sale.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+  const [periodId, setPeriodId] = useState(() => {
+    if (sale?.periodId) return sale.periodId;
+    const initialDate = sale?.date
+      ? new Date(sale.date).toISOString().split("T")[0]
+      : todayLocal();
+    return findPeriodCoveringDate(initialDate, periods)?.id ?? "";
+  });
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
+  const isFirstPeriodSync = useRef(true);
 
   useEffect(() => {
+    if (isFirstPeriodSync.current) {
+      isFirstPeriodSync.current = false;
+      return;
+    }
     if (periodManuallySelected || !date) return;
     const match = findPeriodCoveringDate(date, periods);
     setPeriodId(match?.id ?? "");
