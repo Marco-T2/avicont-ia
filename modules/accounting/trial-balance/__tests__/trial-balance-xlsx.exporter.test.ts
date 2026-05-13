@@ -9,8 +9,8 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
 import { Prisma } from "@/generated/prisma/client";
-import { exportTrialBalanceXlsx } from "../trial-balance-xlsx.exporter";
-import type { TrialBalanceReport } from "../../trial-balance.types";
+import { exportTrialBalanceXlsx } from "../infrastructure/exporters/trial-balance-xlsx.exporter";
+import type { TrialBalanceReport } from "../domain/trial-balance.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

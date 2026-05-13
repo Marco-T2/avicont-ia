@@ -11,8 +11,8 @@ import { Prisma } from "@/generated/prisma/client";
 import {
   exportTrialBalancePdf,
   MissingOrgNameError,
-} from "../trial-balance-pdf.exporter";
-import type { TrialBalanceReport } from "../../trial-balance.types";
+} from "../infrastructure/exporters/trial-balance-pdf.exporter";
+import type { TrialBalanceReport } from "../domain/trial-balance.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
