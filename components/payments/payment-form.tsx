@@ -30,6 +30,7 @@ import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/
 import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { todayLocal } from "@/lib/date-utils";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 
 // ── Helpers ──
@@ -196,13 +197,20 @@ export default function PaymentForm({
   );
   const [contactId, setContactId] = useState(existingPayment?.contactId ?? "");
   const [periodId, setPeriodId] = useState(
-    existingPayment?.periodId ?? periods[0]?.id ?? "",
+    existingPayment?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
   );
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [date, setDate] = useState(
     existingPayment
       ? new Date(existingPayment.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+
+  useEffect(() => {
+    if (periodManuallySelected || !date) return;
+    const match = findPeriodCoveringDate(date, periods);
+    setPeriodId(match?.id ?? "");
+  }, [date, periods, periodManuallySelected]);
   const [method, setMethod] = useState<PaymentMethod>(existingPayment?.method ?? "EFECTIVO");
 
   // ── Account selection ──
@@ -1171,7 +1179,13 @@ export default function PaymentForm({
                   className="bg-muted cursor-default"
                 />
               ) : (
-                <Select value={periodId} onValueChange={setPeriodId}>
+                <Select
+                  value={periodId}
+                  onValueChange={(value) => {
+                    setPeriodManuallySelected(true);
+                    setPeriodId(value);
+                  }}
+                >
                   <SelectTrigger id="period" className="w-full">
                     <SelectValue placeholder="Seleccione período" />
                   </SelectTrigger>
@@ -1186,6 +1200,16 @@ export default function PaymentForm({
               )}
             </div>
           </div>
+
+          {!isReadOnly && date && !periodId && periods.length > 0 && (
+            <div
+              role="alert"
+              className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
+            >
+              No hay un período abierto que cubra esta fecha. Abrí el período
+              correspondiente o elegí otra fecha.
+            </div>
+          )}
 
           {/* Row 2: Cliente / Método de Pago / Cuenta (3 cols) */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
