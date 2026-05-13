@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { HubService, makeDispatchService } from "@/modules/dispatch/presentation/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import DispatchList from "@/components/dispatches/dispatch-list";
 import type { HubFilters } from "@/modules/dispatch/presentation";
 
@@ -48,10 +49,16 @@ export default async function DispatchesPage({
     filters.dateTo = new Date(sp.dateTo);
   }
 
-  const { items } = await hubService.listHub(orgId, filters);
+  const periodsService = makeFiscalPeriodsService();
+
+  const [{ items }, periods] = await Promise.all([
+    hubService.listHub(orgId, filters),
+    periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
+  ]);
 
   // Serialise Dates to plain objects for client component (Next.js requirement)
   const serialisedItems = JSON.parse(JSON.stringify(items));
+  const periodOptions = periods.map((p) => ({ id: p.id, name: p.name }));
 
   return (
     <div className="space-y-6">
@@ -65,6 +72,7 @@ export default async function DispatchesPage({
       <DispatchList
         orgSlug={orgSlug}
         items={serialisedItems}
+        periods={periodOptions}
         filters={{
           type: typeof sp.type === "string" ? sp.type : undefined,
           status: typeof sp.status === "string" ? sp.status : undefined,

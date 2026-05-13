@@ -59,6 +59,7 @@ const TYPE_LABEL: Record<string, string> = {
 interface DispatchListProps {
   orgSlug: string;
   items: HubItem[];
+  periods: { id: string; name: string }[];
   filters: {
     type?: string;
     status?: string;
@@ -130,13 +131,14 @@ function getDeleteApiPath(orgSlug: string, item: HubItem): string {
 interface HubItemRowProps {
   orgSlug: string;
   item: HubItem;
+  periodName: string;
   isLoading: boolean;
   onPost: (item: HubItem) => void;
   onVoid: (item: HubItem) => void;
   onDelete: (item: HubItem) => void;
 }
 
-function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubItemRowProps) {
+function HubItemRow({ orgSlug, item, periodName, isLoading, onPost, onVoid, onDelete }: HubItemRowProps) {
   const router = useRouter();
   const typeName = TYPE_LABEL[item.type] ?? item.type;
   const viewPath = getViewPath(orgSlug, item);
@@ -147,22 +149,23 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
       className="border-b hover:bg-accent/50 cursor-pointer"
       onClick={() => router.push(viewPath)}
     >
+      <td className="py-3 px-4 text-muted-foreground">{periodName}</td>
+      <td className="py-3 px-4 whitespace-nowrap">
+        {formatDateBO(item.date)}
+      </td>
+      <td className="py-3 px-4">{typeName}</td>
       <td className="py-3 px-4 font-mono text-info font-medium">
         {item.displayCode}
       </td>
       <td className="py-3 px-4 font-mono text-muted-foreground">
         {item.referenceNumber ?? "—"}
       </td>
-      <td className="py-3 px-4 whitespace-nowrap">
-        {formatDateBO(item.date)}
-      </td>
-      <td className="py-3 px-4">{typeName}</td>
       <td className="py-3 px-4 text-muted-foreground">{item.contactName}</td>
-      <td className="py-3 px-4 text-center">
-        <VoucherStatusBadge status={item.status} />
-      </td>
       <td className="py-3 px-4 text-right font-mono">
         {formatCurrency(item.totalAmount)}
+      </td>
+      <td className="py-3 px-4 text-center">
+        <VoucherStatusBadge status={item.status} />
       </td>
       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
         {isLoading ? (
@@ -230,10 +233,12 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
 export default function DispatchList({
   orgSlug,
   items,
+  periods,
   filters,
 }: DispatchListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const periodMap = new Map(periods.map((p) => [p.id, p.name]));
 
   function buildQuery(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams();
@@ -460,20 +465,21 @@ export default function DispatchList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Código</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Código</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cliente</th>
-                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
+                  <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
                   <th className="w-12 py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center" data-testid="dispatch-list-empty">
+                    <td colSpan={9} className="py-12 text-center" data-testid="dispatch-list-empty">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay registros</p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -489,6 +495,7 @@ export default function DispatchList({
                       key={item.id}
                       orgSlug={orgSlug}
                       item={item}
+                      periodName={periodMap.get(item.periodId) ?? "—"}
                       isLoading={actioningId === item.id}
                       onPost={handlePostFromList}
                       onVoid={handleVoidFromList}

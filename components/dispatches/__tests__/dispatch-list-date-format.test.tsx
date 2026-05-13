@@ -57,6 +57,7 @@ describe("DispatchList — date cell format (REQ-C.2)", () => {
       <DispatchList
         orgSlug="test-org"
         items={[DISPATCH_ITEM]}
+        periods={[]}
         filters={{}}
       />,
     );
@@ -68,6 +69,7 @@ describe("DispatchList — date cell format (REQ-C.2)", () => {
       <DispatchList
         orgSlug="test-org"
         items={[DISPATCH_ITEM]}
+        periods={[]}
         filters={{}}
       />,
     );
