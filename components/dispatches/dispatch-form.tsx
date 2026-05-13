@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -29,6 +29,7 @@ import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 
 // ── Helpers ──
@@ -277,13 +278,20 @@ export default function DispatchForm({
   // ── Header state ──
   const [contactId, setContactId] = useState(existingDispatch?.contactId ?? "");
   const [periodId, setPeriodId] = useState(
-    existingDispatch?.periodId ?? (periods[0]?.id ?? ""),
+    existingDispatch?.periodId ?? periods.find((p) => p.status === "OPEN")?.id ?? "",
   );
+  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
   const [date, setDate] = useState(
     existingDispatch?.date
       ? new Date(existingDispatch.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+
+  useEffect(() => {
+    if (periodManuallySelected || !date) return;
+    const match = findPeriodCoveringDate(date, periods);
+    setPeriodId(match?.id ?? "");
+  }, [date, periods, periodManuallySelected]);
   const [referenceNumber, setReferenceNumber] = useState(
     existingDispatch?.referenceNumber !== null && existingDispatch?.referenceNumber !== undefined
       ? String(existingDispatch.referenceNumber)
@@ -898,7 +906,13 @@ export default function DispatchForm({
                       className="bg-muted cursor-default"
                     />
                   ) : (
-                    <Select value={periodId} onValueChange={setPeriodId}>
+                    <Select
+                      value={periodId}
+                      onValueChange={(value) => {
+                        setPeriodManuallySelected(true);
+                        setPeriodId(value);
+                      }}
+                    >
                       <SelectTrigger id="period" className="w-full">
                         <SelectValue placeholder="Seleccione período" />
                       </SelectTrigger>
@@ -913,6 +927,16 @@ export default function DispatchForm({
                   )}
                 </div>
               </div>
+
+              {!isReadOnly && date && !periodId && periods.length > 0 && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
+                >
+                  No hay un período abierto que cubra esta fecha. Abrí el período
+                  correspondiente o elegí otra fecha.
+                </div>
+              )}
 
               {/* Row 2: Cliente / Total (2 cols) */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
