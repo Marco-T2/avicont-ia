@@ -20,7 +20,11 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider localization={esES}>
+    <ClerkProvider
+      localization={esES}
+      signInFallbackRedirectUrl="/select-org"
+      signUpFallbackRedirectUrl="/select-org"
+    >
       <html lang="es" suppressHydrationWarning>
         <body className={inter.className}>
           <ThemeProvider>
