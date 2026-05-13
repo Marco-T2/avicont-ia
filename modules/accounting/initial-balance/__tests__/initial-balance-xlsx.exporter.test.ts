@@ -7,9 +7,9 @@
 import { describe, it, expect } from "vitest";
 import ExcelJS from "exceljs";
 import { Prisma } from "@/generated/prisma/client";
-import { exportInitialBalanceXlsx } from "../initial-balance-xlsx.exporter";
-import { buildInitialBalance } from "../../initial-balance.builder";
-import type { InitialBalanceRow } from "../../initial-balance.types";
+import { exportInitialBalanceXlsx } from "../infrastructure/exporters/initial-balance-xlsx.exporter";
+import { buildInitialBalance } from "../domain/initial-balance.builder";
+import type { InitialBalanceRow } from "../domain/initial-balance.types";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 

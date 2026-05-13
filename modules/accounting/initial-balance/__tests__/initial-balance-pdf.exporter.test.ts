@@ -13,9 +13,9 @@
 
 import { describe, it, expect } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { exportInitialBalancePdf } from "../initial-balance-pdf.exporter";
-import { buildInitialBalance } from "../../initial-balance.builder";
-import type { InitialBalanceRow } from "../../initial-balance.types";
+import { exportInitialBalancePdf } from "../infrastructure/exporters/initial-balance-pdf.exporter";
+import { buildInitialBalance } from "../domain/initial-balance.builder";
+import type { InitialBalanceRow } from "../domain/initial-balance.types";
 
 const D = (v: string | number) => new Prisma.Decimal(String(v));
 
