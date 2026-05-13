@@ -311,10 +311,12 @@ export default function PurchaseList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Proveedor</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Proveedor</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
                   <th className="w-12 py-3 px-4" />
@@ -323,7 +325,7 @@ export default function PurchaseList({
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center">
+                    <td colSpan={9} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay compras registradas</p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -344,15 +346,21 @@ export default function PurchaseList({
                         className="border-b hover:bg-accent/50 cursor-pointer"
                         onClick={() => router.push(`/${orgSlug}/purchases/${purchase.id}`)}
                       >
-                        <td className="py-3 px-4 font-mono text-info font-medium">
-                          {purchase.displayCode}
-                        </td>
-                        <td className="py-3 px-4">{typeName}</td>
                         <td className="py-3 px-4 text-muted-foreground">
-                          {purchase.contact?.name ?? "—"}
+                          {purchase.period?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {formatDateBO(purchase.date)}
+                        </td>
+                        <td className="py-3 px-4">{typeName}</td>
+                        <td className="py-3 px-4 font-mono text-info font-medium">
+                          {purchase.displayCode}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-muted-foreground">
+                          {purchase.referenceNumber ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {purchase.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(purchase.totalAmount)}

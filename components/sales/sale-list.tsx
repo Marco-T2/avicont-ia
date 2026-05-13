@@ -229,9 +229,11 @@ export default function SaleList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cliente</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cliente</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
                   <th className="w-12 py-3 px-4" />
@@ -240,7 +242,7 @@ export default function SaleList({
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="py-12 text-center">
+                    <td colSpan={8} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay ventas registradas</p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -260,14 +262,20 @@ export default function SaleList({
                         className="border-b hover:bg-accent/50 cursor-pointer"
                         onClick={() => router.push(`/${orgSlug}/sales/${sale.id}`)}
                       >
-                        <td className="py-3 px-4 font-mono text-info font-medium">
-                          {sale.displayCode}
-                        </td>
                         <td className="py-3 px-4 text-muted-foreground">
-                          {sale.contact?.name ?? "—"}
+                          {sale.period?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {formatDateBO(sale.date)}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-info font-medium">
+                          {sale.displayCode}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-muted-foreground">
+                          {sale.referenceNumber ?? "—"}
+                        </td>
+                        <td className="py-3 px-4 text-muted-foreground">
+                          {sale.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {formatCurrency(sale.totalAmount)}
