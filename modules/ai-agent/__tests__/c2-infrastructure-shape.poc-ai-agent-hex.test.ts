@@ -6,17 +6,22 @@ import * as path from "node:path";
  * C2 RED — Infrastructure layer shape tests for POC ai-agent-hex migration.
  * Paired sister: modules/dispatch/__tests__/c2-infrastructure-shape.poc-dispatch-hex.test.ts
  *
- * Strategy: existsSync guards inside each it() block — infrastructure files do
- * NOT exist pre-GREEN (ENOENT at top-level import would crash the file).
- * See [[red_acceptance_failure_mode]] — expected failure mode: ENOENT /
- * "Cannot find module '@/modules/ai-agent/infrastructure/...'" (file absent).
+ * Strategy: existsSync guard + readFileSync grep for class/function exports.
+ * Infrastructure adapters have top-level @/* value imports (PrismaAccountsRepo,
+ * RagService, BaseRepository, logStructured) which Node strip-types via
+ * require() in test bodies cannot resolve. Grep-based assertion preserves
+ * sentinel intent without forcing runtime module load (Vitest 4 DEFAULT_EXTENSIONS
+ * gotcha — see C1 ledger #2254).
+ *
+ * Expected failure mode: ENOENT — "Cannot find module
+ * '@/modules/ai-agent/infrastructure/...'" (file absent pre-GREEN).
  *
  * REQ mapping:
  * - Block 1: LLM adapter (REQ-005 — GeminiLLMAdapter implements LLMProviderPort)
  * - Block 2: Prisma repository adapters (REQ-004)
  * - Block 3: Legacy adapters (REQ-004 — narrow port surface)
  * - Block 4: REQ-004 NEGATIVE (cross-module boundary insulation)
- * - Block 5: analyzeDocument co-located in adapter (Gemini-bound, REQ-005 exception)
+ * - Block 5: analyzeDocument co-located in adapter (REQ-005 exception, D8 arch debt)
  */
 
 const ROOT = path.resolve(__dirname, "../../..");
@@ -25,20 +30,6 @@ const APPLICATION = path.join(ROOT, "modules/ai-agent/application");
 
 function infraFile(relative: string): string {
   return path.join(INFRASTRUCTURE, relative);
-}
-
-/**
- * Require an infrastructure module and assert the given named export exists.
- * Throws if the file does not exist (ENOENT) — expected RED failure mode.
- */
-function requireInfraExport(relative: string, exportName: string): unknown {
-  const filePath = infraFile(relative);
-  if (!fs.existsSync(filePath)) {
-    throw new Error(`ENOENT: cannot find module '@/modules/ai-agent/infrastructure/${relative}'`);
-  }
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const mod = require(path.resolve(filePath));
-  return mod[exportName];
 }
 
 function readInfraFile(relative: string): string {
@@ -76,12 +67,8 @@ function walkSources(dir: string): string {
 describe("POC ai-agent-hex C2 — infrastructure layer shape", () => {
   describe("Block 1 — LLM adapter (REQ-005: GeminiLLMAdapter implements LLMProviderPort)", () => {
     it("α61: GeminiLLMAdapter class is exported from infrastructure/llm/gemini-llm.adapter", () => {
-      const GeminiLLMAdapter = requireInfraExport(
-        "llm/gemini-llm.adapter.ts",
-        "GeminiLLMAdapter",
-      );
-      expect(GeminiLLMAdapter).toBeDefined();
-      expect(typeof GeminiLLMAdapter).toBe("function");
+      const content = readInfraFile("llm/gemini-llm.adapter.ts");
+      expect(content).toMatch(/export\s+class\s+GeminiLLMAdapter\b/m);
     });
 
     it("α62: GeminiLLMAdapter content references LLMProviderPort implements clause", () => {
@@ -97,30 +84,18 @@ describe("POC ai-agent-hex C2 — infrastructure layer shape", () => {
 
   describe("Block 2 — Prisma repository adapters (REQ-004)", () => {
     it("α63: PrismaChatMemoryRepository class is exported from infrastructure/prisma/prisma-chat-memory.repo", () => {
-      const Cls = requireInfraExport(
-        "prisma/prisma-chat-memory.repo.ts",
-        "PrismaChatMemoryRepository",
-      );
-      expect(Cls).toBeDefined();
-      expect(typeof Cls).toBe("function");
+      const content = readInfraFile("prisma/prisma-chat-memory.repo.ts");
+      expect(content).toMatch(/export\s+class\s+PrismaChatMemoryRepository\b/m);
     });
 
     it("α64: PrismaAgentContextRepository class is exported from infrastructure/prisma/prisma-agent-context.repo", () => {
-      const Cls = requireInfraExport(
-        "prisma/prisma-agent-context.repo.ts",
-        "PrismaAgentContextRepository",
-      );
-      expect(Cls).toBeDefined();
-      expect(typeof Cls).toBe("function");
+      const content = readInfraFile("prisma/prisma-agent-context.repo.ts");
+      expect(content).toMatch(/export\s+class\s+PrismaAgentContextRepository\b/m);
     });
 
     it("α65: PrismaRateLimitRepository class is exported from infrastructure/prisma/prisma-agent-rate-limit.repo", () => {
-      const Cls = requireInfraExport(
-        "prisma/prisma-agent-rate-limit.repo.ts",
-        "PrismaRateLimitRepository",
-      );
-      expect(Cls).toBeDefined();
-      expect(typeof Cls).toBe("function");
+      const content = readInfraFile("prisma/prisma-agent-rate-limit.repo.ts");
+      expect(content).toMatch(/export\s+class\s+PrismaRateLimitRepository\b/m);
     });
   });
 
@@ -130,21 +105,13 @@ describe("POC ai-agent-hex C2 — infrastructure layer shape", () => {
 
   describe("Block 3 — Legacy adapters (REQ-004: insulation via narrow port surface)", () => {
     it("α66: LegacyAccountsAdapter class is exported from infrastructure/legacy-accounts.adapter", () => {
-      const Cls = requireInfraExport(
-        "legacy-accounts.adapter.ts",
-        "LegacyAccountsAdapter",
-      );
-      expect(Cls).toBeDefined();
-      expect(typeof Cls).toBe("function");
+      const content = readInfraFile("legacy-accounts.adapter.ts");
+      expect(content).toMatch(/export\s+class\s+LegacyAccountsAdapter\b/m);
     });
 
     it("α67: LegacyRagAdapter class is exported from infrastructure/legacy-rag.adapter", () => {
-      const Cls = requireInfraExport(
-        "legacy-rag.adapter.ts",
-        "LegacyRagAdapter",
-      );
-      expect(Cls).toBeDefined();
-      expect(typeof Cls).toBe("function");
+      const content = readInfraFile("legacy-rag.adapter.ts");
+      expect(content).toMatch(/export\s+class\s+LegacyRagAdapter\b/m);
     });
   });
 
@@ -178,11 +145,8 @@ describe("POC ai-agent-hex C2 — infrastructure layer shape", () => {
 
   describe("Block 5 — analyzeDocument co-located in gemini-llm.adapter", () => {
     it("α71: analyzeDocument function is exported from infrastructure/llm/gemini-llm.adapter", () => {
-      const analyzeDocument = requireInfraExport(
-        "llm/gemini-llm.adapter.ts",
-        "analyzeDocument",
-      );
-      expect(typeof analyzeDocument).toBe("function");
+      const content = readInfraFile("llm/gemini-llm.adapter.ts");
+      expect(content).toMatch(/export\s+(?:async\s+)?function\s+analyzeDocument\b/m);
     });
   });
 });
