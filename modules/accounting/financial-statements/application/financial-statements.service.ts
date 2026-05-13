@@ -27,16 +27,17 @@ import type { DateRange } from "../domain/date-presets.utils";
 // money.utils is referenced via the domain barrel — service preserves the money
 // math composition source per REQ-005 and α50 (sentinel verifies this import).
 import "../domain/money.utils";
-// Exporters live in features/ until C2 — service imports transitionally; the
-// import path rewrites in C2 GREEN when exporters lift to infrastructure/.
+// Exporters lifted to infrastructure/exporters/ at C2 GREEN per design §2 (D6: pdfmake
+// + exceljs = Node-runtime infra). [[mock_hygiene_commit_scope]]: path rewrite bundled
+// with infrastructure wiring in C2 GREEN commit.
 import {
   exportBalanceSheetPdf,
   exportIncomeStatementPdf,
-} from "@/features/accounting/financial-statements/exporters/pdf.exporter";
+} from "../infrastructure/exporters/pdf.exporter";
 import {
   exportBalanceSheetExcel,
   exportIncomeStatementExcel,
-} from "@/features/accounting/financial-statements/exporters/excel.exporter";
+} from "../infrastructure/exporters/excel.exporter";
 
 // ── Tipos de entrada públicos ──
 

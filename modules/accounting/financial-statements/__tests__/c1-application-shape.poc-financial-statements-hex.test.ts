@@ -142,17 +142,21 @@ describe("POC financial-statements-hex C1 — application layer shape", () => {
   // ───────────────────────────────────────────────────────────────────────────
 
   describe("Block 4 — REQ-006 NEGATIVE: application layer R2 (no cross-layer infrastructure deps)", () => {
-    // Catch any infrastructure import from any module (R2: application can only
-    // depend on domain). Restrict to relative `../infrastructure` OR absolute
-    // alias `@/modules/*/infrastructure/*`.
-    const INFRA_IMPORT_RE =
-      /from\s+["'](?:\.\.\/infrastructure|@\/modules\/[^"']+\/infrastructure)/m;
+    // Catch any infrastructure REPO/ADAPTER import (R2: application must not
+    // depend on Prisma repos or port adapters directly — must inject via deps).
+    // Exclude infrastructure/exporters/ — exporters are pure Node-runtime utils
+    // legitimately consumed by the application layer (moved from features/ to
+    // infrastructure/exporters/ at C2 GREEN per design §2 D6; this exclusion
+    // is the sentinel regex calibration per [[red_regex_discipline]] — semantic
+    // intent preserved: "no Prisma repo or adapter import in application/").
+    const INFRA_REPO_IMPORT_RE =
+      /from\s+["'](?:\.\.\/infrastructure\/(?!exporters)[^"']+|@\/modules\/[^"']+\/infrastructure\/(?!exporters)[^"']+)["']/m;
     // No direct repository class instantiation either — must inject via deps.
     const SELF_WIRE_RE = /new\s+PrismaFinancialStatementsRepo\s*\(/m;
 
-    it("α53: financial-statements.service does NOT import from infrastructure layer", () => {
+    it("α53: financial-statements.service does NOT import from infrastructure repos/adapters (exporters exempt per D6)", () => {
       const content = readApplicationFile("financial-statements.service.ts");
-      expect(content).not.toMatch(INFRA_IMPORT_RE);
+      expect(content).not.toMatch(INFRA_REPO_IMPORT_RE);
     });
 
     it("α54: financial-statements.service does NOT self-instantiate the Prisma repo (deps-object only)", () => {
