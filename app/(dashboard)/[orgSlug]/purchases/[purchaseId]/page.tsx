@@ -4,6 +4,7 @@ import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeProductTypeService } from "@/modules/product-type/presentation/server";
+import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
 import type { IvaPurchaseBookDTO } from "@/features/accounting/iva-books";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
@@ -36,6 +37,7 @@ export default async function PurchaseDetailPage({
   const contactsService = makeContactsService();
   const periodsService = makeFiscalPeriodsService();
   const productTypesService = makeProductTypeService();
+  const accountsService = makeAccountsService();
 
   let purchase;
   try {
@@ -44,10 +46,11 @@ export default async function PurchaseDetailPage({
     redirect(`/${orgSlug}/purchases`);
   }
 
-  const [contacts, periods, productTypes, contact, payable, ivaPurchaseBook] = await Promise.all([
+  const [contacts, periods, productTypes, expenseAccounts, contact, payable, ivaPurchaseBook] = await Promise.all([
     contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }).then((entities) => entities.map((pt) => pt.toSnapshot())),
+    accountsService.list(orgId, { type: "GASTO", isDetail: true, isActive: true }),
     prisma.contact.findUnique({
       where: { id: purchase.contactId },
       select: {
@@ -126,6 +129,7 @@ export default async function PurchaseDetailPage({
         contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(availablePeriods))}
         productTypes={JSON.parse(JSON.stringify(productTypes))}
+        expenseAccounts={JSON.parse(JSON.stringify(expenseAccounts))}
         purchase={JSON.parse(JSON.stringify(purchaseWithDetails))}
         mode="edit"
       />

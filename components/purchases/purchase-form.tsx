@@ -30,7 +30,8 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
+import type { Account, Contact, FiscalPeriod } from "@/generated/prisma/client";
+import AccountSelector from "@/components/accounting/account-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/modules/purchase/presentation/dto/purchase-with-details";
@@ -175,6 +176,7 @@ interface PurchaseFormProps {
   contacts: Contact[];
   periods: FiscalPeriod[];
   productTypes: ProductTypeOption[];
+  expenseAccounts?: Account[];
   purchase?: PurchaseWithDetails;
   mode: "new" | "edit";
 }
@@ -185,6 +187,7 @@ export default function PurchaseForm({
   contacts,
   periods,
   productTypes,
+  expenseAccounts = [],
   purchase,
   mode,
 }: PurchaseFormProps) {
@@ -412,35 +415,50 @@ export default function PurchaseForm({
 
   function buildDetailsPayload() {
     if (purchaseType === "FLETE") {
-      return fleteLines.map((l, i) => ({
-        description: l.description.trim() || `Flete ${i + 1}`,
-        fecha: l.fecha ? l.fecha : undefined,
-        docRef: l.docRef || undefined,
-        chickenQty: parseFloat(l.chickenQty) || undefined,
-        pricePerChicken: parseFloat(l.pricePerChicken) || undefined,
-        order: i,
-      }));
+      return fleteLines.map((l, i) => {
+        const qty = parseFloat(l.chickenQty) || 0;
+        const price = parseFloat(l.pricePerChicken) || 0;
+        return {
+          description: l.description.trim() || `Flete ${i + 1}`,
+          fecha: l.fecha ? l.fecha : undefined,
+          docRef: l.docRef || undefined,
+          chickenQty: parseFloat(l.chickenQty) || undefined,
+          pricePerChicken: parseFloat(l.pricePerChicken) || undefined,
+          lineAmount: Math.round(qty * price * 100) / 100,
+          order: i,
+        };
+      });
     }
     if (purchaseType === "POLLO_FAENADO") {
-      return pfLines.map((l, i) => ({
-        productTypeId: l.productTypeId || undefined,
-        description: l.description,
-        detailNote: l.detailNote || undefined,
-        boxes: parseInt(l.boxes, 10) || 0,
-        grossWeight: parseFloat(l.grossWeight) || 0,
-        unitPrice: parseFloat(l.unitPrice) || 0,
-        shortage: l.shortage ? parseFloat(l.shortage) : undefined,
-        order: i,
-      }));
+      const pct = parseFloat(shrinkagePct) || 0;
+      return pfLines.map((l, i) => {
+        const computed = computePfLine(l, pct);
+        return {
+          productTypeId: l.productTypeId || undefined,
+          description: l.description,
+          detailNote: l.detailNote || undefined,
+          boxes: parseInt(l.boxes, 10) || 0,
+          grossWeight: parseFloat(l.grossWeight) || 0,
+          unitPrice: parseFloat(l.unitPrice) || 0,
+          shortage: l.shortage ? parseFloat(l.shortage) : undefined,
+          lineAmount: computed.lineAmount,
+          order: i,
+        };
+      });
     }
     // COMPRA_GENERAL / SERVICIO
-    return generalLines.map((l, i) => ({
-      description: l.description.trim(),
-      quantity: parseFloat(l.quantity) || 1,
-      unitPrice: parseFloat(l.unitPrice) || 0,
-      expenseAccountId: l.expenseAccountCode || undefined,
-      order: i,
-    }));
+    return generalLines.map((l, i) => {
+      const qty = parseFloat(l.quantity) || 1;
+      const price = parseFloat(l.unitPrice) || 0;
+      return {
+        description: l.description.trim(),
+        quantity: parseFloat(l.quantity) || 1,
+        unitPrice: parseFloat(l.unitPrice) || 0,
+        lineAmount: Math.round(qty * price * 100) / 100,
+        expenseAccountId: l.expenseAccountCode || undefined,
+        order: i,
+      };
+    });
   }
 
   // ── Validation ──
@@ -1313,11 +1331,11 @@ export default function PurchaseForm({
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="text-left py-3 px-2 font-medium text-muted-foreground w-6">#</th>
-                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Concepto</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-56">Cuenta Contable de Gasto</th>
+                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-48">Descripción</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground w-24">Cantidad</th>
                     <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Precio Unitario</th>
-                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Total</th>
-                    <th className="text-left py-3 px-2 font-medium text-muted-foreground min-w-32">Cuenta de Gasto</th>
+                    <th className="text-right py-3 px-2 font-medium text-muted-foreground w-28">Monto</th>
                     {!isReadOnly && <th className="w-10" />}
                   </tr>
                 </thead>
@@ -1329,6 +1347,14 @@ export default function PurchaseForm({
                     return (
                       <tr key={line.id} className="border-b hover:bg-accent/50">
                         <td className="py-2 px-2 text-muted-foreground text-xs">{idx + 1}</td>
+                        <td className="py-2 px-2">
+                          <AccountSelector
+                            accounts={expenseAccounts}
+                            value={line.expenseAccountCode}
+                            onChange={(v) => updateGeneralLine(line.id, "expenseAccountCode", v)}
+                            disabled={isReadOnly}
+                          />
+                        </td>
                         <td className="py-2 px-2">
                           <Input
                             value={line.description}
@@ -1369,15 +1395,6 @@ export default function PurchaseForm({
                             placeholder="—"
                           />
                         </td>
-                        <td className="py-2 px-2">
-                          <Input
-                            value={line.expenseAccountCode}
-                            onChange={(e) => updateGeneralLine(line.id, "expenseAccountCode", e.target.value)}
-                            placeholder="Código de cuenta"
-                            className={`h-8 min-w-28 ${isReadOnly ? "bg-muted cursor-default" : ""}`}
-                            readOnly={isReadOnly}
-                          />
-                        </td>
                         {!isReadOnly && (
                           <td className="py-2 px-2">
                             <Button
@@ -1397,13 +1414,12 @@ export default function PurchaseForm({
                 </tbody>
                 <tfoot>
                   <tr className="border-t-2 border-border bg-muted">
-                    <td colSpan={4} className="py-3 px-2 text-right font-semibold text-foreground">
+                    <td colSpan={5} className="py-3 px-2 text-right font-semibold text-foreground">
                       Total CxP (Bs.)
                     </td>
                     <td className="py-3 px-2 text-right font-mono font-bold text-foreground text-base">
                       {subtotal.toLocaleString("es-BO", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                     </td>
-                    <td />
                     {!isReadOnly && <td />}
                   </tr>
                 </tfoot>
