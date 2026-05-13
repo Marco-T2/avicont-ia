@@ -1,5 +1,7 @@
 /**
- * Audit H #4 — documents.service error-handling boundaries
+ * Audit H #4 — documents.service error-handling boundaries (RELOCATED from
+ * features/documents/__tests__ → modules/documents/application/__tests__ as
+ * part of poc-documents-hex C1).
  *
  * Covers two CRITICAL findings from Audit H (2026-04-24):
  *   4.A — `extractPdfText` (L184-199) swallows parse errors and returns null,
@@ -9,15 +11,10 @@
  *         `.catch(console.error)`. A failed indexing leaves the document in
  *         the DB without embeddings — invisible to RAG search, no alarm.
  *
- * Fix: await the indexing, propagate both parse and indexing failures, and
- * compensate with blob + document rollback so callers never see a partially
- * persisted document.
- *
- * Expected failure mode on current (pre-fix) code:
- *   - Corrupt PDF → upload() RESOLVES with a document whose content is null.
- *     Test expects ValidationError + no document persisted.
- *   - indexDocument rejection → upload() RESOLVES normally (fire-and-forget
- *     eats the error). Test expects the error to propagate + blob+doc deleted.
+ * Mock-target preservation: @/lib/blob mock kept per spec matrix (no-op now —
+ * application/documents.service.ts no longer imports it; assertions on blob
+ * delete are redirected to the injected FakeBlobStorage stub). @/features/
+ * documents/rag/server + pdfjs-dist mock targets UNCHANGED.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ValidationError } from "@/features/shared/errors";
@@ -36,6 +33,8 @@ const {
   mockRagDeleteByDocument: vi.fn(),
 }));
 
+// Mock target retained for spec matrix preservation. Application no longer
+// imports @/lib/blob; declaration is a structural no-op here.
 vi.mock("@/lib/blob", () => ({
   uploadToBlob: mockUploadToBlob,
   deleteFromBlob: mockDeleteFromBlob,
@@ -53,7 +52,8 @@ vi.mock("@/features/documents/rag/server", () => ({
   },
 }));
 
-import { DocumentsService } from "../documents.service";
+import { DocumentsService } from "@/modules/documents/application/documents.service";
+import { RagService } from "@/features/documents/rag/server";
 
 const CLERK_ORG_ID = "clerk_org_1";
 const CLERK_USER_ID = "clerk_user_1";
@@ -88,13 +88,26 @@ function buildRepo() {
   };
 }
 
+/** Captures blobStorage port calls so assertions can target the injected stub. */
+class StubBlobStorage {
+  uploadCalls: Array<{ file: File; organizationId: string; userId: string }> = [];
+  delCalls: string[] = [];
+  upload = vi.fn(async (file: File, organizationId: string, userId: string) => {
+    this.uploadCalls.push({ file, organizationId, userId });
+    return { url: BLOB_URL, pathname: "test/test.pdf" };
+  });
+  del = vi.fn(async (url: string) => {
+    this.delCalls.push(url);
+  });
+}
+
 function buildPdfFile(): File {
   return new File([new Uint8Array([0x25, 0x50, 0x44, 0x46])], "test.pdf", {
     type: "application/pdf",
   });
 }
 
-describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () => {
+describe("DocumentsService.upload — error-handling boundary (Audit H #4) — hex relocated", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUploadToBlob.mockResolvedValue({ url: BLOB_URL });
@@ -117,8 +130,9 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
   describe("4.A — PDF extraction", () => {
     it("happy path: parses PDF, creates document, indexes embeddings", async () => {
       const repo = buildRepo();
+      const blob = new StubBlobStorage();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service = new DocumentsService(repo as any);
+      const service = new DocumentsService(repo as any, blob, new RagService());
 
       const result = await service.upload(
         CLERK_ORG_ID,
@@ -130,6 +144,7 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
 
       expect(result.id).toBe(DOC_ID);
       expect(repo.create).toHaveBeenCalledTimes(1);
+      expect(blob.upload).toHaveBeenCalledTimes(1);
       expect(mockIndexDocument).toHaveBeenCalledWith(
         DOC_ID,
         ORG_ID,
@@ -144,8 +159,9 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
         promise: Promise.reject(new Error("Invalid PDF structure")),
       });
       const repo = buildRepo();
+      const blob = new StubBlobStorage();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service = new DocumentsService(repo as any);
+      const service = new DocumentsService(repo as any, blob, new RagService());
 
       await expect(
         service.upload(
@@ -159,8 +175,8 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
 
       // No document persisted.
       expect(repo.create).not.toHaveBeenCalled();
-      // Blob leak prevented — compensating cleanup ran.
-      expect(mockDeleteFromBlob).toHaveBeenCalledWith(BLOB_URL);
+      // Blob leak prevented — compensating cleanup ran on the injected port.
+      expect(blob.del).toHaveBeenCalledWith(BLOB_URL);
     });
   });
 
@@ -168,8 +184,9 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
     it("rolls back document and blob when indexDocument fails (PDF path)", async () => {
       mockIndexDocument.mockRejectedValue(new Error("Embedding provider down"));
       const repo = buildRepo();
+      const blob = new StubBlobStorage();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service = new DocumentsService(repo as any);
+      const service = new DocumentsService(repo as any, blob, new RagService());
 
       await expect(
         service.upload(
@@ -184,8 +201,8 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
       // The document was created, then rolled back.
       expect(repo.create).toHaveBeenCalledTimes(1);
       expect(repo.delete).toHaveBeenCalledWith(DOC_ID, ORG_ID);
-      // Blob cleanup too.
-      expect(mockDeleteFromBlob).toHaveBeenCalledWith(BLOB_URL);
+      // Blob cleanup too — via injected port.
+      expect(blob.del).toHaveBeenCalledWith(BLOB_URL);
     });
 
     it("rolls back document (no blob cleanup) when indexDocument fails on text-only upload", async () => {
@@ -197,8 +214,9 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
         fileUrl: null,
         user: { name: "Tester" },
       });
+      const blob = new StubBlobStorage();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service = new DocumentsService(repo as any);
+      const service = new DocumentsService(repo as any, blob, new RagService());
 
       await expect(
         service.upload(
@@ -210,7 +228,7 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
       ).rejects.toThrow("Embedding provider down");
 
       expect(repo.delete).toHaveBeenCalledWith(DOC_ID, ORG_ID);
-      expect(mockDeleteFromBlob).not.toHaveBeenCalled();
+      expect(blob.del).not.toHaveBeenCalled();
     });
 
     it("does not try to index when extracted content is under 10 chars", async () => {
@@ -226,8 +244,9 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4)", () 
         }),
       });
       const repo = buildRepo();
+      const blob = new StubBlobStorage();
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const service = new DocumentsService(repo as any);
+      const service = new DocumentsService(repo as any, blob, new RagService());
 
       const result = await service.upload(
         CLERK_ORG_ID,

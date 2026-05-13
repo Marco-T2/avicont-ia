@@ -120,13 +120,19 @@ describe("agent.context.dispatch.test.ts vi.mock path", () => {
 // ---------------------------------------------------------------------------
 
 describe("documents.service.error-propagation.test.ts vi.mock path", () => {
+  // NOTE: test was physically relocated to modules/documents/application/__tests__/
+  // as part of poc-documents-hex C1 (hex migration). Path updated atomic to
+  // preserve the rag carve-out invariant assertion at the new test location.
+  const RELOCATED_PATH =
+    "modules/documents/application/__tests__/documents.service.error-propagation.test.ts";
+
   it("α17: NEGATIVE — vi.mock NOT on old path @/features/rag/server", () => {
-    const src = read("features/documents/__tests__/documents.service.error-propagation.test.ts");
+    const src = read(RELOCATED_PATH);
     expect(/vi\.mock\("@\/features\/rag\/server"/m.test(src)).toBe(false);
   });
 
   it("α18: POSITIVE — vi.mock on new path @/features/documents/rag/server", () => {
-    const src = read("features/documents/__tests__/documents.service.error-propagation.test.ts");
+    const src = read(RELOCATED_PATH);
     expect(/vi\.mock\("@\/features\/documents\/rag\/server"/m.test(src)).toBe(true);
   });
 });
