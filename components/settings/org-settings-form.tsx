@@ -5,6 +5,13 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Save } from "lucide-react";
 
@@ -22,12 +29,36 @@ interface OrgSettings {
   polloFaenadoCOGSAccountCode: string;
 }
 
+/**
+ * Subset del modelo Prisma `Account` que el form necesita para poblar los
+ * dropdowns. El server component mapea las cuentas crudas a este shape antes
+ * de pasarlas como prop — el modelo Prisma completo NUNCA cruza al cliente.
+ */
+export interface AccountOption {
+  code: string;
+  name: string;
+  isDetail: boolean;
+}
+
 interface OrgSettingsFormProps {
   orgSlug: string;
   settings: OrgSettings;
+  /** Cuentas posteables (isDetail:true, isActive:true) — para los 6 campos operativos/gasto. */
+  detailAccounts: AccountOption[];
+  /** Cuentas agrupadoras (isDetail:false) — para los 3 campos parent de tesorería. */
+  parentAccounts: AccountOption[];
 }
 
-export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
+function optionLabel(account: AccountOption): string {
+  return `${account.code} - ${account.name}`;
+}
+
+export function OrgSettingsForm({
+  orgSlug,
+  settings,
+  detailAccounts,
+  parentAccounts,
+}: OrgSettingsFormProps) {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
 
@@ -37,10 +68,16 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
   const [cxp, setCxp] = useState(settings.cxpAccountCode);
   const [threshold, setThreshold] = useState(String(settings.roundingThreshold));
   const [cashParentCode, setCashParentCode] = useState(settings.cashParentCode);
-  const [pettyCashParentCode, setPettyCashParentCode] = useState(settings.pettyCashParentCode);
+  const [pettyCashParentCode, setPettyCashParentCode] = useState(
+    settings.pettyCashParentCode,
+  );
   const [bankParentCode, setBankParentCode] = useState(settings.bankParentCode);
-  const [fleteExpense, setFleteExpense] = useState(settings.fleteExpenseAccountCode);
-  const [polloCOGS, setPolloCOGS] = useState(settings.polloFaenadoCOGSAccountCode);
+  const [fleteExpense, setFleteExpense] = useState(
+    settings.fleteExpenseAccountCode,
+  );
+  const [polloCOGS, setPolloCOGS] = useState(
+    settings.polloFaenadoCOGSAccountCode,
+  );
 
   const handleSave = async () => {
     setSaving(true);
@@ -74,6 +111,33 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
     }
   };
 
+  /** Render helper — un <Select> de cuentas con label, ayuda y placeholder. */
+  const renderAccountSelect = (
+    id: string,
+    label: string,
+    help: string,
+    value: string,
+    onChange: (next: string) => void,
+    options: AccountOption[],
+  ) => (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger id={id} aria-label={label} className="w-full">
+          <SelectValue placeholder="Seleccione una cuenta" />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((account) => (
+            <SelectItem key={account.code} value={account.code}>
+              {optionLabel(account)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <p className="text-xs text-muted-foreground">{help}</p>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <Card>
@@ -82,58 +146,42 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Códigos de las cuentas del Plan de Cuentas que el sistema utiliza
-            para generar asientos automáticos.
+            Cuentas del Plan de Cuentas que el sistema utiliza para generar
+            asientos automáticos. Solo se listan cuentas de detalle (posteables).
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="caja-general">Caja General</Label>
-              <Input
-                id="caja-general"
-                value={cajaGeneral}
-                onChange={(e) => setCajaGeneral(e.target.value)}
-                placeholder="1.1.1.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se usa en cobros y pagos como cuenta puente de tesorería.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="banco">Banco</Label>
-              <Input
-                id="banco"
-                value={banco}
-                onChange={(e) => setBanco(e.target.value)}
-                placeholder="1.1.2.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se usa en transferencias y depósitos bancarios.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cxc">Cuentas por Cobrar</Label>
-              <Input
-                id="cxc"
-                value={cxc}
-                onChange={(e) => setCxc(e.target.value)}
-                placeholder="1.1.4.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se debita al contabilizar despachos (ND/BC).
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cxp">Cuentas por Pagar</Label>
-              <Input
-                id="cxp"
-                value={cxp}
-                onChange={(e) => setCxp(e.target.value)}
-                placeholder="2.1.1.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se usa en órdenes de compra y pagos a proveedores.
-              </p>
-            </div>
+            {renderAccountSelect(
+              "caja-general",
+              "Caja General",
+              "Se usa en cobros y pagos como cuenta puente de tesorería.",
+              cajaGeneral,
+              setCajaGeneral,
+              detailAccounts,
+            )}
+            {renderAccountSelect(
+              "banco",
+              "Banco",
+              "Se usa en transferencias y depósitos bancarios.",
+              banco,
+              setBanco,
+              detailAccounts,
+            )}
+            {renderAccountSelect(
+              "cxc",
+              "Cuentas por Cobrar",
+              "Se debita al contabilizar despachos (ND/BC).",
+              cxc,
+              setCxc,
+              detailAccounts,
+            )}
+            {renderAccountSelect(
+              "cxp",
+              "Cuentas por Pagar",
+              "Se usa en órdenes de compra y pagos a proveedores.",
+              cxp,
+              setCxp,
+              detailAccounts,
+            )}
           </div>
         </CardContent>
       </Card>
@@ -144,45 +192,34 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Códigos padre que agrupan las cuentas de tesorería disponibles para seleccionar en cobros y pagos.
+            Cuentas padre que agrupan las cuentas de tesorería disponibles para
+            seleccionar en cobros y pagos. Solo se listan cuentas agrupadoras.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="cash-parent-code">Cuenta padre — Caja</Label>
-              <Input
-                id="cash-parent-code"
-                value={cashParentCode}
-                onChange={(e) => setCashParentCode(e.target.value)}
-                placeholder="1.1.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Agrupa las cuentas de caja disponibles para cobros en efectivo.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="petty-cash-parent-code">Cuenta padre — Caja Chica</Label>
-              <Input
-                id="petty-cash-parent-code"
-                value={pettyCashParentCode}
-                onChange={(e) => setPettyCashParentCode(e.target.value)}
-                placeholder="1.1.2"
-              />
-              <p className="text-xs text-muted-foreground">
-                Agrupa las cuentas de caja chica disponibles para cobros en efectivo.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="bank-parent-code">Cuenta padre — Bancos</Label>
-              <Input
-                id="bank-parent-code"
-                value={bankParentCode}
-                onChange={(e) => setBankParentCode(e.target.value)}
-                placeholder="1.1.3"
-              />
-              <p className="text-xs text-muted-foreground">
-                Agrupa las cuentas bancarias disponibles para transferencias y depósitos.
-              </p>
-            </div>
+            {renderAccountSelect(
+              "cash-parent-code",
+              "Cuenta padre — Caja",
+              "Agrupa las cuentas de caja disponibles para cobros en efectivo.",
+              cashParentCode,
+              setCashParentCode,
+              parentAccounts,
+            )}
+            {renderAccountSelect(
+              "petty-cash-parent-code",
+              "Cuenta padre — Caja Chica",
+              "Agrupa las cuentas de caja chica disponibles para cobros en efectivo.",
+              pettyCashParentCode,
+              setPettyCashParentCode,
+              parentAccounts,
+            )}
+            {renderAccountSelect(
+              "bank-parent-code",
+              "Cuenta padre — Bancos",
+              "Agrupa las cuentas bancarias disponibles para transferencias y depósitos.",
+              bankParentCode,
+              setBankParentCode,
+              parentAccounts,
+            )}
           </div>
         </CardContent>
       </Card>
@@ -193,33 +230,26 @@ export function OrgSettingsForm({ orgSlug, settings }: OrgSettingsFormProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground mb-4">
-            Cuentas de gasto por defecto que se debitan al contabilizar compras de flete y pollo faenado.
+            Cuentas de gasto por defecto que se debitan al contabilizar compras
+            de flete y pollo faenado.
           </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="flete-expense">Gasto de Flete</Label>
-              <Input
-                id="flete-expense"
-                value={fleteExpense}
-                onChange={(e) => setFleteExpense(e.target.value)}
-                placeholder="5.1.3"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se debita al contabilizar compras de tipo Flete.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="pollo-cogs">Costo de Pollo Faenado</Label>
-              <Input
-                id="pollo-cogs"
-                value={polloCOGS}
-                onChange={(e) => setPolloCOGS(e.target.value)}
-                placeholder="5.1.1"
-              />
-              <p className="text-xs text-muted-foreground">
-                Se debita al contabilizar compras de tipo Pollo Faenado.
-              </p>
-            </div>
+            {renderAccountSelect(
+              "flete-expense",
+              "Gasto de Flete",
+              "Se debita al contabilizar compras de tipo Flete.",
+              fleteExpense,
+              setFleteExpense,
+              detailAccounts,
+            )}
+            {renderAccountSelect(
+              "pollo-cogs",
+              "Costo de Pollo Faenado",
+              "Se debita al contabilizar compras de tipo Pollo Faenado.",
+              polloCOGS,
+              setPolloCOGS,
+              detailAccounts,
+            )}
           </div>
         </CardContent>
       </Card>
