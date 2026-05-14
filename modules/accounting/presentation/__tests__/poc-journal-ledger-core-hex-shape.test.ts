@@ -49,6 +49,22 @@ const LEGACY_LEDGER_SERVICE = resolve(
   REPO_ROOT,
   "features/accounting/ledger.service.ts",
 );
+const HEX_AUTO_ENTRY_GENERATOR = resolve(
+  REPO_ROOT,
+  "modules/accounting/application/auto-entry-generator.ts",
+);
+const LEGACY_AUTO_ENTRY_GENERATOR = resolve(
+  REPO_ROOT,
+  "features/accounting/auto-entry-generator.ts",
+);
+const SALE_JOURNAL_ENTRY_FACTORY_ADAPTER = resolve(
+  REPO_ROOT,
+  "modules/sale/infrastructure/prisma-journal-entry-factory.adapter.ts",
+);
+const PURCHASE_UNIT_OF_WORK = resolve(
+  REPO_ROOT,
+  "modules/purchase/infrastructure/prisma-purchase-unit-of-work.ts",
+);
 
 /** Collect every `.ts` file directly under `modules/accounting/infrastructure/`
  *  (non-recursive — `__tests__/` excluded; the un-wrap target is the adapters). */
@@ -245,5 +261,63 @@ describe("α13 Block C1 — LedgerService float money-math parity (DEV-1 / R-mon
       /from\s+["'][^"']*shared\/domain\/money\.utils["']/,
     );
     expect(src).not.toMatch(/\bsumDecimals\s*\(/);
+  });
+});
+
+// ── Block C2 — auto-entry-generator migration + sale/purchase repoint ────────
+//
+// C2 relocates `auto-entry-generator.ts` into the hex `application/` layer
+// (resolved open question — it orchestrates JournalRepository + accounts/
+// voucher-types ports, so it belongs in application). ALL direct cross-module
+// runtime consumers of the legacy `@/features/accounting/auto-entry-generator`
+// path repoint atomically in the C2 GREEN commit (sale + purchase; payment +
+// dispatch go through the `server.ts` barrel — untouched, sub-POC 8 scope).
+// No `vi.mock` of the legacy path exists — affected integration tests use
+// DIRECT `AutoEntryGenerator` imports, so C2 does import-target REWRITES.
+
+// α14 — auto-entry-generator relocated to hex application layer.
+//   Expected FAIL pre-GREEN: file still at features/accounting/, hex path absent
+//   → existsSync(HEX) === false.
+describe("α14 Block C2 — auto-entry-generator relocated to modules/accounting/application/", () => {
+  it("α14: modules/accounting/application/auto-entry-generator.ts exists", () => {
+    expect(existsSync(HEX_AUTO_ENTRY_GENERATOR)).toBe(true);
+  });
+  it("α14: features/accounting/auto-entry-generator.ts no longer exists", () => {
+    expect(existsSync(LEGACY_AUTO_ENTRY_GENERATOR)).toBe(false);
+  });
+});
+
+// α15 — sale prisma-journal-entry-factory.adapter.ts imports the hex path.
+//   Expected FAIL pre-GREEN: still imports the legacy
+//   `@/features/accounting/auto-entry-generator` path.
+describe("α15 Block C2 — sale journal-entry-factory adapter imports hex auto-entry-generator", () => {
+  const LEGACY_AEG_IMPORT =
+    /from\s+["']@\/features\/accounting\/auto-entry-generator["']/;
+  const HEX_AEG_IMPORT =
+    /from\s+["']@\/modules\/accounting\/application\/auto-entry-generator["']/;
+  it("α15: prisma-journal-entry-factory.adapter.ts imports the hex auto-entry-generator path", () => {
+    const src = readFileSync(SALE_JOURNAL_ENTRY_FACTORY_ADAPTER, "utf-8");
+    expect(src).toMatch(HEX_AEG_IMPORT);
+  });
+  it("α15: prisma-journal-entry-factory.adapter.ts no longer imports the legacy path", () => {
+    const src = readFileSync(SALE_JOURNAL_ENTRY_FACTORY_ADAPTER, "utf-8");
+    expect(src).not.toMatch(LEGACY_AEG_IMPORT);
+  });
+});
+
+// α16 — purchase prisma-purchase-unit-of-work.ts imports the hex path.
+//   Expected FAIL pre-GREEN: still imports the legacy path (type-only import).
+describe("α16 Block C2 — purchase unit-of-work imports hex auto-entry-generator", () => {
+  const LEGACY_AEG_IMPORT =
+    /from\s+["']@\/features\/accounting\/auto-entry-generator["']/;
+  const HEX_AEG_IMPORT =
+    /from\s+["']@\/modules\/accounting\/application\/auto-entry-generator["']/;
+  it("α16: prisma-purchase-unit-of-work.ts imports the hex auto-entry-generator path", () => {
+    const src = readFileSync(PURCHASE_UNIT_OF_WORK, "utf-8");
+    expect(src).toMatch(HEX_AEG_IMPORT);
+  });
+  it("α16: prisma-purchase-unit-of-work.ts no longer imports the legacy path", () => {
+    const src = readFileSync(PURCHASE_UNIT_OF_WORK, "utf-8");
+    expect(src).not.toMatch(LEGACY_AEG_IMPORT);
   });
 });
