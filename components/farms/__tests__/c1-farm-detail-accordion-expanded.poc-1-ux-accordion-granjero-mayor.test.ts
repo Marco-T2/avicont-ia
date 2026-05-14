@@ -91,11 +91,11 @@ describe("C1 farm-detail accordion expanded — POC #1 UX accordion granjero may
     expect(src).toMatch(/Gastos\s+recientes/i);
   });
 
-  // α8 — per-expense item renders Badge (category) + formatCurrency + formatDate (paired sister lot-detail-client precedent)
-  it("α8: farm-detail-client.tsx renders per-expense item with Badge (category) + formatCurrency + formatDate (paired sister lot-detail-client precedent)", () => {
+  // α8 — per-expense item renders Badge (category) + formatCurrency + formatDateBO (paired sister lot-detail-client precedent)
+  it("α8: farm-detail-client.tsx renders per-expense item with Badge (category) + formatCurrency + formatDateBO (paired sister lot-detail-client precedent)", () => {
     const src = readRepoFile("app/(dashboard)/[orgSlug]/farms/[farmId]/farm-detail-client.tsx");
     expect(src).toMatch(/recentExpenses\.map/);
-    expect(src).toMatch(/\bformatDate\(/);
+    expect(src).toMatch(/\bformatDateBO\(/);
     expect(src).toMatch(/\bCATEGORY_CONFIG\b/);
   });
 

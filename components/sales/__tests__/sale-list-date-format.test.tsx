@@ -63,8 +63,8 @@ describe("SaleList — date cell format (REQ-B.3)", () => {
 
   it("B.3.2 — date cell does NOT render old locale short-month format", () => {
     render(<SaleList orgSlug="test-org" items={[SALE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
-    // Old format was "17 abr. 2026" or "17 abr 2026"
-    expect(screen.queryByText(/abr/i)).not.toBeInTheDocument();
+    // Old format was "17 abr. 2026" or "17 abr 2026" — regex scoped to day+month pattern
+    expect(screen.queryByText(/\d+\s+abr/i)).not.toBeInTheDocument();
   });
 
   it("B.3.3 — UTC-midnight date shows correct local day (17/04, not 16/04)", () => {

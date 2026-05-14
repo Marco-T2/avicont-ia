@@ -90,7 +90,7 @@ describe("PaymentList — actions dropdown", () => {
     expect(screen.queryByRole("button", { name: /^eliminar$/i })).toBeNull();
   });
 
-  it("empty state usa colSpan=9 (columna Acciones preservada)", () => {
+  it("empty state usa colSpan=11 (columna Acciones preservada)", () => {
     render(
       <PaymentList
         orgSlug="test-org"
@@ -106,6 +106,6 @@ describe("PaymentList — actions dropdown", () => {
       .getByText(/no hay cobros ni pagos registrados/i)
       .closest("td");
     expect(emptyCell).not.toBeNull();
-    expect(emptyCell).toHaveAttribute("colspan", "9");
+    expect(emptyCell).toHaveAttribute("colspan", "11");
   });
 });

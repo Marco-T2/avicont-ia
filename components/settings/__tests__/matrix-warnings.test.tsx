@@ -66,8 +66,8 @@ describe("<MatrixWarnings />", () => {
     expect(screen.getByText(/Editar/)).toBeInTheDocument();
   });
 
-  // (e) visual treatment — yellow/amber class, NOT red
-  it("(e) warning container uses yellow/amber class (not red)", () => {
+  // (e) visual treatment — warning semantic token class (migrated a91279ac), NOT red
+  it("(e) warning container uses warning semantic token class (not red)", () => {
     const warnings: Warning[] = [
       {
         severity: "soft",
@@ -77,15 +77,19 @@ describe("<MatrixWarnings />", () => {
     ];
     const { container } = render(<MatrixWarnings warnings={warnings} />);
     const html = container.innerHTML;
-    // Must have at least one yellow/amber class
-    const hasYellow =
+    // Must have at least one warning-token class (semantic: bg-warning/*, text-warning, border-warning/*)
+    // or yellow/amber literal classes (both accepted for forward-compat)
+    const hasWarningClass =
+      html.includes("bg-warning") ||
+      html.includes("border-warning") ||
+      html.includes("text-warning") ||
       html.includes("bg-yellow") ||
       html.includes("border-yellow") ||
       html.includes("text-yellow") ||
       html.includes("bg-amber") ||
       html.includes("border-amber") ||
       html.includes("text-amber");
-    expect(hasYellow).toBe(true);
+    expect(hasWarningClass).toBe(true);
     // Must NOT use red
     const hasRed =
       html.includes("bg-red") ||

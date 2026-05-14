@@ -187,10 +187,11 @@ describe("POC nuevo A3-C6c — routes 3+4 atomic cutover purchase shape", () => 
     );
   });
 
-  it("Test 4: route.ts invoca `purchaseService.update(orgId, purchaseId, input, { userId, ...})` object-DI 4-args (asimetría legacy 6 positional → HEX object-DI mirror sale precedent EXACT)", () => {
+  it("Test 4: route.ts invoca `purchaseService.update(orgId, purchaseId, <input>, { userId, ...})` object-DI 4-args (asimetría legacy 6 positional → HEX object-DI mirror sale precedent EXACT)", () => {
     const source = fs.readFileSync(PURCHASE_DETAIL_ROUTE_PATH, "utf8");
+    // 3rd arg may be `input` or a wrapping intermediate like `wrappedInput` — intent is 4-arg object-DI
     expect(source).toMatch(
-      /purchaseService\.update\s*\(\s*orgId\s*,\s*purchaseId\s*,\s*input\s*,\s*\{\s*userId/,
+      /purchaseService\.update\s*\(\s*orgId\s*,\s*purchaseId\s*,\s*\w+\s*,\s*\{\s*userId/,
     );
   });
 

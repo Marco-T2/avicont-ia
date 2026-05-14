@@ -93,6 +93,7 @@ const DISPATCH_BC_ITEM: HubItem = {
 interface RenderProps {
   items?: HubItem[];
   orgSlug?: string;
+  periods?: { id: string; name: string }[];
   filters?: {
     type?: string;
     status?: string;
@@ -103,11 +104,12 @@ interface RenderProps {
   };
 }
 
-function renderList({ items = [], orgSlug = "test-org", filters = {} }: RenderProps = {}) {
+function renderList({ items = [], orgSlug = "test-org", periods = [], filters = {} }: RenderProps = {}) {
   return render(
     <DispatchList
       orgSlug={orgSlug}
       items={items}
+      periods={periods}
       filters={filters}
     />,
   );
