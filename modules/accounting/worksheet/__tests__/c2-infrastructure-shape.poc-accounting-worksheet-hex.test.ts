@@ -20,13 +20,14 @@ import * as path from "node:path";
  *   + R2 NEGATIVE (no application import from infra)
  * - Block 2 (α42..α45): exporters sub-dir — worksheet-pdf.exporter + worksheet-xlsx.exporter
  *   exist + exportWorksheetPdf/exportWorksheetXlsx exported
- * - Block 3 (α46): REQ-010 POSITIVE sentinel — pdf exporter imports from
- *   @/modules/accounting/financial-statements/infrastructure/exporters (PERMITTED cross-module infra)
+ * - Block 3 (α46): REQ-010 sentinel — pdf exporter imports pdf.fonts/pdf.helpers from
+ *   @/modules/accounting/shared/infrastructure/exporters (RESOLVED — shared canonical home)
  * - Block 4 (α47..α48): REQ-004 NEGATIVE — no legacy @/features/ import in infra files
  *
- * REQ-010 cross-module INFRA dep (D7 Option A):
- * ALLOW: imports from @/modules/accounting/financial-statements/infrastructure/exporters/
- * FAIL: any other @/modules/accounting/financial-statements/* import here
+ * REQ-010 cross-module INFRA dep (RESOLVED — sub-POC 6 poc-accounting-exporters-cleanup):
+ * pdf.fonts.ts + pdf.helpers.ts git-mv'd from FS-infra to the shared canonical home.
+ * α46 now asserts @/modules/accounting/shared/infrastructure/exporters/.
+ * FAIL: any @/modules/accounting/financial-statements/* import here
  * FAIL: @/modules/accounting/financial-statements/* in xlsx exporter, repo, or domain
  *
  * WS-D1 axis-distinct: PrismaWorksheetRepo imports WorksheetMovementAggregation +
@@ -132,18 +133,18 @@ describe("POC accounting-worksheet-hex C2 — infrastructure layer shape", () =>
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Block 3 — REQ-010 POSITIVE: cross-module infra import PERMITTED (sub-POC-specific)
+  // Block 3 — REQ-010 RESOLVED: pdf helpers live at the shared canonical home
   // worksheet-pdf.exporter imports registerFonts + pdfmakeRuntime (pdf.fonts) and
-  // fmtDecimal (pdf.helpers) from FS infrastructure/exporters/. D7 Option A locked —
-  // TECH DEBT deferred to poc-accounting-exporters-cleanup (sub-POC 6).
-  // NEGATIVE: xlsx exporter must NOT have FS cross-import (self-contained).
+  // fmtDecimal (pdf.helpers) from @/modules/accounting/shared/infrastructure/exporters/.
+  // git-mv'd from FS-infra at poc-accounting-exporters-cleanup (sub-POC 6) — REQ-010
+  // tech debt RESOLVED; the cross-module FS dep no longer exists.
   // ───────────────────────────────────────────────────────────────────────────
 
-  describe("Block 3 — REQ-010 POSITIVE cross-module infra import (D7 Option A)", () => {
-    it("α46: worksheet-pdf.exporter imports from @/modules/accounting/financial-statements/infrastructure/exporters (PERMITTED per REQ-010 D7 Option A)", () => {
+  describe("Block 3 — REQ-010 RESOLVED: shared canonical infra import", () => {
+    it("α46: worksheet-pdf.exporter imports from @/modules/accounting/shared/infrastructure/exporters (REQ-010 RESOLVED — shared canonical home, poc-accounting-exporters-cleanup sub-POC 6)", () => {
       const content = readInfraFile("exporters/worksheet-pdf.exporter.ts");
       expect(content).toMatch(
-        /from\s+["']@\/modules\/accounting\/financial-statements\/infrastructure\/exporters/m,
+        /from\s+["']@\/modules\/accounting\/shared\/infrastructure\/exporters/m,
       );
     });
   });

@@ -333,8 +333,9 @@ describe("Block 4 — Sibling-features inventory: zero imports from @/features/a
 
 // ─── Block 5 — REQ-009 + REQ-010 FINAL verification (2α: α116..α117) ─────────
 // α116: domain/** zero FS cross-import (REQ-009 FINAL)
-// α117: pdf exporter still imports from FS infra (REQ-010 POSITIVE — tech debt tolerated)
-describe("Block 5 — REQ-009 FINAL + REQ-010 carry-forward", () => {
+// α117: pdf exporter imports from the shared canonical home (REQ-010 RESOLVED —
+//       pdf.fonts/pdf.helpers git-mv'd from FS-infra at sub-POC 6)
+describe("Block 5 — REQ-009 FINAL + REQ-010 RESOLVED", () => {
   it("α116: modules/accounting/initial-balance/domain/** does NOT import from @/modules/accounting/financial-statements (REQ-009 FINAL)", () => {
     let output = "";
     try {
@@ -364,14 +365,14 @@ describe("Block 5 — REQ-009 FINAL + REQ-010 carry-forward", () => {
     expect(actualImportHits).toHaveLength(0);
   });
 
-  it("α117: modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter.ts imports from @/modules/accounting/financial-statements/infrastructure/exporters (REQ-010 POSITIVE — tech debt tolerated, carry-forward to sub-POC 6)", () => {
+  it("α117: modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter.ts imports from @/modules/accounting/shared/infrastructure/exporters (REQ-010 RESOLVED — shared canonical home, poc-accounting-exporters-cleanup sub-POC 6)", () => {
     const pdfExporterPath = path.resolve(
       process.cwd(),
       "modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter.ts",
     );
     const content = readFileSync(pdfExporterPath, "utf8");
     expect(content).toMatch(
-      /from\s+["']@\/modules\/accounting\/financial-statements\/infrastructure\/exporters/m,
+      /from\s+["']@\/modules\/accounting\/shared\/infrastructure\/exporters/m,
     );
   });
 });

@@ -20,8 +20,8 @@ import * as path from "node:path";
  *   + R2 NEGATIVE (no application import from infra). 4-method per IB-D2.
  * - Block 2 (α40..α43): exporters sub-dir — initial-balance-pdf.exporter +
  *   initial-balance-xlsx.exporter exist + exportInitialBalancePdf/exportInitialBalanceXlsx exported
- * - Block 3 (α44): REQ-010 POSITIVE sentinel — pdf exporter imports from
- *   @/modules/accounting/financial-statements/infrastructure/exporters (D7 Option A PERMITTED)
+ * - Block 3 (α44): REQ-010 sentinel — pdf exporter imports pdf.fonts/pdf.helpers from
+ *   @/modules/accounting/shared/infrastructure/exporters (RESOLVED — shared canonical home)
  * - Block 4 (α45..α46): REQ-004 NEGATIVE — no legacy @/features/accounting/initial-balance
  *   import in repo or pdf exporter
  * - Block 5 (α47..α48): xlsx clean check — NEGATIVE: xlsx exporter does NOT import from
@@ -33,9 +33,10 @@ import * as path from "node:path";
  *   - IB-D1: PrismaInitialBalanceRepo imports types directly from domain/initial-balance.types.ts
  *     (no extraction needed; RawInitialBalanceRow + RawCACountRow are infra-private — stay in repo).
  *
- * REQ-010 cross-module INFRA dep (D7 Option A):
- * ALLOW: imports from @/modules/accounting/financial-statements/infrastructure/exporters/
- * FAIL: any other @/modules/accounting/financial-statements/* in xlsx exporter, repo, or domain
+ * REQ-010 cross-module INFRA dep (RESOLVED — sub-POC 6 poc-accounting-exporters-cleanup):
+ * pdf.fonts.ts + pdf.helpers.ts git-mv'd from FS-infra to the shared canonical home.
+ * α44 now asserts @/modules/accounting/shared/infrastructure/exporters/.
+ * FAIL: any @/modules/accounting/financial-statements/* in xlsx exporter, repo, or domain
  *
  * Cross-cycle gate [[cross_cycle_red_test_cementacion_gate]]:
  * This sentinel does NOT reference any modules/accounting/initial-balance/presentation/** paths
@@ -137,17 +138,18 @@ describe("POC accounting-initial-balance-hex C2 — infrastructure layer shape",
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Block 3 — REQ-010 POSITIVE: cross-module infra import PERMITTED (sub-POC-specific)
+  // Block 3 — REQ-010 RESOLVED: pdf helpers live at the shared canonical home
   // initial-balance-pdf.exporter imports registerFonts + pdfmakeRuntime (pdf.fonts) and
-  // fmtDecimal (pdf.helpers) from FS infrastructure/exporters/. D7 Option A locked —
-  // TECH DEBT deferred to poc-accounting-exporters-cleanup (sub-POC 6).
+  // fmtDecimal (pdf.helpers) from @/modules/accounting/shared/infrastructure/exporters/.
+  // git-mv'd from FS-infra at poc-accounting-exporters-cleanup (sub-POC 6) — REQ-010
+  // tech debt RESOLVED; the cross-module FS dep no longer exists.
   // ───────────────────────────────────────────────────────────────────────────
 
-  describe("Block 3 — REQ-010 POSITIVE cross-module infra import (D7 Option A)", () => {
-    it("α44: initial-balance-pdf.exporter imports from @/modules/accounting/financial-statements/infrastructure/exporters (PERMITTED per REQ-010 D7 Option A)", () => {
+  describe("Block 3 — REQ-010 RESOLVED: shared canonical infra import", () => {
+    it("α44: initial-balance-pdf.exporter imports from @/modules/accounting/shared/infrastructure/exporters (REQ-010 RESOLVED — shared canonical home, poc-accounting-exporters-cleanup sub-POC 6)", () => {
       const content = readInfraFile("exporters/initial-balance-pdf.exporter.ts");
       expect(content).toMatch(
-        /from\s+["']@\/modules\/accounting\/financial-statements\/infrastructure\/exporters/m,
+        /from\s+["']@\/modules\/accounting\/shared\/infrastructure\/exporters/m,
       );
     });
   });
