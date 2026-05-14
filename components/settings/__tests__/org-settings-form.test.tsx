@@ -1,24 +1,28 @@
 /**
- * Phase 5 RED → GREEN — <OrgSettingsForm> account-code combobox-with-search
+ * RED → GREEN — <OrgSettingsForm> account-code combobox-with-search
  *
- * SDD change: org-settings-account-picker (combobox upgrade).
+ * SDD task: consolidate the two duplicated account comboboxes. The inline
+ * AccountCombobox in org-settings-form is deleted; the form now reuses the shared
+ * <AccountSelector> from components/accounting with `valueKey="code"`.
+ *
  * REQ:
  *  - Account pickers are comboboxes: trigger has role="combobox", popover opens on click.
- *  - A search input appears in the popover (placeholder "Buscar cuenta...").
+ *  - A search input appears in the popover.
  *  - Typing in the search input filters the displayed account options.
  *  - Only detail accounts appear in detail fields; only parent accounts in parent fields.
  *  - Selecting an account updates state → submit sends the chosen code.
  *
- * Pattern: Popover (radix-ui) + Input + list of <button> items — mirrors contact-selector.tsx.
+ * Pattern: Popover (radix-ui) + Input + list of <button> items.
  * Items are NOT role="option" (custom buttons). Opening/closing via trigger click.
  *
- * RED failure mode declared: tests that open the popover and look for a search input
- * ("Buscar cuenta...") will fail with "Unable to find an element with the placeholder
- * text of: /buscar cuenta/i" because the current implementation renders a plain Radix
- * <Select> with no search input.
+ * RED failure mode declared: the shared <AccountSelector> tags its Popover.Content
+ * with data-testid="account-selector-content". The inline AccountCombobox used
+ * "account-combobox-content", so `openPopoverFor` (findByTestId) times out:
+ * "Unable to find an element with the testid of: account-selector-content".
+ * Once the form swaps to the shared component the testid resolves.
  *
  * Scoping note: after opening a popover, assertions about its content use within() on
- * the data-testid="account-combobox-content" element to avoid false-negatives from
+ * the data-testid="account-selector-content" element to avoid false-negatives from
  * other trigger buttons whose selected values happen to share text with option labels.
  */
 
@@ -101,7 +105,7 @@ function renderForm() {
 async function openPopoverFor(triggerName: string) {
   const trigger = screen.getByRole("combobox", { name: triggerName });
   fireEvent.click(trigger);
-  const content = await screen.findByTestId("account-combobox-content");
+  const content = await screen.findByTestId("account-selector-content");
   return { trigger, content };
 }
 
@@ -125,10 +129,8 @@ describe("OrgSettingsForm — account combobox-with-search", () => {
 
   it("opens a popover with a search input when the banco trigger is clicked", async () => {
     renderForm();
-    // RED failure mode: current Radix <Select> has no search input → findByPlaceholderText
-    // times out ("Unable to find an element with the placeholder text of: /buscar cuenta/i").
     const { content } = await openPopoverFor("Banco");
-    const searchInput = within(content).getByPlaceholderText(/buscar cuenta/i);
+    const searchInput = within(content).getByPlaceholderText(/buscar/i);
     expect(searchInput).toBeInTheDocument();
   });
 
@@ -137,11 +139,11 @@ describe("OrgSettingsForm — account combobox-with-search", () => {
     const { content } = await openPopoverFor("Banco");
     const w = within(content);
 
-    // detail account must appear as an option button
-    expect(w.getByText("1.1.3.2 - Banco 2 M/N")).toBeInTheDocument();
+    // shared <AccountSelector> renders code + name in separate spans per option
+    expect(w.getByText("Banco 2 M/N")).toBeInTheDocument();
 
-    // parent account code must NOT appear inside the banco popover
-    expect(w.queryByText("1.1.3 - Bancos")).not.toBeInTheDocument();
+    // parent account must NOT appear inside the banco popover
+    expect(w.queryByText("Bancos")).not.toBeInTheDocument();
   });
 
   it("typing in the search input filters the account list", async () => {
@@ -149,13 +151,13 @@ describe("OrgSettingsForm — account combobox-with-search", () => {
     const { content } = await openPopoverFor("Banco");
     const w = within(content);
 
-    const searchInput = w.getByPlaceholderText(/buscar cuenta/i);
+    const searchInput = w.getByPlaceholderText(/buscar/i);
     fireEvent.change(searchInput, { target: { value: "Banco 2" } });
 
     // "Banco 2 M/N" should still be visible
-    expect(w.getByText("1.1.3.2 - Banco 2 M/N")).toBeInTheDocument();
+    expect(w.getByText("Banco 2 M/N")).toBeInTheDocument();
     // "Banco 1 M/N" should be filtered out
-    expect(w.queryByText("1.1.3.1 - Banco 1 M/N")).not.toBeInTheDocument();
+    expect(w.queryByText("Banco 1 M/N")).not.toBeInTheDocument();
   });
 
   it("cash-parent popover lists only parent accounts (isDetail:false) — detail excluded", async () => {
@@ -163,9 +165,9 @@ describe("OrgSettingsForm — account combobox-with-search", () => {
     const { content } = await openPopoverFor("Cuenta padre — Caja");
     const w = within(content);
 
-    expect(w.getByText("1.1.1 - Caja")).toBeInTheDocument();
+    expect(w.getByText("Caja")).toBeInTheDocument();
     // a detail account must NOT appear inside the parent-field popover
-    expect(w.queryByText("1.1.1.1 - Caja General M/N")).not.toBeInTheDocument();
+    expect(w.queryByText("Caja General M/N")).not.toBeInTheDocument();
   });
 
   it("selecting a new banco account submits the chosen code to the API", async () => {
@@ -179,7 +181,7 @@ describe("OrgSettingsForm — account combobox-with-search", () => {
     const { content } = await openPopoverFor("Banco");
 
     // Click the new account option inside the popover
-    fireEvent.click(within(content).getByText("1.1.3.2 - Banco 2 M/N"));
+    fireEvent.click(within(content).getByText("Banco 2 M/N"));
 
     // Trigger save
     fireEvent.click(

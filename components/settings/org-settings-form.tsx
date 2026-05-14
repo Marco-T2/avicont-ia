@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Save, ChevronsUpDown } from "lucide-react";
-import { Popover } from "radix-ui";
+import { Save } from "lucide-react";
+import AccountSelector from "@/components/accounting/account-selector";
 
 interface OrgSettings {
   id: string;
@@ -41,104 +41,6 @@ interface OrgSettingsFormProps {
   detailAccounts: AccountOption[];
   /** Cuentas agrupadoras (isDetail:false) — para los 3 campos parent de tesorería. */
   parentAccounts: AccountOption[];
-}
-
-function optionLabel(account: AccountOption): string {
-  return `${account.code} - ${account.name}`;
-}
-
-/** Combobox con búsqueda — patrón Popover+Input, igual que contact-selector.tsx. */
-interface AccountComboboxProps {
-  id: string;
-  label: string;
-  value: string;
-  onChange: (next: string) => void;
-  options: AccountOption[];
-}
-
-function AccountCombobox({ id, label, value, onChange, options }: AccountComboboxProps) {
-  const [open, setOpen] = useState(false);
-  const [search, setSearch] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
-
-  const selected = options.find((a) => a.code === value) ?? null;
-
-  useEffect(() => {
-    if (open) {
-      setTimeout(() => searchRef.current?.focus(), 50);
-    } else {
-      setTimeout(() => setSearch(""), 0);
-    }
-  }, [open]);
-
-  const filtered = options.filter((a) => {
-    const q = search.toLowerCase();
-    return optionLabel(a).toLowerCase().includes(q);
-  });
-
-  function handleSelect(account: AccountOption) {
-    onChange(account.code);
-    setOpen(false);
-  }
-
-  return (
-    <Popover.Root open={open} onOpenChange={setOpen}>
-      <Popover.Trigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="outline"
-          role="combobox"
-          aria-label={label}
-          aria-expanded={open}
-          className="w-full justify-between font-normal"
-        >
-          <span className={selected ? "text-foreground" : "text-muted-foreground"}>
-            {selected ? optionLabel(selected) : "Seleccione una cuenta"}
-          </span>
-          <ChevronsUpDown className="h-4 w-4 ml-2 shrink-0 text-muted-foreground" />
-        </Button>
-      </Popover.Trigger>
-
-      <Popover.Portal>
-        <Popover.Content
-          data-testid="account-combobox-content"
-          className="z-50 w-[var(--radix-popover-trigger-width)] min-w-64 rounded-xl border bg-popover p-0 shadow-md outline-none"
-          align="start"
-          sideOffset={4}
-        >
-          <div className="p-2 border-b">
-            <Input
-              ref={searchRef}
-              placeholder="Buscar cuenta..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-8 text-sm"
-            />
-          </div>
-
-          <div className="max-h-60 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <div className="py-6 text-center text-sm text-muted-foreground">
-                Sin resultados.
-              </div>
-            ) : (
-              filtered.map((account) => (
-                <button
-                  key={account.code}
-                  type="button"
-                  className="w-full text-left px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                  onClick={() => handleSelect(account)}
-                >
-                  {optionLabel(account)}
-                </button>
-              ))
-            )}
-          </div>
-        </Popover.Content>
-      </Popover.Portal>
-    </Popover.Root>
-  );
 }
 
 export function OrgSettingsForm({
@@ -210,12 +112,13 @@ export function OrgSettingsForm({
   ) => (
     <div className="space-y-2">
       <Label htmlFor={id}>{label}</Label>
-      <AccountCombobox
+      <AccountSelector
         id={id}
-        label={label}
+        ariaLabel={label}
         value={value}
         onChange={onChange}
-        options={options}
+        accounts={options}
+        valueKey="code"
       />
       <p className="text-xs text-muted-foreground">{help}</p>
     </div>

@@ -5,13 +5,30 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronsUpDown, X } from "lucide-react";
 import { Popover } from "radix-ui";
-import type { Account } from "@/generated/prisma/client";
+
+/**
+ * Shape mínima que el combobox necesita de una cuenta. Es un subconjunto
+ * estructural del modelo Prisma `Account` — cualquier objeto con `code` y `name`
+ * (e `id` opcional) sirve. La selección se matchea y se emite por `valueKey`.
+ */
+export interface AccountSelectorAccount {
+  id?: string;
+  code: string;
+  name: string;
+}
 
 interface AccountSelectorProps {
-  accounts: Account[];
+  /** Lista YA filtrada por el consumidor — el componente NO filtra por activa/detalle. */
+  accounts: AccountSelectorAccount[];
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** Campo usado para matchear el valor seleccionado y para lo que emite `onChange`. */
+  valueKey?: "id" | "code";
+  /** Forwarded al `<Button>` trigger — útil para asociar un `<Label htmlFor>`. */
+  id?: string;
+  /** `aria-label` del trigger — útil cuando el label visible vive fuera del componente. */
+  ariaLabel?: string;
 }
 
 export default function AccountSelector({
@@ -19,17 +36,16 @@ export default function AccountSelector({
   value,
   onChange,
   disabled,
+  valueKey = "id",
+  id,
+  ariaLabel,
 }: AccountSelectorProps) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const searchRef = useRef<HTMLInputElement>(null);
 
-  const detailAccounts = useMemo(
-    () => accounts.filter((a) => a.isActive && a.isDetail),
-    [accounts],
-  );
-
-  const selectedAccount = accounts.find((a) => a.id === value) ?? null;
+  const selectedAccount =
+    accounts.find((a) => a[valueKey] === value) ?? null;
 
   useEffect(() => {
     if (open) {
@@ -41,17 +57,17 @@ export default function AccountSelector({
   }, [open]);
 
   const filtered = useMemo(() => {
-    if (!search) return detailAccounts;
+    if (!search) return accounts;
     const q = search.toLowerCase();
-    return detailAccounts.filter(
+    return accounts.filter(
       (a) =>
         a.code.toLowerCase().includes(q) ||
         a.name.toLowerCase().includes(q),
     );
-  }, [detailAccounts, search]);
+  }, [accounts, search]);
 
-  function handleSelect(account: Account) {
-    onChange(account.id);
+  function handleSelect(account: AccountSelectorAccount) {
+    onChange(account[valueKey] ?? "");
     setOpen(false);
   }
 
@@ -64,9 +80,11 @@ export default function AccountSelector({
     <Popover.Root open={open} onOpenChange={disabled ? undefined : setOpen}>
       <Popover.Trigger asChild>
         <Button
+          id={id}
           type="button"
           variant="outline"
           role="combobox"
+          aria-label={ariaLabel}
           aria-expanded={open}
           disabled={disabled}
           className="w-full justify-between font-normal"
@@ -92,6 +110,7 @@ export default function AccountSelector({
 
       <Popover.Portal>
         <Popover.Content
+          data-testid="account-selector-content"
           className="z-50 w-[var(--radix-popover-trigger-width)] min-w-72 rounded-xl border bg-popover p-0 shadow-md outline-none"
           align="start"
           sideOffset={4}
@@ -114,7 +133,7 @@ export default function AccountSelector({
             ) : (
               filtered.map((account) => (
                 <button
-                  key={account.id}
+                  key={account[valueKey] ?? account.code}
                   type="button"
                   className="w-full text-left px-3 py-2 text-sm hover:bg-accent cursor-pointer flex items-center gap-2"
                   onClick={() => handleSelect(account)}

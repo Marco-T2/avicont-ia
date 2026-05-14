@@ -56,8 +56,9 @@ export default function JournalLineRow({
     <tr className="border-b">
       <td className="py-2 px-2">
         <AccountSelector
-          accounts={accounts}
+          accounts={accounts.filter((a) => a.isActive && a.isDetail)}
           value={line.accountId}
+          valueKey="id"
           onChange={(val) => onUpdate(line.id, "accountId", val)}
         />
       </td>
