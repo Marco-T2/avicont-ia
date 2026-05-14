@@ -5,6 +5,9 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+// Raise timeout — passes solo but times out under full-suite WSL memory pressure (Bucket D)
+vi.setConfig({ testTimeout: 15000 });
+
 const { mockRedirect, mockRequirePermission, mockList } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),

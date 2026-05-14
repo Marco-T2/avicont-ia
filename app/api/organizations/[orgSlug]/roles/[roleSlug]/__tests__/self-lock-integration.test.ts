@@ -36,6 +36,9 @@
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
+// Raise timeout — passes solo but times out under full-suite WSL memory pressure (Bucket D)
+vi.setConfig({ testTimeout: 15000 });
+
 // ─── Module mocks (hoisted) ─────────────────────────────────────────────────
 
 // `handleError` passthrough (same behavior as PR5.2 test) so AppError → 403.
