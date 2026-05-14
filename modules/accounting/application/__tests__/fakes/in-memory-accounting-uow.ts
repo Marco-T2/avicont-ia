@@ -8,6 +8,18 @@ import type { AccountBalancesRepository } from "../../../domain/ports/account-ba
 import type { JournalEntriesReadPort } from "../../../domain/ports/journal-entries-read.port";
 import type { JournalEntriesRepository } from "../../../domain/ports/journal-entries.repo";
 import type {
+  JournalLedgerQueryPort,
+  LedgerAggregateRow,
+  LedgerLineRow,
+} from "../../../domain/ports/journal-ledger-query.port";
+import type {
+  CorrelationAuditFilters,
+  CorrelationAuditResult,
+  JournalEntryWithLines,
+  JournalFilters,
+} from "../../../presentation/dto/journal.types";
+import type { DateRangeFilter } from "../../../presentation/dto/ledger.types";
+import type {
   AccountingScope,
   AccountingUnitOfWork,
 } from "../../../domain/ports/unit-of-work";
@@ -103,6 +115,85 @@ export class InMemoryJournalEntriesReadPort implements JournalEntriesReadPort {
     entryId: string,
   ): Promise<Journal | null> {
     return this.entriesById.get(entryId) ?? null;
+  }
+}
+
+/**
+ * In-memory `JournalLedgerQueryPort` for the C1 read use cases. Tests prime
+ * the row-shaped collections directly (`listRows`, `entriesById`,
+ * `lastReferenceNumber`, `nextNumber`, `correlationAudit`, `linesByAccount`,
+ * `aggregateByAccount`). Defaults are deliberately "empty / null" so a test
+ * that forgets to prime fails on the assertion instead of a phantom value.
+ *
+ * This is a pure projection port — no money math here (DEV-1 / R-money: the
+ * float `Number()` accumulation lives in `LedgerService`).
+ */
+export class InMemoryJournalLedgerQueryPort implements JournalLedgerQueryPort {
+  listRows: JournalEntryWithLines[] = [];
+  entriesById = new Map<string, JournalEntryWithLines>();
+  lastReferenceNumber: number | null = null;
+  nextNumber = 1;
+  correlationAudit: {
+    withReference: CorrelationAuditResult["entries"];
+    withoutReferenceCount: number;
+  } = { withReference: [], withoutReferenceCount: 0 };
+  linesByAccount: LedgerLineRow[] = [];
+  aggregate: LedgerAggregateRow = { _sum: { debit: null, credit: null } };
+
+  async list(
+    _organizationId: string,
+    _filters?: JournalFilters,
+  ): Promise<JournalEntryWithLines[]> {
+    return this.listRows;
+  }
+
+  async findById(
+    _organizationId: string,
+    id: string,
+  ): Promise<JournalEntryWithLines | null> {
+    return this.entriesById.get(id) ?? null;
+  }
+
+  async getLastReferenceNumber(
+    _organizationId: string,
+    _voucherTypeId: string,
+  ): Promise<number | null> {
+    return this.lastReferenceNumber;
+  }
+
+  async getNextNumber(
+    _organizationId: string,
+    _voucherTypeId: string,
+    _periodId: string,
+  ): Promise<number> {
+    return this.nextNumber;
+  }
+
+  async findForCorrelationAudit(
+    _organizationId: string,
+    _voucherTypeId: string,
+    _filters?: Pick<CorrelationAuditFilters, "dateFrom" | "dateTo">,
+  ): Promise<{
+    withReference: CorrelationAuditResult["entries"];
+    withoutReferenceCount: number;
+  }> {
+    return this.correlationAudit;
+  }
+
+  async findLinesByAccount(
+    _organizationId: string,
+    _accountId: string,
+    _filters?: { dateRange?: DateRangeFilter; periodId?: string },
+  ): Promise<LedgerLineRow[]> {
+    return this.linesByAccount;
+  }
+
+  async aggregateByAccount(
+    _organizationId: string,
+    _accountId: string,
+    _periodId: string,
+  ): Promise<LedgerAggregateRow> {
+    return this.aggregate;
   }
 }
 

@@ -4,15 +4,18 @@ import { prisma } from "@/lib/prisma";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 
 import { JournalsService } from "../application/journals.service";
+import { LedgerService } from "../application/ledger.service";
 import { ContactsReadAdapter } from "../infrastructure/contacts-read.adapter";
 import { FiscalPeriodsReadAdapter } from "../infrastructure/fiscal-periods-read.adapter";
 import { LegacyAccountsReadAdapter } from "../infrastructure/legacy-accounts-read.adapter";
 import { PrismaJournalEntriesReadAdapter } from "../infrastructure/prisma-journal-entries-read.adapter";
+import { PrismaJournalLedgerQueryAdapter } from "../infrastructure/prisma-journal-ledger-query.adapter";
 import { LegacyPermissionsAdapter } from "../infrastructure/legacy-permissions.adapter";
 import { PrismaAccountingUnitOfWork } from "../infrastructure/prisma-accounting-unit-of-work";
 import { VoucherTypesReadAdapter } from "../infrastructure/voucher-types-read.adapter";
 import { AccountsService } from "../application/accounts.service";
 import { PrismaAccountsRepo } from "../infrastructure/prisma-accounts.repo";
+import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -34,6 +37,21 @@ export function makeJournalsService(): JournalsService {
     new VoucherTypesReadAdapter(),
     new LegacyPermissionsAdapter(),
     new PrismaJournalEntriesReadAdapter(),
+    new PrismaJournalLedgerQueryAdapter(),
+  );
+}
+
+/**
+ * Factory for LedgerService — wires the journal-ledger query adapter +
+ * accounts repo + account-balances service. POC #7 OLEADA 6 C1: LedgerService
+ * folded onto the hex (zero hex equivalent pre-C1). R4 carve-out: this file
+ * is the ONLY legitimate presentation/ → infrastructure/ import.
+ */
+export function makeLedgerService(): LedgerService {
+  return new LedgerService(
+    new PrismaJournalLedgerQueryAdapter(),
+    new PrismaAccountsRepo(),
+    new AccountBalancesService(),
   );
 }
 

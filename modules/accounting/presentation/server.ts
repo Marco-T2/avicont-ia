@@ -4,6 +4,10 @@ export { JournalsService } from "../application/journals.service";
 export type { AuditUserContext } from "../application/journals.service";
 export { makeJournalsService } from "./composition-root";
 
+// ── Ledger hex service (POC #7 OLEADA 6 C1) ──
+export { LedgerService } from "../application/ledger.service";
+export { makeLedgerService } from "./composition-root";
+
 // ── Accounts hex service (POC #3c) ──
 export { AccountsService } from "../application/accounts.service";
 export type { AccountsServiceDeps } from "../application/accounts.service";

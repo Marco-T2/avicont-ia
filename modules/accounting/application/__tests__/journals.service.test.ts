@@ -33,6 +33,7 @@ import {
   InMemoryContactsReadPort,
   InMemoryFiscalPeriodsReadPort,
   InMemoryJournalEntriesReadPort,
+  InMemoryJournalLedgerQueryPort,
   InMemoryPermissionsPort,
   InMemoryVoucherTypesReadPort,
 } from "./fakes/in-memory-accounting-uow";
@@ -46,6 +47,7 @@ describe("JournalsService.createEntry", () => {
     const voucherTypes = new InMemoryVoucherTypesReadPort();
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
+    const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
     const service = new JournalsService(
       uow,
       accounts,
@@ -54,6 +56,7 @@ describe("JournalsService.createEntry", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     );
     return {
       service,
@@ -64,6 +67,7 @@ describe("JournalsService.createEntry", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     };
   }
 
@@ -514,6 +518,7 @@ describe("JournalsService.createAndPost", () => {
     const voucherTypes = new InMemoryVoucherTypesReadPort();
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
+    const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
     const service = new JournalsService(
       uow,
       accounts,
@@ -522,6 +527,7 @@ describe("JournalsService.createAndPost", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     );
     return {
       service,
@@ -532,6 +538,7 @@ describe("JournalsService.createAndPost", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     };
   }
 
@@ -1135,6 +1142,7 @@ describe("JournalsService.transitionStatus", () => {
     const voucherTypes = new InMemoryVoucherTypesReadPort();
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
+    const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
     const service = new JournalsService(
       uow,
       accounts,
@@ -1143,6 +1151,7 @@ describe("JournalsService.transitionStatus", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     );
     return {
       service,
@@ -1153,6 +1162,7 @@ describe("JournalsService.transitionStatus", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     };
   }
 
@@ -1594,6 +1604,7 @@ describe("JournalsService.updateEntry", () => {
     const voucherTypes = new InMemoryVoucherTypesReadPort();
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
+    const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
     const service = new JournalsService(
       uow,
       accounts,
@@ -1602,6 +1613,7 @@ describe("JournalsService.updateEntry", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     );
     return {
       service,
@@ -1612,6 +1624,7 @@ describe("JournalsService.updateEntry", () => {
       voucherTypes,
       permissions,
       journalEntriesRead,
+      journalLedgerQuery,
     };
   }
 
@@ -2783,5 +2796,224 @@ describe("JournalsService.updateEntry", () => {
     expect(uow.journalEntries.updateCalls).toHaveLength(0);
     expect(uow.accountBalances.applyVoidCalls).toHaveLength(0);
     expect(uow.accountBalances.applyPostCalls).toHaveLength(0);
+  });
+});
+
+// ── C1 read use cases — list / getById / getLastReferenceNumber /
+//    getNextNumber / getCorrelationAudit (folded from legacy journal.service) ──
+
+describe("JournalsService read use cases (C1)", () => {
+  function setup() {
+    const uow = new InMemoryAccountingUnitOfWork();
+    const accounts = new InMemoryAccountsReadPort();
+    const contacts = new InMemoryContactsReadPort();
+    const periods = new InMemoryFiscalPeriodsReadPort();
+    const voucherTypes = new InMemoryVoucherTypesReadPort();
+    const permissions = new InMemoryPermissionsPort();
+    const journalEntriesRead = new InMemoryJournalEntriesReadPort();
+    const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
+    const service = new JournalsService(
+      uow,
+      accounts,
+      contacts,
+      periods,
+      voucherTypes,
+      permissions,
+      journalEntriesRead,
+      journalLedgerQuery,
+    );
+    return { service, voucherTypes, journalLedgerQuery };
+  }
+
+  // Minimal JournalEntryWithLines stub — the read use cases pass the row
+  // through verbatim (no transformation), so only identity fields matter.
+  function rowStub(id: string, number: number) {
+    return { id, number } as unknown as Awaited<
+      ReturnType<typeof InMemoryJournalLedgerQueryPort.prototype.findById>
+    > & object;
+  }
+
+  describe("list", () => {
+    it("returns every entry the query port yields", async () => {
+      const { service, journalLedgerQuery } = setup();
+      journalLedgerQuery.listRows = [
+        rowStub("je-1", 1),
+        rowStub("je-2", 2),
+      ] as never;
+
+      const result = await service.list("org-1");
+
+      expect(result).toHaveLength(2);
+      expect(result.map((e) => e.id)).toEqual(["je-1", "je-2"]);
+    });
+
+    it("returns an empty list when the org has no entries", async () => {
+      const { service, journalLedgerQuery } = setup();
+      journalLedgerQuery.listRows = [];
+
+      const result = await service.list("org-1");
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("getById", () => {
+    it("returns the entry when the id resolves", async () => {
+      const { service, journalLedgerQuery } = setup();
+      journalLedgerQuery.entriesById.set("je-1", rowStub("je-1", 7) as never);
+
+      const result = await service.getById("org-1", "je-1");
+
+      expect(result.id).toBe("je-1");
+      expect(result.number).toBe(7);
+    });
+
+    it("throws NotFoundError when the id does not resolve", async () => {
+      const { service } = setup();
+
+      const err = await service
+        .getById("org-1", "missing")
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(NotFoundError);
+    });
+  });
+
+  describe("getLastReferenceNumber", () => {
+    it("returns the last reference number after validating the voucher type", async () => {
+      const { service, voucherTypes, journalLedgerQuery } = setup();
+      voucherTypes.voucherTypesById.set("vt-1", {
+        id: "vt-1",
+      } as never);
+      journalLedgerQuery.lastReferenceNumber = 142;
+
+      const result = await service.getLastReferenceNumber("org-1", "vt-1");
+
+      expect(result).toBe(142);
+    });
+
+    it("returns null when no entry has a reference number", async () => {
+      const { service, voucherTypes, journalLedgerQuery } = setup();
+      voucherTypes.voucherTypesById.set("vt-1", { id: "vt-1" } as never);
+      journalLedgerQuery.lastReferenceNumber = null;
+
+      const result = await service.getLastReferenceNumber("org-1", "vt-1");
+
+      expect(result).toBeNull();
+    });
+
+    it("propagates the voucher-type validation error (404) before querying", async () => {
+      const { service } = setup();
+
+      const err = await service
+        .getLastReferenceNumber("org-1", "vt-missing")
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(Error);
+    });
+  });
+
+  describe("getNextNumber", () => {
+    it("returns the next sequential number after validating the voucher type", async () => {
+      const { service, voucherTypes, journalLedgerQuery } = setup();
+      voucherTypes.voucherTypesById.set("vt-1", { id: "vt-1" } as never);
+      journalLedgerQuery.nextNumber = 9;
+
+      const result = await service.getNextNumber("org-1", "vt-1", "period-1");
+
+      expect(result).toBe(9);
+    });
+
+    it("propagates the voucher-type validation error before querying", async () => {
+      const { service } = setup();
+
+      const err = await service
+        .getNextNumber("org-1", "vt-missing", "period-1")
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(Error);
+    });
+  });
+
+  describe("getCorrelationAudit (gap-detection — verbatim legacy logic)", () => {
+    it("detects a single gap in the reference-number sequence", async () => {
+      const { service, voucherTypes, journalLedgerQuery } = setup();
+      voucherTypes.voucherTypesById.set("vt-1", { id: "vt-1" } as never);
+      // 1, 2, 5 → one gap covering 3..4 (count 2)
+      journalLedgerQuery.correlationAudit = {
+        withReference: [
+          { id: "a", referenceNumber: 1, date: new Date(), number: 1, description: "a" },
+          { id: "b", referenceNumber: 2, date: new Date(), number: 2, description: "b" },
+          { id: "c", referenceNumber: 5, date: new Date(), number: 3, description: "c" },
+        ],
+        withoutReferenceCount: 4,
+      };
+
+      const result = await service.getCorrelationAudit("org-1", {
+        voucherTypeId: "vt-1",
+      });
+
+      expect(result.gaps).toEqual([{ from: 3, to: 4, count: 2 }]);
+      expect(result.hasGaps).toBe(true);
+      expect(result.totalEntries).toBe(7); // 3 referenced + 4 unreferenced
+      expect(result.entriesWithoutReference).toBe(4);
+      expect(result.entries).toHaveLength(3);
+    });
+
+    it("reports no gaps for a perfectly contiguous sequence", async () => {
+      const { service, voucherTypes, journalLedgerQuery } = setup();
+      voucherTypes.voucherTypesById.set("vt-1", { id: "vt-1" } as never);
+      journalLedgerQuery.correlationAudit = {
+        withReference: [
+          { id: "a", referenceNumber: 10, date: new Date(), number: 1, description: "a" },
+          { id: "b", referenceNumber: 11, date: new Date(), number: 2, description: "b" },
+          { id: "c", referenceNumber: 12, date: new Date(), number: 3, description: "c" },
+        ],
+        withoutReferenceCount: 0,
+      };
+
+      const result = await service.getCorrelationAudit("org-1", {
+        voucherTypeId: "vt-1",
+      });
+
+      expect(result.gaps).toEqual([]);
+      expect(result.hasGaps).toBe(false);
+      expect(result.totalEntries).toBe(3);
+    });
+
+    it("detects multiple disjoint gaps", async () => {
+      const { service, voucherTypes, journalLedgerQuery } = setup();
+      voucherTypes.voucherTypesById.set("vt-1", { id: "vt-1" } as never);
+      // 1, 3, 4, 8 → gap 2..2 (count 1) and gap 5..7 (count 3)
+      journalLedgerQuery.correlationAudit = {
+        withReference: [
+          { id: "a", referenceNumber: 1, date: new Date(), number: 1, description: "a" },
+          { id: "b", referenceNumber: 3, date: new Date(), number: 2, description: "b" },
+          { id: "c", referenceNumber: 4, date: new Date(), number: 3, description: "c" },
+          { id: "d", referenceNumber: 8, date: new Date(), number: 4, description: "d" },
+        ],
+        withoutReferenceCount: 0,
+      };
+
+      const result = await service.getCorrelationAudit("org-1", {
+        voucherTypeId: "vt-1",
+      });
+
+      expect(result.gaps).toEqual([
+        { from: 2, to: 2, count: 1 },
+        { from: 5, to: 7, count: 3 },
+      ]);
+      expect(result.hasGaps).toBe(true);
+    });
+
+    it("propagates the voucher-type validation error before auditing", async () => {
+      const { service } = setup();
+
+      const err = await service
+        .getCorrelationAudit("org-1", { voucherTypeId: "vt-missing" })
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(Error);
+    });
   });
 });

@@ -20,8 +20,16 @@ import type { AccountsReadPort } from "../domain/ports/accounts-read.port";
 import type { ContactsReadPort } from "../domain/ports/contacts-read.port";
 import type { FiscalPeriodsReadPort } from "../domain/ports/fiscal-periods-read.port";
 import type { JournalEntriesReadPort } from "../domain/ports/journal-entries-read.port";
+import type { JournalLedgerQueryPort } from "../domain/ports/journal-ledger-query.port";
 import type { PermissionsPort } from "../domain/ports/permissions.port";
 import type { VoucherTypesReadPort } from "../domain/ports/voucher-types-read.port";
+import type {
+  CorrelationAuditFilters,
+  CorrelationAuditResult,
+  CorrelationGap,
+  JournalEntryWithLines,
+  JournalFilters,
+} from "../presentation/dto/journal.types";
 
 // Alias kept for API ergonomics — the use case names its line input
 // `CreateJournalEntryLineInput` to mirror the legacy public surface, but
@@ -60,6 +68,13 @@ export interface AuditUserContext {
  * In C2 the service exposes the four legacy entry points migrated to
  * hexagonal: createEntry, createAndPost, transitionStatus, updateEntry.
  * Strict TDD per-test — methods land one failing case at a time.
+ *
+ * POC #7 OLEADA 6 — C1: the 5 read/utility use cases fold in from legacy
+ * `journal.service.ts` — list, getById, getCorrelationAudit,
+ * getLastReferenceNumber, getNextNumber. They are projection/reporting
+ * paths driven by `JournalLedgerQueryPort` (the legacy methods reached
+ * `JournalRepository` directly; the hex stays port-driven). The 6th legacy
+ * read, `exportVoucherPdf`, lands in C3 (coupled to the exporters/ git-mv).
  */
 export class JournalsService {
   constructor(
@@ -70,7 +85,111 @@ export class JournalsService {
     private readonly voucherTypes: VoucherTypesReadPort,
     private readonly permissions: PermissionsPort,
     private readonly journalEntriesRead: JournalEntriesReadPort,
+    private readonly journalLedgerQuery: JournalLedgerQueryPort,
   ) {}
+
+  // ── Read use cases (C1) — folded from legacy journal.service.ts ──
+
+  /**
+   * Lists journal entries for an org, optionally filtered. Parity legacy
+   * `journal.service.ts:90-95` — thin delegation to the query port.
+   */
+  async list(
+    organizationId: string,
+    filters?: JournalFilters,
+  ): Promise<JournalEntryWithLines[]> {
+    return this.journalLedgerQuery.list(organizationId, filters);
+  }
+
+  /**
+   * Fetches a single journal entry by id. Throws `NotFoundError("Asiento
+   * contable")` when missing — parity legacy `journal.service.ts:99-103`.
+   */
+  async getById(
+    organizationId: string,
+    id: string,
+  ): Promise<JournalEntryWithLines> {
+    const entry = await this.journalLedgerQuery.findById(organizationId, id);
+    if (!entry) throw new NotFoundError("Asiento contable");
+    return entry;
+  }
+
+  /**
+   * Returns the highest existing `referenceNumber` for a voucher type, or
+   * null. Validates the voucher type belongs to the org first (getById
+   * throws 404 otherwise). Parity legacy `journal.service.ts:492-498`.
+   */
+  async getLastReferenceNumber(
+    organizationId: string,
+    voucherTypeId: string,
+  ): Promise<number | null> {
+    await this.voucherTypes.getById(organizationId, voucherTypeId);
+    return this.journalLedgerQuery.getLastReferenceNumber(
+      organizationId,
+      voucherTypeId,
+    );
+  }
+
+  /**
+   * Returns the next sequential `number` for {org, voucherType, period}.
+   * Validates the voucher type belongs to the org first. Parity legacy
+   * `journal.service.ts:500-507`.
+   */
+  async getNextNumber(
+    organizationId: string,
+    voucherTypeId: string,
+    periodId: string,
+  ): Promise<number> {
+    await this.voucherTypes.getById(organizationId, voucherTypeId);
+    return this.journalLedgerQuery.getNextNumber(
+      organizationId,
+      voucherTypeId,
+      periodId,
+    );
+  }
+
+  /**
+   * Correlation audit — detects gaps in the `referenceNumber` sequence for a
+   * voucher type. Validates the voucher type belongs to the org first. The
+   * gap-detection loop is ported VERBATIM from legacy
+   * `journal.service.ts:511-544` (the query port supplies the sorted
+   * reference-numbered entries + un-referenced count; the gap arithmetic
+   * stays in the use case).
+   */
+  async getCorrelationAudit(
+    organizationId: string,
+    filters: CorrelationAuditFilters,
+  ): Promise<CorrelationAuditResult> {
+    await this.voucherTypes.getById(organizationId, filters.voucherTypeId);
+
+    const { withReference, withoutReferenceCount } =
+      await this.journalLedgerQuery.findForCorrelationAudit(
+        organizationId,
+        filters.voucherTypeId,
+        { dateFrom: filters.dateFrom, dateTo: filters.dateTo },
+      );
+
+    const gaps: CorrelationGap[] = [];
+    for (let i = 1; i < withReference.length; i++) {
+      const prev = withReference[i - 1].referenceNumber;
+      const curr = withReference[i].referenceNumber;
+      if (curr !== prev + 1) {
+        gaps.push({
+          from: prev + 1,
+          to: curr - 1,
+          count: curr - prev - 1,
+        });
+      }
+    }
+
+    return {
+      entries: withReference,
+      gaps,
+      totalEntries: withReference.length + withoutReferenceCount,
+      entriesWithoutReference: withoutReferenceCount,
+      hasGaps: gaps.length > 0,
+    };
+  }
 
   async createEntry(
     organizationId: string,

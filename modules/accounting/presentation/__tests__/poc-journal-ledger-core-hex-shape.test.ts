@@ -238,7 +238,12 @@ describe("α13 Block C1 — LedgerService float money-math parity (DEV-1 / R-mon
 
   it("α13c: hex ledger.service.ts does NOT converge to Decimal `sumDecimals`/`eq` money invariant (DEV-1 / R-money)", () => {
     const src = readFileSync(HEX_LEDGER_SERVICE, "utf-8");
-    expect(src).not.toMatch(/\bsumDecimals\b/);
-    expect(src).not.toMatch(/from\s+["'][^"']*shared\/domain\/money\.utils["']/);
+    // Match a real IMPORT of money.utils or a CALL to sumDecimals( — NOT the
+    // tokens appearing inside the DEV-1 / R-money JSDoc prose that documents
+    // the deliberate non-convergence.
+    expect(src).not.toMatch(
+      /from\s+["'][^"']*shared\/domain\/money\.utils["']/,
+    );
+    expect(src).not.toMatch(/\bsumDecimals\s*\(/);
   });
 });
