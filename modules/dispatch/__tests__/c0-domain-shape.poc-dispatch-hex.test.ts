@@ -227,7 +227,6 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
         createdById: "user-1",
         details: [
           {
-            dispatchId: "", // placeholder — entity assigns
             description: "L0",
             boxes: 5,
             grossWeight: 100,
@@ -299,7 +298,6 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
           createdById: "u-1",
           details: [
             {
-              dispatchId: "",
               description: "L",
               boxes: 1,
               grossWeight: 10,

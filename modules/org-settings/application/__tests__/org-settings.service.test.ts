@@ -72,6 +72,7 @@ function makeDeps(opts?: {
       const all = opts?.accountsByIds ?? [];
       return all.filter((a) => ids.includes(a.id));
     }),
+    findManyByCodes: vi.fn(async () => []),
   };
 
   return { repo, accountLookup, entity };
@@ -233,6 +234,7 @@ describe("OrgSettingsService.update — validación de defaultCashAccountIds / d
       };
       const accountLookup: AccountLookupPort = {
         findManyByIds: vi.fn(async () => []),
+        findManyByCodes: vi.fn(async () => []),
       };
       const service = new OrgSettingsService(repo, accountLookup);
 

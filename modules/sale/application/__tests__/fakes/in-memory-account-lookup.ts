@@ -21,4 +21,14 @@ export class InMemoryAccountLookup implements AccountLookupPort {
       return acc ? [acc] : [];
     });
   }
+
+  async findManyByCodes(
+    _organizationId: string,
+    codes: string[],
+  ): Promise<AccountReference[]> {
+    return codes.flatMap((code) => {
+      const acc = [...this.store.values()].find((a) => a.code === code);
+      return acc ? [acc] : [];
+    });
+  }
 }
