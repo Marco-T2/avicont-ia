@@ -89,15 +89,20 @@ export interface OrgSettingsSnapshot {
   updatedAt: Date;
 }
 
+// Códigos canónicos de cuenta para una org recién creada. DEBEN apuntar a
+// cuentas existentes en el plan de cuentas seed (ver prisma/seeds/chart-of-accounts.ts).
+// banco → 1.1.3.1 (antes 1.1.2.1, que era Caja Chica — typo).
+// flete → 5.1.9   (antes 5.1.3, que era Medicamentos y Vacunas — bug).
+// Mantener en sync con @default() de OrgSettings en prisma/schema.prisma.
 const DEFAULTS = {
   cajaGeneralAccountCode: "1.1.1.1",
-  bancoAccountCode: "1.1.2.1",
+  bancoAccountCode: "1.1.3.1",
   cxcAccountCode: "1.1.4.1",
   cxpAccountCode: "2.1.1.1",
   cashParentCode: "1.1.1",
   pettyCashParentCode: "1.1.2",
   bankParentCode: "1.1.3",
-  fleteExpenseAccountCode: "5.1.3",
+  fleteExpenseAccountCode: "5.1.9",
   polloFaenadoCOGSAccountCode: "5.1.1",
   itExpenseAccountCode: "5.3.3",
   itPayableAccountCode: "2.1.7",

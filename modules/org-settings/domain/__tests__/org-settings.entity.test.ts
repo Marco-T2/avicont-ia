@@ -14,14 +14,14 @@ describe("OrgSettings entity", () => {
       const snap = entity.toSnapshot();
       expect(snap.organizationId).toBe("org-1");
       expect(snap.cajaGeneralAccountCode).toBe("1.1.1.1");
-      expect(snap.bancoAccountCode).toBe("1.1.2.1");
+      expect(snap.bancoAccountCode).toBe("1.1.3.1");
       expect(snap.cxcAccountCode).toBe("1.1.4.1");
       expect(snap.cxpAccountCode).toBe("2.1.1.1");
       expect(snap.roundingThreshold).toBe(0.7);
       expect(snap.cashParentCode).toBe("1.1.1");
       expect(snap.pettyCashParentCode).toBe("1.1.2");
       expect(snap.bankParentCode).toBe("1.1.3");
-      expect(snap.fleteExpenseAccountCode).toBe("5.1.3");
+      expect(snap.fleteExpenseAccountCode).toBe("5.1.9");
       expect(snap.polloFaenadoCOGSAccountCode).toBe("5.1.1");
       expect(snap.itExpenseAccountCode).toBe("5.3.3");
       expect(snap.itPayableAccountCode).toBe("2.1.7");
