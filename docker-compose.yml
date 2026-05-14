@@ -1,0 +1,49 @@
+# docker-compose.yml
+# Infra de desarrollo — corre DENTRO de WSL2.
+# La app (pnpm dev) sigue corriendo nativa en WSL2 y se conecta por localhost.
+services:
+  db:
+    image: pgvector/pgvector:pg17
+    container_name: avicont-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: avicont
+      POSTGRES_PASSWORD: avicont
+      POSTGRES_DB: avicont
+    ports:
+      - "5432:5432"
+    volumes:
+      - avicont_pgdata:/var/lib/postgresql/data
+      # Scripts de init: SOLO se ejecutan la primera vez, con el volume vacío.
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U avicont -d avicont"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  dbgate:
+    image: dbgate/dbgate:latest
+    container_name: avicont-dbgate
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # UI web en http://localhost:3010 (3000 lo usa Next.js dev).
+      - "3010:3000"
+    environment:
+      # Conexión precargada — DBgate abre apuntando a la base sin configurar nada.
+      CONNECTIONS: con1
+      LABEL_con1: Avicont (local)
+      SERVER_con1: db
+      USER_con1: avicont
+      PASSWORD_con1: avicont
+      PORT_con1: 5432
+      ENGINE_con1: postgres@dbgate-plugin-postgres
+    volumes:
+      - avicont_dbgate:/root/.dbgate
+
+volumes:
+  avicont_pgdata:
+  avicont_dbgate:
