@@ -30,8 +30,8 @@
  */
 
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
-import { fmtDecimal } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.helpers";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
+import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
 import type { TrialBalanceReport, TrialBalanceTotals, TrialBalanceRow } from "../../domain/trial-balance.types";
 
 // ── Error ─────────────────────────────────────────────────────────────────────

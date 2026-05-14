@@ -13,7 +13,9 @@ import * as path from "node:path";
  * REQ mapping:
  * - Block 1: Types (REQ-003)
  * - Block 2: Value objects — StatementTableRow / SerializedColumn (REQ-003)
- * - Block 3: Money utils — R1 EXCEPTION permissible (REQ-005)
+ * - Block 3: Money utils — R1 EXCEPTION permissible (REQ-005). EX-D3
+ *   (poc-accounting-exporters-cleanup sub-POC 6): sumDecimals + eq re-exported
+ *   from @/modules/accounting/shared/domain/money.utils; FS keeps 6 richer fns.
  * - Block 4: Pure calculators / resolvers / date presets (REQ-006)
  * - Block 5: Pure builders — balance-sheet / income-statement (REQ-006)
  * - Block 6: Ports — FinancialStatementsQueryPort + AccountSubtypeLabelPort (REQ-003)
@@ -116,14 +118,23 @@ describe("POC financial-statements-hex C0 — domain layer shape", () => {
       expect(content).toMatch(/export\s+function\s+roundHalfUp/m);
     });
 
-    it("α10: sumDecimals is exported from domain/money.utils", () => {
+    // EX-D3 (poc-accounting-exporters-cleanup sub-POC 6): sumDecimals + eq were
+    // consolidated into @/modules/accounting/shared/domain/money.utils. FS
+    // money.utils re-exports them from shared while KEEPING its 6 richer fns
+    // (roundHalfUp, formatBolivianAmount, zeroDecimal, toDecimal, isDecimal,
+    // serializeStatement) — it is NOT a thin shim.
+    it("α10: sumDecimals is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+sumDecimals/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\bsumDecimals\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
 
-    it("α11: eq is exported from domain/money.utils", () => {
+    it("α11: eq is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+eq/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\beq\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
 
     it("α12: formatBolivianAmount is exported from domain/money.utils", () => {

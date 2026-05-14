@@ -14,7 +14,7 @@ import * as path from "node:path";
  * IB axis-distinct (vs WS):
  * - NO Block 2 (IB-D1: NO type extraction — initial-balance.types.ts already clean)
  * - Block 1 has 6α (IB has 6 exported domain types vs WS 5)
- * - Block 2 (money.utils): α7 + α8 (sumDecimals + eq — both copied for interface shape parity)
+ * - Block 2 (money.utils): α7 + α8 (sumDecimals + eq — EX-D3 re-export shim from shared)
  * - Block 3 (builder): α9 + α10 + α11 (buildInitialBalance + BuildInitialBalanceInput + no FS import)
  * - Block 4 (validation): α12
  * - Block 5 (port — FLAT path initial-balance.ports.ts): α13..α17 (4-method IB-D2 WIDER than WS 3-method)
@@ -25,7 +25,9 @@ import * as path from "node:path";
  *
  * REQ mapping (7 blocks / 23α):
  * - Block 1 (α1-α6, REQ-003): domain/initial-balance.types — 6 types
- * - Block 2 (α7-α8, REQ-006): domain/money.utils — R1 EXCEPTION (sumDecimals + eq)
+ * - Block 2 (α7-α8, REQ-006): domain/money.utils — EX-D3 re-export shim from shared
+ *   (poc-accounting-exporters-cleanup sub-POC 6: sumDecimals + eq consolidated
+ *   into @/modules/accounting/shared/domain/money.utils)
  * - Block 3 (α9-α11, REQ-006): domain/initial-balance.builder — buildInitialBalance + BuildInitialBalanceInput + no FS import
  * - Block 4 (α12, REQ-006): domain/initial-balance.validation — initialBalanceQuerySchema
  * - Block 5 (α13-α17, REQ-003 IB-D2): domain/initial-balance.ports — InitialBalanceQueryPort 4-method
@@ -99,20 +101,26 @@ describe("POC initial-balance-hex C0 — domain layer shape", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Block 2 — Money utils (R1 exception — REQ-006)
-  // D4 Option A: sumDecimals + eq copied — 5th copy (FS+TB+ES+WS+IB).
-  // Both copied for interface shape parity with sisters even though builder only uses sumDecimals.
+  // Block 2 — Money utils — EX-D3 re-export shim from shared (REQ-006)
+  // poc-accounting-exporters-cleanup (sub-POC 6): the standalone sumDecimals + eq
+  // copies (5th copy: FS+TB+ES+WS+IB) were consolidated into
+  // @/modules/accounting/shared/domain/money.utils. This module's money.utils is
+  // now a thin re-export shim.
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("Block 2 — Money utils (R1-permissible-value-type-exception, REQ-006)", () => {
-    it("α7: sumDecimals is exported as function from domain/money.utils", () => {
+  describe("Block 2 — Money utils (EX-D3 re-export shim from shared, REQ-006)", () => {
+    it("α7: sumDecimals is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+sumDecimals/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\bsumDecimals\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
 
-    it("α8: eq is exported as function from domain/money.utils", () => {
+    it("α8: eq is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+eq/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\beq\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
   });
 

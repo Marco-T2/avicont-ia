@@ -18,8 +18,9 @@ import * as path from "node:path";
  * REQ mapping (8 blocks / 25α):
  * - Block 1 (α1-α5, REQ-003): domain/worksheet.types — 5 types
  * - Block 2 (α6-α7, WS-D1): domain/types.ts — WorksheetMovementAggregation + WorksheetAccountMetadata
- * - Block 3 (α8-α9, REQ-006): domain/money.utils — R1 EXCEPTION permissible
- *   (sumDecimals + eq copies; break FS-presentation cross-module dep D4 Option A)
+ * - Block 3 (α8-α9, REQ-006): domain/money.utils — EX-D3 re-export shim from shared
+ *   (poc-accounting-exporters-cleanup sub-POC 6: standalone sumDecimals + eq
+ *   consolidated into @/modules/accounting/shared/domain/money.utils)
  * - Block 4 (α10-α12, REQ-006): domain/worksheet.builder — buildWorksheet + BuildWorksheetInput + no repo import
  * - Block 5 (α13, REQ-006): domain/worksheet.validation — worksheetQuerySchema
  * - Block 6 (α14-α17, REQ-003): domain/ports/worksheet-query.port — WorksheetQueryPort + 3 methods
@@ -102,18 +103,25 @@ describe("POC worksheet-hex C0 — domain layer shape", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Block 3 — Money utils (R1 exception — REQ-006)
+  // Block 3 — Money utils — EX-D3 re-export shim from shared (REQ-006)
+  // poc-accounting-exporters-cleanup (sub-POC 6): the standalone sumDecimals + eq
+  // copies were consolidated into @/modules/accounting/shared/domain/money.utils.
+  // This module's money.utils is now a thin re-export shim.
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("Block 3 — Money utils (R1-permissible-value-type-exception, REQ-006)", () => {
-    it("α8: sumDecimals is exported as function from domain/money.utils", () => {
+  describe("Block 3 — Money utils (EX-D3 re-export shim from shared, REQ-006)", () => {
+    it("α8: sumDecimals is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+sumDecimals/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\bsumDecimals\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
 
-    it("α9: eq is exported as function from domain/money.utils", () => {
+    it("α9: eq is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+eq/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\beq\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
   });
 

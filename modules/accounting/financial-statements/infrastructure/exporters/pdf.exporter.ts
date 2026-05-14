@@ -12,7 +12,7 @@
 // el layout de 3 columnas (Cuenta / Código / Saldo BOB).
 
 import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "./pdf.fonts";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import type { ExportColumn, ExportRow, ExportRowType, ExportSheet } from "./statement-shape";
 import {
   buildBalanceSheetExportSheet,

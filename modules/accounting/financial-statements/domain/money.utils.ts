@@ -16,14 +16,22 @@
 // Spec REQ-003 NEGATIVE Block 8 explicitly EXEMPTS this file from the R5
 // Prisma-runtime ban (see c0-domain-shape sentinel α30..α42 — money.utils is
 // absent from the list intentionally).
+//
+// EX-D3 consolidation (poc-accounting-exporters-cleanup, OLEADA 6 sub-POC 6/8):
+// `sumDecimals` + `eq` were consolidated into the shared canonical home
+// `@/modules/accounting/shared/domain/money.utils` and are re-exported below.
+// This file KEEPS its 6 richer FS-specific functions (roundHalfUp,
+// formatBolivianAmount, zeroDecimal, toDecimal, isDecimal, serializeStatement) —
+// it is NOT a thin shim. Proposal #2357.
 // ───────────────────────────────────────────────────────────────────────────────
 import { Prisma } from "@/generated/prisma/client";
 
 // Alias local para no repetir Prisma.Decimal en firmas
 type Decimal = Prisma.Decimal;
 
-// Tolerancia estándar para la verificación de ecuación contable (REQ-6)
-const TOLERANCE = new Prisma.Decimal("0.01");
+// EX-D3: canonical sumDecimals + eq live in shared — re-exported here so existing
+// FS call sites keep importing from this module unchanged (zero call-site churn).
+export { sumDecimals, eq } from "@/modules/accounting/shared/domain/money.utils";
 
 /**
  * Redondea un Decimal a 2 decimales con la convención half-up (REQ-10).
@@ -45,14 +53,6 @@ function decimalToFixed2(d: Decimal): string {
 }
 
 /**
- * Suma un array de Decimals. Lista vacía → 0.
- * No usa Number() — mantiene precisión arbitraria de decimal.js.
- */
-export function sumDecimals(xs: Decimal[]): Decimal {
-  return xs.reduce((acc, x) => acc.plus(x), new Prisma.Decimal(0));
-}
-
-/**
  * Formato numérico boliviano: punto como separador de miles y coma como
  * separador de decimales (siempre 2 decimales). Pre-formatear en la frontera
  * de salida (ej. JSON curado para LLM) cumple dos funciones: (a) ancla el
@@ -71,14 +71,6 @@ export function formatBolivianAmount(d: Decimal): string {
   const [intPart, decPart] = d.abs().toFixed(2).split(".");
   const withThousands = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
   return `${negative ? "-" : ""}${withThousands},${decPart}`;
-}
-
-/**
- * Compara dos Decimals con tolerancia ±0.01 BOB.
- * Usado para verificar la ecuación contable (REQ-6).
- */
-export function eq(a: Decimal, b: Decimal): boolean {
-  return a.minus(b).abs().lte(TOLERANCE);
 }
 
 /**

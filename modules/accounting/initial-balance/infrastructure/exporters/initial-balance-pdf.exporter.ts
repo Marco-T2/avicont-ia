@@ -1,18 +1,19 @@
 /**
  * PDF exporter for the Balance Inicial report.
  *
- * **D7 tech-debt (cross-module INFRA→INFRA)**: this file imports `registerFonts`
- * and `pdfmakeRuntime` from `@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts`
- * and `fmtDecimal` from `pdf.helpers`. This is a TRANSITIONAL cross-module
- * infrastructure dependency — shared font registration has a singleton side-effect
- * preventing safe duplication. Deferred to poc-accounting-exporters-cleanup
- * (sub-POC 6) for extraction to shared infrastructure location.
- * REQ-010 POSITIVE sentinel α44 confirmed.
+ * **REQ-010 RESOLVED (shared INFRA)**: this file imports `registerFonts` and
+ * `pdfmakeRuntime` from `@/modules/accounting/shared/infrastructure/exporters/pdf.fonts`
+ * and `fmtDecimal` from `pdf.helpers`. pdf.fonts.ts + pdf.helpers.ts were
+ * git-mv'd from FS-infra to the shared canonical home at
+ * poc-accounting-exporters-cleanup (sub-POC 6) — shared font registration has a
+ * singleton side-effect, so a single canonical home is required. The cross-module
+ * FS-INFRA dependency no longer exists.
+ * REQ-010 sentinel α44 asserts the shared path.
  * Sister precedent: WS design #2316 §6, WS archive #2327.
  */
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
-import { fmtDecimal } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.helpers";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
+import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
 import type { InitialBalanceStatement, InitialBalanceGroup } from "../../domain/initial-balance.types";
 
 // ── Public types ──────────────────────────────────────────────────────────────

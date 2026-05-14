@@ -1,20 +1,20 @@
 /**
- * TECH DEBT — REQ-010 cross-module-INFRA dep.
+ * REQ-010 RESOLVED — shared pdf infrastructure.
  *
  * This file imports `registerFonts`, `pdfmakeRuntime` and `fmtDecimal` from
- * `modules/accounting/financial-statements/infrastructure/exporters/`.
+ * `@/modules/accounting/shared/infrastructure/exporters/{pdf.fonts,pdf.helpers}`.
  *
- * Tolerated transitional shape per proposal #2300 D7 Option A. Consolidation
- * deferred to **sub-POC 6 (poc-accounting-exporters-cleanup)** which will extract
- * shared pdf utilities consumable by FS, TB, and ES.
+ * pdf.fonts.ts + pdf.helpers.ts were git-mv'd from FS-infra to the shared
+ * canonical home at **sub-POC 6 (poc-accounting-exporters-cleanup)** — the
+ * cross-module FS-INFRA tech debt no longer exists.
  *
- * **Boundary rule (REQ-010 sentinel)**: this file MAY import from
- * `@/modules/accounting/financial-statements/infrastructure/exporters/{pdf.fonts,pdf.helpers}`
- * ONLY. ANY other @/modules/accounting/financial-statements/* import here MUST FAIL.
+ * **Boundary rule**: this file MUST NOT import from
+ * `@/modules/accounting/financial-statements/*` (the closed-POC C2 sentinel
+ * still asserts this).
  */
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
-import { fmtDecimal } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.helpers";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
+import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
 import type { EquityStatement } from "../../domain/equity-statement.types";
 import {
   COLUMNS_ORDER,

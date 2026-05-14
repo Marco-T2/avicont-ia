@@ -15,16 +15,16 @@
  * Returns both the Buffer and the docDef for testing/inspection.
  * Reuses registerFonts() + pdfmakeRuntime singleton from pdf.fonts.ts.
  *
- * REQ-010 TECH DEBT (D7 Option A, design §6): this infra file imports from
- * @/modules/accounting/financial-statements/infrastructure/exporters/{pdf.fonts,pdf.helpers}.
- * Tolerated transitional shape — INFRA→INFRA cross-module import narrow-permitted.
- * Resolution deferred to poc-accounting-exporters-cleanup (sub-POC 6).
- * JSDoc locked at C2 GREEN (poc-accounting-worksheet-hex, OLEADA 6).
+ * REQ-010 RESOLVED: this infra file imports from
+ * @/modules/accounting/shared/infrastructure/exporters/{pdf.fonts,pdf.helpers}.
+ * pdf.fonts.ts + pdf.helpers.ts were git-mv'd from FS-infra to the shared
+ * canonical home at poc-accounting-exporters-cleanup (sub-POC 6) — the
+ * cross-module FS-INFRA dependency no longer exists.
  */
 
 import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
-import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.fonts";
-import { fmtDecimal, type DecimalLike } from "@/modules/accounting/financial-statements/infrastructure/exporters/pdf.helpers";
+import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
+import { fmtDecimal, type DecimalLike } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
 import type { WorksheetReport, WorksheetRow, WorksheetTotals } from "../../domain/worksheet.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────

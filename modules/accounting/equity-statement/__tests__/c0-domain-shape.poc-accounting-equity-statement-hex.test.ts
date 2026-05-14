@@ -13,7 +13,9 @@ import * as path from "node:path";
  *
  * REQ mapping:
  * - Block 1: Types (REQ-003, REQ-006) — α1..α5
- * - Block 2: Money utils R1 EXCEPTION (REQ-006) — α6..α7
+ * - Block 2: Money utils — EX-D3 re-export shim from shared (REQ-006) — α6..α7
+ *   (poc-accounting-exporters-cleanup sub-POC 6: standalone sumDecimals + eq
+ *   consolidated into @/modules/accounting/shared/domain/money.utils)
  * - Block 3: Pure builder (REQ-006) — α8..α10
  * - Block 4: Validation schema (REQ-006) — α11
  * - Block 5: Port interface (REQ-003) — α12..α18 (6-method — AXIS-DISTINCT vs TB 3-method)
@@ -85,18 +87,25 @@ describe("POC equity-statement-hex C0 — domain layer shape", () => {
   });
 
   // ─────────────────────────────────────────────────────────────────────────────
-  // Block 2 — Money utils (R1 exception — REQ-006)
+  // Block 2 — Money utils — EX-D3 re-export shim from shared (REQ-006)
+  // poc-accounting-exporters-cleanup (sub-POC 6): the standalone sumDecimals + eq
+  // copies were consolidated into @/modules/accounting/shared/domain/money.utils.
+  // This module's money.utils is now a thin re-export shim.
   // ─────────────────────────────────────────────────────────────────────────────
 
-  describe("Block 2 — Money utils (R1-permissible-value-type-exception, REQ-006)", () => {
-    it("α6: sumDecimals is exported as function from domain/money.utils", () => {
+  describe("Block 2 — Money utils (EX-D3 re-export shim from shared, REQ-006)", () => {
+    it("α6: sumDecimals is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+sumDecimals/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\bsumDecimals\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
 
-    it("α7: eq is exported as function from domain/money.utils", () => {
+    it("α7: eq is re-exported from @/modules/accounting/shared/domain/money.utils", () => {
       const content = readDomainFile("money.utils.ts");
-      expect(content).toMatch(/export\s+function\s+eq/m);
+      expect(content).toMatch(
+        /export\s+\{[^}]*\beq\b[^}]*\}\s+from\s+["']@\/modules\/accounting\/shared\/domain\/money\.utils["']/m,
+      );
     });
   });
 
