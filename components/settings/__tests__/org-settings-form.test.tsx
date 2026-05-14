@@ -1,15 +1,25 @@
 /**
- * Phase 5 RED — <OrgSettingsForm> account-code <Select> dropdowns
+ * Phase 5 RED → GREEN — <OrgSettingsForm> account-code combobox-with-search
  *
- * SDD change: org-settings-account-picker — Domain 3 (org-settings-account-picker).
+ * SDD change: org-settings-account-picker (combobox upgrade).
  * REQ:
- *  - Account Picker Shows Only Detail Accounts (postable fields list isDetail:true,
- *    parent fields list isDetail:false; option label = "{code} - {name}")
- *  - Selecting an Account Updates the Field Value (submit sends the chosen code)
+ *  - Account pickers are comboboxes: trigger has role="combobox", popover opens on click.
+ *  - A search input appears in the popover (placeholder "Buscar cuenta...").
+ *  - Typing in the search input filters the displayed account options.
+ *  - Only detail accounts appear in detail fields; only parent accounts in parent fields.
+ *  - Selecting an account updates state → submit sends the chosen code.
  *
- * Radix Select interaction in jsdom mirrors the established precedent in
- * components/settings/__tests__/role-create-dialog.test.tsx
- * (getAllByRole("combobox") + pointerDown + findByRole("option")).
+ * Pattern: Popover (radix-ui) + Input + list of <button> items — mirrors contact-selector.tsx.
+ * Items are NOT role="option" (custom buttons). Opening/closing via trigger click.
+ *
+ * RED failure mode declared: tests that open the popover and look for a search input
+ * ("Buscar cuenta...") will fail with "Unable to find an element with the placeholder
+ * text of: /buscar cuenta/i" because the current implementation renders a plain Radix
+ * <Select> with no search input.
+ *
+ * Scoping note: after opening a popover, assertions about its content use within() on
+ * the data-testid="account-combobox-content" element to avoid false-negatives from
+ * other trigger buttons whose selected values happen to share text with option labels.
  */
 
 import {
@@ -18,6 +28,7 @@ import {
   cleanup,
   fireEvent,
   waitFor,
+  within,
 } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -86,58 +97,75 @@ function renderForm() {
   );
 }
 
-describe("OrgSettingsForm — account-code <Select> dropdowns", () => {
-  it("renders each postable account field as a combobox (not a free-text input)", () => {
+/** Wait for the Radix Popover content portal to appear after trigger click. */
+async function openPopoverFor(triggerName: string) {
+  const trigger = screen.getByRole("combobox", { name: triggerName });
+  fireEvent.click(trigger);
+  const content = await screen.findByTestId("account-combobox-content");
+  return { trigger, content };
+}
+
+describe("OrgSettingsForm — account combobox-with-search", () => {
+  it("renders 9 account combobox triggers (6 detail + 3 parent)", () => {
     renderForm();
-    // 9 account-code fields become comboboxes (6 postable + 3 parent).
-    // The old free-text <Input> for these fields is gone.
+    // Each account field is a trigger button with role="combobox".
     expect(screen.getAllByRole("combobox").length).toBeGreaterThanOrEqual(9);
-    // roundingThreshold stays a numeric input
+    // roundingThreshold stays a numeric input, not a combobox.
     expect(screen.getByLabelText(/umbral de redondeo/i)).toHaveAttribute(
       "type",
       "number",
     );
   });
 
-  it("shows the current account code + name on the banco trigger", () => {
+  it("shows the current account label on the banco trigger before opening", () => {
     renderForm();
-    // settings.bancoAccountCode = "1.1.3.1" → option label "1.1.3.1 - Banco 1 M/N"
+    // settings.bancoAccountCode = "1.1.3.1" → label "1.1.3.1 - Banco 1 M/N"
     expect(screen.getByText("1.1.3.1 - Banco 1 M/N")).toBeInTheDocument();
   });
 
-  it("banco dropdown lists only detail accounts as '{code} - {name}' — parents excluded", async () => {
+  it("opens a popover with a search input when the banco trigger is clicked", async () => {
     renderForm();
-    const bancoSelect = screen.getByRole("combobox", { name: "Banco" });
-    fireEvent.pointerDown(bancoSelect, { button: 0, ctrlKey: false });
-    fireEvent.click(bancoSelect);
-
-    // detail account appears as an option
-    const banco2 = await screen.findByRole("option", {
-      name: "1.1.3.2 - Banco 2 M/N",
-    });
-    expect(banco2).toBeInTheDocument();
-
-    // parent account "1.1.3 - Bancos" MUST NOT be a selectable option here
-    expect(
-      screen.queryByRole("option", { name: "1.1.3 - Bancos" }),
-    ).not.toBeInTheDocument();
+    // RED failure mode: current Radix <Select> has no search input → findByPlaceholderText
+    // times out ("Unable to find an element with the placeholder text of: /buscar cuenta/i").
+    const { content } = await openPopoverFor("Banco");
+    const searchInput = within(content).getByPlaceholderText(/buscar cuenta/i);
+    expect(searchInput).toBeInTheDocument();
   });
 
-  it("cash-parent dropdown lists only parent accounts (isDetail:false)", async () => {
+  it("banco popover lists only detail accounts — parent accounts excluded", async () => {
     renderForm();
-    const cashParentSelect = screen.getByRole("combobox", {
-      name: "Cuenta padre — Caja",
-    });
-    fireEvent.pointerDown(cashParentSelect, { button: 0, ctrlKey: false });
-    fireEvent.click(cashParentSelect);
+    const { content } = await openPopoverFor("Banco");
+    const w = within(content);
 
-    expect(
-      await screen.findByRole("option", { name: "1.1.1 - Caja" }),
-    ).toBeInTheDocument();
-    // a detail account must NOT be offered for a parent field
-    expect(
-      screen.queryByRole("option", { name: "1.1.1.1 - Caja General M/N" }),
-    ).not.toBeInTheDocument();
+    // detail account must appear as an option button
+    expect(w.getByText("1.1.3.2 - Banco 2 M/N")).toBeInTheDocument();
+
+    // parent account code must NOT appear inside the banco popover
+    expect(w.queryByText("1.1.3 - Bancos")).not.toBeInTheDocument();
+  });
+
+  it("typing in the search input filters the account list", async () => {
+    renderForm();
+    const { content } = await openPopoverFor("Banco");
+    const w = within(content);
+
+    const searchInput = w.getByPlaceholderText(/buscar cuenta/i);
+    fireEvent.change(searchInput, { target: { value: "Banco 2" } });
+
+    // "Banco 2 M/N" should still be visible
+    expect(w.getByText("1.1.3.2 - Banco 2 M/N")).toBeInTheDocument();
+    // "Banco 1 M/N" should be filtered out
+    expect(w.queryByText("1.1.3.1 - Banco 1 M/N")).not.toBeInTheDocument();
+  });
+
+  it("cash-parent popover lists only parent accounts (isDetail:false) — detail excluded", async () => {
+    renderForm();
+    const { content } = await openPopoverFor("Cuenta padre — Caja");
+    const w = within(content);
+
+    expect(w.getByText("1.1.1 - Caja")).toBeInTheDocument();
+    // a detail account must NOT appear inside the parent-field popover
+    expect(w.queryByText("1.1.1.1 - Caja General M/N")).not.toBeInTheDocument();
   });
 
   it("selecting a new banco account submits the chosen code to the API", async () => {
@@ -148,14 +176,12 @@ describe("OrgSettingsForm — account-code <Select> dropdowns", () => {
     global.fetch = fetchMock as unknown as typeof fetch;
 
     renderForm();
-    const bancoSelect = screen.getByRole("combobox", { name: "Banco" });
-    fireEvent.pointerDown(bancoSelect, { button: 0, ctrlKey: false });
-    fireEvent.click(bancoSelect);
-    const banco2 = await screen.findByRole("option", {
-      name: "1.1.3.2 - Banco 2 M/N",
-    });
-    fireEvent.click(banco2);
+    const { content } = await openPopoverFor("Banco");
 
+    // Click the new account option inside the popover
+    fireEvent.click(within(content).getByText("1.1.3.2 - Banco 2 M/N"));
+
+    // Trigger save
     fireEvent.click(
       screen.getByRole("button", { name: /guardar configuración/i }),
     );
