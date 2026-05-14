@@ -192,7 +192,7 @@ interface ExistingDispatch {
   chickenCount: number | null;
   shrinkagePct: number | null;
   details: ExistingDispatchDetail[];
-  contact: { id: string; name: string };
+  contact: { id: string; name: string; type: string; nit?: string | null };
   receivable?: {
     id: string;
     amount: number;

@@ -25,6 +25,7 @@ import {
 import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
+import type { FiscalPeriod } from "@/generated/prisma/client";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
 import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
@@ -113,13 +114,6 @@ interface ContactOption {
   type: string;
 }
 
-interface PeriodOption {
-  id: string;
-  name?: string;
-  year?: number;
-  status: string;
-}
-
 interface DocTypeOption {
   id: string;
   code: string;
@@ -136,7 +130,7 @@ interface AccountOption {
 interface PaymentFormProps {
   orgSlug: string;
   contacts: ContactOption[];
-  periods: PeriodOption[];
+  periods: FiscalPeriod[];
   existingPayment?: PaymentWithRelations;
   userRole?: string;
   defaultType?: "COBRO" | "PAGO";
