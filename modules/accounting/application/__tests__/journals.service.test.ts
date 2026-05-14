@@ -169,6 +169,112 @@ describe("JournalsService.createEntry", () => {
     ).rejects.toBeInstanceOf(JournalFiscalPeriodClosed);
   });
 
+  // POC #7 OLEADA 6 — C5 B2a fold. The hex `CreateJournalEntryInput` dropped
+  // `sourceType`/`aiOriginalText` (AI-origin fields) — the legacy
+  // `journal.service.ts createEntry` threaded them, the AI-agent draft endpoint
+  // (`agent/route.ts:268`) passes `sourceType:"ai"` + `aiOriginalText`. The
+  // `Journal` aggregate (`journal.entity.ts:72-74,148-150`) + the DTO
+  // (`journal.types.ts:30-42`) + the Prisma repo all ALREADY thread them — the
+  // ONLY gap is the use-case input contract + `validateAndCreateDraft` not
+  // forwarding them to `Journal.create`. This is the B2a step-1 fold (~6 LOC).
+  //
+  // Failure mode declarado: PRE-fold the input interface has no `sourceType`/
+  // `aiOriginalText` keys and `validateAndCreateDraft` does not pass them, so
+  // the persisted aggregate carries `sourceType: null` / `aiOriginalText: null`
+  // regardless of input. RED surfaces this as `Expected "ai", received null`.
+  // GREEN adds the two optional fields to `CreateJournalEntryInput` and
+  // forwards them in the `Journal.create` call inside `validateAndCreateDraft`.
+  it("threads sourceType + aiOriginalText into the persisted aggregate (C5 B2a fold)", async () => {
+    const { service, uow, accounts, periods, voucherTypes } = setup();
+    accounts.accountsById.set("acc-1", {
+      id: "acc-1",
+      name: "Caja",
+      isActive: true,
+      isDetail: true,
+      requiresContact: false,
+    });
+    accounts.accountsById.set("acc-2", {
+      id: "acc-2",
+      name: "Banco",
+      isActive: true,
+      isDetail: true,
+      requiresContact: false,
+    });
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+    voucherTypes.voucherTypesById.set("voucher-1", { id: "voucher-1" });
+
+    const journal = await service.createEntry(
+      "org-1",
+      {
+        date: new Date("2026-04-28"),
+        description: "Compra de balanceado",
+        periodId: "period-1",
+        voucherTypeId: "voucher-1",
+        createdById: "user-1",
+        sourceType: "ai",
+        aiOriginalText: "pagué 100 de balanceado en efectivo",
+        lines: [
+          { accountId: "acc-1", debit: 100, credit: 0 },
+          { accountId: "acc-2", debit: 0, credit: 100 },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(journal.sourceType).toBe("ai");
+    expect(journal.aiOriginalText).toBe("pagué 100 de balanceado en efectivo");
+    expect(uow.journalEntries.created).toHaveLength(1);
+    expect(uow.journalEntries.created[0].sourceType).toBe("ai");
+    expect(uow.journalEntries.created[0].aiOriginalText).toBe(
+      "pagué 100 de balanceado en efectivo",
+    );
+  });
+
+  // Triangulation: the omitted case — when the input carries no AI-origin
+  // fields (the normal "+ Nuevo Asiento" form path), the persisted aggregate
+  // defaults both to null. Forces the GREEN to FORWARD the input value rather
+  // than hardcode "ai".
+  it("defaults sourceType + aiOriginalText to null when the input omits them", async () => {
+    const { service, uow, accounts, periods, voucherTypes } = setup();
+    accounts.accountsById.set("acc-1", {
+      id: "acc-1",
+      name: "Caja",
+      isActive: true,
+      isDetail: true,
+      requiresContact: false,
+    });
+    accounts.accountsById.set("acc-2", {
+      id: "acc-2",
+      name: "Banco",
+      isActive: true,
+      isDetail: true,
+      requiresContact: false,
+    });
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+    voucherTypes.voucherTypesById.set("voucher-1", { id: "voucher-1" });
+
+    const journal = await service.createEntry(
+      "org-1",
+      {
+        date: new Date("2026-04-28"),
+        description: "Asiento manual",
+        periodId: "period-1",
+        voucherTypeId: "voucher-1",
+        createdById: "user-1",
+        lines: [
+          { accountId: "acc-1", debit: 100, credit: 0 },
+          { accountId: "acc-2", debit: 0, credit: 100 },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(journal.sourceType).toBeNull();
+    expect(journal.aiOriginalText).toBeNull();
+    expect(uow.journalEntries.created[0].sourceType).toBeNull();
+    expect(uow.journalEntries.created[0].aiOriginalText).toBeNull();
+  });
+
   // Failure mode declarado: current GREEN does NOT read accounts. With a line
   // pointing to an account that exists but `isDetail: false`, the use case
   // builds `Journal.create` and persists without validating I3. RED surfaces
