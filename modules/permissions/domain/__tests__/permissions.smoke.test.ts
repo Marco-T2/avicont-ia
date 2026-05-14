@@ -11,7 +11,20 @@
  *   - sync 2-param canPost removed (PR8.3)
  *   - async facades moved to permissions.server.ts to fix client-bundle dns/pg leak
  */
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
+
+// Bucket B fix: canAccess/canPost call getMatrix(orgId) → real Prisma → connection hang
+// in test env (no Postgres). Mock only getMatrix to throw fast; other cache exports
+// (_setLoader, _resetCache, revalidateOrgMatrix) preserved from actual for other tests.
+// This preserves the smoke test intent: assert the functions exist and return Promises.
+vi.mock("@/modules/permissions/infrastructure/permissions.cache", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/permissions/infrastructure/permissions.cache")>();
+  return {
+    ...actual,
+    getMatrix: vi.fn().mockRejectedValue(new Error("no-db-in-test")),
+    ensureOrgSeeded: vi.fn().mockRejectedValue(new Error("no-db-in-test")),
+  };
+});
 
 describe("permissions.ts — client-safe module (no server deps)", () => {
   it("canAccess is NOT exported from permissions.ts", async () => {

@@ -45,8 +45,16 @@ vi.mock("@/modules/iva-books/presentation/composition-root", () => ({
   makeIvaBookService: vi.fn(() => mockServiceInstance),
 }));
 
+// Bucket B mock-hygiene fix: OLEADA 6 sub-POC 5/8 C1 (44cfabc7) vi.mock rewrite was
+// incomplete — route also calls listQuerySchema.parse() from this same module.
 vi.mock("@/modules/iva-books/presentation/server", () => ({
   exportIvaBookExcel: vi.fn().mockResolvedValue(FAKE_BUFFER),
+  listQuerySchema: {
+    parse: vi.fn((input: Record<string, unknown>) => ({
+      fiscalPeriodId: typeof input.fiscalPeriodId === "string" ? input.fiscalPeriodId : undefined,
+      status: typeof input.status === "string" ? input.status : undefined,
+    })),
+  },
 }));
 
 // ── Imports después de los mocks ─────────────────────────────────────────────

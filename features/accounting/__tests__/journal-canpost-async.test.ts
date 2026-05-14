@@ -18,6 +18,18 @@ import { _setLoader, _resetCache } from "@/features/permissions/server";
 import { POST_NOT_ALLOWED_FOR_ROLE } from "@/features/shared/errors";
 import type { Resource, PostableResource } from "@/features/permissions";
 
+// Bucket B fix: JournalService constructor calls makeFiscalPeriodsService() when no arg
+// is provided. Without this mock, it instantiates a real PrismaFiscalPeriodRepository
+// and subsequent getById() calls hang waiting for Postgres.
+// Tests only assert on canPost guard behavior (POST_NOT_ALLOWED_FOR_ROLE) — getById
+// may throw for any reason after the guard passes.
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({
+    getById: vi.fn().mockRejectedValue(new Error("period-not-found-stub")),
+    list: vi.fn().mockResolvedValue([]),
+  })),
+}));
+
 // ──────────────────────────────────────────────────────────────────────────────
 // Loader helpers
 // ──────────────────────────────────────────────────────────────────────────────

@@ -51,17 +51,29 @@ vi.mock("@/features/permissions/server", () => ({
 
 const mockListHub = vi.fn();
 
-vi.mock("@/modules/dispatch/presentation/server", () => ({
-  HubService: vi.fn().mockImplementation(function () {
-    return { listHub: mockListHub };
-  }),
-  // These are only imported for type information — stub them so the import resolves
-  SaleServiceForHub: undefined,
-  DispatchServiceForHub: undefined,
-  makeDispatchService: vi.fn(() => ({})),
-}));
+// Bucket B mock-hygiene fix: route.ts module-level code calls new HubService() and
+// hubQuerySchema.parse(). Both must be present in the single mock factory.
+// Duplicate vi.mock for this path was overwriting the HubService definition.
+// hubQuerySchema is spread from importOriginal so Zod validation (including 400 on
+// bad enum values) continues to work correctly.
+// Also: route.ts calls makeSaleService() at module level (HubService constructor arg) —
+// that path is mocked separately below.
+vi.mock("@/modules/dispatch/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/dispatch/presentation/server")>();
+  return {
+    ...actual,
+    HubService: vi.fn().mockImplementation(function () {
+      return { listHub: mockListHub };
+    }),
+    // These are only imported for type information — stub them so the import resolves
+    SaleServiceForHub: undefined,
+    DispatchServiceForHub: undefined,
+    makeDispatchService: vi.fn(() => ({})),
+    // hubQuerySchema kept from actual — Zod enum validation must throw on bad input (400 test)
+  };
+});
 
-// ── SaleService / DispatchService mocks (constructor deps) ───────────────────
+// ── SaleService mock (constructor dep for HubService at route module level) ──
 
 // vi.mock("@/features/sale/sale.service") REMOVED en A3-C7 GREEN (mock_hygiene_
 // commit_scope MEMORY.md): DEAD-MOCK post A3-C5 cutover — route.ts:4 importa
@@ -69,11 +81,10 @@ vi.mock("@/modules/dispatch/presentation/server", () => ({
 // NO importa de `@/features/sale/sale.service`. Path siendo deleted A3-C7 GREEN
 // sub-pasos 1-19 (features/sale/ wholesale removal). Sub-paso 21 atomic batch.
 
-vi.mock("@/modules/dispatch/presentation/server", () => ({
-  DispatchService: vi.fn().mockImplementation(function () {
-    return {};
-  }),
-  makeDispatchService: vi.fn(() => ({})),
+// Bucket B: route.ts:14 calls makeSaleService() at module level as HubService
+// constructor arg — must mock the hex path to prevent real Prisma instantiation.
+vi.mock("@/modules/sale/presentation/composition-root", () => ({
+  makeSaleService: vi.fn(() => ({})),
 }));
 
 // ── Imports after mocks ───────────────────────────────────────────────────────

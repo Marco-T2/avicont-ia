@@ -18,7 +18,12 @@
  *   D5  — JournalService.transitionStatus()           (Phase 2)
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import * as auditCtx from "@/features/shared/audit-context";
+// Bucket B fix: audit-tx.ts (hex) imports setAuditContext from hex sibling
+// "@/modules/shared/infrastructure/audit-context" directly — not through the SHIM
+// "@/features/shared/audit-context". Spying on the SHIM namespace does not intercept
+// the closed-over hex binding. Redirect spy import to the hex module path.
+// Precedent: features/shared/__tests__/audit-tx.test.ts fixed by 88f0caa0.
+import * as auditCtx from "@/modules/shared/infrastructure/audit-context";
 import * as permissions from "@/features/permissions/server";
 import { JournalService } from "../journal.service";
 import type { JournalRepository } from "../journal.repository";
@@ -79,7 +84,7 @@ function makeBasicRepo(entry: JournalEntryWithLines): JournalRepository {
     findById: vi.fn().mockResolvedValue(entry),
     transaction: vi.fn(
       async <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
-        fn({} as Prisma.TransactionClient),
+        fn({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) } as unknown as Prisma.TransactionClient),
     ),
     update: vi.fn().mockResolvedValue(entry),
     updateTx: vi.fn().mockResolvedValue(entry),
@@ -184,7 +189,7 @@ describe("JournalService — Phase 2 correlationId emission", () => {
       findById: vi.fn().mockResolvedValue(draft),
       transaction: vi.fn(
         async <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
-          fn({} as Prisma.TransactionClient),
+          fn({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) } as unknown as Prisma.TransactionClient),
       ),
       createWithRetryTx: vi.fn().mockResolvedValue(draft),
       updateStatusTx: vi.fn().mockResolvedValue(posted),
@@ -299,7 +304,7 @@ describe("JournalService — Phase 2 correlationId emission", () => {
       findById: vi.fn().mockResolvedValue(posted),
       transaction: vi.fn(
         async <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
-          fn({} as Prisma.TransactionClient),
+          fn({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) } as unknown as Prisma.TransactionClient),
       ),
       updateTx: vi.fn().mockResolvedValue(updated),
     } as unknown as JournalRepository;
@@ -335,7 +340,7 @@ describe("JournalService — Phase 2 correlationId emission", () => {
       findById: vi.fn().mockResolvedValue(draft),
       transaction: vi.fn(
         async <T>(fn: (tx: Prisma.TransactionClient) => Promise<T>) =>
-          fn({} as Prisma.TransactionClient),
+          fn({ $executeRawUnsafe: vi.fn().mockResolvedValue(undefined) } as unknown as Prisma.TransactionClient),
       ),
       updateStatusTx: vi.fn().mockResolvedValue(posted),
     } as unknown as JournalRepository;

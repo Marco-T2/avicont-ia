@@ -37,6 +37,20 @@ vi.mock("@/modules/dispatch/presentation/server", () => {
 // `@/features/sale/server`. Path siendo deleted A3-C7 GREEN sub-pasos 1-19
 // (features/sale/ wholesale removal). Sub-paso 20 atomic batch.
 
+// Bucket B mock-hygiene fix: page.tsx imports makeSaleService from hex path and
+// makeFiscalPeriodsService from modules path — neither was mocked, causing real
+// Prisma to leak into the test when HubService constructor arguments are evaluated
+// and when periodsService.list() is called. Both must be stubbed.
+vi.mock("@/modules/sale/presentation/composition-root", () => ({
+  makeSaleService: vi.fn(() => ({})),
+}));
+
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({
+    list: vi.fn().mockResolvedValue([]),
+  })),
+}));
+
 vi.mock("@/components/dispatches/dispatch-list", () => ({
   default: vi.fn().mockReturnValue(null),
 }));

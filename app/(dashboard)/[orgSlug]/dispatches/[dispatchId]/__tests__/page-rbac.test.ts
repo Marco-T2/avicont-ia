@@ -47,12 +47,12 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/features/product-types/server", () => {
-  class ProductTypesService {
-    list = mockProductTypesList;
-  }
-  return { ProductTypesService };
-});
+// Bucket B mock-hygiene fix: page.tsx imports makeProductTypeService from
+// @/modules/product-type/presentation/server (hex path), not @/features/product-types/server.
+// Old mock was wrong-path (dead); new mock targets the real import.
+vi.mock("@/modules/product-type/presentation/server", () => ({
+  makeProductTypeService: vi.fn(() => ({ list: mockProductTypesList })),
+}));
 
 vi.mock("@/modules/org-settings/presentation/server", () => ({
   makeOrgSettingsService: () => ({

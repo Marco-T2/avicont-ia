@@ -49,18 +49,34 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockServiceInstance = {
+// Bucket B fix: route.ts imports makeOrgProfileService from
+// @/modules/org-profile/presentation/server (hex), not @/features/org-profile/server.
+// Use vi.hoisted so mockServiceInstance is available in the new vi.mock factory
+// (hoisted factories run before module-scope let/const).
+const mockServiceInstance = vi.hoisted(() => ({
   getOrCreate: vi.fn(),
   update: vi.fn(),
   updateLogo: vi.fn(),
   deleteLogoBlob: vi.fn(),
-};
+}));
 
+// Dead mock — route no longer imports from this path; kept to avoid error if any
+// transitive import lands here, but the real fix is the hex-path mock below.
 vi.mock("@/features/org-profile/server", () => ({
   OrgProfileService: vi.fn().mockImplementation(function () {
     return mockServiceInstance;
   }),
 }));
+
+// Real mock: route.ts line 5 calls makeOrgProfileService() at module level.
+// importOriginal preserves updateOrgProfileSchema Zod validation (400 tests rely on it).
+vi.mock("@/modules/org-profile/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/org-profile/presentation/server")>();
+  return {
+    ...actual,
+    makeOrgProfileService: vi.fn(() => mockServiceInstance),
+  };
+});
 
 import { requireAuth } from "@/features/shared/middleware";
 vi.mock("@/modules/organizations/presentation/server", () => ({

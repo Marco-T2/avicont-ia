@@ -40,14 +40,17 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-const mockRolesServiceInstance = {
+// Bucket B fix: module-scope const referenced inside a hoisted vi.mock factory →
+// ReferenceError: Cannot access 'mockRolesServiceInstance' before initialization.
+// Wrap in vi.hoisted() so the binding is initialized before the mock is installed.
+const mockRolesServiceInstance = vi.hoisted(() => ({
   listRoles: vi.fn(),
   createRole: vi.fn(),
   getRole: vi.fn(),
   updateRole: vi.fn(),
   deleteRole: vi.fn(),
   exists: vi.fn(),
-};
+}));
 
 vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
   const actual =
