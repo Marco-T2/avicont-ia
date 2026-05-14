@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { exportVoucherPdf } from "@/features/accounting/exporters/voucher-pdf.exporter";
-import type { VoucherPdfInput } from "@/features/accounting/exporters/voucher-pdf.types";
+import { exportVoucherPdf } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.exporter";
+import type { VoucherPdfInput } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.types";
 
 // Fixture base: input realista (derivado del sample del usuario).
 // Los edge cases clonan y mutan sólo el campo relevante.

@@ -35,10 +35,10 @@ import { VoucherTypesService, makeVoucherTypesService } from "@/modules/voucher-
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { OrgProfileService, makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeDocumentSignatureConfigService, type DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
-import { buildVoucherPdfInput } from "./exporters/voucher-pdf.composer";
-import { exportVoucherPdf as renderVoucherPdf } from "./exporters/voucher-pdf.exporter";
-import { fetchLogoAsDataUrl } from "./exporters/logo-fetcher";
-import type { ExportVoucherOpts } from "./exporters/voucher-pdf.types";
+import { buildVoucherPdfInput } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.composer";
+import { exportVoucherPdf as renderVoucherPdf } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.exporter";
+import { fetchLogoAsDataUrl } from "@/modules/accounting/infrastructure/exporters/logo-fetcher";
+import type { ExportVoucherOpts } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.types";
 import type { JournalEntryStatus, Account } from "@/generated/prisma/client";
 import type {
   CreateJournalEntryInput,

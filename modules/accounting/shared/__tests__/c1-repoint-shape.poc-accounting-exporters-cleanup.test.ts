@@ -67,7 +67,7 @@ const PDF_CONSUMERS = [
   "modules/accounting/equity-statement/infrastructure/exporters/equity-statement-pdf.exporter.ts",
   "modules/accounting/worksheet/infrastructure/exporters/worksheet-pdf.exporter.ts",
   "modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter.ts",
-  "features/accounting/exporters/voucher-pdf.exporter.ts",
+  "modules/accounting/infrastructure/exporters/voucher-pdf.exporter.ts",
   "modules/accounting/financial-statements/infrastructure/exporters/pdf.exporter.ts",
 ];
 
@@ -104,9 +104,9 @@ describe("C1 — Block 1: 7 consumers import pdf helpers from shared (EX-D4)", (
     ).toMatch(SHARED_EXPORTERS_RE);
   });
 
-  it("α15: voucher-pdf.exporter (features/accounting/exporters) imports from shared/infrastructure/exporters", () => {
+  it("α15: voucher-pdf.exporter (modules/accounting/infrastructure/exporters) imports from shared/infrastructure/exporters", () => {
     expect(
-      readFile("features/accounting/exporters/voucher-pdf.exporter.ts"),
+      readFile("modules/accounting/infrastructure/exporters/voucher-pdf.exporter.ts"),
     ).toMatch(SHARED_EXPORTERS_RE);
   });
 

@@ -16,6 +16,9 @@ import { VoucherTypesReadAdapter } from "../infrastructure/voucher-types-read.ad
 import { AccountsService } from "../application/accounts.service";
 import { PrismaAccountsRepo } from "../infrastructure/prisma-accounts.repo";
 import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
+import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
+import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -38,6 +41,12 @@ export function makeJournalsService(): JournalsService {
     new LegacyPermissionsAdapter(),
     new PrismaJournalEntriesReadAdapter(),
     new PrismaJournalLedgerQueryAdapter(),
+    // C3 — exportVoucherPdf use case deps. Injected as concrete services
+    // (not ports) mirroring legacy `journal.service.ts:67-87` — the voucher
+    // PDF is a reporting path, no new ports per the resolved open question.
+    makeOrgProfileService(),
+    makeDocumentSignatureConfigService(),
+    makeFiscalPeriodsService(),
   );
 }
 

@@ -4,6 +4,13 @@ import {
   POST_NOT_ALLOWED_FOR_ROLE,
 } from "@/features/shared/errors";
 import { validateLockedEdit } from "@/features/accounting/server";
+import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
+import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { buildVoucherPdfInput } from "../infrastructure/exporters/voucher-pdf.composer";
+import { exportVoucherPdf as renderVoucherPdf } from "../infrastructure/exporters/voucher-pdf.exporter";
+import { fetchLogoAsDataUrl } from "../infrastructure/exporters/logo-fetcher";
+import type { ExportVoucherOpts } from "../infrastructure/exporters/voucher-pdf.types";
 import {
   JournalAutoEntryVoidForbidden,
   JournalFiscalPeriodClosed,
@@ -73,8 +80,16 @@ export interface AuditUserContext {
  * `journal.service.ts` — list, getById, getCorrelationAudit,
  * getLastReferenceNumber, getNextNumber. They are projection/reporting
  * paths driven by `JournalLedgerQueryPort` (the legacy methods reached
- * `JournalRepository` directly; the hex stays port-driven). The 6th legacy
- * read, `exportVoucherPdf`, lands in C3 (coupled to the exporters/ git-mv).
+ * `JournalRepository` directly; the hex stays port-driven).
+ *
+ * POC #7 OLEADA 6 — C3: the 6th legacy read, `exportVoucherPdf`, folds in
+ * coupled to the `exporters/` git-mv. Unlike the C1 reads it is NOT
+ * port-driven: it composes the voucher PDF from the `OrgProfileService`,
+ * `DocumentSignatureConfigService` and the full `FiscalPeriodsService`
+ * (the C1 `FiscalPeriodsReadPort` only carries `{id,status}` — the PDF
+ * needs `period.name` for the gestión field). These three are injected
+ * via the composition-root ctor, mirroring legacy `journal.service.ts:67-87`
+ * (resolved open question — NO new ports for this reporting path).
  */
 export class JournalsService {
   constructor(
@@ -86,6 +101,9 @@ export class JournalsService {
     private readonly permissions: PermissionsPort,
     private readonly journalEntriesRead: JournalEntriesReadPort,
     private readonly journalLedgerQuery: JournalLedgerQueryPort,
+    private readonly orgProfile: OrgProfileService,
+    private readonly sigConfig: DocumentSignatureConfigService,
+    private readonly fiscalPeriods: ReturnType<typeof makeFiscalPeriodsService>,
   ) {}
 
   // ── Read use cases (C1) — folded from legacy journal.service.ts ──
@@ -189,6 +207,41 @@ export class JournalsService {
       entriesWithoutReference: withoutReferenceCount,
       hasGaps: gaps.length > 0,
     };
+  }
+
+  /**
+   * Renders a journal entry as a voucher PDF. Parity legacy
+   * `journal.service.ts:641-661` — resolves the entry via `getById`, pulls the
+   * org profile + signature config + fiscal period (for the gestión name),
+   * composes the typed PDF input and delegates to the pure pdfmake renderer.
+   * The composer + renderer + logo-fetcher were git-mv'd to
+   * `infrastructure/exporters/` in C3 (history preserved).
+   */
+  async exportVoucherPdf(
+    organizationId: string,
+    entryId: string,
+    opts: ExportVoucherOpts,
+  ): Promise<Buffer> {
+    const entry = await this.getById(organizationId, entryId);
+    const profile = await this.orgProfile.getOrCreate(organizationId);
+    const sigConfig = await this.sigConfig.getOrDefault(
+      organizationId,
+      "COMPROBANTE",
+    );
+    const logoDataUrl = await fetchLogoAsDataUrl(profile.logoUrl);
+    const period = await this.fiscalPeriods.getById(
+      organizationId,
+      entry.periodId,
+    );
+
+    const input = buildVoucherPdfInput(entry, profile, sigConfig, logoDataUrl, {
+      exchangeRate: opts.exchangeRate,
+      ufvRate: opts.ufvRate,
+      gestion: period.name,
+      locality: profile.ciudad ?? "",
+    });
+
+    return renderVoucherPdf(input);
   }
 
   async createEntry(

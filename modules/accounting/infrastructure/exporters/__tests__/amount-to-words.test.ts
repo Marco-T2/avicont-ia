@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { amountToWordsEs } from "@/features/accounting/exporters/amount-to-words";
+import { amountToWordsEs } from "@/modules/accounting/infrastructure/exporters/amount-to-words";
 
 // Literal de montos en español-Bolivia, formato contable:
 //   "{LITERAL EN MAYUSCULAS} CC/100 BS"

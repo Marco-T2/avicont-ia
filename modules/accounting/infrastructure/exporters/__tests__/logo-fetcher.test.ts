@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import { fetchLogoAsDataUrl } from "@/features/accounting/exporters/logo-fetcher";
+import { fetchLogoAsDataUrl } from "@/modules/accounting/infrastructure/exporters/logo-fetcher";
 
 // Helper: construye una Response mock con body binario y Content-Type dado.
 function makeResponse(status: number, contentType: string, bytes: Uint8Array): Response {

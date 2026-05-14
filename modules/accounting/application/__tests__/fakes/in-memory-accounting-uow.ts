@@ -40,6 +40,9 @@ import type {
   AccountingVoucherType,
   VoucherTypesReadPort,
 } from "../../../domain/ports/voucher-types-read.port";
+import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
+import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
+import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 
 /**
  * In-memory write port for journal_entries. Records every persisted aggregate
@@ -292,6 +295,81 @@ export class InMemoryPermissionsPort implements PermissionsPort {
   ): Promise<boolean> {
     return this.allowedKeys.has(`${role}:${scope}:${organizationId}`);
   }
+}
+
+/**
+ * Lightweight fakes for the three concrete services injected into
+ * `JournalsService` for the C3 `exportVoucherPdf` use case. Unlike the C1
+ * reads these are NOT ports — `exportVoucherPdf` mirrors legacy
+ * `journal.service.ts:67-87` and takes the real `OrgProfileService` /
+ * `DocumentSignatureConfigService` / `FiscalPeriodsService` classes. The
+ * fakes implement only the methods `exportVoucherPdf` calls and are cast to
+ * the nominal service types via `asExportDeps()` — the 4 write + 5 read use
+ * cases never touch them, so a structural stub is safe.
+ */
+export class FakeOrgProfileService {
+  // Minimal OrgProfileSnapshot — only the fields the voucher composer reads.
+  snapshot = {
+    organizationId: "org-1",
+    razonSocial: "ACME SRL",
+    nit: "123456789",
+    ciudad: "La Paz",
+    direccion: "Av. Siempre Viva 742",
+    telefono: "",
+    email: "",
+    logoUrl: null as string | null,
+  };
+
+  async getOrCreate(_organizationId: string) {
+    return this.snapshot;
+  }
+}
+
+export class FakeDocumentSignatureConfigService {
+  view = {
+    documentType: "COMPROBANTE" as const,
+    labels: [] as string[],
+    showReceiverRow: false,
+  };
+
+  async getOrDefault(_organizationId: string, _documentType: string) {
+    return this.view;
+  }
+}
+
+export class FakeFiscalPeriodsService {
+  periodsById = new Map<string, { id: string; name: string }>();
+
+  async getById(_organizationId: string, periodId: string) {
+    const found = this.periodsById.get(periodId);
+    if (!found) {
+      throw new Error(`Fiscal period ${periodId} not found`);
+    }
+    return found;
+  }
+}
+
+/**
+ * Bundles the three export-use-case fakes, cast to the nominal service types
+ * the `JournalsService` ctor expects. Tests that exercise `exportVoucherPdf`
+ * hold the fake refs to prime data; the 10 other use cases pass the bundle
+ * unused.
+ */
+export function makeExportDepsFakes() {
+  const orgProfile = new FakeOrgProfileService();
+  const sigConfig = new FakeDocumentSignatureConfigService();
+  const fiscalPeriods = new FakeFiscalPeriodsService();
+  return {
+    orgProfile,
+    sigConfig,
+    fiscalPeriods,
+    asCtorArgs: () =>
+      [
+        orgProfile as unknown as OrgProfileService,
+        sigConfig as unknown as DocumentSignatureConfigService,
+        fiscalPeriods as unknown as ReturnType<typeof makeFiscalPeriodsService>,
+      ] as const,
+  };
 }
 
 /**

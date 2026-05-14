@@ -8,7 +8,7 @@ import type {
   OrgProfile,
   JournalLine,
 } from "@/generated/prisma/client";
-import { buildVoucherPdfInput } from "@/features/accounting/exporters/voucher-pdf.composer";
+import { buildVoucherPdfInput } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.composer";
 import type { DocumentSignatureConfigView } from "@/modules/document-signature-config/presentation/server";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 

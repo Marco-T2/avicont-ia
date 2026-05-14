@@ -36,6 +36,7 @@ import {
   InMemoryJournalLedgerQueryPort,
   InMemoryPermissionsPort,
   InMemoryVoucherTypesReadPort,
+  makeExportDepsFakes,
 } from "./fakes/in-memory-accounting-uow";
 
 describe("JournalsService.createEntry", () => {
@@ -48,6 +49,7 @@ describe("JournalsService.createEntry", () => {
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
+    const exportDeps = makeExportDepsFakes();
     const service = new JournalsService(
       uow,
       accounts,
@@ -57,6 +59,7 @@ describe("JournalsService.createEntry", () => {
       permissions,
       journalEntriesRead,
       journalLedgerQuery,
+      ...exportDeps.asCtorArgs(),
     );
     return {
       service,
@@ -519,6 +522,7 @@ describe("JournalsService.createAndPost", () => {
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
+    const exportDeps = makeExportDepsFakes();
     const service = new JournalsService(
       uow,
       accounts,
@@ -528,6 +532,7 @@ describe("JournalsService.createAndPost", () => {
       permissions,
       journalEntriesRead,
       journalLedgerQuery,
+      ...exportDeps.asCtorArgs(),
     );
     return {
       service,
@@ -1143,6 +1148,7 @@ describe("JournalsService.transitionStatus", () => {
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
+    const exportDeps = makeExportDepsFakes();
     const service = new JournalsService(
       uow,
       accounts,
@@ -1152,6 +1158,7 @@ describe("JournalsService.transitionStatus", () => {
       permissions,
       journalEntriesRead,
       journalLedgerQuery,
+      ...exportDeps.asCtorArgs(),
     );
     return {
       service,
@@ -1605,6 +1612,7 @@ describe("JournalsService.updateEntry", () => {
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
+    const exportDeps = makeExportDepsFakes();
     const service = new JournalsService(
       uow,
       accounts,
@@ -1614,6 +1622,7 @@ describe("JournalsService.updateEntry", () => {
       permissions,
       journalEntriesRead,
       journalLedgerQuery,
+      ...exportDeps.asCtorArgs(),
     );
     return {
       service,
@@ -2812,6 +2821,7 @@ describe("JournalsService read use cases (C1)", () => {
     const permissions = new InMemoryPermissionsPort();
     const journalEntriesRead = new InMemoryJournalEntriesReadPort();
     const journalLedgerQuery = new InMemoryJournalLedgerQueryPort();
+    const exportDeps = makeExportDepsFakes();
     const service = new JournalsService(
       uow,
       accounts,
@@ -2821,8 +2831,9 @@ describe("JournalsService read use cases (C1)", () => {
       permissions,
       journalEntriesRead,
       journalLedgerQuery,
+      ...exportDeps.asCtorArgs(),
     );
-    return { service, voucherTypes, journalLedgerQuery };
+    return { service, voucherTypes, journalLedgerQuery, exportDeps };
   }
 
   // Minimal JournalEntryWithLines stub — the read use cases pass the row
@@ -3014,6 +3025,85 @@ describe("JournalsService read use cases (C1)", () => {
         .catch((e: unknown) => e);
 
       expect(err).toBeInstanceOf(Error);
+    });
+  });
+
+  // ── exportVoucherPdf (C3) — the 6th journal read use case ──
+  // Folded from legacy `journal.service.ts:641-661`. Resolves the entry via
+  // `getById`, pulls org-profile + signature-config + fiscal-period (for the
+  // gestión name) from the three concrete services injected via the
+  // composition-root ctor, composes the typed PDF input and delegates to the
+  // pure pdfmake renderer. The composer + renderer were git-mv'd to
+  // `infrastructure/exporters/` in C3.
+  describe("exportVoucherPdf", () => {
+    // Minimal composer-valid JournalEntryWithLines — one balanced 2-line entry.
+    function entryFixture() {
+      const line = (id: string, debit: number, credit: number) => ({
+        id,
+        journalEntryId: "je-pdf",
+        accountId: `acc-${id}`,
+        debit: debit as unknown as object,
+        credit: credit as unknown as object,
+        description: "",
+        contactId: null,
+        order: 0,
+        account: {
+          id: `acc-${id}`,
+          code: "1101",
+          name: "Caja",
+          isActive: true,
+          isDetail: true,
+        },
+        contact: null,
+      });
+      return {
+        id: "je-pdf",
+        number: 145,
+        referenceNumber: 9951,
+        date: new Date("2025-08-19T12:00:00Z"),
+        description: "Comprobante de prueba",
+        status: "POSTED",
+        periodId: "period-1",
+        voucherTypeId: "vt-CE",
+        contactId: null,
+        sourceType: null,
+        sourceId: null,
+        aiOriginalText: null,
+        organizationId: "org-1",
+        createdById: "user-1",
+        updatedById: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lines: [line("d", 100, 0), line("c", 0, 100)],
+        voucherType: { id: "vt-CE", code: "CE", prefix: "CE", name: "Egreso" },
+        contact: null,
+      } as unknown as Awaited<
+        ReturnType<typeof InMemoryJournalLedgerQueryPort.prototype.findById>
+      > & object;
+    }
+
+    it("renders a non-empty PDF Buffer for a resolvable entry", async () => {
+      const { service, journalLedgerQuery, exportDeps } = setup();
+      journalLedgerQuery.entriesById.set("je-pdf", entryFixture() as never);
+      exportDeps.fiscalPeriods.periodsById.set("period-1", {
+        id: "period-1",
+        name: "Agosto 2025",
+      });
+
+      const pdf = await service.exportVoucherPdf("org-1", "je-pdf", {});
+
+      expect(Buffer.isBuffer(pdf)).toBe(true);
+      expect(pdf.length).toBeGreaterThan(0);
+    });
+
+    it("throws NotFoundError when the entry id does not resolve", async () => {
+      const { service } = setup();
+
+      const err = await service
+        .exportVoucherPdf("org-1", "je-missing", {})
+        .catch((e: unknown) => e);
+
+      expect(err).toBeInstanceOf(NotFoundError);
     });
   });
 });

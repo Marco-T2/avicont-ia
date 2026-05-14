@@ -64,9 +64,9 @@ describe("POC document-signature-config hex C4 — cross-feature cutover shape (
   });
 
   // α40
-  it("α40: features/accounting/exporters/voucher-pdf.composer.ts imports types from hex + NO legacy", () => {
+  it("α40: modules/accounting/infrastructure/exporters/voucher-pdf.composer.ts imports types from hex + NO legacy", () => {
     const src = readRepoFile(
-      "features/accounting/exporters/voucher-pdf.composer.ts",
+      "modules/accounting/infrastructure/exporters/voucher-pdf.composer.ts",
     );
     expect(src).toMatch(
       /from\s+["']@\/modules\/document-signature-config\/presentation\/server["']/,
@@ -119,9 +119,9 @@ describe("POC document-signature-config hex C4 — cross-feature cutover shape (
   });
 
   // α45
-  it("α45: features/accounting/exporters/__tests__/voucher-pdf.composer.test.ts imports types from hex + NO legacy", () => {
+  it("α45: modules/accounting/infrastructure/exporters/__tests__/voucher-pdf.composer.test.ts imports types from hex + NO legacy", () => {
     const src = readRepoFile(
-      "features/accounting/exporters/__tests__/voucher-pdf.composer.test.ts",
+      "modules/accounting/infrastructure/exporters/__tests__/voucher-pdf.composer.test.ts",
     );
     expect(src).not.toMatch(LEGACY_FEATURES_DSC_TYPES_IMPORT_RE);
   });
