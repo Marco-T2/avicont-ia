@@ -26,6 +26,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // ── Radix UI polyfills (required in jsdom) ────────────────────────────────────
 
 beforeEach(() => {
+  // Pin system clock to an April date so todayLocal() returns "2026-04-15",
+  // which falls inside APRIL_PERIOD. This ensures the lazy periodId init in
+  // journal-entry-form.tsx resolves to "period-april" (not "") regardless of
+  // when the test suite runs. Without this pin, a May (or later) run produces
+  // periodId="" → the "no open period" warning banner renders → /período/i
+  // matches both the <Label> and the banner text (JF-T01), and Radix Select
+  // starts from empty value causing onValueChange issues (JF-T03).
+  // Root cause: commit bbccf573 made periodId init date-aware (lazy init).
+  vi.useFakeTimers({ toFake: ["Date"] });
+  vi.setSystemTime(new Date("2026-04-15T12:00:00.000Z"));
+
   vi.clearAllMocks();
   if (!Element.prototype.scrollIntoView) {
     Element.prototype.scrollIntoView = vi.fn();
@@ -41,7 +52,10 @@ beforeEach(() => {
   }
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  vi.useRealTimers();
+  cleanup();
+});
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
