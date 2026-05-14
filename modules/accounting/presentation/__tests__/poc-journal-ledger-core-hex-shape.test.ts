@@ -33,6 +33,22 @@ const HEX_JOURNAL_ENTRIES_REPO = resolve(
   HEX_INFRA_DIR,
   "prisma-journal-entries.repo.ts",
 );
+const HEX_JOURNALS_SERVICE = resolve(
+  REPO_ROOT,
+  "modules/accounting/application/journals.service.ts",
+);
+const HEX_LEDGER_SERVICE = resolve(
+  REPO_ROOT,
+  "modules/accounting/application/ledger.service.ts",
+);
+const HEX_JOURNAL_LEDGER_QUERY_PORT = resolve(
+  REPO_ROOT,
+  "modules/accounting/domain/ports/journal-ledger-query.port.ts",
+);
+const LEGACY_LEDGER_SERVICE = resolve(
+  REPO_ROOT,
+  "features/accounting/ledger.service.ts",
+);
 
 /** Collect every `.ts` file directly under `modules/accounting/infrastructure/`
  *  (non-recursive — `__tests__/` excluded; the un-wrap target is the adapters). */
@@ -117,5 +133,112 @@ describe("α04 Block C0 — repo behavioral parity: MAX_CONTENTION_ATTEMPTS + jo
   it("α04d: hex prisma-journal-entries.repo.ts declares the journalIncludeLines shape post-fold", () => {
     const src = readFileSync(HEX_JOURNAL_ENTRIES_REPO, "utf-8");
     expect(src).toContain(LEGACY_INCLUDE_LINES_SHAPE);
+  });
+});
+
+// ── Block C1 — 5 read use cases on JournalsService + LedgerService migration ─
+//
+// SCOPE NOTE (divergence from tasks #2406 α-numbering — surfaced honestly):
+// tasks C1.1 reads "α05–α10 the 6 use cases exist on JournalsService". But the
+// design #2405 cycle map + spec #2404 cycle→REQ map both scope `exportVoucherPdf`
+// to C3 (it is coupled to the exporters/ git-mv — task C3.2 builds it). C1 is
+// therefore the FIVE read/utility use cases: list, getById, getCorrelationAudit,
+// getLastReferenceNumber, getNextNumber. α-allocation here:
+//   α05–α09 — the 5 C1 read use cases on JournalsService
+//   α10     — LedgerService exposes getAccountLedger + getTrialBalance
+//   α11     — application/ledger.service.ts exists  (tasks α11, unchanged)
+//   α12     — domain/ports/journal-ledger-query.port.ts exists (tasks α12, unchanged)
+//   α13     — behavioral float-math parity on LedgerService running-balance
+//             (tasks α13, unchanged) — DEV-1 / R-money named deviation gate.
+
+// α05–α09 — the 5 read use cases exist on hex JournalsService.
+//   Expected FAIL pre-GREEN: JournalsService currently exposes only the 4
+//   write use cases (createEntry/createAndPost/transitionStatus/updateEntry).
+describe("α05–α09 Block C1 — 5 read use cases declared on JournalsService", () => {
+  const readUseCases = [
+    "list",
+    "getById",
+    "getCorrelationAudit",
+    "getLastReferenceNumber",
+    "getNextNumber",
+  ] as const;
+  for (const method of readUseCases) {
+    it(`α: journals.service.ts declares \`async ${method}(\``, () => {
+      const src = readFileSync(HEX_JOURNALS_SERVICE, "utf-8");
+      const decl = new RegExp(`async\\s+${method}\\s*\\(`);
+      expect(src).toMatch(decl);
+    });
+  }
+});
+
+// α10 — LedgerService exposes both libro-mayor use cases.
+//   Expected FAIL pre-GREEN: modules/accounting/application/ledger.service.ts
+//   does not exist yet → readFileSync throws ENOENT.
+describe("α10 Block C1 — LedgerService exposes getAccountLedger + getTrialBalance", () => {
+  const ledgerUseCases = ["getAccountLedger", "getTrialBalance"] as const;
+  for (const method of ledgerUseCases) {
+    it(`α10: ledger.service.ts declares \`async ${method}(\``, () => {
+      const src = readFileSync(HEX_LEDGER_SERVICE, "utf-8");
+      const decl = new RegExp(`async\\s+${method}\\s*\\(`);
+      expect(src).toMatch(decl);
+    });
+  }
+});
+
+// α11 — LedgerService migrated into hex application layer.
+//   Expected FAIL pre-GREEN: file absent (zero hex equivalent today).
+describe("α11 Block C1 — LedgerService migrated to modules/accounting/application/", () => {
+  it("α11: modules/accounting/application/ledger.service.ts exists", () => {
+    expect(existsSync(HEX_LEDGER_SERVICE)).toBe(true);
+  });
+});
+
+// α12 — JournalLedgerQueryPort created in hex domain ports.
+//   Expected FAIL pre-GREEN: port file absent.
+describe("α12 Block C1 — JournalLedgerQueryPort created in domain/ports/", () => {
+  it("α12: modules/accounting/domain/ports/journal-ledger-query.port.ts exists", () => {
+    expect(existsSync(HEX_JOURNAL_LEDGER_QUERY_PORT)).toBe(true);
+  });
+  it("α12: port file declares `interface JournalLedgerQueryPort`", () => {
+    const src = readFileSync(HEX_JOURNAL_LEDGER_QUERY_PORT, "utf-8");
+    expect(src).toMatch(/interface\s+JournalLedgerQueryPort\b/);
+  });
+});
+
+// α13 — DEV-1 / R-money behavioral parity gate. The hex LedgerService
+//   running-balance MUST preserve legacy float `Number()` accumulation
+//   (`runningBalance += debit - credit`) — byte-identical to legacy
+//   `ledger.service.ts:43-57`. It MUST NOT converge to the canonical
+//   `shared/domain/money.utils.ts` Decimal `sumDecimals`/`eq` invariant.
+//   This sentinel asserts the float arithmetic STRUCTURALLY on BOTH the
+//   legacy source (snapshot anchor, PASS pre-GREEN) and the hex source
+//   (parity, FAIL pre-GREEN — file absent).
+describe("α13 Block C1 — LedgerService float money-math parity (DEV-1 / R-money)", () => {
+  // Legacy snapshot: running-balance float accumulation, captured PRE-fold.
+  const LEGACY_RUNNING_BALANCE = `let runningBalance = 0;`;
+  const LEGACY_ACCUMULATION = `runningBalance += debit - credit;`;
+  const LEGACY_NUMBER_COERCE_DEBIT = `const debit = Number(line.debit);`;
+  const LEGACY_NUMBER_COERCE_CREDIT = `const credit = Number(line.credit);`;
+
+  it("α13a: legacy ledger.service.ts still uses float `Number()` running-balance accumulation (snapshot anchor)", () => {
+    const src = readFileSync(LEGACY_LEDGER_SERVICE, "utf-8");
+    expect(src).toContain(LEGACY_RUNNING_BALANCE);
+    expect(src).toContain(LEGACY_ACCUMULATION);
+    expect(src).toContain(LEGACY_NUMBER_COERCE_DEBIT);
+    expect(src).toContain(LEGACY_NUMBER_COERCE_CREDIT);
+  });
+
+  it("α13b: hex ledger.service.ts preserves the SAME float `Number()` running-balance accumulation post-fold", () => {
+    const src = readFileSync(HEX_LEDGER_SERVICE, "utf-8");
+    expect(src).toContain(LEGACY_RUNNING_BALANCE);
+    expect(src).toContain(LEGACY_ACCUMULATION);
+    expect(src).toContain(LEGACY_NUMBER_COERCE_DEBIT);
+    expect(src).toContain(LEGACY_NUMBER_COERCE_CREDIT);
+  });
+
+  it("α13c: hex ledger.service.ts does NOT converge to Decimal `sumDecimals`/`eq` money invariant (DEV-1 / R-money)", () => {
+    const src = readFileSync(HEX_LEDGER_SERVICE, "utf-8");
+    expect(src).not.toMatch(/\bsumDecimals\b/);
+    expect(src).not.toMatch(/from\s+["'][^"']*shared\/domain\/money\.utils["']/);
   });
 });
