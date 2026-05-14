@@ -22,7 +22,8 @@ import {
   validateLockedEdit,
   validatePeriodOpen,
   type DocumentStatus,
-} from "./document-lifecycle.service";
+} from "@/modules/accounting/domain/document-lifecycle";
+import { canTransition } from "@/modules/accounting/domain/value-objects/journal-entry-status";
 import { setAuditContext } from "@/features/shared/audit-context";
 import { withAuditTx, type WithCorrelation } from "@/features/shared/audit-tx";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
@@ -50,12 +51,9 @@ import type {
   CorrelationGap,
 } from "./journal.types";
 
-const VALID_TRANSITIONS: Record<JournalEntryStatus, JournalEntryStatus[]> = {
-  DRAFT: ["POSTED"],
-  POSTED: ["LOCKED", "VOIDED"],
-  LOCKED: ["VOIDED"],
-  VOIDED: [],
-};
+// `VALID_TRANSITIONS` se consolidó en POC #7 OLEADA 6 C0: la tabla canónica
+// vive en `modules/accounting/domain/value-objects/journal-entry-status.ts`
+// (`ALLOWED` / `canTransition`). Este servicio usa `canTransition` directo.
 
 export class JournalService {
   private readonly repo: JournalRepository;
@@ -575,8 +573,7 @@ export class JournalService {
       );
     }
 
-    const allowed = VALID_TRANSITIONS[entry.status];
-    if (!allowed.includes(targetStatus)) {
+    if (!canTransition(entry.status, targetStatus)) {
       throw new ValidationError(
         `No se puede pasar de ${entry.status} a ${targetStatus}`,
         INVALID_STATUS_TRANSITION,

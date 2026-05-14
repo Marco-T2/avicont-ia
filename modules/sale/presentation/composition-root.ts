@@ -5,7 +5,7 @@ import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { prisma } from "@/lib/prisma";
 import { FiscalPeriodsReadAdapter } from "@/modules/accounting/infrastructure/fiscal-periods-read.adapter";
-import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
+import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
 import { PrismaContactRepository } from "@/modules/contacts/infrastructure/prisma-contact.repository";
 import {
   makeIvaBookService,
@@ -54,7 +54,7 @@ const repoLike: UnitOfWorkRepoLike = {
 const accountsRepo = new PrismaAccountsRepo();
 const voucherTypesRepo = makeVoucherTypeRepository();
 const autoEntryGen = new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
-const journalEntriesReadAdapter = new LegacyJournalEntriesReadAdapter();
+const journalEntriesReadAdapter = new PrismaJournalEntriesReadAdapter();
 const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
 
 /**

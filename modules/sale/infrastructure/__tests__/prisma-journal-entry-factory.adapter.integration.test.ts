@@ -11,7 +11,7 @@ import {
   VOUCHER_TYPE_NOT_IN_ORG,
 } from "@/features/shared/errors";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
-import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
+import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import type { SaleJournalTemplate } from "@/modules/sale/domain/ports/journal-entry-factory.port";
@@ -226,7 +226,7 @@ describe("PrismaJournalEntryFactoryAdapter — Postgres integration", () => {
   function buildAdapter(
     tx: Prisma.TransactionClient,
   ): PrismaJournalEntryFactoryAdapter {
-    const readPort = new LegacyJournalEntriesReadAdapter();
+    const readPort = new PrismaJournalEntriesReadAdapter();
     const lookupPort = new LegacyAccountLookupAdapter();
     const writeRepo = new PrismaJournalEntriesRepository(tx);
     const autoEntryGen = new AutoEntryGenerator(

@@ -6,10 +6,10 @@ import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 
 import { PrismaJournalEntriesRepository } from "../prisma-journal-entries.repo";
-import { LegacyJournalEntriesReadAdapter } from "../legacy-journal-entries-read.adapter";
+import { PrismaJournalEntriesReadAdapter } from "../prisma-journal-entries-read.adapter";
 
 /**
- * Postgres-real integration test for LegacyJournalEntriesReadAdapter (POC #10
+ * Postgres-real integration test for PrismaJournalEntriesReadAdapter (POC #10
  * C3-C Ciclo 1). Mirrors the fixture/cleanup shape of
  * `prisma-journal-entries.repo.integration.test.ts` (C3-B): DATABASE_URL = dev
  * DB, strict cleanup by orgId fixtures, never by timestamp.
@@ -20,7 +20,7 @@ import { LegacyJournalEntriesReadAdapter } from "../legacy-journal-entries-read.
  * resolver `organizationId`.
  */
 
-describe("LegacyJournalEntriesReadAdapter — Postgres integration", () => {
+describe("PrismaJournalEntriesReadAdapter — Postgres integration", () => {
   let testOrgId: string;
   let testUserId: string;
   let testPeriodId: string;
@@ -35,7 +35,7 @@ describe("LegacyJournalEntriesReadAdapter — Postgres integration", () => {
       data: {
         clerkUserId: `ljerad-test-clerk-user-${stamp}`,
         email: `ljerad-test-${stamp}@test.local`,
-        name: "LegacyJournalEntriesReadAdapter Integration Test User",
+        name: "PrismaJournalEntriesReadAdapter Integration Test User",
       },
     });
     testUserId = user.id;
@@ -43,7 +43,7 @@ describe("LegacyJournalEntriesReadAdapter — Postgres integration", () => {
     const org = await prisma.organization.create({
       data: {
         clerkOrgId: `ljerad-test-clerk-org-${stamp}`,
-        name: `LegacyJournalEntriesReadAdapter Integration Test Org ${stamp}`,
+        name: `PrismaJournalEntriesReadAdapter Integration Test Org ${stamp}`,
         slug: `ljerad-test-org-${stamp}`,
       },
     });
@@ -152,7 +152,7 @@ describe("LegacyJournalEntriesReadAdapter — Postgres integration", () => {
     });
 
     // Acto: leer con el read adapter (non-tx — sin $transaction wrapper).
-    const adapter = new LegacyJournalEntriesReadAdapter();
+    const adapter = new PrismaJournalEntriesReadAdapter();
     const found = await adapter.findById(testOrgId, persistedDraft.id);
 
     // 1. Aggregate hidratado, ids preservados respecto del persisted DRAFT.
@@ -192,7 +192,7 @@ describe("LegacyJournalEntriesReadAdapter — Postgres integration", () => {
     // does not exist so the use case surfaces NotFoundError("Asiento contable")
     // (parity legacy l558)". Test guard contra futuros refactors que
     // transformen el null en throw o undefined.
-    const adapter = new LegacyJournalEntriesReadAdapter();
+    const adapter = new PrismaJournalEntriesReadAdapter();
     const found = await adapter.findById(
       testOrgId,
       "00000000-0000-0000-0000-000000000000",

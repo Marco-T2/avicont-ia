@@ -16,7 +16,7 @@
  * the RED tests still run and fail at runtime against the old behavior.
  */
 import { describe, it, expect } from "vitest";
-import { validateLockedEdit } from "../document-lifecycle.service";
+import { validateLockedEdit } from "@/modules/accounting/domain/document-lifecycle";
 import {
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   PERIOD_NOT_FOUND,

@@ -15,7 +15,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
-import { LegacyJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/legacy-journal-entries-read.adapter";
+import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
 import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
 import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
 import { __resetForTesting } from "@/modules/iva-books/presentation/composition-root";
@@ -77,7 +77,7 @@ const repo: UnitOfWorkRepoLike = {
 // ctor — paridad legacy. Sólo `purchases` + `journalEntries` se ejercen en
 // estos 2 tests, pero el constructor del adapter exige las 5 deps por D-2
 // Ciclo 4 sale (heredado mirror) + ivaScopeFactory POC #11.0c A4-c C2 GREEN.
-const journalEntriesReadPort = new LegacyJournalEntriesReadAdapter();
+const journalEntriesReadPort = new PrismaJournalEntriesReadAdapter();
 const accountLookupPort = new LegacyAccountLookupAdapter();
 const autoEntryGen = new AutoEntryGenerator(
   new PrismaAccountsRepo(),

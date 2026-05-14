@@ -1,22 +1,43 @@
+import "server-only";
 import { Prisma } from "@/generated/prisma/client";
-import { JournalRepository as LegacyJournalRepository } from "@/features/accounting/journal.repository";
+import type { JournalEntryStatus } from "@/generated/prisma/client";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
+import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
+import { AppError, VOUCHER_NUMBER_CONTENTION } from "@/features/shared/errors";
+import { logStructured } from "@/lib/logging/structured";
 import type {
   CreateJournalEntryInput,
-  JournalLineInput,
   UpdateJournalEntryInput,
+  JournalEntryWithLines,
+  JournalFilters,
+  JournalLineInput,
+  ReferenceNumberEntry,
 } from "@/features/accounting/journal.types";
+import type { DateRangeFilter } from "@/features/accounting/ledger.types";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
 import { hydrateJournalFromRow } from "./journal-mapping";
 
 /**
- * Tx-aware Prisma adapter for `JournalEntriesRepository` (POC #10 C3-B).
+ * Prisma journal-entries infrastructure (POC #7 OLEADA 6 — C0 fold).
  *
- * Wrap-thin shim over the legacy `JournalRepository.{createWithRetryTx,
- * updateStatusTx, updateTx}` until the C5 cleanup folds the legacy code into
- * this module. Constructed against an open `Prisma.TransactionClient` by the
- * UoW adapter (POC #9) — the application layer never sees `tx` directly.
+ * Hosts BOTH:
+ *   1. `JournalRepository` — the hex-owned Prisma repository, folded verbatim
+ *      from legacy `features/accounting/journal.repository.ts` in C0. Owns the
+ *      `journal_entries` row outright: the `createWithRetryTx` retry loop,
+ *      `journalIncludeLines` shape, `MAX_CONTENTION_ATTEMPTS`, non-tx reads
+ *      (`findAll`/`findById`/`getNextNumber`/`getLastReferenceNumber`/
+ *      `findForCorrelationAudit`) and the libro-mayor aggregates
+ *      (`findLinesByAccount`/`aggregateByAccount`).
+ *   2. `PrismaJournalEntriesRepository` — the tx-aware `JournalEntriesRepository`
+ *      port adapter (POC #10 C3-B). Delegates to a module-scope `JournalRepository`
+ *      instance instead of the legacy import — the hex→legacy circular wrap is
+ *      eliminated as of C0 (no `@/features/accounting/journal.repository` import).
+ *
+ * The legacy `features/accounting/journal.repository.ts` file SURVIVES C0
+ * (additive cutover): legacy `journal.service.ts` + its `__tests__/` still
+ * consume it; it is wholesale-deleted at C5.
  *
  * §13 lockeado en C3-B (RED 1 emergente):
  *   - `create` retorna el aggregate hidratado desde DB, NO el input. Los
@@ -29,7 +50,458 @@ import { hydrateJournalFromRow } from "./journal-mapping";
  *     vía `Journal.create()` factory; `createAndPost` lo posterea pre-tx.
  */
 
-const legacyRepo = new LegacyJournalRepository();
+const JOURNAL_NUMBER_UNIQUE_INDEX =
+  "organizationId_voucherTypeId_periodId_number";
+const MAX_CONTENTION_ATTEMPTS = 5;
+
+const journalIncludeLines = {
+  lines: {
+    include: { account: true, contact: true },
+    orderBy: { order: "asc" as const },
+  },
+  contact: true,
+  voucherType: true,
+} as const;
+
+export class JournalRepository extends BaseRepository {
+  async findAll(
+    organizationId: string,
+    filters?: JournalFilters,
+  ): Promise<JournalEntryWithLines[]> {
+    const scope = this.requireOrg(organizationId);
+
+    const where: Record<string, unknown> = { ...scope };
+
+    if (filters?.dateFrom || filters?.dateTo) {
+      where.date = {
+        ...(filters.dateFrom && { gte: filters.dateFrom }),
+        ...(filters.dateTo && { lte: filters.dateTo }),
+      };
+    }
+
+    if (filters?.periodId) {
+      where.periodId = filters.periodId;
+    }
+
+    if (filters?.voucherTypeId) {
+      where.voucherTypeId = filters.voucherTypeId;
+    }
+
+    if (filters?.status) {
+      where.status = filters.status;
+    }
+
+    if (filters?.origin === "manual") {
+      where.sourceType = null;
+    } else if (filters?.origin === "auto") {
+      where.sourceType = { not: null };
+    }
+
+    return this.db.journalEntry.findMany({
+      where,
+      include: journalIncludeLines,
+      orderBy: { number: "desc" },
+    }) as Promise<JournalEntryWithLines[]>;
+  }
+
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<JournalEntryWithLines | null> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.journalEntry.findFirst({
+      where: { id, ...scope },
+      include: journalIncludeLines,
+    }) as Promise<JournalEntryWithLines | null>;
+  }
+
+  async findByIdForBalancesTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+  ): Promise<JournalEntryWithLines | null> {
+    const scope = this.requireOrg(organizationId);
+
+    return tx.journalEntry.findFirst({
+      where: { id, ...scope },
+      include: journalIncludeLines,
+    }) as Promise<JournalEntryWithLines | null>;
+  }
+
+  async getNextNumber(
+    organizationId: string,
+    voucherTypeId: string,
+    periodId: string,
+  ): Promise<number> {
+    const scope = this.requireOrg(organizationId);
+
+    const last = await this.db.journalEntry.findFirst({
+      where: { ...scope, voucherTypeId, periodId },
+      orderBy: { number: "desc" },
+      select: { number: true },
+    });
+
+    return (last?.number ?? 0) + 1;
+  }
+
+  async getLastReferenceNumber(
+    organizationId: string,
+    voucherTypeId: string,
+  ): Promise<number | null> {
+    const scope = this.requireOrg(organizationId);
+
+    const last = await this.db.journalEntry.findFirst({
+      where: {
+        ...scope,
+        voucherTypeId,
+        referenceNumber: { not: null },
+      },
+      orderBy: { referenceNumber: "desc" },
+      select: { referenceNumber: true },
+    });
+
+    return last?.referenceNumber ?? null;
+  }
+
+  async findForCorrelationAudit(
+    organizationId: string,
+    voucherTypeId: string,
+    filters?: { dateFrom?: Date; dateTo?: Date },
+  ): Promise<{
+    withReference: ReferenceNumberEntry[];
+    withoutReferenceCount: number;
+  }> {
+    const scope = this.requireOrg(organizationId);
+
+    const dateFilter: Record<string, unknown> = {};
+    if (filters?.dateFrom || filters?.dateTo) {
+      dateFilter.date = {
+        ...(filters?.dateFrom && { gte: filters.dateFrom }),
+        ...(filters?.dateTo && { lte: filters.dateTo }),
+      };
+    }
+
+    const where = { ...scope, voucherTypeId, ...dateFilter };
+
+    const [withReference, withoutReferenceCount] = await Promise.all([
+      this.db.journalEntry.findMany({
+        where: { ...where, referenceNumber: { not: null } },
+        select: {
+          id: true,
+          referenceNumber: true,
+          date: true,
+          number: true,
+          description: true,
+        },
+        orderBy: { referenceNumber: "asc" },
+      }),
+      this.db.journalEntry.count({
+        where: { ...where, referenceNumber: null },
+      }),
+    ]);
+
+    return {
+      withReference: withReference.map((e) => ({
+        id: e.id,
+        referenceNumber: e.referenceNumber!,
+        date: e.date,
+        number: e.number,
+        description: e.description,
+      })),
+      withoutReferenceCount,
+    };
+  }
+
+  async create(
+    organizationId: string,
+    data: Omit<CreateJournalEntryInput, "lines">,
+    lines: JournalLineInput[],
+  ): Promise<JournalEntryWithLines> {
+    return this.db.$transaction((tx) =>
+      this.createWithRetryTx(tx, organizationId, data, lines, "DRAFT"),
+    );
+  }
+
+  /**
+   * Race-safe create inside a caller-provided transaction. Reads the current
+   * max `number` for {org, voucherType, period}, attempts INSERT, and retries
+   * up to `MAX_CONTENTION_ATTEMPTS` times on unique-constraint violations on
+   * the compound index `organizationId_voucherTypeId_periodId_number`. Any
+   * other error surfaces immediately.
+   *
+   * On retry exhaustion throws `VOUCHER_NUMBER_CONTENTION` — a real system
+   * issue the caller must surface to the user.
+   */
+  async createWithRetryTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    data: Omit<CreateJournalEntryInput, "lines">,
+    lines: JournalLineInput[],
+    status: JournalEntryStatus = "DRAFT",
+  ): Promise<JournalEntryWithLines> {
+    const scope = this.requireOrg(organizationId);
+
+    for (let attempt = 0; attempt < MAX_CONTENTION_ATTEMPTS; attempt++) {
+      const last = await tx.journalEntry.findFirst({
+        where: {
+          ...scope,
+          voucherTypeId: data.voucherTypeId,
+          periodId: data.periodId,
+        },
+        orderBy: { number: "desc" },
+        select: { number: true },
+      });
+      const candidate = (last?.number ?? 0) + 1;
+
+      try {
+        const entry = await tx.journalEntry.create({
+          data: {
+            number: candidate,
+            date: data.date,
+            description: data.description,
+            status,
+            periodId: data.periodId,
+            voucherTypeId: data.voucherTypeId,
+            contactId: data.contactId ?? null,
+            sourceType: data.sourceType ?? null,
+            sourceId: data.sourceId ?? null,
+            aiOriginalText: data.aiOriginalText ?? null,
+            referenceNumber: data.referenceNumber ?? null,
+            createdById: data.createdById,
+            organizationId: scope.organizationId,
+            lines: {
+              create: lines.map((line) => ({
+                accountId: line.accountId,
+                debit: line.debit,
+                credit: line.credit,
+                description: line.description ?? null,
+                contactId: line.contactId ?? null,
+                order: line.order,
+              })),
+            },
+          },
+          include: journalIncludeLines,
+        });
+        if (attempt > 0) {
+          logStructured({
+            event: "journal_number_succeeded_after_retry",
+            level: "info",
+            orgId: scope.organizationId,
+            attempts: attempt + 1,
+          });
+        }
+        return entry as JournalEntryWithLines;
+      } catch (err) {
+        if (isPrismaUniqueViolation(err, JOURNAL_NUMBER_UNIQUE_INDEX)) {
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw new AppError(
+      "No se pudo asignar un número correlativo tras varios intentos",
+      409,
+      VOUCHER_NUMBER_CONTENTION,
+    );
+  }
+
+  async update(
+    organizationId: string,
+    id: string,
+    data: Omit<UpdateJournalEntryInput, "updatedById" | "lines">,
+    lines: JournalLineInput[] | undefined,
+    updatedById: string,
+  ): Promise<JournalEntryWithLines> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.$transaction(async (tx) => {
+      const entry = await tx.journalEntry.update({
+        where: { id, ...scope },
+        data: {
+          ...(data.date !== undefined && { date: data.date }),
+          ...(data.description !== undefined && { description: data.description }),
+          ...(data.contactId !== undefined && { contactId: data.contactId }),
+          ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber }),
+          updatedById,
+        },
+        include: journalIncludeLines,
+      });
+
+      if (lines !== undefined) {
+        // Eliminar las líneas existentes y volver a crearlas
+        await tx.journalLine.deleteMany({ where: { journalEntryId: id } });
+        await tx.journalLine.createMany({
+          data: lines.map((line) => ({
+            journalEntryId: id,
+            accountId: line.accountId,
+            debit: line.debit,
+            credit: line.credit,
+            description: line.description ?? null,
+            contactId: line.contactId ?? null,
+            order: line.order,
+          })),
+        });
+
+        // Releer con las líneas actualizadas
+        const refreshed = await tx.journalEntry.findFirst({
+          where: { id, ...scope },
+          include: journalIncludeLines,
+        });
+        return refreshed as JournalEntryWithLines;
+      }
+
+      return entry as JournalEntryWithLines;
+    });
+  }
+
+  async updateTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+    data: Omit<UpdateJournalEntryInput, "updatedById" | "lines">,
+    lines: JournalLineInput[] | undefined,
+    updatedById: string,
+  ): Promise<JournalEntryWithLines> {
+    const scope = this.requireOrg(organizationId);
+
+    const entry = await tx.journalEntry.update({
+      where: { id, ...scope },
+      data: {
+        ...(data.date !== undefined && { date: data.date }),
+        ...(data.description !== undefined && { description: data.description }),
+        ...(data.contactId !== undefined && { contactId: data.contactId }),
+        ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber }),
+        updatedById,
+      },
+      include: journalIncludeLines,
+    });
+
+    if (lines !== undefined) {
+      await tx.journalLine.deleteMany({ where: { journalEntryId: id } });
+      await tx.journalLine.createMany({
+        data: lines.map((line) => ({
+          journalEntryId: id,
+          accountId: line.accountId,
+          debit: line.debit,
+          credit: line.credit,
+          description: line.description ?? null,
+          contactId: line.contactId ?? null,
+          order: line.order,
+        })),
+      });
+
+      const refreshed = await tx.journalEntry.findFirst({
+        where: { id, ...scope },
+        include: journalIncludeLines,
+      });
+      return refreshed as JournalEntryWithLines;
+    }
+
+    return entry as JournalEntryWithLines;
+  }
+
+  async updateStatus(
+    organizationId: string,
+    id: string,
+    status: JournalEntryStatus,
+    updatedById: string,
+  ): Promise<JournalEntryWithLines> {
+    const scope = this.requireOrg(organizationId);
+
+    return this.db.journalEntry.update({
+      where: { id, ...scope },
+      data: { status, updatedById },
+      include: journalIncludeLines,
+    }) as Promise<JournalEntryWithLines>;
+  }
+
+  async updateStatusTx(
+    tx: Prisma.TransactionClient,
+    organizationId: string,
+    id: string,
+    status: JournalEntryStatus,
+    updatedById: string,
+  ): Promise<JournalEntryWithLines> {
+    const scope = this.requireOrg(organizationId);
+
+    return tx.journalEntry.update({
+      where: { id, ...scope },
+      data: { status, updatedById },
+      include: journalIncludeLines,
+    }) as Promise<JournalEntryWithLines>;
+  }
+
+  // ── Libro mayor: líneas de una cuenta específica ──
+
+  async findLinesByAccount(
+    organizationId: string,
+    accountId: string,
+    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+  ) {
+    const dateFilter: Record<string, unknown> = {};
+    if (filters?.dateRange?.dateFrom || filters?.dateRange?.dateTo) {
+      dateFilter.date = {
+        ...(filters.dateRange.dateFrom && { gte: filters.dateRange.dateFrom }),
+        ...(filters.dateRange.dateTo && { lte: filters.dateRange.dateTo }),
+      };
+    }
+
+    return this.db.journalLine.findMany({
+      where: {
+        accountId,
+        journalEntry: {
+          organizationId,
+          status: "POSTED",
+          ...(filters?.periodId && { periodId: filters.periodId }),
+          ...dateFilter,
+        },
+      },
+      include: {
+        journalEntry: {
+          select: {
+            date: true,
+            number: true,
+            description: true,
+          },
+        },
+      },
+      orderBy: {
+        journalEntry: { date: "asc" },
+      },
+    });
+  }
+
+  // ── Libro mayor: agregar débitos/créditos por cuenta para un período ──
+
+  async aggregateByAccount(
+    organizationId: string,
+    accountId: string,
+    periodId: string,
+  ) {
+    return this.db.journalLine.aggregate({
+      where: {
+        accountId,
+        journalEntry: {
+          organizationId,
+          status: "POSTED",
+          periodId,
+        },
+      },
+      _sum: {
+        debit: true,
+        credit: true,
+      },
+    });
+  }
+}
+
+// Module-scope hex repository instance. State-less (extends `BaseRepository`,
+// default `prisma` client) — parity with the legacy module-scope singleton the
+// adapters delegated to pre-C0. The hex→legacy circular wrap is gone: this is
+// the hex's own repository, not an import from `features/accounting/`.
+const journalRepo = new JournalRepository();
 
 export class PrismaJournalEntriesRepository implements JournalEntriesRepository {
   constructor(private readonly tx: Prisma.TransactionClient) {}
@@ -47,7 +519,7 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
       aiOriginalText: journal.aiOriginalText ?? undefined,
       referenceNumber: journal.referenceNumber ?? undefined,
     };
-    const row = await legacyRepo.createWithRetryTx(
+    const row = await journalRepo.createWithRetryTx(
       this.tx,
       journal.organizationId,
       data,
@@ -59,7 +531,7 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
   }
 
   async updateStatus(journal: Journal, userId: string): Promise<Journal> {
-    const row = await legacyRepo.updateStatusTx(
+    const row = await journalRepo.updateStatusTx(
       this.tx,
       journal.organizationId,
       journal.id,
@@ -86,7 +558,7 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
     // updatedById` (use case) es required y `Journal.update(input)` lo
     // persiste en `props.updatedById`, así que post-`current.update(input)`
     // siempre es string.
-    const row = await legacyRepo.updateTx(
+    const row = await journalRepo.updateTx(
       this.tx,
       journal.organizationId,
       journal.id,
@@ -113,4 +585,4 @@ function mapLinesToInputs(lines: JournalLine[]): JournalLineInput[] {
 }
 
 // `hydrateJournalFromRow` extraído a `./journal-mapping.ts` en C3-C REFACTOR
-// 1 (segundo call-site materializado por `LegacyJournalEntriesReadAdapter`).
+// 1 (segundo call-site materializado por `PrismaJournalEntriesReadAdapter`).

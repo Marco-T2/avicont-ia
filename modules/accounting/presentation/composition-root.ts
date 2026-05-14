@@ -7,7 +7,7 @@ import { JournalsService } from "../application/journals.service";
 import { ContactsReadAdapter } from "../infrastructure/contacts-read.adapter";
 import { FiscalPeriodsReadAdapter } from "../infrastructure/fiscal-periods-read.adapter";
 import { LegacyAccountsReadAdapter } from "../infrastructure/legacy-accounts-read.adapter";
-import { LegacyJournalEntriesReadAdapter } from "../infrastructure/legacy-journal-entries-read.adapter";
+import { PrismaJournalEntriesReadAdapter } from "../infrastructure/prisma-journal-entries-read.adapter";
 import { LegacyPermissionsAdapter } from "../infrastructure/legacy-permissions.adapter";
 import { PrismaAccountingUnitOfWork } from "../infrastructure/prisma-accounting-unit-of-work";
 import { VoucherTypesReadAdapter } from "../infrastructure/voucher-types-read.adapter";
@@ -33,7 +33,7 @@ export function makeJournalsService(): JournalsService {
     new FiscalPeriodsReadAdapter(),
     new VoucherTypesReadAdapter(),
     new LegacyPermissionsAdapter(),
-    new LegacyJournalEntriesReadAdapter(),
+    new PrismaJournalEntriesReadAdapter(),
   );
 }
 

@@ -7,7 +7,7 @@ import { LegacyAccountsReadAdapter } from "../legacy-accounts-read.adapter";
 /**
  * Postgres-real integration test for LegacyAccountsReadAdapter (POC #10
  * C3-C Ciclo 2). Mirrors the fixture/cleanup shape of
- * `legacy-journal-entries-read.adapter.integration.test.ts` (Ciclo 1):
+ * `prisma-journal-entries-read.adapter.integration.test.ts` (Ciclo 1):
  * DATABASE_URL = dev DB, strict cleanup by orgId fixtures, never by timestamp.
  *
  * Cleanup `afterAll` follows `convention/integration-test-cleanup-pattern`

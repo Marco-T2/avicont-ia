@@ -1,4 +1,3 @@
-import "server-only";
 import {
   ValidationError,
   ForbiddenError,
@@ -11,17 +10,27 @@ import {
   FISCAL_PERIOD_CLOSED,
   PERIOD_NOT_FOUND,
 } from "@/features/shared/errors";
+import { canTransition } from "./value-objects/journal-entry-status";
+
+/**
+ * Pure document-lifecycle validators (validateTransition / validateEditable /
+ * validateDraftOnly / validateLockedEdit / validatePeriodOpen). Relocated from
+ * `features/accounting/document-lifecycle.service.ts` into the accounting
+ * domain in POC #7 OLEADA 6 C0 (EX-D2: accounting-domain-specific, not
+ * `shared/`). The `server-only` guard was dropped — these are pure functions
+ * matching the rest of `modules/accounting/domain/`.
+ */
 
 export type DocumentStatus = "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
 
-const VALID_TRANSITIONS: Record<DocumentStatus, DocumentStatus[]> = {
-  DRAFT: ["POSTED"],
-  POSTED: ["LOCKED", "VOIDED"],
-  LOCKED: ["VOIDED"],
-  VOIDED: [],
-};
-
 // ── Validar que una transición de estado sea válida ──
+//
+// La tabla de transiciones canónica vive en
+// `domain/value-objects/journal-entry-status.ts` (`ALLOWED` / `canTransition`).
+// Consolidada en POC #7 OLEADA 6 C0 — los duplicados `VALID_TRANSITIONS` que
+// vivían aquí y en `journal.service.ts` se eliminaron. `DocumentStatus` y
+// `JournalEntryStatus` son la misma unión de literales, así que
+// `canTransition` acepta los valores directamente.
 
 export function validateTransition(
   current: DocumentStatus,
@@ -34,8 +43,7 @@ export function validateTransition(
     );
   }
 
-  const allowed = VALID_TRANSITIONS[current];
-  if (!allowed.includes(target)) {
+  if (!canTransition(current, target)) {
     throw new ValidationError(
       `Transición inválida: ${current} → ${target}`,
       INVALID_STATUS_TRANSITION,

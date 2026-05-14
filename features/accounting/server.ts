@@ -21,11 +21,11 @@ export {
   validateDraftOnly,
   validateLockedEdit,
   validatePeriodOpen,
-} from "./document-lifecycle.service";
+} from "@/modules/accounting/domain/document-lifecycle";
 export type {
   DocumentStatus,
   TrimPreviewItem,
-} from "./document-lifecycle.service";
+} from "@/modules/accounting/domain/document-lifecycle";
 
 export * from "./accounting.validation";
 export * from "./correlative.utils";

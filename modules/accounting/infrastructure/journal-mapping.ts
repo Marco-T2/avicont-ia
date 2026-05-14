@@ -8,7 +8,7 @@ import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
  * Shared mapping helpers for accounting infrastructure adapters (POC #10 C3-C
  * REFACTOR 1). Promoción del helper desde `prisma-journal-entries.repo.ts` al
  * emerger el segundo call-site en C3-C Ciclo 1
- * (`legacy-journal-entries-read.adapter.ts`) — materializa la nota 1 del
+ * (`prisma-journal-entries-read.adapter.ts`) — materializa la nota 1 del
  * bookmark de cierre C3-B.
  *
  * Convention `helper-privado-al-módulo` (lockeada C3-A, refinada C3-C): los
