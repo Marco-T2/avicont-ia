@@ -73,6 +73,10 @@ const LEGACY_EXPORTERS_DIR = resolve(
   REPO_ROOT,
   "features/accounting/exporters",
 );
+const HEX_VALIDATION = resolve(
+  REPO_ROOT,
+  "modules/accounting/presentation/validation.ts",
+);
 
 /** Collect every `.ts` file directly under `modules/accounting/infrastructure/`
  *  (non-recursive — `__tests__/` excluded; the un-wrap target is the adapters). */
@@ -372,4 +376,37 @@ describe("α19 Block C3 — exportVoucherPdf use case declared on JournalsServic
     const src = readFileSync(HEX_JOURNALS_SERVICE, "utf-8");
     expect(src).toMatch(/async\s+exportVoucherPdf\s*\(/);
   });
+});
+
+// ── Block C4 — accounting.validation merged into hex presentation ────────────
+//
+// C4 merges the 8 journal/ledger zod schemas from legacy
+// `features/accounting/accounting.validation.ts` into the hex
+// `modules/accounting/presentation/validation.ts` (currently account-only:
+// createAccountSchema + updateAccountSchema). No naming collision — account
+// schemas vs journal/ledger schemas are disjoint. The legacy file becomes a
+// thin `export *` re-export shim (deleted in C5; barrel `server.ts` keeps
+// working through it — same shim pattern C2 used for journal.types).
+
+// α20 — the 8 journal/ledger zod schemas are exported from hex validation.ts.
+//   Expected FAIL pre-GREEN: hex validation.ts declares ONLY createAccountSchema
+//   + updateAccountSchema — none of the 8 journal/ledger schemas exist there yet.
+describe("α20 Block C4 — journal/ledger zod schemas merged into hex presentation/validation.ts", () => {
+  const journalLedgerSchemas = [
+    "createJournalEntrySchema",
+    "updateJournalEntrySchema",
+    "statusTransitionSchema",
+    "journalFiltersSchema",
+    "dateRangeSchema",
+    "lastReferenceQuerySchema",
+    "correlationAuditQuerySchema",
+    "exportVoucherQuerySchema",
+  ] as const;
+  for (const schema of journalLedgerSchemas) {
+    it(`α20: hex validation.ts exports \`const ${schema}\``, () => {
+      const src = readFileSync(HEX_VALIDATION, "utf-8");
+      const decl = new RegExp(`export\\s+const\\s+${schema}\\b`);
+      expect(src).toMatch(decl);
+    });
+  }
 });
