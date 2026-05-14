@@ -19,6 +19,7 @@ const {
   mockContactsList,
   mockPeriodsList,
   mockProductTypesList,
+  mockAccountsList,
   mockMakePurchaseService,
   mockToPurchaseWithDetails,
   mockContactFindUnique,
@@ -31,6 +32,7 @@ const {
   mockContactsList: vi.fn(),
   mockPeriodsList: vi.fn(),
   mockProductTypesList: vi.fn(),
+  mockAccountsList: vi.fn(),
   mockMakePurchaseService: vi.fn(),
   mockToPurchaseWithDetails: vi.fn(),
   mockContactFindUnique: vi.fn(),
@@ -83,12 +85,13 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/features/product-types/server", () => {
-  class ProductTypesService {
-    list = mockProductTypesList;
-  }
-  return { ProductTypesService };
-});
+vi.mock("@/modules/product-type/presentation/server", () => ({
+  makeProductTypeService: () => ({ list: mockProductTypesList }),
+}));
+
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: mockAccountsList }),
+}));
 
 vi.mock("@/components/purchases/purchase-form", () => ({
   default: vi.fn().mockReturnValue(null),
@@ -121,6 +124,7 @@ beforeEach(() => {
     { toSnapshot: () => ({ id: PERIOD_ID, name: "Test Period", status: "OPEN" }) },
   ]);
   mockProductTypesList.mockResolvedValue([]);
+  mockAccountsList.mockResolvedValue([]);
   mockContactFindUnique.mockResolvedValue({
     id: CONTACT_ID,
     name: "Test Contact",

@@ -24,12 +24,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/org-profile/server", () => {
-  class OrgProfileService {
-    getOrCreate = mockGetOrCreate;
-  }
-  return { OrgProfileService };
-});
+vi.mock("@/modules/org-profile/presentation/server", () => ({
+  makeOrgProfileService: () => ({ getOrCreate: mockGetOrCreate }),
+}));
 
 vi.mock("@/modules/document-signature-config/presentation/server", () => ({
   makeDocumentSignatureConfigService: vi.fn().mockImplementation(() => ({

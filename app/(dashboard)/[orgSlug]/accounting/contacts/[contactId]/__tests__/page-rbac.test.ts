@@ -26,10 +26,15 @@ vi.mock("@/features/permissions/server", () => ({
 vi.mock("@/modules/contacts/presentation/server", () => {
   const makeContactsService = () => ({
     getById: mockGetById,
-    getBalanceSummary: mockGetBalanceSummary,
   });
   return { makeContactsService };
 });
+
+vi.mock("@/modules/contact-balances/presentation/server", () => ({
+  makeContactBalancesService: () => ({
+    getBalanceSummary: mockGetBalanceSummary,
+  }),
+}));
 
 vi.mock("@/components/contacts/contact-detail", () => ({
   default: vi.fn().mockReturnValue(null),

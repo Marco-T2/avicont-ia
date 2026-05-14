@@ -11,12 +11,14 @@ const {
   mockContactsList,
   mockPeriodsList,
   mockProductTypesList,
+  mockAccountsList,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockContactsList: vi.fn(),
   mockPeriodsList: vi.fn(),
   mockProductTypesList: vi.fn(),
+  mockAccountsList: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -36,12 +38,13 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/features/product-types/server", () => {
-  class ProductTypesService {
-    list = mockProductTypesList;
-  }
-  return { ProductTypesService };
-});
+vi.mock("@/modules/product-type/presentation/server", () => ({
+  makeProductTypeService: () => ({ list: mockProductTypesList }),
+}));
+
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeAccountsService: () => ({ list: mockAccountsList }),
+}));
 
 // vi.mock("@/features/purchase/server") DROPPED A3-C8 GREEN sub-paso 19
 // (§13.A3-C8-β mock_hygiene_commit_scope MEMORY.md APPLIED): DEAD-MOCK
@@ -70,6 +73,7 @@ beforeEach(() => {
   mockContactsList.mockResolvedValue([]);
   mockPeriodsList.mockResolvedValue([]);
   mockProductTypesList.mockResolvedValue([]);
+  mockAccountsList.mockResolvedValue([]);
 });
 
 describe("/purchases/new — rbac gate", () => {

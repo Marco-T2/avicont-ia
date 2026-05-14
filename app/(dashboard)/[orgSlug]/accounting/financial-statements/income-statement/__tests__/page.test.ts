@@ -18,10 +18,8 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/org-profile/server", () => ({
-  OrgProfileService: class {
-    getOrCreate = mockGetOrCreate;
-  },
+vi.mock("@/modules/org-profile/presentation/server", () => ({
+  makeOrgProfileService: () => ({ getOrCreate: mockGetOrCreate }),
 }));
 
 vi.mock("@/components/financial-statements/income-statement-page-client", () => ({

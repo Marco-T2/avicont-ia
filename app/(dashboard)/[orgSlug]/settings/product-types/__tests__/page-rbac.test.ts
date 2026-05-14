@@ -17,12 +17,11 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/product-types/server", () => {
-  class ProductTypesService {
-    list = mockList;
-  }
-  return { ProductTypesService };
-});
+// Page uses makeProductTypeService from hex module, not legacy class-based ProductTypesService.
+// Calls service.list() twice (active + inactive) — mockList handles both calls.
+vi.mock("@/modules/product-type/presentation/server", () => ({
+  makeProductTypeService: () => ({ list: mockList }),
+}));
 
 vi.mock("@/components/product-types/product-types-manager", () => ({
   default: vi.fn().mockReturnValue(null),
