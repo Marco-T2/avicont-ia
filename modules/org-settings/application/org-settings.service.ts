@@ -58,9 +58,95 @@ export class OrgSettingsService {
       );
     }
 
+    await this.validateAccountCodes(organizationId, input);
+
     const updated = settings.update(input);
     await this.repo.update(updated);
     return updated;
+  }
+
+  /**
+   * Defense-in-depth: valida los account codes single presentes en `input`
+   * contra el plan de cuentas vía `AccountLookupPort.findManyByCodes()`.
+   * La API route (`PATCH /settings`) acepta cualquier string vía Zod y el
+   * dropdown solo protege la UI — esta validación es el único punto que
+   * garantiza el invariante a nivel servidor.
+   *
+   * Reglas por rol:
+   * - Campos posteables (caja/banco/cxc/cxp/flete/polloCOGS): la cuenta debe
+   *   existir, ser de detalle (`isDetail:true`) y estar activa.
+   * - Campos parent (cash/pettyCash/bank): la cuenta debe existir y NO ser de
+   *   detalle (`isDetail:false`) — es un nodo agrupador.
+   *
+   * Agrupa todos los codes presentes y hace UNA sola llamada al port.
+   */
+  private async validateAccountCodes(
+    organizationId: string,
+    input: UpdateOrgSettingsInput,
+  ): Promise<void> {
+    const POSTABLE_FIELDS = [
+      "cajaGeneralAccountCode",
+      "bancoAccountCode",
+      "cxcAccountCode",
+      "cxpAccountCode",
+      "fleteExpenseAccountCode",
+      "polloFaenadoCOGSAccountCode",
+    ] as const;
+    const PARENT_FIELDS = [
+      "cashParentCode",
+      "pettyCashParentCode",
+      "bankParentCode",
+    ] as const;
+
+    const postableCodes: string[] = [];
+    const parentCodes: string[] = [];
+    for (const field of POSTABLE_FIELDS) {
+      const code = input[field];
+      if (code !== undefined) postableCodes.push(code);
+    }
+    for (const field of PARENT_FIELDS) {
+      const code = input[field];
+      if (code !== undefined) parentCodes.push(code);
+    }
+
+    const allCodes = Array.from(new Set([...postableCodes, ...parentCodes]));
+    if (allCodes.length === 0) return; // nada que validar
+
+    const accounts = await this.accountLookup.findManyByCodes(
+      organizationId,
+      allCodes,
+    );
+    const byCode = new Map(accounts.map((a) => [a.code, a]));
+
+    const missing = allCodes.filter((code) => !byCode.has(code));
+    if (missing.length > 0) {
+      throw new ValidationError(
+        `No se encontraron cuentas en el plan de cuentas: ${missing.join(", ")}`,
+        ORG_SETTINGS_ACCOUNT_NOT_FOUND,
+        { missing },
+      );
+    }
+
+    const postableSet = new Set(postableCodes);
+    const parentSet = new Set(parentCodes);
+
+    const notUsable: string[] = [];
+    for (const code of postableSet) {
+      const account = byCode.get(code)!;
+      if (!account.isDetail || !account.isActive) notUsable.push(code);
+    }
+    for (const code of parentSet) {
+      const account = byCode.get(code)!;
+      // un campo parent exige un nodo agrupador (isDetail:false)
+      if (account.isDetail) notUsable.push(code);
+    }
+    if (notUsable.length > 0) {
+      throw new ValidationError(
+        `Cuentas no usables para el rol asignado: ${notUsable.join(", ")}`,
+        ORG_SETTINGS_ACCOUNT_NOT_USABLE,
+        { notUsable },
+      );
+    }
   }
 
   private async validateAccountIds(

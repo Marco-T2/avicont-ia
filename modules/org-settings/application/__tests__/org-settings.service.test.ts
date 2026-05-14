@@ -179,8 +179,14 @@ describe("OrgSettingsService.update — validación de defaultCashAccountIds / d
   });
 
   describe("alcance de la validación", () => {
-    it("no consulta accountLookup cuando solo se actualizan codes legacy", async () => {
+    it("no consulta findManyByIds cuando solo se actualizan account codes single", async () => {
+      // findManyByCodes SÍ se llama (validación server-side de codes single),
+      // pero findManyByIds — la validación legacy de defaultCash/BankAccountIds —
+      // NO debe dispararse para un update que solo trae account codes.
       const { repo, accountLookup } = makeDeps();
+      (accountLookup.findManyByCodes as ReturnType<typeof vi.fn>).mockResolvedValue([
+        makeAccount({ id: "acc-1", code: "1.1.1.99", isDetail: true }),
+      ]);
       const service = new OrgSettingsService(repo, accountLookup);
 
       await service.update("org-1", { cajaGeneralAccountCode: "1.1.1.99" });
@@ -212,6 +218,119 @@ describe("OrgSettingsService.update — validación de defaultCashAccountIds / d
         code: "ORG_SETTINGS_ACCOUNT_NOT_FOUND",
         details: { missing: ["acc-missing-1", "acc-missing-2"] },
       });
+    });
+  });
+
+  describe("validación de account codes single (defense-in-depth server-side)", () => {
+    function makeCodeDeps(accountsByCodes: AccountReference[]) {
+      const entity = makeEntity();
+      const repo: OrgSettingsRepository = {
+        findByOrgId: vi.fn(async () => entity),
+        save: vi.fn(async () => undefined),
+        update: vi.fn(async () => undefined),
+      };
+      const accountLookup: AccountLookupPort = {
+        findManyByIds: vi.fn(async () => []),
+        findManyByCodes: vi.fn(async (_orgId: string, codes: string[]) =>
+          accountsByCodes.filter((a) => codes.includes(a.code)),
+        ),
+      };
+      return { repo, accountLookup };
+    }
+
+    it("acepta update con code válido (isDetail:true) para campo posteable", async () => {
+      const { repo, accountLookup } = makeCodeDeps([
+        makeAccount({ id: "acc-banco", code: "1.1.3.2", isDetail: true }),
+      ]);
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await expect(
+        service.update("org-1", { bancoAccountCode: "1.1.3.2" }),
+      ).resolves.toBeDefined();
+      expect(accountLookup.findManyByCodes).toHaveBeenCalledWith("org-1", [
+        "1.1.3.2",
+      ]);
+      expect(repo.update).toHaveBeenCalledOnce();
+    });
+
+    it("rechaza code inexistente con ORG_SETTINGS_ACCOUNT_NOT_FOUND", async () => {
+      const { repo, accountLookup } = makeCodeDeps([]); // findManyByCodes → []
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await expect(
+        service.update("org-1", { cajaGeneralAccountCode: "9.9.9.9" }),
+      ).rejects.toMatchObject({ code: "ORG_SETTINGS_ACCOUNT_NOT_FOUND" });
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("rechaza code isDetail:false para campo posteable con ORG_SETTINGS_ACCOUNT_NOT_USABLE", async () => {
+      const { repo, accountLookup } = makeCodeDeps([
+        makeAccount({ id: "acc-parent", code: "1.1.1", isDetail: false }),
+      ]);
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await expect(
+        service.update("org-1", { cajaGeneralAccountCode: "1.1.1" }),
+      ).rejects.toMatchObject({ code: "ORG_SETTINGS_ACCOUNT_NOT_USABLE" });
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("rechaza code isDetail:true para campo parent con ORG_SETTINGS_ACCOUNT_NOT_USABLE", async () => {
+      const { repo, accountLookup } = makeCodeDeps([
+        makeAccount({ id: "acc-leaf", code: "1.1.1.1", isDetail: true }),
+      ]);
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await expect(
+        service.update("org-1", { cashParentCode: "1.1.1.1" }),
+      ).rejects.toMatchObject({ code: "ORG_SETTINGS_ACCOUNT_NOT_USABLE" });
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("rechaza code inactivo para campo posteable con ORG_SETTINGS_ACCOUNT_NOT_USABLE", async () => {
+      const { repo, accountLookup } = makeCodeDeps([
+        makeAccount({
+          id: "acc-inactive",
+          code: "1.1.3.2",
+          isDetail: true,
+          isActive: false,
+        }),
+      ]);
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await expect(
+        service.update("org-1", { bancoAccountCode: "1.1.3.2" }),
+      ).rejects.toMatchObject({ code: "ORG_SETTINGS_ACCOUNT_NOT_USABLE" });
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("valida múltiples codes (posteables + parents) en una sola llamada a findManyByCodes", async () => {
+      const { repo, accountLookup } = makeCodeDeps([
+        makeAccount({ id: "acc-1", code: "1.1.3.2", isDetail: true }),
+        makeAccount({ id: "acc-2", code: "1.1.3", isDetail: false }),
+      ]);
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await expect(
+        service.update("org-1", {
+          bancoAccountCode: "1.1.3.2",
+          bankParentCode: "1.1.3",
+        }),
+      ).resolves.toBeDefined();
+      expect(accountLookup.findManyByCodes).toHaveBeenCalledTimes(1);
+      const [, codesArg] = (accountLookup.findManyByCodes as ReturnType<typeof vi.fn>)
+        .mock.calls[0];
+      expect([...(codesArg as string[])].sort()).toEqual(["1.1.3", "1.1.3.2"]);
+    });
+
+    it("no consulta findManyByCodes cuando el input no trae account codes", async () => {
+      const { repo, accountLookup } = makeCodeDeps([]);
+      const service = new OrgSettingsService(repo, accountLookup);
+
+      await service.update("org-1", { roundingThreshold: 0.5 });
+
+      expect(accountLookup.findManyByCodes).not.toHaveBeenCalled();
+      expect(repo.update).toHaveBeenCalledOnce();
     });
   });
 
