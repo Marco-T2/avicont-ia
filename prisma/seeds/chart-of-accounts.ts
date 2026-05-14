@@ -37,10 +37,20 @@ export const ACCOUNTS: AccountDef[] = [
   { code: "1", name: "ACTIVO", type: AccountType.ACTIVO, level: 1, parentCode: null, isDetail: false, requiresContact: false, subtype: null },
   // Nivel 2: Activo Corriente
   { code: "1.1", name: "Activo Corriente", type: AccountType.ACTIVO, level: 2, parentCode: "1", isDetail: false, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
-  { code: "1.1.1", name: "Caja", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
-  { code: "1.1.2", name: "Caja Chica", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
-  { code: "1.1.3", name: "Bancos", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
-  { code: "1.1.4", name: "Cuentas por Cobrar", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: true, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  // Caja / Caja Chica / Bancos / CxC son nodos PADRE (nivel 3, isDetail:false).
+  // Sus hojas posteables viven en nivel 4 (ver bloque "Hojas nivel 4" más abajo).
+  { code: "1.1.1", name: "Caja", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: false, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.2", name: "Caja Chica", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: false, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.3", name: "Bancos", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: false, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.4", name: "Cuentas por Cobrar", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: false, requiresContact: true, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  // Hojas nivel 4 del subárbol Activo Corriente — heredan subtype + requiresContact del padre.
+  { code: "1.1.1.1", name: "Caja General M/N", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.1.2", name: "Caja General M/E", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.2.1", name: "Caja Chica Administración", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.2", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.3.1", name: "Banco 1 M/N", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.3", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.3.2", name: "Banco 2 M/N", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.3", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.3.3", name: "Banco 3 M/E", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.3", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
+  { code: "1.1.4.1", name: "CxC Comerciales", type: AccountType.ACTIVO, level: 4, parentCode: "1.1.4", isDetail: true, requiresContact: true, subtype: AccountSubtype.ACTIVO_CORRIENTE },
   { code: "1.1.5", name: "Documentos por Cobrar", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: true, subtype: AccountSubtype.ACTIVO_CORRIENTE },
   { code: "1.1.6", name: "Inventario de Mercaderías", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.ACTIVO_CORRIENTE },
   { code: "1.1.7", name: "Anticipos a Proveedores", type: AccountType.ACTIVO, level: 3, parentCode: "1.1", isDetail: true, requiresContact: true, subtype: AccountSubtype.ACTIVO_CORRIENTE },
@@ -62,7 +72,9 @@ export const ACCOUNTS: AccountDef[] = [
   { code: "2", name: "PASIVO", type: AccountType.PASIVO, level: 1, parentCode: null, isDetail: false, requiresContact: false, subtype: null },
   // Nivel 2: Pasivo Corriente
   { code: "2.1", name: "Pasivo Corriente", type: AccountType.PASIVO, level: 2, parentCode: "2", isDetail: false, requiresContact: false, subtype: AccountSubtype.PASIVO_CORRIENTE },
-  { code: "2.1.1", name: "Cuentas por Pagar", type: AccountType.PASIVO, level: 3, parentCode: "2.1", isDetail: true, requiresContact: true, subtype: AccountSubtype.PASIVO_CORRIENTE },
+  // Cuentas por Pagar es nodo PADRE (nivel 3, isDetail:false); su hoja posteable es 2.1.1.1.
+  { code: "2.1.1", name: "Cuentas por Pagar", type: AccountType.PASIVO, level: 3, parentCode: "2.1", isDetail: false, requiresContact: true, subtype: AccountSubtype.PASIVO_CORRIENTE },
+  { code: "2.1.1.1", name: "CxP Comerciales", type: AccountType.PASIVO, level: 4, parentCode: "2.1.1", isDetail: true, requiresContact: true, subtype: AccountSubtype.PASIVO_CORRIENTE },
   { code: "2.1.2", name: "Documentos por Pagar", type: AccountType.PASIVO, level: 3, parentCode: "2.1", isDetail: true, requiresContact: true, subtype: AccountSubtype.PASIVO_CORRIENTE },
   { code: "2.1.3", name: "Sueldos por Pagar", type: AccountType.PASIVO, level: 3, parentCode: "2.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.PASIVO_CORRIENTE },
   { code: "2.1.4", name: "Aportes por Pagar", type: AccountType.PASIVO, level: 3, parentCode: "2.1", isDetail: true, requiresContact: false, subtype: AccountSubtype.PASIVO_CORRIENTE },

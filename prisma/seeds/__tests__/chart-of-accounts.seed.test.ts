@@ -53,3 +53,67 @@ describe("chart-of-accounts seed (REQ-CA.4)", () => {
     }
   });
 });
+
+describe("chart-of-accounts seed — 4-level hierarchy (account-picker)", () => {
+  const DEMOTED_PARENTS = ["1.1.1", "1.1.2", "1.1.3", "1.1.4", "2.1.1"] as const;
+
+  // code → { parent, requiresContact } expected for the 8 new level-4 leaves
+  const LEVEL4_LEAVES: Record<
+    string,
+    { parentCode: string; requiresContact: boolean }
+  > = {
+    "1.1.1.1": { parentCode: "1.1.1", requiresContact: false },
+    "1.1.1.2": { parentCode: "1.1.1", requiresContact: false },
+    "1.1.2.1": { parentCode: "1.1.2", requiresContact: false },
+    "1.1.3.1": { parentCode: "1.1.3", requiresContact: false },
+    "1.1.3.2": { parentCode: "1.1.3", requiresContact: false },
+    "1.1.3.3": { parentCode: "1.1.3", requiresContact: false },
+    "1.1.4.1": { parentCode: "1.1.4", requiresContact: true },
+    "2.1.1.1": { parentCode: "2.1.1", requiresContact: true },
+  };
+
+  it("L4-S1 — the 5 former level-3 leaves are demoted to isDetail:false", () => {
+    for (const code of DEMOTED_PARENTS) {
+      const acc = ACCOUNTS.find((a) => a.code === code);
+      expect(acc, `account ${code} must exist`).toBeDefined();
+      expect(acc!.isDetail, `account ${code} must be a parent node`).toBe(false);
+      expect(acc!.level).toBe(3);
+    }
+  });
+
+  it("L4-S2 — 8 level-4 leaves exist with level:4 and isDetail:true", () => {
+    const leaves = ACCOUNTS.filter((a) => a.level === 4);
+    expect(leaves).toHaveLength(8);
+    for (const code of Object.keys(LEVEL4_LEAVES)) {
+      const acc = ACCOUNTS.find((a) => a.code === code);
+      expect(acc, `level-4 account ${code} must exist`).toBeDefined();
+      expect(acc!.level).toBe(4);
+      expect(acc!.isDetail).toBe(true);
+    }
+  });
+
+  it("L4-S3 — each level-4 leaf points to the correct parentCode", () => {
+    for (const [code, expected] of Object.entries(LEVEL4_LEAVES)) {
+      const acc = ACCOUNTS.find((a) => a.code === code)!;
+      expect(acc.parentCode).toBe(expected.parentCode);
+    }
+  });
+
+  it("L4-S4 — level-4 leaves inherit subtype + requiresContact from their parent", () => {
+    for (const [code, expected] of Object.entries(LEVEL4_LEAVES)) {
+      const acc = ACCOUNTS.find((a) => a.code === code)!;
+      const parent = ACCOUNTS.find((a) => a.code === expected.parentCode)!;
+      expect(acc.subtype, `${code} subtype must match parent`).toBe(parent.subtype);
+      expect(acc.requiresContact, `${code} requiresContact must match parent`).toBe(
+        parent.requiresContact,
+      );
+      expect(acc.requiresContact).toBe(expected.requiresContact);
+      expect(acc.type).toBe(parent.type);
+    }
+  });
+
+  it("L4-S5 — no duplicate codes in the chart of accounts", () => {
+    const codes = ACCOUNTS.map((a) => a.code);
+    expect(new Set(codes).size).toBe(codes.length);
+  });
+});
