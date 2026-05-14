@@ -65,6 +65,14 @@ const PURCHASE_UNIT_OF_WORK = resolve(
   REPO_ROOT,
   "modules/purchase/infrastructure/prisma-purchase-unit-of-work.ts",
 );
+const HEX_EXPORTERS_DIR = resolve(
+  REPO_ROOT,
+  "modules/accounting/infrastructure/exporters",
+);
+const LEGACY_EXPORTERS_DIR = resolve(
+  REPO_ROOT,
+  "features/accounting/exporters",
+);
 
 /** Collect every `.ts` file directly under `modules/accounting/infrastructure/`
  *  (non-recursive — `__tests__/` excluded; the un-wrap target is the adapters). */
@@ -319,5 +327,49 @@ describe("α16 Block C2 — purchase unit-of-work imports hex auto-entry-generat
   it("α16: prisma-purchase-unit-of-work.ts no longer imports the legacy path", () => {
     const src = readFileSync(PURCHASE_UNIT_OF_WORK, "utf-8");
     expect(src).not.toMatch(LEGACY_AEG_IMPORT);
+  });
+});
+
+// ── Block C3 — exporters/ git-mv + exportVoucherPdf use case ─────────────────
+//
+// C3 `git mv`s the whole `features/accounting/exporters/` directory (voucher-pdf
+// .{exporter,composer,types}, logo-fetcher, amount-to-words + __tests__) into
+// `modules/accounting/infrastructure/exporters/` (history preserved, realizes
+// EX-D7), and completes the 6th journal use case `exportVoucherPdf` on the hex
+// `JournalsService`. Org-profile + document-signature-config + fiscal-periods
+// services are injected via composition-root ctor — mirror legacy
+// `journal.service.ts:67-87` (resolved open question — NO new ports).
+
+// α17 — exporters/ relocated to hex infrastructure (FAIL pre-GREEN: dir absent).
+describe("α17 Block C3 — exporters/ relocated to modules/accounting/infrastructure/", () => {
+  it("α17: modules/accounting/infrastructure/exporters/ exists with the exporter files", () => {
+    expect(existsSync(HEX_EXPORTERS_DIR)).toBe(true);
+    const files = readdirSync(HEX_EXPORTERS_DIR)
+      .filter((n) => n.endsWith(".ts"))
+      .sort();
+    expect(files).toEqual([
+      "amount-to-words.ts",
+      "logo-fetcher.ts",
+      "voucher-pdf.composer.ts",
+      "voucher-pdf.exporter.ts",
+      "voucher-pdf.types.ts",
+    ]);
+  });
+});
+
+// α18 — legacy exporters/ dir gone (FAIL pre-GREEN: still at features/accounting/).
+describe("α18 Block C3 — features/accounting/exporters/ no longer exists", () => {
+  it("α18: features/accounting/exporters/ directory removed by the git mv", () => {
+    expect(existsSync(LEGACY_EXPORTERS_DIR)).toBe(false);
+  });
+});
+
+// α19 — exportVoucherPdf use case declared on hex JournalsService.
+//   Expected FAIL pre-GREEN: JournalsService has the 5 C1 read use cases + 4
+//   write use cases — but NOT exportVoucherPdf (the 6th read, C3 scope).
+describe("α19 Block C3 — exportVoucherPdf use case declared on JournalsService", () => {
+  it("α19: journals.service.ts declares `async exportVoucherPdf(`", () => {
+    const src = readFileSync(HEX_JOURNALS_SERVICE, "utf-8");
+    expect(src).toMatch(/async\s+exportVoucherPdf\s*\(/);
   });
 });
