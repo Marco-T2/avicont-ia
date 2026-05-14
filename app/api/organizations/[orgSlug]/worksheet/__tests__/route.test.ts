@@ -80,8 +80,11 @@ vi.mock("@/modules/accounting/worksheet/infrastructure/exporters/worksheet-xlsx.
   exportWorksheetXlsx: vi.fn().mockResolvedValue(Buffer.from("PK xlsx content")),
 }));
 
-// serializeStatement re-export from financial-statements barrel
-vi.mock("@/modules/accounting/financial-statements/presentation", () => ({
+// serializeStatement re-export from financial-statements SERVER barrel.
+// [[cross_module_boundary_mock_target_rewrite]]: mock target follows route.ts —
+// serializeStatement is server-only (instanceof Prisma.Decimal), so it lives in
+// presentation/server, NOT the client-safe presentation/index barrel.
+vi.mock("@/modules/accounting/financial-statements/presentation/server", () => ({
   serializeStatement: vi.fn((obj: unknown) => obj),
 }));
 

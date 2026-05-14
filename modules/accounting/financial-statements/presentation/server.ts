@@ -5,8 +5,9 @@ import "server-only";
 // DISTINCT from `"use server"` directive (which marks Server Functions/actions).
 //
 // D5 INVERSE (financial-statements barrel strategy):
-// - server.ts: server-only re-exports (FinancialStatementsService, factory, schemas, RUNTIME)
-// - index.ts:  client-safe re-exports (serializeStatement + TYPE-only)
+// - server.ts: server-only re-exports (FinancialStatementsService, factory, schemas,
+//   RUNTIME — including serializeStatement, which needs the Prisma.Decimal runtime)
+// - index.ts:  client-safe re-exports (TYPE-only + pure table-row builders)
 // - NO client.ts: zero React hooks in consumers — dispatch-hex pattern, NOT ai-agent pattern.
 //
 // RUNTIME exports exposed here are consumed server-side by:
@@ -25,13 +26,11 @@ export {
 } from "../domain/financial-statements.validation";
 
 // ── RUNTIME exports (server-side consumers) ──
-// `serializeStatement` is environment-neutral (no server-only deps) but is also
-// re-exported here for SYMMETRY with the old features/.../server.ts surface
-// (which re-exported `* from "./money.utils"`). Routes already importing
-// `serializeStatement` from the server barrel (initial-balance, trial-balance,
-// equity-statement) continue to use the same barrel post-cutover. Composition
-// root extension precedent: ai-agent C4 GREEN ccab3a77 added makeAgentRateLimitService
-// to presentation/server.ts for symmetric post-cutover surface preservation.
+// `serializeStatement` is SERVER-ONLY: it does `instanceof Prisma.Decimal` at
+// runtime, so it transitively pulls `@/generated/prisma/client` (→ `node:module`).
+// It is re-exported ONLY here, never from the client-safe `index.ts` barrel.
+// All 6 statement API routes (balance-sheet, income-statement, worksheet,
+// trial-balance, initial-balance, equity-statement) import it from this server barrel.
 export {
   formatBolivianAmount,
   roundHalfUp,

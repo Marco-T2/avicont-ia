@@ -7,7 +7,7 @@ import {
   exportWorksheetPdf,
   exportWorksheetXlsx,
 } from "@/modules/accounting/worksheet/presentation/server";
-import { serializeStatement } from "@/modules/accounting/financial-statements/presentation";
+import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import type { Role } from "@/features/permissions";
 
 // Node.js runtime required by pdfmake + exceljs (Buffer/streams)

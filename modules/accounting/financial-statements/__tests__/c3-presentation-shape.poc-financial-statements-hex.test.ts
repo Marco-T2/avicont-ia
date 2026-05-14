@@ -162,8 +162,9 @@ describe("POC financial-statements-hex C3 — presentation layer shape", () => {
   });
 
   // ───────────────────────────────────────────────────────────────────────────
-  // Block 3 — index.ts (client-safe barrel: serializeStatement + TYPE re-exports)
+  // Block 3 — index.ts (client-safe barrel: pure table-row builders + TYPE re-exports)
   // D5 INVERSE: no "use client" directive, no runtime server-only imports.
+  // serializeStatement is NOT here — it is server-only (instanceof Prisma.Decimal).
   // ───────────────────────────────────────────────────────────────────────────
 
   describe("Block 3 — index.ts (client-safe barrel per D5 INVERSE)", () => {
@@ -177,9 +178,16 @@ describe("POC financial-statements-hex C3 — presentation layer shape", () => {
       expect(fs.existsSync(filePath)).toBe(true);
     });
 
-    it("α79: index.ts re-exports serializeStatement (environment-neutral runtime)", () => {
+    it("α79: index.ts does NOT re-export serializeStatement (server-only — needs Prisma.Decimal runtime)", () => {
+      // CORRECTED at client/server boundary-leak fix: serializeStatement does
+      // `instanceof Prisma.Decimal` at runtime, so it transitively imports
+      // `@/generated/prisma/client` (→ `node:module`). Re-exporting it from this
+      // client-safe barrel poisoned every Client Component that did `import type`
+      // from here (a barrel is ONE module — runtime exports drag in regardless).
+      // It now lives ONLY in presentation/server.ts. See client-safe-barrel-shape
+      // sentinel for the full transitive-reachability guard.
       const content = readPresentationFile("index.ts");
-      expect(content).toMatch(/serializeStatement/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*serializeStatement/m);
     });
 
     it("α80: index.ts re-exports core domain types (BalanceSheet, IncomeStatement, StatementColumn)", () => {
