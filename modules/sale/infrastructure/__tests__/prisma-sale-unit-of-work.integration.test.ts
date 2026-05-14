@@ -9,7 +9,7 @@ import {
 } from "vitest";
 
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
-import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
+import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";

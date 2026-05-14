@@ -3,7 +3,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
-import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
+import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import {
   ACCOUNT_NOT_POSTABLE,
   JOURNAL_NOT_BALANCED,

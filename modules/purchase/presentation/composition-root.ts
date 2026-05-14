@@ -1,7 +1,7 @@
 import "server-only";
 
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
-import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
+import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { prisma } from "@/lib/prisma";
 import { FiscalPeriodsReadAdapter } from "@/modules/accounting/infrastructure/fiscal-periods-read.adapter";

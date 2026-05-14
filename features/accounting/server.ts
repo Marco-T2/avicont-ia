@@ -7,8 +7,8 @@ export { parseEntryDate } from "./journal.dates";
 
 export { LedgerService } from "./ledger.service";
 
-export { AutoEntryGenerator } from "./auto-entry-generator";
-export type { EntryLineTemplate } from "./auto-entry-generator";
+export { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
+export type { EntryLineTemplate } from "@/modules/accounting/application/auto-entry-generator";
 
 export {
   computeReceivableStatus,

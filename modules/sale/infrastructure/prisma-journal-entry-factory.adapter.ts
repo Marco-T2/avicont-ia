@@ -3,7 +3,7 @@ import {
   NotFoundError,
   ValidationError,
 } from "@/features/shared/errors";
-import { AutoEntryGenerator } from "@/features/accounting/auto-entry-generator";
+import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import { Prisma } from "@/generated/prisma/client";
 import type { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";

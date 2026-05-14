@@ -8,8 +8,8 @@ import {
 import type { Prisma } from "@/generated/prisma/client";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
-import { JournalRepository } from "./journal.repository";
-import type { JournalEntryWithLines } from "./journal.types";
+import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 
 // ── Entry template types ──
 
