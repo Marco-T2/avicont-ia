@@ -58,9 +58,9 @@ export const expenseBankPaymentSchema = z
   .object({
     ...baseShape,
     template: z.literal("expense_bank_payment"),
-    expenseAccountId: z.string().cuid("ID de cuenta de gasto inválido"),
-    bankAccountId: z.string().cuid("ID de cuenta bancaria inválido"),
-    contactId: z.string().cuid("ID de contacto inválido").optional(),
+    expenseAccountId: z.string().min(1, "ID de cuenta de gasto inválido"),
+    bankAccountId: z.string().min(1, "ID de cuenta bancaria inválido"),
+    contactId: z.string().min(1, "ID de contacto inválido").optional(),
   })
   .strict();
 
@@ -68,9 +68,9 @@ export const expenseCashPaymentSchema = z
   .object({
     ...baseShape,
     template: z.literal("expense_cash_payment"),
-    expenseAccountId: z.string().cuid("ID de cuenta de gasto inválido"),
-    cashAccountId: z.string().cuid("ID de cuenta de caja inválido"),
-    contactId: z.string().cuid("ID de contacto inválido").optional(),
+    expenseAccountId: z.string().min(1, "ID de cuenta de gasto inválido"),
+    cashAccountId: z.string().min(1, "ID de cuenta de caja inválido"),
+    contactId: z.string().min(1, "ID de contacto inválido").optional(),
   })
   .strict();
 
@@ -78,8 +78,8 @@ export const bankDepositSchema = z
   .object({
     ...baseShape,
     template: z.literal("bank_deposit"),
-    bankAccountId: z.string().cuid("ID de cuenta bancaria inválido"),
-    cashAccountId: z.string().cuid("ID de cuenta de caja inválido"),
+    bankAccountId: z.string().min(1, "ID de cuenta bancaria inválido"),
+    cashAccountId: z.string().min(1, "ID de cuenta de caja inválido"),
   })
   .strict();
 
@@ -124,7 +124,7 @@ export const createJournalEntryConfirmSchema = z
       .min(3, "La glosa debe tener al menos 3 caracteres")
       .max(500, "La glosa no puede superar los 500 caracteres"),
     amount: z.number().positive("El monto debe ser mayor a 0"),
-    contactId: z.string().cuid("ID de contacto inválido").optional(),
+    contactId: z.string().min(1, "ID de contacto inválido").optional(),
     originalText: z
       .string()
       .min(1, "El texto original es requerido")
@@ -132,7 +132,7 @@ export const createJournalEntryConfirmSchema = z
     lines: z
       .array(
         z.object({
-          accountId: z.string().cuid("ID de cuenta inválido"),
+          accountId: z.string().min(1, "ID de cuenta inválido"),
           debit: z.number().min(0, "El débito no puede ser negativo"),
           credit: z.number().min(0, "El crédito no puede ser negativo"),
         }),
