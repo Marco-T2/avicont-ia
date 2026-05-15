@@ -14,6 +14,7 @@ import {
 import { Loader2, UserMinus, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import RolePicker from "@/components/settings/role-picker";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 interface Member {
   id: string;
@@ -241,45 +242,20 @@ export default function MembersTable({
         </DialogContent>
       </Dialog>
 
-      {/* Confirm deactivate dialog */}
-      <Dialog
+      <ConfirmDialog
         open={!!deactivateDialogMember}
         onOpenChange={(open) => !open && setDeactivateDialogMember(null)}
-      >
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>¿Desactivar miembro?</DialogTitle>
-            <DialogDescription>
-              El miembro {deactivateDialogMember?.name} será desactivado y
-              perderá acceso a la organización. Podrá ser reactivado más
-              adelante.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeactivateDialogMember(null)}
-              disabled={!!loadingId}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="default"
-              onClick={handleRemove}
-              disabled={!!loadingId}
-            >
-              {loadingId ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Desactivando...
-                </>
-              ) : (
-                "Desactivar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="¿Desactivar miembro?"
+        description={
+          deactivateDialogMember
+            ? `El miembro ${deactivateDialogMember.name} será desactivado y perderá acceso a la organización. Podrá ser reactivado más adelante.`
+            : null
+        }
+        confirmLabel="Desactivar"
+        variant="destructive"
+        loading={!!loadingId}
+        onConfirm={handleRemove}
+      />
     </>
   );
 }
