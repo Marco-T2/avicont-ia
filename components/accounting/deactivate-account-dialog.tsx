@@ -1,16 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Loader2, AlertTriangle } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { toast } from "sonner";
 import type { Account } from "@/generated/prisma/client";
 
@@ -56,50 +47,19 @@ export default function DeactivateAccountDialog({
   }
 
   return (
-    <Dialog open={!!account} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5 text-warning" />
-            Desactivar Cuenta
-          </DialogTitle>
-          <DialogDescription>
-            Esta accion desactivara la cuenta{" "}
-            <strong>{account?.code} - {account?.name}</strong>.
-            No se podra usar en nuevos asientos contables.
-          </DialogDescription>
-        </DialogHeader>
-
-        <p className="text-sm text-muted-foreground">
-          Solo se puede desactivar una cuenta que no tenga movimientos registrados
-          ni subcuentas activas.
-        </p>
-
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            disabled={isSubmitting}
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleDeactivate}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Desactivando...
-              </>
-            ) : (
-              "Desactivar"
-            )}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <ConfirmDialog
+      open={!!account}
+      onOpenChange={onOpenChange}
+      title="Desactivar cuenta"
+      description={
+        account
+          ? `Esta acción desactivará la cuenta ${account.code} - ${account.name}. No se podrá usar en nuevos asientos contables. Solo se puede desactivar una cuenta sin movimientos registrados ni subcuentas activas.`
+          : null
+      }
+      confirmLabel="Desactivar"
+      variant="destructive"
+      loading={isSubmitting}
+      onConfirm={handleDeactivate}
+    />
   );
 }

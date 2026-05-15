@@ -12,14 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -340,45 +333,23 @@ export default function ReceivableList({
         />
       )}
 
-      {/* Cancel confirmation dialog */}
-      <Dialog
+      <ConfirmDialog
         open={cancelDialogFor !== null}
         onOpenChange={(open) => !open && setCancelDialogFor(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancelar Cuenta por Cobrar</DialogTitle>
-            <DialogDescription>
-              Esta acción cancelará la cuenta por cobrar de{" "}
-              {cancelDialogFor?.contact.name}. Esta operación no se puede
-              deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={actioningId !== null}
-              onClick={() => setCancelDialogFor(null)}
-            >
-              Volver
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={actioningId !== null}
-              onClick={() =>
-                cancelDialogFor && executeCancel(cancelDialogFor)
-              }
-            >
-              {actioningId !== null ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Cancelar CxC
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Cancelar Cuenta por Cobrar"
+        description={
+          cancelDialogFor
+            ? `Esta acción cancelará la cuenta por cobrar de ${cancelDialogFor.contact.name}. Esta operación no se puede deshacer.`
+            : null
+        }
+        confirmLabel="Cancelar CxC"
+        cancelLabel="Volver"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={async () => {
+          if (cancelDialogFor) await executeCancel(cancelDialogFor);
+        }}
+      />
     </>
   );
 }

@@ -5,14 +5,8 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Plus, Users, Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { Plus, Users } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import ContactFiltersBar from "./contact-filters";
@@ -233,45 +227,20 @@ export default function ContactList({ contacts: initialContacts, orgSlug }: Cont
         />
       )}
 
-      {/* Deactivate confirmation dialog */}
-      <Dialog
+      <ConfirmDialog
         open={!!deactivateTarget}
         onOpenChange={(open) => { if (!open) setDeactivateTarget(null); }}
-      >
-        <DialogContent className="sm:max-w-sm">
-          <DialogHeader>
-            <DialogTitle>Desactivar contacto</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            ¿Está seguro de que desea desactivar a{" "}
-            <span className="font-semibold text-foreground">{deactivateTarget?.name}</span>?
-            El contacto no podrá ser seleccionado en nuevas transacciones.
-          </p>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setDeactivateTarget(null)}
-              disabled={isDeactivating}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDeactivate}
-              disabled={isDeactivating}
-            >
-              {isDeactivating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Desactivando...
-                </>
-              ) : (
-                "Desactivar"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Desactivar contacto"
+        description={
+          deactivateTarget
+            ? `¿Desactivar a "${deactivateTarget.name}"? El contacto no podrá ser seleccionado en nuevas transacciones.`
+            : null
+        }
+        confirmLabel="Desactivar"
+        variant="destructive"
+        loading={isDeactivating}
+        onConfirm={handleDeactivate}
+      />
     </>
   );
 }
