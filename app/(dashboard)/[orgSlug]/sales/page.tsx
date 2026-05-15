@@ -8,6 +8,8 @@ import {
   SALE_PREFIX,
 } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
+import { makeDispatchService } from "@/modules/dispatch/presentation/composition-root";
+import { getDisplayCode as getDispatchDisplayCode } from "@/modules/dispatch/infrastructure/dispatch-display-code";
 import SaleList from "@/components/sales/sale-list";
 
 interface SalesPageProps {
@@ -34,15 +36,38 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
   const statusFilter = typeof sp.status === "string" ? sp.status : undefined;
 
   const saleService = makeSaleService();
-  const result = await saleService.listPaginated(
-    orgId,
-    statusFilter ? { status: statusFilter } : undefined,
-    pagination,
-  );
+  const dispatchService = makeDispatchService();
+
+  // Cross-module twin-call (D1 design): presentation-layer composition, NO merge
+  // service. Sale section paginated (B5 lock preserved); BC + ND non-paginated
+  // alongside per Marco resolution in spec #2483.
+  const [result, dispatches] = await Promise.all([
+    saleService.listPaginated(
+      orgId,
+      statusFilter ? { status: statusFilter } : undefined,
+      pagination,
+    ),
+    dispatchService.list(
+      orgId,
+      statusFilter
+        ? { status: statusFilter as "DRAFT" | "POSTED" | "LOCKED" | "VOIDED" }
+        : undefined,
+    ),
+  ]);
   const sales = result.items;
 
-  const contactIds = [...new Set(sales.map((s) => s.contactId))];
-  const periodIds = [...new Set(sales.map((s) => s.periodId))];
+  const contactIds = [
+    ...new Set([
+      ...sales.map((s) => s.contactId),
+      ...dispatches.map((d) => d.contactId),
+    ]),
+  ];
+  const periodIds = [
+    ...new Set([
+      ...sales.map((s) => s.periodId),
+      ...dispatches.map((d) => d.periodId),
+    ]),
+  ];
 
   const [contacts, periods] = await Promise.all([
     prisma.contact.findMany({
@@ -80,6 +105,44 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
           : `${SALE_PREFIX}-DRAFT`,
     }),
   );
+
+  // Source discriminator merge (presentation-local; replaces retired HubItem
+  // discriminated union from hub.types.ts deleted in C1). Sale section
+  // preserves listPaginated paging meta; dispatch rows non-paginated.
+  // C2 will introduce TransactionsList consuming `transactionRows`; for now
+  // SaleList renders Sale-only — the merge is wired (twin-call data complete)
+  // and feeds the upcoming presentation switch.
+  const transactionRows = [
+    ...salesWithDetails.map((s) => ({
+      source: "sale" as const,
+      type: "VENTA_GENERAL" as const,
+      id: s.id,
+      displayCode: s.displayCode,
+      referenceNumber: s.referenceNumber,
+      date: s.date,
+      contactId: s.contactId,
+      contactName: contactMap.get(s.contactId)?.name ?? "",
+      periodId: s.periodId,
+      description: s.description,
+      totalAmount: s.totalAmount.toFixed(2),
+      status: s.status,
+    })),
+    ...dispatches.map((d) => ({
+      source: "dispatch" as const,
+      type: d.dispatchType,
+      id: d.id,
+      displayCode: getDispatchDisplayCode(d.dispatchType, d.sequenceNumber),
+      referenceNumber: d.referenceNumber,
+      date: d.date,
+      contactId: d.contactId,
+      contactName: contactMap.get(d.contactId)?.name ?? "",
+      periodId: d.periodId,
+      description: d.description,
+      totalAmount: d.totalAmount.toFixed(2),
+      status: d.status,
+    })),
+  ];
+  void transactionRows;
 
   return (
     <div className="space-y-6">

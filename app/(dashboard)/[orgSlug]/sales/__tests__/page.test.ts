@@ -10,6 +10,10 @@
  * anomaly absorbed inline GREEN sub-§13 in-flight surface mirror A3-C4b
  * page-rbac precedent (engram #1532). Test semantics RBAC-only preserved
  * (data path empty array — mapper never invoked).
+ *
+ * C0 GREEN poc-dispatch-retirement-into-sales: dispatchService mock added
+ * (twin-call cross-module read). RBAC semantics preserved — empty list
+ * default keeps mapper paths shallow.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -18,6 +22,8 @@ const {
   mockRequirePermission,
   mockMakeSaleService,
   mockListPaginated,
+  mockMakeDispatchService,
+  mockDispatchList,
   mockContactFindMany,
   mockPeriodFindMany,
 } = vi.hoisted(() => ({
@@ -25,6 +31,8 @@ const {
   mockRequirePermission: vi.fn(),
   mockMakeSaleService: vi.fn(),
   mockListPaginated: vi.fn(),
+  mockMakeDispatchService: vi.fn(),
+  mockDispatchList: vi.fn(),
   mockContactFindMany: vi.fn(),
   mockPeriodFindMany: vi.fn(),
 }));
@@ -37,6 +45,10 @@ vi.mock("@/features/permissions/server", () => ({
 
 vi.mock("@/modules/sale/presentation/composition-root", () => ({
   makeSaleService: mockMakeSaleService,
+}));
+
+vi.mock("@/modules/dispatch/presentation/composition-root", () => ({
+  makeDispatchService: mockMakeDispatchService,
 }));
 
 vi.mock("@/lib/prisma", () => ({
@@ -72,6 +84,8 @@ beforeEach(() => {
     pageSize: 25,
     totalPages: 1,
   });
+  mockMakeDispatchService.mockReturnValue({ list: mockDispatchList });
+  mockDispatchList.mockResolvedValue([]);
   mockContactFindMany.mockResolvedValue([]);
   mockPeriodFindMany.mockResolvedValue([]);
 });
