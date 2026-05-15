@@ -20,6 +20,25 @@ describe("<RolesMatrixGrouped />", () => {
   const emptyWrite = new Set<Resource>();
   const emptyPost = new Set<PostableResource>();
 
+  // (a0) period + audit rows render — they live in Organización section since
+  // they aren't claimed by any module. Pre-existing bug: RESOURCE_ORDER omitted
+  // them, so admin couldn't grant period/audit to custom roles via the UI.
+  it("(a0) renders period + audit rows", () => {
+    render(
+      <RolesMatrixGrouped
+        readSet={emptyRead}
+        writeSet={emptyWrite}
+        postSet={emptyPost}
+        disabled={false}
+        onToggle={noopToggle}
+      />,
+    );
+    expect(screen.getByTestId("toggle-read-period")).toBeInTheDocument();
+    expect(screen.getByTestId("toggle-write-period")).toBeInTheDocument();
+    expect(screen.getByTestId("toggle-read-audit")).toBeInTheDocument();
+    expect(screen.getByTestId("toggle-write-audit")).toBeInTheDocument();
+  });
+
   // (a) renders one section heading per MODULES[] entry + "Organización"
   it("(a) renders one section heading per MODULES[] entry + 'Organización'", () => {
     render(

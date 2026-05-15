@@ -23,7 +23,7 @@ describe("<RolesPermissionsMatrix />", () => {
     });
   });
 
-  describe("resource rows (all 12 resources)", () => {
+  describe("resource rows (all 14 resources)", () => {
     const resources = [
       "Miembros",
       "Config. contable",
@@ -37,6 +37,8 @@ describe("<RolesPermissionsMatrix />", () => {
       "Granjas",
       "Documentos",
       "Agente IA",
+      "Período Fiscal",
+      "Auditoría",
     ];
 
     it.each(resources)("renders row for '%s'", (label) => {
