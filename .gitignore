@@ -10,6 +10,10 @@
 !.yarn/releases
 !.yarn/versions
 
+# enforce pnpm as sole package manager
+package-lock.json
+yarn.lock
+
 # testing
 /coverage
 
