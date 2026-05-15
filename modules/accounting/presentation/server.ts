@@ -16,6 +16,12 @@ export type * from "./dto/journal.types";
 export type * from "./dto/accounts.types";
 export type * from "./dto/ledger.types";
 
+// ── Validation schemas (POC #8 OLEADA 6 C1 — journal/ledger + account zod schemas) ──
+// Surfaced here so app/ consumers import from a single hex barrel
+// (`@/modules/accounting/presentation/server`) rather than reaching into
+// `features/accounting/server` or the bare `./validation` sub-path.
+export * from "./validation";
+
 // ── Domain utils ──
 export * from "../domain/account-code.utils";
 export * from "../domain/correlative.utils";

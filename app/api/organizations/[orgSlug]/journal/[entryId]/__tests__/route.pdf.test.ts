@@ -33,14 +33,12 @@ vi.mock("@/features/users/server", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/accounting/server")>()),
-  JournalService: vi.fn().mockImplementation(function () {
-    return {
-      getById: mockGetById,
-      exportVoucherPdf: mockExportVoucherPdf,
-    };
-  }),
+vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/accounting/presentation/server")>()),
+  makeJournalsService: vi.fn(() => ({
+    getById: mockGetById,
+    exportVoucherPdf: mockExportVoucherPdf,
+  })),
 }));
 
 import { requirePermission } from "@/features/permissions/server";

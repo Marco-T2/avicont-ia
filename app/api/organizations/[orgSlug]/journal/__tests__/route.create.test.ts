@@ -53,21 +53,12 @@ vi.mock("@/features/users/server", () => ({
   }),
 }));
 
-vi.mock("@/features/accounting/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/features/accounting/server")>()),
-  JournalService: vi.fn().mockImplementation(function () {
-    return {
-      createEntry: mockLegacyCreateEntry,
-      createAndPost: mockLegacyCreateAndPost,
-      list: mockLegacyList,
-    };
-  }),
-}));
-
-vi.mock("@/modules/accounting/presentation/composition-root", () => ({
+vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/accounting/presentation/server")>()),
   makeJournalsService: vi.fn(() => ({
     createEntry: mockCreateEntry,
     createAndPost: mockCreateAndPost,
+    list: mockLegacyList,
   })),
 }));
 

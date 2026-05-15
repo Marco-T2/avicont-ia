@@ -1,21 +1,19 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { JournalService } from "@/features/accounting/server";
 import {
+  makeJournalsService,
   updateJournalEntrySchema,
   exportVoucherQuerySchema,
-} from "@/features/accounting/server";
-import { formatCorrelativeNumber } from "@/features/accounting/server";
-import { makeJournalsService } from "@/modules/accounting/presentation/composition-root";
+  formatCorrelativeNumber,
+} from "@/modules/accounting/presentation/server";
 
 // PDF exporter usa pdfmake (Buffer/streams nativos) — requiere runtime Node.js.
 export const runtime = "nodejs";
 
 const usersService = new UsersService();
-// Legacy `service` retained for GET (`getById`, `exportVoucherPdf` not migrated in C3-D).
-const service = new JournalService();
 const journalsService = makeJournalsService();
+const service = journalsService;
 
 export async function GET(
   request: Request,

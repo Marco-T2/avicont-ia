@@ -1,9 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { JournalService } from "@/features/accounting/server";
-import { correlationAuditQuerySchema } from "@/features/accounting/server";
+import {
+  makeJournalsService,
+  correlationAuditQuerySchema,
+} from "@/modules/accounting/presentation/server";
 
-const service = new JournalService();
+const service = makeJournalsService();
 
 export async function GET(
   request: Request,

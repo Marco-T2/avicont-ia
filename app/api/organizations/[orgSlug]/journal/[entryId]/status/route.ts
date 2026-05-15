@@ -1,8 +1,10 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { statusTransitionSchema } from "@/features/accounting/server";
-import { makeJournalsService } from "@/modules/accounting/presentation/composition-root";
+import {
+  makeJournalsService,
+  statusTransitionSchema,
+} from "@/modules/accounting/presentation/server";
 
 const usersService = new UsersService();
 const journalsService = makeJournalsService();

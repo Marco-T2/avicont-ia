@@ -1,17 +1,15 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { UsersService } from "@/features/users/server";
-import { JournalService } from "@/features/accounting/server";
 import {
+  makeJournalsService,
   createJournalEntrySchema,
   journalFiltersSchema,
-} from "@/features/accounting/server";
-import { makeJournalsService } from "@/modules/accounting/presentation/composition-root";
+} from "@/modules/accounting/presentation/server";
 
 const usersService = new UsersService();
-// Legacy `service` retained for GET (`list` not migrated in C3-D).
-const service = new JournalService();
 const journalsService = makeJournalsService();
+const service = journalsService;
 
 export async function GET(
   request: Request,
