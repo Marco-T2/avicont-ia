@@ -81,11 +81,11 @@ describe("AccountingDashboardService.load", () => {
 
   it("aggregates trial-balance rows into Activo/Pasivo/Patrimonio totals", async () => {
     const rows = [
-      tbRow("1101", "Caja", "ASSET", "1000.00", "200.00"),
-      tbRow("1201", "Bancos", "ASSET", "500.00", "100.00"),
-      tbRow("2101", "Proveedores", "LIABILITY", "50.00", "800.00"),
-      tbRow("3101", "Capital", "EQUITY", "0.00", "400.00"),
-      tbRow("4101", "Ventas", "INCOME", "0.00", "2000.00"),
+      tbRow("1101", "Caja", "ACTIVO", "1000.00", "200.00"),
+      tbRow("1201", "Bancos", "ACTIVO", "500.00", "100.00"),
+      tbRow("2101", "Proveedores", "PASIVO", "50.00", "800.00"),
+      tbRow("3101", "Capital", "PATRIMONIO", "0.00", "400.00"),
+      tbRow("4101", "Ventas", "INGRESO", "0.00", "2000.00"),
     ];
     const service = new AccountingDashboardService(
       makeJournalsStub([]),
@@ -102,7 +102,7 @@ describe("AccountingDashboardService.load", () => {
 
   it("returns top-10 accounts sorted by abs(debit)+abs(credit) descending", async () => {
     const rows = Array.from({ length: 12 }, (_, i) =>
-      tbRow(`A${i.toString().padStart(2, "0")}`, `Cuenta ${i}`, "ASSET", String(i * 100), "0.00"),
+      tbRow(`A${i.toString().padStart(2, "0")}`, `Cuenta ${i}`, "ACTIVO", String(i * 100), "0.00"),
     );
     const service = new AccountingDashboardService(
       makeJournalsStub([]),
@@ -147,11 +147,11 @@ describe("AccountingDashboardService.load", () => {
   });
 
   it("serializes monetary fields as fixed-2 decimal strings (no Decimal leak)", async () => {
-    const rows = [tbRow("1101", "Caja", "ASSET", "100.5", "0.0")];
+    const rows = [tbRow("1101", "Caja", "ACTIVO", "100.5", "0.0")];
     const service = new AccountingDashboardService(
       makeJournalsStub([]),
       makeLedgerStub(rows),
-      makeFiscalPeriodsStub(null),
+      makeFiscalPeriodsStub({ id: "p1", name: "Mayo 2026", status: "OPEN" }),
     );
 
     const dto = await service.load(ORG_ID);
