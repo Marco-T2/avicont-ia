@@ -211,11 +211,13 @@ describe("AppSidebar — Contabilidad nav wiring (migrated from PR5 tests)", () 
     expect(ef).toHaveLength(0);
   });
 
-  it("renders Informes alongside Plan de Cuentas and Libro Diario (triangulation)", () => {
+  it("renders Informes alongside Contactos and Libro Diario (triangulation)", () => {
+    // sidebar-reorg-settings-hub C1: Plan de Cuentas moved out of Contabilidad
+    // sidebar (now a Settings hub card). Triangulate with Contactos instead.
     renderSidebar(OWNER_FULL, "/test-org/accounting/journal");
     const labels = screen.getAllByRole("link").map((el) => el.textContent?.trim() ?? "");
     expect(labels).toContain("Informes");
-    expect(labels).toContain("Plan de Cuentas");
+    expect(labels).toContain("Contactos");
     expect(labels).toContain("Libro Diario");
   });
 

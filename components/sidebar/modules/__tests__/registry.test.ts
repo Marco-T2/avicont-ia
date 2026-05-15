@@ -63,9 +63,34 @@ describe("REQ-MS.1 — Contabilidad entry", () => {
     }
   });
 
-  it("has at least 12 navItems (including separators; PR4.9 removed Configuración)", () => {
+  // C1 [GREEN] — sidebar-reorg-settings-hub: Contabilidad trimmed to 8 flat
+  // leaves, zero separators. Previously 12 leaves + 2 separators ("Operaciones",
+  // "Contabilidad"). PdC / CxC / CxP / Cierre Mensual moved to Settings / Informes.
+  it("has EXACTLY 8 flat leaf navItems (sidebar-reorg-settings-hub trim)", () => {
     const entry = MODULES.find((m) => m.id === "contabilidad")!;
-    expect(entry.navItems.length).toBeGreaterThanOrEqual(12);
+    expect(entry.navItems).toHaveLength(8);
+  });
+
+  it("has ZERO separator navItems (sidebar-reorg-settings-hub trim)", () => {
+    const entry = MODULES.find((m) => m.id === "contabilidad")!;
+    const seps = entry.navItems.filter((item) => item.isSeparator);
+    expect(seps).toHaveLength(0);
+  });
+
+  it("does NOT contain Cuentas por Cobrar / Cuentas por Pagar / Plan de Cuentas / Cierre Mensual leaves", () => {
+    const entry = MODULES.find((m) => m.id === "contabilidad")!;
+    const removedLabels = [
+      "Cuentas por Cobrar",
+      "Cuentas por Pagar",
+      "Plan de Cuentas",
+      "Cierre Mensual",
+    ];
+    for (const removed of removedLabels) {
+      const hit = entry.navItems.find(
+        (item) => !item.isSeparator && item.label === removed,
+      );
+      expect(hit).toBeUndefined();
+    }
   });
 
   it("homeRoute returns /{orgSlug}/accounting", () => {
@@ -142,18 +167,18 @@ describe("REQ-RNM.1 — Ventas nav-resource mapping", () => {
 });
 
 // ---------------------------------------------------------------------------
-// REQ-5 [RED] — "Cierre Mensual" nav entry resource must be "period"
-// (REQ-5: sidebar visibility via PERMISSIONS_READ["period"], not "journal").
-// RED: registry.ts:113 still has resource: "journal" — asserts "period".
+// REQ-5 — "Cierre Mensual" removed from Contabilidad navItems.
+// (sidebar-reorg-settings-hub C1: Cierre Mensual relocated to Settings hub
+// as a card. The previous REQ-5 test asserted resource='period' on the
+// in-sidebar entry; the entry no longer exists.)
 // ---------------------------------------------------------------------------
 
-describe("REQ-5 — Cierre Mensual nav entry resource gating", () => {
-  it("\"Cierre Mensual\" nav item has resource: 'period'", () => {
+describe("sidebar-reorg-settings-hub — Cierre Mensual no longer in Contabilidad sidebar", () => {
+  it("Contabilidad has NO 'Cierre Mensual' nav item (moved to Settings hub)", () => {
     const contabilidad = MODULES.find((m) => m.id === "contabilidad")!;
     const cierreMensual = contabilidad.navItems.find(
       (item) => !item.isSeparator && item.label === "Cierre Mensual",
     );
-    expect(cierreMensual).toBeDefined();
-    expect(cierreMensual!.resource).toBe("period");
+    expect(cierreMensual).toBeUndefined();
   });
 });
