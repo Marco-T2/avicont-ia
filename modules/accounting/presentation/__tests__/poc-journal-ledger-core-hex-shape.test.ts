@@ -287,6 +287,20 @@ describe("α13 Block C1 — LedgerService float money-math parity (DEV-1 / R-mon
     );
     expect(src).toMatch(/\bsumDecimals\s*\(/);
   });
+
+  // α13d — ADDED at poc-money-math-decimal-convergence C2 RED (OLEADA 7 POC #2).
+  // AEG balance-check converges to sumDecimals + eq from shared/domain/money.utils;
+  // legacy Math.round(*100) cents-comparison RETIRED. Mirrors α13c shape per
+  // [[paired_sister_default_no_surface]] / [[red_regex_discipline]].
+  it("α13d: hex auto-entry-generator.ts converged to Decimal balance-check — IMPORTS shared/domain/money.utils, calls sumDecimals+eq, NO Math.round(*100)", () => {
+    const src = readFileSync(HEX_AUTO_ENTRY_GENERATOR, "utf-8");
+    expect(src).toMatch(
+      /from\s+["'][^"']*shared\/domain\/money\.utils["']/m,
+    );
+    expect(src).toMatch(/\bsumDecimals\s*\(/);
+    expect(src).toMatch(/\beq\s*\(/);
+    expect(src).not.toMatch(/Math\.round\([^)]*\*\s*100\)/);
+  });
 });
 
 // ── Block C2 — auto-entry-generator migration + sale/purchase repoint ────────
