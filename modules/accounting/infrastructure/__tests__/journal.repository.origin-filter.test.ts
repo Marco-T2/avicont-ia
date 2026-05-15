@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { JournalRepository } from "@/features/accounting/journal.repository";
+import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 
 // ── Helpers ──

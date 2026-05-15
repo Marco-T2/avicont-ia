@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { JournalRepository } from "@/features/accounting/journal.repository";
+import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 
 const ORG_ID = "org-next-number";
 

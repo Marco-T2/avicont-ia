@@ -24,7 +24,7 @@ vi.mock("@/lib/logging/structured", () => ({
   logStructured: vi.fn(),
 }));
 
-import { JournalRepository } from "@/features/accounting/journal.repository";
+import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 import { VOUCHER_NUMBER_CONTENTION } from "@/features/shared/errors";
 import { Prisma } from "@/generated/prisma/client";
 import type { JournalLineInput } from "@/features/accounting/journal.types";

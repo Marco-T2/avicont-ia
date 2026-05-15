@@ -1,6 +1,5 @@
 import "server-only";
 
-export { JournalRepository } from "./journal.repository";
 export type * from "./journal.types";
 export { parseEntryDate } from "./journal.dates";
 

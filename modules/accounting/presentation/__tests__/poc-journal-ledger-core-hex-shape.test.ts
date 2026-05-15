@@ -149,16 +149,9 @@ describe("α04 Block C0 — repo behavioral parity: MAX_CONTENTION_ATTEMPTS + jo
   contact: true,
   voucherType: true,`;
 
-  it("α04a: legacy journal.repository.ts still declares MAX_CONTENTION_ATTEMPTS = 5 (snapshot anchor)", () => {
-    const src = readFileSync(LEGACY_JOURNAL_REPO, "utf-8");
-    const m = src.match(/const\s+MAX_CONTENTION_ATTEMPTS\s*=\s*(\d+)/);
-    expect(m?.[1]).toBe(String(LEGACY_MAX_CONTENTION));
-  });
-
-  it("α04b: legacy journal.repository.ts still declares the journalIncludeLines shape (snapshot anchor)", () => {
-    const src = readFileSync(LEGACY_JOURNAL_REPO, "utf-8");
-    expect(src).toContain(LEGACY_INCLUDE_LINES_SHAPE);
-  });
+  // α04a + α04b RETIRED (poc-payment-journal-repo-cutover — OLEADA 7 POC #1/2).
+  //   file-content snapshot anchors on now-deleted features/accounting/journal.repository.ts;
+  //   hex-side α04c + α04d below retain the snapshot anchor. Spec R-03 · Design #2436.
 
   it("α04c: hex prisma-journal-entries.repo.ts declares MAX_CONTENTION_ATTEMPTS = 5 post-fold", () => {
     const src = readFileSync(HEX_JOURNAL_ENTRIES_REPO, "utf-8");
@@ -723,9 +716,13 @@ describe("α27 Block C4 (sub-POC 8) — server.ts barrel slimmed: 3 shim re-expo
     const src = readFileSync(BARREL, "utf-8");
     expect(src).not.toMatch(/from\s+["']\.\/accounting\.validation["']/);
   });
-  it("α27: server.ts RETAINS the non-shim re-exports (JournalRepository, journal.types, journal.dates, document-lifecycle, correlative.utils)", () => {
+  // POC #1 OLEADA 7 (poc-payment-journal-repo-cutover) DROPS the
+  //   `export { JournalRepository } from "./journal.repository"` re-export
+  //   (spec R-02, design #2436). The retention list shrinks by one entry —
+  //   journal.types, journal.dates, document-lifecycle, correlative.utils
+  //   remain. α26 above asserts the underlying file is DELETED.
+  it("α27: server.ts RETAINS the non-shim re-exports (journal.types, journal.dates, document-lifecycle, correlative.utils)", () => {
     const src = readFileSync(BARREL, "utf-8");
-    expect(src).toMatch(/from\s+["']\.\/journal\.repository["']/);
     expect(src).toMatch(/from\s+["']\.\/journal\.types["']/);
     expect(src).toMatch(/from\s+["']\.\/journal\.dates["']/);
     expect(src).toMatch(/from\s+["']\.\/correlative\.utils["']/);
