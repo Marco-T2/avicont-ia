@@ -21,3 +21,9 @@
 //
 // Sister: `modules/accounting/financial-statements/presentation/index.ts`.
 export { eq, sumDecimals } from "../shared/domain/money.utils";
+
+// ── Dashboard DTO (accounting-dashboard-pro) ──
+// Client-safe types: pure interfaces, no runtime imports. Surfaced here
+// (not in `./server`) so client components in `components/accounting/`
+// can `import type` without dragging `"server-only"` into the bundle.
+export type * from "./dto/dashboard.types";
