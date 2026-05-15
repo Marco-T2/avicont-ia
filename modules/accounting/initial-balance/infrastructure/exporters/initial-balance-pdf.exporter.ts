@@ -14,6 +14,7 @@
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { formatDateBO } from "@/lib/date-utils";
 import type { InitialBalanceStatement, InitialBalanceGroup } from "../../domain/initial-balance.types";
 
 // ── Public types ──────────────────────────────────────────────────────────────
@@ -39,12 +40,12 @@ const STYLE = {
 } as const;
 
 function fmtDateLong(d: Date): string {
-  return d.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/La_Paz",
-  });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  // NOTE: name retained as `fmtDateLong` for source-call-site stability, but
+  // the format is now numeric DD/MM/YYYY (formatDateBO output). The long
+  // "DD de mes de YYYY" variant was lossy on T00 calendar-day inputs (drifted
+  // D-1 in BO TZ); uniformly numeric matches the rest of the §13 sweep.
+  return formatDateBO(d);
 }
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────

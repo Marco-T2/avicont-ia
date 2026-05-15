@@ -18,6 +18,7 @@
  */
 
 import ExcelJS from "exceljs";
+import { formatDateBO } from "@/lib/date-utils";
 import type { TrialBalanceReport } from "../../domain/trial-balance.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -91,12 +92,8 @@ function writeDecimalCell(
 // ── Date formatter ────────────────────────────────────────────────────────────
 
 function fmtDate(d: Date): string {
-  return d.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "America/La_Paz",
-  });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  return formatDateBO(d);
 }
 
 // ── Main export function ──────────────────────────────────────────────────────

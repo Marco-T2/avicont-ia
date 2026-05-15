@@ -25,6 +25,7 @@
 import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal, type DecimalLike } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { formatDateBO } from "@/lib/date-utils";
 import type { WorksheetReport, WorksheetRow, WorksheetTotals } from "../../domain/worksheet.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -234,13 +235,10 @@ function buildDocDefinition(
   report: WorksheetReport,
   orgName: string,
 ): TDocumentDefinitions {
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("es-BO", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      timeZone: "America/La_Paz",
-    });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice for the
+  // calendar-day period labels. The `generatedAt` timestamp below remains
+  // locale-formatted (real instant, not calendar-day) per the §13 distinction.
+  const fmt = (d: Date) => formatDateBO(d);
 
   const generatedAt = new Date().toLocaleString("es-BO", {
     timeZone: "America/La_Paz",

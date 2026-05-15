@@ -15,6 +15,7 @@
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { formatDateBO } from "@/lib/date-utils";
 import type { EquityStatement } from "../../domain/equity-statement.types";
 import {
   COLUMNS_ORDER,
@@ -51,12 +52,8 @@ const STYLE = {
 } as const;
 
 function fmtDate(d: Date): string {
-  return d.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    timeZone: "America/La_Paz",
-  });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  return formatDateBO(d);
 }
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { formatDateBO } from "@/lib/date-utils";
 import type { EquityStatement } from "../../domain/equity-statement.types";
 import { COLUMNS_ORDER, COLUMN_LABELS } from "../../domain/equity-statement.builder";
 
@@ -88,7 +89,8 @@ export async function exportEquityStatementXlsx(
   // Row 4 — Date range
   const r4 = ws.addRow([]);
   ws.mergeCells(`A4:${ws.getColumn(totalCols).letter}4`);
-  const fmtDate = (d: Date) => d.toLocaleDateString("es-BO", { year: "numeric", month: "2-digit", day: "2-digit" });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  const fmtDate = (d: Date) => formatDateBO(d);
   setCell(r4, 1, `DEL ${fmtDate(statement.dateFrom)} AL ${fmtDate(statement.dateTo)}`, arial({ size: 9 }));
   r4.getCell(1).alignment = { horizontal: "center" };
 

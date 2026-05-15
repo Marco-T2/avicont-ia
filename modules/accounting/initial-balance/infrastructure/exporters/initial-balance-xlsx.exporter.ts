@@ -1,4 +1,5 @@
 import ExcelJS from "exceljs";
+import { formatDateBO } from "@/lib/date-utils";
 import type { InitialBalanceStatement, InitialBalanceGroup } from "../../domain/initial-balance.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -59,12 +60,11 @@ function setCell(
 // ── Date formatter ────────────────────────────────────────────────────────────
 
 function fmtDateLong(d: Date): string {
-  return d.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    timeZone: "America/La_Paz",
-  });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  // NOTE: name retained as `fmtDateLong` for source-call-site stability, but
+  // the format is now numeric DD/MM/YYYY (formatDateBO output). Uniformly
+  // numeric across §13 sweep.
+  return formatDateBO(d);
 }
 
 // ── Group rows helper ─────────────────────────────────────────────────────────

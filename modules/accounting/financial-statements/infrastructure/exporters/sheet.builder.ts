@@ -8,6 +8,7 @@
 // - ExportRow.balances: Record<columnId, saldo formateado> — complementa balance (backward compat)
 
 import { formatSubtypeLabel } from "@/modules/accounting/domain/account-subtype.utils";
+import { formatDateBO } from "@/lib/date-utils";
 import { roundHalfUp } from "../../domain/money.utils";
 import type { ExportColumn, ExportRow, ExportSheet } from "./statement-shape";
 import type { BalanceSheet, IncomeStatement, SubtypeGroup, StatementColumn } from "../../domain/types/financial-statements.types";
@@ -235,11 +236,8 @@ export function buildBalanceSheetExportSheet(bs: BalanceSheet, orgName: string):
     });
   }
 
-  const dateLabel = current.asOfDate.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  const dateLabel = formatDateBO(current.asOfDate);
 
   return {
     title: "Balance General",
@@ -323,16 +321,9 @@ export function buildIncomeStatementExportSheet(
     bold: true,
   });
 
-  const fromLabel = current.dateFrom.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
-  const toLabel = current.dateTo.toLocaleDateString("es-BO", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  const fromLabel = formatDateBO(current.dateFrom);
+  const toLabel = formatDateBO(current.dateTo);
   const dateLabel = `Del ${fromLabel} al ${toLabel}`;
 
   return {

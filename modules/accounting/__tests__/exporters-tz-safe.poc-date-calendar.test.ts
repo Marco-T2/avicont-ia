@@ -331,25 +331,16 @@ describe("POC date-calendar-vs-instant-convention C4 — 10 parametrized exporte
     expect(workbookText(wb)).toContain(EXPECTED_LABEL);
   });
 
-  it("SC-22: initial-balance-pdf renders dateAt T00 as '30/04/2026' (current: '29/04/2026' MISMATCH; uses fmtDateLong → still drifts D-1 on T00 in BO TZ)", async () => {
+  it("SC-22: initial-balance-pdf renders dateAt T00 as '30/04/2026' (G9 sweep replaces fmtDateLong with formatDateBO uniformly → numeric DD/MM/YYYY format; current pre-G9 drift renders '29 de abril de 2026' MISMATCH)", async () => {
     const result = await exportInitialBalancePdf(makeInitialBalance(T00));
     const json = JSON.stringify(result.docDef);
-    // Initial-balance uses long format "30 de abril de 2026" — strip to day check
-    // Note: fmtDateLong uses month:"long" so the raw "30/04/2026" string won't
-    // appear; instead assert calendar day "30" + "abril" + "2026" all present
-    // for the T00-drift case (current would render "29 de abril de 2026").
-    const hasDay30 = /\b30 de abril de 2026\b/.test(json);
-    expect(hasDay30).toBe(true);
+    expect(json).toContain(EXPECTED_LABEL);
   });
 
-  it("SC-23: initial-balance-xlsx renders dateAt T00 as '30/04/2026' or '30 de abril de 2026' in cells (current drifts to D-1 MISMATCH)", async () => {
+  it("SC-23: initial-balance-xlsx renders dateAt T00 as '30/04/2026' (G9 sweep replaces fmtDateLong → formatDateBO uniformly → numeric DD/MM/YYYY; current drifts to D-1 MISMATCH)", async () => {
     const buffer = await exportInitialBalanceXlsx(makeInitialBalance(T00));
     const wb = await parseWorkbook(buffer);
-    const text = workbookText(wb);
-    // initial-balance-xlsx may use long or short format; accept either D-correct shape
-    const hasDay30 =
-      text.includes(EXPECTED_LABEL) || /\b30 de abril de 2026\b/.test(text);
-    expect(hasDay30).toBe(true);
+    expect(workbookText(wb)).toContain(EXPECTED_LABEL);
   });
 
   it("SC-24: trial-balance-pdf same-day window (dateFrom = dateTo = T00) renders '30/04/2026' for both endpoints (edge case)", async () => {

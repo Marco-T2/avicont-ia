@@ -17,6 +17,7 @@
  */
 
 import ExcelJS from "exceljs";
+import { formatDateBO } from "@/lib/date-utils";
 import type { WorksheetReport, WorksheetTotals, WorksheetRow } from "../../domain/worksheet.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
@@ -224,13 +225,8 @@ function writeDocumentHeader(
   sheet.mergeCells(`A2:${lastCol}2`);
 
   // Row 3: period
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("es-BO", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      timeZone: "America/La_Paz",
-    });
+  // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
+  const fmt = (d: Date) => formatDateBO(d);
   sheet.getRow(3).getCell(1).value = `Del ${fmt(report.dateFrom)} al ${fmt(report.dateTo)}`;
   sheet.getRow(3).getCell(1).font = arial({ size: 10 });
   sheet.getRow(3).getCell(1).alignment = { horizontal: "center" };
