@@ -43,6 +43,7 @@ import type { LcvState } from "@/components/common/lcv-indicator";
 import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lcv-confirm-dialog-purchase";
 import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purchase";
 import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
@@ -296,6 +297,9 @@ export default function PurchaseForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
+  const [confirmPost, setConfirmPost] = useState(false);
+  const [confirmVoid, setConfirmVoid] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
   // ── Estado y hook de desvinculación LCV (T4.5 REQ-A.3) ──
@@ -591,9 +595,23 @@ export default function PurchaseForm({
     }
   }
 
-  async function handlePost() {
+  function handlePost() {
     if (!purchase) return;
-    if (!window.confirm("¿Contabilizar esta compra? Esta acción generará el asiento contable y la cuenta por pagar.")) return;
+    setConfirmPost(true);
+  }
+
+  function handleVoid() {
+    if (!purchase) return;
+    setConfirmVoid(true);
+  }
+
+  function handleDelete() {
+    if (!purchase) return;
+    setConfirmDelete(true);
+  }
+
+  async function executePost() {
+    if (!purchase) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -609,6 +627,7 @@ export default function PurchaseForm({
         throw new Error(data.error ?? "Error al contabilizar");
       }
       toast.success("Compra contabilizada exitosamente");
+      setConfirmPost(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar");
@@ -617,9 +636,8 @@ export default function PurchaseForm({
     }
   }
 
-  async function handleVoid() {
+  async function executeVoid() {
     if (!purchase) return;
-    if (!window.confirm("¿Anular esta compra? Se revertirá el asiento contable y la cuenta por pagar. Esta acción no se puede deshacer.")) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -635,6 +653,7 @@ export default function PurchaseForm({
         throw new Error(data.error ?? "Error al anular");
       }
       toast.success("Compra anulada");
+      setConfirmVoid(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
@@ -643,9 +662,8 @@ export default function PurchaseForm({
     }
   }
 
-  async function handleDelete() {
+  async function executeDelete() {
     if (!purchase) return;
-    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -657,6 +675,7 @@ export default function PurchaseForm({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Borrador eliminado");
+      setConfirmDelete(false);
       router.push(`/${orgSlug}/purchases`);
       router.refresh();
     } catch (err) {
@@ -1702,6 +1721,39 @@ export default function PurchaseForm({
         setReactivateDialogOpen(false);
       }}
       isPending={isReactivating}
+    />
+
+    <ConfirmDialog
+      open={confirmPost}
+      onOpenChange={setConfirmPost}
+      title="Contabilizar compra"
+      description="¿Contabilizar esta compra? Esta acción generará el asiento contable y la cuenta por pagar."
+      confirmLabel="Contabilizar"
+      variant="default"
+      loading={isActioning}
+      onConfirm={executePost}
+    />
+
+    <ConfirmDialog
+      open={confirmVoid}
+      onOpenChange={setConfirmVoid}
+      title="Anular compra"
+      description="¿Anular esta compra? Se revertirá el asiento contable y la cuenta por pagar. Esta operación no se puede deshacer."
+      confirmLabel="Anular"
+      variant="destructive"
+      loading={isActioning}
+      onConfirm={executeVoid}
+    />
+
+    <ConfirmDialog
+      open={confirmDelete}
+      onOpenChange={setConfirmDelete}
+      title="Eliminar borrador"
+      description="Esta acción eliminará el borrador permanentemente. No se puede deshacer."
+      confirmLabel="Eliminar"
+      variant="destructive"
+      loading={isActioning}
+      onConfirm={executeDelete}
     />
     </>
   );

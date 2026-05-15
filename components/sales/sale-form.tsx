@@ -39,6 +39,7 @@ import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-
 import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
 import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { ConfirmTrimDialog } from "@/components/sales/confirm-trim-dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { TrimPreviewItem } from "@/components/sales/confirm-trim-dialog";
 import { LcvIndicator } from "@/components/common/lcv-indicator";
 import type { LcvState } from "@/components/common/lcv-indicator";
@@ -193,6 +194,9 @@ export default function SaleForm({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
+  const [confirmPost, setConfirmPost] = useState(false);
+  const [confirmVoid, setConfirmVoid] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
   // ── Estado del diálogo de confirmación de trim (REQ-7) ──
@@ -361,9 +365,13 @@ export default function SaleForm({
 
   // ── Contabilizar desde modo edición ──
 
-  async function handlePost() {
+  function handlePost() {
     if (!sale) return;
-    if (!window.confirm("¿Contabilizar esta venta? Esta acción generará el asiento contable y la cuenta por cobrar.")) return;
+    setConfirmPost(true);
+  }
+
+  async function executePost() {
+    if (!sale) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -379,6 +387,7 @@ export default function SaleForm({
         throw new Error(data.error ?? "Error al contabilizar");
       }
       toast.success("Venta contabilizada exitosamente");
+      setConfirmPost(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar");
@@ -471,9 +480,13 @@ export default function SaleForm({
 
   // ── Anular ──
 
-  async function handleVoid() {
+  function handleVoid() {
     if (!sale) return;
-    if (!window.confirm("¿Anular esta venta? Se revertirá el asiento contable y la cuenta por cobrar. Esta acción no se puede deshacer.")) return;
+    setConfirmVoid(true);
+  }
+
+  async function executeVoid() {
+    if (!sale) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -489,6 +502,7 @@ export default function SaleForm({
         throw new Error(data.error ?? "Error al anular");
       }
       toast.success("Venta anulada");
+      setConfirmVoid(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
@@ -499,9 +513,13 @@ export default function SaleForm({
 
   // ── Eliminar borrador ──
 
-  async function handleDelete() {
+  function handleDelete() {
     if (!sale) return;
-    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
+    setConfirmDelete(true);
+  }
+
+  async function executeDelete() {
+    if (!sale) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -513,6 +531,7 @@ export default function SaleForm({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Borrador eliminado");
+      setConfirmDelete(false);
       router.push(`/${orgSlug}/dispatches`);
       router.refresh();
     } catch (err) {
@@ -1124,6 +1143,39 @@ export default function SaleForm({
         setReactivateDialogOpen(false);
       }}
       isPending={isReactivating}
+    />
+
+    <ConfirmDialog
+      open={confirmPost}
+      onOpenChange={setConfirmPost}
+      title="Contabilizar venta"
+      description="¿Contabilizar esta venta? Esta acción generará el asiento contable y la cuenta por cobrar."
+      confirmLabel="Contabilizar"
+      variant="default"
+      loading={isActioning}
+      onConfirm={executePost}
+    />
+
+    <ConfirmDialog
+      open={confirmVoid}
+      onOpenChange={setConfirmVoid}
+      title="Anular venta"
+      description="¿Anular esta venta? Se revertirá el asiento contable y la cuenta por cobrar. Esta operación no se puede deshacer."
+      confirmLabel="Anular"
+      variant="destructive"
+      loading={isActioning}
+      onConfirm={executeVoid}
+    />
+
+    <ConfirmDialog
+      open={confirmDelete}
+      onOpenChange={setConfirmDelete}
+      title="Eliminar borrador"
+      description="Esta acción eliminará el borrador permanentemente. No se puede deshacer."
+      confirmLabel="Eliminar"
+      variant="destructive"
+      loading={isActioning}
+      onConfirm={executeDelete}
     />
     </>
   );

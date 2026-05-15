@@ -16,6 +16,7 @@ import { IvaBooksToolbar } from "./iva-books-toolbar";
 import { IvaBooksTable } from "./iva-books-table";
 import { IvaBookPurchaseModal } from "./iva-book-purchase-modal";
 import { IvaBookSaleModal } from "./iva-book-sale-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 
 interface FiscalPeriodOption {
@@ -39,6 +40,8 @@ export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClien
   const [entries, setEntries] = useState<IvaPurchaseBookDTO[] | IvaSalesBookDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
+  const [voidId, setVoidId] = useState<string | null>(null);
+  const [isVoiding, setIsVoiding] = useState(false);
 
   const fetchEntries = useCallback(async () => {
     setLoading(true);
@@ -64,8 +67,14 @@ export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClien
     void fetchEntries();
   }, [fetchEntries]);
 
-  async function handleVoid(id: string) {
-    if (!window.confirm("¿Anular esta entrada? Esta acción no se puede deshacer.")) return;
+  function handleVoid(id: string) {
+    setVoidId(id);
+  }
+
+  async function executeVoid() {
+    if (!voidId) return;
+    const id = voidId;
+    setIsVoiding(true);
     try {
       const res = await fetch(
         `/api/organizations/${orgSlug}/iva-books/${kind}/${id}/void`,
@@ -73,9 +82,12 @@ export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClien
       );
       if (!res.ok) throw new Error("Error al anular");
       toast.success("Entrada anulada");
+      setVoidId(null);
       await fetchEntries();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
+    } finally {
+      setIsVoiding(false);
     }
   }
 
@@ -145,6 +157,17 @@ export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClien
           mode="create-standalone"
         />
       )}
+
+      <ConfirmDialog
+        open={voidId !== null}
+        onOpenChange={(open) => !open && setVoidId(null)}
+        title="Anular entrada"
+        description="¿Anular esta entrada del Libro IVA? Esta operación no se puede deshacer."
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={isVoiding}
+        onConfirm={executeVoid}
+      />
     </div>
   );
 }

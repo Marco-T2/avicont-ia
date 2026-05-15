@@ -15,6 +15,7 @@ import DocumentUploadDialog from "@/components/document/document-upload-dialog";
 import { AnalysisType, Document } from "@/types";
 import { analysisTypes, formatFileSize } from "@/app/data/data";
 import DocumentCard from "@/components/document/document-card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function DocumentsPage() {
   const { organization } = useOrganization();
@@ -28,6 +29,8 @@ export default function DocumentsPage() {
   const [selectedAnalysisType, setSelectedAnalysisType] =
     useState<AnalysisType>("summary");
   const [userRole, setUserRole] = useState<string | undefined>();
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Fetch documents
   const fetchDocuments = useCallback(async () => {
@@ -112,9 +115,14 @@ export default function DocumentsPage() {
   };
 
   // Handle delete
-  const handleDelete = async (documentId: string) => {
-    if (!confirm("¿Estás seguro de que querés eliminar este documento?")) return;
+  const handleDelete = (documentId: string) => {
+    setDeleteId(documentId);
+  };
 
+  const executeDelete = async () => {
+    if (!deleteId) return;
+    const documentId = deleteId;
+    setIsDeleting(true);
     try {
       const response = await fetch(`/api/documents/${documentId}`, {
         method: "DELETE",
@@ -122,6 +130,7 @@ export default function DocumentsPage() {
 
       if (response.ok) {
         toast.success("Documento eliminado exitosamente");
+        setDeleteId(null);
         fetchDocuments(); // Refresh list
       } else {
         toast.error("Error al eliminar el documento");
@@ -129,6 +138,8 @@ export default function DocumentsPage() {
     } catch (error) {
       console.error("Delete error:", error);
       toast.error("Failed to delete document");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -234,6 +245,17 @@ export default function DocumentsPage() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Eliminar documento"
+        description="¿Eliminar este documento? Esta operación no se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={isDeleting}
+        onConfirm={executeDelete}
+      />
     </div>
   );
 }
