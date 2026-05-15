@@ -11,14 +11,22 @@ import { RESOURCE_LABELS } from "@/lib/settings/resource-labels";
 
 /**
  * Contextual notes for shared resources.
+ *
+ * C4 sidebar-reorg-settings-hub: notes updated to reflect the post-reorg
+ * sidebar shape — CxC and CxP are no longer sidebar entries (they live in
+ * /informes catalog now). Plan de Cuentas and Cierre Mensual moved to the
+ * Settings hub (Configuración).
+ *
  * journal backs Libro Diario AND Libro Mayor — toggling one affects both nav items.
- * purchases backs Compras AND CxP — same pairing.
+ * reports gates the Informes catalog including CxC and CxP entries.
  */
 const SHARED_RESOURCE_NOTES: Partial<Record<Resource, string>> = {
   journal: "(Afecta Libro Diario y Libro Mayor)",
-  purchases: "(Afecta Compras y CxP)",
-  sales: "(Afecta Ventas y CxC)",
-  "accounting-config": "(Afecta Plan de Cuentas)",
+  purchases: "(Afecta Compras)",
+  sales: "(Afecta Ventas)",
+  "accounting-config": "(Afecta Plan de Cuentas en Configuración)",
+  period: "(Afecta Cierre Mensual en Configuración)",
+  reports: "(Afecta Informes — incluye CxC y CxP)",
 };
 
 // ─── Props ────────────────────────────────────────────────────────────────────

@@ -133,14 +133,13 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
   });
 
-  // (d) sidebar-reorg-settings-hub C1: Plan de Cuentas no longer in sidebar
-  // (moved to /settings as a card). accounting-config is still in the
-  // Contabilidad module's resources[] array (used to determine visibility of
-  // the Contabilidad module header), but it has NO matching navItem now —
-  // so the Contabilidad section header does NOT render either (all navItems
-  // require resources the user lacks; dropOrphanSeparators + empty-nav rule
-  // hide the whole module).
-  it("(d) readSet={accounting-config} only → Contabilidad nav items hidden; no PdC sidebar entry", () => {
+  // (d) sidebar-reorg-settings-hub C1+C4:
+  //   - Plan de Cuentas no longer in sidebar registry (C1: moved to Settings).
+  //   - C4: accounting-config triggers the virtual "Configuración" section in
+  //     the preview, listing Plan de Cuentas there. The Contabilidad module
+  //     section header is hidden (no nav item gated by accounting-config in
+  //     the registry post-C1; empty-nav rule applies).
+  it("(d) readSet={accounting-config} only → no Contabilidad nav items; Plan de Cuentas appears in Configuración section", () => {
     render(
       <RoleSidebarPreview
         readSet={rs("accounting-config")}
@@ -148,11 +147,12 @@ describe("<RoleSidebarPreview />", () => {
       />,
     );
 
-    // C1 trim: Plan de Cuentas no longer rendered as a sidebar entry
-    expect(screen.queryByText("Plan de Cuentas")).not.toBeInTheDocument();
+    // C4: Plan de Cuentas now appears in the Configuración section
+    expect(screen.getAllByText("Plan de Cuentas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Configuración").length).toBeGreaterThan(0);
     // No separators in the trimmed Contabilidad nav
     expect(screen.queryByText("Operaciones")).not.toBeInTheDocument();
-    // Other resource-gated items hidden too
+    // Other module-level resource-gated items hidden too
     expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
     expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
   });

@@ -31,11 +31,27 @@ import type { Resource } from "@/features/permissions";
 
 // ─── Cross-module resources (not in any Module.resources[]) ──────────────────
 // These appear in the Organización strip, gated by canAccess(r, "read").
+//
+// C4 sidebar-reorg-settings-hub: trimmed to agent + documents. Miembros
+// and Auditoría moved into the virtual "Configuración" section below
+// (mirroring the post-C2 sidebar shape).
 
 const CROSS_MODULE_ITEMS = [
   { resource: "agent" as Resource, label: "Agente IA" },
-  { resource: "members" as Resource, label: "Miembros" },
   { resource: "documents" as Resource, label: "Documentos" },
+] as const;
+
+// ─── Configuración (virtual) section — derived inline, not a registry ────────
+// Mirrors the post-C3 Settings hub cards a user would see, but ordered to
+// surface admin-config first. Each item is gated by canAccess(r, "read").
+// Decision D3 (design doc): inline-derived to avoid a circular dependency
+// with SETTINGS_CARDS and to keep the preview a pure derivation of matrix.
+
+const CONFIG_PREVIEW_ITEMS = [
+  { resource: "accounting-config" as Resource, label: "Plan de Cuentas" },
+  { resource: "period" as Resource, label: "Cierre Mensual" },
+  { resource: "members" as Resource, label: "Miembros" },
+  { resource: "audit" as Resource, label: "Auditoría" },
 ] as const;
 
 // ─── Props ────────────────────────────────────────────────────────────────────
@@ -71,7 +87,15 @@ function PreviewContent({
     matrix.canAccess(item.resource, "read"),
   );
 
-  const isEmpty = visibleModules.length === 0 && visibleCrossModule.length === 0;
+  // C4 sidebar-reorg-settings-hub: derive visible Configuración items.
+  const visibleConfig = CONFIG_PREVIEW_ITEMS.filter((item) =>
+    matrix.canAccess(item.resource, "read"),
+  );
+
+  const isEmpty =
+    visibleModules.length === 0 &&
+    visibleCrossModule.length === 0 &&
+    visibleConfig.length === 0;
 
   if (isEmpty) {
     return (
@@ -127,6 +151,29 @@ function PreviewContent({
           </div>
         );
       })}
+
+      {/* Configuración — virtual section listing Settings hub items the
+          edited role can read. Renders ABOVE the Organización strip so admin-
+          config items surface before agent/documents links. */}
+      {visibleConfig.length > 0 && (
+        <div>
+          <div className="px-3 py-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Configuración
+          </div>
+          <div className="space-y-0.5">
+            {visibleConfig.map((item) => (
+              <div
+                key={item.resource}
+                role="menuitem"
+                aria-disabled="true"
+                className="px-3 py-1.5 text-sm rounded-md cursor-default text-foreground/80 hover:bg-accent/50 flex items-center gap-2"
+              >
+                <span>{item.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Organización strip — cross-module resources */}
       {visibleCrossModule.length > 0 && (
