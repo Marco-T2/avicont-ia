@@ -164,31 +164,31 @@ describe("α31–α33 Block F hex validation.ts (REQ-001)", () => {
   });
 });
 
-// ── Block G — α34-α36: SHIM in legacy validation ─────────────────────────────
-// α34+α35 revoked atomically in POC #3f GREEN (poc-accounting-legacy-retirement):
-// SHIM re-export block (L4–L9) removed per REQ-004. These flip from positive to
-// negative — the transitional SHIM state encoded in #3d no longer applies.
-// α36 survives unchanged (inline declaration absent — still true post-#3f).
-
-describe("α34–α36 Block G legacy validation SHIM (REQ-003)", () => {
-  it("α34: legacy validation NO LONGER re-exports createAccountSchema from hex (revoked POC #3f REQ-004)", () => {
-    const src = readFileSync(LEGACY_VALIDATION_PATH, "utf-8");
-    expect(src).not.toMatch(
-      /export\s*\{[^}]*\bcreateAccountSchema\b[^}]*\}\s*from\s*["']@\/modules\/accounting\/presentation\/validation["']/,
-    );
+// ── Block G — α34-α36: legacy validation shim DELETED ────────────────────────
+// Genealogy: α34+α35 were revoked at POC #3f (poc-accounting-legacy-retirement)
+// — the SHIM account-schema re-export block was removed; α36 asserted the
+// inline declaration stayed absent. sub-POC 8/8 C4 (poc-accounting-shim-
+// retirement) DELETES `accounting.validation.ts` outright (the thin
+// `export *` re-export of the hex `presentation/validation.ts`), and the
+// `features/accounting/server.ts` barrel drops its `export * from
+// "./accounting.validation"` in the same C4 GREEN. `readFileSync` on a deleted
+// file throws ENOENT, so all three re-invert to assert the deletion: with the
+// file gone, every "no longer re-exports / no longer declares" invariant is
+// vacuously and permanently satisfied. DRIFT not enumerated in the C4 task
+// plan (which named 3 external sentinels — this is a 4th file that reads the
+// retiring `accounting.validation.ts`); surfaced honestly per
+// [[cross_cycle_red_test_cementacion_gate]].
+describe("α34–α36 Block G legacy validation shim DELETED (sub-POC 8/8 C4 — REQ-003)", () => {
+  it("α34: features/accounting/accounting.validation.ts physically deleted — no createAccountSchema re-export possible", () => {
+    expect(existsSync(LEGACY_VALIDATION_PATH)).toBe(false);
   });
 
-  it("α35: legacy validation NO LONGER re-exports updateAccountSchema from hex (revoked POC #3f REQ-004)", () => {
-    const src = readFileSync(LEGACY_VALIDATION_PATH, "utf-8");
-    expect(src).not.toMatch(
-      /export\s*\{[^}]*\bupdateAccountSchema\b[^}]*\}\s*from\s*["']@\/modules\/accounting\/presentation\/validation["']/,
-    );
+  it("α35: features/accounting/accounting.validation.ts physically deleted — no updateAccountSchema re-export possible", () => {
+    expect(existsSync(LEGACY_VALIDATION_PATH)).toBe(false);
   });
 
-  it("α36: legacy validation no longer declares inline createAccountSchema = z[.object|\\n.object]", () => {
-    const src = readFileSync(LEGACY_VALIDATION_PATH, "utf-8");
-    // Catches both inline `z.object` and multiline `z\n  .object` (current legacy shape).
-    expect(src).not.toMatch(/createAccountSchema\s*=\s*z[\s\S]{0,10}\.object\(/);
+  it("α36: features/accounting/accounting.validation.ts physically deleted — no inline createAccountSchema declaration possible", () => {
+    expect(existsSync(LEGACY_VALIDATION_PATH)).toBe(false);
   });
 });
 
