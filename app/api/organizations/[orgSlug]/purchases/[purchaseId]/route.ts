@@ -1,8 +1,10 @@
+import { Prisma } from "@/generated/prisma/client";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";
 import { UsersService } from "@/features/users/server";
+import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const purchaseService = makePurchaseService();
@@ -91,7 +93,9 @@ function computeNewTotal(input: { details?: Array<{ lineAmount?: number; quantit
   return input.details.reduce((sum, d) => {
     const qty = d.quantity ?? 1;
     const unitPrice = d.unitPrice ?? 0;
-    const line = d.lineAmount !== undefined ? d.lineAmount : Math.round(qty * unitPrice * 100) / 100;
+    const line = d.lineAmount !== undefined
+      ? d.lineAmount
+      : roundHalfUp(new Prisma.Decimal(qty).mul(unitPrice)).toNumber();
     return sum + line;
   }, 0);
 }
