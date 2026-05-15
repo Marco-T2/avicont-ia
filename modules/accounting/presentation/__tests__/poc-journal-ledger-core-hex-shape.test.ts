@@ -265,23 +265,27 @@ describe("α13 Block C1 — LedgerService float money-math parity (DEV-1 / R-mon
     expect(existsSync(LEGACY_LEDGER_SERVICE)).toBe(false);
   });
 
-  it("α13b: hex ledger.service.ts preserves the SAME float `Number()` running-balance accumulation post-fold", () => {
+  // α13b — INVERTED at poc-money-math-decimal-convergence C1 GREEN (OLEADA 7
+  // POC #2). The hex LedgerService now converges to Decimal arithmetic
+  // (sumDecimals + new Prisma.Decimal); the legacy float Number() running-balance
+  // tokens are GONE. R-money textually discharged.
+  it("α13b: hex ledger.service.ts converged to Decimal arithmetic — legacy float tokens GONE (DEV-1 / R-money DISCHARGED)", () => {
     const src = readFileSync(HEX_LEDGER_SERVICE, "utf-8");
-    expect(src).toContain(LEGACY_RUNNING_BALANCE);
-    expect(src).toContain(LEGACY_ACCUMULATION);
-    expect(src).toContain(LEGACY_NUMBER_COERCE_DEBIT);
-    expect(src).toContain(LEGACY_NUMBER_COERCE_CREDIT);
+    expect(src).not.toContain(LEGACY_RUNNING_BALANCE);
+    expect(src).not.toContain(LEGACY_ACCUMULATION);
+    expect(src).not.toContain(LEGACY_NUMBER_COERCE_DEBIT);
+    expect(src).not.toContain(LEGACY_NUMBER_COERCE_CREDIT);
+    expect(src).toMatch(/sumDecimals|new\s+Prisma\.Decimal/m);
   });
 
-  it("α13c: hex ledger.service.ts does NOT converge to Decimal `sumDecimals`/`eq` money invariant (DEV-1 / R-money)", () => {
+  // α13c — INVERTED at poc-money-math-decimal-convergence C1 GREEN. The hex
+  // LedgerService now imports money.utils canonical helpers and calls sumDecimals.
+  it("α13c: hex ledger.service.ts IMPORTS shared/domain/money.utils and calls sumDecimals (DEV-1 / R-money DISCHARGED)", () => {
     const src = readFileSync(HEX_LEDGER_SERVICE, "utf-8");
-    // Match a real IMPORT of money.utils or a CALL to sumDecimals( — NOT the
-    // tokens appearing inside the DEV-1 / R-money JSDoc prose that documents
-    // the deliberate non-convergence.
-    expect(src).not.toMatch(
-      /from\s+["'][^"']*shared\/domain\/money\.utils["']/,
+    expect(src).toMatch(
+      /from\s+["'][^"']*shared\/domain\/money\.utils["']/m,
     );
-    expect(src).not.toMatch(/\bsumDecimals\s*\(/);
+    expect(src).toMatch(/\bsumDecimals\s*\(/);
   });
 });
 

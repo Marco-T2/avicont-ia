@@ -7,18 +7,18 @@ import type { AccountBalancesService } from "@/modules/account-balances/applicat
 import type { Account } from "@/generated/prisma/client";
 
 /**
- * Behavioral unit test for the hex `LedgerService` (POC #7 OLEADA 6 — C1).
+ * Behavioral unit test for the hex `LedgerService` (POC #7 OLEADA 6 — C1;
+ * Decimal-converged at poc-money-math-decimal-convergence — OLEADA 7 POC #2).
  *
- * Folded verbatim from legacy `features/accounting/__tests__/ledger.service`
- * coverage. The load-bearing logic under test:
- *   - `getAccountLedger` running-balance accumulation
+ * The load-bearing logic under test:
+ *   - `getAccountLedger` running-balance (Decimal `.minus()` chain + roundHalfUp)
  *   - `getTrialBalance` primary (AccountBalance) + fallback (aggregate) paths
  *
- * ── DEV-1 / R-money ──
- * The running-balance + totals math is FLOAT (`Number()` coercion +
- * `+= debit - credit`), preserved verbatim from legacy. These tests assert
- * the float arithmetic outcomes are byte-identical to the legacy behaviour —
- * NO convergence to `shared/domain/money.utils.ts` Decimal `sumDecimals`/`eq`.
+ * ── DEV-1 / R-money DISCHARGED ──
+ * The running-balance + totals math is now `Prisma.Decimal` (sumDecimals +
+ * `.minus()` chain + roundHalfUp serialized via `.toFixed(2)`). DTOs serialize
+ * monetary fields as `string` at the JSON boundary (LedgerEntry + TrialBalanceRow).
+ * Fixture assertions migrated: `.toBe(75.5)` → `.toBe("75.50")` etc.
  */
 
 // Minimal AccountsCrudPort stub — LedgerService touches only findById +
@@ -68,7 +68,7 @@ function account(id: string, code: string, name: string): Account {
 }
 
 describe("LedgerService.getAccountLedger", () => {
-  it("accumulates a running balance across POSTED lines (float Number() math)", async () => {
+  it("accumulates a running balance across POSTED lines (Decimal arithmetic, string serialization)", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByAccount = [
       {
@@ -98,10 +98,10 @@ describe("LedgerService.getAccountLedger", () => {
 
     const ledger = await service.getAccountLedger("org-1", "acc-1");
 
-    // running balance: 100 → 70 → 75.5  (float arithmetic, verbatim legacy)
-    expect(ledger.map((e) => e.balance)).toEqual([100, 70, 75.5]);
-    expect(ledger[0].debit).toBe(100);
-    expect(ledger[1].credit).toBe(30);
+    // running balance: 100 → 70 → 75.50  (Decimal arithmetic, string serialization)
+    expect(ledger.map((e) => e.balance)).toEqual(["100.00", "70.00", "75.50"]);
+    expect(ledger[0].debit).toBe("100.00");
+    expect(ledger[1].credit).toBe("30.00");
     // description falls back to the entry description when the line has none
     expect(ledger[1].description).toBe("E2");
     expect(ledger[2].description).toBe("Ajuste");
@@ -139,7 +139,7 @@ describe("LedgerService.getAccountLedger", () => {
 });
 
 describe("LedgerService.getTrialBalance", () => {
-  it("primary path: maps AccountBalance records with float debit/credit totals", async () => {
+  it("primary path: maps AccountBalance records with Decimal debit/credit totals (string-serialized)", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     const balances = [
       {
@@ -166,17 +166,17 @@ describe("LedgerService.getTrialBalance", () => {
         accountCode: "1.1",
         accountName: "Caja",
         accountType: "ACTIVO",
-        totalDebit: 200,
-        totalCredit: 50,
-        balance: 150,
+        totalDebit: "200.00",
+        totalCredit: "50.00",
+        balance: "150.00",
       },
       {
         accountCode: "2.1",
         accountName: "Proveedores",
         accountType: "PASIVO",
-        totalDebit: 0,
-        totalCredit: 150,
-        balance: -150,
+        totalDebit: "0.00",
+        totalCredit: "150.00",
+        balance: "-150.00",
       },
     ]);
   });
@@ -200,9 +200,9 @@ describe("LedgerService.getTrialBalance", () => {
         accountCode: "1.1",
         accountName: "Caja",
         accountType: "ACTIVO",
-        totalDebit: 80.25,
-        totalCredit: 20,
-        balance: 60.25,
+        totalDebit: "80.25",
+        totalCredit: "20.00",
+        balance: "60.25",
       },
     ]);
   });
@@ -219,8 +219,8 @@ describe("LedgerService.getTrialBalance", () => {
 
     const rows = await service.getTrialBalance("org-1", "period-1");
 
-    expect(rows[0].totalDebit).toBe(0);
-    expect(rows[0].totalCredit).toBe(0);
-    expect(rows[0].balance).toBe(0);
+    expect(rows[0].totalDebit).toBe("0.00");
+    expect(rows[0].totalCredit).toBe("0.00");
+    expect(rows[0].balance).toBe("0.00");
   });
 });
