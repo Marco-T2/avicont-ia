@@ -34,19 +34,12 @@ import StatusUpdateDialog from "./status-update-dialog";
 import PayableForm from "./payable-form";
 import ContactSelector from "@/components/contacts/contact-selector";
 import type { PayableSnapshotWithContact } from "@/modules/payables/presentation/server";
+import { formatDateBO } from "@/lib/date-utils";
 
 function formatCurrency(value: number | string): string {
   return new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2 }).format(
     Number(value),
   );
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 interface PayableListProps {
@@ -254,7 +247,7 @@ export default function PayableList({ orgSlug, payables }: PayableListProps) {
                         <td className="py-3 px-4 text-right font-mono font-semibold">
                           {formatCurrency(balance)}
                         </td>
-                        <td className="py-3 px-4">{formatDate(p.dueDate)}</td>
+                        <td className="py-3 px-4">{formatDateBO(p.dueDate)}</td>
                         <td className="py-3 px-4">
                           <StatusBadge status={p.status} />
                         </td>

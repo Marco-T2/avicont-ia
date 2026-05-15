@@ -22,6 +22,7 @@ import {
 import AccountSelector from "@/components/accounting/account-selector";
 import { Search, Calculator } from "lucide-react";
 import type { Account } from "@/generated/prisma/client";
+import { formatDateBO } from "@/lib/date-utils";
 
 // Shadow interface mirrors LedgerEntry + LedgerPaginatedDto from
 // @/modules/accounting/presentation/dto/ledger.types. Monetary fields wire
@@ -49,14 +50,6 @@ function formatCurrency(amount: string): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
-}
-
-function formatDate(date: Date | string): string {
-  return new Date(date).toLocaleDateString("es-BO", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
 }
 
 // Local-timezone ISO date (YYYY-MM-DD). Avoids toISOString UTC drift around
@@ -322,7 +315,7 @@ export default function LedgerPageClient({
                   ) : (
                     ledger.items.map((entry, idx) => (
                       <tr key={idx} className="border-b">
-                        <td className="py-3 px-4">{formatDate(entry.date)}</td>
+                        <td className="py-3 px-4">{formatDateBO(entry.date)}</td>
                         <td className="py-3 px-4 font-mono">
                           {entry.entryNumber}
                         </td>
