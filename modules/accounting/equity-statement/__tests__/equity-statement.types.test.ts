@@ -5,9 +5,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+// Fixture constructor + instanceof migrated to top-level decimal.js@10.6.0 per
+// discovery #2590 (prisma-decimal-instance-identity-cascade). Sub-POC 2
+// equity-statement.builder now produces top-level Decimal instances; Decimal2
+// (Prisma's inlined decimal.js@10.5.0) is NOT instanceof top-level Decimal.
+const D = (v: string | number) => new Decimal(String(v));
 
 describe("equity-statement domain types", () => {
   it("module files can be imported without error", async () => {
@@ -42,10 +46,10 @@ describe("equity-statement domain types", () => {
       preliminary: true,
     };
 
-    expect(statement.grandTotal).toBeInstanceOf(Prisma.Decimal);
-    expect(statement.periodResult).toBeInstanceOf(Prisma.Decimal);
-    expect(statement.imbalanceDelta).toBeInstanceOf(Prisma.Decimal);
-    expect(statement.columnTotals.CAPITAL_SOCIAL).toBeInstanceOf(Prisma.Decimal);
+    expect(statement.grandTotal).toBeInstanceOf(Decimal);
+    expect(statement.periodResult).toBeInstanceOf(Decimal);
+    expect(statement.imbalanceDelta).toBeInstanceOf(Decimal);
+    expect(statement.columnTotals.CAPITAL_SOCIAL).toBeInstanceOf(Decimal);
   });
 
   it("SerializedEquityStatement numeric fields are typed as strings", async () => {
@@ -138,7 +142,7 @@ describe("equity-statement domain types", () => {
 
     const cp = movements.get("CP");
     expect(cp).toBeDefined();
-    expect(cp!.get("acc-1")).toBeInstanceOf(Prisma.Decimal);
+    expect(cp!.get("acc-1")).toBeInstanceOf(Decimal);
     expect(cp!.get("acc-1")!.toString()).toBe("200000");
   });
 

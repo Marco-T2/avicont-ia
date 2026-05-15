@@ -4,7 +4,7 @@
 //
 // REQ-009 LOCKED (D4 Option A): ZERO imports from @/modules/accounting/financial-statements/**.
 // sumDecimals + eq sourced from ./money.utils (own domain copy) — NOT from FS presentation barrel.
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { sumDecimals, eq } from "./money.utils";
 import type {
   BuildEquityStatementInput,
@@ -75,8 +75,8 @@ export function mapAccountCodeToColumn(code: string): ColumnKey {
 
 // ── Builder ───────────────────────────────────────────────────────────────────
 
-function initColumnMap(): Record<ColumnKey, Prisma.Decimal> {
-  const ZERO = new Prisma.Decimal(0);
+function initColumnMap(): Record<ColumnKey, Decimal> {
+  const ZERO = new Decimal(0);
   return {
     CAPITAL_SOCIAL:        ZERO,
     APORTES_CAPITALIZAR:   ZERO,
@@ -88,9 +88,9 @@ function initColumnMap(): Record<ColumnKey, Prisma.Decimal> {
 }
 
 function aggregateByColumn(
-  balances: Map<string, Prisma.Decimal>,
+  balances: Map<string, Decimal>,
   accounts: EquityAccountMetadata[],
-): Record<ColumnKey, Prisma.Decimal> {
+): Record<ColumnKey, Decimal> {
   const result = initColumnMap();
   for (const acc of accounts) {
     const bal = balances.get(acc.id);
@@ -104,7 +104,7 @@ function aggregateByColumn(
 function buildRow(
   key: RowKey,
   label: string,
-  byColumn: Record<ColumnKey, Prisma.Decimal>,
+  byColumn: Record<ColumnKey, Decimal>,
 ): EquityRow {
   const cells: EquityCell[] = COLUMNS_ORDER.map((col) => ({
     column: col,
@@ -135,7 +135,7 @@ export function buildEquityStatement(input: BuildEquityStatementInput): EquitySt
     dateTo,
     preliminary,
   } = input;
-  const ZERO = new Prisma.Decimal(0);
+  const ZERO = new Decimal(0);
 
   const initialByColumn = aggregateByColumn(initialBalances, accounts);
   const finalByColumn   = aggregateByColumn(finalBalances,   accounts);
@@ -189,7 +189,7 @@ export function buildEquityStatement(input: BuildEquityStatementInput): EquitySt
     .map((c) => c.row);
 
   // Resultado del ejercicio goes entirely to RESULTADOS_ACUMULADOS
-  const resultByColumn: Record<ColumnKey, Prisma.Decimal> = {
+  const resultByColumn: Record<ColumnKey, Decimal> = {
     CAPITAL_SOCIAL:        ZERO,
     APORTES_CAPITALIZAR:   ZERO,
     AJUSTE_CAPITAL:        ZERO,
