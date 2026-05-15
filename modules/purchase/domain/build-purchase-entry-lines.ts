@@ -14,15 +14,15 @@
  *     Si exentos > 0, 4ta línea de gasto residual.
  *     Invariante: `base + exentos = importeTotal` (tolerance 0.005 cuando exentos explícito).
  *
- * **Money math**: Decimal-internal arithmetic via `Prisma.Decimal` + `roundHalfUp`
- * from `modules/accounting/shared/domain/money.utils`. `.toNumber()` at the
- * `EntryLineTemplate.debit/credit: number` boundary (SHAPE-A — number DTO
- * preserved). R-money-tier2 discharged at poc-tier2-money-decimal-convergence
- * C2 GREEN (OLEADA 8 POC #1) — derivative from R-money (OLEADA 7 archive #2452)
- * per [[named_rule_immutability]].
+ * **Money math**: Decimal-internal arithmetic via `decimal.js` `Decimal` +
+ * `roundHalfUp` from `modules/accounting/shared/domain/money.utils`.
+ * `.toNumber()` at the `EntryLineTemplate.debit/credit: number` boundary
+ * (SHAPE-A — number DTO preserved). R-money-tier2 discharged at
+ * poc-tier2-money-decimal-convergence C2 GREEN (OLEADA 8 POC #1) — derivative
+ * from R-money (OLEADA 7 archive #2452) per [[named_rule_immutability]].
  */
 
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import type { PurchaseType } from "./purchase.entity";
 
@@ -89,7 +89,7 @@ export function buildPurchaseEntryLines(
       exentosExplicit !== undefined
         ? exentosExplicit
         : roundHalfUp(
-            new Prisma.Decimal(importeTotal).minus(baseIvaSujetoCf),
+            new Decimal(importeTotal).minus(baseIvaSujetoCf),
           ).toNumber();
 
     if (exentosExplicit !== undefined) {
@@ -105,7 +105,7 @@ export function buildPurchaseEntryLines(
     }
 
     const gastoNeto = roundHalfUp(
-      new Prisma.Decimal(baseIvaSujetoCf).minus(dfCfIva),
+      new Decimal(baseIvaSujetoCf).minus(dfCfIva),
     ).toNumber();
 
     const lines: EntryLineTemplate[] = [
