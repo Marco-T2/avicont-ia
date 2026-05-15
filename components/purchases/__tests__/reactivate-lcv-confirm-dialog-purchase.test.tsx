@@ -39,7 +39,7 @@ describe("ReactivateLcvConfirmDialogPurchase (T5.1 REQ-A.4)", () => {
 
   it("(b) body mentions LCV registration will be restored and journal updated", () => {
     renderDialog();
-    const dialog = screen.getByRole("dialog");
+    const dialog = screen.getByRole("alertdialog");
     expect(dialog.textContent).toMatch(/reactivará/i);
     expect(dialog.textContent).toMatch(/lcv/i);
     expect(dialog.textContent).toMatch(/regenerará/i);

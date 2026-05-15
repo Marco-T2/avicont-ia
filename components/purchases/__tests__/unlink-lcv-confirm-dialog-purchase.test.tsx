@@ -41,7 +41,7 @@ describe("UnlinkLcvConfirmDialogPurchase (T4.1 REQ-A.3)", () => {
 
   it("(b) body copy does NOT contain the word 'Anular'", () => {
     renderDialog();
-    const description = screen.getByRole("dialog");
+    const description = screen.getByRole("alertdialog");
     expect(description.textContent).not.toMatch(/anular/i);
   });
 
