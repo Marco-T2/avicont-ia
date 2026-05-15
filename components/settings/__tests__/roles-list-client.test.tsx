@@ -75,15 +75,23 @@ describe("RolesListClient (PR7.5)", () => {
     expect(screen.getByText("Facturador")).toBeInTheDocument();
   });
 
-  it("T7.5-5 — system roles have NO Edit or Delete buttons", () => {
+  it("T7.5-5 — system roles have NO Edit or Delete buttons (but have Ver)", () => {
     render(<RolesListClient orgSlug="test-org" initialRoles={MOCK_ROLES} />);
 
     // There should be only 1 Edit button (for 'facturador') and 1 Delete button
-    const editBtns = screen.getAllByRole("button", { name: /editar/i });
+    const editBtns = screen.getAllByRole("button", { name: /^editar$/i });
     expect(editBtns).toHaveLength(1);
 
     const deleteBtns = screen.getAllByRole("button", { name: /eliminar/i });
     expect(deleteBtns).toHaveLength(1);
+  });
+
+  it("T7.5-9 — system roles have a 'Ver' button (read-only drawer trigger)", () => {
+    render(<RolesListClient orgSlug="test-org" initialRoles={MOCK_ROLES} />);
+
+    // MOCK_ROLES has 2 system roles (Owner, Admin) → 2 Ver buttons
+    const verBtns = screen.getAllByRole("button", { name: /^ver$/i });
+    expect(verBtns).toHaveLength(2);
   });
 
   it("T7.5-6 — custom roles have both Edit and Delete buttons", () => {
