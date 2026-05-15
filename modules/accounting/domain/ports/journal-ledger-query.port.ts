@@ -28,10 +28,12 @@ import type { DateRangeFilter } from "@/modules/accounting/presentation/dto/ledg
  * Adapter (`PrismaJournalLedgerQueryAdapter`) delegates to the hex
  * `JournalRepository` folded into `prisma-journal-entries.repo.ts` at C0.
  *
- * DEV-1 / R-money: the libro-mayor query results carry raw `Prisma.Decimal`
- * debit/credit values; the FLOAT `Number()` coercion + running-balance math
- * is performed in `LedgerService` (application), preserved verbatim from
- * legacy. This port is the pure data boundary — no money math here.
+ * Money math: the libro-mayor query results carry raw `Prisma.Decimal` debit/credit
+ * values; `LedgerService` wraps them as `new Prisma.Decimal(value)` and performs
+ * arbitrary-precision arithmetic (`sumDecimals` + `.minus()` chain + `roundHalfUp`)
+ * from `shared/domain/money.utils`. This port is the pure data boundary —
+ * no money math here. R-money discharged per poc-money-math-decimal-convergence
+ * (OLEADA 7 POC #2).
  */
 
 /** A journal line projected for the libro-mayor view, with its parent entry's

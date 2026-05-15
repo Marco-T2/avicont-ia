@@ -7,30 +7,28 @@ import type {
   LedgerEntry,
   TrialBalanceRow,
 } from "@/modules/accounting/presentation/dto/ledger.types";
+import {
+  roundHalfUp,
+  sumDecimals,
+} from "@/modules/accounting/shared/domain/money.utils";
+import { Prisma } from "@/generated/prisma/client";
 import type { AccountType } from "@/generated/prisma/client";
 
 /**
- * Application-layer libro-mayor use cases (POC #7 OLEADA 6 — C1).
+ * Application-layer libro-mayor use cases.
  *
- * Migrated from legacy `features/accounting/ledger.service.ts` — the legacy
- * file had ZERO hex equivalent; this is a wholesale fold onto the hex. The
- * legacy file SURVIVES C1 (additive cutover) and is wholesale-deleted at C5.
+ * Migrated from legacy `features/accounting/ledger.service.ts` (POC #7 OLEADA 6 — C1);
+ * shim retired at OLEADA 6 sub-POC 8/8.
  *
  * Port-driven: reaches journal-line data through `JournalLedgerQueryPort`
  * (not the Prisma repo directly), accounts through `AccountsCrudPort`, and
- * period balances through `AccountBalancesService` — parity with the legacy
- * ctor's three deps, swapping the direct `JournalRepository` for the query
- * port.
+ * period balances through `AccountBalancesService`.
  *
- * ── DEV-1 / R-money — FLOAT money-math NAMED DEVIATION (design #2405) ──
- * `getAccountLedger` running-balance accumulation and `getTrialBalance`
- * debit/credit totals PRESERVE legacy float `Number()` coercion +
- * `runningBalance += debit - credit` arithmetic VERBATIM. This deliberately
- * does NOT converge to the canonical `shared/domain/money.utils.ts`
- * `sumDecimals`/`eq` (`Prisma.Decimal`) money invariant. Convergence is a
- * design-locked, deferred follow-up — ESCALATED per [[invariant_collision_
- * elevation]], NOT silently resolved. ZERO behavioral change vs legacy:
- * pass/fail outcomes and balance values are byte-identical pre/post-fold.
+ * Decimal-converged per poc-money-math-decimal-convergence (OLEADA 7 POC #2):
+ * running-balance accumulation and trial-balance totals use `Prisma.Decimal`
+ * (`sumDecimals` + `.minus()` chain) from `shared/domain/money.utils`, with
+ * `roundHalfUp(...).toFixed(2)` serializing monetary fields as `string` at
+ * the DTO boundary. R-money textual deviation DISCHARGED.
  */
 export class LedgerService {
   constructor(
@@ -56,20 +54,29 @@ export class LedgerService {
       { dateRange, periodId },
     );
 
-    // DEV-1 / R-money: float `Number()` running-balance — verbatim legacy.
-    let runningBalance = 0;
-    return lines.map((line) => {
-      const debit = Number(line.debit);
-      const credit = Number(line.credit);
-      runningBalance += debit - credit;
+    // Decimal running balance: arbitrary-precision cumulative sum of
+    // (debit - credit) per line; serialize each row's monetary fields via
+    // roundHalfUp(...).toFixed(2). sumDecimals is the canonical helper from
+    // shared/domain/money.utils (EX-D3 dependency direction). Port shape
+    // declares debit/credit as `unknown` (Decimal serialization is adapter
+    // concern); String(...) coercion is safe — Prisma.Decimal accepts string.
+    const deltas = lines.map((line) =>
+      new Prisma.Decimal(String(line.debit)).minus(
+        new Prisma.Decimal(String(line.credit)),
+      ),
+    );
+    return lines.map((line, idx) => {
+      const debit = new Prisma.Decimal(String(line.debit));
+      const credit = new Prisma.Decimal(String(line.credit));
+      const runningBalance = sumDecimals(deltas.slice(0, idx + 1));
 
       return {
         date: line.journalEntry.date,
         entryNumber: line.journalEntry.number,
         description: line.description ?? line.journalEntry.description,
-        debit,
-        credit,
-        balance: runningBalance,
+        debit: roundHalfUp(debit).toFixed(2),
+        credit: roundHalfUp(credit).toFixed(2),
+        balance: roundHalfUp(runningBalance).toFixed(2),
       };
     });
   }
@@ -88,16 +95,15 @@ export class LedgerService {
 
     if (balances.length > 0) {
       return balances.map((b) => {
-        // DEV-1 / R-money: float `Number()` totals — verbatim legacy.
-        const totalDebit = Number(b.debitTotal);
-        const totalCredit = Number(b.creditTotal);
+        const totalDebit = new Prisma.Decimal(String(b.debitTotal));
+        const totalCredit = new Prisma.Decimal(String(b.creditTotal));
         return {
           accountCode: b.account.code,
           accountName: b.account.name,
           accountType: b.account.type as AccountType,
-          totalDebit,
-          totalCredit,
-          balance: totalDebit - totalCredit,
+          totalDebit: roundHalfUp(totalDebit).toFixed(2),
+          totalCredit: roundHalfUp(totalCredit).toFixed(2),
+          balance: roundHalfUp(totalDebit.minus(totalCredit)).toFixed(2),
         };
       });
     }
@@ -113,17 +119,20 @@ export class LedgerService {
         periodId,
       );
 
-      // DEV-1 / R-money: float `Number()` totals — verbatim legacy.
-      const totalDebit = Number(aggregation._sum.debit ?? 0);
-      const totalCredit = Number(aggregation._sum.credit ?? 0);
+      const totalDebit = new Prisma.Decimal(
+        aggregation._sum.debit == null ? 0 : String(aggregation._sum.debit),
+      );
+      const totalCredit = new Prisma.Decimal(
+        aggregation._sum.credit == null ? 0 : String(aggregation._sum.credit),
+      );
 
       rows.push({
         accountCode: account.code,
         accountName: account.name,
         accountType: account.type,
-        totalDebit,
-        totalCredit,
-        balance: totalDebit - totalCredit,
+        totalDebit: roundHalfUp(totalDebit).toFixed(2),
+        totalCredit: roundHalfUp(totalCredit).toFixed(2),
+        balance: roundHalfUp(totalDebit.minus(totalCredit)).toFixed(2),
       });
     }
 

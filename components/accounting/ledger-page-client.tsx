@@ -20,17 +20,20 @@ import {
 import { Search, Calculator, Loader2 } from "lucide-react";
 import type { Account } from "@/generated/prisma/client";
 
+// Shadow interface mirrors the LedgerEntry DTO from
+// @/modules/accounting/presentation/dto/ledger.types. Monetary fields wire as
+// string (Decimal precision preserved server-side, parsed at display).
 interface LedgerEntry {
   date: string;
   entryNumber: number;
   description: string;
-  debit: number;
-  credit: number;
-  balance: number;
+  debit: string;
+  credit: string;
+  balance: string;
 }
 
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
+function formatCurrency(amount: string): string {
+  return `Bs. ${parseFloat(amount).toLocaleString("es-BO", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   })}`;
@@ -200,16 +203,18 @@ export default function LedgerPageClient({
                         </td>
                         <td className="py-3 px-4">{entry.description}</td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {entry.debit > 0 ? formatCurrency(entry.debit) : ""}
+                          {parseFloat(entry.debit) > 0
+                            ? formatCurrency(entry.debit)
+                            : ""}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {entry.credit > 0
+                          {parseFloat(entry.credit) > 0
                             ? formatCurrency(entry.credit)
                             : ""}
                         </td>
                         <td
                           className={`py-3 px-4 text-right font-mono font-medium ${
-                            entry.balance >= 0
+                            parseFloat(entry.balance) >= 0
                               ? "text-info"
                               : "text-destructive"
                           }`}
