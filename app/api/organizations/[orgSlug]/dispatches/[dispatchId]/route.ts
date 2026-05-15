@@ -38,7 +38,7 @@ export async function PATCH(
     const { justification, ...rest } = body;
     const input = updateDispatchSchema.parse(rest);
 
-    const dispatch = await dispatchService.update(orgId, dispatchId, input, role, justification, userId);
+    const { dispatch } = await dispatchService.update(orgId, dispatchId, input, role, justification, userId);
 
     return Response.json(dispatch.toSnapshot());
   } catch (error) {
