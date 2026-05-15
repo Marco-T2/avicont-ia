@@ -14,25 +14,32 @@
  */
 
 import { useState, useEffect } from "react";
+import Decimal from "decimal.js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-// ── Cálculo IVA client-side (pure JS — no Prisma.Decimal) ────────────────────
+// ── Cálculo IVA client-side (decimal.js ROUND_HALF_UP — SIN Bolivia parity) ──
 
 /**
- * Named export added at oleada-money-decimal-hex-purity sub-POC 5 Cycle 2
- * RED to enable direct parity testing of the client-side IVA math without
- * driving it through the rendered DOM. Behavior-preserving export-only
- * refactor — runtime semantics unchanged. Sister `calcClientTotales`
- * exported in the same commit. The downstream consumers within this
- * module (handleSubmit + triggerCalc) continue to use these functions
- * exactly as before.
+ * Public surface: `(n: number) => number`. Internal arithmetic migrated
+ * from Math.round float-cents to `decimal.js@10.6.0`
+ * `Decimal.toDecimalPlaces(dp, Decimal.ROUND_HALF_UP)` at
+ * oleada-money-decimal-hex-purity sub-POC 5 Cycle 2 GREEN. Behavioral
+ * parity bit-perfect across 13 SIN-canonical IVA 13% Bolivia reference
+ * cases (see `__tests__/iva-book-purchase-modal-parity.test.ts`).
+ *
+ * KNOWN intentional divergence at exact-half sub-cent decimals (e.g.
+ * `1.005 → 1.01` decimal.js vs `1.00` Math.round): the modal `step="0.01"`
+ * blocks 1.005 as direct input, but composed math (subtotal × 0.13) can
+ * produce sub-cent intermediates where this rounding now conforms to
+ * nominal ROUND_HALF_UP semantics. This is the BEHAVIORAL FIX motivating
+ * the swap — Math.round drifts on float representations of exact halves;
+ * decimal.js does not.
  */
 export function roundHalfUp(n: number, dp = 2): number {
-  const factor = Math.pow(10, dp);
-  return Math.round(n * factor) / factor;
+  return new Decimal(n).toDecimalPlaces(dp, Decimal.ROUND_HALF_UP).toNumber();
 }
 
 export function calcClientTotales(params: {
