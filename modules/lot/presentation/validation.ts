@@ -12,7 +12,7 @@ export const createLotSchema = z.object({
     .int("La cantidad inicial debe ser un número entero")
     .min(1, "La cantidad inicial debe ser al menos 1"),
   startDate: z.coerce.date({ message: "La fecha de inicio es requerida" }),
-  farmId: z.string().cuid("ID de granja inválido"),
+  farmId: z.string().min(1, "ID de granja inválido"),
 });
 
 export const closeLotSchema = z.object({
