@@ -116,9 +116,35 @@ export const journalFiltersSchema = z.object({
   status: z.nativeEnum(JournalEntryStatus, { message: "Estado inválido" }).optional(),
 });
 
+/**
+ * end-of-UTC-day for the given Date — sets the time component to
+ * 23:59:59.999 in UTC, preserving the calendar day. Used to post-process
+ * `dateTo` so a same-day filter window includes BOTH legacy T00 rows
+ * and new T12 rows per §13.accounting.calendar-day-T12-utc-unified.
+ */
+function endOfUtcDay(d: Date): Date {
+  return new Date(
+    Date.UTC(
+      d.getUTCFullYear(),
+      d.getUTCMonth(),
+      d.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
 export const dateRangeSchema = z.object({
   dateFrom: z.coerce.date({ message: "Fecha desde inválida" }).optional(),
-  dateTo: z.coerce.date({ message: "Fecha hasta inválida" }).optional(),
+  // §13.accounting.calendar-day-T12-utc-unified — dateTo post-processes
+  // to end-of-UTC-day so the window {gte: T00, lte: T23:59:59.999} includes
+  // legacy T00 rows AND new T12 rows on the same calendar day.
+  dateTo: z.coerce
+    .date({ message: "Fecha hasta inválida" })
+    .transform((d) => endOfUtcDay(d))
+    .optional(),
 });
 
 export const lastReferenceQuerySchema = z.object({
