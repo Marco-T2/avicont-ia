@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Card,
   CardContent,
@@ -10,13 +10,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import AccountSelector from "@/components/accounting/account-selector";
 import { Search, Calculator, Loader2 } from "lucide-react";
 import type { Account } from "@/generated/prisma/client";
 
@@ -47,6 +41,25 @@ function formatDate(date: Date | string): string {
   });
 }
 
+// Local-timezone ISO date (YYYY-MM-DD). Avoids toISOString UTC drift around
+// midnight boundaries — input[type=date] interprets the value as local.
+function localISO(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function defaultDateTo(): string {
+  return localISO(new Date());
+}
+
+function defaultDateFrom(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return localISO(d);
+}
+
 interface LedgerPageClientProps {
   orgSlug: string;
   accounts: Account[];
@@ -57,11 +70,17 @@ export default function LedgerPageClient({
   accounts,
 }: LedgerPageClientProps) {
   const [selectedAccountId, setSelectedAccountId] = useState("");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
+  const [dateFrom, setDateFrom] = useState(defaultDateFrom());
+  const [dateTo, setDateTo] = useState(defaultDateTo());
   const [entries, setEntries] = useState<LedgerEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+
+  // Only postable (detail) active accounts — mirror of journal-line-row.tsx:59
+  const postableAccounts = useMemo(
+    () => accounts.filter((a) => a.isActive && a.isDetail),
+    [accounts],
+  );
 
   const selectedAccount = accounts.find((a) => a.id === selectedAccountId);
 
@@ -90,35 +109,39 @@ export default function LedgerPageClient({
     }
   }
 
+  function handleReset() {
+    setSelectedAccountId("");
+    setDateFrom(defaultDateFrom());
+    setDateTo(defaultDateTo());
+    setEntries([]);
+    setHasSearched(false);
+  }
+
   return (
     <>
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-1 min-w-[240px]">
-              <Label className="text-sm">Cuenta</Label>
-              <Select
+            <div className="space-y-1 min-w-[280px] flex-1">
+              <Label htmlFor="ledger-account" className="text-sm">
+                Cuenta
+              </Label>
+              <AccountSelector
+                id="ledger-account"
+                ariaLabel="Cuenta"
+                accounts={postableAccounts}
                 value={selectedAccountId}
-                onValueChange={setSelectedAccountId}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Seleccione una cuenta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts
-                    .filter((a) => a.isActive)
-                    .map((a) => (
-                      <SelectItem key={a.id} value={a.id}>
-                        {a.code} - {a.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+                onChange={setSelectedAccountId}
+                valueKey="id"
+              />
             </div>
             <div className="space-y-1">
-              <Label className="text-sm">Desde</Label>
+              <Label htmlFor="ledger-date-from" className="text-sm">
+                Desde
+              </Label>
               <Input
+                id="ledger-date-from"
                 type="date"
                 value={dateFrom}
                 onChange={(e) => setDateFrom(e.target.value)}
@@ -126,8 +149,11 @@ export default function LedgerPageClient({
               />
             </div>
             <div className="space-y-1">
-              <Label className="text-sm">Hasta</Label>
+              <Label htmlFor="ledger-date-to" className="text-sm">
+                Hasta
+              </Label>
               <Input
+                id="ledger-date-to"
                 type="date"
                 value={dateTo}
                 onChange={(e) => setDateTo(e.target.value)}
@@ -145,6 +171,14 @@ export default function LedgerPageClient({
               )}
               Consultar
             </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleReset}
+              disabled={isLoading}
+            >
+              Limpiar
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -153,9 +187,15 @@ export default function LedgerPageClient({
       {selectedAccount && hasSearched && (
         <Card>
           <CardHeader>
-            <CardTitle>
-              {selectedAccount.code} - {selectedAccount.name}
-            </CardTitle>
+            <div className="flex items-center justify-between gap-4">
+              <CardTitle>
+                {selectedAccount.code} - {selectedAccount.name}
+              </CardTitle>
+              <span className="text-sm text-muted-foreground">
+                {entries.length}{" "}
+                {entries.length === 1 ? "movimiento" : "movimientos"}
+              </span>
+            </div>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
