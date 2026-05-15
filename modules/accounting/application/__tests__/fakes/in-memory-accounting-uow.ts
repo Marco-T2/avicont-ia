@@ -11,6 +11,7 @@ import type {
   JournalLedgerQueryPort,
   LedgerAggregateRow,
   LedgerLineRow,
+  LedgerPageResult,
 } from "../../../domain/ports/journal-ledger-query.port";
 import type {
   CorrelationAuditFilters,
@@ -145,6 +146,13 @@ export class InMemoryJournalLedgerQueryPort implements JournalLedgerQueryPort {
     withoutReferenceCount: number;
   } = { withReference: [], withoutReferenceCount: 0 };
   linesByAccount: LedgerLineRow[] = [];
+  /** Page-window source for `findLinesByAccountPaginated`. Tests prime this
+   *  with the FULL collection; the fake slices by (page-1)*pageSize. */
+  linesByAccountPaginated: LedgerLineRow[] = [];
+  /** Service-supplied opening balance delta returned by
+   *  `findLinesByAccountPaginated`. Mirrors the real repo's JS reduce
+   *  of prior-rows debit-credit. Tests prime this directly. */
+  openingBalanceDeltaPrimed: unknown = 0;
   aggregate: LedgerAggregateRow = { _sum: { debit: null, credit: null } };
 
   async list(
@@ -207,6 +215,28 @@ export class InMemoryJournalLedgerQueryPort implements JournalLedgerQueryPort {
     _filters?: { dateRange?: DateRangeFilter; periodId?: string },
   ): Promise<LedgerLineRow[]> {
     return this.linesByAccount;
+  }
+
+  async findLinesByAccountPaginated(
+    _organizationId: string,
+    _accountId: string,
+    _filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<LedgerPageResult> {
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const items = this.linesByAccountPaginated.slice(skip, skip + pageSize);
+    const total = this.linesByAccountPaginated.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      openingBalanceDelta: this.openingBalanceDeltaPrimed,
+    };
   }
 
   async aggregateByAccount(

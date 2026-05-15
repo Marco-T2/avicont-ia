@@ -17,6 +17,7 @@ import type { DateRangeFilter } from "@/features/accounting/ledger.types";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
+import type { LedgerPageResult, LedgerLineRow } from "@/modules/accounting/domain/ports/journal-ledger-query.port";
 import type {
   PaginatedResult,
   PaginationOptions,
@@ -462,24 +463,8 @@ export class JournalRepository extends BaseRepository {
     accountId: string,
     filters?: { dateRange?: DateRangeFilter; periodId?: string },
   ) {
-    const dateFilter: Record<string, unknown> = {};
-    if (filters?.dateRange?.dateFrom || filters?.dateRange?.dateTo) {
-      dateFilter.date = {
-        ...(filters.dateRange.dateFrom && { gte: filters.dateRange.dateFrom }),
-        ...(filters.dateRange.dateTo && { lte: filters.dateRange.dateTo }),
-      };
-    }
-
     return this.db.journalLine.findMany({
-      where: {
-        accountId,
-        journalEntry: {
-          organizationId,
-          status: "POSTED",
-          ...(filters?.periodId && { periodId: filters.periodId }),
-          ...dateFilter,
-        },
-      },
+      where: buildLedgerLineWhere(organizationId, accountId, filters),
       include: {
         journalEntry: {
           select: {
@@ -493,6 +478,71 @@ export class JournalRepository extends BaseRepository {
         journalEntry: { date: "asc" },
       },
     });
+  }
+
+  /**
+   * Paginated POSTED journal lines for one account + opening balance delta.
+   * 3-query Promise.all: page window + count + prior-rows for openingBalance
+   * Delta JS reduce. Split-port 3-touchpoint cascade 2nd evidence (Journal
+   * 1st → Ledger 2nd). Cumulative-state paginated DTO 1st evidence — port
+   * declares openingBalanceDelta:unknown to abstract Prisma.Decimal.
+   *
+   * Asymmetry vs findPaginated (Journal): 3rd findMany prior-rows query
+   * (skip:0, take:skip, select:{debit,credit}) replaces a single count —
+   * Prisma aggregate doesn't accept skip/take in v7+ per explore R1.
+   */
+  async findLinesByAccountPaginated(
+    organizationId: string,
+    accountId: string,
+    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<LedgerPageResult> {
+    const where = buildLedgerLineWhere(organizationId, accountId, filters);
+    const orderBy = { journalEntry: { date: "asc" as const } };
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+
+    const [rows, total, priorRows] = await Promise.all([
+      this.db.journalLine.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+        include: {
+          journalEntry: {
+            select: { date: true, number: true, description: true },
+          },
+        },
+      }),
+      this.db.journalLine.count({ where }),
+      this.db.journalLine.findMany({
+        where,
+        orderBy,
+        skip: 0,
+        take: skip,
+        select: { debit: true, credit: true },
+      }),
+    ]);
+
+    const openingBalanceDelta = priorRows.reduce(
+      (acc, r) =>
+        acc
+          .plus(new Prisma.Decimal(String(r.debit)))
+          .minus(new Prisma.Decimal(String(r.credit))),
+      new Prisma.Decimal(0),
+    );
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items: rows as unknown as LedgerLineRow[],
+      total,
+      page,
+      pageSize,
+      totalPages,
+      openingBalanceDelta,
+    };
   }
 
   // ── Libro mayor: agregar débitos/créditos por cuenta para un período ──
@@ -630,6 +680,38 @@ function buildJournalEntryWhere(
   }
 
   return where;
+}
+
+/**
+ * DRY `where` builder shared by `findLinesByAccount` + `findLinesByAccount
+ * Paginated`. Mirror of `buildJournalEntryWhere` pattern. Same WHERE clause
+ * used in all 3 Prisma queries of `findLinesByAccountPaginated` (rows, count,
+ * prior-rows) — critical correctness invariant: prior-rows query MUST use
+ * identical where + orderBy as rows query, otherwise running-balance
+ * accumulator desyncs. POSTED-status filter baked in (matches legacy
+ * `findLinesByAccount` byte-identical behavior).
+ */
+function buildLedgerLineWhere(
+  organizationId: string,
+  accountId: string,
+  filters?: { dateRange?: DateRangeFilter; periodId?: string },
+): Record<string, unknown> {
+  const dateFilter: Record<string, unknown> = {};
+  if (filters?.dateRange?.dateFrom || filters?.dateRange?.dateTo) {
+    dateFilter.date = {
+      ...(filters.dateRange.dateFrom && { gte: filters.dateRange.dateFrom }),
+      ...(filters.dateRange.dateTo && { lte: filters.dateRange.dateTo }),
+    };
+  }
+  return {
+    accountId,
+    journalEntry: {
+      organizationId,
+      status: "POSTED",
+      ...(filters?.periodId && { periodId: filters.periodId }),
+      ...dateFilter,
+    },
+  };
 }
 
 // Mapping `JournalLine[]` (domain) → `JournalLineInput[]` (legacy DTO).

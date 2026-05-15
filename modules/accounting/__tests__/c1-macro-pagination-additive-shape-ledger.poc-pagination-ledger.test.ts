@@ -168,12 +168,16 @@ const REPO_PROMISE_ALL_RE =
   /findLinesByAccountPaginated[\s\S]*?Promise\.all\(\[/;
 // α5 ledger-specific asymmetry: asserts the 3rd findMany (prior-rows
 // query for openingBalanceDelta) with `skip:0, take:skip` shape — NOT
-// `.count()`. Line-bound `[^\n]*` per [[sentinel_regex_line_bound]]
-// (paren-class `[^)]*` fails on nested-paren expressions). Pre-RED grep
-// confirmed zero collisions in repo file (`findLinesByAccount` legacy has
-// no `skip:0` shape — count was 0).
+// `.count()`. Multi-line `[\s\S]*?` between the `skip: 0` and `take: skip`
+// tokens because Prisma's findMany config block spans multiple lines (the
+// two fields appear on separate lines in canonical formatter output).
+// Bounded to the findLinesByAccountPaginated method body via the leading
+// non-greedy span (per [[sentinel_regex_line_bound]] line-bound `[^\n]*`
+// applies to single-line tokens; for multi-line config blocks the canonical
+// shape is `[\s\S]*?` lazy span). Pre-RED grep confirmed zero collisions in
+// repo file (`findLinesByAccount` legacy has no `skip:0` shape — count was 0).
 const REPO_PRIOR_ROWS_RE =
-  /findLinesByAccountPaginated[\s\S]*?findMany\(\{[\s\S]*?skip:\s*0[^\n]*take:\s*skip/;
+  /findLinesByAccountPaginated[\s\S]*?findMany\(\{[\s\S]*?skip:\s*0[\s\S]*?take:\s*skip/;
 
 const SERVICE_GETPAGINATED_PAGINATION_RE =
   /getAccountLedgerPaginated\s*\([\s\S]*?pagination\??:\s*PaginationOptions/;

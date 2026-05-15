@@ -3,6 +3,7 @@ import type {
   JournalLedgerQueryPort,
   LedgerAggregateRow,
   LedgerLineRow,
+  LedgerPageResult,
 } from "@/modules/accounting/domain/ports/journal-ledger-query.port";
 import type {
   CorrelationAuditFilters,
@@ -91,6 +92,21 @@ export class PrismaJournalLedgerQueryAdapter implements JournalLedgerQueryPort {
     filters?: { dateRange?: DateRangeFilter; periodId?: string },
   ): Promise<LedgerLineRow[]> {
     return journalRepo.findLinesByAccount(organizationId, accountId, filters);
+  }
+
+  /** Pass-through. Split-port 3-touchpoint cascade 2nd evidence. */
+  findLinesByAccountPaginated(
+    organizationId: string,
+    accountId: string,
+    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<LedgerPageResult> {
+    return journalRepo.findLinesByAccountPaginated(
+      organizationId,
+      accountId,
+      filters,
+      pagination,
+    );
   }
 
   aggregateByAccount(

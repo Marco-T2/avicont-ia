@@ -62,6 +62,27 @@ export interface LedgerAggregateRow {
   };
 }
 
+/** Page-window of journal lines for one account, with opening balance delta
+ *  to seed the running-balance accumulator. Split-port 3-touchpoint cascade
+ *  (§13/split-port-three-touchpoint-find-paginated — 2nd evidence Journal 1st
+ *  → Ledger 2nd, same port carries findPaginated AND findLinesByAccountPaginated).
+ *  Cumulative-state paginated DTO — extends PaginatedResult<T> shape with
+ *  openingBalanceDelta WITHOUT polluting the shared VO (§13 NEW candidate
+ *  cumulative-state-paginated-dto-pattern, 1st evidence). */
+export interface LedgerPageResult {
+  items: LedgerLineRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  /** Decimal value (Prisma.Decimal at adapter) representing
+   *  sum(debit) - sum(credit) of all rows BEFORE the current page window.
+   *  Page 1 → 0. Service coerces via `new Prisma.Decimal(String(...))`.
+   *  Mirrors LedgerLineRow.debit/credit: unknown port-edge pattern —
+   *  port boundary does NOT bleed Prisma.Decimal typing. */
+  openingBalanceDelta: unknown;
+}
+
 export interface JournalLedgerQueryPort {
   // ── Journal reads (5 — power JournalsService read use cases) ──
 
@@ -122,6 +143,18 @@ export interface JournalLedgerQueryPort {
     accountId: string,
     filters?: { dateRange?: DateRangeFilter; periodId?: string },
   ): Promise<LedgerLineRow[]>;
+
+  /** Paginated POSTED journal lines for one account + opening balance delta.
+   *  Same dateRange + periodId filter contract as findLinesByAccount; additive
+   *  parallel method (dual-method transitional, 5th evidence). 3-query
+   *  Promise.all at the Prisma adapter: rows window + count + prior rows for
+   *  openingBalanceDelta. */
+  findLinesByAccountPaginated(
+    organizationId: string,
+    accountId: string,
+    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<LedgerPageResult>;
 
   /** Aggregated debit/credit totals for one account in one period. */
   aggregateByAccount(
