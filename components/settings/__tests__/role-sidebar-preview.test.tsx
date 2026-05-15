@@ -173,15 +173,20 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
   });
 
-  // (f) readSet={members} only → Organización strip shows only Miembros
-  it("(f) readSet={members} only → Organización strip shows Miembros only", () => {
+  // (f) C4 sidebar-reorg-settings-hub: readSet={members} only →
+  // Configuración section shows Miembros (members moved out of cross-module
+  // nav into the Configuración section). The Organización strip no longer
+  // contains Miembros (CROSS_MODULE_ITEMS = [agent, documents] only).
+  it("(f) readSet={members} only → Configuración section shows Miembros; no Organización Miembros", () => {
     render(
       <RoleSidebarPreview readSet={rs("members")} writeSet={rs()} />,
     );
 
-    // Miembros visible in cross-module strip (dual-mount)
+    // Miembros visible somewhere (dual-mount)
     expect(screen.getAllByText("Miembros").length).toBeGreaterThan(0);
-    // Other cross-module items absent
+    // Configuración section header visible (dual-mount)
+    expect(screen.getAllByText("Configuración").length).toBeGreaterThan(0);
+    // Cross-module items absent (members no longer in CROSS_MODULE_ITEMS)
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
     expect(screen.queryByText("Documentos")).not.toBeInTheDocument();
     // No module nav items (members is not in any module)
@@ -217,6 +222,99 @@ describe("<RoleSidebarPreview />", () => {
     const summaryEl = detailsEl!.querySelector("summary");
     expect(summaryEl).not.toBeNull();
     expect(summaryEl!.textContent).toMatch(/previsualización/i);
+  });
+});
+
+// ─── C4 sidebar-reorg-settings-hub — Configuración section ──────────────────
+//
+// The preview now mirrors the post-C3 sidebar: a virtual "Configuración"
+// section appears above the Organización strip, listing Plan de Cuentas,
+// Cierre Mensual, Miembros, and Auditoría. Each item is gated by
+// `matrix.canAccess(resource, "read")`. If zero items are visible, the
+// section header is hidden.
+//
+// CROSS_MODULE_ITEMS = [agent, documents] (no members, no audit).
+
+describe("<RoleSidebarPreview /> — C4 Configuración section", () => {
+  it("owner readSet covering accounting-config + period + members + audit shows the full Configuración section (4 items)", () => {
+    render(
+      <RoleSidebarPreview
+        readSet={rs("accounting-config", "period", "members", "audit")}
+        writeSet={rs()}
+      />,
+    );
+
+    // Configuración heading visible (dual-mount)
+    expect(screen.getAllByText("Configuración").length).toBeGreaterThan(0);
+    // All four items visible
+    expect(screen.getAllByText("Plan de Cuentas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Cierre Mensual").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Miembros").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auditoría").length).toBeGreaterThan(0);
+  });
+
+  it("cobrador (sales/payments/contacts/reports/agent/documents) sees NO Configuración section", () => {
+    render(
+      <RoleSidebarPreview
+        readSet={rs(
+          "sales",
+          "payments",
+          "contacts",
+          "reports",
+          "agent",
+          "documents",
+        )}
+        writeSet={rs()}
+      />,
+    );
+
+    // None of the Configuración item resources are readable
+    expect(screen.queryByText("Configuración")).not.toBeInTheDocument();
+    expect(screen.queryByText("Plan de Cuentas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Cierre Mensual")).not.toBeInTheDocument();
+    expect(screen.queryByText("Auditoría")).not.toBeInTheDocument();
+    // Miembros also absent (members not readable + not in cross-module nav)
+    expect(screen.queryByText("Miembros")).not.toBeInTheDocument();
+  });
+
+  it("readSet={period} only renders Configuración section with Cierre Mensual only", () => {
+    render(
+      <RoleSidebarPreview readSet={rs("period")} writeSet={rs()} />,
+    );
+
+    expect(screen.getAllByText("Configuración").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Cierre Mensual").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Plan de Cuentas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Auditoría")).not.toBeInTheDocument();
+    expect(screen.queryByText("Miembros")).not.toBeInTheDocument();
+  });
+
+  it("readSet={audit} only renders Configuración section with Auditoría only — Organización strip empty", () => {
+    render(
+      <RoleSidebarPreview readSet={rs("audit")} writeSet={rs()} />,
+    );
+
+    expect(screen.getAllByText("Configuración").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Auditoría").length).toBeGreaterThan(0);
+    // No Organización strip (no agent/documents)
+    expect(screen.queryByText("Organización")).not.toBeInTheDocument();
+  });
+
+  it("CROSS_MODULE_ITEMS contains agent and documents — not members, not audit", () => {
+    // owner readSet → cross-module strip has agent + documents only
+    render(
+      <RoleSidebarPreview
+        readSet={rs("agent", "documents")}
+        writeSet={rs()}
+      />,
+    );
+
+    expect(screen.getAllByText("Agente IA").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Documentos").length).toBeGreaterThan(0);
+    // members + audit are NOT in CROSS_MODULE_ITEMS now (they're in Configuración)
+    // With readSet excluding members/audit, neither should render anywhere
+    expect(screen.queryByText("Miembros")).not.toBeInTheDocument();
+    expect(screen.queryByText("Auditoría")).not.toBeInTheDocument();
   });
 });
 

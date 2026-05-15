@@ -106,8 +106,10 @@ describe("<MatrixSection />", () => {
     expect(noopToggle).toHaveBeenCalledWith("sales", "read", true);
   });
 
-  // PR1.1 [RED] — SHARED_RESOURCE_NOTES additions (REQ-RNM.11, REQ-RNM.12)
-  it("renders SHARED_RESOURCE_NOTES note for sales row — '(Afecta Ventas y CxC)'", () => {
+  // C4 sidebar-reorg-settings-hub: SHARED_RESOURCE_NOTES updated to reflect
+  // post-trim sidebar shape. CxC/CxP no longer in the sidebar; PdC + Cierre
+  // Mensual moved to Settings; CxC/CxP now in /informes catalog.
+  it("renders SHARED_RESOURCE_NOTES note for sales row — '(Afecta Ventas)' (no longer mentions CxC)", () => {
     render(
       <table>
         <tbody>
@@ -123,10 +125,33 @@ describe("<MatrixSection />", () => {
         </tbody>
       </table>,
     );
-    expect(screen.getByText(/Afecta Ventas y CxC/)).toBeInTheDocument();
+    const note = screen.getByText(/Afecta Ventas/);
+    expect(note).toBeInTheDocument();
+    expect(note.textContent).not.toMatch(/CxC/);
   });
 
-  it("renders SHARED_RESOURCE_NOTES note for accounting-config row — '(Afecta Plan de Cuentas)'", () => {
+  it("renders SHARED_RESOURCE_NOTES note for purchases row — '(Afecta Compras)' (no CxP mention)", () => {
+    render(
+      <table>
+        <tbody>
+          <MatrixSection
+            label="Contabilidad"
+            resources={["purchases"]}
+            readSet={new Set<Resource>()}
+            writeSet={new Set<Resource>()}
+            postSet={new Set<PostableResource>()}
+            disabled={false}
+            onToggle={noopToggle}
+          />
+        </tbody>
+      </table>,
+    );
+    const note = screen.getByText(/Afecta Compras/);
+    expect(note).toBeInTheDocument();
+    expect(note.textContent).not.toMatch(/CxP/);
+  });
+
+  it("renders SHARED_RESOURCE_NOTES note for accounting-config row — mentions 'en Configuración'", () => {
     render(
       <table>
         <tbody>
@@ -142,6 +167,50 @@ describe("<MatrixSection />", () => {
         </tbody>
       </table>,
     );
-    expect(screen.getByText(/Afecta Plan de Cuentas/)).toBeInTheDocument();
+    expect(
+      screen.getByText(/Afecta Plan de Cuentas en Configuración/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders SHARED_RESOURCE_NOTES note for period row — '(Afecta Cierre Mensual en Configuración)'", () => {
+    render(
+      <table>
+        <tbody>
+          <MatrixSection
+            label="Contabilidad"
+            resources={["period"]}
+            readSet={new Set<Resource>()}
+            writeSet={new Set<Resource>()}
+            postSet={new Set<PostableResource>()}
+            disabled={false}
+            onToggle={noopToggle}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(
+      screen.getByText(/Afecta Cierre Mensual en Configuración/),
+    ).toBeInTheDocument();
+  });
+
+  it("renders SHARED_RESOURCE_NOTES note for reports row — '(Afecta Informes — incluye CxC y CxP)'", () => {
+    render(
+      <table>
+        <tbody>
+          <MatrixSection
+            label="Contabilidad"
+            resources={["reports"]}
+            readSet={new Set<Resource>()}
+            writeSet={new Set<Resource>()}
+            postSet={new Set<PostableResource>()}
+            disabled={false}
+            onToggle={noopToggle}
+          />
+        </tbody>
+      </table>,
+    );
+    expect(
+      screen.getByText(/Afecta Informes.*CxC.*CxP/),
+    ).toBeInTheDocument();
   });
 });
