@@ -58,7 +58,7 @@ vi.mock("@/lib/prisma", () => ({
   },
 }));
 
-vi.mock("@/components/sales/sale-list", () => ({
+vi.mock("@/components/sales/transactions-list", () => ({
   default: vi.fn().mockReturnValue(null),
 }));
 

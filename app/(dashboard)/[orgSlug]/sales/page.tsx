@@ -10,7 +10,7 @@ import {
 import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
 import { makeDispatchService } from "@/modules/dispatch/presentation/composition-root";
 import { getDisplayCode as getDispatchDisplayCode } from "@/modules/dispatch/infrastructure/dispatch-display-code";
-import SaleList from "@/components/sales/sale-list";
+import TransactionsList from "@/components/sales/transactions-list";
 
 interface SalesPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -108,10 +108,8 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
 
   // Source discriminator merge (presentation-local; replaces retired HubItem
   // discriminated union from hub.types.ts deleted in C1). Sale section
-  // preserves listPaginated paging meta; dispatch rows non-paginated.
-  // C2 will introduce TransactionsList consuming `transactionRows`; for now
-  // SaleList renders Sale-only — the merge is wired (twin-call data complete)
-  // and feeds the upcoming presentation switch.
+  // preserves listPaginated paging meta; dispatch rows non-paginated alongside
+  // per B5 lock (defer UNION pagination per mathematical correctness).
   const transactionRows = [
     ...salesWithDetails.map((s) => ({
       source: "sale" as const,
@@ -142,7 +140,6 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
       status: d.status,
     })),
   ];
-  void transactionRows;
 
   return (
     <div className="space-y-6">
@@ -153,14 +150,13 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
         </p>
       </div>
 
-      <SaleList
+      <TransactionsList
         orgSlug={orgSlug}
-        items={JSON.parse(JSON.stringify(salesWithDetails))}
-        total={result.total}
-        page={result.page}
-        pageSize={result.pageSize}
-        totalPages={result.totalPages}
-        statusFilter={statusFilter}
+        items={JSON.parse(JSON.stringify(transactionRows))}
+        periods={periods.map((p) => ({ id: p.id, name: p.name }))}
+        filters={{
+          status: statusFilter,
+        }}
       />
     </div>
   );
