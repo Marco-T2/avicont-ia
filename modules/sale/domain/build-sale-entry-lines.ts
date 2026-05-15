@@ -9,7 +9,16 @@
  *   - Con IVA (Bolivia SIN convention): 5-6 lines (debit CxC, credit ingreso
  *     neto, credit IVA débito fiscal "2.1.6", optional credit exentos
  *     residual, debit IT, credit IT por pagar).
+ *
+ * **Money math**: Decimal-internal arithmetic via `Prisma.Decimal` + `roundHalfUp`
+ * from `modules/accounting/shared/domain/money.utils`. `.toNumber()` at the
+ * `EntryLineTemplate.debit/credit: number` boundary (SHAPE-A — number DTO
+ * preserved). R-money-tier2 discharged at poc-tier2-money-decimal-convergence
+ * C1 GREEN (OLEADA 8 POC #1) — derivative from R-money (OLEADA 7 archive #2452)
+ * per [[named_rule_immutability]].
  */
+import { Prisma } from "@/generated/prisma/client";
+import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 
 /** Código de cuenta Débito Fiscal IVA (ventas). Fijo Bolivia SIN. */
 export const IVA_DEBITO_FISCAL = "2.1.6";
@@ -56,7 +65,9 @@ export function buildSaleEntryLines(
     const exentos =
       exentosExplicit !== undefined
         ? exentosExplicit
-        : Math.round((importeTotal - baseIvaSujetoCf) * 100) / 100;
+        : roundHalfUp(
+            new Prisma.Decimal(importeTotal).minus(baseIvaSujetoCf),
+          ).toNumber();
 
     if (exentosExplicit !== undefined) {
       const residual = Math.abs(
@@ -72,8 +83,12 @@ export function buildSaleEntryLines(
       }
     }
 
-    const ingresoNeto = Math.round((baseIvaSujetoCf - dfCfIva) * 100) / 100;
-    const itAmount = Math.round(importeTotal * 0.03 * 100) / 100;
+    const ingresoNeto = roundHalfUp(
+      new Prisma.Decimal(baseIvaSujetoCf).minus(dfCfIva),
+    ).toNumber();
+    const itAmount = roundHalfUp(
+      new Prisma.Decimal(importeTotal).mul("0.03"),
+    ).toNumber();
 
     const lines: EntryLineTemplate[] = [
       {
