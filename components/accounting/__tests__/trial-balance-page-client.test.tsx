@@ -47,9 +47,13 @@ const ORG_SLUG = "test-org";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFetch.mockResolvedValue({
-    ok: true,
-    json: async () => MINIMAL_REPORT,
+  // URL-aware mock: /periods returns [] (selector hidden by default),
+  // /trial-balance returns the report fixture.
+  mockFetch.mockImplementation(async (url: string) => {
+    if (typeof url === "string" && url.includes("/periods")) {
+      return { ok: true, json: async () => [] };
+    }
+    return { ok: true, json: async () => MINIMAL_REPORT };
   });
 });
 
@@ -62,16 +66,17 @@ import { TrialBalancePageClient } from "../trial-balance-page-client";
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("TrialBalancePageClient (C9.S2)", () => {
-  it("(a) renders date filter inputs on initial render", () => {
+  it("(a) renders date filter inputs on initial render", async () => {
     render(<TrialBalancePageClient orgSlug={ORG_SLUG} />);
-    expect(screen.getByLabelText(/fecha de inicio|desde/i)).toBeInTheDocument();
+    // Filter renders after periods fetch resolves (mocked → []).
+    expect(await screen.findByLabelText(/fecha de inicio|desde/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/fecha de fin|hasta/i)).toBeInTheDocument();
   });
 
   it("(b) renders TrialBalanceTable after successful fetch", async () => {
     render(<TrialBalancePageClient orgSlug={ORG_SLUG} />);
 
-    const dateFromInput = screen.getByLabelText(/fecha de inicio|desde/i);
+    const dateFromInput = await screen.findByLabelText(/fecha de inicio|desde/i);
     const dateToInput = screen.getByLabelText(/fecha de fin|hasta/i);
 
     fireEvent.change(dateFromInput, { target: { value: "2025-01-01" } });
@@ -88,7 +93,7 @@ describe("TrialBalancePageClient (C9.S2)", () => {
   it("(c) renders PDF + XLSX download buttons after fetch", async () => {
     render(<TrialBalancePageClient orgSlug={ORG_SLUG} />);
 
-    const dateFromInput = screen.getByLabelText(/fecha de inicio|desde/i);
+    const dateFromInput = await screen.findByLabelText(/fecha de inicio|desde/i);
     const dateToInput = screen.getByLabelText(/fecha de fin|hasta/i);
 
     fireEvent.change(dateFromInput, { target: { value: "2025-01-01" } });
@@ -104,15 +109,16 @@ describe("TrialBalancePageClient (C9.S2)", () => {
   });
 
   it("(d) shows error when API returns non-ok", async () => {
-    mockFetch.mockResolvedValue({
-      ok: false,
-      status: 400,
-      json: async () => ({ error: "Error de prueba" }),
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === "string" && url.includes("/periods")) {
+        return { ok: true, json: async () => [] };
+      }
+      return { ok: false, status: 400, json: async () => ({ error: "Error de prueba" }) };
     });
 
     render(<TrialBalancePageClient orgSlug={ORG_SLUG} />);
 
-    const dateFromInput = screen.getByLabelText(/fecha de inicio|desde/i);
+    const dateFromInput = await screen.findByLabelText(/fecha de inicio|desde/i);
     const dateToInput = screen.getByLabelText(/fecha de fin|hasta/i);
 
     fireEvent.change(dateFromInput, { target: { value: "2025-01-01" } });
@@ -124,5 +130,35 @@ describe("TrialBalancePageClient (C9.S2)", () => {
     await waitFor(() => {
       expect(screen.getByRole("alert")).toBeInTheDocument();
     });
+  });
+
+  it("(e) auto-selects period covering today and pre-fills date inputs from its range", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-05-15T12:00:00.000Z"));
+
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === "string" && url.includes("/periods")) {
+        return {
+          ok: true,
+          json: async () => [
+            { id: "p-may", name: "Mayo 2026", startDate: "2026-05-01", endDate: "2026-05-31" },
+            { id: "p-apr", name: "Abril 2026", startDate: "2026-04-01", endDate: "2026-04-30" },
+          ],
+        };
+      }
+      return { ok: true, json: async () => MINIMAL_REPORT };
+    });
+
+    render(<TrialBalancePageClient orgSlug={ORG_SLUG} />);
+
+    const dateFromInput = (await screen.findByLabelText(/fecha de inicio|desde/i)) as HTMLInputElement;
+    const dateToInput = screen.getByLabelText(/fecha de fin|hasta/i) as HTMLInputElement;
+    const periodSelect = screen.getByLabelText(/per[ií]odo fiscal/i) as HTMLSelectElement;
+
+    expect(periodSelect.value).toBe("p-may");
+    expect(dateFromInput.value).toBe("2026-05-01");
+    expect(dateToInput.value).toBe("2026-05-31");
+
+    vi.useRealTimers();
   });
 });
