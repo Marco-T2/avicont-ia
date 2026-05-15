@@ -8,13 +8,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const {
   mockRedirect,
   mockRequirePermission,
-  mockJournalList,
+  mockListPaginated,
   mockPeriodsList,
   mockVoucherTypesList,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
-  mockJournalList: vi.fn(),
+  mockListPaginated: vi.fn(),
   mockPeriodsList: vi.fn(),
   mockVoucherTypesList: vi.fn(),
 }));
@@ -31,7 +31,7 @@ vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => {
   >();
   return {
     ...actual,
-    makeJournalsService: vi.fn(() => ({ list: mockJournalList })),
+    makeJournalsService: vi.fn(() => ({ listPaginated: mockListPaginated })),
   };
 });
 
@@ -61,7 +61,13 @@ function makeSearchParams() {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockJournalList.mockResolvedValue([]);
+  mockListPaginated.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+  });
   mockPeriodsList.mockResolvedValue([]);
   mockVoucherTypesList.mockResolvedValue([]);
 });

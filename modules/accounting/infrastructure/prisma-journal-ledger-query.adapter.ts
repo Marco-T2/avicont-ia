@@ -11,6 +11,10 @@ import type {
   JournalFilters,
 } from "@/modules/accounting/presentation/dto/journal.types";
 import type { DateRangeFilter } from "@/modules/accounting/presentation/dto/ledger.types";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
  * Tx-less Prisma adapter for `JournalLedgerQueryPort` (POC #7 OLEADA 6 — C1).
@@ -34,6 +38,14 @@ export class PrismaJournalLedgerQueryAdapter implements JournalLedgerQueryPort {
     filters?: JournalFilters,
   ): Promise<JournalEntryWithLines[]> {
     return journalRepo.findAll(organizationId, filters);
+  }
+
+  findPaginated(
+    organizationId: string,
+    filters?: JournalFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<JournalEntryWithLines>> {
+    return journalRepo.findPaginated(organizationId, filters, pagination);
   }
 
   findById(

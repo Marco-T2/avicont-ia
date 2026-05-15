@@ -75,7 +75,11 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[makeEntry({ sourceType: null })] as any}
+        items={[makeEntry({ sourceType: null })] as any}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -88,7 +92,11 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[makeEntry({ sourceType: "sale" })] as any}
+        items={[makeEntry({ sourceType: "sale" })] as any}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -101,7 +109,11 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[makeEntry({ sourceType: "purchase" })] as any}
+        items={[makeEntry({ sourceType: "purchase" })] as any}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -114,7 +126,11 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[makeEntry({ sourceType: "dispatch" })] as any}
+        items={[makeEntry({ sourceType: "dispatch" })] as any}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -127,7 +143,11 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[makeEntry({ sourceType: "payment" })] as any}
+        items={[makeEntry({ sourceType: "payment" })] as any}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -147,7 +167,11 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={entries as any}
+        items={entries as any}
+        total={entries.length}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -168,7 +192,11 @@ describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[]}
+        items={[]}
+        total={0}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -183,7 +211,11 @@ describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[]}
+        items={[]}
+        total={0}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{ origin: "auto" }}
@@ -197,7 +229,11 @@ describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[]}
+        items={[]}
+        total={0}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{ origin: "manual" }}
@@ -219,7 +255,11 @@ describe("JournalEntryList — actions dropdown", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={entries as any}
+        items={entries as any}
+        total={entries.length}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -233,7 +273,11 @@ describe("JournalEntryList — actions dropdown", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[]}
+        items={[]}
+        total={0}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -248,7 +292,11 @@ describe("JournalEntryList — actions dropdown", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[]}
+        items={[]}
+        total={0}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
@@ -278,7 +326,11 @@ describe("JournalEntryList — display-date TZ-safe (REQ-D.1)", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
-        entries={[entry] as any}
+        items={[entry] as any}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[BASE_PERIOD] as any}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}

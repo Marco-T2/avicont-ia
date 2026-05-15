@@ -6,6 +6,7 @@ import {
   createJournalEntrySchema,
   journalFiltersSchema,
 } from "@/modules/accounting/presentation/server";
+import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 
 const usersService = new UsersService();
 const journalsService = makeJournalsService();
@@ -27,10 +28,11 @@ export async function GET(
       voucherTypeId: searchParams.get("voucherTypeId") ?? undefined,
       status: searchParams.get("status") ?? undefined,
     });
+    const pagination = parsePaginationParams(searchParams);
 
-    const entries = await service.list(orgId, filters);
+    const result = await service.listPaginated(orgId, filters, pagination);
 
-    return Response.json(entries);
+    return Response.json(result);
   } catch (error) {
     return handleError(error);
   }

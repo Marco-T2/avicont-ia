@@ -5,6 +5,10 @@ import type {
   JournalFilters,
 } from "@/modules/accounting/presentation/dto/journal.types";
 import type { DateRangeFilter } from "@/modules/accounting/presentation/dto/ledger.types";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 /**
  * Read/query port for the journal-ledger module (POC #7 OLEADA 6 — C1).
@@ -66,6 +70,17 @@ export interface JournalLedgerQueryPort {
     organizationId: string,
     filters?: JournalFilters,
   ): Promise<JournalEntryWithLines[]>;
+
+  /**
+   * Paginated entries for an org. Split-port 3-touchpoint cascade — port +
+   * adapter + repo all carry `findPaginated`. §13/journal-ledger-query-port-
+   * split-findpaginated-three-touchpoints 1ra evidencia.
+   */
+  findPaginated(
+    organizationId: string,
+    filters?: JournalFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<JournalEntryWithLines>>;
 
   /** Single entry by id, or null when missing. Parity legacy `repo.findById`. */
   findById(

@@ -51,6 +51,15 @@ import {
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
 
 function formatCurrency(amount: number): string {
   return `Bs. ${amount.toLocaleString("es-BO", {
@@ -94,9 +103,31 @@ interface JournalEntry {
   lines: JournalLine[];
 }
 
-interface JournalEntryListProps {
+/**
+ * Builds the journal page URL preserving orgSlug + page + filter params
+ * (periodId, voucherTypeId, status, origin). Mirror Purchase precedent
+ * `buildHref` 5-param shape. Used by shadcn Pagination links.
+ */
+function buildHref(
+  orgSlug: string,
+  page: number,
+  periodId: string | undefined,
+  voucherTypeId: string | undefined,
+  status: string | undefined,
+  origin: string | undefined,
+): string {
+  const sp = new URLSearchParams();
+  if (page > 1) sp.set("page", String(page));
+  if (periodId) sp.set("periodId", periodId);
+  if (voucherTypeId) sp.set("voucherTypeId", voucherTypeId);
+  if (status) sp.set("status", status);
+  if (origin) sp.set("origin", origin);
+  const q = sp.toString();
+  return `/${orgSlug}/accounting/journal${q ? `?${q}` : ""}`;
+}
+
+type JournalEntryListProps = PaginatedResult<JournalEntry> & {
   orgSlug: string;
-  entries: JournalEntry[];
   periods: FiscalPeriod[];
   voucherTypes: VoucherTypeCfg[];
   /** Active filter values (from URL search params) */
@@ -115,7 +146,7 @@ interface JournalEntryListProps {
   highlightId?: string;
   /** Indica si el rol del usuario puede crear asientos (controla visibilidad del botón IA). */
   canWrite?: boolean;
-}
+};
 
 // ── Row sub-component with actions dropdown ─────────────────────────────────
 
@@ -272,7 +303,11 @@ function JournalEntryRow({
 
 export default function JournalEntryList({
   orgSlug,
-  entries,
+  items,
+  total,
+  page,
+  pageSize,
+  totalPages,
   periods,
   voucherTypes,
   filters,
@@ -523,7 +558,7 @@ export default function JournalEntryList({
                 </tr>
               </thead>
               <tbody>
-                {entries.length === 0 ? (
+                {items.length === 0 ? (
                   <tr>
                     <td colSpan={11} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
@@ -536,7 +571,7 @@ export default function JournalEntryList({
                     </td>
                   </tr>
                 ) : (
-                  entries.map((entry) => (
+                  items.map((entry) => (
                     <JournalEntryRow
                       key={entry.id}
                       orgSlug={orgSlug}
@@ -557,6 +592,69 @@ export default function JournalEntryList({
           </div>
         </CardContent>
       </Card>
+
+      {/* Paginación */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={buildHref(
+                  orgSlug,
+                  Math.max(1, page - 1),
+                  filters.periodId,
+                  filters.voucherTypeId,
+                  filters.status,
+                  filters.origin,
+                )}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                text="Anterior"
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  href={buildHref(
+                    orgSlug,
+                    p,
+                    filters.periodId,
+                    filters.voucherTypeId,
+                    filters.status,
+                    filters.origin,
+                  )}
+                  isActive={p === page}
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href={buildHref(
+                  orgSlug,
+                  Math.min(totalPages, page + 1),
+                  filters.periodId,
+                  filters.voucherTypeId,
+                  filters.status,
+                  filters.origin,
+                )}
+                aria-disabled={page >= totalPages}
+                className={
+                  page >= totalPages ? "pointer-events-none opacity-50" : undefined
+                }
+                text="Siguiente"
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {total > 0 && (
+        <p className="text-sm text-muted-foreground text-center">
+          Mostrando {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} de {total}
+        </p>
+      )}
 
       {/* Confirmation dialog — CONTABILIZAR */}
       <Dialog

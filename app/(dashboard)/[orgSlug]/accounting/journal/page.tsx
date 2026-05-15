@@ -3,6 +3,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { makeJournalsService } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
+import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
 import JournalEntryList from "@/components/accounting/journal-entry-list";
 
 interface JournalPageProps {
@@ -40,6 +41,11 @@ export default async function JournalPage({
   const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
 
+  const pagination = paginationQuerySchema.parse({
+    page: sp.page,
+    pageSize: sp.pageSize,
+  });
+
   const filters: Record<string, unknown> = {};
   if (sp.periodId && typeof sp.periodId === "string") {
     filters.periodId = sp.periodId;
@@ -58,8 +64,8 @@ export default async function JournalPage({
     filters.origin = sp.origin;
   }
 
-  const [entries, periods, voucherTypes] = await Promise.all([
-    journalService.list(orgId, filters),
+  const [paginatedEntries, periods, voucherTypes] = await Promise.all([
+    journalService.listPaginated(orgId, filters, pagination),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     voucherTypesService
       .list(orgId)
@@ -75,7 +81,11 @@ export default async function JournalPage({
 
       <JournalEntryList
         orgSlug={orgSlug}
-        entries={JSON.parse(JSON.stringify(entries))}
+        items={JSON.parse(JSON.stringify(paginatedEntries.items))}
+        total={paginatedEntries.total}
+        page={paginatedEntries.page}
+        pageSize={paginatedEntries.pageSize}
+        totalPages={paginatedEntries.totalPages}
         periods={JSON.parse(JSON.stringify(periods))}
         voucherTypes={JSON.parse(JSON.stringify(voucherTypes))}
         filters={{

@@ -17,6 +17,10 @@ import type { DateRangeFilter } from "@/features/accounting/ledger.types";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 import { hydrateJournalFromRow } from "./journal-mapping";
 
 /**
@@ -68,40 +72,58 @@ export class JournalRepository extends BaseRepository {
     organizationId: string,
     filters?: JournalFilters,
   ): Promise<JournalEntryWithLines[]> {
-    const scope = this.requireOrg(organizationId);
-
-    const where: Record<string, unknown> = { ...scope };
-
-    if (filters?.dateFrom || filters?.dateTo) {
-      where.date = {
-        ...(filters.dateFrom && { gte: filters.dateFrom }),
-        ...(filters.dateTo && { lte: filters.dateTo }),
-      };
-    }
-
-    if (filters?.periodId) {
-      where.periodId = filters.periodId;
-    }
-
-    if (filters?.voucherTypeId) {
-      where.voucherTypeId = filters.voucherTypeId;
-    }
-
-    if (filters?.status) {
-      where.status = filters.status;
-    }
-
-    if (filters?.origin === "manual") {
-      where.sourceType = null;
-    } else if (filters?.origin === "auto") {
-      where.sourceType = { not: null };
-    }
+    const where = buildJournalEntryWhere(
+      this.requireOrg(organizationId),
+      filters,
+    );
 
     return this.db.journalEntry.findMany({
       where,
       include: journalIncludeLines,
       orderBy: { number: "desc" },
     }) as Promise<JournalEntryWithLines[]>;
+  }
+
+  /**
+   * Paginated read. Offset pagination (skip/take) + parallel count via
+   * Promise.all (NO `$transaction`) — heredado Sale/Purchase pilot canonical
+   * EXACT. Preserves `journalIncludeLines` 3-JOIN eager hydration (accepted
+   * paginated tradeoff — §13/journal-include-lines-eager-hydration-accepted-
+   * paginated-tradeoff 1ra evidencia). DRY where via buildJournalEntryWhere
+   * (§13/origin-filter-null-check-preserve-findpaginated-shared-where-builder
+   * 1ra evidencia — sourceType IS NULL/NOT NULL preserved EXACT).
+   */
+  async findPaginated(
+    organizationId: string,
+    filters?: JournalFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<JournalEntryWithLines>> {
+    const where = buildJournalEntryWhere(
+      this.requireOrg(organizationId),
+      filters,
+    );
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+    const [rows, total] = await Promise.all([
+      this.db.journalEntry.findMany({
+        where,
+        include: journalIncludeLines,
+        orderBy: { number: "desc" },
+        skip: skip,
+        take: take,
+      }),
+      this.db.journalEntry.count({ where }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items: rows as unknown as JournalEntryWithLines[],
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   async findById(
@@ -568,6 +590,46 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
     );
     return hydrateJournalFromRow(row);
   }
+}
+
+/**
+ * DRY `where` builder shared by `findAll` + `findPaginated`. Preserves the
+ * `sourceType IS NULL/NOT NULL` origin filter pattern EXACT (manual=NULL /
+ * auto=NOT NULL). §13/origin-filter-null-check-preserve-findpaginated-shared-
+ * where-builder 1ra evidencia.
+ */
+function buildJournalEntryWhere(
+  scope: { organizationId: string },
+  filters?: JournalFilters,
+): Record<string, unknown> {
+  const where: Record<string, unknown> = { ...scope };
+
+  if (filters?.dateFrom || filters?.dateTo) {
+    where.date = {
+      ...(filters.dateFrom && { gte: filters.dateFrom }),
+      ...(filters.dateTo && { lte: filters.dateTo }),
+    };
+  }
+
+  if (filters?.periodId) {
+    where.periodId = filters.periodId;
+  }
+
+  if (filters?.voucherTypeId) {
+    where.voucherTypeId = filters.voucherTypeId;
+  }
+
+  if (filters?.status) {
+    where.status = filters.status;
+  }
+
+  if (filters?.origin === "manual") {
+    where.sourceType = null;
+  } else if (filters?.origin === "auto") {
+    where.sourceType = { not: null };
+  }
+
+  return where;
 }
 
 // Mapping `JournalLine[]` (domain) → `JournalLineInput[]` (legacy DTO).

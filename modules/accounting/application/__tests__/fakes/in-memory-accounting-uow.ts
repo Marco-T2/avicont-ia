@@ -20,6 +20,10 @@ import type {
 } from "../../../presentation/dto/journal.types";
 import type { DateRangeFilter } from "../../../presentation/dto/ledger.types";
 import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
+import type {
   AccountingScope,
   AccountingUnitOfWork,
 } from "../../../domain/ports/unit-of-work";
@@ -148,6 +152,20 @@ export class InMemoryJournalLedgerQueryPort implements JournalLedgerQueryPort {
     _filters?: JournalFilters,
   ): Promise<JournalEntryWithLines[]> {
     return this.listRows;
+  }
+
+  async findPaginated(
+    _organizationId: string,
+    _filters?: JournalFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<JournalEntryWithLines>> {
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const items = this.listRows.slice(skip, skip + pageSize);
+    const total = this.listRows.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return { items, total, page, pageSize, totalPages };
   }
 
   async findById(

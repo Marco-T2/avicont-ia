@@ -37,6 +37,10 @@ import type {
   JournalEntryWithLines,
   JournalFilters,
 } from "../presentation/dto/journal.types";
+import type {
+  PaginatedResult,
+  PaginationOptions,
+} from "@/modules/shared/domain/value-objects/pagination";
 
 // Alias kept for API ergonomics — the use case names its line input
 // `CreateJournalEntryLineInput` to mirror the legacy public surface, but
@@ -126,6 +130,23 @@ export class JournalsService {
     filters?: JournalFilters,
   ): Promise<JournalEntryWithLines[]> {
     return this.journalLedgerQuery.list(organizationId, filters);
+  }
+
+  /**
+   * Paginated list — thin delegation to the query port's `findPaginated`.
+   * ADDITIVE alongside legacy `list` (dual-method transitional). §13/dual-
+   * method-additive-transitional 4ta evidencia matures.
+   */
+  async listPaginated(
+    organizationId: string,
+    filters?: JournalFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<JournalEntryWithLines>> {
+    return this.journalLedgerQuery.findPaginated(
+      organizationId,
+      filters,
+      pagination,
+    );
   }
 
   /**
