@@ -1306,33 +1306,17 @@ export default function PaymentForm({
           </div>
 
           {/* Row 3: Descripción (full width) */}
-          <div className="grid grid-cols-1 gap-4">
-            {/* Descripción */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-description">Descripción</Label>
-              <Input
-                id="payment-description"
-                placeholder="Descripción del pago"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                readOnly={isReadOnly}
-                className={isReadOnly ? "bg-muted cursor-default" : ""}
-                required
-              />
-            </div>
-
-            {/* Notas */}
-            <div className="space-y-2">
-              <Label htmlFor="payment-notes">Notas (opcional)</Label>
-              <Textarea
-                id="payment-notes"
-                placeholder="Observaciones adicionales..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                readOnly={isReadOnly}
-                className={isReadOnly ? "bg-muted cursor-default" : ""}
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="payment-description">Descripción</Label>
+            <Input
+              id="payment-description"
+              placeholder="Descripción del pago"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              readOnly={isReadOnly}
+              className={isReadOnly ? "bg-muted cursor-default" : ""}
+              required
+            />
           </div>
         </CardContent>
       </Card>
@@ -1760,6 +1744,19 @@ export default function PaymentForm({
           </CardContent>
         </Card>
       )}
+
+      {/* Notas (opcional) */}
+      <div className="space-y-2">
+        <Label htmlFor="payment-notes">Notas (opcional)</Label>
+        <Textarea
+          id="payment-notes"
+          placeholder="Observaciones adicionales..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          readOnly={isReadOnly}
+          className={isReadOnly ? "bg-muted cursor-default" : ""}
+        />
+      </div>
 
       {/* Actions */}
       <div className="flex justify-end gap-3">
