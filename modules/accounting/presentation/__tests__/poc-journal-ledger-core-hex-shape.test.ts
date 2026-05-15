@@ -600,6 +600,125 @@ describe("α26 Block C5 — journal.repository.ts retained", () => {
   });
 });
 
+// ── Block C0 (sub-POC 8) — accounting pages repoint to hex factory ──────────
+//
+// C0 is the first cycle of poc-accounting-shim-retirement (OLEADA 6 sub-POC
+// 8/8). The 4 `app/.../accounting/**/*.tsx` pages that call `new
+// JournalService()` must be repointed to `makeJournalsService()` from the hex
+// `@/modules/accounting/presentation/server` surface. After GREEN:
+//   - No page in the 4-page scope imports `JournalService` from the features barrel.
+//   - All 4 pages import `makeJournalsService` from the hex barrel.
+//   - All 4 sibling test files' `vi.mock` targets rewrite to the hex path
+//     (bundled atomically per [[cross_module_boundary_mock_target_rewrite]]).
+
+const ACCOUNTING_PAGES = [
+  {
+    label: "accounting/page.tsx",
+    path: resolve(REPO_ROOT, "app/(dashboard)/[orgSlug]/accounting/page.tsx"),
+  },
+  {
+    label: "accounting/journal/page.tsx",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/page.tsx",
+    ),
+  },
+  {
+    label: "accounting/journal/[entryId]/page.tsx",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/[entryId]/page.tsx",
+    ),
+  },
+  {
+    label: "accounting/journal/[entryId]/edit/page.tsx",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/[entryId]/edit/page.tsx",
+    ),
+  },
+] as const;
+
+// α28 — none of the 4 accounting pages imports `JournalService` from the
+//   features barrel.
+//   Expected FAIL pre-GREEN: all 4 pages still import `JournalService` from
+//   `@/features/accounting/server` → grep finds 4 offenders.
+describe("α28 Block C0 (sub-POC 8) — 4 accounting pages no longer import JournalService from features barrel", () => {
+  const LEGACY_JOURNAL_SERVICE_IMPORT =
+    /from\s+["']@\/features\/accounting\/server["'][\s\S]*?JournalService|JournalService[\s\S]*?from\s+["']@\/features\/accounting\/server["']/;
+  it("α28: no accounting page imports JournalService from @/features/accounting/server", () => {
+    const offenders = ACCOUNTING_PAGES.filter(({ path }) =>
+      LEGACY_JOURNAL_SERVICE_IMPORT.test(readFileSync(path, "utf-8")),
+    );
+    expect(offenders.map((o) => o.label)).toEqual([]);
+  });
+});
+
+// α29 — all 4 accounting pages import `makeJournalsService` from the hex
+//   barrel `@/modules/accounting/presentation/server`.
+//   Expected FAIL pre-GREEN: none of the 4 pages import `makeJournalsService`
+//   from the hex path → grep finds 0 matches per page.
+describe("α29 Block C0 (sub-POC 8) — 4 accounting pages import makeJournalsService from hex barrel", () => {
+  const HEX_FACTORY_IMPORT =
+    /from\s+["']@\/modules\/accounting\/presentation\/server["']/;
+  const MAKE_JOURNALS_SERVICE_TOKEN = /\bmakeJournalsService\b/;
+  it("α29: all 4 accounting pages import makeJournalsService from @/modules/accounting/presentation/server", () => {
+    const missing = ACCOUNTING_PAGES.filter(({ path }) => {
+      const src = readFileSync(path, "utf-8");
+      return !(
+        HEX_FACTORY_IMPORT.test(src) && MAKE_JOURNALS_SERVICE_TOKEN.test(src)
+      );
+    });
+    expect(missing.map((o) => o.label)).toEqual([]);
+  });
+});
+
+// α30 — mock-target rewrite: the 4 sibling test files' `vi.mock` call for the
+//   accounting barrel must point at the hex path, not the features barrel.
+//   Expected FAIL pre-GREEN: vi.mock targets still point at
+//   `@/features/accounting/server` → grep finds 4 offenders.
+const ACCOUNTING_PAGE_TESTS = [
+  {
+    label: "journal/__tests__/page.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/__tests__/page.test.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/edit/__tests__/page.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/[entryId]/edit/__tests__/page.test.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/__tests__/page-rbac.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/[entryId]/__tests__/page-rbac.test.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/edit/__tests__/page-rbac.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/(dashboard)/[orgSlug]/accounting/journal/[entryId]/edit/__tests__/page-rbac.test.ts",
+    ),
+  },
+] as const;
+
+describe("α30 Block C0 (sub-POC 8) — page test files vi.mock target rewritten to hex path", () => {
+  const LEGACY_MOCK_TARGET =
+    /vi\.mock\s*\(\s*["']@\/features\/accounting\/server["']/;
+  it("α30: no page test file vi.mocks @/features/accounting/server", () => {
+    const offenders = ACCOUNTING_PAGE_TESTS.filter(({ path }) =>
+      LEGACY_MOCK_TARGET.test(readFileSync(path, "utf-8")),
+    );
+    expect(offenders.map((o) => o.label)).toEqual([]);
+  });
+});
+
 // α27 — the `server.ts` barrel still re-exports `JournalService` /
 // `LedgerService` (out-of-scope guard — barrel + ~10 app/ consumers are
 // sub-POC 8; the shims keep the barrel surface byte-stable).
