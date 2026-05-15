@@ -30,11 +30,14 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/accounting/server", () => {
-  class JournalService {
-    getById = mockGetById;
-  }
-  return { JournalService };
+vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<
+    typeof import("@/modules/accounting/presentation/server")
+  >();
+  return {
+    ...actual,
+    makeJournalsService: vi.fn(() => ({ getById: mockGetById })),
+  };
 });
 
 vi.mock("@/modules/fiscal-periods/presentation/server", () => ({

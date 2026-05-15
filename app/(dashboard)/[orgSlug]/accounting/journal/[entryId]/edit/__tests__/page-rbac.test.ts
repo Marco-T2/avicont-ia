@@ -34,15 +34,9 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/accounting/server", () => {
-  class JournalService {
-    getById = mockGetById;
-  }
-  return { JournalService };
-});
-
 vi.mock("@/modules/accounting/presentation/server", () => ({
   makeAccountsService: () => ({ list: mockAccountsList }),
+  makeJournalsService: vi.fn(() => ({ getById: mockGetById })),
 }));
 
 vi.mock("@/modules/fiscal-periods/presentation/server", () => ({

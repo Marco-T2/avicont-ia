@@ -16,7 +16,7 @@ import Link from "next/link";
 import { formatDateBO } from "@/lib/date-utils";
 import { requireAuth } from "@/features/shared";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
-import { JournalService } from "@/features/accounting/server";
+import { makeJournalsService } from "@/modules/accounting/presentation/server";
 
 interface AccountingPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -41,7 +41,7 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
     redirect("/select-org");
   }
 
-  const journalService = new JournalService();
+  const journalService = makeJournalsService();
   let entryCount = 0;
   let lastEntryDate: string | null = null;
 

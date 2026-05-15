@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { JournalService } from "@/features/accounting/server";
+import { makeJournalsService } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryList from "@/components/accounting/journal-entry-list";
@@ -36,7 +36,7 @@ export default async function JournalPage({
     canWrite = false;
   }
 
-  const journalService = new JournalService();
+  const journalService = makeJournalsService();
   const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
 

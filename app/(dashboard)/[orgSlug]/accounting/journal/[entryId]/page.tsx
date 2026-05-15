@@ -1,6 +1,6 @@
 import { redirect, notFound } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import { JournalService } from "@/features/accounting/server";
+import { makeJournalsService } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import JournalEntryDetail from "@/components/accounting/journal-entry-detail";
@@ -22,7 +22,7 @@ export default async function EntryDetailPage({
     redirect(`/${orgSlug}`);
   }
 
-  const journalService = new JournalService();
+  const journalService = makeJournalsService();
   const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
 
