@@ -253,15 +253,6 @@ export default function LedgerPageClient({
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {/* Opening balance banner — visibility: openingBalance !== "0.00"
-                (page-independent post bugfix `792831d6` Bug #2). Original
-                SC-5 page>1 gate superseded; Bug #2 enabled historical priors
-                (date < dateFrom) to make opening non-zero on page 1 too. */}
-            {ledger.openingBalance !== "0.00" && (
-              <div className="px-4 py-2 text-sm text-muted-foreground border-b bg-muted/50">
-                Saldo de Apertura: Bs. {ledger.openingBalance}
-              </div>
-            )}
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
@@ -287,6 +278,38 @@ export default function LedgerPageClient({
                   </tr>
                 </thead>
                 <tbody>
+                  {/* Decorative opening row (SC-5'' supersedes SC-5' which
+                      superseded original SC-5 per [[named_rule_immutability]]).
+                      Renders as first <tr> of <tbody> when openingBalance
+                      !== "0.00" — page-independent (SC-5' Bug #3 a51877dc).
+                      Text "Saldo inicial acumulado" (SC-5'' text change from
+                      "Saldo de Apertura" — more accurate semantics: cumulative
+                      carry-over from history before the filter window).
+                      Decorative: NOT counted in `total` / pagination; renders
+                      alongside empty-state placeholder when items=[] AND
+                      opening !== "0.00" (Marco Case C — all history is prior
+                      to filter range). */}
+                  {ledger.openingBalance !== "0.00" && (
+                    <tr
+                      className="bg-muted/30 font-medium border-b-2"
+                      aria-label="Saldo inicial acumulado"
+                    >
+                      <td className="py-3 px-4 text-muted-foreground">—</td>
+                      <td className="py-3 px-4 text-muted-foreground">—</td>
+                      <td className="py-3 px-4 italic text-muted-foreground">
+                        Saldo inicial acumulado
+                      </td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">
+                        —
+                      </td>
+                      <td className="py-3 px-4 text-right text-muted-foreground">
+                        —
+                      </td>
+                      <td className="py-3 px-4 text-right font-mono">
+                        {formatCurrency(ledger.openingBalance)}
+                      </td>
+                    </tr>
+                  )}
                   {ledger.items.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center">
