@@ -1,6 +1,37 @@
 // Revoked-by: DEC-1 (sub-POC 6 archive of oleada-money-decimal-hex-purity).
 // DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
 // Prisma.Decimal is forbidden outside infrastructure adapters.
+
+/**
+ * ── CANONICAL RULE: DEC-1 (decimal.js direct) ────────────────────────────
+ *
+ * As of `oleada-money-decimal-hex-purity` archive (HEAD 2d532320 — Cycle 1
+ * GREEN R1 revocation, immediately preceding this canonical-rule cementation
+ * commit), the following invariants are CANONICAL for this repo:
+ *
+ * 1. Domain + application layers (`modules/** /domain/`, `modules/** /application/`)
+ *    MUST use `decimal.js@10.6.0` direct for ALL money/value-type math.
+ *    Prisma.Decimal value-form is FORBIDDEN in these layers.
+ *
+ * 2. Infrastructure adapters (`modules/** /infrastructure/`) MAY import
+ *    `Prisma` (value or type) — they ARE the Prisma adapter boundary.
+ *
+ * 3. UI components (`components/**`) MUST NOT use `Math.round(n*100)/100`
+ *    or any float-cents arithmetic for money math. Use `new Decimal(n)
+ *    .toDecimalPlaces(2, Decimal.ROUND_HALF_UP).toNumber()` or call into
+ *    a domain helper.
+ *
+ * 4. Type-only imports `import type { Prisma } from "..."` are allowed
+ *    anywhere (no runtime, no bundle contribution).
+ *
+ * Supersedes: EX-D3 R1 (revoked at sub-POC 6 archive). History preserved
+ * inline above per [[named_rule_immutability]].
+ *
+ * Enforcement: sentinels in `modules/** /__tests__/decimal-import.sentinel.test.ts`
+ * (14 files across OLEADA sub-POCs 1-5) assert no Prisma value-import
+ * in non-infra paths. Add new sentinels for new modules that introduce money math.
+ */
+
 /**
  * Shared canonical money math utilities for `modules/accounting/*`.
  *
