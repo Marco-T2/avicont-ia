@@ -253,10 +253,11 @@ export default function LedgerPageClient({
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {/* Opening balance banner — D5 visibility: page>1 AND
-                openingBalance!=="0.00" (SC-5). Above the table, muted-
-                foreground variant. */}
-            {ledger.page > 1 && ledger.openingBalance !== "0.00" && (
+            {/* Opening balance banner — visibility: openingBalance !== "0.00"
+                (page-independent post bugfix `792831d6` Bug #2). Original
+                SC-5 page>1 gate superseded; Bug #2 enabled historical priors
+                (date < dateFrom) to make opening non-zero on page 1 too. */}
+            {ledger.openingBalance !== "0.00" && (
               <div className="px-4 py-2 text-sm text-muted-foreground border-b bg-muted/50">
                 Saldo de Apertura: Bs. {ledger.openingBalance}
               </div>
