@@ -44,6 +44,17 @@ function makeInMemoryRepo(): DispatchRepository {
   return {
     findById: async () => null,
     findAll: async () => [],
+    // Pagination cascade fake — empty-default `PaginatedResult<Dispatch>`
+    // stub satisfies TS interface compile-gate after C1 port addition
+    // (poc-sales-unified-pagination). Atomic same-commit per
+    // [[mock_hygiene_commit_scope]].
+    findPaginated: async () => ({
+      items: [],
+      total: 0,
+      page: 1,
+      pageSize: 25,
+      totalPages: 1,
+    }),
     findByIdTx: async () => null,
     saveTx: async (d) => d,
     updateTx: async (d) => d,

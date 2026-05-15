@@ -22,6 +22,10 @@ import type {
   DispatchFilters,
 } from "../domain/ports/dispatch.repository";
 import type {
+  PaginationOptions,
+  PaginatedResult,
+} from "@/modules/shared/domain/value-objects/pagination";
+import type {
   DispatchJournalEntryFactoryPort,
   DispatchJournalTemplate,
 } from "../domain/ports/dispatch-journal-entry-factory.port";
@@ -111,6 +115,20 @@ export class DispatchService {
     filters?: DispatchFilters,
   ): Promise<Dispatch[]> {
     return this.deps.repo.findAll(organizationId, filters);
+  }
+
+  /**
+   * Paginated read — thin delegation to `repo.findPaginated`. Additive
+   * alongside `list` (dual-method additive-transitional per Journal POC
+   * precedent). Consumed by `/sales` RSC twin-call UNION pagination
+   * (poc-sales-unified-pagination).
+   */
+  async listPaginated(
+    organizationId: string,
+    filters?: DispatchFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Dispatch>> {
+    return this.deps.repo.findPaginated(organizationId, filters, pagination);
   }
 
   // ── Get by ID ────────────────────────────────────────────────────────

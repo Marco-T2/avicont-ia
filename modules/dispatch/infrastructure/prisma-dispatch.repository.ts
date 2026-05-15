@@ -13,8 +13,38 @@ import type {
   DispatchRepository,
   DispatchFilters,
 } from "../domain/ports/dispatch.repository";
+import type {
+  PaginationOptions,
+  PaginatedResult,
+} from "@/modules/shared/domain/value-objects/pagination";
 import type { ComputedDetail } from "../domain/compute-line-amounts";
 import type { BcSummary } from "../domain/compute-bc-summary";
+
+// ── Where-builder DRY helper (shared by findAll + findPaginated) ──────────
+
+/**
+ * Builds the Prisma `where` clause shared by `findAll` and `findPaginated`.
+ * Mirror of `buildJournalEntryWhere` precedent — extracted to avoid drift
+ * when filter logic evolves (5 clauses today: dispatchType, status,
+ * contactId, periodId, date range).
+ */
+function buildDispatchWhere(
+  organizationId: string,
+  filters?: DispatchFilters,
+): Record<string, unknown> {
+  const where: Record<string, unknown> = { organizationId };
+  if (filters?.dispatchType) where.dispatchType = filters.dispatchType;
+  if (filters?.status) where.status = filters.status;
+  if (filters?.contactId) where.contactId = filters.contactId;
+  if (filters?.periodId) where.periodId = filters.periodId;
+  if (filters?.dateFrom || filters?.dateTo) {
+    where.date = {
+      ...(filters.dateFrom && { gte: filters.dateFrom }),
+      ...(filters.dateTo && { lte: filters.dateTo }),
+    };
+  }
+  return where;
+}
 
 // ── Prisma include shapes ──────────────────────────────────────────────────
 
@@ -148,23 +178,52 @@ export class PrismaDispatchRepository implements DispatchRepository {
     organizationId: string,
     filters?: DispatchFilters,
   ): Promise<Dispatch[]> {
-    const where: Record<string, unknown> = { organizationId };
-    if (filters?.dispatchType) where.dispatchType = filters.dispatchType;
-    if (filters?.status) where.status = filters.status;
-    if (filters?.contactId) where.contactId = filters.contactId;
-    if (filters?.periodId) where.periodId = filters.periodId;
-    if (filters?.dateFrom || filters?.dateTo) {
-      where.date = {
-        ...(filters.dateFrom && { gte: filters.dateFrom }),
-        ...(filters.dateTo && { lte: filters.dateTo }),
-      };
-    }
+    const where = buildDispatchWhere(organizationId, filters);
     const rows = await this.db.dispatch.findMany({
       where,
       include: dispatchInclude,
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     });
     return rows.map((r) => toDomainDispatch(r as unknown as Record<string, unknown>));
+  }
+
+  /**
+   * Paginated read — mirror `PrismaSaleRepository.findPaginated` shape.
+   * `Promise.all([findMany, count])` (NOT $transaction — read-only, offset
+   * pattern, page-shift under concurrent writes is expected behavior).
+   * `orderBy: [{createdAt:"desc"},{id:"desc"}]` tiebreaker per AD-2 of
+   * `sdd/poc-sales-unified-pagination/design`.
+   */
+  async findPaginated(
+    organizationId: string,
+    filters?: DispatchFilters,
+    pagination?: PaginationOptions,
+  ): Promise<PaginatedResult<Dispatch>> {
+    const where = buildDispatchWhere(organizationId, filters);
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+    const [rows, total] = await Promise.all([
+      this.db.dispatch.findMany({
+        where,
+        include: dispatchInclude,
+        orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+        skip,
+        take,
+      }),
+      this.db.dispatch.count({ where }),
+    ]);
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items: rows.map((r) =>
+        toDomainDispatch(r as unknown as Record<string, unknown>),
+      ),
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
   }
 
   async findById(
