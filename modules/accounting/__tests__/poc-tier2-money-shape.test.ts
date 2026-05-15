@@ -70,3 +70,26 @@ describe("α-tier2-purchase-01 — modules/purchase/domain/build-purchase-entry-
     expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
   });
 });
+
+// Block C3 — Dispatch domain Decimal convergence (D1 L59 BC lineAmount,
+// D2 L78 ND lineAmount). `roundTotal` (round-total.ts) EXCLUDED per
+// R-money-tier2 textual scope (cooperative-rounding semantic, Math.floor/ceil).
+describe("α-tier2-dispatch-01 — modules/dispatch/domain/compute-line-amounts.ts Decimal-converged (R-money-tier2)", () => {
+  const DISPATCH_DOMAIN = resolve(
+    ROOT,
+    "modules/dispatch/domain/compute-line-amounts.ts",
+  );
+
+  it("α-tier2-dispatch-01: imports roundHalfUp from shared/domain/money.utils and calls it (R-money-tier2 DISCHARGED at D1/D2)", () => {
+    const src = readFileSync(DISPATCH_DOMAIN, "utf-8");
+    expect(src).toMatch(
+      /^import[^;]+roundHalfUp[^;]+["'][^"']*shared\/domain\/money\.utils["']/m,
+    );
+    expect(src).toMatch(/\broundHalfUp\s*\(/);
+  });
+
+  it("α-tier2-dispatch-01: NO float Math.round(*100) cents-arithmetic (R-money-tier2 scope; roundTotal EXCLUDED — different file)", () => {
+    const src = readFileSync(DISPATCH_DOMAIN, "utf-8");
+    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
+  });
+});
