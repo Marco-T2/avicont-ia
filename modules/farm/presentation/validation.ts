@@ -6,7 +6,7 @@ export const createFarmSchema = z.object({
     .min(1, "El nombre es requerido")
     .max(200, "El nombre no puede superar los 200 caracteres"),
   location: z.string().optional(),
-  memberId: z.string().cuid("ID de miembro inválido"),
+  memberId: z.string().min(1, "ID de miembro inválido"),
 });
 
 export const updateFarmSchema = z.object({
