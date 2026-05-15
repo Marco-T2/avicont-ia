@@ -7,10 +7,14 @@
  * Covers REQ-10 (filters wired), spec 1.S2 (no-CJ note), REQ-11 (RBAC via API).
  */
 
-import { useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { WorksheetFilters, type WorksheetFilterValues } from "./worksheet-filters";
+import {
+  WorksheetFilters,
+  type WorksheetFilterValues,
+  type FiscalPeriodOption,
+} from "./worksheet-filters";
 import { WorksheetTable } from "./worksheet-table";
 
 // ── Types (serialized — Decimals as strings) ──────────────────────────────────
@@ -73,6 +77,38 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFilters, setLastFilters] = useState<WorksheetFilterValues | null>(null);
+  const [periods, setPeriods] = useState<FiscalPeriodOption[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPeriods() {
+      try {
+        const res = await fetch(`/api/organizations/${orgSlug}/periods`);
+        if (!res.ok) return;
+        const data = (await res.json()) as Array<{
+          id: string;
+          name: string;
+          startDate: string;
+          endDate: string;
+        }>;
+        if (cancelled) return;
+        setPeriods(
+          data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            startDate: p.startDate.slice(0, 10),
+            endDate: p.endDate.slice(0, 10),
+          })),
+        );
+      } catch {
+        // silent — period selector is optional UX
+      }
+    }
+    void loadPeriods();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgSlug]);
 
   const fetchReport = useCallback(
     async (filters: WorksheetFilterValues) => {
@@ -134,7 +170,7 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
       {/* Filters */}
       <Card>
         <CardContent className="pt-6">
-          <WorksheetFilters onFilter={handleFilter} loading={loading} />
+          <WorksheetFilters onFilter={handleFilter} loading={loading} periods={periods} />
         </CardContent>
       </Card>
 

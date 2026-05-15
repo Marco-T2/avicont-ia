@@ -52,9 +52,12 @@ const ORG_SLUG = "test-org";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFetch.mockResolvedValue({
-    ok: true,
-    json: async () => MINIMAL_REPORT,
+  // URL-aware mock: /periods returns [] (selector hidden), /worksheet returns the report fixture.
+  mockFetch.mockImplementation(async (url: string) => {
+    if (typeof url === "string" && url.includes("/periods")) {
+      return { ok: true, json: async () => [] };
+    }
+    return { ok: true, json: async () => MINIMAL_REPORT };
   });
 });
 
@@ -85,9 +88,11 @@ describe("WorksheetPageClient (REQ-10)", () => {
     const submitButton = screen.getByRole("button", { name: /generar|calcular|aplicar/i });
     fireEvent.click(submitButton);
 
-    await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledOnce();
-    });
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/worksheet\?/),
+      ),
+    );
 
     // WorksheetTable renders a table element
     await waitFor(() => {
@@ -107,7 +112,11 @@ describe("WorksheetPageClient (REQ-10)", () => {
     const submitButton = screen.getByRole("button", { name: /generar|calcular|aplicar/i });
     fireEvent.click(submitButton);
 
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/worksheet\?/),
+      ),
+    );
 
     await waitFor(() => {
       const pdfLink = screen.queryByText(/pdf/i) ?? screen.queryByText(/PDF/);
@@ -132,7 +141,11 @@ describe("WorksheetPageClient (REQ-10)", () => {
     const submitButton = screen.getByRole("button", { name: /generar|calcular|aplicar/i });
     fireEvent.click(submitButton);
 
-    await waitFor(() => expect(mockFetch).toHaveBeenCalledOnce());
+    await waitFor(() =>
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringMatching(/\/worksheet\?/),
+      ),
+    );
 
     await waitFor(() => {
       const note = screen.queryByText(/sin asientos de ajuste|no hay asientos de ajuste|ajuste.*CJ/i);
