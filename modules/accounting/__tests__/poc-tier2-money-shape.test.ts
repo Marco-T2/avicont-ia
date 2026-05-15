@@ -45,6 +45,28 @@ describe("α-tier2-sale-01 — modules/sale/domain/build-sale-entry-lines.ts Dec
 
   it("α-tier2-sale-01: NO float Math.round(*100) cents-arithmetic (R-money-tier2 scope)", () => {
     const src = readFileSync(SALE_BUILDER, "utf-8");
-    expect(src).not.toMatch(/Math\.round\([^)]*\*\s*100\)/);
+    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
+  });
+});
+
+// Block C2 — Purchase builder Decimal convergence (P1 L82 exentos, P2 L96
+// gastoNeto). Symmetric to α-tier2-sale-01.
+describe("α-tier2-purchase-01 — modules/purchase/domain/build-purchase-entry-lines.ts Decimal-converged (R-money-tier2)", () => {
+  const PURCHASE_BUILDER = resolve(
+    ROOT,
+    "modules/purchase/domain/build-purchase-entry-lines.ts",
+  );
+
+  it("α-tier2-purchase-01: imports roundHalfUp from shared/domain/money.utils and calls it (R-money-tier2 DISCHARGED at P1/P2)", () => {
+    const src = readFileSync(PURCHASE_BUILDER, "utf-8");
+    expect(src).toMatch(
+      /^import[^;]+roundHalfUp[^;]+["'][^"']*shared\/domain\/money\.utils["']/m,
+    );
+    expect(src).toMatch(/\broundHalfUp\s*\(/);
+  });
+
+  it("α-tier2-purchase-01: NO float Math.round(*100) cents-arithmetic (R-money-tier2 scope)", () => {
+    const src = readFileSync(PURCHASE_BUILDER, "utf-8");
+    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
   });
 });
