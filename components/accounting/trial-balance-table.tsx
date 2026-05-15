@@ -27,6 +27,14 @@ interface SerializedRow extends SerializedTotals {
   name: string;
 }
 
+interface SerializedOppositeSignAccount {
+  code: string;
+  name: string;
+  nature: "DEUDORA" | "ACREEDORA";
+  saldoDeudor: string;
+  saldoAcreedor: string;
+}
+
 interface SerializedReport {
   orgId: string;
   dateFrom: string;
@@ -36,6 +44,7 @@ interface SerializedReport {
   imbalanced: boolean;
   deltaSumas: string;
   deltaSaldos: string;
+  oppositeSignAccounts: SerializedOppositeSignAccount[];
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -66,6 +75,11 @@ interface TrialBalanceTableProps {
 }
 
 export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
+  // Index anomalies by code to highlight the offending side per row.
+  const anomalyByCode = new Map(
+    report.oppositeSignAccounts.map((a) => [a.code, a]),
+  );
+
   return (
     <div className="space-y-2">
       {/* Imbalance banner */}
@@ -76,6 +90,33 @@ export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
         >
           Balance desbalanceado — Delta Sumas: {report.deltaSumas} · Delta Saldos:{" "}
           {report.deltaSaldos}
+        </div>
+      )}
+
+      {/* Data anomaly: cuentas con saldo de naturaleza opuesta. */}
+      {report.oppositeSignAccounts.length > 0 && (
+        <div
+          role="alert"
+          className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs"
+        >
+          <p className="font-semibold text-destructive">
+            Cuentas con saldo de naturaleza opuesta — revisar carga antes del cierre:
+          </p>
+          <ul className="mt-1 list-disc pl-5 space-y-0.5">
+            {report.oppositeSignAccounts.map((a) => {
+              const saldo = a.nature === "DEUDORA" ? a.saldoAcreedor : a.saldoDeudor;
+              const side = a.nature === "DEUDORA" ? "acreedor" : "deudor";
+              return (
+                <li key={a.code}>
+                  <span className="font-mono">{a.code}</span> {a.name}{" "}
+                  <span className="text-muted-foreground">
+                    (esperado {a.nature.toLowerCase()}, saldo {side})
+                  </span>{" "}
+                  — Bs {fmtTotal(saldo)}
+                </li>
+              );
+            })}
+          </ul>
         </div>
       )}
 
@@ -94,17 +135,36 @@ export const TrialBalanceTable: FC<TrialBalanceTableProps> = ({ report }) => {
             </tr>
           </thead>
           <tbody>
-            {report.rows.map((row, idx) => (
-              <tr key={row.accountId} className="border-b border-border hover:bg-accent/50">
-                <td className="px-2 py-1.5 text-center text-muted-foreground">{idx + 1}</td>
-                <td className="px-2 py-1.5 font-mono text-xs">{row.code}</td>
-                <td className="px-2 py-1.5">{row.name}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.sumasDebe)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.sumasHaber)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.saldoDeudor)}</td>
-                <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.saldoAcreedor)}</td>
-              </tr>
-            ))}
+            {report.rows.map((row, idx) => {
+              const anomaly = anomalyByCode.get(row.code);
+              // DEUDORA con saldoAcreedor → rojo en saldoAcreedor;
+              // ACREEDORA con saldoDeudor → rojo en saldoDeudor.
+              const redOnDeudor = anomaly?.nature === "ACREEDORA";
+              const redOnAcreedor = anomaly?.nature === "DEUDORA";
+              return (
+                <tr key={row.accountId} className="border-b border-border hover:bg-accent/50">
+                  <td className="px-2 py-1.5 text-center text-muted-foreground">{idx + 1}</td>
+                  <td className="px-2 py-1.5 font-mono text-xs">{row.code}</td>
+                  <td className="px-2 py-1.5">{row.name}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.sumasDebe)}</td>
+                  <td className="px-2 py-1.5 text-right tabular-nums">{fmtNum(row.sumasHaber)}</td>
+                  <td
+                    className={`px-2 py-1.5 text-right tabular-nums${
+                      redOnDeudor ? " text-destructive font-semibold" : ""
+                    }`}
+                  >
+                    {fmtNum(row.saldoDeudor)}
+                  </td>
+                  <td
+                    className={`px-2 py-1.5 text-right tabular-nums${
+                      redOnAcreedor ? " text-destructive font-semibold" : ""
+                    }`}
+                  >
+                    {fmtNum(row.saldoAcreedor)}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
           <tfoot>
             <tr className="border-t-2 border-border font-bold">

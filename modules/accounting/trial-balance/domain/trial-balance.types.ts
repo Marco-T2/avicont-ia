@@ -29,6 +29,23 @@ export type TrialBalanceTotals = {
   saldoAcreedor: Decimal;
 };
 
+/**
+ * Cuenta cuyo saldo final aterrizó en el lado OPUESTO a su naturaleza contable:
+ *  - nature DEUDORA  con saldoAcreedor > 0 → anomalía
+ *  - nature ACREEDORA con saldoDeudor   > 0 → anomalía
+ *
+ * Es una señal de calidad para el contador (anticipos no reclasificados,
+ * errores de carga). Los totales del TB siguen cuadrando por partida doble
+ * — la lista no corrige el balance, solo apunta a las filas a revisar.
+ */
+export type TrialBalanceOppositeSignAccount = {
+  code: string;
+  name: string;
+  nature: "DEUDORA" | "ACREEDORA";
+  saldoDeudor: Decimal;
+  saldoAcreedor: Decimal;
+};
+
 /** Reporte completo del Balance de Comprobación de Sumas y Saldos. */
 export type TrialBalanceReport = {
   orgId: string;
@@ -43,6 +60,8 @@ export type TrialBalanceReport = {
   deltaSumas: Decimal;
   /** Σ saldoDeudor − Σ saldoAcreedor */
   deltaSaldos: Decimal;
+  /** Cuentas con saldo de naturaleza opuesta — señal de calidad, no afecta totales. */
+  oppositeSignAccounts: TrialBalanceOppositeSignAccount[];
 };
 
 /** Filtros de entrada para el servicio. */
@@ -64,6 +83,8 @@ export type TrialBalanceAccountMetadata = {
   code: string;
   name: string;
   isDetail: boolean;
+  /** Naturaleza contable de la cuenta — usada para detectar anomalías por lado. */
+  nature: "DEUDORA" | "ACREEDORA";
 };
 
 export type TrialBalanceOrgMetadata = {
@@ -92,6 +113,14 @@ export type SerializedTrialBalanceTotals = {
   saldoAcreedor: string;
 };
 
+export type SerializedTrialBalanceOppositeSignAccount = {
+  code: string;
+  name: string;
+  nature: "DEUDORA" | "ACREEDORA";
+  saldoDeudor: string;
+  saldoAcreedor: string;
+};
+
 export type SerializedTrialBalanceReport = {
   orgId: string;
   dateFrom: string; // ISO date string
@@ -101,4 +130,5 @@ export type SerializedTrialBalanceReport = {
   imbalanced: boolean;
   deltaSumas: string;
   deltaSaldos: string;
+  oppositeSignAccounts: SerializedTrialBalanceOppositeSignAccount[];
 };

@@ -41,6 +41,7 @@ const MINIMAL_REPORT = {
   imbalanced: false,
   deltaSumas: makeZero(),
   deltaSaldos: makeZero(),
+  oppositeSignAccounts: [],
 };
 
 const ORG_SLUG = "test-org";

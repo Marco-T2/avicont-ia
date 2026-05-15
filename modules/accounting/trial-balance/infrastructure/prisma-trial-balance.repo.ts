@@ -82,6 +82,7 @@ export class PrismaTrialBalanceRepo extends BaseRepository implements TrialBalan
         code: true,
         name: true,
         isDetail: true,
+        nature: true,
       },
       orderBy: { code: "asc" },
     });
@@ -91,6 +92,7 @@ export class PrismaTrialBalanceRepo extends BaseRepository implements TrialBalan
       code: a.code,
       name: a.name,
       isDetail: a.isDetail,
+      nature: a.nature as "DEUDORA" | "ACREEDORA",
     }));
   }
 

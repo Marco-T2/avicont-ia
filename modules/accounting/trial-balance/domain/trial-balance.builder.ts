@@ -20,6 +20,7 @@ import type {
   TrialBalanceRow,
   TrialBalanceTotals,
   TrialBalanceReport,
+  TrialBalanceOppositeSignAccount,
 } from "./trial-balance.types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -64,6 +65,7 @@ export function buildTrialBalance(input: BuildTrialBalanceInput): TrialBalanceRe
   );
 
   const rows: TrialBalanceRow[] = [];
+  const oppositeSignAccounts: TrialBalanceOppositeSignAccount[] = [];
 
   for (const acc of accounts) {
     // REQ-2: skip non-detail (agrupadora) accounts
@@ -97,6 +99,22 @@ export function buildTrialBalance(input: BuildTrialBalanceInput): TrialBalanceRe
       saldoDeudor,
       saldoAcreedor,
     });
+
+    // Detect saldo landing on the opposite side of account.nature.
+    // Anomaly = quality signal, not a balance correction — totals stay
+    // balanced per partida doble regardless.
+    const isAnomaly =
+      (acc.nature === "DEUDORA" && saldoAcreedor.gt(ZERO)) ||
+      (acc.nature === "ACREEDORA" && saldoDeudor.gt(ZERO));
+    if (isAnomaly) {
+      oppositeSignAccounts.push({
+        code: acc.code,
+        name: acc.name,
+        nature: acc.nature,
+        saldoDeudor,
+        saldoAcreedor,
+      });
+    }
   }
 
   // REQ-5: compute totals
@@ -123,5 +141,6 @@ export function buildTrialBalance(input: BuildTrialBalanceInput): TrialBalanceRe
     imbalanced,
     deltaSumas,
     deltaSaldos,
+    oppositeSignAccounts,
   };
 }

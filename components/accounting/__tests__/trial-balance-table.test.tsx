@@ -56,6 +56,7 @@ function makeReport(overrides: Record<string, unknown> = {}) {
     imbalanced: false,
     deltaSumas: makeZero(),
     deltaSaldos: makeZero(),
+    oppositeSignAccounts: [],
     ...overrides,
   };
 }
