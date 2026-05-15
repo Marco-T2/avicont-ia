@@ -88,11 +88,18 @@ vi.mock("@/modules/ai-agent/presentation/server", async (importOriginal) => {
   };
 });
 
-vi.mock("@/features/accounting/server", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/accounting/server")>();
+// C2 mock-target rewrite (sub-POC 8): agent/route.ts now instantiates the hex
+// `makeJournalsService()` and imports `parseEntryDate` / `formatCorrelativeNumber`
+// from the hex barrel. The mock target rewrites to the hex path atomically with
+// the route repoint (Vitest treats the old features-barrel path and the hex
+// path as distinct module-graph entries — per cross-module-boundary
+// mock-target-rewrite invariant). `importOriginal` spread keeps the real
+// `parseEntryDate` / `formatCorrelativeNumber` utils; only the factory is faked.
+vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/accounting/presentation/server")>();
   return {
     ...actual,
-    JournalService: vi.fn().mockImplementation(function () {
+    makeJournalsService: vi.fn().mockImplementation(function () {
       return { createEntry: mockCreateEntry };
     }),
   };

@@ -18,14 +18,17 @@ import {
   type CreateJournalEntryConfirmInput,
 } from "@/modules/ai-agent/presentation/server";
 import { requirePermission } from "@/features/permissions/server";
-import { JournalService, parseEntryDate } from "@/features/accounting/server";
+import {
+  makeJournalsService,
+  parseEntryDate,
+  formatCorrelativeNumber,
+} from "@/modules/accounting/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import {
   ValidationError,
   FISCAL_PERIOD_CLOSED,
 } from "@/features/shared/errors";
-import { formatCorrelativeNumber } from "@/features/accounting/server";
 import { logStructured } from "@/lib/logging/structured";
 
 const orgService = makeOrganizationsService();
@@ -33,7 +36,7 @@ const agentService = makeAgentService();
 const rateLimitService = makeAgentRateLimitService();
 const expensesService = makeExpenseService();
 const mortalityService = makeMortalityService();
-const journalService = new JournalService();
+const journalService = makeJournalsService();
 const voucherTypesService = makeVoucherTypesService();
 const fiscalPeriodsService = makeFiscalPeriodsService();
 
@@ -283,10 +286,19 @@ async function handleCreateJournalEntryConfirm(
     entry.number,
   );
 
+  // `journalService.createEntry()` (hex) devuelve el AGGREGATE `Journal`, no el
+  // DTO plano que devolvía el shim legacy. El aggregate expone sus campos solo
+  // vía getters no-enumerables sobre un `props` privado — spreadear la instancia
+  // (`{ ...entry }`) daría un objeto VACÍO. `entry.toSnapshot()` da el shape
+  // plano y serializable que la respuesta JSON necesita (date/number/sourceType/
+  // aiOriginalText/lines + resto de campos), preservando la parity del DTO
+  // legacy. Decisión lockeada (design #2422 D2): toSnapshot() en vez de un
+  // helper `getById()` de re-hidratación — la respuesta solo necesita los campos
+  // escalares + lines que el snapshot ya carga.
   return Response.json(
     {
       message: `Borrador creado: ${displayNumber}`,
-      data: { ...entry, displayNumber },
+      data: { ...entry.toSnapshot(), displayNumber },
     },
     { status: 201 },
   );
