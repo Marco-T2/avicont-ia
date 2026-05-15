@@ -37,7 +37,7 @@ export async function PATCH(
       dispatch = await dispatchService.voidDispatch(orgId, dispatchId, user.id, justification);
     }
 
-    return Response.json(dispatch);
+    return Response.json(dispatch.toSnapshot());
   } catch (error) {
     return handleError(error);
   }

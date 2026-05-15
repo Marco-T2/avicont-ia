@@ -79,6 +79,13 @@ beforeEach(() => {
     id: DISPATCH_ID,
     periodId: "period-1",
     dispatchType: "NOTA_DESPACHO",
+    toSnapshot: () => ({
+      id: DISPATCH_ID,
+      periodId: "period-1",
+      dispatchType: "NOTA_DESPACHO",
+      contactId: "contact-1",
+      details: [],
+    }),
   });
   mockContactsList.mockResolvedValue([]);
   mockPeriodsList.mockResolvedValue([]);

@@ -30,7 +30,7 @@ export async function GET(
 
     const dispatches = await dispatchService.list(orgId, filters);
 
-    return Response.json(dispatches);
+    return Response.json(dispatches.map((d) => d.toSnapshot()));
   } catch (error) {
     return handleError(error);
   }
@@ -58,7 +58,7 @@ export async function POST(
       ? await dispatchService.createAndPost(orgId, { ...input, createdById: user.id }, user.id)
       : await dispatchService.create(orgId, { ...input, createdById: user.id });
 
-    return Response.json(dispatch, { status: 201 });
+    return Response.json(dispatch.toSnapshot(), { status: 201 });
   } catch (error) {
     return handleError(error);
   }

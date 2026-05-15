@@ -1,7 +1,10 @@
 import type { DispatchStatus } from "./value-objects/dispatch-status";
 import type { DispatchType } from "./value-objects/dispatch-type";
-import { DispatchDetail } from "./dispatch-detail.entity";
-import type { ReceivableSummary } from "./value-objects/receivable-summary";
+import { DispatchDetail, type DispatchDetailSnapshot } from "./dispatch-detail.entity";
+import type {
+  ReceivableSummary,
+  ReceivableSummarySnapshot,
+} from "./value-objects/receivable-summary";
 import {
   DispatchNoDetails,
   DispatchNotDraft,
@@ -73,6 +76,38 @@ export interface ApplyDispatchEditInput {
   farmOrigin?: string | null;
   chickenCount?: number | null;
   shrinkagePct?: number | null;
+}
+
+export interface DispatchSnapshot {
+  id: string;
+  organizationId: string;
+  dispatchType: DispatchType;
+  status: DispatchStatus;
+  sequenceNumber: number;
+  displayCode: string;
+  date: Date;
+  contactId: string;
+  periodId: string;
+  description: string;
+  referenceNumber: number | null;
+  notes: string | null;
+  totalAmount: number;
+  journalEntryId: string | null;
+  receivableId: string | null;
+  createdById: string;
+  createdAt: Date;
+  updatedAt: Date;
+  details: DispatchDetailSnapshot[];
+  receivable: ReceivableSummarySnapshot | null;
+  farmOrigin: string | null;
+  chickenCount: number | null;
+  shrinkagePct: number | null;
+  avgKgPerChicken: number | null;
+  totalGrossKg: number | null;
+  totalNetKg: number | null;
+  totalShrinkKg: number | null;
+  totalShortageKg: number | null;
+  totalRealNetKg: number | null;
 }
 
 export class Dispatch {
@@ -345,5 +380,41 @@ export class Dispatch {
 
   private canTransitionTo(target: DispatchStatus): boolean {
     return VALID_TRANSITIONS[this.props.status].includes(target);
+  }
+
+  toSnapshot(): DispatchSnapshot {
+    const prefix = this.props.dispatchType === "NOTA_DESPACHO" ? "ND" : "BC";
+    const displayCode = `${prefix}-${String(this.props.sequenceNumber).padStart(3, "0")}`;
+    return {
+      id: this.props.id,
+      organizationId: this.props.organizationId,
+      dispatchType: this.props.dispatchType,
+      status: this.props.status,
+      sequenceNumber: this.props.sequenceNumber,
+      displayCode,
+      date: this.props.date,
+      contactId: this.props.contactId,
+      periodId: this.props.periodId,
+      description: this.props.description,
+      referenceNumber: this.props.referenceNumber,
+      notes: this.props.notes,
+      totalAmount: this.props.totalAmount,
+      journalEntryId: this.props.journalEntryId,
+      receivableId: this.props.receivableId,
+      createdById: this.props.createdById,
+      createdAt: this.props.createdAt,
+      updatedAt: this.props.updatedAt,
+      details: this.props.details.map((d) => d.toSnapshot()),
+      receivable: this.props.receivable ? this.props.receivable.toSnapshot() : null,
+      farmOrigin: this.props.farmOrigin,
+      chickenCount: this.props.chickenCount,
+      shrinkagePct: this.props.shrinkagePct,
+      avgKgPerChicken: this.props.avgKgPerChicken,
+      totalGrossKg: this.props.totalGrossKg,
+      totalNetKg: this.props.totalNetKg,
+      totalShrinkKg: this.props.totalShrinkKg,
+      totalShortageKg: this.props.totalShortageKg,
+      totalRealNetKg: this.props.totalRealNetKg,
+    };
   }
 }

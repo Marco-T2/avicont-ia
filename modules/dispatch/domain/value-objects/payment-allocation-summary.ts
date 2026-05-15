@@ -9,6 +9,17 @@ export interface PaymentAllocationSummaryProps {
   };
 }
 
+export interface PaymentAllocationSummarySnapshot {
+  id: string;
+  paymentId: string;
+  amount: number;
+  payment: {
+    id: string;
+    date: Date;
+    description: string;
+  };
+}
+
 export class PaymentAllocationSummary {
   private constructor(private readonly props: PaymentAllocationSummaryProps) {}
 
@@ -29,5 +40,18 @@ export class PaymentAllocationSummary {
   }
   get payment(): { id: string; date: Date; description: string } {
     return this.props.payment;
+  }
+
+  toSnapshot(): PaymentAllocationSummarySnapshot {
+    return {
+      id: this.props.id,
+      paymentId: this.props.paymentId,
+      amount: this.props.amount,
+      payment: {
+        id: this.props.payment.id,
+        date: this.props.payment.date,
+        description: this.props.payment.description,
+      },
+    };
   }
 }

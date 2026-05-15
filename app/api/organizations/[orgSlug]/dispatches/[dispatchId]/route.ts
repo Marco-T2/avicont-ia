@@ -15,7 +15,7 @@ export async function GET(
 
     const dispatch = await dispatchService.getById(orgId, dispatchId);
 
-    return Response.json(dispatch);
+    return Response.json(dispatch.toSnapshot());
   } catch (error) {
     return handleError(error);
   }
@@ -40,7 +40,7 @@ export async function PATCH(
 
     const dispatch = await dispatchService.update(orgId, dispatchId, input, role, justification, userId);
 
-    return Response.json(dispatch);
+    return Response.json(dispatch.toSnapshot());
   } catch (error) {
     return handleError(error);
   }

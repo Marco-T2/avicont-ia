@@ -1,4 +1,7 @@
-import type { PaymentAllocationSummary } from "./payment-allocation-summary";
+import type {
+  PaymentAllocationSummary,
+  PaymentAllocationSummarySnapshot,
+} from "./payment-allocation-summary";
 
 export interface ReceivableSummaryProps {
   id: string;
@@ -7,6 +10,15 @@ export interface ReceivableSummaryProps {
   balance: number;
   status: string;
   allocations: PaymentAllocationSummary[];
+}
+
+export interface ReceivableSummarySnapshot {
+  id: string;
+  amount: number;
+  paid: number;
+  balance: number;
+  status: string;
+  allocations: PaymentAllocationSummarySnapshot[];
 }
 
 export class ReceivableSummary {
@@ -33,5 +45,16 @@ export class ReceivableSummary {
   }
   get allocations(): PaymentAllocationSummary[] {
     return [...this.props.allocations];
+  }
+
+  toSnapshot(): ReceivableSummarySnapshot {
+    return {
+      id: this.props.id,
+      amount: this.props.amount,
+      paid: this.props.paid,
+      balance: this.props.balance,
+      status: this.props.status,
+      allocations: this.props.allocations.map((a) => a.toSnapshot()),
+    };
   }
 }

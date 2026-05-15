@@ -57,16 +57,38 @@ export default async function DispatchDetailPage({
         ...periods.filter((p) => p.id === dispatch.periodId),
       ];
 
+  const snapshot = dispatch.toSnapshot();
+  const contact = contacts.find((c) => c.id === snapshot.contactId);
+  const productTypeMap = new Map(productTypes.map((pt) => [pt.id, pt]));
+  const existingDispatch = {
+    ...snapshot,
+    contact: contact
+      ? {
+          id: contact.id,
+          name: contact.name,
+          type: contact.type,
+          nit: contact.nit,
+        }
+      : { id: snapshot.contactId, name: "", type: "CLIENTE" as const, nit: null },
+    details: snapshot.details.map((d) => {
+      const pt = d.productTypeId ? productTypeMap.get(d.productTypeId) : null;
+      return {
+        ...d,
+        productType: pt ? { id: pt.id, name: pt.name, code: pt.code } : null,
+      };
+    }),
+  };
+
   return (
     <div className="space-y-6">
       <DispatchForm
         orgSlug={orgSlug}
-        dispatchType={dispatch.dispatchType as "NOTA_DESPACHO" | "BOLETA_CERRADA"}
+        dispatchType={snapshot.dispatchType as "NOTA_DESPACHO" | "BOLETA_CERRADA"}
         contacts={contacts as unknown as Contact[]}
         periods={JSON.parse(JSON.stringify(availablePeriods))}
         productTypes={JSON.parse(JSON.stringify(productTypes))}
         roundingThreshold={Number(orgSettings.roundingThreshold)}
-        existingDispatch={JSON.parse(JSON.stringify(dispatch))}
+        existingDispatch={JSON.parse(JSON.stringify(existingDispatch))}
       />
     </div>
   );

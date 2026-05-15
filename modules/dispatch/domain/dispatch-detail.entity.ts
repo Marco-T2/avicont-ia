@@ -35,6 +35,24 @@ export interface CreateDispatchDetailInput {
   realNetWeight?: number;
 }
 
+export interface DispatchDetailSnapshot {
+  id: string;
+  dispatchId: string;
+  description: string;
+  boxes: number;
+  grossWeight: number;
+  tare: number;
+  netWeight: number;
+  unitPrice: number;
+  lineAmount: number;
+  order: number;
+  productTypeId: string | null;
+  detailNote: string | null;
+  shrinkage: number | null;
+  shortage: number | null;
+  realNetWeight: number | null;
+}
+
 export class DispatchDetail {
   private constructor(private readonly props: DispatchDetailProps) {}
 
@@ -105,5 +123,25 @@ export class DispatchDetail {
   }
   get realNetWeight(): number | undefined {
     return this.props.realNetWeight;
+  }
+
+  toSnapshot(): DispatchDetailSnapshot {
+    return {
+      id: this.props.id,
+      dispatchId: this.props.dispatchId,
+      description: this.props.description,
+      boxes: this.props.boxes,
+      grossWeight: this.props.grossWeight,
+      tare: this.props.tare,
+      netWeight: this.props.netWeight,
+      unitPrice: this.props.unitPrice,
+      lineAmount: this.props.lineAmount,
+      order: this.props.order,
+      productTypeId: this.props.productTypeId ?? null,
+      detailNote: this.props.detailNote ?? null,
+      shrinkage: this.props.shrinkage ?? null,
+      shortage: this.props.shortage ?? null,
+      realNetWeight: this.props.realNetWeight ?? null,
+    };
   }
 }
