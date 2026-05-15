@@ -111,6 +111,20 @@ export function StatementFilters({
         const res = await fetch(`/api/organizations/${orgSlug}/periods`);
         const data: FiscalPeriod[] = res.ok ? await res.json() : [];
         setPeriods(data);
+
+        // Auto-select OPEN period covering today (mirror of worksheet /
+        // trial-balance UX). String YYYY-MM-DD comparison is safe because
+        // the API returns ISO-prefixed dates.
+        const today = new Date().toISOString().slice(0, 10);
+        const current = data.find(
+          (p) =>
+            p.status === "OPEN" &&
+            p.startDate.slice(0, 10) <= today &&
+            today <= p.endDate.slice(0, 10),
+        );
+        if (current) {
+          setPeriodId(current.id);
+        }
       } catch {
         setPeriods([]);
       } finally {
@@ -119,6 +133,23 @@ export function StatementFilters({
     };
     load();
   }, [orgSlug]);
+
+  // Date-field defaults applied once on mount so the user doesn't have to
+  // type fechas for the common case (today / today-1m). The fiscal-period
+  // auto-select above takes precedence — when set, the custom date fields
+  // are hidden by showBSCustomDate / showISCustomRange.
+  useEffect(() => {
+    const today = new Date();
+    const todayIso = today.toISOString().slice(0, 10);
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    const monthAgoIso = monthAgo.toISOString().slice(0, 10);
+
+    setAsOfDate((v) => v || todayIso);
+    setDateFrom((v) => v || monthAgoIso);
+    setDateTo((v) => v || todayIso);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Estado del formulario ──
 
