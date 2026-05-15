@@ -11,7 +11,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Pencil, Loader2 } from "lucide-react";
+import { Pencil, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import type { Resource, PostableResource } from "@/features/permissions";
 import { MODULES } from "@/components/sidebar/modules/registry";
@@ -150,14 +150,19 @@ export default function RoleEditDrawer({
     <Dialog key={role.id} open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <Pencil className="h-3.5 w-3.5 mr-1.5" />
-          Editar
+          {role.isSystem ? (
+            <Eye className="h-3.5 w-3.5 mr-1.5" />
+          ) : (
+            <Pencil className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          {role.isSystem ? "Ver" : "Editar"}
         </Button>
       </DialogTrigger>
       <DialogContent className="w-[95vw] sm:max-w-6xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
-            Editar rol: <span className="font-mono">{role.name}</span>
+            {role.isSystem ? "Ver permisos del rol" : "Editar rol"}:{" "}
+            <span className="font-mono">{role.name}</span>
           </DialogTitle>
           {role.isSystem && (
             <p className="text-sm text-muted-foreground">

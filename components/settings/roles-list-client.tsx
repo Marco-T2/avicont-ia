@@ -73,21 +73,21 @@ export default function RolesListClient({
               )}
             </div>
 
-            {!role.isSystem && (
-              <div className="flex items-center gap-2">
-                <RoleEditDrawer
-                  orgSlug={orgSlug}
-                  role={role}
-                  onUpdated={handleRefresh}
-                />
+            <div className="flex items-center gap-2">
+              <RoleEditDrawer
+                orgSlug={orgSlug}
+                role={role}
+                onUpdated={handleRefresh}
+              />
+              {!role.isSystem && (
                 <RoleDeleteDialog
                   orgSlug={orgSlug}
                   roleSlug={role.slug}
                   roleName={role.name}
                   onDeleted={handleRefresh}
                 />
-              </div>
-            )}
+              )}
+            </div>
           </div>
         ))}
 

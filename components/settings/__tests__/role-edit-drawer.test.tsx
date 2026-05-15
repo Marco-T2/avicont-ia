@@ -65,7 +65,8 @@ function setupFetch(ok = true) {
 }
 
 function openDrawer() {
-  fireEvent.click(screen.getByRole("button", { name: /editar/i }));
+  // Trigger is "Editar" for custom roles, "Ver" for system roles
+  fireEvent.click(screen.getByRole("button", { name: /^(editar|ver)$/i }));
 }
 
 describe("RoleEditDrawer (PR7.4)", () => {
