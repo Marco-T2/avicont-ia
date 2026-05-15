@@ -45,3 +45,17 @@ export function sumDecimals(xs: Decimal[]): Decimal {
 export function eq(a: Decimal, b: Decimal): boolean {
   return a.minus(b).abs().lte(TOLERANCE);
 }
+
+/**
+ * Redondea un Decimal a 2 decimales con la convención half-up (mode 4
+ * = ROUND_HALF_UP, away-from-zero). Helper canónico para TIER 1 money math
+ * en `application/ledger.service.ts` y `application/auto-entry-generator.ts`
+ * (poc-money-math-decimal-convergence — OLEADA 7 POC #2).
+ *
+ * EX-D3: este es el HOME canónico — FS `financial-statements/domain/money.utils.ts`
+ * mantiene su copia local verbatim (2 líneas) por dirección de dependencia
+ * (shared NO importa de FS). Duplicación aceptable per design #2447 D1.
+ */
+export function roundHalfUp(d: Decimal): Decimal {
+  return d.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+}
