@@ -548,13 +548,31 @@ describe("α25 Block C5 — orphaned legacy JournalService test suites removed (
   }
 });
 
-// α26 — journal.repository.ts is KEPT (blocker-3 Finding C — barrel re-export
-// + live test consumers, not genuinely dead; barrel retirement is sub-POC 8).
-//   This guards against an over-eager delete; it PASSES pre-GREEN (the file
-//   exists today) and MUST keep passing post-GREEN — B2a does not touch it.
-describe("α26 Block C5 — journal.repository.ts retained", () => {
-  it("α26: features/accounting/journal.repository.ts still EXISTS", () => {
-    expect(existsSync(LEGACY_JOURNAL_REPO)).toBe(true);
+// α26 — journal.repository.ts DELETED (poc-payment-journal-repo-cutover —
+//   OLEADA 7 POC #1/2). Adapter `legacy-accounting.adapter.ts` repointed to
+//   hex `prisma-journal-entries.repo`; barrel `server.ts` dropped re-export;
+//   3 mocked-Prisma tests moved to hex `__tests__/`. α04a + α04b retired
+//   atomically (file-content snapshot anchors on now-deleted legacy file —
+//   hex-side α04c + α04d retain the snapshot anchor). Spec #2435 · Design #2436.
+describe("α26 Block C5 — journal.repository.ts DELETED", () => {
+  it("α26: features/accounting/journal.repository.ts DELETED (payment-adapter repointed to hex)", () => {
+    expect(existsSync(LEGACY_JOURNAL_REPO)).toBe(false);
+  });
+});
+
+// ADAPTER-IMPORT-HEX — payment-adapter consumes JournalRepository from the hex
+//   path post-cutover. Mirrors α01 `^...m` import-anchor regex convention
+//   (line 100-108) per [[red_regex_discipline]]. Spec R-01 · Design #2436.
+describe("ADAPTER-IMPORT-HEX Block C5 — legacy-accounting.adapter.ts imports JournalRepository from hex path", () => {
+  const LEGACY_ACCOUNTING_ADAPTER = resolve(
+    REPO_ROOT,
+    "modules/payment/infrastructure/adapters/legacy-accounting.adapter.ts",
+  );
+  it("ADAPTER-IMPORT-HEX: legacy-accounting.adapter.ts imports JournalRepository from prisma-journal-entries.repo", () => {
+    const src = readFileSync(LEGACY_ACCOUNTING_ADAPTER, "utf-8");
+    expect(src).toMatch(
+      /^import[^;]+JournalRepository[^;]+prisma-journal-entries\.repo/m,
+    );
   });
 });
 
