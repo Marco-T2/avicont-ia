@@ -1,5 +1,5 @@
 import { BaseRepository } from "@/features/shared/base.repository";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";
 import type {
   WorksheetMovementAggregation,
@@ -89,8 +89,11 @@ export class PrismaWorksheetRepo extends BaseRepository implements WorksheetQuer
 
     return rows.map((r) => ({
       accountId: r.account_id,
-      totalDebit: new Prisma.Decimal(r.total_debit),
-      totalCredit: new Prisma.Decimal(r.total_credit),
+      // DEC-1 boundary normalization: convert Prisma's inlined Decimal2 to
+      // top-level decimal.js Decimal so `instanceof Decimal` in domain/serializer
+      // matches. r.total_debit/credit arrive as strings from $queryRaw aggregates.
+      totalDebit: new Decimal(r.total_debit),
+      totalCredit: new Decimal(r.total_credit),
       nature: r.nature,
     }));
   }
