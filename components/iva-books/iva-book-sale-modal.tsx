@@ -11,25 +11,30 @@
  */
 
 import { useState, useEffect } from "react";
+import Decimal from "decimal.js";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
-// ── Cálculo IVA client-side (pure JS — no Prisma.Decimal) ────────────────────
+// ── Cálculo IVA client-side (decimal.js ROUND_HALF_UP — SIN Bolivia parity) ──
 
 /**
- * Named export added at oleada-money-decimal-hex-purity sub-POC 5 Cycle 3
- * RED to enable direct parity testing of the client-side IVA math without
- * driving it through the rendered DOM. Behavior-preserving export-only
- * refactor — runtime semantics unchanged. Sister to purchase-modal Cycle 2
- * export refactor. The downstream consumers within this module
- * (handleSubmit + triggerCalc) continue to use these functions exactly
- * as before.
+ * Public surface: `(n: number) => number`. Internal arithmetic migrated
+ * from Math.round float-cents to `decimal.js@10.6.0`
+ * `Decimal.toDecimalPlaces(dp, Decimal.ROUND_HALF_UP)` at
+ * oleada-money-decimal-hex-purity sub-POC 5 Cycle 3 GREEN. Sister
+ * implementation to iva-book-purchase-modal roundHalfUp (Cycle 2). Both
+ * modals' `calcClientTotales` are byte-identical at the math layer;
+ * behavioral parity bit-perfect across 13 SIN-canonical IVA 13% Bolivia
+ * reference cases (see `__tests__/iva-book-sale-modal-parity.test.ts`).
+ *
+ * KNOWN intentional divergence at exact-half sub-cent decimals — see
+ * purchase-modal roundHalfUp JSDoc for full rationale. This is the
+ * BEHAVIORAL FIX motivating the swap.
  */
 export function roundHalfUp(n: number, dp = 2): number {
-  const factor = Math.pow(10, dp);
-  return Math.round(n * factor) / factor;
+  return new Decimal(n).toDecimalPlaces(dp, Decimal.ROUND_HALF_UP).toNumber();
 }
 
 export function calcClientTotales(params: {
