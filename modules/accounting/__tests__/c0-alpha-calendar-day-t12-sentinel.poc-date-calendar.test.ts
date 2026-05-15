@@ -157,4 +157,17 @@ describe("POC date-calendar-vs-instant-convention C0 — 5α banned-pattern+stru
       expect(count).toBeGreaterThanOrEqual(8);
     });
   });
+
+  describe("SC-26: D1 cementation — §13.accounting.calendar-day-T12-utc-unified entry present in canonical doc", () => {
+    it("SC-26: docs/architecture/04-sigma-13-canonical-homes.md contains the literal text `calendar-day-T12-utc-unified` exactly once (NEW §13 invariant, 1ra evidencia: this POC)", () => {
+      const docPath = path.join(
+        REPO_ROOT,
+        "docs/architecture/04-sigma-13-canonical-homes.md",
+      );
+      const source = fs.readFileSync(docPath, "utf8");
+      const occurrences =
+        source.match(/calendar-day-T12-utc-unified/g)?.length ?? 0;
+      expect(occurrences).toBeGreaterThanOrEqual(1);
+    });
+  });
 });
