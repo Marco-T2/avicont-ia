@@ -52,7 +52,6 @@ function makeFsStub(
   observer?: (args: { orgId: string; role: string; dateFrom: Date; dateTo: Date }) => void,
 ): FinancialStatementsService {
   return {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     generateIncomeStatement: async (orgId: string, role: any, input: any) => {
       observer?.({ orgId, role, dateFrom: input.dateFrom, dateTo: input.dateTo });
       const key = `${input.dateFrom.getUTCFullYear()}-${input.dateFrom.getUTCMonth()}`;
