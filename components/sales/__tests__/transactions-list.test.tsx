@@ -453,4 +453,30 @@ describe("TransactionsList — filter change resets page (C2.8 f-g)", () => {
       expect(calledWith).not.toContain("/dispatches");
     });
   });
+
+  // W-01 gap (verify-report #2525): clearFilters routing was untested.
+  // Mirror of applyFilter routing test above — sister precedent per
+  // [[paired_sister_default_no_surface]]. clearFilters pushes bare
+  // /${orgSlug}/sales with no query params (impl: transactions-list.tsx:359).
+  it("clearFilters routes to /sales (NOT stale /dispatches)", async () => {
+    renderList({
+      items: [SALE_ITEM],
+      total: 30,
+      page: 1,
+      pageSize: 10,
+      totalPages: 3,
+      orgSlug: "acme",
+      // Provide a filter so hasFilters=true and "Limpiar filtros" renders
+      filters: { status: "DRAFT" },
+    });
+
+    const clearBtn = screen.getByRole("button", { name: "Limpiar filtros" });
+    fireEvent.click(clearBtn);
+
+    await waitFor(() => {
+      const calledWith = mockPush.mock.calls.at(-1)?.[0] as string;
+      expect(calledWith).toBe("/acme/sales");
+      expect(calledWith).not.toContain("/dispatches");
+    });
+  });
 });

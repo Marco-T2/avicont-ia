@@ -123,3 +123,41 @@ describe("/sales — rbac gate", () => {
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });
 });
+
+// W-02 gap (verify-report #2525): dispatchType filter wired to
+// dispatchService.listPaginated was covered structurally via α07/α08 sentinels
+// but had no integration assertion. This test verifies the param-to-options
+// mapping: sp.type=NOTA_DESPACHO → dispatchListPaginated({dispatchType:'NOTA_DESPACHO'}).
+// sp.type=BOLETA_CERRADA follows identical logic (same branch); one case
+// sufficient per [[low_cost_verification_asymmetry]].
+describe("/sales — dispatchType filter propagation (RSC UNION twin-call)", () => {
+  it("wires ?type=NOTA_DESPACHO to dispatchService.listPaginated dispatchType option", async () => {
+    mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
+
+    await SalesPage({
+      params: makeParams(),
+      searchParams: Promise.resolve({ type: "NOTA_DESPACHO" }),
+    });
+
+    expect(mockDispatchListPaginated).toHaveBeenCalledWith(
+      "org-1",
+      expect.objectContaining({ dispatchType: "NOTA_DESPACHO" }),
+      expect.any(Object),
+    );
+  });
+
+  it("does NOT pass dispatchType to dispatchService.listPaginated when ?type=VENTA_GENERAL", async () => {
+    mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
+
+    await SalesPage({
+      params: makeParams(),
+      searchParams: Promise.resolve({ type: "VENTA_GENERAL" }),
+    });
+
+    expect(mockDispatchListPaginated).toHaveBeenCalledWith(
+      "org-1",
+      expect.not.objectContaining({ dispatchType: expect.anything() }),
+      expect.any(Object),
+    );
+  });
+});
