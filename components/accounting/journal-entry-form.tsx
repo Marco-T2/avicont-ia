@@ -25,6 +25,8 @@ import JournalLineRow, { type JournalLineData } from "./journal-line-row";
 import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
+import { eq, sumDecimals } from "@/modules/accounting/presentation";
 import { todayLocal } from "@/lib/date-utils";
 
 function formatCurrency(amount: number): string {
@@ -166,11 +168,14 @@ export default function JournalEntryForm({
     );
   }
 
-  const totalDebit = lines.reduce((sum, l) => sum + (parseFloat(l.debit) || 0), 0);
-  const totalCredit = lines.reduce((sum, l) => sum + (parseFloat(l.credit) || 0), 0);
-  const difference = totalDebit - totalCredit;
-  const isBalanced =
-    Math.round(totalDebit * 100) === Math.round(totalCredit * 100) && totalDebit > 0;
+  const debits = lines.map((l) => new Prisma.Decimal(l.debit || "0"));
+  const credits = lines.map((l) => new Prisma.Decimal(l.credit || "0"));
+  const totalDebitD = sumDecimals(debits);
+  const totalCreditD = sumDecimals(credits);
+  const totalDebit = totalDebitD.toNumber();
+  const totalCredit = totalCreditD.toNumber();
+  const difference = totalDebitD.minus(totalCreditD).toNumber();
+  const isBalanced = eq(totalDebitD, totalCreditD) && totalDebitD.gt(0);
 
   const allLinesValid = lines.every(
     (l) => l.accountId && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0),

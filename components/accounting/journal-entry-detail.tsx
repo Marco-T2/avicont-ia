@@ -19,6 +19,8 @@ import {
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
+import { Prisma } from "@/generated/prisma/client";
+import { eq, sumDecimals } from "@/modules/accounting/presentation";
 import { Gated } from "@/components/common/gated";
 
 function formatCurrency(amount: number): string {
@@ -85,9 +87,13 @@ export default function JournalEntryDetail({
   const [actionDialog, setActionDialog] = useState<"POST" | "VOID" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const totalDebit = entry.lines.reduce((sum, l) => sum + Number(l.debit), 0);
-  const totalCredit = entry.lines.reduce((sum, l) => sum + Number(l.credit), 0);
-  const isBalanced = Math.round(totalDebit * 100) === Math.round(totalCredit * 100);
+  const debits = entry.lines.map((l) => new Prisma.Decimal(l.debit || "0"));
+  const credits = entry.lines.map((l) => new Prisma.Decimal(l.credit || "0"));
+  const totalDebitD = sumDecimals(debits);
+  const totalCreditD = sumDecimals(credits);
+  const totalDebit = totalDebitD.toNumber();
+  const totalCredit = totalCreditD.toNumber();
+  const isBalanced = eq(totalDebitD, totalCreditD);
 
   // REQ-A.2: show Edit button only for manual entries (sourceType=null) in an OPEN period.
   const canEdit =
