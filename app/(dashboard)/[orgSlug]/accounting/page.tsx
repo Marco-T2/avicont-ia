@@ -1,22 +1,16 @@
 import { redirect } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  BookOpen,
-  FileText,
-  Calculator,
-  BarChart3,
-  ArrowRight,
-} from "lucide-react";
-import Link from "next/link";
-import { formatDateBO } from "@/lib/date-utils";
 import { requireAuth } from "@/features/shared";
-import { requireOrgAccess } from "@/modules/organizations/presentation/server";
-import { makeJournalsService } from "@/modules/accounting/presentation/server";
+import { canAccess } from "@/features/permissions/server";
+import {
+  makeOrganizationsService,
+  requireOrgAccess,
+} from "@/modules/organizations/presentation/server";
+import {
+  makeAccountingDashboardService,
+  makeJournalsService,
+} from "@/modules/accounting/presentation/server";
+import { DashboardProClient } from "@/components/accounting/dashboard-pro-client";
+import { DashboardLight } from "@/components/accounting/dashboard-light";
 
 interface AccountingPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -25,124 +19,75 @@ interface AccountingPageProps {
 export default async function AccountingPage({ params }: AccountingPageProps) {
   const { orgSlug } = await params;
 
-  // RBAC-EXCEPTION: Dashboard hub with summary cards only; sub-sections each gated. Hub gate redundant. Decision: rbac-legacy-auth-chain-migration 2026-04-19.
   let userId: string;
   try {
     const session = await requireAuth();
     userId = session.userId;
   } catch {
-    redirect("/sign-in");
+    return redirect("/sign-in");
   }
 
   let orgId: string;
   try {
     orgId = await requireOrgAccess(userId, orgSlug);
   } catch {
-    redirect("/select-org");
+    return redirect("/select-org");
   }
 
-  const journalService = makeJournalsService();
-  let entryCount = 0;
-  let lastEntryDate: string | null = null;
+  const member = await makeOrganizationsService().getMemberByClerkUserId(
+    orgId,
+    userId,
+  );
+  const role = member.role;
 
-  try {
-    const entries = await journalService.list(orgId);
-    entryCount = entries.length;
-    if (entries.length > 0) {
-      const sorted = entries.sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-      );
-      lastEntryDate = formatDateBO(sorted[0].date);
-    }
-  } catch {
-    // Services may not be ready yet
+  const canViewPro = await canAccess(role, "reports", "read", orgId);
+
+  if (canViewPro) {
+    const data = await makeAccountingDashboardService().load(orgId);
+    return (
+      <div className="space-y-6">
+        <Header />
+        <DashboardProClient data={data} orgSlug={orgSlug} />
+      </div>
+    );
   }
 
-  const modules = [
-    {
-      title: "Plan de Cuentas",
-      description: "Administrar las cuentas contables de la organizacion",
-      href: `/${orgSlug}/accounting/accounts`,
-      icon: BookOpen,
-      color: "text-blue-600 dark:text-blue-400",
-      bgColor: "bg-blue-50 dark:bg-blue-950/40",
-    },
-    {
-      title: "Libro Diario",
-      description: "Registrar y consultar asientos contables",
-      href: `/${orgSlug}/accounting/journal`,
-      icon: FileText,
-      color: "text-green-600 dark:text-green-400",
-      bgColor: "bg-green-50 dark:bg-green-950/40",
-    },
-    {
-      title: "Libro Mayor",
-      description: "Consultar movimientos por cuenta",
-      href: `/${orgSlug}/accounting/ledger`,
-      icon: Calculator,
-      color: "text-purple-600 dark:text-purple-400",
-      bgColor: "bg-purple-50 dark:bg-purple-950/40",
-    },
-    {
-      title: "Reportes",
-      description: "Catálogo de informes contables y estados financieros",
-      href: `/${orgSlug}/informes`,
-      icon: BarChart3,
-      color: "text-orange-600 dark:text-orange-400",
-      bgColor: "bg-orange-50 dark:bg-orange-950/40",
-    },
-  ];
+  const entries = await makeJournalsService().list(orgId);
+  const lastEntryDate =
+    entries.length === 0
+      ? null
+      : isoDate(
+          entries.reduce(
+            (acc, e) => (e.date.getTime() > acc.getTime() ? e.date : acc),
+            entries[0].date,
+          ),
+        );
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Contabilidad</h1>
-        <p className="text-muted-foreground mt-1">
-          Gestion contable de la organizacion
-        </p>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Total de Asientos</p>
-            <p className="text-2xl font-bold mt-1">
-              {entryCount.toLocaleString("es-BO")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <p className="text-sm text-muted-foreground">Ultimo Asiento</p>
-            <p className="text-2xl font-bold mt-1">
-              {lastEntryDate ?? "Sin registros"}
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Module Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {modules.map((mod) => (
-          <Link key={mod.href} href={mod.href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                <div className={`p-3 rounded-lg ${mod.bgColor}`}>
-                  <mod.icon className={`h-6 w-6 ${mod.color}`} />
-                </div>
-                <CardTitle className="text-lg">{mod.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <p className="text-sm text-muted-foreground">{mod.description}</p>
-                  <ArrowRight className="h-4 w-4 text-muted-foreground/70" />
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
-      </div>
+    <div className="space-y-6">
+      <Header />
+      <DashboardLight
+        orgSlug={orgSlug}
+        orgId={orgId}
+        role={role}
+        totalEntries={entries.length}
+        lastEntryDate={lastEntryDate}
+      />
     </div>
   );
+}
+
+function Header() {
+  return (
+    <div>
+      <h1 className="text-3xl font-bold">Contabilidad</h1>
+      <p className="text-muted-foreground mt-1">
+        Gestión contable de la organización
+      </p>
+    </div>
+  );
+}
+
+function isoDate(d: Date): string {
+  return d.toISOString().slice(0, 10);
 }

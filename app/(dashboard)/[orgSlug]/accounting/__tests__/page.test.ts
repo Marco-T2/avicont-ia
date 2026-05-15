@@ -6,7 +6,7 @@
  * and /select-org on org-access failure.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import React from "react";
+import type { ReactElement } from "react";
 
 const {
   mockRedirect,
@@ -66,6 +66,29 @@ function makeParams() {
   return Promise.resolve({ orgSlug: ORG_SLUG });
 }
 
+interface PossibleElement {
+  type?: unknown;
+  props?: { children?: unknown; [k: string]: unknown };
+}
+
+function findElement(
+  root: unknown,
+  componentType: unknown,
+): PossibleElement | null {
+  if (!root || typeof root !== "object") return null;
+  const el = root as PossibleElement;
+  if (el.type === componentType) return el;
+  const children = el.props?.children;
+  if (Array.isArray(children)) {
+    for (const child of children) {
+      const found = findElement(child, componentType);
+      if (found) return found;
+    }
+    return null;
+  }
+  return findElement(children, componentType);
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
 });
@@ -112,13 +135,13 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
       closeStatus: null,
     });
 
-    await AccountingPage({ params: makeParams() });
+    const tree = (await AccountingPage({ params: makeParams() })) as ReactElement;
 
     expect(mockCanAccess).toHaveBeenCalledWith("contador", "reports", "read", "org-1");
     expect(mockDashboardLoad).toHaveBeenCalledWith("org-1");
     expect(mockJournalsList).not.toHaveBeenCalled();
-    expect(mockDashboardProClient).toHaveBeenCalled();
-    expect(mockDashboardLight).not.toHaveBeenCalled();
+    expect(findElement(tree, mockDashboardProClient)).not.toBeNull();
+    expect(findElement(tree, mockDashboardLight)).toBeNull();
   });
 
   it("renders light view without invoking dashboard service when reports:read is denied", async () => {
@@ -130,15 +153,15 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
       { date: new Date("2026-05-10T00:00:00Z") },
     ]);
 
-    await AccountingPage({ params: makeParams() });
+    const tree = (await AccountingPage({ params: makeParams() })) as ReactElement;
 
     expect(mockDashboardLoad).not.toHaveBeenCalled();
     expect(mockJournalsList).toHaveBeenCalledWith("org-1");
-    expect(mockDashboardLight).toHaveBeenCalled();
-    expect(mockDashboardProClient).not.toHaveBeenCalled();
+    expect(findElement(tree, mockDashboardProClient)).toBeNull();
 
-    const [props] = mockDashboardLight.mock.calls[0];
-    expect(props).toMatchObject({
+    const lightEl = findElement(tree, mockDashboardLight);
+    expect(lightEl).not.toBeNull();
+    expect(lightEl?.props).toMatchObject({
       orgSlug: ORG_SLUG,
       orgId: "org-1",
       role: "viewer",
@@ -147,6 +170,3 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
     });
   });
 });
-
-// Silence "React is unused" if the import lingers in dev-warning scans.
-void React;
