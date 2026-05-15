@@ -79,6 +79,24 @@ export type WorksheetFilters = {
 };
 
 /**
+ * Cuenta NO contra con saldo de naturaleza opuesta a su tipo
+ * (ej. ACTIVO con saldo acreedor, PASIVO con saldo deudor). Indica
+ * normalmente un anticipo no reclasificado o un error de carga; la
+ * hoja de trabajo lo expone como advertencia para que el contador lo
+ * revise antes del cierre.
+ *
+ * Contra-cuentas (depreciación, estimaciones, provisiones) NO se
+ * listan acá — su naturaleza opuesta es by-design.
+ */
+export type OppositeSignAccount = {
+  code: string;
+  name: string;
+  accountType: AccountType;
+  /** Monto firmado (siempre negativo): refleja el net bgActivo o bgPasPat. */
+  amount: Decimal;
+};
+
+/**
  * Reporte completo de la Hoja de Trabajo 12 Columnas (REQ-1, REQ-2, REQ-7, REQ-9, REQ-15).
  */
 export type WorksheetReport = {
@@ -93,4 +111,6 @@ export type WorksheetReport = {
   /** true si Σ(bgActivo) ≠ Σ(bgPasPat) tras el carry-over */
   imbalanced: boolean;
   imbalanceDelta: Decimal;
+  /** Cuentas no-contra con saldo de naturaleza opuesta (anomalía de datos). */
+  oppositeSignAccounts: OppositeSignAccount[];
 };

@@ -29,6 +29,7 @@ import type {
   WorksheetGroup,
   WorksheetTotals,
   WorksheetReport,
+  OppositeSignAccount,
 } from "./worksheet.types";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -179,7 +180,10 @@ export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
           const raw = saldoAjAcreedor.gt(ZERO) ? saldoAjAcreedor : saldoAjDeudor;
           bgActivo = raw.negated();
         } else {
-          bgActivo = saldoAjDeudor;
+          // Net D - C (no max-clamp) — if the account has opposite-sign saldo
+          // (acreedor on an ACTIVO), the negative carries into BG so the grand
+          // totals stay balanced and the anomaly is surfaced via the warning.
+          bgActivo = saldoAjDeudor.minus(saldoAjAcreedor);
         }
         break;
       }
@@ -190,8 +194,11 @@ export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
           console.warn(
             `[worksheet.builder] Data anomaly: isContraAccount=true on ${account.type} account "${account.code}" (${account.id}). Routing as normal ${account.type}.`,
           );
+          bgPasPat = saldoAjAcreedor;
+        } else {
+          // Net C - D (no max-clamp), symmetric to ACTIVO non-contra above.
+          bgPasPat = saldoAjAcreedor.minus(saldoAjDeudor);
         }
-        bgPasPat = saldoAjAcreedor;
         break;
       }
       case "GASTO": {
@@ -317,6 +324,30 @@ export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
     grandTotals = addTotals(grandTotals, rowToTotals(carryOverRow));
   }
 
+  // ── Opposite-sign accounts (data anomaly warning) ─────────────────────────
+  // Non-contra rows whose net BG ended up negative — surface them so the
+  // accountant can review (typically anticipos no reclasificados or errores
+  // de carga). Contra-accounts are EXEMPT (their negative side is by-design).
+
+  const oppositeSignAccounts: OppositeSignAccount[] = [];
+  for (const group of groups) {
+    for (const row of group.rows) {
+      if (row.isContraAccount) continue;
+      const negativeInActivo = row.accountType === "ACTIVO" && row.bgActivo.isNegative();
+      const negativeInPasPat =
+        (row.accountType === "PASIVO" || row.accountType === "PATRIMONIO") &&
+        row.bgPasPat.isNegative();
+      if (negativeInActivo || negativeInPasPat) {
+        oppositeSignAccounts.push({
+          code: row.code,
+          name: row.name,
+          accountType: row.accountType,
+          amount: negativeInActivo ? row.bgActivo : row.bgPasPat,
+        });
+      }
+    }
+  }
+
   // ── Imbalance check ────────────────────────────────────────────────────────
 
   const delta       = grandTotals.bgActivo.minus(grandTotals.bgPasPat);
@@ -331,5 +362,6 @@ export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
     grandTotals,
     imbalanced,
     imbalanceDelta: delta,
+    oppositeSignAccounts,
   };
 }

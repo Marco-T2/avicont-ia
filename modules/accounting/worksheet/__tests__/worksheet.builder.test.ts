@@ -222,8 +222,14 @@ describe("buildWorksheet — sign-flip edge case (REQ-4.S3, REQ-8)", () => {
    *   rhs = 0 + 8000 = 8000
    *   saldoAjDeudor = MAX(2000-8000, 0) = 0
    *   saldoAjAcreedor = MAX(8000-2000, 0) = 6000
-   * Since type=ACTIVO and saldoAjDeudor=0, bgActivo = 0 (non-contra)
-   * Row is still VISIBLE because ajustesHaber ≠ 0 (REQ-8)
+   *
+   * Per netting convention (decision 2026-05-15, supersedes old max-clamp):
+   *   bgActivo = saldoAjDeudor - saldoAjAcreedor = 0 - 6000 = -6000 (anomaly)
+   *   bgPasPat = 0 (still routed to ACTIVO column, but with negative net)
+   *
+   * Row is still VISIBLE because ajustesHaber ≠ 0 (REQ-8), and the account
+   * is surfaced as a data anomaly in `report.oppositeSignAccounts` so the
+   * accountant can review the sign-flip before closing.
    */
 
   const accounts: WorksheetAccountMetadata[] = [
@@ -251,11 +257,19 @@ describe("buildWorksheet — sign-flip edge case (REQ-4.S3, REQ-8)", () => {
     expect(row.saldoAjAcreedor.toFixed(2)).toBe("6000.00");
   });
 
-  it("bgActivo=0 for sign-flipped ACTIVO account (saldoAjDeudor=0, non-contra)", () => {
+  it("bgActivo=-6000 for sign-flipped ACTIVO account (saldoAjDeudor=0, non-contra) — netting surfaces anomaly", () => {
     const result = buildWorksheet(input);
     const row = result.groups[0].rows.find((r) => r.accountId === "flipped")!;
-    expect(row.bgActivo.toFixed(2)).toBe("0.00");
+    expect(row.bgActivo.toFixed(2)).toBe("-6000.00");
     expect(row.bgPasPat.toFixed(2)).toBe("0.00");
+
+    // Surfaced as data anomaly for the accountant to review
+    expect(result.oppositeSignAccounts).toHaveLength(1);
+    expect(result.oppositeSignAccounts[0]).toMatchObject({
+      code: "1.1.2",
+      accountType: "ACTIVO",
+    });
+    expect(result.oppositeSignAccounts[0].amount.toFixed(2)).toBe("-6000.00");
   });
 
   it("sign-flipped row is still VISIBLE because ajustesHaber ≠ 0 (REQ-8)", () => {
