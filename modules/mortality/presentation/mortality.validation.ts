@@ -7,5 +7,5 @@ export const logMortalitySchema = z.object({
     .min(1, "La cantidad mínima es 1"),
   cause: z.string().optional(),
   date: z.coerce.date({ message: "La fecha es requerida" }),
-  lotId: z.string().cuid("ID de lote inválido"),
+  lotId: z.string().min(1, "ID de lote inválido"),
 });
