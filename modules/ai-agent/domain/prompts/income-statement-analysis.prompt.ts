@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { AccountSubtype } from "@/generated/prisma/enums";
 import { formatBolivianAmount } from "@/modules/accounting/financial-statements/presentation/server";
 import type {
@@ -6,8 +6,6 @@ import type {
   IncomeStatementCurrent,
   SubtypeGroup,
 } from "@/modules/accounting/financial-statements/presentation";
-
-type Decimal = Prisma.Decimal;
 
 // ── Tipos del JSON curado para el LLM ──
 
@@ -167,7 +165,7 @@ function findGroupTotal(
   subtype: AccountSubtype,
 ): Decimal {
   return (
-    groups.find((g) => g.subtype === subtype)?.total ?? new Prisma.Decimal(0)
+    groups.find((g) => g.subtype === subtype)?.total ?? new Decimal(0)
   );
 }
 
