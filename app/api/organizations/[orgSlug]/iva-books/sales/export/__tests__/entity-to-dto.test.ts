@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import { describe, expect, it } from "vitest";
 
 import { TASA_IVA } from "@/modules/iva-books/presentation/server";
@@ -112,7 +113,11 @@ describe("entity-to-dto sales mapper — POC #11.0c A4-c C2 GREEN P3 lockeada", 
     const entry = makeFixture();
     const dto = entityToDto(entry);
 
-    expect(dto.tasaIva).toBeInstanceOf(Prisma.Decimal);
+    // TASA_IVA es top-level Decimal post sub-POC 5 (legacy-bridge-constants.ts:28
+    // migró Prisma.Decimal → decimal.js). Otras assertions (subtotal/baseIvaSujetoCf/
+    // dfCfIva/dfIva) siguen Prisma.Decimal porque el bridge entity-to-dto.ts
+    // todavía construye con `new Prisma.Decimal(...)` (P2 deferred bookmark #2614).
+    expect(dto.tasaIva).toBeInstanceOf(Decimal);
     expect(dto.tasaIva.equals(TASA_IVA)).toBe(true);
     expect(dto.tasaIva.toNumber()).toBe(0.13);
   });
