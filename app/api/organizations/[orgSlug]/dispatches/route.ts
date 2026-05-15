@@ -55,7 +55,7 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(userId);
     const dispatch = postImmediately
-      ? await dispatchService.createAndPost(orgId, { ...input, createdById: user.id }, user.id)
+      ? (await dispatchService.createAndPost(orgId, { ...input, createdById: user.id }, user.id)).dispatch
       : await dispatchService.create(orgId, { ...input, createdById: user.id });
 
     return Response.json(dispatch.toSnapshot(), { status: 201 });
