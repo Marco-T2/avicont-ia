@@ -13,8 +13,8 @@ import {
   sumDecimals,
 } from "@/modules/accounting/shared/domain/money.utils";
 import type { PaginationOptions } from "@/modules/shared/domain/value-objects/pagination";
-import { Prisma } from "@/generated/prisma/client";
 import type { AccountType } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 
 /**
  * Application-layer libro-mayor use cases.
@@ -27,10 +27,13 @@ import type { AccountType } from "@/generated/prisma/client";
  * period balances through `AccountBalancesService`.
  *
  * Decimal-converged per poc-money-math-decimal-convergence (OLEADA 7 POC #2):
- * running-balance accumulation and trial-balance totals use `Prisma.Decimal`
- * (`sumDecimals` + `.minus()` chain) from `shared/domain/money.utils`, with
- * `roundHalfUp(...).toFixed(2)` serializing monetary fields as `string` at
- * the DTO boundary. R-money textual deviation DISCHARGED.
+ * running-balance accumulation and trial-balance totals use `decimal.js`
+ * `Decimal` (`sumDecimals` + `.minus()` chain) from `shared/domain/money.utils`,
+ * with `roundHalfUp(...).toFixed(2)` serializing monetary fields as `string`
+ * at the DTO boundary. R-money textual deviation DISCHARGED. Direct
+ * `decimal.js` consumption per oleada-money-decimal-hex-purity sub-POC 4
+ * (sister precedents: sub-POC 2 FS/TB/ES/WS/IB builders + sub-POC 3 sale/
+ * purchase/dispatch/ai-agent domains).
  */
 export class LedgerService {
   constructor(
@@ -61,15 +64,15 @@ export class LedgerService {
     // roundHalfUp(...).toFixed(2). sumDecimals is the canonical helper from
     // shared/domain/money.utils (EX-D3 dependency direction). Port shape
     // declares debit/credit as `unknown` (Decimal serialization is adapter
-    // concern); String(...) coercion is safe — Prisma.Decimal accepts string.
+    // concern); String(...) coercion is safe — decimal.js Decimal accepts string.
     const deltas = lines.map((line) =>
-      new Prisma.Decimal(String(line.debit)).minus(
-        new Prisma.Decimal(String(line.credit)),
+      new Decimal(String(line.debit)).minus(
+        new Decimal(String(line.credit)),
       ),
     );
     return lines.map((line, idx) => {
-      const debit = new Prisma.Decimal(String(line.debit));
-      const credit = new Prisma.Decimal(String(line.credit));
+      const debit = new Decimal(String(line.debit));
+      const credit = new Decimal(String(line.credit));
       const runningBalance = sumDecimals(deltas.slice(0, idx + 1));
 
       return {
@@ -89,9 +92,9 @@ export class LedgerService {
    * Correctness invariant: page-1 → opening=0 → byte-identical to legacy
    * getAccountLedger; page-N → opening=sum-prior → correct continuation.
    *
-   * R-money TIER 1 discharged: accumulator stays in Prisma.Decimal end-to-end
-   * (REQ-6/D6); string serialization only at DTO boundary via roundHalfUp+
-   * toFixed(2). Returns LedgerPaginatedDto where openingBalance: string is
+   * R-money TIER 1 discharged: accumulator stays in decimal.js Decimal
+   * end-to-end (REQ-6/D6); string serialization only at DTO boundary via
+   * roundHalfUp + toFixed(2). Returns LedgerPaginatedDto where openingBalance: string is
    * serialized via roundHalfUp+toFixed(2). Legacy getAccountLedger PRESERVED
    * untouched (REQ-7, dual-method additive transitional 5th evidence).
    *
@@ -117,17 +120,17 @@ export class LedgerService {
       pagination,
     );
 
-    // Port declares openingBalanceDelta as `unknown` (Prisma.Decimal at the
-    // adapter, opaque at the port edge). Coerce via String(...) — Decimal
+    // Port declares openingBalanceDelta as `unknown` (decimal.js Decimal at
+    // the adapter, opaque at the port edge). Coerce via String(...) — Decimal
     // accepts string input, preserving precision.
-    const opening = new Prisma.Decimal(String(result.openingBalanceDelta));
+    const opening = new Decimal(String(result.openingBalanceDelta));
 
     // Running-balance accumulator SEEDED FROM opening (NOT Decimal(0)) —
     // novel vs legacy. Page 1 → opening=0 → equivalent to legacy behavior.
     let running = opening;
     const items: LedgerEntry[] = result.items.map((line) => {
-      const debit = new Prisma.Decimal(String(line.debit));
-      const credit = new Prisma.Decimal(String(line.credit));
+      const debit = new Decimal(String(line.debit));
+      const credit = new Decimal(String(line.credit));
       running = running.plus(debit).minus(credit);
       return {
         date: line.journalEntry.date,
@@ -163,8 +166,8 @@ export class LedgerService {
 
     if (balances.length > 0) {
       return balances.map((b) => {
-        const totalDebit = new Prisma.Decimal(String(b.debitTotal));
-        const totalCredit = new Prisma.Decimal(String(b.creditTotal));
+        const totalDebit = new Decimal(String(b.debitTotal));
+        const totalCredit = new Decimal(String(b.creditTotal));
         return {
           accountCode: b.account.code,
           accountName: b.account.name,
@@ -187,10 +190,10 @@ export class LedgerService {
         periodId,
       );
 
-      const totalDebit = new Prisma.Decimal(
+      const totalDebit = new Decimal(
         aggregation._sum.debit == null ? 0 : String(aggregation._sum.debit),
       );
-      const totalCredit = new Prisma.Decimal(
+      const totalCredit = new Decimal(
         aggregation._sum.credit == null ? 0 : String(aggregation._sum.credit),
       );
 

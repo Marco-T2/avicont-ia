@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import {
   roundHalfUp,
   sumDecimals,
@@ -27,23 +27,23 @@ import {
 describe("money decimal pipeline — parity matrix (D4)", () => {
   it("basic sum: 1.10 + 1.20 = 2.30 → toFixed(2) = \"2.30\"", () => {
     const sum = sumDecimals([
-      new Prisma.Decimal("1.10"),
-      new Prisma.Decimal("1.20"),
+      new Decimal("1.10"),
+      new Decimal("1.20"),
     ]);
     expect(roundHalfUp(sum).toFixed(2)).toBe("2.30");
   });
 
   it("repeated fractional addition: 0.1 + 0.1 + 0.1 = 0.30 (no float drift)", () => {
     const sum = sumDecimals([
-      new Prisma.Decimal("0.1"),
-      new Prisma.Decimal("0.1"),
-      new Prisma.Decimal("0.1"),
+      new Decimal("0.1"),
+      new Decimal("0.1"),
+      new Decimal("0.1"),
     ]);
     expect(roundHalfUp(sum).toFixed(2)).toBe("0.30");
   });
 
   it("half-up positive boundary: 2.675 → \"2.68\" (parity with Math.round(267.5)/100)", () => {
-    expect(roundHalfUp(new Prisma.Decimal("2.675")).toFixed(2)).toBe("2.68");
+    expect(roundHalfUp(new Decimal("2.675")).toFixed(2)).toBe("2.68");
   });
 
   it("half-up negative boundary: -2.675 → \"-2.68\" (DRIFT declared vs JS Math.round which yields -2.67)", () => {
@@ -51,22 +51,22 @@ describe("money decimal pipeline — parity matrix (D4)", () => {
     // Decimal mode 4 = ROUND_HALF_UP = away-from-zero → -2.68.
     // TIER 1 ledger inputs are non-negative by DB CHECK; running balance
     // subtraction never lands on exact .x5. NIL practical risk per D3.
-    expect(roundHalfUp(new Prisma.Decimal("-2.675")).toFixed(2)).toBe("-2.68");
+    expect(roundHalfUp(new Decimal("-2.675")).toFixed(2)).toBe("-2.68");
   });
 
   it("large exact sum: 10000.00 + (0.01 × 3) = 10000.03 (exact)", () => {
     const sum = sumDecimals([
-      new Prisma.Decimal("10000.00"),
-      new Prisma.Decimal("0.01"),
-      new Prisma.Decimal("0.01"),
-      new Prisma.Decimal("0.01"),
+      new Decimal("10000.00"),
+      new Decimal("0.01"),
+      new Decimal("0.01"),
+      new Decimal("0.01"),
     ]);
     expect(roundHalfUp(sum).toFixed(2)).toBe("10000.03");
   });
 
   it("subtraction: 100.00 - 30.00 = 70.00 (Decimal .minus chain)", () => {
-    const a = new Prisma.Decimal("100.00");
-    const b = new Prisma.Decimal("30.00");
+    const a = new Decimal("100.00");
+    const b = new Decimal("30.00");
     expect(roundHalfUp(a.minus(b)).toFixed(2)).toBe("70.00");
   });
 
@@ -75,7 +75,7 @@ describe("money decimal pipeline — parity matrix (D4)", () => {
     //   line1: debit=100, credit=0 → balance = 100
     //   line2: debit=0, credit=30 → balance = 100 - 30 = 70
     //   line3: debit=5.5, credit=0 → balance = 70 + 5.5 = 75.5
-    let running = new Prisma.Decimal(0);
+    let running = new Decimal(0);
     const lines = [
       { debit: "100", credit: "0" },
       { debit: "0", credit: "30" },
@@ -84,8 +84,8 @@ describe("money decimal pipeline — parity matrix (D4)", () => {
     const results: string[] = [];
     for (const line of lines) {
       running = running
-        .plus(new Prisma.Decimal(line.debit))
-        .minus(new Prisma.Decimal(line.credit));
+        .plus(new Decimal(line.debit))
+        .minus(new Decimal(line.credit));
       results.push(roundHalfUp(running).toFixed(2));
     }
     expect(results).toEqual(["100.00", "70.00", "75.50"]);
