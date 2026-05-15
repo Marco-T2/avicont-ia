@@ -23,7 +23,7 @@ const {
   mockMakeSaleService,
   mockListPaginated,
   mockMakeDispatchService,
-  mockDispatchList,
+  mockDispatchListPaginated,
   mockContactFindMany,
   mockPeriodFindMany,
 } = vi.hoisted(() => ({
@@ -32,7 +32,7 @@ const {
   mockMakeSaleService: vi.fn(),
   mockListPaginated: vi.fn(),
   mockMakeDispatchService: vi.fn(),
-  mockDispatchList: vi.fn(),
+  mockDispatchListPaginated: vi.fn(),
   mockContactFindMany: vi.fn(),
   mockPeriodFindMany: vi.fn(),
 }));
@@ -84,8 +84,19 @@ beforeEach(() => {
     pageSize: 25,
     totalPages: 1,
   });
-  mockMakeDispatchService.mockReturnValue({ list: mockDispatchList });
-  mockDispatchList.mockResolvedValue([]);
+  // poc-sales-unified-pagination C2 cutover: dispatch call migrated
+  // `list` → `listPaginated` (UNION pagination). Mock returns PaginatedResult
+  // shape; default empty preserves RBAC semantics (mapper never invoked).
+  mockMakeDispatchService.mockReturnValue({
+    listPaginated: mockDispatchListPaginated,
+  });
+  mockDispatchListPaginated.mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 25,
+    totalPages: 1,
+  });
   mockContactFindMany.mockResolvedValue([]);
   mockPeriodFindMany.mockResolvedValue([]);
 });

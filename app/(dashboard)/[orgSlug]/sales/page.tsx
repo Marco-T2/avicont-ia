@@ -35,26 +35,56 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
   });
   const statusFilter = typeof sp.status === "string" ? sp.status : undefined;
 
+  const typeFilter = typeof sp.type === "string" ? sp.type : undefined;
+  const periodIdFilter = typeof sp.periodId === "string" ? sp.periodId : undefined;
+
   const saleService = makeSaleService();
   const dispatchService = makeDispatchService();
 
-  // Cross-module twin-call (D1 design): presentation-layer composition, NO merge
-  // service. Sale section paginated (B5 lock preserved); BC + ND non-paginated
-  // alongside per Marco resolution in spec #2483.
-  const [result, dispatches] = await Promise.all([
+  // Cross-module twin-call UNION pagination (D1 design): presentation-layer
+  // composition, NO merge service per §13.dispatch.cross-module-direct-read.
+  // Both services paginate INDEPENDENTLY at (page, pageSize); RSC sums totals
+  // and re-sorts the merged page-window per AD-3 (poc-sales-unified-pagination).
+  //
+  // Dispatch filter mapping: `?type=NOTA_DESPACHO|BOLETA_CERRADA` →
+  // `dispatchType`; `?type=VENTA_GENERAL` is a sale-only filter (dispatch
+  // returns empty in that case via mismatched dispatchType filter, but we
+  // skip the dispatch call's dispatchType when type=VENTA_GENERAL).
+  const dispatchTypeFilter =
+    typeFilter === "NOTA_DESPACHO" || typeFilter === "BOLETA_CERRADA"
+      ? typeFilter
+      : undefined;
+  const [result, dispatchResult] = await Promise.all([
     saleService.listPaginated(
       orgId,
-      statusFilter ? { status: statusFilter } : undefined,
+      {
+        ...(statusFilter ? { status: statusFilter } : {}),
+        ...(periodIdFilter ? { periodId: periodIdFilter } : {}),
+      },
       pagination,
     ),
-    dispatchService.list(
+    dispatchService.listPaginated(
       orgId,
-      statusFilter
-        ? { status: statusFilter as "DRAFT" | "POSTED" | "LOCKED" | "VOIDED" }
-        : undefined,
+      {
+        ...(statusFilter
+          ? { status: statusFilter as "DRAFT" | "POSTED" | "LOCKED" | "VOIDED" }
+          : {}),
+        ...(dispatchTypeFilter ? { dispatchType: dispatchTypeFilter } : {}),
+        ...(periodIdFilter ? { periodId: periodIdFilter } : {}),
+      },
+      pagination,
     ),
   ]);
   const sales = result.items;
+  const dispatches = dispatchResult.items;
+
+  // UNION pagination math (AD-3): sum the per-source totals; recompute
+  // totalPages from the union total. Acceptable over-fetch tradeoff
+  // documented in §13.dispatch.sales-unified-pagination-union-cascade
+  // (each source fetches up to `pageSize`; RSC renders `pageSize` of up
+  // to `2 × pageSize` candidates).
+  const unionTotal = result.total + dispatchResult.total;
+  const unionTotalPages = Math.max(1, Math.ceil(unionTotal / pagination.pageSize));
 
   const contactIds = [
     ...new Set([
@@ -107,10 +137,10 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
   );
 
   // Source discriminator merge (presentation-local; replaces retired HubItem
-  // discriminated union from hub.types.ts deleted in C1). Sale section
-  // preserves listPaginated paging meta; dispatch rows non-paginated alongside
-  // per B5 lock (defer UNION pagination per mathematical correctness).
-  const transactionRows = [
+  // discriminated union from hub.types.ts deleted in C1). UNION pagination
+  // page-window: RSC re-sorts merged candidates by (createdAt DESC, id DESC)
+  // tiebreaker (AD-2 poc-sales-unified-pagination) and slices to `pageSize`.
+  const mergedRows = [
     ...salesWithDetails.map((s) => ({
       source: "sale" as const,
       type: "VENTA_GENERAL" as const,
@@ -141,6 +171,17 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
     })),
   ];
 
+  // Sort merged page-window: createdAt DESC primary; id DESC tiebreaker
+  // (AD-2 — deterministic, source-agnostic). `date` is the canonical
+  // chronological field rendered to user; `id` (UUID) breaks ties.
+  const transactionRows = mergedRows
+    .sort((a, b) => {
+      const dateDiff = b.date.getTime() - a.date.getTime();
+      if (dateDiff !== 0) return dateDiff;
+      return b.id.localeCompare(a.id);
+    })
+    .slice(0, pagination.pageSize);
+
   return (
     <div className="space-y-6">
       <div>
@@ -153,9 +194,15 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
       <TransactionsList
         orgSlug={orgSlug}
         items={JSON.parse(JSON.stringify(transactionRows))}
+        total={unionTotal}
+        page={pagination.page}
+        pageSize={pagination.pageSize}
+        totalPages={unionTotalPages}
         periods={periods.map((p) => ({ id: p.id, name: p.name }))}
         filters={{
           status: statusFilter,
+          type: typeFilter,
+          periodId: periodIdFilter,
         }}
       />
     </div>

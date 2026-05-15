@@ -39,9 +39,15 @@ describe("POC dispatch-retirement-into-sales C0 — /sales cross-module twin-cal
     expect(src).not.toMatch(/^import\s+[^"]*\bHubService\b[^"]*from\s+"[^"]+";?$/m);
   });
 
-  it("α-C0-twin-call: /sales/page.tsx calls dispatchService.list in Promise.all twin-call", () => {
+  it("α-C0-twin-call: /sales/page.tsx calls dispatchService.list(Paginated)? in Promise.all twin-call", () => {
+    // Broadened post-poc-sales-unified-pagination C2 cutover: dispatch
+    // call migrated `list` → `listPaginated` (UNION pagination cascade).
+    // Sentinel intent preserved: "twin-call wired"; regex accepts either
+    // method name. Update bundled atomic per [[mock_hygiene_commit_scope]];
+    // sister-cycle-update per [[paired_sister_default_no_surface]] (clear
+    // text rename, no invariant collision).
     const src = readPageSource();
-    expect(src).toMatch(/dispatchService\.list\s*\(/);
+    expect(src).toMatch(/dispatchService\.list(?:Paginated)?\s*\(/);
     expect(src).toMatch(/Promise\.all\s*\(/);
   });
 

@@ -89,6 +89,10 @@ describe("DispatchList — date cell format (REQ-C.2)", () => {
       <TransactionsList
         orgSlug="test-org"
         items={[DISPATCH_ITEM]}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[]}
         filters={{}}
       />,
@@ -101,6 +105,10 @@ describe("DispatchList — date cell format (REQ-C.2)", () => {
       <TransactionsList
         orgSlug="test-org"
         items={[DISPATCH_ITEM]}
+        total={1}
+        page={1}
+        pageSize={25}
+        totalPages={1}
         periods={[]}
         filters={{}}
       />,

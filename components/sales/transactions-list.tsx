@@ -21,6 +21,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
+import {
   ClipboardList,
   DollarSign,
   FileText,
@@ -89,11 +98,39 @@ const TYPE_LABEL: Record<string, string> = {
   BOLETA_CERRADA: "Boleta Cerrada",
 };
 
+/**
+ * Builds the `/sales` URL preserving orgSlug + page + filter params
+ * (status, type, periodId). Mirror `journal-entry-list.tsx` 5-param shape
+ * (AD-6 design poc-sales-unified-pagination). Page=1 omits the `page`
+ * param (canonical pattern); page>1 sets `?page=N`. `applyFilter` calls
+ * reset page to 1 on filter change (sister `sale-list.tsx:101-106`).
+ */
+function buildHref(
+  orgSlug: string,
+  page: number,
+  status: string | undefined,
+  type: string | undefined,
+  periodId: string | undefined,
+): string {
+  const sp = new URLSearchParams();
+  if (page > 1) sp.set("page", String(page));
+  if (status) sp.set("status", status);
+  if (type) sp.set("type", type);
+  if (periodId) sp.set("periodId", periodId);
+  const q = sp.toString();
+  return `/${orgSlug}/sales${q ? `?${q}` : ""}`;
+}
+
 // ── Props ─────────────────────────────────────────────────────────────────────
 
-interface TransactionsListProps {
+/**
+ * `PaginatedResult<HubItem>` intersection (items + total + page + pageSize +
+ * totalPages) plus orgSlug + periods + filters. Mirror `sale-list.tsx` and
+ * `journal-entry-list.tsx` props shape (UNION pagination cascade
+ * poc-sales-unified-pagination AD-5).
+ */
+type TransactionsListProps = PaginatedResult<HubItem> & {
   orgSlug: string;
-  items: HubItem[];
   periods: { id: string; name: string }[];
   filters: {
     type?: string;
@@ -103,7 +140,7 @@ interface TransactionsListProps {
     dateFrom?: string;
     dateTo?: string;
   };
-}
+};
 
 // ── Action routing — exhaustive switch on source (D7) ─────────────────────────
 
@@ -267,12 +304,19 @@ function HubItemRow({ orgSlug, item, periodName, isLoading, onPost, onVoid, onDe
 
 /**
  * Renders 3-type unified transactions view (Sale + Boleta Cerrada + Nota de
- * Despacho). Sale section preserves listPaginated pagination; BC/ND rows
- * non-paginated alongside per B5 lock (poc-dispatch-retirement-into-sales).
+ * Despacho). UNION pagination: all 3 types contribute to total count + page
+ * window per poc-sales-unified-pagination AD-3. RSC twin-call
+ * `[saleService.listPaginated, dispatchService.listPaginated]` feeds sum
+ * totals + merged-sorted page window; this component renders the shared
+ * Pagination block + counter (sister `sale-list.tsx:383-421` verbatim).
  */
 export default function TransactionsList({
   orgSlug,
   items,
+  total,
+  page,
+  pageSize,
+  totalPages,
   periods,
   filters,
 }: TransactionsListProps) {
@@ -303,6 +347,10 @@ export default function TransactionsList({
   }
 
   function applyFilter(key: string, value: string) {
+    // Filter change resets to page 1 (sister `sale-list.tsx:101-106` +
+    // `journal-entry-list.tsx:377-392` canonical pattern). `buildQuery`
+    // omits `page` from `merged` so the URL drops `?page=N` on filter
+    // change — semantically equivalent to `page=1`.
     const query = buildQuery({ [key]: value });
     router.push(`/${orgSlug}/sales${query ? `?${query}` : ""}`);
   }
@@ -569,6 +617,66 @@ export default function TransactionsList({
           </div>
         </CardContent>
       </Card>
+
+      {/* Paginación — UNION 3-type (sale.total + dispatch.total) */}
+      {totalPages > 1 && (
+        <Pagination>
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious
+                href={buildHref(
+                  orgSlug,
+                  Math.max(1, page - 1),
+                  filters.status,
+                  filters.type,
+                  filters.periodId,
+                )}
+                aria-disabled={page <= 1}
+                className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
+                text="Anterior"
+              />
+            </PaginationItem>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <PaginationItem key={p}>
+                <PaginationLink
+                  href={buildHref(
+                    orgSlug,
+                    p,
+                    filters.status,
+                    filters.type,
+                    filters.periodId,
+                  )}
+                  isActive={p === page}
+                >
+                  {p}
+                </PaginationLink>
+              </PaginationItem>
+            ))}
+            <PaginationItem>
+              <PaginationNext
+                href={buildHref(
+                  orgSlug,
+                  Math.min(totalPages, page + 1),
+                  filters.status,
+                  filters.type,
+                  filters.periodId,
+                )}
+                aria-disabled={page >= totalPages}
+                className={
+                  page >= totalPages ? "pointer-events-none opacity-50" : undefined
+                }
+                text="Siguiente"
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
+
+      {total > 0 && (
+        <p className="text-sm text-muted-foreground text-center">
+          Mostrando {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} de {total}
+        </p>
+      )}
 
       <ConfirmDialog
         open={postItem !== null}

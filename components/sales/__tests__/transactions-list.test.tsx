@@ -135,13 +135,33 @@ interface RenderProps {
     dateFrom?: string;
     dateTo?: string;
   };
+  // poc-sales-unified-pagination C2 cutover — `PaginatedResult<HubItem>`
+  // intersection props. Defaults preserve heredado test semantics (no
+  // pagination block rendered since totalPages=1).
+  total?: number;
+  page?: number;
+  pageSize?: number;
+  totalPages?: number;
 }
 
-function renderList({ items = [], orgSlug = "test-org", periods = [], filters = {} }: RenderProps = {}) {
+function renderList({
+  items = [],
+  orgSlug = "test-org",
+  periods = [],
+  filters = {},
+  total,
+  page = 1,
+  pageSize = 25,
+  totalPages = 1,
+}: RenderProps = {}) {
   return render(
     <TransactionsList
       orgSlug={orgSlug}
       items={items}
+      total={total ?? items.length}
+      page={page}
+      pageSize={pageSize}
+      totalPages={totalPages}
       periods={periods}
       filters={filters}
     />,
@@ -295,6 +315,142 @@ describe("DispatchList — status filter fires re-fetch (REQ-5)", () => {
       expect(mockPush).toHaveBeenCalledWith(
         expect.stringContaining("status=DRAFT"),
       );
+    });
+  });
+});
+
+// ── poc-sales-unified-pagination C2 — UNION pagination block + counter ──
+
+describe("TransactionsList — UNION pagination block (C2.8 a-c)", () => {
+  it("renders shadcn Pagination block when totalPages > 1", () => {
+    renderList({
+      items: [SALE_ITEM, DISPATCH_ND_ITEM],
+      total: 30,
+      page: 2,
+      pageSize: 10,
+      totalPages: 3,
+      orgSlug: "acme",
+    });
+    // Pagination block uses role="navigation" (shadcn Pagination wrapper)
+    expect(screen.getByRole("navigation")).toBeInTheDocument();
+    // Page links 1, 2, 3 — within the nav, rendered as anchors
+    expect(screen.getByRole("link", { name: "1" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "2" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "3" })).toBeInTheDocument();
+    // Page 2 has isActive (aria-current="page")
+    expect(screen.getByRole("link", { name: "2" })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
+  });
+
+  it("does NOT render Pagination block when totalPages === 1", () => {
+    renderList({
+      items: [SALE_ITEM],
+      total: 1,
+      page: 1,
+      pageSize: 25,
+      totalPages: 1,
+    });
+    expect(screen.queryByRole("navigation")).toBeNull();
+  });
+
+  it("renders 'Mostrando N-M de Total' counter with correct UNION math", () => {
+    renderList({
+      items: [SALE_ITEM, DISPATCH_ND_ITEM, DISPATCH_BC_ITEM],
+      total: 30,
+      page: 2,
+      pageSize: 10,
+      totalPages: 3,
+    });
+    // (page-1)*pageSize+1 = 11; min(page*pageSize, total) = 20
+    expect(screen.getByText(/Mostrando 11-20 de 30/)).toBeInTheDocument();
+  });
+});
+
+describe("TransactionsList — buildHref href semantics (C2.8 d-e via Pagination links)", () => {
+  it("page 1 link omits ?page param (canonical)", () => {
+    renderList({
+      items: [SALE_ITEM],
+      total: 30,
+      page: 2,
+      pageSize: 10,
+      totalPages: 3,
+      orgSlug: "acme",
+    });
+    // Page 1 link href should be "/acme/sales" (no ?page=1)
+    const page1 = screen.getByRole("link", { name: "1" });
+    expect(page1).toHaveAttribute("href", "/acme/sales");
+  });
+
+  it("page >1 link includes ?page=N", () => {
+    renderList({
+      items: [SALE_ITEM],
+      total: 30,
+      page: 1,
+      pageSize: 10,
+      totalPages: 3,
+      orgSlug: "acme",
+      filters: { status: "POSTED" },
+    });
+    const page2 = screen.getByRole("link", { name: "2" });
+    // URLSearchParams ordering: page, status (insertion order)
+    expect(page2.getAttribute("href")).toMatch(
+      /^\/acme\/sales\?page=2(?:&status=POSTED)?$/,
+    );
+    expect(page2.getAttribute("href")).toContain("page=2");
+    expect(page2.getAttribute("href")).toContain("status=POSTED");
+  });
+});
+
+describe("TransactionsList — filter change resets page (C2.8 f-g)", () => {
+  beforeEach(() => {
+    mockPush.mockClear();
+  });
+
+  it("applyFilter URL does NOT carry page param (semantically resets to page 1)", async () => {
+    renderList({
+      items: [SALE_ITEM],
+      total: 30,
+      page: 3,
+      pageSize: 10,
+      totalPages: 3,
+      orgSlug: "acme",
+    });
+    const statusTrigger = screen.getByTestId("filter-status");
+    fireEvent.click(statusTrigger);
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Borrador" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Borrador" }));
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith(
+        expect.not.stringContaining("page=3"),
+      );
+    });
+  });
+
+  it("applyFilter routes to /sales (NOT stale /dispatches)", async () => {
+    renderList({
+      items: [SALE_ITEM],
+      total: 30,
+      page: 1,
+      pageSize: 10,
+      totalPages: 3,
+      orgSlug: "acme",
+    });
+    const statusTrigger = screen.getByTestId("filter-status");
+    fireEvent.click(statusTrigger);
+    await waitFor(() => {
+      expect(screen.getByRole("option", { name: "Borrador" })).toBeInTheDocument();
+    });
+    fireEvent.click(screen.getByRole("option", { name: "Borrador" }));
+
+    await waitFor(() => {
+      const calledWith = mockPush.mock.calls.at(-1)?.[0] as string;
+      expect(calledWith).toMatch(/^\/acme\/sales/);
+      expect(calledWith).not.toContain("/dispatches");
     });
   });
 });
