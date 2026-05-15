@@ -23,14 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -658,120 +651,44 @@ export default function PaymentList({
         </p>
       )}
 
-      {/* Dialog — CONTABILIZAR */}
-      <Dialog
+      <ConfirmDialog
         open={postPayment !== null}
         onOpenChange={(open) => !open && setPostPayment(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Contabilizar Pago</DialogTitle>
-            <DialogDescription>
-              Esta acción contabilizará el pago y generará los asientos
-              contables correspondientes.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={actioningId !== null}
-              onClick={() => setPostPayment(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="bg-success hover:bg-success/90 text-success-foreground"
-              disabled={actioningId !== null}
-              onClick={() =>
-                postPayment && executeStatusTransition(postPayment, "POSTED")
-              }
-            >
-              {actioningId !== null ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              Contabilizar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Contabilizar pago"
+        description="Esta acción contabilizará el pago y generará los asientos contables correspondientes."
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={actioningId !== null}
+        onConfirm={async () => {
+          if (postPayment) await executeStatusTransition(postPayment, "POSTED");
+        }}
+      />
 
-      {/* Dialog — ANULAR */}
-      <Dialog
+      <ConfirmDialog
         open={voidPayment !== null}
         onOpenChange={(open) => !open && setVoidPayment(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Anular Pago</DialogTitle>
-            <DialogDescription>
-              Esta acción anulará el pago y revertirá los asientos y CxC/CxP
-              asociados. Esta operación no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={actioningId !== null}
-              onClick={() => setVoidPayment(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={actioningId !== null}
-              onClick={() =>
-                voidPayment && executeStatusTransition(voidPayment, "VOIDED")
-              }
-            >
-              {actioningId !== null ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Anular pago"
+        description="Esta acción anulará el pago y revertirá los asientos y CxC/CxP asociados. Esta operación no se puede deshacer."
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={async () => {
+          if (voidPayment) await executeStatusTransition(voidPayment, "VOIDED");
+        }}
+      />
 
-      {/* Dialog — ELIMINAR */}
-      <Dialog
+      <ConfirmDialog
         open={deletePayment !== null}
         onOpenChange={(open) => !open && setDeletePayment(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Eliminar Pago Borrador</DialogTitle>
-            <DialogDescription>
-              Esta acción eliminará permanentemente el pago borrador. Esta
-              operación no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={actioningId !== null}
-              onClick={() => setDeletePayment(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={actioningId !== null}
-              onClick={() => deletePayment && executeDelete(deletePayment)}
-            >
-              {actioningId !== null ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              Eliminar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Eliminar pago borrador"
+        description="Esta acción eliminará permanentemente el pago borrador. No se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={async () => {
+          if (deletePayment) await executeDelete(deletePayment);
+        }}
+      />
     </>
   );
 }
