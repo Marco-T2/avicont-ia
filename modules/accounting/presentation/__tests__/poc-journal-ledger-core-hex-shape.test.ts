@@ -886,3 +886,92 @@ describe("α34 Block C1 (sub-POC 8) — route test files vi.mock target rewritte
     expect(offenders.map((o) => o.label)).toEqual([]);
   });
 });
+
+// ── Block C2 (sub-POC 8) — agent/route.ts repoint + aggregate-shape adaptation ─
+//
+// C2 is the DELICATE cycle. `app/api/organizations/[orgSlug]/agent/route.ts`
+// instantiates `new JournalService()` from the features barrel and, in
+// `handleCreateJournalEntryConfirm`, builds the HTTP response as
+// `{ ...entry, displayNumber }`. The shim's `createEntry` re-hydrates a plain
+// `JournalEntryWithLines` DTO, so the spread works today. The hex
+// `makeJournalsService().createEntry()` returns a `Journal` AGGREGATE — a class
+// instance whose fields live behind non-enumerable getters over a private
+// `props`. Spreading it (`{ ...entry }`) yields an EMPTY object. The
+// design-locked adaptation (design #2422 D2) is `{ ...entry.toSnapshot(),
+// displayNumber }` — NO `getById()` re-hydration helper. After GREEN:
+//   - agent/route.ts imports `makeJournalsService` from the hex barrel.
+//   - agent/route.ts imports `parseEntryDate` + `formatCorrelativeNumber` from
+//     the hex barrel (re-exported via domain/journal.dates + correlative.utils).
+//   - the response data spread uses `.toSnapshot()` (NOT a bare `{ ...entry }`).
+//   - the sibling test's `vi.mock` target rewrites to the hex path
+//     (bundled atomically per [[cross_module_boundary_mock_target_rewrite]]).
+
+const AGENT_ROUTE = resolve(
+  REPO_ROOT,
+  "app/api/organizations/[orgSlug]/agent/route.ts",
+);
+
+// α35 — agent/route.ts no longer imports JournalService from the features
+//   barrel and instead imports makeJournalsService from the hex barrel.
+//   Expected FAIL pre-GREEN: route still imports `JournalService` from
+//   `@/features/accounting/server` → both assertions fail.
+describe("α35 Block C2 (sub-POC 8) — agent/route.ts repoints to hex makeJournalsService", () => {
+  const LEGACY_JS_IMPORT =
+    /\bJournalService\b[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?\bJournalService\b/;
+  const HEX_BARREL_IMPORT =
+    /from\s+["']@\/modules\/accounting\/presentation\/server["']/;
+  it("α35: agent/route.ts does not import JournalService from @/features/accounting/server", () => {
+    const src = readFileSync(AGENT_ROUTE, "utf-8");
+    expect(LEGACY_JS_IMPORT.test(src)).toBe(false);
+  });
+  it("α35: agent/route.ts imports makeJournalsService from @/modules/accounting/presentation/server", () => {
+    const src = readFileSync(AGENT_ROUTE, "utf-8");
+    expect(src).toMatch(HEX_BARREL_IMPORT);
+    expect(src).toMatch(/\bmakeJournalsService\b/);
+  });
+  it("α35: agent/route.ts imports parseEntryDate + formatCorrelativeNumber from the hex barrel", () => {
+    const src = readFileSync(AGENT_ROUTE, "utf-8");
+    // Neither util may be imported from the legacy features barrel anymore.
+    expect(src).not.toMatch(
+      /parseEntryDate[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?parseEntryDate/,
+    );
+    expect(src).not.toMatch(
+      /formatCorrelativeNumber[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?formatCorrelativeNumber/,
+    );
+  });
+});
+
+// α36 — the agent/route.ts response data spread adapts the Journal aggregate
+//   via `.toSnapshot()` and carries NO bare `{ ...entry }` spread of the
+//   aggregate instance.
+//   Expected FAIL pre-GREEN: route does `data: { ...entry, displayNumber }`
+//   over the raw value — `.toSnapshot()` token is absent in the response build.
+describe("α36 Block C2 (sub-POC 8) — agent/route.ts adapts the Journal aggregate via toSnapshot()", () => {
+  it("α36: agent/route.ts builds the response data with `...entry.toSnapshot()`", () => {
+    const src = readFileSync(AGENT_ROUTE, "utf-8");
+    expect(src).toMatch(/\.\.\.\s*entry\.toSnapshot\s*\(\s*\)/);
+  });
+  it("α36: agent/route.ts does NOT spread the raw aggregate instance (`...entry,`)", () => {
+    const src = readFileSync(AGENT_ROUTE, "utf-8");
+    // A bare `{ ...entry, displayNumber }` over the class instance yields an
+    // empty object — the C2 break. Post-GREEN it must be `...entry.toSnapshot()`.
+    expect(src).not.toMatch(/\{\s*\.\.\.\s*entry\s*,/);
+  });
+});
+
+// α37 — the agent route sibling test's `vi.mock` target rewrites to the hex
+//   barrel (bundled atomically with the C2 GREEN repoint).
+//   Expected FAIL pre-GREEN: route.confirm-journal-entry.test.ts still
+//   `vi.mock`s `@/features/accounting/server`.
+describe("α37 Block C2 (sub-POC 8) — agent route test vi.mock target rewritten to hex barrel", () => {
+  const AGENT_CONFIRM_TEST = resolve(
+    REPO_ROOT,
+    "app/api/organizations/[orgSlug]/agent/__tests__/route.confirm-journal-entry.test.ts",
+  );
+  const LEGACY_MOCK_TARGET =
+    /vi\.mock\s*\(\s*["']@\/features\/accounting\/server["']/;
+  it("α37: route.confirm-journal-entry.test.ts does not vi.mock @/features/accounting/server", () => {
+    const src = readFileSync(AGENT_CONFIRM_TEST, "utf-8");
+    expect(LEGACY_MOCK_TARGET.test(src)).toBe(false);
+  });
+});

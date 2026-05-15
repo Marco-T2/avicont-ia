@@ -169,6 +169,60 @@ function makeRequest(body: unknown, action = "confirm"): Request {
   });
 }
 
+// ── Journal aggregate stub (C2 cutover contract) ────────────────────────────
+//
+// The hex `makeJournalsService().createEntry()` returns a `Journal` AGGREGATE,
+// not the legacy `JournalEntryWithLines` plain DTO. The aggregate exposes its
+// fields ONLY through non-enumerable getters over a private `props`, plus a
+// `toSnapshot()` that yields the plain serializable shape. This stub mirrors
+// that contract: spreading it (`{ ...stub }`) yields an EMPTY object — exactly
+// like the real aggregate — so `agent/route.ts` MUST adapt via `.toSnapshot()`
+// (design #2422 D2) to keep response parity. `class` + getters guarantees the
+// getters are non-enumerable, just like the real `Journal`.
+function makeJournalAggregateStub(overrides: {
+  id?: string;
+  number?: number;
+  date?: Date;
+  sourceType?: string | null;
+  aiOriginalText?: string | null;
+}) {
+  const props = {
+    id: overrides.id ?? "entry-1",
+    number: overrides.number ?? 1,
+    date: overrides.date ?? new Date("2026-04-26"),
+    sourceType: overrides.sourceType ?? "ai",
+    aiOriginalText: overrides.aiOriginalText ?? "compra de alimento por 5000 al banco",
+    lines: [
+      { accountId: ACC_EXPENSE, debit: 5000, credit: 0, order: 0 },
+      { accountId: ACC_BANK, debit: 0, credit: 5000, order: 1 },
+    ],
+  };
+  class JournalAggregateStub {
+    get id() {
+      return props.id;
+    }
+    get number() {
+      return props.number;
+    }
+    get date() {
+      return props.date;
+    }
+    get sourceType() {
+      return props.sourceType;
+    }
+    get aiOriginalText() {
+      return props.aiOriginalText;
+    }
+    get lines() {
+      return props.lines;
+    }
+    toSnapshot() {
+      return { ...props };
+    }
+  }
+  return new JournalAggregateStub();
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   mockRequireAuth.mockResolvedValue({ userId: CLERK_USER_ID });
@@ -201,12 +255,17 @@ beforeEach(() => {
       month: 4,
     }),
   });
-  mockCreateEntry.mockResolvedValue({
-    id: "entry-1",
-    number: 1,
-    date: new Date("2026-04-26"),
-    voucherType: { prefix: "E" },
-  });
+  // Hex `createEntry()` resolves a `Journal` AGGREGATE — getters + toSnapshot(),
+  // NOT a plain DTO. See makeJournalAggregateStub for the cutover contract.
+  mockCreateEntry.mockResolvedValue(
+    makeJournalAggregateStub({
+      id: "entry-1",
+      number: 1,
+      date: new Date("2026-04-26"),
+      sourceType: "ai",
+      aiOriginalText: "compra de alimento por 5000 al banco",
+    }),
+  );
 });
 
 // ── Happy path ─────────────────────────────────────────────────────────────
@@ -222,6 +281,20 @@ describe("POST /api/organizations/[orgSlug]/agent?action=confirm — createJourn
     const body = await res.json();
     expect(body.message).toContain("Borrador creado");
     expect(body.data.displayNumber).toMatch(/^E\d{4}-\d{6}$/);
+
+    // ── C2 aggregate-shape parity ──────────────────────────────────────────
+    // The hex `createEntry()` returns a `Journal` aggregate; the route MUST
+    // adapt it via `.toSnapshot()` so the response `data` keeps the same
+    // serializable shape the legacy DTO exposed. A bare `{ ...entry }` spread
+    // of the class instance yields an empty object — `data.number` /
+    // `data.date` would be absent. These assertions pin the parity.
+    expect(body.data.number).toBe(1);
+    expect(body.data.date).toBe(new Date("2026-04-26").toISOString());
+    expect(body.data.sourceType).toBe("ai");
+    expect(body.data.aiOriginalText).toBe(
+      "compra de alimento por 5000 al banco",
+    );
+    expect(body.data.lines).toHaveLength(2);
 
     expect(mockCreateEntry).toHaveBeenCalledTimes(1);
     const callArgs = mockCreateEntry.mock.calls[0];
