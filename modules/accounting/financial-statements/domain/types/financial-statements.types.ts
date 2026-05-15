@@ -59,6 +59,23 @@ export type SubtypeGroup = {
   total: Decimal;
 };
 
+/**
+ * Cuenta no-contra cuyo balance final aterrizó con signo opuesto a su
+ * naturaleza contable (DEUDORA con saldo acreedor → balance negativo,
+ * o viceversa). Las contra-cuentas (depreciación, provisiones) y la línea
+ * sintética de Resultado/Pérdida del Ejercicio están exentas — sus signos
+ * son by-design, no anomalías de datos.
+ *
+ * Señal de calidad para el contador: típicamente indica anticipos no
+ * reclasificados o errores de carga.
+ */
+export type BalanceSheetOppositeSignAccount = {
+  code: string;
+  name: string;
+  section: "ACTIVO" | "PASIVO" | "PATRIMONIO";
+  balance: Decimal; // siempre negativo
+};
+
 // ── Balance General (Estado de Situación Patrimonial) ──
 export type BalanceSheetCurrent = {
   asOfDate: Date;
@@ -68,6 +85,8 @@ export type BalanceSheetCurrent = {
   imbalanced: boolean;
   imbalanceDelta: Decimal;
   preliminary: boolean;
+  /** Cuentas no-contra con balance negativo (signo opuesto a su naturaleza). */
+  oppositeSignAccounts: BalanceSheetOppositeSignAccount[];
 };
 
 export type BalanceSheet = {

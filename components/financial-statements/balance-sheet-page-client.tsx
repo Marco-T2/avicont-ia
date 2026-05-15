@@ -12,6 +12,7 @@ import { StatementTable } from "./statement-table";
 import { StatementToolbar } from "./statement-toolbar";
 import { PreliminaryBanner } from "./preliminary-banner";
 import { ImbalanceBanner } from "./imbalance-banner";
+import { OppositeSignWarning } from "./opposite-sign-warning";
 import {
   BalanceSheetAnalysisCard,
   type AnalyzeBalanceSheetResult,
@@ -223,6 +224,7 @@ export function BalanceSheetPageClient({ orgSlug, orgName }: BalanceSheetPageCli
             imbalanced={statement.current.imbalanced}
             imbalanceDelta={statement.current.imbalanceDelta}
           />
+          <OppositeSignWarning accounts={statement.current.oppositeSignAccounts ?? []} />
 
           {/* Tabla TanStack */}
           <Card>

@@ -39,6 +39,12 @@ type SerializedBSCurrent = {
   imbalanced: boolean;
   imbalanceDelta: string;
   preliminary: boolean;
+  oppositeSignAccounts: Array<{
+    code: string;
+    name: string;
+    section: "ACTIVO" | "PASIVO" | "PATRIMONIO";
+    balance: string;
+  }>;
 };
 
 // Secciones del Estado de Resultados serializado

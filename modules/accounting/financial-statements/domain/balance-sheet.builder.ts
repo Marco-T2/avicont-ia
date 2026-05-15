@@ -13,6 +13,7 @@ import { sumDecimals, eq, zeroDecimal } from "./money.utils";
 import type {
   BuildBalanceSheetInput,
   BalanceSheetCurrent,
+  BalanceSheetOppositeSignAccount,
   Decimal,
   SubtypeGroup,
 } from "./types/financial-statements.types";
@@ -139,6 +140,33 @@ export function buildBalanceSheet(input: BuildBalanceSheetInput): BalanceSheetCu
   // 8. Flag preliminary: true si el período no está cerrado o los datos son on-the-fly
   const preliminary = periodStatus !== "CLOSED" || source === "on-the-fly";
 
+  // 9. Recolectar anomalías: cuentas no-contra con balance negativo.
+  // El balance-source ya devuelve el balance signado por naturaleza, por lo que
+  // `balance.isNegative()` ya indica "saldo opuesto a la naturaleza esperada".
+  // Excepciones by-design: contra-cuentas (depreciación) y la línea sintética
+  // de Resultado/Pérdida del Ejercicio (no es error de datos, es resultado real).
+  const SYNTHETIC_RESULT_ID = "__synthetic_retained_earnings__";
+  const oppositeSignAccounts: BalanceSheetOppositeSignAccount[] = [];
+  const collect = (groups: SubtypeGroup[], section: BalanceSheetOppositeSignAccount["section"]) => {
+    for (const g of groups) {
+      for (const a of g.accounts) {
+        if (a.isContra) continue;
+        if (a.accountId === SYNTHETIC_RESULT_ID) continue;
+        if (a.balance.isNegative()) {
+          oppositeSignAccounts.push({
+            code: a.code,
+            name: a.name,
+            section,
+            balance: a.balance,
+          });
+        }
+      }
+    }
+  };
+  collect(assetsGroups, "ACTIVO");
+  collect(liabGroups, "PASIVO");
+  collect(equityGroups, "PATRIMONIO");
+
   return {
     asOfDate: date,
     assets: { groups: assetsGroups, total: totalAssets },
@@ -151,5 +179,6 @@ export function buildBalanceSheet(input: BuildBalanceSheetInput): BalanceSheetCu
     imbalanced,
     imbalanceDelta: delta,
     preliminary,
+    oppositeSignAccounts,
   };
 }
