@@ -32,13 +32,9 @@ import {
   ArrowLeftRight,
   BarChart3,
   BookOpen,
-  CalendarCheck,
   Contact,
-  FolderTree,
-  HandCoins,
   Home,
   Library,
-  Receipt,
   ShoppingBag,
   ShoppingCart,
   Warehouse,
@@ -51,19 +47,18 @@ import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import type { ClientMatrix } from "@/components/common/roles-matrix-provider";
 import { dropOrphanSeparators } from "@/lib/sidebar/drop-orphan-separators";
 
+// C1 sidebar-reorg-settings-hub: NAV_ICONS pruned in lockstep with the
+// NavIconKey union and registry trim. HandCoins, Receipt, FolderTree, and
+// CalendarCheck (for the four removed nav items) are no longer imported.
 const NAV_ICONS: Record<NavIconKey, ReactNode> = {
   inicio: <Home className="h-5 w-5" />,
   "ventas-despachos": <ShoppingCart className="h-5 w-5" />,
   "compras-servicios": <ShoppingBag className="h-5 w-5" />,
   "cobros-pagos": <ArrowLeftRight className="h-5 w-5" />,
-  "cuentas-cobrar": <HandCoins className="h-5 w-5" />,
-  "cuentas-pagar": <Receipt className="h-5 w-5" />,
-  "plan-cuentas": <FolderTree className="h-5 w-5" />,
   "libro-diario": <BookOpen className="h-5 w-5" />,
   "libro-mayor": <Library className="h-5 w-5" />,
   contactos: <Contact className="h-5 w-5" />,
   informes: <BarChart3 className="h-5 w-5" />,
-  "cierre-mensual": <CalendarCheck className="h-5 w-5" />,
   "mis-granjas": <Warehouse className="h-5 w-5" />,
 };
 

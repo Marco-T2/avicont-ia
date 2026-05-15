@@ -9,6 +9,11 @@
  * - homeRoute is a function, not a string, to avoid baking orgSlug at import time
  * - isSeparator navItems carry a label for section headings (matches NavSubItem)
  * - icon uses React.ReactNode to stay framework-agnostic at the type level
+ *
+ * C1 sidebar-reorg-settings-hub: Contabilidad trimmed to 8 flat leaves
+ * (zero separators). Plan de Cuentas + Cierre Mensual moved to /settings
+ * hub cards (C3); Cuentas por Cobrar + Cuentas por Pagar moved to /informes
+ * catalog entries (C0).
  */
 
 import type { ReactNode } from "react";
@@ -27,14 +32,10 @@ export type NavIconKey =
   | "ventas-despachos"
   | "compras-servicios"
   | "cobros-pagos"
-  | "cuentas-cobrar"
-  | "cuentas-pagar"
-  | "plan-cuentas"
   | "libro-diario"
   | "libro-mayor"
   | "contactos"
   | "informes"
-  | "cierre-mensual"
   | "mis-granjas";
 
 export interface ModuleNavItem {
@@ -80,8 +81,6 @@ export const MODULES: Module[] = [
         href: (orgSlug) => `/${orgSlug}/accounting`,
         iconKey: "inicio",
       },
-      // --- Separator: Operaciones ---
-      { label: "Operaciones", isSeparator: true },
       {
         label: "Ventas",
         href: (orgSlug) => `/${orgSlug}/sales`,
@@ -99,26 +98,6 @@ export const MODULES: Module[] = [
         href: (orgSlug) => `/${orgSlug}/payments`,
         resource: "payments",
         iconKey: "cobros-pagos",
-      },
-      {
-        label: "Cuentas por Cobrar",
-        href: (orgSlug) => `/${orgSlug}/accounting/cxc`,
-        resource: "sales",
-        iconKey: "cuentas-cobrar",
-      },
-      {
-        label: "Cuentas por Pagar",
-        href: (orgSlug) => `/${orgSlug}/accounting/cxp`,
-        resource: "purchases",
-        iconKey: "cuentas-pagar",
-      },
-      // --- Separator: Contabilidad ---
-      { label: "Contabilidad", isSeparator: true },
-      {
-        label: "Plan de Cuentas",
-        href: (orgSlug) => `/${orgSlug}/accounting/accounts`,
-        resource: "accounting-config",
-        iconKey: "plan-cuentas",
       },
       {
         label: "Libro Diario",
@@ -144,14 +123,11 @@ export const MODULES: Module[] = [
         resource: "reports",
         iconKey: "informes",
       },
-      {
-        label: "Cierre Mensual",
-        href: (orgSlug) => `/${orgSlug}/accounting/monthly-close`,
-        resource: "period",
-        iconKey: "cierre-mensual",
-      },
       // PR4.9: "Configuración" intentionally NOT in Contabilidad's navItems.
       // SidebarFooter is the canonical, org-level home for this link.
+      // C1 sidebar-reorg-settings-hub: Plan de Cuentas, Cierre Mensual,
+      // Cuentas por Cobrar y Cuentas por Pagar removed — absorbed by
+      // Settings hub cards (C3) and Informes catalog (C0).
     ],
   },
   {
