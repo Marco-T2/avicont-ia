@@ -1,8 +1,22 @@
+import { Prisma } from "@/generated/prisma/client";
+import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import type { DispatchType } from "./value-objects/dispatch-type";
 
 /**
  * Input shape for detail line calculation — matches legacy DispatchDetailInput
  * relevant fields, without Prisma dependency (R5).
+ *
+ * **Money math**: `lineAmount` computed via Decimal-internal arithmetic
+ * (`Prisma.Decimal` + `roundHalfUp` from `modules/accounting/shared/domain/money.utils`);
+ * `.toNumber()` at the `ComputedDetail.lineAmount: number` boundary (SHAPE-A).
+ * R-money-tier2 discharged at poc-tier2-money-decimal-convergence C3 GREEN
+ * (OLEADA 8 POC #1) — derivative from R-money (OLEADA 7 archive #2452) per
+ * [[named_rule_immutability]]. `roundTotal` (round-total.ts) EXCLUDED —
+ * cooperative-rounding semantic.
+ *
+ * R5 nuance: `Prisma` import is for `Prisma.Decimal` value-type only (decimal.js
+ * re-export — NOT a generated entity). Sister precedent: money.utils.ts L25-L29
+ * "R1-permissible-value-type-exception".
  */
 export interface DetailLineInput {
   description: string;
@@ -56,7 +70,9 @@ export function computeLineAmounts(
       const shrinkage = netWeight * (shrinkagePct / 100);
       const shortage = d.shortage ?? 0;
       const realNetWeight = netWeight - shrinkage - shortage;
-      const lineAmount = Math.round(realNetWeight * d.unitPrice * 100) / 100;
+      const lineAmount = roundHalfUp(
+        new Prisma.Decimal(realNetWeight).mul(d.unitPrice),
+      ).toNumber();
       return {
         productTypeId: d.productTypeId,
         detailNote: d.detailNote,
@@ -75,7 +91,9 @@ export function computeLineAmounts(
     }
 
     // NOTA_DESPACHO
-    const lineAmount = Math.round(netWeight * d.unitPrice * 100) / 100;
+    const lineAmount = roundHalfUp(
+      new Prisma.Decimal(netWeight).mul(d.unitPrice),
+    ).toNumber();
     return {
       productTypeId: d.productTypeId,
       detailNote: d.detailNote,
