@@ -37,6 +37,8 @@ function makeAccount(overrides: Partial<AccountMetadata> & Pick<AccountMetadata,
     isActive: overrides.isActive ?? true,
     subtype: overrides.subtype ?? AccountSubtype.ACTIVO_CORRIENTE,
     isContraAccount: overrides.isContraAccount ?? false,
+    level: overrides.level ?? 1,
+    nature: overrides.nature ?? "DEUDORA",
   };
 }
 

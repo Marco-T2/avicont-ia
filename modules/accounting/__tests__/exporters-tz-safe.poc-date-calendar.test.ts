@@ -90,6 +90,7 @@ function makeTrialBalance(dateFrom: Date, dateTo: Date): TrialBalanceReport {
     imbalanced: false,
     deltaSumas: D("0"),
     deltaSaldos: D("0"),
+    oppositeSignAccounts: [],
   };
 }
 
@@ -219,6 +220,7 @@ function makeWorksheetReport(dateFrom: Date, dateTo: Date): WorksheetReport {
     },
     imbalanced: false,
     imbalanceDelta: z,
+    oppositeSignAccounts: [],
   };
 }
 

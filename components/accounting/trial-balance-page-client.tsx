@@ -32,6 +32,14 @@ interface SerializedRow extends SerializedTotals {
   name: string;
 }
 
+interface SerializedOppositeSignAccount {
+  code: string;
+  name: string;
+  nature: "DEUDORA" | "ACREEDORA";
+  saldoDeudor: string;
+  saldoAcreedor: string;
+}
+
 interface SerializedReport {
   orgId: string;
   dateFrom: string;
@@ -41,6 +49,7 @@ interface SerializedReport {
   imbalanced: boolean;
   deltaSumas: string;
   deltaSaldos: string;
+  oppositeSignAccounts: SerializedOppositeSignAccount[];
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────

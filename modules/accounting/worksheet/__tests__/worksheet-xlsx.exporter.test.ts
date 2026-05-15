@@ -140,6 +140,7 @@ const fixtureReport: WorksheetReport = {
   },
   imbalanced: true,
   imbalanceDelta: D("63848"),
+  oppositeSignAccounts: [],
 };
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

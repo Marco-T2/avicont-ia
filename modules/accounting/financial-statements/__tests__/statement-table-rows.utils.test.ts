@@ -37,6 +37,7 @@ const mockBS = {
     imbalanced: false,
     imbalanceDelta: "0.00",
     preliminary: false,
+    oppositeSignAccounts: [],
   },
   columns: [mockColumn],
 };

@@ -126,6 +126,7 @@ describe("worksheet domain types", () => {
       grandTotals: totals,
       imbalanced: false,
       imbalanceDelta: D("0"),
+      oppositeSignAccounts: [],
     };
     expect(report.orgId).toBe("org-1");
     expect(report.groups).toHaveLength(0);

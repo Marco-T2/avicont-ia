@@ -42,6 +42,7 @@ function makeAccount(
     code: overrides.code,
     name: overrides.name ?? `Account ${overrides.id}`,
     isDetail: overrides.isDetail ?? true,
+    nature: overrides.nature ?? "DEUDORA",
   };
 }
 

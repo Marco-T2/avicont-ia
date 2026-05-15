@@ -52,6 +52,7 @@ function makeReport(overrides?: Partial<TrialBalanceReport>): TrialBalanceReport
     imbalanced: false,
     deltaSumas: D("0"),
     deltaSaldos: D("0"),
+    oppositeSignAccounts: [],
     ...overrides,
   };
 }

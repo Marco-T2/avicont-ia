@@ -135,6 +135,7 @@ const fixtureReport: WorksheetReport = {
   },
   imbalanced: true,
   imbalanceDelta: D("63848"),
+  oppositeSignAccounts: [],
 };
 
 // ── fmtDecimal locale tests (es-BO — thousands separator fix) ────────────────
@@ -189,6 +190,7 @@ describe("PDF number formatting — es-BO locale (thousands separator)", () => {
       },
       imbalanced: false,
       imbalanceDelta: D(0),
+      oppositeSignAccounts: [],
     };
 
     const { docDef } = await exportWorksheetPdf(singleRowReport, "Test Fmt Org");
@@ -253,6 +255,7 @@ describe("PDF number formatting — es-BO locale (thousands separator)", () => {
       },
       imbalanced: false,
       imbalanceDelta: D(0),
+      oppositeSignAccounts: [],
     };
 
     const { docDef } = await exportWorksheetPdf(contraReport, "Test Contra Org");
