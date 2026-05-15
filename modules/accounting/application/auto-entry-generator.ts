@@ -5,7 +5,8 @@ import {
   JOURNAL_NOT_BALANCED,
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
-import { Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
@@ -115,12 +116,14 @@ export class AutoEntryGenerator {
     //    R-money textual deviation discharged per poc-money-math-decimal-
     //    convergence C2 GREEN (OLEADA 7 POC #2). EntryLineTemplate.amount
     //    stays `number` per Q4 lock (TIER 2 deferred); coerce via
-    //    new Prisma.Decimal(value) at this boundary.
+    //    new Decimal(value) at this boundary (decimal.js direct per
+    //    oleada-money-decimal-hex-purity sub-POC 4 — sister precedents:
+    //    sub-POC 2 FS/TB/ES/WS/IB + sub-POC 3 sale/purchase/dispatch/ai-agent).
     const totalDebit = sumDecimals(
-      resolvedLines.map((l) => new Prisma.Decimal(l.debit)),
+      resolvedLines.map((l) => new Decimal(l.debit)),
     );
     const totalCredit = sumDecimals(
-      resolvedLines.map((l) => new Prisma.Decimal(l.credit)),
+      resolvedLines.map((l) => new Decimal(l.credit)),
     );
 
     if (!eq(totalDebit, totalCredit)) {
