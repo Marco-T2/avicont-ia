@@ -52,6 +52,12 @@ interface SerializedReport {
   grandTotals: SerializedTotals;
   imbalanced: boolean;
   imbalanceDelta: string;
+  oppositeSignAccounts: Array<{
+    code: string;
+    name: string;
+    accountType: string;
+    amount: string;
+  }>;
   allAjustesZero?: boolean;
 }
 

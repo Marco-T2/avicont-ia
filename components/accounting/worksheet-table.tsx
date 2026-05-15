@@ -47,6 +47,13 @@ interface SerializedGroup {
   subtotals: SerializedTotals;
 }
 
+interface SerializedOppositeSignAccount {
+  code: string;
+  name: string;
+  accountType: string;
+  amount: string;
+}
+
 interface SerializedReport {
   orgId: string;
   dateFrom: string;
@@ -56,6 +63,7 @@ interface SerializedReport {
   grandTotals: SerializedTotals;
   imbalanced: boolean;
   imbalanceDelta: string;
+  oppositeSignAccounts: SerializedOppositeSignAccount[];
 }
 
 interface WorksheetTableProps {
@@ -104,6 +112,13 @@ const NUMERIC_KEYS: (keyof SerializedTotals)[] = [
 
 // ── Row renderers ─────────────────────────────────────────────────────────────
 
+// Columns where a negative value indicates a data anomaly (non-contra opposite-sign).
+// Render those in destructive red so the accountant spots them at a glance.
+const BG_COLUMNS: ReadonlySet<keyof SerializedTotals> = new Set([
+  "bgActivo",
+  "bgPasPat",
+]);
+
 function NumericCells({
   row,
   isTotal,
@@ -113,14 +128,20 @@ function NumericCells({
 }) {
   return (
     <>
-      {NUMERIC_KEYS.map((key) => (
-        <td
-          key={key}
-          className="text-right px-1 py-0.5 tabular-nums text-xs"
-        >
-          {fmtNum(row[key], isTotal)}
-        </td>
-      ))}
+      {NUMERIC_KEYS.map((key) => {
+        const value = row[key];
+        const isNegativeBg = BG_COLUMNS.has(key) && parseFloat(value) < 0;
+        return (
+          <td
+            key={key}
+            className={`text-right px-1 py-0.5 tabular-nums text-xs${
+              isNegativeBg ? " text-destructive font-semibold" : ""
+            }`}
+          >
+            {fmtNum(value, isTotal)}
+          </td>
+        );
+      })}
     </>
   );
 }
@@ -235,7 +256,28 @@ export const WorksheetTable: FC<WorksheetTableProps> = ({ report }) => {
         </tbody>
       </table>
 
-      {/* Imbalance warning */}
+      {/* Data anomaly: cuentas no-contra con saldo de naturaleza opuesta. */}
+      {report.oppositeSignAccounts.length > 0 && (
+        <div
+          role="alert"
+          className="mt-2 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs"
+        >
+          <p className="font-semibold text-destructive">
+            Cuentas con saldo de naturaleza opuesta — revisar carga antes del cierre:
+          </p>
+          <ul className="mt-1 list-disc pl-5 space-y-0.5">
+            {report.oppositeSignAccounts.map((a) => (
+              <li key={a.code}>
+                <span className="font-mono">{a.code}</span> {a.name}{" "}
+                <span className="text-muted-foreground">({a.accountType})</span>{" "}
+                — Bs {fmtNum(a.amount, true)}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Genuine imbalance (after netting) — distinct from the anomaly warning above. */}
       {report.imbalanced && (
         <p className="mt-2 text-destructive text-xs font-bold">
           Ecuación contable desbalanceada — Delta:{" "}

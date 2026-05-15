@@ -44,6 +44,7 @@ const MINIMAL_REPORT = {
   },
   imbalanced: false,
   imbalanceDelta: makeZero(),
+  oppositeSignAccounts: [],
   allAjustesZero: false,
 };
 

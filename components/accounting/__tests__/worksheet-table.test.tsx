@@ -143,6 +143,7 @@ const fixtureReport = {
   grandTotals: { ...makeZeroTotals(), bgActivo: "83848", bgPasPat: "180000" },
   imbalanced: false,
   imbalanceDelta: makeZero(),
+  oppositeSignAccounts: [],
 };
 
 describe("WorksheetTable (REQ-9, REQ-6, REQ-7)", () => {
