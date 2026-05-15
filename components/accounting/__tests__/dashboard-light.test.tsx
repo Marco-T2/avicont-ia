@@ -1,58 +1,44 @@
 import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-
-const { mockCanAccess } = vi.hoisted(() => ({
-  mockCanAccess: vi.fn(),
-}));
-
-vi.mock("@/features/permissions/server", () => ({
-  canAccess: mockCanAccess,
-}));
-
+import { afterEach, describe, expect, it } from "vitest";
 import { DashboardLight } from "../dashboard-light";
 
 afterEach(() => cleanup());
 
-beforeEach(() => {
-  mockCanAccess.mockReset();
-});
-
-const PROPS = {
+const BASE_PROPS = {
   orgSlug: "test-org",
-  orgId: "org-1",
-  role: "viewer",
   totalEntries: 5,
   lastEntryDate: "2026-05-10",
 };
 
 describe("DashboardLight", () => {
-  it("always renders the two basic stat cards", async () => {
-    mockCanAccess.mockResolvedValue(true);
-    render(await DashboardLight(PROPS));
+  it("always renders the two basic stat cards", () => {
+    render(
+      <DashboardLight
+        {...BASE_PROPS}
+        allowedResources={["accounting-config", "journal", "reports"]}
+      />,
+    );
     expect(screen.getByText("Total de Asientos")).toBeInTheDocument();
     expect(screen.getByText("5")).toBeInTheDocument();
     expect(screen.getByText("Último Asiento")).toBeInTheDocument();
     expect(screen.getByText(/10\/05\/2026/)).toBeInTheDocument();
   });
 
-  it("renders 'Sin registros' when lastEntryDate is null", async () => {
-    mockCanAccess.mockResolvedValue(true);
+  it("renders 'Sin registros' when lastEntryDate is null", () => {
     render(
-      await DashboardLight({
-        ...PROPS,
-        totalEntries: 0,
-        lastEntryDate: null,
-      }),
+      <DashboardLight
+        {...BASE_PROPS}
+        totalEntries={0}
+        lastEntryDate={null}
+        allowedResources={[]}
+      />,
     );
     expect(screen.getByText(/Sin registros/i)).toBeInTheDocument();
   });
 
-  it("hides accesos cards for which canAccess returns false", async () => {
-    mockCanAccess.mockImplementation(
-      async (_role: string, resource: string) => resource === "journal",
-    );
-    render(await DashboardLight(PROPS));
+  it("hides accesos cards whose resource is missing from allowedResources", () => {
+    render(<DashboardLight {...BASE_PROPS} allowedResources={["journal"]} />);
 
     expect(screen.getByRole("link", { name: /Libro Diario/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Libro Mayor/i })).toBeInTheDocument();
@@ -60,21 +46,23 @@ describe("DashboardLight", () => {
     expect(screen.queryByRole("link", { name: /Reportes/i })).not.toBeInTheDocument();
   });
 
-  it("hides Reportes card when reports:read is denied", async () => {
-    mockCanAccess.mockImplementation(
-      async (_role: string, resource: string) => resource !== "reports",
+  it("hides Reportes card when reports resource is not in allowedResources", () => {
+    render(
+      <DashboardLight
+        {...BASE_PROPS}
+        allowedResources={["accounting-config", "journal"]}
+      />,
     );
-    render(await DashboardLight(PROPS));
 
     expect(screen.queryByRole("link", { name: /Reportes/i })).not.toBeInTheDocument();
   });
 
-  it("queries canAccess with the expected (role, resource, action, orgId) for each card", async () => {
-    mockCanAccess.mockResolvedValue(true);
-    await DashboardLight(PROPS);
+  it("renders no accesos when allowedResources is empty", () => {
+    render(<DashboardLight {...BASE_PROPS} allowedResources={[]} />);
 
-    expect(mockCanAccess).toHaveBeenCalledWith("viewer", "accounting-config", "read", "org-1");
-    expect(mockCanAccess).toHaveBeenCalledWith("viewer", "journal", "read", "org-1");
-    expect(mockCanAccess).toHaveBeenCalledWith("viewer", "reports", "read", "org-1");
+    expect(screen.queryByRole("link", { name: /Plan de Cuentas/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Libro Diario/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Libro Mayor/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Reportes/i })).not.toBeInTheDocument();
   });
 });

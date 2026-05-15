@@ -148,7 +148,10 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
     mockRequireAuth.mockResolvedValue({ userId: "user-1" });
     mockRequireOrgAccess.mockResolvedValue("org-1");
     mockGetMember.mockResolvedValue({ role: "viewer" });
-    mockCanAccess.mockResolvedValue(false);
+    // reports denied; everything else granted
+    mockCanAccess.mockImplementation(
+      async (_role: string, resource: string) => resource !== "reports",
+    );
     mockJournalsList.mockResolvedValue([
       { date: new Date("2026-05-10T00:00:00Z") },
     ]);
@@ -163,10 +166,9 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
     expect(lightEl).not.toBeNull();
     expect(lightEl?.props).toMatchObject({
       orgSlug: ORG_SLUG,
-      orgId: "org-1",
-      role: "viewer",
       totalEntries: 1,
       lastEntryDate: "2026-05-10",
+      allowedResources: ["accounting-config", "journal"],
     });
   });
 });

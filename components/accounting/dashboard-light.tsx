@@ -12,21 +12,19 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { canAccess, type Resource } from "@/features/permissions/server";
 
 interface DashboardLightProps {
   orgSlug: string;
-  orgId: string;
-  role: string;
   totalEntries: number;
   lastEntryDate: string | null;
+  allowedResources: string[];
 }
 
 interface AccesoDef {
   title: string;
   description: string;
   href: (orgSlug: string) => string;
-  resource: Resource;
+  resource: string;
   icon: typeof BookOpen;
   color: string;
   bgColor: string;
@@ -71,17 +69,14 @@ const ACCESOS: AccesoDef[] = [
   },
 ];
 
-export async function DashboardLight({
+export function DashboardLight({
   orgSlug,
-  orgId,
-  role,
   totalEntries,
   lastEntryDate,
+  allowedResources,
 }: DashboardLightProps) {
-  const allowed = await Promise.all(
-    ACCESOS.map((a) => canAccess(role, a.resource, "read", orgId)),
-  );
-  const visible = ACCESOS.filter((_, i) => allowed[i]);
+  const allowed = new Set(allowedResources);
+  const visible = ACCESOS.filter((a) => allowed.has(a.resource));
 
   return (
     <div className="space-y-8">

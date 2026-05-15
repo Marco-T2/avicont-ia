@@ -1,10 +1,9 @@
-import { Prisma } from "@/generated/prisma/client";
-import type { AccountType } from "@/generated/prisma/client";
 import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
-import type { AccountingDashboardDTO } from "@/modules/accounting/presentation/dto/dashboard.types";
-import { roundHalfUp } from "../shared/domain/money.utils";
+import type { AccountingDashboardDTO } from "./dto/dashboard.types";
 import type { JournalsService } from "./journals.service";
 import type { LedgerService } from "./ledger.service";
+
+type AccountTypeLiteral = "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
 
 /**
  * Application-layer dashboard composition for the accounting hub.
@@ -88,44 +87,41 @@ function latestEntryDateISO(entries: Array<{ date: Date }>): string | null {
 interface TrialBalanceRowLike {
   accountCode: string;
   accountName: string;
-  accountType: AccountType;
+  accountType: AccountTypeLiteral;
   totalDebit: string;
   totalCredit: string;
 }
 
-function aggregateByType(rows: TrialBalanceRowLike[], type: AccountType): string {
-  // Activo / Pasivo / Patrimonio surfacing the absolute net position of the
+function aggregateByType(
+  rows: TrialBalanceRowLike[],
+  type: AccountTypeLiteral,
+): string {
+  // Activo / Pasivo / Patrimonio surface the absolute net position for the
   // type — running sum of (debit - credit) then take |result|. Per-row abs
   // would double-count internal nettings between accounts of the same type.
+  // Number arithmetic is acceptable here: KPI surfacing, not partida-doble
+  // ledger math (which lives in `shared/domain/money.utils` Decimal helpers).
   const net = rows
     .filter((r) => r.accountType === type)
     .reduce(
-      (acc, r) =>
-        acc
-          .plus(new Prisma.Decimal(r.totalDebit))
-          .minus(new Prisma.Decimal(r.totalCredit)),
-      new Prisma.Decimal(0),
+      (acc, r) => acc + Number(r.totalDebit) - Number(r.totalCredit),
+      0,
     );
-  return roundHalfUp(net.abs()).toFixed(2);
+  return Math.abs(net).toFixed(2);
 }
 
 function topTen(rows: TrialBalanceRowLike[]) {
   return rows
-    .map((r) => {
-      const movement = new Prisma.Decimal(r.totalDebit)
-        .abs()
-        .plus(new Prisma.Decimal(r.totalCredit).abs());
-      return {
-        code: r.accountCode,
-        name: r.accountName,
-        movementTotalDecimal: movement,
-      };
-    })
-    .sort((a, b) => b.movementTotalDecimal.comparedTo(a.movementTotalDecimal))
+    .map((r) => ({
+      code: r.accountCode,
+      name: r.accountName,
+      movement: Math.abs(Number(r.totalDebit)) + Math.abs(Number(r.totalCredit)),
+    }))
+    .sort((a, b) => b.movement - a.movement)
     .slice(0, 10)
-    .map(({ code, name, movementTotalDecimal }) => ({
+    .map(({ code, name, movement }) => ({
       code,
       name,
-      movementTotal: roundHalfUp(movementTotalDecimal).toFixed(2),
+      movementTotal: movement.toFixed(2),
     }));
 }

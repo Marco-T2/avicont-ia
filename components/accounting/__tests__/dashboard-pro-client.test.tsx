@@ -2,7 +2,7 @@ import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
 import { DashboardProClient } from "../dashboard-pro-client";
-import type { AccountingDashboardDTO } from "@/modules/accounting/presentation/dto/dashboard.types";
+import type { AccountingDashboardDTO } from "@/modules/accounting/presentation";
 
 afterEach(() => cleanup());
 

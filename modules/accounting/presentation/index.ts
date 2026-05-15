@@ -26,4 +26,8 @@ export { eq, sumDecimals } from "../shared/domain/money.utils";
 // Client-safe types: pure interfaces, no runtime imports. Surfaced here
 // (not in `./server`) so client components in `components/accounting/`
 // can `import type` without dragging `"server-only"` into the bundle.
-export type * from "./dto/dashboard.types";
+// Re-export from application/dto — DTO is owned by the application
+// layer (the orchestrator service produces it) and lives there to keep
+// R2 (`application/ must only depend on domain/`) clean of presentation/*
+// imports.
+export type * from "../application/dto/dashboard.types";

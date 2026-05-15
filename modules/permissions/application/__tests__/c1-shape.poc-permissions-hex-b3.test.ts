@@ -171,8 +171,8 @@ describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggr
 
 // ── α18: DUAL-SENTINEL — baseline 84 vi.mock count invariant ─────────────────
 
-describe("α18 DUAL-SENTINEL — baseline 83 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 83 (baseline preserved; net -1 from original)", () => {
+describe("α18 DUAL-SENTINEL — baseline 84 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro)", () => {
+  it("α18: vi.mock count for @/features/permissions/server equals 84 (baseline preserved; net 0 from original)", () => {
     // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
     // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
     // Original baseline: 84. Adjusted by:
@@ -182,11 +182,15 @@ describe("α18 DUAL-SENTINEL — baseline 83 vi.mock count (REQ-010 invariant, d
     //     DELETED with endpoint (-1)
     //   - sidebar-reorg-settings-hub C3 GREEN: settings/__tests__/page.test.ts NEW —
     //     mocks canAccess to verify per-card RBAC filter and entry-gate broadening (+1)
+    //   - accounting-dashboard-pro Phase 7 GREEN: app/(dashboard)/[orgSlug]/accounting/__tests__/page.test.ts
+    //     mocks canAccess to verify pro-vs-light dual-view branching at the hub (+1).
+    //     (Phase 6's DashboardLight refactored to receive allowedResources as a prop —
+    //     canAccess moved to the server page — so no light-view consumer mock.)
     // REQ-010 invariant preserved; drifts accounted explicit per [[invariant_collision_elevation]].
     const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
     const count = Number(stdout);
-    expect(count).toBe(83);
+    expect(count).toBe(84);
   });
 });
 

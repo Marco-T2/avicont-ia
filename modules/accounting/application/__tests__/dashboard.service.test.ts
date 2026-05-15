@@ -2,8 +2,9 @@ import { describe, expect, it } from "vitest";
 import type { JournalsService } from "../journals.service";
 import type { LedgerService } from "../ledger.service";
 import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
-import type { AccountType } from "@/generated/prisma/client";
 import { AccountingDashboardService } from "../dashboard.service";
+
+type AccountTypeLit = "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
 
 const ORG_ID = "org-1";
 
@@ -17,7 +18,7 @@ function makeLedgerStub(
   rows: Array<{
     accountCode: string;
     accountName: string;
-    accountType: AccountType;
+    accountType: AccountTypeLit;
     totalDebit: string;
     totalCredit: string;
     balance: string;
@@ -166,7 +167,7 @@ describe("AccountingDashboardService.load", () => {
 function tbRow(
   accountCode: string,
   accountName: string,
-  accountType: AccountType,
+  accountType: AccountTypeLit,
   totalDebit: string,
   totalCredit: string,
 ) {

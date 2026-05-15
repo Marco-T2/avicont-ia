@@ -63,15 +63,20 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
           ),
         );
 
+  const lightResources = ["accounting-config", "journal", "reports"] as const;
+  const lightChecks = await Promise.all(
+    lightResources.map((r) => canAccess(role, r, "read", orgId)),
+  );
+  const allowedResources = lightResources.filter((_, i) => lightChecks[i]);
+
   return (
     <div className="space-y-6">
       <Header />
       <DashboardLight
         orgSlug={orgSlug}
-        orgId={orgId}
-        role={role}
         totalEntries={entries.length}
         lastEntryDate={lastEntryDate}
+        allowedResources={allowedResources}
       />
     </div>
   );

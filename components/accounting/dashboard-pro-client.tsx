@@ -29,7 +29,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { AccountingDashboardDTO } from "@/modules/accounting/presentation/dto/dashboard.types";
+import type { AccountingDashboardDTO } from "@/modules/accounting/presentation";
 
 interface DashboardProClientProps {
   data: AccountingDashboardDTO;
