@@ -10,14 +10,14 @@
  *     neto, credit IVA débito fiscal "2.1.6", optional credit exentos
  *     residual, debit IT, credit IT por pagar).
  *
- * **Money math**: Decimal-internal arithmetic via `Prisma.Decimal` + `roundHalfUp`
- * from `modules/accounting/shared/domain/money.utils`. `.toNumber()` at the
- * `EntryLineTemplate.debit/credit: number` boundary (SHAPE-A — number DTO
- * preserved). R-money-tier2 discharged at poc-tier2-money-decimal-convergence
- * C1 GREEN (OLEADA 8 POC #1) — derivative from R-money (OLEADA 7 archive #2452)
- * per [[named_rule_immutability]].
+ * **Money math**: Decimal-internal arithmetic via `decimal.js` `Decimal` +
+ * `roundHalfUp` from `modules/accounting/shared/domain/money.utils`.
+ * `.toNumber()` at the `EntryLineTemplate.debit/credit: number` boundary
+ * (SHAPE-A — number DTO preserved). R-money-tier2 discharged at
+ * poc-tier2-money-decimal-convergence C1 GREEN (OLEADA 8 POC #1) — derivative
+ * from R-money (OLEADA 7 archive #2452) per [[named_rule_immutability]].
  */
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 
 /** Código de cuenta Débito Fiscal IVA (ventas). Fijo Bolivia SIN. */
@@ -66,7 +66,7 @@ export function buildSaleEntryLines(
       exentosExplicit !== undefined
         ? exentosExplicit
         : roundHalfUp(
-            new Prisma.Decimal(importeTotal).minus(baseIvaSujetoCf),
+            new Decimal(importeTotal).minus(baseIvaSujetoCf),
           ).toNumber();
 
     if (exentosExplicit !== undefined) {
@@ -84,10 +84,10 @@ export function buildSaleEntryLines(
     }
 
     const ingresoNeto = roundHalfUp(
-      new Prisma.Decimal(baseIvaSujetoCf).minus(dfCfIva),
+      new Decimal(baseIvaSujetoCf).minus(dfCfIva),
     ).toNumber();
     const itAmount = roundHalfUp(
-      new Prisma.Decimal(importeTotal).mul("0.03"),
+      new Decimal(importeTotal).mul("0.03"),
     ).toNumber();
 
     const lines: EntryLineTemplate[] = [
