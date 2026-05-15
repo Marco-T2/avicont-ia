@@ -24,10 +24,7 @@
 // formatBolivianAmount, zeroDecimal, toDecimal, isDecimal, serializeStatement) —
 // it is NOT a thin shim. Proposal #2357.
 // ───────────────────────────────────────────────────────────────────────────────
-import { Prisma } from "@/generated/prisma/client";
-
-// Alias local para no repetir Prisma.Decimal en firmas
-type Decimal = Prisma.Decimal;
+import Decimal from "decimal.js";
 
 // EX-D3: canonical sumDecimals + eq live in shared — re-exported here so existing
 // FS call sites keep importing from this module unchanged (zero call-site churn).
@@ -41,7 +38,7 @@ export { sumDecimals, eq } from "@/modules/accounting/shared/domain/money.utils"
  * La serialización a string con trailing zeros se hace en serializeStatement.
  */
 export function roundHalfUp(d: Decimal): Decimal {
-  return d.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  return d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 }
 
 /**
@@ -75,28 +72,34 @@ export function formatBolivianAmount(d: Decimal): string {
 
 /**
  * Constructor de Decimal cero — exportado para uso de builders puros del
- * dominio que NO pueden runtime-import @/generated/prisma/client (R5 absoluta).
- * Concentrates the Prisma.Decimal runtime touchpoint in this R1-exempt file.
+ * dominio. Concentra el touchpoint runtime de `decimal.js` en este archivo.
+ *
+ * NOTE: el comentario header `R1-permissible-value-type-exception` (líneas
+ * 1-26) referencia el touchpoint Prisma original — queda intacto en sub-POC 2
+ * por [[named_rule_immutability]] y se revoca atómico en sub-POC 6 de la
+ * misma OLEADA. Surface honest: la prosa del header es factualmente stale
+ * post-swap (ya no se runtime-importa Prisma).
  */
 export function zeroDecimal(): Decimal {
-  return new Prisma.Decimal(0);
+  return new Decimal(0);
 }
 
 /**
  * Construye un Decimal a partir de un valor primitivo. Mismo razonamiento que
  * `zeroDecimal`: los builders puros consumen este helper en vez de tocar
- * `new Prisma.Decimal(value)` directamente.
+ * `new Decimal(value)` directamente.
  */
 export function toDecimal(value: number | string): Decimal {
-  return new Prisma.Decimal(value);
+  return new Decimal(value);
 }
 
 /**
- * Type guard runtime-safe para detectar instancias de Prisma.Decimal sin que
- * consumidores externos tengan que importar Prisma. Encapsula el `instanceof`.
+ * Type guard runtime-safe para detectar instancias de Decimal (decimal.js)
+ * sin que consumidores externos tengan que importar la clase. Encapsula el
+ * `instanceof`.
  */
 export function isDecimal(value: unknown): value is Decimal {
-  return value instanceof Prisma.Decimal;
+  return value instanceof Decimal;
 }
 
 /**
@@ -111,8 +114,8 @@ export function isDecimal(value: unknown): value is Decimal {
 export function serializeStatement<T>(obj: T): T {
   if (obj === null || obj === undefined) return obj;
 
-  // Decimal de Prisma (decimal.js) se detecta por instanceof
-  if (obj instanceof Prisma.Decimal) {
+  // Decimal de decimal.js se detecta por instanceof
+  if (obj instanceof Decimal) {
     return decimalToFixed2(obj) as unknown as T;
   }
 

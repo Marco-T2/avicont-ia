@@ -1,8 +1,15 @@
 import { describe, it, expect } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { roundHalfUp, sumDecimals, eq, serializeStatement } from "@/modules/accounting/financial-statements/domain/money.utils";
 
-const D = (v: string | number) => new Prisma.Decimal(v);
+// Fixture constructor migrated from `Prisma.Decimal` (Decimal2 — inlined
+// decimal.js@10.5.0 in Prisma 7.7.0) to top-level decimal.js@10.6.0 `Decimal`.
+// Identity cascade: post sub-POC 1, `money.utils` runtime path now uses
+// top-level Decimal; mixing Decimal2 fixtures with top-level Decimal
+// `instanceof` checks in `serializeStatement` produced false negatives
+// (Decimal2 NOT instanceof top-level Decimal). Discovery #2590
+// (prisma-decimal-instance-identity-cascade). Value semantics identical.
+const D = (v: string | number) => new Decimal(v);
 
 describe("roundHalfUp", () => {
   // RED-1: 0.005 debe redondear hacia arriba → 0.01
