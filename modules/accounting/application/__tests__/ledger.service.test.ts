@@ -413,4 +413,81 @@ describe("LedgerService.getAccountLedgerPaginated", () => {
     expect(result.page).toBe(2);
     expect(result.pageSize).toBe(5);
   });
+
+  // ── poc-pagination-ledger bugfix: historical opening contract ──
+  // Follow-up to poc-pagination-ledger GREEN (0ed87baf). The bug was in the
+  // Prisma repo (priors query reused the page WHERE including dateFrom — so
+  // historical pre-filter balance was IGNORED). The PORT contract is
+  // unchanged: `openingBalanceDelta` is still a single number, but its
+  // semantics now include historical-priors+within-range-priors. These
+  // tests assert the service correctly threads through the new combined
+  // value (the fake primes it directly because the bug lives at infra).
+  //
+  // Expected RED failure mode (per [[red_acceptance_failure_mode]]):
+  //   T8/T9 are GREEN-from-start at the service layer (the fake doesn't
+  //   reproduce the infra bug) — they exist as regression coverage that
+  //   documents the new contract semantics. The authoritative RED for
+  //   this bugfix lives at the repo integration test layer.
+  it("T8 page 1 with dateFrom — opening reflects historical priors (contract regression — value flows through unchanged when fake primes historical sum)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    // Simulates the fixed repo's behavior: priors before dateFrom (e.g.
+    // sum=120) sum into openingBalanceDelta even on page=1.
+    query.linesByAccountPaginated = [row(10, 0, "2099-01-20", 11)];
+    query.openingBalanceDeltaPrimed = 120;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      { dateFrom: new Date("2099-01-15") },
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.openingBalance).toBe("120.00");
+    // Running balance seeded from 120: 120 + 10 = 130
+    expect(result.items[0].balance).toBe("130.00");
+  });
+
+  it("T9 page N with dateFrom — opening = historical + within-range priors of prior pages (contract regression)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    // Simulates: historical 120 + within-range priors (rows 0..2) = 60 → 180.
+    // Page 2 items are rows 3..5 of the within-range slice.
+    query.linesByAccountPaginated = [
+      row(10, 0, "2099-01-20", 21),
+      row(20, 0, "2099-01-21", 22),
+      row(30, 0, "2099-01-22", 23),
+      row(40, 0, "2099-01-23", 24),
+      row(50, 0, "2099-01-24", 25),
+      row(60, 0, "2099-01-25", 26),
+    ];
+    query.openingBalanceDeltaPrimed = 180;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      { dateFrom: new Date("2099-01-15") },
+      undefined,
+      { page: 2, pageSize: 3 },
+    );
+
+    expect(result.openingBalance).toBe("180.00");
+    // Running balance: 180 + 40 = 220 → +50 = 270 → +60 = 330
+    expect(result.items.map((e) => e.balance)).toEqual([
+      "220.00",
+      "270.00",
+      "330.00",
+    ]);
+    expect(result.page).toBe(2);
+    expect(result.pageSize).toBe(3);
+  });
 });

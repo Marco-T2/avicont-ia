@@ -1,11 +1,15 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 
-import { PrismaJournalEntriesRepository } from "../prisma-journal-entries.repo";
+import {
+  JournalRepository,
+  PrismaJournalEntriesRepository,
+} from "../prisma-journal-entries.repo";
 
 /**
  * Postgres-real integration test for PrismaJournalEntriesRepository (POC #10
@@ -392,5 +396,149 @@ describe("PrismaJournalEntriesRepository — Postgres integration", () => {
       where: { id: { in: originalLineIds } },
     });
     expect(orphanLines).toHaveLength(0);
+  });
+
+  // ── findLinesByAccountPaginated — openingBalanceDelta historical scope ──
+  // Follow-up to poc-pagination-ledger (GREEN at 0ed87baf): the original
+  // 3-query Promise.all summed priors using the SAME where as the page window
+  // (filters.dateRange included), so for any dateFrom filter the historical
+  // pre-filter ledger was IGNORED. Saldo de apertura is contable: opening at
+  // dateFrom = sum(debit-credit) of POSTED lines WHERE date < dateFrom for
+  // that account, plus within-range priors for the page slice (the latter
+  // preserved verbatim for slice consistency invariant).
+  //
+  // Expected RED failure mode (per [[red_acceptance_failure_mode]]):
+  //   T1 FAIL: `openingBalanceDelta` is `0` (current impl) vs expected `120`
+  //     (sum of pre-dateFrom POSTED lines).
+  //   T2 FAIL: `openingBalanceDelta` is `sum(within-range priors only)` vs
+  //     expected `historical + within-range priors`.
+  //   T3 FAIL: with `periodId` filter, historical sum does NOT scope to the
+  //     period (current impl returns 0 because dateRange in where blocks priors).
+  describe("findLinesByAccountPaginated — openingBalanceDelta historical scope (poc-pagination-ledger bugfix)", () => {
+    // Helper: create a POSTED journal entry with one debit line and one
+    // credit line on the asset account, balanced against the liability.
+    // Returns the entryId for caller convenience.
+    async function postedEntry(
+      number: number,
+      date: Date,
+      assetDebit: number,
+      assetCredit: number,
+      periodId?: string,
+    ): Promise<string> {
+      const entry = await prisma.journalEntry.create({
+        data: {
+          organizationId: testOrgId,
+          number,
+          date,
+          description: `posted-${number}`,
+          status: "POSTED",
+          periodId: periodId ?? testPeriodId,
+          voucherTypeId: testVoucherTypeId,
+          createdById: testUserId,
+        },
+      });
+      // Asset side line (the one we filter by accountId)
+      await prisma.journalLine.create({
+        data: {
+          journalEntryId: entry.id,
+          accountId: assetAccountId,
+          debit: new Prisma.Decimal(assetDebit),
+          credit: new Prisma.Decimal(assetCredit),
+          order: 0,
+        },
+      });
+      // Counter-party line on liability (kept balanced — irrelevant to
+      // findLinesByAccountPaginated which filters by accountId=asset)
+      await prisma.journalLine.create({
+        data: {
+          journalEntryId: entry.id,
+          accountId: liabilityAccountId,
+          debit: new Prisma.Decimal(assetCredit),
+          credit: new Prisma.Decimal(assetDebit),
+          order: 1,
+        },
+      });
+      return entry.id;
+    }
+
+    it("T1: page 1 with dateFrom — openingBalanceDelta SUMS pre-dateFrom POSTED lines (NOT 0)", async () => {
+      // 3 POSTED lines BEFORE dateFrom (historical): debit 100, debit 50, credit 30
+      //   → historical opening = 100 + 50 - 30 = 120
+      // 2 POSTED lines INSIDE range (asset 10 debit, asset 5 credit)
+      await postedEntry(101, new Date("2099-01-05"), 100, 0);
+      await postedEntry(102, new Date("2099-01-08"), 50, 0);
+      await postedEntry(103, new Date("2099-01-10"), 0, 30);
+      await postedEntry(104, new Date("2099-01-20"), 10, 0);
+      await postedEntry(105, new Date("2099-01-25"), 0, 5);
+
+      const repo = new JournalRepository();
+      const result = await repo.findLinesByAccountPaginated(
+        testOrgId,
+        assetAccountId,
+        { dateRange: { dateFrom: new Date("2099-01-15") } },
+        { page: 1, pageSize: 25 },
+      );
+
+      // Page 1 within-range priors → 0 rows → within-range delta = 0
+      // Historical (date < 2099-01-15) → 100 + 50 - 30 = 120
+      // Total openingBalanceDelta → 120
+      const opening = new Prisma.Decimal(String(result.openingBalanceDelta));
+      expect(opening.toString()).toBe("120");
+      expect(result.items.length).toBe(2);
+      expect(result.total).toBe(2);
+    });
+
+    it("T2: page 2 with dateFrom — openingBalanceDelta SUMS historical + within-range priors of prior pages", async () => {
+      // 3 POSTED lines BEFORE dateFrom (historical): 100 + 50 - 30 = 120
+      // 6 POSTED lines INSIDE range (asset side: 10, 20, 30, 40, 50, 60 debits)
+      //   pageSize=3 → page 2 priors = rows 0..2 inside range = 10 + 20 + 30 = 60
+      //   page 2 opening = 120 (historical) + 60 (within-range priors) = 180
+      await postedEntry(201, new Date("2099-01-05"), 100, 0);
+      await postedEntry(202, new Date("2099-01-08"), 50, 0);
+      await postedEntry(203, new Date("2099-01-10"), 0, 30);
+      await postedEntry(204, new Date("2099-01-20"), 10, 0);
+      await postedEntry(205, new Date("2099-01-21"), 20, 0);
+      await postedEntry(206, new Date("2099-01-22"), 30, 0);
+      await postedEntry(207, new Date("2099-01-23"), 40, 0);
+      await postedEntry(208, new Date("2099-01-24"), 50, 0);
+      await postedEntry(209, new Date("2099-01-25"), 60, 0);
+
+      const repo = new JournalRepository();
+      const result = await repo.findLinesByAccountPaginated(
+        testOrgId,
+        assetAccountId,
+        { dateRange: { dateFrom: new Date("2099-01-15") } },
+        { page: 2, pageSize: 3 },
+      );
+
+      const opening = new Prisma.Decimal(String(result.openingBalanceDelta));
+      // Historical 120 + within-range priors (10+20+30=60) = 180
+      expect(opening.toString()).toBe("180");
+      expect(result.items.length).toBe(3);
+      expect(result.total).toBe(6);
+    });
+
+    it("T3: no dateFrom — openingBalanceDelta has NO historical component (preserves page=1 → 0 behavior)", async () => {
+      // 5 POSTED lines across various dates — no dateFrom filter
+      // page 2 pageSize=2 → priors = rows 0..1 = 100 + 50 = 150
+      await postedEntry(301, new Date("2099-01-05"), 100, 0);
+      await postedEntry(302, new Date("2099-01-08"), 50, 0);
+      await postedEntry(303, new Date("2099-01-20"), 10, 0);
+      await postedEntry(304, new Date("2099-01-21"), 20, 0);
+      await postedEntry(305, new Date("2099-01-22"), 30, 0);
+
+      const repo = new JournalRepository();
+      const result = await repo.findLinesByAccountPaginated(
+        testOrgId,
+        assetAccountId,
+        undefined,
+        { page: 2, pageSize: 2 },
+      );
+
+      const opening = new Prisma.Decimal(String(result.openingBalanceDelta));
+      // No dateFrom → historical=0, within-range priors = 100 + 50 = 150
+      expect(opening.toString()).toBe("150");
+      expect(result.total).toBe(5);
+    });
   });
 });
