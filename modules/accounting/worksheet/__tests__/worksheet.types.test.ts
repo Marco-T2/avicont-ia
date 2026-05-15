@@ -3,7 +3,7 @@
  * Covers REQ-2.
  */
 import { describe, it, expect } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type {
   WorksheetRow,
   WorksheetGroup,
@@ -12,7 +12,11 @@ import type {
   WorksheetReport,
 } from "../domain/worksheet.types";
 
-const D = (v: string | number) => new Prisma.Decimal(v);
+// Fixture constructor + instanceof migrated to top-level decimal.js@10.6.0 per
+// discovery #2590 (prisma-decimal-instance-identity-cascade). Sub-POC 2
+// worksheet.builder now produces top-level Decimal instances; Decimal2
+// (Prisma's inlined decimal.js@10.5.0) is NOT instanceof top-level Decimal.
+const D = (v: string | number) => new Decimal(v);
 
 describe("worksheet domain types", () => {
   it("WorksheetRow can be constructed with all 12 Decimal fields", () => {
@@ -40,19 +44,19 @@ describe("worksheet domain types", () => {
 
     expect(row.accountId).toBe("acc-1");
     expect(row.code).toBe("1.1.1");
-    // All 12 numeric fields are Prisma.Decimal instances
-    expect(row.sumasDebe).toBeInstanceOf(Prisma.Decimal);
-    expect(row.sumasHaber).toBeInstanceOf(Prisma.Decimal);
-    expect(row.saldoDeudor).toBeInstanceOf(Prisma.Decimal);
-    expect(row.saldoAcreedor).toBeInstanceOf(Prisma.Decimal);
-    expect(row.ajustesDebe).toBeInstanceOf(Prisma.Decimal);
-    expect(row.ajustesHaber).toBeInstanceOf(Prisma.Decimal);
-    expect(row.saldoAjDeudor).toBeInstanceOf(Prisma.Decimal);
-    expect(row.saldoAjAcreedor).toBeInstanceOf(Prisma.Decimal);
-    expect(row.resultadosPerdidas).toBeInstanceOf(Prisma.Decimal);
-    expect(row.resultadosGanancias).toBeInstanceOf(Prisma.Decimal);
-    expect(row.bgActivo).toBeInstanceOf(Prisma.Decimal);
-    expect(row.bgPasPat).toBeInstanceOf(Prisma.Decimal);
+    // All 12 numeric fields are decimal.js Decimal instances
+    expect(row.sumasDebe).toBeInstanceOf(Decimal);
+    expect(row.sumasHaber).toBeInstanceOf(Decimal);
+    expect(row.saldoDeudor).toBeInstanceOf(Decimal);
+    expect(row.saldoAcreedor).toBeInstanceOf(Decimal);
+    expect(row.ajustesDebe).toBeInstanceOf(Decimal);
+    expect(row.ajustesHaber).toBeInstanceOf(Decimal);
+    expect(row.saldoAjDeudor).toBeInstanceOf(Decimal);
+    expect(row.saldoAjAcreedor).toBeInstanceOf(Decimal);
+    expect(row.resultadosPerdidas).toBeInstanceOf(Decimal);
+    expect(row.resultadosGanancias).toBeInstanceOf(Decimal);
+    expect(row.bgActivo).toBeInstanceOf(Decimal);
+    expect(row.bgPasPat).toBeInstanceOf(Decimal);
   });
 
   it("WorksheetGroup carries accountType, rows, and subtotals", () => {
@@ -77,7 +81,7 @@ describe("worksheet domain types", () => {
     };
     expect(group.accountType).toBe("ACTIVO");
     expect(group.rows).toHaveLength(0);
-    expect(group.subtotals.bgActivo).toBeInstanceOf(Prisma.Decimal);
+    expect(group.subtotals.bgActivo).toBeInstanceOf(Decimal);
   });
 
   it("WorksheetFilters accepts dateFrom, dateTo and optional fiscalPeriodId", () => {
@@ -126,6 +130,6 @@ describe("worksheet domain types", () => {
     expect(report.orgId).toBe("org-1");
     expect(report.groups).toHaveLength(0);
     expect(report.imbalanced).toBe(false);
-    expect(report.imbalanceDelta).toBeInstanceOf(Prisma.Decimal);
+    expect(report.imbalanceDelta).toBeInstanceOf(Decimal);
   });
 });

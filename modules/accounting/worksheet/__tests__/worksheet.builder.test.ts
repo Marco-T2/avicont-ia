@@ -8,13 +8,17 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { buildWorksheet, type BuildWorksheetInput } from "../domain/worksheet.builder";
 import type { WorksheetAccountMetadata } from "../domain/types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+// Fixture constructor + instanceof migrated to top-level decimal.js@10.6.0 per
+// discovery #2590 (prisma-decimal-instance-identity-cascade). Sub-POC 2
+// worksheet.builder now produces top-level Decimal instances; Decimal2
+// (Prisma's inlined decimal.js@10.5.0) is NOT instanceof top-level Decimal.
+const D = (v: string | number) => new Decimal(String(v));
 
 function makeAccount(
   overrides: Partial<WorksheetAccountMetadata> & Pick<WorksheetAccountMetadata, "id" | "type">,
@@ -32,7 +36,7 @@ function makeAccount(
   };
 }
 
-type AggEntry = { accountId: string; totalDebit: Prisma.Decimal; totalCredit: Prisma.Decimal; nature: "DEUDORA" | "ACREEDORA" };
+type AggEntry = { accountId: string; totalDebit: Decimal; totalCredit: Decimal; nature: "DEUDORA" | "ACREEDORA" };
 
 function agg(accountId: string, debit: string | number, credit: string | number, nature: "DEUDORA" | "ACREEDORA" = "DEUDORA"): AggEntry {
   return { accountId, totalDebit: D(debit), totalCredit: D(credit), nature };
@@ -180,7 +184,7 @@ describe("buildWorksheet — golden fixture (REQ-2, REQ-3, REQ-5, REQ-7, REQ-9, 
     expect(gt.resultadosGanancias.toFixed(2)).toBe("80000.00");
   });
 
-  it("all 12 numeric fields on every row are Prisma.Decimal instances (REQ-2)", () => {
+  it("all 12 numeric fields on every row are decimal.js Decimal instances (REQ-2)", () => {
     result = buildWorksheet(input);
     const allRows = result.groups.flatMap((g) => g.rows);
     const fields: (keyof typeof allRows[0])[] = [
@@ -190,12 +194,12 @@ describe("buildWorksheet — golden fixture (REQ-2, REQ-3, REQ-5, REQ-7, REQ-9, 
     ];
     for (const row of allRows) {
       for (const field of fields) {
-        expect(row[field], `${row.accountId}.${field} should be Decimal`).toBeInstanceOf(Prisma.Decimal);
+        expect(row[field], `${row.accountId}.${field} should be Decimal`).toBeInstanceOf(Decimal);
       }
     }
   });
 
-  it("grand totals fields are Prisma.Decimal instances (REQ-14)", () => {
+  it("grand totals fields are decimal.js Decimal instances (REQ-14)", () => {
     result = buildWorksheet(input);
     const fields: (keyof typeof result.grandTotals)[] = [
       "sumasDebe", "sumasHaber", "saldoDeudor", "saldoAcreedor",
@@ -203,7 +207,7 @@ describe("buildWorksheet — golden fixture (REQ-2, REQ-3, REQ-5, REQ-7, REQ-9, 
       "resultadosPerdidas", "resultadosGanancias", "bgActivo", "bgPasPat",
     ];
     for (const field of fields) {
-      expect(result.grandTotals[field]).toBeInstanceOf(Prisma.Decimal);
+      expect(result.grandTotals[field]).toBeInstanceOf(Decimal);
     }
   });
 });

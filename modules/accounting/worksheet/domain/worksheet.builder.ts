@@ -13,7 +13,7 @@
  * WS-D1 locked: imports WorksheetAccountMetadata + WorksheetMovementAggregation
  * from "./types" (domain), NOT from the infra repository (WS-D1 design §2).
  */
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { AccountType } from "@/generated/prisma/enums";
 import { sumDecimals, eq } from "./money.utils";
 import type { WorksheetAccountMetadata, WorksheetMovementAggregation } from "./types";
@@ -39,12 +39,12 @@ export type BuildWorksheetInput = {
 /** Canonical group order per REQ-9 */
 const CANONICAL_ORDER: AccountType[] = ["ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO"];
 
-const ZERO = new Prisma.Decimal(0);
-const z = () => new Prisma.Decimal(0);
+const ZERO = new Decimal(0);
+const z = () => new Decimal(0);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function maxZero(d: Prisma.Decimal): Prisma.Decimal {
+function maxZero(d: Decimal): Decimal {
   return d.gt(ZERO) ? d : z();
 }
 
@@ -105,7 +105,7 @@ function rowToTotals(row: WorksheetRow): WorksheetTotals {
  * Pure function — no Prisma DB access. Accepts two aggregation arrays
  * (sumas + ajustes) and account metadata, produces a WorksheetReport.
  *
- * All arithmetic uses Prisma.Decimal end-to-end (REQ-14).
+ * All arithmetic uses decimal.js Decimal end-to-end (REQ-14).
  */
 export function buildWorksheet(input: BuildWorksheetInput): WorksheetReport {
   const { accounts, sumas, ajustes, dateFrom, dateTo } = input;
