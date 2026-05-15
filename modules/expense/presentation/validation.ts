@@ -6,7 +6,7 @@ export const createExpenseSchema = z.object({
   category: z.enum(EXPENSE_CATEGORIES, { message: "Categoría de gasto inválida" }),
   description: z.string().optional(),
   date: z.coerce.date({ message: "Fecha inválida" }),
-  lotId: z.string().cuid("ID de lote inválido"),
+  lotId: z.string().min(1, "ID de lote inválido"),
 });
 
-export const expenseIdSchema = z.string().cuid("ID de gasto inválido");
+export const expenseIdSchema = z.string().min(1, "ID de gasto inválido");
