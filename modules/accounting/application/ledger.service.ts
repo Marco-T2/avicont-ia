@@ -5,12 +5,14 @@ import type { JournalLedgerQueryPort } from "@/modules/accounting/domain/ports/j
 import type {
   DateRangeFilter,
   LedgerEntry,
+  LedgerPaginatedDto,
   TrialBalanceRow,
 } from "@/modules/accounting/presentation/dto/ledger.types";
 import {
   roundHalfUp,
   sumDecimals,
 } from "@/modules/accounting/shared/domain/money.utils";
+import type { PaginationOptions } from "@/modules/shared/domain/value-objects/pagination";
 import { Prisma } from "@/generated/prisma/client";
 import type { AccountType } from "@/generated/prisma/client";
 
@@ -79,6 +81,72 @@ export class LedgerService {
         balance: roundHalfUp(runningBalance).toFixed(2),
       };
     });
+  }
+
+  /**
+   * Paginated libro-mayor: running-balance SEEDED FROM `openingBalanceDelta`
+   * (sum of debit-credit of all prior-page rows) NOT from Decimal(0).
+   * Correctness invariant: page-1 → opening=0 → byte-identical to legacy
+   * getAccountLedger; page-N → opening=sum-prior → correct continuation.
+   *
+   * R-money TIER 1 discharged: accumulator stays in Prisma.Decimal end-to-end
+   * (REQ-6/D6); string serialization only at DTO boundary via roundHalfUp+
+   * toFixed(2). Returns LedgerPaginatedDto where openingBalance: string is
+   * serialized via roundHalfUp+toFixed(2). Legacy getAccountLedger PRESERVED
+   * untouched (REQ-7, dual-method additive transitional 5th evidence).
+   *
+   * §13 candidate: arch/§13/cumulative-state-paginated-dto-pattern 1st
+   * evidence — paginated views requiring cumulative state get a dedicated
+   * port DTO (LedgerPageResult) + DTO (LedgerPaginatedDto) without polluting
+   * the shared PaginatedResult<T> VO.
+   */
+  async getAccountLedgerPaginated(
+    organizationId: string,
+    accountId: string,
+    dateRange?: DateRangeFilter,
+    periodId?: string,
+    pagination?: PaginationOptions,
+  ): Promise<LedgerPaginatedDto> {
+    const account = await this.accounts.findById(organizationId, accountId);
+    if (!account) throw new NotFoundError("Cuenta");
+
+    const result = await this.query.findLinesByAccountPaginated(
+      organizationId,
+      accountId,
+      { dateRange, periodId },
+      pagination,
+    );
+
+    // Port declares openingBalanceDelta as `unknown` (Prisma.Decimal at the
+    // adapter, opaque at the port edge). Coerce via String(...) — Decimal
+    // accepts string input, preserving precision.
+    const opening = new Prisma.Decimal(String(result.openingBalanceDelta));
+
+    // Running-balance accumulator SEEDED FROM opening (NOT Decimal(0)) —
+    // novel vs legacy. Page 1 → opening=0 → equivalent to legacy behavior.
+    let running = opening;
+    const items: LedgerEntry[] = result.items.map((line) => {
+      const debit = new Prisma.Decimal(String(line.debit));
+      const credit = new Prisma.Decimal(String(line.credit));
+      running = running.plus(debit).minus(credit);
+      return {
+        date: line.journalEntry.date,
+        entryNumber: line.journalEntry.number,
+        description: line.description ?? line.journalEntry.description,
+        debit: roundHalfUp(debit).toFixed(2),
+        credit: roundHalfUp(credit).toFixed(2),
+        balance: roundHalfUp(running).toFixed(2),
+      };
+    });
+
+    return {
+      items,
+      total: result.total,
+      page: result.page,
+      pageSize: result.pageSize,
+      totalPages: result.totalPages,
+      openingBalance: roundHalfUp(opening).toFixed(2),
+    };
   }
 
   // ── Obtener balance de comprobación ──
