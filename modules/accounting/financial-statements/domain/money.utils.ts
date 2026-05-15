@@ -1,3 +1,10 @@
+// Revoked-by: DEC-1 (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+// DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+// Prisma.Decimal is forbidden outside infrastructure adapters. This file now
+// runtime-imports `decimal.js` directly (NOT `Prisma.Decimal`) per sub-POC 2
+// Cycle 1 swap (commit 409270f4).
+//
+// [HISTORICAL — see Revoked-by above]
 // R1-permissible-value-type-exception
 // ───────────────────────────────────────────────────────────────────────────────
 // This is the SINGLE domain file authorized to runtime-import Prisma. The reason
@@ -74,11 +81,13 @@ export function formatBolivianAmount(d: Decimal): string {
  * Constructor de Decimal cero — exportado para uso de builders puros del
  * dominio. Concentra el touchpoint runtime de `decimal.js` en este archivo.
  *
+ * [HISTORICAL — see Revoked-by at file top]
  * NOTE: el comentario header `R1-permissible-value-type-exception` (líneas
- * 1-26) referencia el touchpoint Prisma original — queda intacto en sub-POC 2
- * por [[named_rule_immutability]] y se revoca atómico en sub-POC 6 de la
- * misma OLEADA. Surface honest: la prosa del header es factualmente stale
- * post-swap (ya no se runtime-importa Prisma).
+ * 1-26 originales, ahora líneas 8-32 tras la cláusula DEC-1) referencia el
+ * touchpoint Prisma original — queda intacto en sub-POC 2 por
+ * [[named_rule_immutability]] y se revoca atómico en sub-POC 6 (este archivo)
+ * via DEC-1 derivative. Post-revocación: la prosa del header es histórica
+ * (ya no se runtime-importa Prisma — DEC-1 lo prohíbe fuera de infra).
  */
 export function zeroDecimal(): Decimal {
   return new Decimal(0);

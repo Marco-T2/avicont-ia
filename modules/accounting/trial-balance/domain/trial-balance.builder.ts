@@ -1,4 +1,11 @@
 /**
+ * Revoked-by: DEC-1 (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+ * DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+ * Prisma.Decimal is forbidden outside infrastructure adapters. This builder
+ * now runtime-imports `decimal.js` directly (NOT `Prisma.Decimal`) per
+ * sub-POC 2 Cycle 2 swap (commit 46c25251).
+ *
+ * [HISTORICAL — see Revoked-by above]
  * R1-permissible-value-type-exception: this file runtime-imports `Prisma` from
  * `@/generated/prisma/client` for `Prisma.Decimal` value-type arithmetic (ZERO constant).
  * Decimal is a VALUE-TYPE engine, not a Prisma entity. Locked invariant OLEADA 5 #2282.

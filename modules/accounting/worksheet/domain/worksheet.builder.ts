@@ -1,6 +1,13 @@
 /**
  * Pure worksheet builder — no Prisma DB access.
  *
+ * **Revoked-by: DEC-1** (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+ * DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+ * Prisma.Decimal is forbidden outside infrastructure adapters. This builder
+ * now runtime-imports `decimal.js` directly per sub-POC 2 Cycle 4 swap
+ * (commit 41d40d9a).
+ *
+ * [HISTORICAL — see Revoked-by above]
  * **R1-permissible-value-type-exception**: this domain file runtime-imports
  * `Prisma` from `@/generated/prisma/client` to access `Prisma.Decimal`
  * (value-type arithmetic engine). Locked invariant OLEADA 5 archive #2282.

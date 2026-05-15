@@ -6,6 +6,15 @@
 // single hex barrel — eliminating Math.round(*100) === Math.round(*100)
 // float-cents comparison at the UI layer.
 //
+// Revoked-by: DEC-1 (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+// DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+// Prisma.Decimal is forbidden outside infrastructure adapters. The re-export
+// below now drags ONLY `decimal.js@10.6.0` (~10KB gz) into the client chunk —
+// the `Prisma` runtime touchpoint was removed at sub-POC 1 Cycle 2 (commit
+// 4c7e5913). The `node:module` blast radius that justified R1's narrow scope
+// no longer applies.
+//
+// [HISTORICAL — see Revoked-by above]
 // Bundle-weight note (acknowledged in design §8 risks): re-exporting from
 // `../shared/domain/money.utils` transitively drags `Prisma` / `decimal.js`
 // into the client chunk. Per R1-permissible-value-type-exception

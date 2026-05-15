@@ -1,3 +1,6 @@
+// Revoked-by: DEC-1 (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+// DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+// Prisma.Decimal is forbidden outside infrastructure adapters.
 /**
  * Shared canonical money math utilities for `modules/accounting/*`.
  *
@@ -5,6 +8,8 @@
  * `decimal.js@10.6.0` (pure math, no node builtins — legitimate domain dep).
  * Sister precedent: `modules/shared/domain/value-objects/money.ts:1` and
  * `monetary-amount.ts:1`. Locked invariant OLEADA 5 archive #2282.
+ *
+ * [HISTORICAL — see Revoked-by above]
  * (sub-POC 1 unblock-bundle: swapped from Prisma.Decimal value-import to
  * decimal.js default-import to remove node:module bundle leak —
  * oleada-money-decimal-hex-purity. EX-D3 R1-permissible-value-type-exception

@@ -38,6 +38,13 @@ import type {
  * (shared utility NOT under features/accounting/initial-balance/). This is a shared
  * formatting helper — NOT a domain→presentation cross-import. Tolerated per design §10.
  *
+ * **Revoked-by: DEC-1** (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+ * DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+ * Prisma.Decimal is forbidden outside infrastructure adapters. This builder
+ * now runtime-imports `decimal.js` directly per sub-POC 2 Cycle 5 swap
+ * (commit a6c4620f).
+ *
+ * [HISTORICAL — see Revoked-by above]
  * **R1-permissible-value-type-exception**: runtime-imports `Prisma.Decimal` as a
  * VALUE-TYPE arithmetic engine (not entity). OLEADA 5 archive #2282.
  */

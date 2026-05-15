@@ -1,3 +1,10 @@
+// Revoked-by: DEC-1 (sub-POC 6 archive of oleada-money-decimal-hex-purity).
+// DEC-1 (Derived from: R1): domain + application use decimal.js@10.6.0 direct.
+// Prisma.Decimal is forbidden outside infrastructure adapters. This builder
+// now runtime-imports `decimal.js` directly per sub-POC 2 Cycle 3 swap
+// (commit 12ee45b6).
+//
+// [HISTORICAL — see Revoked-by above]
 // R1-permissible-value-type-exception: runtime-imports Prisma.Decimal (value-type
 // arithmetic engine, not entity). Cite ES design #2302 §5. [[textual_rule_verification]]
 // verified at C0 GREEN: modules/shared/domain/value-objects/money.ts:4-10.
