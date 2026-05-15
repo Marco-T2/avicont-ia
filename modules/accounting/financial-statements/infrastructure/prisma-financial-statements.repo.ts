@@ -1,6 +1,6 @@
 import "server-only";
 import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { AccountSubtype } from "@/generated/prisma/enums";
 import type {
   AccountMetadata,
@@ -132,8 +132,9 @@ export class PrismaFinancialStatementsRepo
 
     return rows.map((r) => ({
       accountId: r.account_id,
-      totalDebit: new Prisma.Decimal(r.total_debit),
-      totalCredit: new Prisma.Decimal(r.total_credit),
+      // DEC-1 boundary normalization: Prisma's inlined Decimal2 → top-level decimal.js
+      totalDebit: new Decimal(r.total_debit),
+      totalCredit: new Decimal(r.total_credit),
       nature: r.nature,
       subtype: r.subtype,
     }));
@@ -177,8 +178,9 @@ export class PrismaFinancialStatementsRepo
 
     return rows.map((r) => ({
       accountId: r.account_id,
-      totalDebit: new Prisma.Decimal(r.total_debit),
-      totalCredit: new Prisma.Decimal(r.total_credit),
+      // DEC-1 boundary normalization: Prisma's inlined Decimal2 → top-level decimal.js
+      totalDebit: new Decimal(r.total_debit),
+      totalCredit: new Decimal(r.total_credit),
       nature: r.nature,
       subtype: r.subtype,
     }));
