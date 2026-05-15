@@ -93,3 +93,43 @@ describe("α-tier2-dispatch-01 — modules/dispatch/domain/compute-line-amounts.
     expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
   });
 });
+
+// Block C4 — Route fallbacks (R1 sale route L98, R2 purchase route L94 —
+// computeNewTotal fallback when d.lineAmount === undefined). Dual-arity
+// identical: both routes mirror builder math shape.
+describe("α-tier2-routes-01 — sale + purchase route fallbacks Decimal-converged (R-money-tier2)", () => {
+  const SALE_ROUTE = resolve(
+    ROOT,
+    "app/api/organizations/[orgSlug]/sales/[saleId]/route.ts",
+  );
+  const PURCHASE_ROUTE = resolve(
+    ROOT,
+    "app/api/organizations/[orgSlug]/purchases/[purchaseId]/route.ts",
+  );
+
+  it("α-tier2-routes-01: sale route imports roundHalfUp from shared/domain/money.utils and calls it (R1 DISCHARGED)", () => {
+    const src = readFileSync(SALE_ROUTE, "utf-8");
+    expect(src).toMatch(
+      /^import[^;]+roundHalfUp[^;]+["'][^"']*shared\/domain\/money\.utils["']/m,
+    );
+    expect(src).toMatch(/\broundHalfUp\s*\(/);
+  });
+
+  it("α-tier2-routes-01: sale route NO float Math.round(*100) cents-arithmetic (R1 scope)", () => {
+    const src = readFileSync(SALE_ROUTE, "utf-8");
+    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
+  });
+
+  it("α-tier2-routes-01: purchase route imports roundHalfUp from shared/domain/money.utils and calls it (R2 DISCHARGED)", () => {
+    const src = readFileSync(PURCHASE_ROUTE, "utf-8");
+    expect(src).toMatch(
+      /^import[^;]+roundHalfUp[^;]+["'][^"']*shared\/domain\/money\.utils["']/m,
+    );
+    expect(src).toMatch(/\broundHalfUp\s*\(/);
+  });
+
+  it("α-tier2-routes-01: purchase route NO float Math.round(*100) cents-arithmetic (R2 scope)", () => {
+    const src = readFileSync(PURCHASE_ROUTE, "utf-8");
+    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
+  });
+});
