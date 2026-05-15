@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { AccountSubtype } from "@/generated/prisma/enums";
 import { sumDecimals } from "./money.utils";
 import { formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
@@ -45,7 +45,7 @@ export function buildInitialBalance(
   input: BuildInitialBalanceInput,
 ): InitialBalanceStatement {
   const { orgId, org, dateAt, rows, caCount } = input;
-  const ZERO = new Prisma.Decimal(0);
+  const ZERO = new Decimal(0);
 
   const activoSection = buildSection(
     "ACTIVO",
