@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import type { DispatchType } from "./value-objects/dispatch-type";
 
@@ -7,16 +7,18 @@ import type { DispatchType } from "./value-objects/dispatch-type";
  * relevant fields, without Prisma dependency (R5).
  *
  * **Money math**: `lineAmount` computed via Decimal-internal arithmetic
- * (`Prisma.Decimal` + `roundHalfUp` from `modules/accounting/shared/domain/money.utils`);
- * `.toNumber()` at the `ComputedDetail.lineAmount: number` boundary (SHAPE-A).
+ * (`decimal.js` `Decimal` + `roundHalfUp` from
+ * `modules/accounting/shared/domain/money.utils`); `.toNumber()` at the
+ * `ComputedDetail.lineAmount: number` boundary (SHAPE-A).
  * R-money-tier2 discharged at poc-tier2-money-decimal-convergence C3 GREEN
  * (OLEADA 8 POC #1) — derivative from R-money (OLEADA 7 archive #2452) per
  * [[named_rule_immutability]]. `roundTotal` (round-total.ts) EXCLUDED —
  * cooperative-rounding semantic.
  *
- * R5 nuance: `Prisma` import is for `Prisma.Decimal` value-type only (decimal.js
- * re-export — NOT a generated entity). Sister precedent: money.utils.ts L25-L29
- * "R1-permissible-value-type-exception".
+ * R5 nuance: no Prisma import — domain layer consumes `decimal.js` directly
+ * (sub-POC 3 of oleada-money-decimal-hex-purity migrated away from
+ * `Prisma.Decimal` re-export). Sister precedent in sub-POC 2: see
+ * money.utils.ts (FS) and trial-balance.builder.ts.
  */
 export interface DetailLineInput {
   description: string;
@@ -71,7 +73,7 @@ export function computeLineAmounts(
       const shortage = d.shortage ?? 0;
       const realNetWeight = netWeight - shrinkage - shortage;
       const lineAmount = roundHalfUp(
-        new Prisma.Decimal(realNetWeight).mul(d.unitPrice),
+        new Decimal(realNetWeight).mul(d.unitPrice),
       ).toNumber();
       return {
         productTypeId: d.productTypeId,
@@ -92,7 +94,7 @@ export function computeLineAmounts(
 
     // NOTA_DESPACHO
     const lineAmount = roundHalfUp(
-      new Prisma.Decimal(netWeight).mul(d.unitPrice),
+      new Decimal(netWeight).mul(d.unitPrice),
     ).toNumber();
     return {
       productTypeId: d.productTypeId,
