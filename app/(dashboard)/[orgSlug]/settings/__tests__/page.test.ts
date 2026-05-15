@@ -7,7 +7,8 @@
  * visible.
  *
  * C3 behavior (this file's contract):
- * - No hard entry gate; resolve session + role + orgId without requirePermission.
+ * - No hard entry gate; resolve session + role + orgId via the same chain
+ *   farms/page.tsx uses (requireAuth → requireOrgAccess → getMemberByClerkUserId).
  * - For each SettingsCard, evaluate `canAccess(role, card.resource, "read", orgId)`
  *   (cards without `resource` always pass).
  * - If `cards.length === 0` after filter → redirect to `/${orgSlug}`.
@@ -22,15 +23,22 @@ const {
   mockRedirect,
   mockRequireAuth,
   mockRequireOrgAccess,
-  mockRequireRole,
+  mockGetMemberByClerkUserId,
+  mockMakeOrganizationsService,
   mockCanAccess,
-} = vi.hoisted(() => ({
-  mockRedirect: vi.fn(),
-  mockRequireAuth: vi.fn(),
-  mockRequireOrgAccess: vi.fn(),
-  mockRequireRole: vi.fn(),
-  mockCanAccess: vi.fn(),
-}));
+} = vi.hoisted(() => {
+  const mockGetMember = vi.fn();
+  return {
+    mockRedirect: vi.fn(),
+    mockRequireAuth: vi.fn(),
+    mockRequireOrgAccess: vi.fn(),
+    mockGetMemberByClerkUserId: mockGetMember,
+    mockMakeOrganizationsService: vi.fn(() => ({
+      getMemberByClerkUserId: mockGetMember,
+    })),
+    mockCanAccess: vi.fn(),
+  };
+});
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
@@ -38,13 +46,13 @@ vi.mock("@/features/permissions/server", () => ({
   canAccess: mockCanAccess,
 }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/features/shared", () => ({
   requireAuth: mockRequireAuth,
 }));
 
 vi.mock("@/modules/organizations/presentation/server", () => ({
   requireOrgAccess: mockRequireOrgAccess,
-  requireRole: mockRequireRole,
+  makeOrganizationsService: mockMakeOrganizationsService,
 }));
 
 import SettingsHubPage from "../page";
@@ -60,12 +68,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRequireAuth.mockResolvedValue({ userId: "u1" });
   mockRequireOrgAccess.mockResolvedValue(ORG_ID);
-  mockRequireRole.mockResolvedValue({ role: "owner" });
+  mockGetMemberByClerkUserId.mockResolvedValue({ role: "owner" });
 });
 
 /**
- * Count rendered Link elements (one per allowed card) inside the returned
- * React tree. Each Link has `key` and an `aria-label` matching the card title.
+ * Walk the returned React tree and collect every `aria-label` prop value.
+ * Each rendered card emits a Link with `aria-label={card.title}`.
  */
 function collectLinkAriaLabels(node: unknown, acc: string[] = []): string[] {
   if (!node || typeof node !== "object") return acc;
@@ -87,7 +95,7 @@ function collectLinkAriaLabels(node: unknown, acc: string[] = []): string[] {
 
 describe("/settings — C3 per-card RBAC + entry-gate broadening", () => {
   it("admin with all permissions reaches hub; 11 cards rendered", async () => {
-    mockRequireRole.mockResolvedValue({ role: "admin" });
+    mockGetMemberByClerkUserId.mockResolvedValue({ role: "admin" });
     mockCanAccess.mockResolvedValue(true);
 
     const tree = await SettingsHubPage({ params: makeParams() });
@@ -98,7 +106,7 @@ describe("/settings — C3 per-card RBAC + entry-gate broadening", () => {
   });
 
   it("custom-role with ONLY members:read reaches hub (entry gate broadened)", async () => {
-    mockRequireRole.mockResolvedValue({ role: "custom" });
+    mockGetMemberByClerkUserId.mockResolvedValue({ role: "custom" });
     mockCanAccess.mockImplementation(
       async (_role: string, resource: string) => resource === "members",
     );
@@ -117,7 +125,7 @@ describe("/settings — C3 per-card RBAC + entry-gate broadening", () => {
   });
 
   it("zero-resource role redirects to /${orgSlug}", async () => {
-    mockRequireRole.mockResolvedValue({ role: "viewer" });
+    mockGetMemberByClerkUserId.mockResolvedValue({ role: "viewer" });
     mockCanAccess.mockResolvedValue(false);
 
     await SettingsHubPage({ params: makeParams() });

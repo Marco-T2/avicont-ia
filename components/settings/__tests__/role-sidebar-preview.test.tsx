@@ -75,9 +75,10 @@ describe("<RoleSidebarPreview />", () => {
   });
 
   // (b) Chofer-like — readSet={sales, farms} → Contabilidad shows Ventas
-  // AND Cuentas por Cobrar (both gated by 'sales' post resource-nav-mapping-fix);
-  // Granjas present; no Organización strip items
-  it("(b) chofer (sales+farms) → Contabilidad with Ventas + Cuentas por Cobrar + Granjas; no Org strip", () => {
+  // (gated by 'sales'); Granjas present; no Organización strip items.
+  // sidebar-reorg-settings-hub C1: Cuentas por Cobrar removed from sidebar
+  // (moved to /informes catalog as an entry); only Ventas remains gated by sales.
+  it("(b) chofer (sales+farms) → Contabilidad with Ventas + Granjas; no Org strip", () => {
     render(
       <RoleSidebarPreview
         readSet={rs("sales", "farms")}
@@ -87,11 +88,10 @@ describe("<RoleSidebarPreview />", () => {
 
     // Contabilidad module section header visible (dual-mount → multiple)
     expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
-    // Both nav items gated by 'sales' now visible (dual-mount → multiple)
+    // Ventas gated by 'sales' visible (dual-mount → multiple)
     expect(screen.getAllByText("Ventas").length).toBeGreaterThan(0);
-    expect(
-      screen.getAllByText(/Cuentas por Cobrar/i).length,
-    ).toBeGreaterThan(0);
+    // C1 trim: Cuentas por Cobrar no longer a sidebar entry
+    expect(screen.queryByText(/Cuentas por Cobrar/i)).not.toBeInTheDocument();
     // These items require resources the chofer does NOT have
     expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
     expect(screen.queryByText("Compras")).not.toBeInTheDocument();
@@ -101,7 +101,7 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.getAllByText("Granjas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
 
-    // No Organización strip items (sales/farms are not agent/members/documents)
+    // No Organización strip items (sales/farms are not agent/documents)
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
     expect(screen.queryByText("Miembros")).not.toBeInTheDocument();
     expect(screen.queryByText("Documentos")).not.toBeInTheDocument();
@@ -133,9 +133,14 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
   });
 
-  // (d) Separator-drop edge case: readSet={accounting-config} only →
-  // "Operaciones" separator dropped (all its children are hidden); Contabilidad separator kept
-  it("(d) readSet={accounting-config} only → Operaciones separator dropped; Plan de Cuentas visible", () => {
+  // (d) sidebar-reorg-settings-hub C1: Plan de Cuentas no longer in sidebar
+  // (moved to /settings as a card). accounting-config is still in the
+  // Contabilidad module's resources[] array (used to determine visibility of
+  // the Contabilidad module header), but it has NO matching navItem now —
+  // so the Contabilidad section header does NOT render either (all navItems
+  // require resources the user lacks; dropOrphanSeparators + empty-nav rule
+  // hide the whole module).
+  it("(d) readSet={accounting-config} only → Contabilidad nav items hidden; no PdC sidebar entry", () => {
     render(
       <RoleSidebarPreview
         readSet={rs("accounting-config")}
@@ -143,14 +148,13 @@ describe("<RoleSidebarPreview />", () => {
       />,
     );
 
-    // Contabilidad module section header present (accounting-config is in contabilidad, dual-mount)
-    expect(screen.getAllByText("Contabilidad").length).toBeGreaterThan(0);
-    // Plan de Cuentas is the nav item for accounting-config (dual-mount)
-    expect(screen.getAllByText("Plan de Cuentas").length).toBeGreaterThan(0);
-    // Operaciones separator should be dropped (no children)
+    // C1 trim: Plan de Cuentas no longer rendered as a sidebar entry
+    expect(screen.queryByText("Plan de Cuentas")).not.toBeInTheDocument();
+    // No separators in the trimmed Contabilidad nav
     expect(screen.queryByText("Operaciones")).not.toBeInTheDocument();
-    // Items under Operaciones not visible
+    // Other resource-gated items hidden too
     expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Libro Diario")).not.toBeInTheDocument();
   });
 
   // (e) readSet={farms} only → only Granjas in module switcher area, Contabilidad absent
