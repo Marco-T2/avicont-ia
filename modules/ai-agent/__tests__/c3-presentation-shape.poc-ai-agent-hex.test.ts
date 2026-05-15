@@ -1,11 +1,27 @@
-// Pre-set GEMINI_API_KEY before any module evaluation. GeminiLLMAdapter (which
-// the server barrel imports transitively at module-load time) validates this
-// env var at top-level — same precedent as features/ai-agent/__tests__/
-// tools.find-accounts.test.ts L18 and 7 other pre-migration ai-agent tests.
-// This is a test-precondition pattern, not a sentinel guard.
-process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "test-key-for-vitest";
-
 import { describe, it, expect, vi, test } from "vitest";
+
+// vi.hoisted: ensures GEMINI_API_KEY is set BEFORE vi.mock factory runs.
+// vi.mock() declarations are hoisted above all imports by Vitest; a plain
+// module-level `process.env.X = ...` executes AFTER hoisting and would race.
+// Precedent: route.confirm-journal-entry.test.ts:17-19.
+vi.hoisted(() => {
+  process.env.GEMINI_API_KEY =
+    process.env.GEMINI_API_KEY ?? "test-key-for-vitest";
+});
+
+// Mock @google/generative-ai to eliminate SDK cold-load cost (~1500ms) that
+// races with the 5000ms default testTimeout under full-suite worker contention
+// (forks pool, parallel CPU). Shape-only test: asserts factory/barrel shape,
+// NOT Gemini SDK behavior. [[cross_module_boundary_mock_target_rewrite]] N/A
+// (bare package import, no path relocation needed).
+vi.mock("@google/generative-ai", () => ({
+  // Must use regular function (not arrow) — arrow functions are not constructable.
+  // gemini-llm.adapter.ts calls `new GoogleGenerativeAI(apiKey)` at module load.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  GoogleGenerativeAI: vi.fn().mockImplementation(function (this: any) {
+    this.getGenerativeModel = vi.fn();
+  }),
+}));
 import * as fs from "node:fs";
 import * as path from "node:path";
 
