@@ -1,23 +1,34 @@
 /**
  * Sentinel: decimal.js import-shape — sub-POC 4 application-layer-cleanup
- * Cycle 1 / ledger.service (sdd/oleada-money-decimal-hex-purity).
+ * Cycles 1+2 (sdd/oleada-money-decimal-hex-purity).
  *
  * Sister of sub-POC 3 Cycles 1-4 (sale, purchase, dispatch, ai-agent) and
- * sub-POC 2 Cycles 1-5. Asserts
- * `modules/accounting/application/ledger.service.ts` no longer value-imports
- * `Prisma` from `@/generated/prisma/client` and instead default-imports
- * `Decimal` from `decimal.js@10.6.0`.
+ * sub-POC 2 Cycles 1-5. Asserts both application-layer files no longer
+ * value-import `Prisma` from `@/generated/prisma/client` and instead
+ * default-import `Decimal` from `decimal.js@10.6.0`.
  *
  * Note on regex: matches VALUE-imports only. `import type { Prisma } from ...`
  * is erased at compile time and does NOT contribute to the runtime bundle.
- * (This file has no need for `import type { Prisma }` — its only Prisma
- * usage is `Prisma.Decimal` value, fully replaceable by top-level decimal.js
- * Decimal. The `AccountType` type continues to be imported separately from
- * `@/generated/prisma/client` as a type-only import, unaffected.)
  *
- * Declared failure mode (pre-GREEN): both assertions FAIL — ledger.service.ts
- * currently `import { Prisma } from "@/generated/prisma/client"` and does NOT
- * import from `decimal.js` yet.
+ * Cycle 1 (ledger.service.ts) — GREEN at 5de23dfe: no `import type { Prisma }`
+ * needed (only Prisma surface was `Prisma.Decimal` value; `AccountType` is
+ * a separate type-only import).
+ *
+ * Cycle 2 (auto-entry-generator.ts) — MIXED: file uses `Prisma.TransactionClient`
+ * TYPE in `generate(tx, ...)` parameter, so MUST convert `import { Prisma }`
+ * value-import into `import type { Prisma }` AND add `import Decimal from
+ * "decimal.js"`. Type-only imports do NOT contribute to bundle and are
+ * compatible with the `^import\s*\{[^}]*\bPrisma\b[^}]*\}` regex when they
+ * include the `type` modifier (the regex uses negative lookbehind via NOT
+ * matching value-import shape — we keep the regex VALUE-only by anchoring
+ * the literal `import {` without `type`, mirroring sub-POC 3 ai-agent
+ * sentinel which faced the same MIXED case and locked the same regex
+ * shape per [[red_regex_discipline]]).
+ *
+ * Declared failure mode for Cycle 2 (pre-GREEN): both assertions FAIL on
+ * auto-entry-generator.ts — file currently has value-form
+ * `import { Prisma } from "@/generated/prisma/client"` and lacks decimal.js
+ * import.
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -37,9 +48,10 @@ const DECIMAL_DEFAULT_IMPORT_RE =
 
 const TARGETS = [
   "modules/accounting/application/ledger.service.ts",
+  "modules/accounting/application/auto-entry-generator.ts",
 ] as const;
 
-describe("sentinel: decimal.js import-shape — accounting/application/ledger.service (sub-POC 4 Cycle 1)", () => {
+describe("sentinel: decimal.js import-shape — accounting/application (sub-POC 4 Cycles 1+2)", () => {
   for (const target of TARGETS) {
     it(`${target} does NOT value-import Prisma from @/generated/prisma/client`, () => {
       const src = readRepo(target);
