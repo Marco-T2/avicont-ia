@@ -1,63 +1,78 @@
+import { Prisma } from "@/generated/prisma/client";
+import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { InvalidMonetaryAmount } from "../errors/monetary-errors";
 
-const MAX_VALUE = 9_999_999_999.99;
+// Decimal-based monetary VO (R-money-vo DISCHARGED OLEADA 8 POC #2).
+// Uses Prisma.Decimal (re-export of decimal.js) internally because
+// partida-doble + IVA arithmetic require bit-perfect 2-decimal rounding;
+// a number-based VO with float cents-arithmetic drifts on chained operations.
+// Domain does NOT expose Prisma.Decimal — only the public methods on
+// MonetaryAmount. SHAPE-A interno: `.value: number` public boundary preserved
+// via `this.raw.toNumber()` (sister: modules/shared/domain/value-objects/money.ts).
 
-function round2(n: number): number {
-  return Math.round((n + Number.EPSILON) * 100) / 100;
-}
+const MAX_VALUE = new Prisma.Decimal("9999999999.99");
 
-function parse(input: number | string): number {
-  const n = typeof input === "string" ? Number(input) : input;
-  if (typeof n !== "number" || Number.isNaN(n) || !Number.isFinite(n)) {
-    throw new InvalidMonetaryAmount(`Monto inválido: ${String(input)}`);
+function parse(value: number | string): Prisma.Decimal {
+  let d: Prisma.Decimal;
+  try {
+    d = new Prisma.Decimal(value);
+  } catch {
+    throw new InvalidMonetaryAmount(`Monto inválido: ${String(value)}`);
   }
-  if (n < 0) {
-    throw new InvalidMonetaryAmount(`El monto no puede ser negativo: ${n}`);
+  if (!d.isFinite()) {
+    throw new InvalidMonetaryAmount(`Monto inválido: ${String(value)}`);
   }
-  if (n > MAX_VALUE) {
-    throw new InvalidMonetaryAmount(`El monto excede el máximo permitido (${MAX_VALUE}): ${n}`);
+  if (d.isNegative()) {
+    throw new InvalidMonetaryAmount(
+      `El monto no puede ser negativo: ${d.toString()}`,
+    );
   }
-  return round2(n);
+  if (d.greaterThan(MAX_VALUE)) {
+    throw new InvalidMonetaryAmount(
+      `El monto excede el máximo permitido (${MAX_VALUE.toString()}): ${d.toString()}`,
+    );
+  }
+  return roundHalfUp(d);
 }
 
 export class MonetaryAmount {
-  private constructor(private readonly raw: number) {}
+  private constructor(private readonly raw: Prisma.Decimal) {}
 
   static of(value: number | string): MonetaryAmount {
     return new MonetaryAmount(parse(value));
   }
 
   static zero(): MonetaryAmount {
-    return new MonetaryAmount(0);
+    return new MonetaryAmount(new Prisma.Decimal(0));
   }
 
   get value(): number {
-    return this.raw;
+    return this.raw.toNumber();
   }
 
   plus(other: MonetaryAmount): MonetaryAmount {
-    return MonetaryAmount.of(this.raw + other.raw);
+    return new MonetaryAmount(roundHalfUp(this.raw.plus(other.raw)));
   }
 
   minus(other: MonetaryAmount): MonetaryAmount {
-    const result = round2(this.raw - other.raw);
-    if (result < 0) {
+    const result = roundHalfUp(this.raw.minus(other.raw));
+    if (result.isNegative()) {
       throw new InvalidMonetaryAmount(
-        `La resta produce un monto negativo: ${this.raw} - ${other.raw}`,
+        `La resta produce un monto negativo: ${this.raw.toString()} - ${other.raw.toString()}`,
       );
     }
     return new MonetaryAmount(result);
   }
 
   equals(other: MonetaryAmount): boolean {
-    return this.raw === other.raw;
+    return this.raw.equals(other.raw);
   }
 
   isGreaterThan(other: MonetaryAmount): boolean {
-    return this.raw > other.raw;
+    return this.raw.greaterThan(other.raw);
   }
 
   isLessThan(other: MonetaryAmount): boolean {
-    return this.raw < other.raw;
+    return this.raw.lessThan(other.raw);
   }
 }
