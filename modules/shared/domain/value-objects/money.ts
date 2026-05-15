@@ -1,15 +1,18 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { InvalidMonetaryAmount } from "../errors/monetary-errors";
 
-// Decimal-based monetary VO. Uses Prisma.Decimal (re-export of decimal.js)
-// internally because partida-doble requires bit-perfect equality on sums; a
-// number-based VO with rounding can drift in journals with many lines.
-// Domain does NOT expose Prisma.Decimal — only the methods on Money.
+// Decimal-based monetary VO. Uses decimal.js@10.6.0 directly because
+// partida-doble requires bit-perfect equality on sums; a number-based VO
+// with rounding can drift in journals with many lines.
+// Domain does NOT expose Decimal — only the methods on Money.
+// (sub-POC 1 unblock-bundle: swapped from Prisma.Decimal value-import to
+// decimal.js default-import to remove node:module bundle leak —
+// oleada-money-decimal-hex-purity.)
 
-function parse(value: number | string): Prisma.Decimal {
-  let d: Prisma.Decimal;
+function parse(value: number | string): Decimal {
+  let d: Decimal;
   try {
-    d = new Prisma.Decimal(value);
+    d = new Decimal(value);
   } catch {
     throw new InvalidMonetaryAmount(`Monto inválido: ${String(value)}`);
   }
@@ -25,14 +28,14 @@ function parse(value: number | string): Prisma.Decimal {
 }
 
 export class Money {
-  private constructor(private readonly raw: Prisma.Decimal) {}
+  private constructor(private readonly raw: Decimal) {}
 
   static of(value: number | string): Money {
     return new Money(parse(value));
   }
 
   static zero(): Money {
-    return new Money(new Prisma.Decimal(0));
+    return new Money(new Decimal(0));
   }
 
   plus(other: Money): Money {

@@ -1,21 +1,24 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { InvalidMonetaryAmount } from "../errors/monetary-errors";
 
 // Decimal-based monetary VO (R-money-vo DISCHARGED OLEADA 8 POC #2).
-// Uses Prisma.Decimal (re-export of decimal.js) internally because
-// partida-doble + IVA arithmetic require bit-perfect 2-decimal rounding;
-// a number-based VO with float cents-arithmetic drifts on chained operations.
-// Domain does NOT expose Prisma.Decimal — only the public methods on
+// Uses decimal.js@10.6.0 directly because partida-doble + IVA arithmetic
+// require bit-perfect 2-decimal rounding; a number-based VO with float
+// cents-arithmetic drifts on chained operations.
+// Domain does NOT expose Decimal — only the public methods on
 // MonetaryAmount. SHAPE-A interno: `.value: number` public boundary preserved
 // via `this.raw.toNumber()` (sister: modules/shared/domain/value-objects/money.ts).
+// (sub-POC 1 unblock-bundle: swapped from Prisma.Decimal value-import to
+// decimal.js default-import to remove node:module bundle leak —
+// oleada-money-decimal-hex-purity.)
 
-const MAX_VALUE = new Prisma.Decimal("9999999999.99");
+const MAX_VALUE = new Decimal("9999999999.99");
 
-function parse(value: number | string): Prisma.Decimal {
-  let d: Prisma.Decimal;
+function parse(value: number | string): Decimal {
+  let d: Decimal;
   try {
-    d = new Prisma.Decimal(value);
+    d = new Decimal(value);
   } catch {
     throw new InvalidMonetaryAmount(`Monto inválido: ${String(value)}`);
   }
@@ -36,14 +39,14 @@ function parse(value: number | string): Prisma.Decimal {
 }
 
 export class MonetaryAmount {
-  private constructor(private readonly raw: Prisma.Decimal) {}
+  private constructor(private readonly raw: Decimal) {}
 
   static of(value: number | string): MonetaryAmount {
     return new MonetaryAmount(parse(value));
   }
 
   static zero(): MonetaryAmount {
-    return new MonetaryAmount(new Prisma.Decimal(0));
+    return new MonetaryAmount(new Decimal(0));
   }
 
   get value(): number {
