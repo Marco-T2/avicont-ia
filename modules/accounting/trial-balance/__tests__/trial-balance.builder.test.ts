@@ -19,13 +19,19 @@
 import { describe, it, expect, vi } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { buildTrialBalance, type BuildTrialBalanceInput } from "../domain/trial-balance.builder";
 import type { TrialBalanceAccountMetadata, TrialBalanceMovement } from "../domain/trial-balance.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+// Fixture constructor + instanceof migrated from Prisma.Decimal (Decimal2 —
+// inlined decimal.js@10.5.0 in Prisma 7.7.0) to top-level decimal.js@10.6.0
+// `Decimal`. Discovery #2590: post sub-POC 1 the builder's outputs flow from
+// top-level Decimal (via sumDecimals re-exported from accounting/shared);
+// Decimal2 instances are NOT instanceof top-level Decimal. Value semantics
+// identical; test intent preserved ("value is a Decimal class").
+const D = (v: string | number) => new Decimal(String(v));
 
 function makeAccount(
   overrides: Pick<TrialBalanceAccountMetadata, "id" | "code"> &
@@ -201,7 +207,7 @@ describe("B3 Fixture 8 — C5.S2: synthetic imbalance → imbalanced=true, delta
     const result = buildTrialBalance({ accounts, movements, dateFrom: DATE_FROM, dateTo: DATE_TO });
     expect(result.imbalanced).toBe(true);
     // deltaSumas = Σ sumasDebe - Σ sumasHaber = 1000 - 1050 = -50
-    expect(result.deltaSumas.equals(new Prisma.Decimal("-50"))).toBe(true);
+    expect(result.deltaSumas.equals(new Decimal("-50"))).toBe(true);
   });
 });
 
@@ -286,7 +292,7 @@ describe("C4.E1 — Decimal purity: no Number(), parseFloat(), or unary +decimal
 // ── All Decimal fields check ──────────────────────────────────────────────────
 
 describe("Decimal type integrity", () => {
-  it("all 4 numeric fields on every row are Prisma.Decimal instances", () => {
+  it("all 4 numeric fields on every row are decimal.js Decimal instances", () => {
     const accounts = [
       makeAccount({ id: "d1", code: "1.1.1" }),
       makeAccount({ id: "d2", code: "2.1.1" }),
@@ -297,16 +303,16 @@ describe("Decimal type integrity", () => {
     ];
     const result = buildTrialBalance({ accounts, movements, dateFrom: DATE_FROM, dateTo: DATE_TO });
     for (const row of result.rows) {
-      expect(row.sumasDebe).toBeInstanceOf(Prisma.Decimal);
-      expect(row.sumasHaber).toBeInstanceOf(Prisma.Decimal);
-      expect(row.saldoDeudor).toBeInstanceOf(Prisma.Decimal);
-      expect(row.saldoAcreedor).toBeInstanceOf(Prisma.Decimal);
+      expect(row.sumasDebe).toBeInstanceOf(Decimal);
+      expect(row.sumasHaber).toBeInstanceOf(Decimal);
+      expect(row.saldoDeudor).toBeInstanceOf(Decimal);
+      expect(row.saldoAcreedor).toBeInstanceOf(Decimal);
     }
-    expect(result.totals.sumasDebe).toBeInstanceOf(Prisma.Decimal);
-    expect(result.totals.sumasHaber).toBeInstanceOf(Prisma.Decimal);
-    expect(result.totals.saldoDeudor).toBeInstanceOf(Prisma.Decimal);
-    expect(result.totals.saldoAcreedor).toBeInstanceOf(Prisma.Decimal);
-    expect(result.deltaSumas).toBeInstanceOf(Prisma.Decimal);
-    expect(result.deltaSaldos).toBeInstanceOf(Prisma.Decimal);
+    expect(result.totals.sumasDebe).toBeInstanceOf(Decimal);
+    expect(result.totals.sumasHaber).toBeInstanceOf(Decimal);
+    expect(result.totals.saldoDeudor).toBeInstanceOf(Decimal);
+    expect(result.totals.saldoAcreedor).toBeInstanceOf(Decimal);
+    expect(result.deltaSumas).toBeInstanceOf(Decimal);
+    expect(result.deltaSaldos).toBeInstanceOf(Decimal);
   });
 });

@@ -6,7 +6,7 @@
  * REQ-009: ZERO imports from `@/modules/accounting/financial-statements/**`.
  * sumDecimals + eq copied to own `./money.utils` (D4 Option A, proposal #2286).
  */
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { sumDecimals, eq } from "./money.utils";
 import type { TrialBalanceAccountMetadata, TrialBalanceMovement } from "./trial-balance.types";
 import type {
@@ -27,15 +27,15 @@ export type BuildTrialBalanceInput = {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const ZERO = new Prisma.Decimal(0);
+const ZERO = new Decimal(0);
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function z(): Prisma.Decimal {
-  return new Prisma.Decimal(0);
+function z(): Decimal {
+  return new Decimal(0);
 }
 
-function maxZero(d: Prisma.Decimal): Prisma.Decimal {
+function maxZero(d: Decimal): Decimal {
   return d.gt(ZERO) ? d : z();
 }
 
@@ -45,7 +45,7 @@ function maxZero(d: Prisma.Decimal): Prisma.Decimal {
  * Pure function — no DB, no fs, no Date.now().
  * Accepts accounts (code-sorted ASC) and movement aggregations; produces a TrialBalanceReport.
  *
- * All arithmetic uses Prisma.Decimal (REQ-11, C12.E1).
+ * All arithmetic uses decimal.js Decimal (REQ-11, C12.E1).
  * rowNumber is NOT in the domain type — assigned at render time.
  */
 export function buildTrialBalance(input: BuildTrialBalanceInput): TrialBalanceReport {

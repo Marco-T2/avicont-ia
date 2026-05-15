@@ -9,9 +9,13 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+// Migrated from Prisma.Decimal (Decimal2 — inlined decimal.js@10.5.0) to
+// top-level decimal.js@10.6.0 per discovery #2590
+// (prisma-decimal-instance-identity-cascade). Value semantics identical;
+// intent preserved (\"value is a Decimal class, not number/string\").
+const D = (v: string | number) => new Decimal(String(v));
 
 describe("trial-balance domain types", () => {
   it("C4.E1 — TrialBalanceRow fields are Prisma.Decimal instances at runtime", async () => {
@@ -28,10 +32,10 @@ describe("trial-balance domain types", () => {
       saldoAcreedor: D("0"),
     };
 
-    expect(row.sumasDebe).toBeInstanceOf(Prisma.Decimal);
-    expect(row.sumasHaber).toBeInstanceOf(Prisma.Decimal);
-    expect(row.saldoDeudor).toBeInstanceOf(Prisma.Decimal);
-    expect(row.saldoAcreedor).toBeInstanceOf(Prisma.Decimal);
+    expect(row.sumasDebe).toBeInstanceOf(Decimal);
+    expect(row.sumasHaber).toBeInstanceOf(Decimal);
+    expect(row.saldoDeudor).toBeInstanceOf(Decimal);
+    expect(row.saldoAcreedor).toBeInstanceOf(Decimal);
   });
 
   it("C5.S4 — TrialBalanceTotals has exactly 4 Decimal fields", async () => {
@@ -47,7 +51,7 @@ describe("trial-balance domain types", () => {
     const keys = Object.keys(totals);
     expect(keys).toHaveLength(4);
     for (const key of keys) {
-      expect(totals[key as keyof typeof totals]).toBeInstanceOf(Prisma.Decimal);
+      expect(totals[key as keyof typeof totals]).toBeInstanceOf(Decimal);
     }
   });
 
