@@ -566,6 +566,81 @@ Esta drift es 4ta evidencia cumulative cross-POC matures de `evidence-supersedes
 - **Decisión**: Unified OLEADA 7 wave-close docs commit (per Q8 lock + sub-POC 8 D1 precedent — single docs commit). Updates 01-migration-roadmap.md (OLEADA 7 CLOSED banner; POC #1 + POC #2 rows finalized), 02-current-state.md (TIER 1 R-money DISCHARGED row; LedgerEntry/TrialBalanceRow DTOs string-typed; rebuilt-reads trivially discharged note), and this file (new §13.accounting.money-math-decimal-convergence section). **Rebuilt-reads trivial discharge** per [[aspirational_mocks_signal_unimplemented_contract]] (Q-NEW4 explicit close): the sub-POC 7 R-money lock cited "6 rebuilt reads" in `journals.service.ts` as candidates for convergence; design-time grep at #2447 found `journals.service.ts` contains **ZERO float math** (no `Math.round`, no `Number()` coercion of monetary fields, no running-balance arithmetic — the read use cases project entries through DTOs without arithmetic). Therefore the rebuilt-reads clause is TRIVIALLY DISCHARGED — no work, no PR, no follow-up scope. Stated explicitly here to prevent future re-investigation.
 - **Cementado**: D1 (this commit). **OLEADA 7: 2/2 FULLY COMPLETE — WAVE CLOSED**. Pending: `pnpm build` GREEN gate (Marco-run, post-D1 cementación per repo convention).
 
+## §13.accounting.money-math-decimal-convergence-TIER2 — Canonical Decimal pipeline TIER 2 (NEW poc-tier2-money-decimal-convergence — OLEADA 8 POC #1 — R-money-tier2 DISCHARGED)
+
+> **AXIS-DISTINCT from §13.accounting.money-math-decimal-convergence (TIER 1)**: this POC discharges the **R-money-tier2** DERIVATIVE named deviation (per [[named_rule_immutability]]) — converging TIER 2 float `Math.round(x*100)` money-math to `Prisma.Decimal` arithmetic in domain builders (`modules/sale|purchase|dispatch/domain/`) + adjacent route fallbacks (`app/api/.../{sales,purchases}/[id]/route.ts`). **SHAPE-A-mirror**: `number` DTO contract preserved at `EntryLineTemplate.debit/credit` + `ComputedDetail.lineAmount` boundary (no `string` migration ripple); `.toNumber()` at builder edge. Sentinel file: `modules/accounting/__tests__/poc-tier2-money-shape.test.ts` (4 sentinel blocks — sale + purchase + dispatch + routes; all GREEN). **R-money-tier2 textual deviation DISCHARGED**.
+
+### §13.accounting.money-math-decimal-convergence-TIER2-R-money-tier2-textual-rule (NEW derivative rule cementación)
+
+- **1ra evidencia**: POC poc-tier2-money-decimal-convergence (OLEADA 8 POC #1)
+- **Rule (verbatim — locked at proposal phase + design textual verification)**:
+
+```
+Rule: R-money-tier2
+
+Derived from: R-money (OLEADA 7 archive #2452 — sdd/poc-money-math-decimal-convergence/archive-report)
+
+Scope (textual):
+  Float `Math.round(x * 100) / 100` cents-arithmetic in TIER 2 builders
+  and their adjacent route fallbacks:
+    - modules/sale/domain/build-sale-entry-lines.ts (ingresoNeto, itAmount, exentos)
+    - modules/purchase/domain/build-purchase-entry-lines.ts (gastoNeto, exentos)
+    - modules/dispatch/domain/compute-line-amounts.ts (NOTA_DESPACHO + BOLETA_CERRADA lineAmount)
+    - app/api/organizations/[orgSlug]/sales/[saleId]/route.ts (lineAmount fallback)
+    - app/api/organizations/[orgSlug]/purchases/[purchaseId]/route.ts (lineAmount fallback)
+  EXCLUDED:
+    - modules/dispatch/domain/round-total.ts (cooperative-rounding helper — Math.floor/ceil
+      semantic, NOT cents-precision; not within R-money intent)
+    - modules/shared/domain/value-objects/monetary-amount.ts (round2 in VO — distinct
+      surface; rule sister R-money-vo applies if/when retired)
+    - All TIER 3 presentation formatters
+    - components/sales|purchases|dispatches/*-form.tsx UI line-preview math
+    - components/accounting/(create-)?journal-entry-(form|detail).tsx balance-check
+      (UI-only, distinct invariant)
+
+Why a new rule (not extension of R-money):
+  R-money's textual scope locks "rebuilt reads (journals.service.ts) + folded
+  LedgerService + auto-entry-generator" — i.e. TIER 1 only. Per
+  [[named_rule_immutability]], named rules are immutable historical contracts:
+  R-money was DISCHARGED on 2026-05-15 at HEAD 50c45d96 with that exact textual
+  scope. Extending R-money's text would mutate a closed contract. R-money-tier2
+  preserves genealogy via the explicit Derived-from clause.
+
+Status: DISCHARGED OLEADA 8 POC #1 (poc-tier2-money-decimal-convergence — this entry).
+```
+
+- **Cementado**: R-money-tier2 cementación commit (this D1). R-money entry at L507-510 + L545-567 textually UNTOUCHED — both retain their POC #2 OLEADA 7 closure markers verbatim per [[named_rule_immutability]] (pure-append discipline: derivative rule is a NEW section, not an edit). Genealogy chain locked: R-money (TIER 1 archive #2452, OLEADA 7 POC #2) → R-money-tier2 (TIER 2, this POC, OLEADA 8 POC #1).
+
+### §13.accounting.money-math-decimal-convergence-TIER2-C1 sale-builder-Decimal-S1-S2-S3-α-tier2-sale-01
+
+- **1ra evidencia**: POC poc-tier2-money-decimal-convergence C1 (OLEADA 8 POC #1)
+- **Decisión**: `modules/sale/domain/build-sale-entry-lines.ts` Decimal-internal arithmetic at 3 sites — S1 exentos `roundHalfUp(new Prisma.Decimal(importeTotal).minus(baseIvaSujetoCf)).toNumber()`; S2 ingresoNeto `roundHalfUp(new Prisma.Decimal(baseIvaSujetoCf).minus(dfCfIva)).toNumber()`; S3 itAmount `roundHalfUp(new Prisma.Decimal(importeTotal).mul("0.03")).toNumber()` (string operand `"0.03"` avoids float-binary 0.0299999... precision drift — locked detail). Imports added: `Prisma` runtime from `@/generated/prisma/client` + `roundHalfUp` from `@/modules/accounting/shared/domain/money.utils`. EntryLineTemplate local type `{ debit: number, credit: number, ... }` UNCHANGED (SHAPE-A-mirror per Q2 lock). JSDoc updated to cite R-money-tier2 discharge. NEW sentinel α-tier2-sale-01 (2 assertions — import + call presence + `Math.round(*100)` absence) per [[red_acceptance_failure_mode]] / [[red_regex_discipline]] / [[paired_sister_default_no_surface]] mirroring POC #2 α13c shape. Negative-half drift declared in POC #2 D3 — TIER 2 inputs non-negative → risk NIL (cite, no re-declare per Q8 YAGNI).
+- **Cementado**: C1 RED `d1248299` · GREEN `c07194f5`. α-tier2-sale-01 GREEN. Suite delta +3 PASS (2 sentinel + 1 monthly-close intermittent recovery — flake confirmed orthogonal); 0 NEW failures; tsc 0.
+
+### §13.accounting.money-math-decimal-convergence-TIER2-C2 purchase-builder-Decimal-P1-P2-α-tier2-purchase-01-regex-line-bound-fix
+
+- **1ra evidencia**: POC poc-tier2-money-decimal-convergence C2 (OLEADA 8 POC #1)
+- **Decisión**: `modules/purchase/domain/build-purchase-entry-lines.ts` Decimal-internal at 2 sites — P1 exentos + P2 gastoNeto (mirror C1 shape per [[paired_sister_default_no_surface]]). NEW sentinel α-tier2-purchase-01 (symmetric to sale-01). **Regex hygiene fix** (named per [[mock_hygiene_commit_scope]]): negative-match regex changed `Math\.round\([^)]*\*\s*100\)` → `Math\.round\([^\n]*\*\s*100\)` (line-bound). POC #2 α13d precedent regex `[^)]*` failed on nested-paren expressions like `Math.round((a - b) * 100)` — character class terminates at inner `)`. TIER 1 (POC #2) expressions had no nested parens, the precedent worked; TIER 2 builders DO have nested-paren expressions at S1/P1/S2/P2. Line-bound `[^\n]*` catches all expression shapes. Applied to BOTH α-tier2-sale-01 (retroactive strengthening) and α-tier2-purchase-01.
+- **Cementado**: C2 RED `9b916fcc` · GREEN `1f72cf31`. α-tier2-purchase-01 GREEN; α-tier2-sale-01 still GREEN. Suite 7028 PASS / 1 FAIL (ai-agent flake out-of-domain pre-existing); 0 NEW failures; tsc 0.
+
+### §13.accounting.money-math-decimal-convergence-TIER2-C3 dispatch-builder-Decimal-D1-D2-α-tier2-dispatch-01-roundTotal-EXCLUDED
+
+- **1ra evidencia**: POC poc-tier2-money-decimal-convergence C3 (OLEADA 8 POC #1)
+- **Decisión**: `modules/dispatch/domain/compute-line-amounts.ts` Decimal-internal at 2 sites — D1 BOLETA_CERRADA lineAmount `roundHalfUp(new Prisma.Decimal(realNetWeight).mul(d.unitPrice)).toNumber()` + D2 NOTA_DESPACHO lineAmount `roundHalfUp(new Prisma.Decimal(netWeight).mul(d.unitPrice)).toNumber()`. `modules/dispatch/domain/round-total.ts` (D3 cooperative-rounding helper, Math.floor/ceil semantic) UNTOUCHED per R-money-tier2 textual EXCLUDED scope. R5 nuance: `Prisma` runtime import is for `Prisma.Decimal` value-type only (decimal.js re-export, NOT generated entity — sister precedent `money.utils.ts:25-29` "R1-permissible-value-type-exception"). NEW sentinel α-tier2-dispatch-01 (symmetric).
+- **Cementado**: C3 RED `42d6c9ce` · GREEN `a030ddb9`. α-tier2-dispatch-01 GREEN. Suite 7030 PASS / 1 FAIL (out-of-domain); 0 NEW failures; tsc 0.
+
+### §13.accounting.money-math-decimal-convergence-TIER2-C4 route-fallbacks-R1-R2-Decimal-α-tier2-routes-01-dual-arity
+
+- **1ra evidencia**: POC poc-tier2-money-decimal-convergence C4 (OLEADA 8 POC #1)
+- **Decisión**: `app/api/organizations/[orgSlug]/{sales,purchases}/[id]/route.ts` `computeNewTotal` fallback Decimal-internal (when `d.lineAmount === undefined`) — both routes identical shape: `roundHalfUp(new Prisma.Decimal(qty).mul(unitPrice)).toNumber()`. Imports added per route: `Prisma` + `roundHalfUp`. NEW sentinel α-tier2-routes-01 covers BOTH routes (dual-arity in single describe block — 4 assertions: 2 per route × 2 routes). Q4 lock honored (routes IN-scope; UI J1/J2/J3 explicitly OUT — distinct UI balance-gate invariant).
+- **Cementado**: C4 RED `3ef0d0d6` · GREEN `8682a006`. α-tier2-routes-01 GREEN. Suite 7034 PASS / 1 FAIL (out-of-domain); 0 NEW failures; tsc 0. **All 4 cycles GREEN — R-money-tier2 scope fully discharged at source-text level**.
+
+### §13.accounting.money-math-decimal-convergence-TIER2-D1 OLEADA-8-cementación-MonetaryAmount-VO-partial-convergence-75-percent-declared
+
+- **1ra evidencia**: POC poc-tier2-money-decimal-convergence D1 (OLEADA 8 POC #1)
+- **Decisión**: D1 cementación commit (this entry) — single docs commit per Q8 lock + POC #2 D1 precedent. Updates `01-migration-roadmap.md` (OLEADA 8 POC #1 row CLOSED), `02-current-state.md` (TIER 2 R-money-tier2 DISCHARGED row with explicit ~75% convergence declaration), and this file (new §13.accounting.money-math-decimal-convergence-TIER2 section). **MonetaryAmount VO partial-convergence honest surface**: `modules/shared/domain/value-objects/monetary-amount.ts:6` `round2 = Math.round((n+EPSILON)*100)/100` REMAINS float-internal — distinct surface from TIER 2 builders' compute-time arithmetic. VO upstream feeds TIER 2 builder inputs as `number` (via `.value` accessor); convergence at TIER 2 is ~75% partial. Future POC queued: `poc-monetary-amount-vo-retirement` (TIER 2.5 / TIER 3) — distinct VO retirement scope, orthogonal to R-money-tier2 textual scope. Surface-honest declaration per OLEADA charter. **Canonical homes**: TIER 2 money-math = `Prisma.Decimal` via `modules/accounting/shared/domain/money.utils` (`roundHalfUp` helper — reused from POC #2 C0); TIER 2 DTO monetary fields = `number` at builder boundary (SHAPE-A-mirror per Q2 lock); `.toNumber()` boundary preserves `number` contract end-to-end (no UI ripple). **R-money-tier2 DISCHARGED — OLEADA 8 POC #1 CLOSED**. Pending: `pnpm build` GREEN gate (Marco-run, post-D1 per repo convention).
+- **Cementado**: D1 (this commit). Genealogy chain locked: R-money (TIER 1, archive #2452, OLEADA 7) → R-money-tier2 (TIER 2, this POC, OLEADA 8). 9 commits total (4 RED + 4 GREEN + D1).
+
 ## §13.accounting.pagination-journal — Canonical Homes pagination-journal (NEW poc-pagination-journal — Journal/Libro Diario pagination replication — CLOSED)
 
 > **AXIS-DISTINCT from POC pagination-sale (pilot) + POC pagination-replication Purchase/Payment**: replication target Journal/Libro Diario module — split-port 3-touchpoint asymmetry (port + adapter + repo) vs Sale/Purchase 2-touchpoint single-port. Filters scalar/enum (no Path 2 array unification needed — Journal asymmetry vs Purchase). Sentinel file: `modules/accounting/__tests__/c1-macro-pagination-additive-shape-journal.poc-pagination-journal.test.ts` (10α existence-only, T11 shadcn drop redundant heredado).

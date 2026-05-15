@@ -1,6 +1,6 @@
-# 02. Current State — Inventory Snapshot 2026-05-15 (updated poc-money-math-decimal-convergence D1 — OLEADA 7 FULLY COMPLETE 2/2 — WAVE CLOSED)
+# 02. Current State — Inventory Snapshot 2026-05-15 (updated poc-tier2-money-decimal-convergence D1 — OLEADA 8 POC #1 CLOSED — R-money-tier2 DISCHARGED TIER 2)
 
-> **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures. Updated POC #3f 2026-05-12. Updated poc-ai-agent-hex C5 OLEADA 5 2/3 CLOSED 2026-05-13. Updated poc-financial-statements-hex C5 OLEADA 5 FULLY CLOSED 3/3 2026-05-13. Updated poc-accounting-exporters-cleanup C2 OLEADA 6 sub-POC 6/8 CLOSED 2026-05-14. Updated poc-accounting-journal-ledger-core-hex D1 OLEADA 6 sub-POC 7/8 CLOSED 2026-05-14. Updated poc-accounting-shim-retirement D1 OLEADA 6 FULLY COMPLETE 8/8 2026-05-15. Updated poc-payment-journal-repo-cutover D1 OLEADA 7 POC #1/2 CLOSED 2026-05-15. Updated poc-money-math-decimal-convergence D1 OLEADA 7 FULLY COMPLETE 2/2 — WAVE CLOSED 2026-05-15.
+> **Cementación**: POC docs-refactor recon inventory cumulative cross-POC matures. Updated POC #3f 2026-05-12. Updated poc-ai-agent-hex C5 OLEADA 5 2/3 CLOSED 2026-05-13. Updated poc-financial-statements-hex C5 OLEADA 5 FULLY CLOSED 3/3 2026-05-13. Updated poc-accounting-exporters-cleanup C2 OLEADA 6 sub-POC 6/8 CLOSED 2026-05-14. Updated poc-accounting-journal-ledger-core-hex D1 OLEADA 6 sub-POC 7/8 CLOSED 2026-05-14. Updated poc-accounting-shim-retirement D1 OLEADA 6 FULLY COMPLETE 8/8 2026-05-15. Updated poc-payment-journal-repo-cutover D1 OLEADA 7 POC #1/2 CLOSED 2026-05-15. Updated poc-money-math-decimal-convergence D1 OLEADA 7 FULLY COMPLETE 2/2 — WAVE CLOSED 2026-05-15. Updated poc-tier2-money-decimal-convergence D1 OLEADA 8 POC #1 CLOSED — R-money-tier2 DISCHARGED 2026-05-15.
 > **Source**: Filesystem scan `modules/` + `features/` + grep consumers.
 > **Total LOC pending migration**: ~5,839 LOC across remaining `features/accounting/*` sub-features (8 sub-features deferred to OLEADA 6 multi-sub-POC umbrella: equity-statement, initial-balance, trial-balance, worksheet, iva-books, exporters/, journals, etc.).
 
@@ -80,6 +80,20 @@
 ✅ **modules/accounting/domain/ports/accounts-crud.port.ts** (~133 LOC) — AccountsCrudPort interface, 15 methods verbatim 1:1 legacy AccountsRepository. First port-creation POC (#3a). No impl — adapter in #3b. tx?: unknown opaque on create/update/seedChartOfAccounts. countJournalLines TODO comment for AccountUsagePort future split. Port count in domain/ports/: 9 total (RED 45568edf · GREEN 01656b96 · D1 863b6665)  
 ✅ **modules/iva-books/presentation/server.ts** — IvaBookService + factories  
 ⚠️ **NOTE**: Non-hex outliers `features/{purchase, sale, shared}` ALSO lack server.ts (surface honest — outside POC poc-hex-public-barrels scope, defer to future consolidation).
+
+## R-money-tier2 DISCHARGED — TIER 2 Decimal convergence status (OLEADA 8 POC #1 — added 2026-05-15)
+
+| Surface | Status | Convergence | Notes |
+|---|---|---|---|
+| TIER 1 money-math (`modules/accounting/application/ledger.service.ts` + `auto-entry-generator.ts`) | ✅ DISCHARGED OLEADA 7 POC #2 (R-money) | 100% | `Prisma.Decimal` + `sumDecimals`/`eq`/`roundHalfUp` via `shared/domain/money.utils`; DTO `string` at JSON boundary; UI `parseFloat` adapter |
+| TIER 2 domain builders (sale/purchase/dispatch) | ✅ DISCHARGED OLEADA 8 POC #1 (R-money-tier2 derivative) | ~75% partial | SHAPE-A-mirror: Decimal-internal arithmetic, `.toNumber()` at builder boundary; `number` DTO contract preserved (no UI ripple). 7 sites converged: S1/S2/S3 sale + P1/P2 purchase + D1/D2 dispatch. `roundTotal` (round-total.ts) EXCLUDED — cooperative-rounding semantic. |
+| TIER 2-adjacent route fallbacks (R1/R2) | ✅ DISCHARGED OLEADA 8 POC #1 | 100% (within scope) | `app/api/.../{sales,purchases}/[id]/route.ts` `computeNewTotal` fallback — Decimal pipeline mirror sale/purchase builder shape |
+| `MonetaryAmount` VO `round2` (`modules/shared/domain/value-objects/monetary-amount.ts:6`) | ⚠️ PENDING — future POC | 0% | Float-internal `Math.round((n+EPSILON)*100)/100` REMAINS — distinct VO retirement scope. Feeds TIER 2 builder inputs as `number` via `.value` accessor → TIER 2 convergence is partial (~75%). Future POC queued: `poc-monetary-amount-vo-retirement` (TIER 2.5 / TIER 3). |
+| TIER 3 presentation (voucher-pdf, amount-to-words, toFixed2 family) | OUT OF SCOPE | N/A | Presentation-only formatting; distinct surface. |
+| UI manual-journal balance checks (J1/J2/J3) | OUT OF SCOPE — future POC | 0% | `components/accounting/(create-)?journal-entry-(form|detail).tsx` — distinct UI balance-gate invariant; not within R-money-tier2 textual scope. |
+| UI form-side line preview math (sale-form/purchase-form/dispatch-form) | OUT OF SCOPE | 0% | Distinct UI input compute surface; not within R-money-tier2 textual scope. |
+
+**Canonical homes**: TIER 2 money-math = `Prisma.Decimal` via `modules/accounting/shared/domain/money.utils` (`roundHalfUp` reused from POC #2 C0); TIER 2 DTO monetary fields = `number` at builder boundary (SHAPE-A-mirror); `.toNumber()` boundary preserves `number` end-to-end. **R-money-tier2 textual deviation DISCHARGED** (genealogy: R-money TIER 1 archive #2452 → R-money-tier2 TIER 2 this POC).
 
 ## Anomalías honest surface
 
