@@ -133,7 +133,8 @@ describe("TrialBalancePageClient (C9.S2)", () => {
   });
 
   it("(e) auto-selects period covering today and pre-fills date inputs from its range", async () => {
-    vi.useFakeTimers();
+    // Fake only Date so async fetch promises still resolve naturally.
+    vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-05-15T12:00:00.000Z"));
 
     mockFetch.mockImplementation(async (url: string) => {

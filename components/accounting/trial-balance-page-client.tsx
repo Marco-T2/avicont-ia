@@ -7,10 +7,14 @@
  * Covers C9.S2 (filters wired), C9.S3 (export buttons).
  */
 
-import { useState, useCallback } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
-import { WorksheetFilters, type WorksheetFilterValues } from "./worksheet-filters";
+import {
+  WorksheetFilters,
+  type WorksheetFilterValues,
+  type FiscalPeriodOption,
+} from "./worksheet-filters";
 import { TrialBalanceTable } from "./trial-balance-table";
 
 // ── Types (serialized — Decimals as strings) ──────────────────────────────────
@@ -50,6 +54,47 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastFilters, setLastFilters] = useState<WorksheetFilterValues | null>(null);
+  const [periods, setPeriods] = useState<FiscalPeriodOption[]>([]);
+  const [periodsLoaded, setPeriodsLoaded] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadPeriods() {
+      try {
+        const res = await fetch(`/api/organizations/${orgSlug}/periods`);
+        if (!res.ok) return;
+        const data = (await res.json()) as Array<{
+          id: string;
+          name: string;
+          startDate: string;
+          endDate: string;
+        }>;
+        if (cancelled) return;
+        setPeriods(
+          data.map((p) => ({
+            id: p.id,
+            name: p.name,
+            startDate: p.startDate.slice(0, 10),
+            endDate: p.endDate.slice(0, 10),
+          })),
+        );
+      } catch {
+        // silent — period selector is optional UX
+      } finally {
+        if (!cancelled) setPeriodsLoaded(true);
+      }
+    }
+    void loadPeriods();
+    return () => {
+      cancelled = true;
+    };
+  }, [orgSlug]);
+
+  // Period that contains today — mirrors journal-entry-form / sale-form UX.
+  const today = new Date().toISOString().slice(0, 10);
+  const currentPeriod = periods.find(
+    (p) => p.startDate <= today && today <= p.endDate,
+  );
 
   const fetchReport = useCallback(
     async (filters: WorksheetFilterValues) => {
@@ -103,10 +148,25 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Filters — render only after periods fetch resolves so initial* props
+          apply at mount instead of after a remount. */}
       <Card>
         <CardContent className="pt-6">
-          <WorksheetFilters onFilter={handleFilter} loading={loading} />
+          {periodsLoaded ? (
+            <WorksheetFilters
+              onFilter={handleFilter}
+              loading={loading}
+              periods={periods}
+              initialFiscalPeriodId={currentPeriod?.id}
+              initialDateFrom={currentPeriod?.startDate}
+              initialDateTo={currentPeriod?.endDate}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando períodos…
+            </div>
+          )}
         </CardContent>
       </Card>
 
