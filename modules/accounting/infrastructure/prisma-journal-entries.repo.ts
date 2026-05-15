@@ -482,14 +482,32 @@ export class JournalRepository extends BaseRepository {
 
   /**
    * Paginated POSTED journal lines for one account + opening balance delta.
-   * 3-query Promise.all: page window + count + prior-rows for openingBalance
-   * Delta JS reduce. Split-port 3-touchpoint cascade 2nd evidence (Journal
-   * 1st → Ledger 2nd). Cumulative-state paginated DTO 1st evidence — port
-   * declares openingBalanceDelta:unknown to abstract Prisma.Decimal.
+   * 4-query Promise.all: page window + count + within-range prior-rows +
+   * historical aggregate (sum of POSTED lines BEFORE `dateFrom`). Split-port
+   * 3-touchpoint cascade 2nd evidence (Journal 1st → Ledger 2nd). Cumulative-
+   * state paginated DTO 1st evidence — port declares openingBalanceDelta:
+   * unknown to abstract Prisma.Decimal.
+   *
+   * `openingBalanceDelta` semantics (post poc-pagination-ledger-bugfix):
+   *   historicalOpening (date < dateFrom, scoped to periodId if provided)
+   *   + withinRangePriorsDelta (sum debit-credit of the (page-1)*pageSize
+   *     rows inside the filter range, preserves slice consistency for the
+   *     running-balance accumulator).
+   *
+   * Edge cases:
+   *   - `dateFrom` undefined → historical query is SKIPPED (no boundary),
+   *     historicalOpening = 0. Preserves pre-bugfix behavior for no-filter
+   *     reads.
+   *   - `periodId` filter applies to BOTH the page WHERE AND the historical
+   *     aggregate — opening within a period filter means "opening of that
+   *     period at dateFrom".
+   *   - `dateTo` is irrelevant to historical opening (only `dateFrom`
+   *     bounds the past).
    *
    * Asymmetry vs findPaginated (Journal): 3rd findMany prior-rows query
-   * (skip:0, take:skip, select:{debit,credit}) replaces a single count —
-   * Prisma aggregate doesn't accept skip/take in v7+ per explore R1.
+   * (skip:0, take:skip, select:{debit,credit}) for within-range slice
+   * consistency — Prisma aggregate doesn't accept skip/take. 4th query is
+   * a pure aggregate (no skip/take needed for historical sum).
    */
   async findLinesByAccountPaginated(
     organizationId: string,
@@ -503,8 +521,23 @@ export class JournalRepository extends BaseRepository {
     const pageSize = pagination?.pageSize ?? 25;
     const skip = (page - 1) * pageSize;
     const take = pageSize;
+    const dateFrom = filters?.dateRange?.dateFrom;
 
-    const [rows, total, priorRows] = await Promise.all([
+    // Query 4 (historical aggregate) is conditional on `dateFrom`. Without
+    // a `date < dateFrom` boundary there is no "historical" sub-set — all
+    // POSTED lines are inside the open range. Skipping the query preserves
+    // pre-bugfix behavior for unfiltered reads.
+    const historicalPromise = dateFrom
+      ? this.db.journalLine.aggregate({
+          where: buildLedgerLinePriorWhere(organizationId, accountId, {
+            dateFrom,
+            periodId: filters?.periodId,
+          }),
+          _sum: { debit: true, credit: true },
+        })
+      : Promise.resolve({ _sum: { debit: null, credit: null } });
+
+    const [rows, total, priorRows, historicalAgg] = await Promise.all([
       this.db.journalLine.findMany({
         where,
         orderBy,
@@ -524,15 +557,22 @@ export class JournalRepository extends BaseRepository {
         take: skip,
         select: { debit: true, credit: true },
       }),
+      historicalPromise,
     ]);
 
-    const openingBalanceDelta = priorRows.reduce(
+    const historicalOpening = new Prisma.Decimal(
+      String(historicalAgg._sum.debit ?? 0),
+    ).minus(new Prisma.Decimal(String(historicalAgg._sum.credit ?? 0)));
+
+    const withinRangePriorsDelta = priorRows.reduce(
       (acc, r) =>
         acc
           .plus(new Prisma.Decimal(String(r.debit)))
           .minus(new Prisma.Decimal(String(r.credit))),
       new Prisma.Decimal(0),
     );
+
+    const openingBalanceDelta = historicalOpening.plus(withinRangePriorsDelta);
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
     return {
@@ -684,12 +724,17 @@ function buildJournalEntryWhere(
 
 /**
  * DRY `where` builder shared by `findLinesByAccount` + `findLinesByAccount
- * Paginated`. Mirror of `buildJournalEntryWhere` pattern. Same WHERE clause
- * used in all 3 Prisma queries of `findLinesByAccountPaginated` (rows, count,
- * prior-rows) — critical correctness invariant: prior-rows query MUST use
- * identical where + orderBy as rows query, otherwise running-balance
- * accumulator desyncs. POSTED-status filter baked in (matches legacy
- * `findLinesByAccount` byte-identical behavior).
+ * Paginated` (page window + count + WITHIN-RANGE priors). Mirror of
+ * `buildJournalEntryWhere` pattern. Same WHERE used in queries 1-3 of
+ * `findLinesByAccountPaginated` — slice consistency invariant: those three
+ * queries MUST share where+orderBy or the running-balance accumulator
+ * desyncs. POSTED-status filter baked in (parity legacy `findLinesByAccount`).
+ *
+ * NOTE — historical opening uses `buildLedgerLinePriorWhere` instead. Slice
+ * consistency (this builder) and accounting semantics (the prior builder)
+ * are SEPARATE concerns: opening at `dateFrom` reflects the ledger BEFORE
+ * the filter, not within it. Conflating them was the poc-pagination-ledger
+ * bug (commit 0ed87baf, fixed in follow-up).
  */
 function buildLedgerLineWhere(
   organizationId: string,
@@ -710,6 +755,35 @@ function buildLedgerLineWhere(
       status: "POSTED",
       ...(filters?.periodId && { periodId: filters.periodId }),
       ...dateFilter,
+    },
+  };
+}
+
+/**
+ * `where` builder for the HISTORICAL opening aggregate (query 4 of
+ * `findLinesByAccountPaginated`). Selects POSTED lines BEFORE `dateFrom`
+ * for the same account+org, scoped to `periodId` when provided. `dateTo`
+ * is irrelevant — historical opening only depends on the lower bound.
+ *
+ * Accounting semantics: opening at `dateFrom` = sum(debit - credit) of all
+ * POSTED activity prior to the filter. If `periodId` is set, opening is
+ * "opening of THAT period at dateFrom" (period-scoped historical sum).
+ *
+ * Distinct from `buildLedgerLineWhere` by design — see that builder's JSDoc
+ * for the slice-consistency vs accounting-semantics separation.
+ */
+function buildLedgerLinePriorWhere(
+  organizationId: string,
+  accountId: string,
+  options: { dateFrom: Date; periodId?: string },
+): Record<string, unknown> {
+  return {
+    accountId,
+    journalEntry: {
+      organizationId,
+      status: "POSTED",
+      ...(options.periodId && { periodId: options.periodId }),
+      date: { lt: options.dateFrom },
     },
   };
 }
