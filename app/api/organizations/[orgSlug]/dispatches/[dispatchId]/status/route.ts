@@ -30,12 +30,10 @@ export async function PATCH(
 
     const user = await usersService.resolveByClerkId(clerkUserId);
 
-    let dispatch;
-    if (status === "POSTED") {
-      dispatch = await dispatchService.post(orgId, dispatchId, user.id);
-    } else {
-      dispatch = await dispatchService.voidDispatch(orgId, dispatchId, user.id, justification);
-    }
+    const { dispatch } =
+      status === "POSTED"
+        ? await dispatchService.post(orgId, dispatchId, user.id)
+        : await dispatchService.voidDispatch(orgId, dispatchId, user.id, justification);
 
     return Response.json(dispatch.toSnapshot());
   } catch (error) {
