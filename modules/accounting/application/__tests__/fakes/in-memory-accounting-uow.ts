@@ -332,7 +332,13 @@ export class FakeDocumentSignatureConfigService {
     showReceiverRow: false,
   };
 
-  async getOrDefault(_organizationId: string, _documentType: string) {
+  // Records every `getOrDefault` call so `exportVoucherPdf` tests can assert
+  // the use case requests the COMPROBANTE signature config (test-cementación
+  // port from the retired legacy `journal.service.exportVoucherPdf.test.ts`).
+  getOrDefaultCalls: { organizationId: string; documentType: string }[] = [];
+
+  async getOrDefault(organizationId: string, documentType: string) {
+    this.getOrDefaultCalls.push({ organizationId, documentType });
     return this.view;
   }
 }

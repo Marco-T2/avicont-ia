@@ -763,6 +763,59 @@ describe("JournalsService.createAndPost", () => {
     expect((err as { code?: string }).code).toBe(POST_NOT_ALLOWED_FOR_ROLE);
   });
 
+  // Test-cementación port (C5 B2a) — from the retired legacy
+  // `journal-canpost-async.test.ts` (cases a/b/d). That file proved a CUSTOM
+  // role slug NOT in the legacy static `POST_ALLOWED_ROLES` map can still post
+  // when the org matrix grants it `canPost: ['journal']`. In the hex the
+  // `PermissionsPort.canPost` is purely matrix-driven — there is no static
+  // map, so an arbitrary custom slug routes through the SAME path as a
+  // built-in role. This test locks that: a custom `custom_asentador` slug,
+  // granted via the matrix-backed port, passes the RBAC guard exactly like
+  // `admin` does (and is NOT rejected with POST_NOT_ALLOWED_FOR_ROLE).
+  it("allows a custom (non-builtin) role to post when the matrix-backed port grants it", async () => {
+    const { service, uow, accounts, periods, voucherTypes, permissions } =
+      setup();
+    accounts.accountsById.set("acc-1", {
+      id: "acc-1",
+      name: "Caja",
+      isActive: true,
+      isDetail: true,
+      requiresContact: false,
+    });
+    accounts.accountsById.set("acc-2", {
+      id: "acc-2",
+      name: "Banco",
+      isActive: true,
+      isDetail: true,
+      requiresContact: false,
+    });
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+    voucherTypes.voucherTypesById.set("voucher-1", { id: "voucher-1" });
+    // Grant the CUSTOM slug — not a builtin role — via the matrix-backed port.
+    permissions.allowedKeys.add("custom_asentador:journal:org-1");
+
+    const { journal, correlationId } = await service.createAndPost(
+      "org-1",
+      {
+        date: new Date("2026-04-28"),
+        description: "Test entry",
+        periodId: "period-1",
+        voucherTypeId: "voucher-1",
+        createdById: "user-1",
+        lines: [
+          { accountId: "acc-1", debit: 100, credit: 0 },
+          { accountId: "acc-2", debit: 0, credit: 100 },
+        ],
+      },
+      { userId: "user-1", role: "custom_asentador" },
+    );
+
+    expect(journal.status).toBe("POSTED");
+    expect(uow.journalEntries.created).toHaveLength(1);
+    expect(typeof correlationId).toBe("string");
+    expect(correlationId.length).toBeGreaterThan(0);
+  });
+
   // Failure mode declarado: REGRESSION HARNESS, not RED→GREEN. Plan B delegates
   // I1 (partida doble) enforcement to `Journal.post()` (aggregate), which calls
   // `assertBalanced` with `Money.equals` bit-perfect — already tested in C1 at
@@ -3210,6 +3263,46 @@ describe("JournalsService read use cases (C1)", () => {
         .catch((e: unknown) => e);
 
       expect(err).toBeInstanceOf(NotFoundError);
+    });
+
+    // Test-cementación port (C5 B2a) — from the retired legacy
+    // `journal.service.exportVoucherPdf.test.ts` "llama getOrDefault con
+    // documentType COMPROBANTE". The voucher PDF MUST request the COMPROBANTE
+    // signature config — a wrong documentType silently renders the wrong
+    // signature labels.
+    it("requests the COMPROBANTE signature config (getOrDefault documentType)", async () => {
+      const { service, journalLedgerQuery, exportDeps } = setup();
+      journalLedgerQuery.entriesById.set("je-pdf", entryFixture() as never);
+      exportDeps.fiscalPeriods.periodsById.set("period-1", {
+        id: "period-1",
+        name: "Agosto 2025",
+      });
+
+      await service.exportVoucherPdf("org-1", "je-pdf", {});
+
+      expect(exportDeps.sigConfig.getOrDefaultCalls).toEqual([
+        { organizationId: "org-1", documentType: "COMPROBANTE" },
+      ]);
+    });
+
+    // Test-cementación port (C5 B2a) — from the retired legacy
+    // `journal.service.exportVoucherPdf.test.ts` "renderiza sin logo cuando
+    // profile.logoUrl es null". The `FakeOrgProfileService` snapshot ships
+    // `logoUrl: null`, so this exercises the no-logo branch of the composer
+    // explicitly: the PDF still renders.
+    it("renders a valid PDF when the org profile has no logo (logoUrl null)", async () => {
+      const { service, journalLedgerQuery, exportDeps } = setup();
+      journalLedgerQuery.entriesById.set("je-pdf", entryFixture() as never);
+      exportDeps.fiscalPeriods.periodsById.set("period-1", {
+        id: "period-1",
+        name: "Agosto 2025",
+      });
+      expect(exportDeps.orgProfile.snapshot.logoUrl).toBeNull();
+
+      const pdf = await service.exportVoucherPdf("org-1", "je-pdf", {});
+
+      expect(Buffer.isBuffer(pdf)).toBe(true);
+      expect(pdf.length).toBeGreaterThan(0);
     });
   });
 });

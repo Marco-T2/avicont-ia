@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -80,13 +80,24 @@ describe("POC org-profile hex C4 — cross-feature cutover shape (paired sister 
 
   // ── C: Cross-feature consumers ──
 
-  // α42
-  it("α42: features/accounting/journal.service.ts imports makeOrgProfileService from hex + NO legacy", () => {
+  // α42 — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
+  // Original intent: the legacy `journal.service.ts` consumes the HEX
+  // org-profile service (for `exportVoucherPdf`), NOT the retired
+  // `@/features/org-profile`. C5 B2a converts `journal.service.ts` into a
+  // thin delegating SHIM over the hex `JournalsService` — the org-profile
+  // dependency now lives entirely inside the hex use case; the shim imports
+  // neither the hex org-profile service nor the legacy one. The "NO legacy
+  // import" half STILL holds; the positive half is obsolete for a pure
+  // delegating shim. Honest prior-cycle collision per
+  // [[invariant_collision_elevation]].
+  it("α42: features/accounting/journal.service.ts is a shim — NO legacy org-profile import", () => {
     const src = readRepoFile("features/accounting/journal.service.ts");
-    expect(src).toMatch(
-      /from\s+["']@\/modules\/org-profile\/presentation\/server["']/,
-    );
     expect(src).not.toMatch(LEGACY_FEATURES_OP_SERVER_IMPORT_RE);
+    expect(src).not.toMatch(LEGACY_FEATURES_OP_BARREL_IMPORT_RE);
+    // It delegates to the hex JournalsService, which owns the org-profile dep.
+    expect(src).toMatch(
+      /from\s+["']@\/modules\/accounting\/presentation\/server["']/,
+    );
   });
 
   // ── D: Client component consumers (3 files — import from client barrel) ──
@@ -126,11 +137,23 @@ describe("POC org-profile hex C4 — cross-feature cutover shape (paired sister 
 
   // ── E: Test consumer ──
 
-  // α46
-  it("α46: journal.service.exportVoucherPdf.test.ts imports OrgProfileService type from hex + NO legacy", () => {
-    const src = readRepoFile(
-      "features/accounting/__tests__/journal.service.exportVoucherPdf.test.ts",
-    );
-    expect(src).not.toMatch(LEGACY_FEATURES_OP_SERVER_IMPORT_RE);
+  // α46 — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
+  // Original intent: the legacy `journal.service.exportVoucherPdf.test.ts`
+  // imports the `OrgProfileService` type from the HEX, not the retired
+  // legacy path. C5 B2a DELETES that legacy test file as test-cementación
+  // (it asserted the legacy `JournalService` class's internal
+  // `exportVoucherPdf` composition; that logic now lives in the hex, covered
+  // by `modules/accounting/application/__tests__/journals.service.test.ts`).
+  // With the file gone the legacy-import concern is vacuously resolved.
+  // Honest prior-cycle collision per [[invariant_collision_elevation]].
+  it("α46: journal.service.exportVoucherPdf.test.ts removed (C5 B2a test-cementación)", () => {
+    expect(
+      existsSync(
+        resolve(
+          REPO_ROOT,
+          "features/accounting/__tests__/journal.service.exportVoucherPdf.test.ts",
+        ),
+      ),
+    ).toBe(false);
   });
 });

@@ -1,113 +1,63 @@
 import "server-only";
-import { NotFoundError } from "@/features/shared/errors";
-import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
-import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
-import { JournalRepository } from "./journal.repository";
-import { AccountBalancesService } from "@/features/account-balances/server";
+import type { LedgerService as HexLedgerService } from "@/modules/accounting/presentation/server";
 import type { LedgerEntry, TrialBalanceRow, DateRangeFilter } from "./ledger.types";
-import type { AccountType } from "@/generated/prisma/client";
+
+/**
+ * Thin delegating SHIM over the hex `LedgerService`.
+ *
+ * POC #7 OLEADA 6 sub-POC 7/8 — C5 Option B2a. `LedgerService` was folded onto
+ * the hex in C1 (`modules/accounting/application/ledger.service.ts` — it had
+ * ZERO hex equivalent before). C5 B2a converts this legacy file from the full
+ * implementation into a thin shim: the class name + public method signatures
+ * are PRESERVED so the `@/features/accounting/server` barrel and the
+ * `app/api/.../ledger/route.ts` consumer stay byte-stable (their repoint to
+ * the hex factory is sub-POC 8 scope).
+ *
+ * Pure pass-through — the hex `LedgerService` has IDENTICAL public method
+ * signatures and return DTOs (`LedgerEntry[]` / `TrialBalanceRow[]`), so no
+ * shape reconciliation is needed. The DEV-1 / R-money float `Number()`
+ * running-balance arithmetic lives in the hex now (named deviation, design
+ * #2405) — this shim adds nothing.
+ *
+ * ── Lazy hex resolution (cycle break) ──
+ * `makeLedgerService` lives in the hex `composition-root` (full adapter
+ * graph). A static import would make the legacy `@/features/accounting/server`
+ * barrel transitively pull the hex wiring graph at module-init, which has a
+ * load-order cycle with `modules/organizations`. Resolving the factory via a
+ * lazy `import()` cached in a module-level promise removes the static
+ * module-graph edge — the hex barrel only loads on the first method call.
+ * Both shim methods are already `async`. Mirrors the journal.service.ts shim.
+ */
+let hexFactoryPromise: Promise<() => HexLedgerService> | null = null;
+
+async function resolveHex(): Promise<HexLedgerService> {
+  if (!hexFactoryPromise) {
+    hexFactoryPromise = import("@/modules/accounting/presentation/server").then(
+      (m) => m.makeLedgerService,
+    );
+  }
+  return (await hexFactoryPromise)();
+}
 
 export class LedgerService {
-  private readonly accountsRepo: AccountsCrudPort;
-  private readonly journalRepo: JournalRepository;
-  private readonly accountBalancesService: AccountBalancesService;
-
-  constructor(
-    accountsRepo?: AccountsCrudPort,
-    journalRepo?: JournalRepository,
-    accountBalancesService?: AccountBalancesService,
-  ) {
-    this.accountsRepo = accountsRepo ?? new PrismaAccountsRepo();
-    this.journalRepo = journalRepo ?? new JournalRepository();
-    this.accountBalancesService =
-      accountBalancesService ?? new AccountBalancesService();
-  }
-
-  // ── Obtener el libro mayor de una cuenta con saldo acumulado ──
-
   async getAccountLedger(
     organizationId: string,
     accountId: string,
     dateRange?: DateRangeFilter,
     periodId?: string,
   ): Promise<LedgerEntry[]> {
-    const account = await this.accountsRepo.findById(organizationId, accountId);
-    if (!account) throw new NotFoundError("Cuenta");
-
-    const lines = await this.journalRepo.findLinesByAccount(
+    return (await resolveHex()).getAccountLedger(
       organizationId,
       accountId,
-      { dateRange, periodId },
+      dateRange,
+      periodId,
     );
-
-    let runningBalance = 0;
-    return lines.map((line) => {
-      const debit = Number(line.debit);
-      const credit = Number(line.credit);
-      runningBalance += debit - credit;
-
-      return {
-        date: line.journalEntry.date,
-        entryNumber: line.journalEntry.number,
-        description: line.description ?? line.journalEntry.description,
-        debit,
-        credit,
-        balance: runningBalance,
-      };
-    });
   }
-
-  // ── Obtener balance de comprobación ──
 
   async getTrialBalance(
     organizationId: string,
     periodId: string,
   ): Promise<TrialBalanceRow[]> {
-    // Principal: leer desde los registros de AccountBalance para el período
-    const balances = await this.accountBalancesService.getBalances(
-      organizationId,
-      periodId,
-    );
-
-    if (balances.length > 0) {
-      return balances.map((b) => {
-        const totalDebit = Number(b.debitTotal);
-        const totalCredit = Number(b.creditTotal);
-        return {
-          accountCode: b.account.code,
-          accountName: b.account.name,
-          accountType: b.account.type as AccountType,
-          totalDebit,
-          totalCredit,
-          balance: totalDebit - totalCredit,
-        };
-      });
-    }
-
-    // Fallback: agregar directamente desde las líneas de asiento POSTED
-    const accounts = await this.accountsRepo.findAll(organizationId);
-    const rows: TrialBalanceRow[] = [];
-
-    for (const account of accounts) {
-      const aggregation = await this.journalRepo.aggregateByAccount(
-        organizationId,
-        account.id,
-        periodId,
-      );
-
-      const totalDebit = Number(aggregation._sum.debit ?? 0);
-      const totalCredit = Number(aggregation._sum.credit ?? 0);
-
-      rows.push({
-        accountCode: account.code,
-        accountName: account.name,
-        accountType: account.type,
-        totalDebit,
-        totalCredit,
-        balance: totalDebit - totalCredit,
-      });
-    }
-
-    return rows;
+    return (await resolveHex()).getTrialBalance(organizationId, periodId);
   }
 }

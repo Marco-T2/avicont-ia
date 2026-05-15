@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -54,13 +54,25 @@ describe("POC document-signature-config hex C4 — cross-feature cutover shape (
   });
 
   // ── C: features/accounting cross-feature consumers ──
-  // α39
-  it("α39: features/accounting/journal.service.ts imports makeDocumentSignatureConfigService from hex + NO legacy", () => {
+  // α39 — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
+  // Original intent: the legacy `journal.service.ts` consumes the HEX
+  // document-signature-config service (for `exportVoucherPdf`), NOT the
+  // retired `@/features/document-signature-config`. C5 B2a converts
+  // `journal.service.ts` into a thin delegating SHIM over the hex
+  // `JournalsService` — the doc-sig-config dependency now lives entirely
+  // inside the hex use case; the shim imports neither the hex DSC service
+  // nor the legacy one. The "NO legacy import" half of the invariant STILL
+  // holds (asserted below); the positive "imports the hex DSC service" half
+  // is obsolete — a pure delegating shim has no such import. Honest
+  // prior-cycle collision per [[invariant_collision_elevation]].
+  it("α39: features/accounting/journal.service.ts is a shim — NO legacy document-signature-config import", () => {
     const src = readRepoFile("features/accounting/journal.service.ts");
-    expect(src).toMatch(
-      /from\s+["']@\/modules\/document-signature-config\/presentation\/server["']/,
-    );
     expect(src).not.toMatch(LEGACY_FEATURES_DSC_SERVER_IMPORT_RE);
+    expect(src).not.toMatch(LEGACY_FEATURES_DSC_BARREL_IMPORT_RE);
+    // It delegates to the hex JournalsService, which owns the DSC dep.
+    expect(src).toMatch(
+      /from\s+["']@\/modules\/accounting\/presentation\/server["']/,
+    );
   });
 
   // α40
@@ -109,13 +121,27 @@ describe("POC document-signature-config hex C4 — cross-feature cutover shape (
     expect(src).not.toMatch(LEGACY_FEATURES_DSC_SERVER_IMPORT_RE);
   });
 
-  // α44
-  it("α44: features/accounting/__tests__/journal.service.exportVoucherPdf.test.ts imports types from hex + NO legacy", () => {
-    const src = readRepoFile(
-      "features/accounting/__tests__/journal.service.exportVoucherPdf.test.ts",
-    );
-    expect(src).not.toMatch(LEGACY_FEATURES_DSC_SERVER_IMPORT_RE);
-    expect(src).not.toMatch(LEGACY_FEATURES_DSC_TYPES_IMPORT_RE);
+  // α44 — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
+  // Original intent: the legacy `journal.service.exportVoucherPdf.test.ts`
+  // imports doc-sig-config types from the HEX, not the retired legacy path.
+  // C5 B2a DELETES that legacy test file as test-cementación — it
+  // constructed `new JournalService(mockRepo, ...)` and asserted the legacy
+  // class's internal `exportVoucherPdf` composition; with `journal.service.ts`
+  // now a thin shim that logic lives in the hex, where
+  // `modules/accounting/application/__tests__/journals.service.test.ts`
+  // already covers it (2 assertions ported in the C5 GREEN — `getOrDefault
+  // COMPROBANTE` + no-logo render). With the file gone the legacy-import
+  // concern is vacuously resolved. Honest prior-cycle collision per
+  // [[invariant_collision_elevation]].
+  it("α44: features/accounting/__tests__/journal.service.exportVoucherPdf.test.ts removed (C5 B2a test-cementación)", () => {
+    expect(
+      existsSync(
+        resolve(
+          REPO_ROOT,
+          "features/accounting/__tests__/journal.service.exportVoucherPdf.test.ts",
+        ),
+      ),
+    ).toBe(false);
   });
 
   // α45

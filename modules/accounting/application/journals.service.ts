@@ -3,7 +3,7 @@ import {
   NotFoundError,
   POST_NOT_ALLOWED_FOR_ROLE,
 } from "@/features/shared/errors";
-import { validateLockedEdit } from "@/features/accounting/server";
+import { validateLockedEdit } from "../domain/document-lifecycle";
 import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
 import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
@@ -51,6 +51,15 @@ export interface CreateJournalEntryInput {
   createdById: string;
   contactId?: string | null;
   referenceNumber?: number | null;
+  // AI-origin marking. Threaded straight through to the `Journal` aggregate
+  // (immutable post-creation, I9). `sourceType` drives the "Generado por IA"
+  // Origen column; `aiOriginalText` keeps the user's raw prompt. The normal
+  // "+ Nuevo Asiento" form omits both → they default to null. Folded in at
+  // C5 B2a — the aggregate (`journal.entity.ts:72-74`), the DTO
+  // (`journal.types.ts:30-42`) and the Prisma repo already threaded them;
+  // this use-case input contract was the only gap.
+  sourceType?: string | null;
+  aiOriginalText?: string | null;
   lines: CreateJournalEntryLineInput[];
 }
 
@@ -489,6 +498,8 @@ export class JournalsService {
       createdById: input.createdById,
       contactId: input.contactId ?? null,
       referenceNumber: input.referenceNumber ?? null,
+      sourceType: input.sourceType ?? null,
+      aiOriginalText: input.aiOriginalText ?? null,
       lines: mapLinesToDrafts(input.lines),
     });
   }
