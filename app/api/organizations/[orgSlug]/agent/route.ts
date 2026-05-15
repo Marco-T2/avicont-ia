@@ -268,23 +268,38 @@ async function handleCreateJournalEntryConfirm(
     order: idx,
   }));
 
-  const entry = await journalService.createEntry(organizationId, {
-    date,
-    description: validated.description,
-    periodId: period.id,
-    voucherTypeId: voucherType.id,
-    contactId: getContactId(validated),
-    sourceType: "ai",                       // marca "Generado por IA" en la columna Origen
-    aiOriginalText: validated.originalText, // texto crudo, inmutable post-creación
-    createdById: userId,
-    lines,
-  });
-
-  const displayNumber = formatCorrelativeNumber(
-    voucherType.prefix,
-    entry.date,
-    entry.number,
+  // El 3er arg `audit` (AuditUserContext) lo exige la firma del hex
+  // `JournalsService.createEntry` — la UoW lo usa para el scope de la tx.
+  // El shim legacy lo derivaba internamente de `input.createdById`; al
+  // repuntar directo al hex hay que pasarlo explícito. Mismo patrón que
+  // `journal/route.ts` (`{ userId: user.id }`).
+  const entry = await journalService.createEntry(
+    organizationId,
+    {
+      date,
+      description: validated.description,
+      periodId: period.id,
+      voucherTypeId: voucherType.id,
+      contactId: getContactId(validated),
+      sourceType: "ai",                       // marca "Generado por IA" en la columna Origen
+      aiOriginalText: validated.originalText, // texto crudo, inmutable post-creación
+      createdById: userId,
+      lines,
+    },
+    { userId },
   );
+
+  // El hex `createEntry` devuelve el aggregate `Journal`, cuyo getter
+  // `number` es `number | null` (un DRAFT recién creado puede no tener
+  // correlativo asignado todavía). El shim legacy devolvía el DTO
+  // `JournalEntryWithLines` re-hidratado vía `getById`, cuyo `number` ya
+  // era `number` no-nullable — de ahí que esto tipara antes. Guardamos el
+  // null igual que `formatCorrelativeNumber` hace con un prefix inválido:
+  // sin número, `displayNumber` es null.
+  const displayNumber =
+    entry.number !== null
+      ? formatCorrelativeNumber(voucherType.prefix, entry.date, entry.number)
+      : null;
 
   // `journalService.createEntry()` (hex) devuelve el AGGREGATE `Journal`, no el
   // DTO plano que devolvía el shim legacy. El aggregate expone sus campos solo
