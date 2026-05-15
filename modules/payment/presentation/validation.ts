@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { toNoonUtc } from "@/lib/date-utils";
 
 const creditAllocationSourceSchema = z.object({
   sourcePaymentId: z.string(),
@@ -17,7 +18,10 @@ const allocationInputSchema = z.object({
 
 export const createPaymentSchema = z.object({
   method: z.enum(["EFECTIVO", "TRANSFERENCIA", "CHEQUE", "DEPOSITO"]),
-  date: z.coerce.date(),
+  // §13.accounting.calendar-day-T12-utc-unified — Payment.date persists at
+  // UTC noon for unambiguous calendar-day round-trip (sister precedent
+  // Sale/Purchase/Dispatch repos already apply toNoonUtc at this boundary).
+  date: z.coerce.date().transform((d) => toNoonUtc(d)),
   amount: z.number().min(0),
   direction: z.enum(["COBRO", "PAGO"]).optional(),
   description: z.string().min(1).max(500),
@@ -33,7 +37,9 @@ export const createPaymentSchema = z.object({
 
 export const updatePaymentSchema = z.object({
   method: z.enum(["EFECTIVO", "TRANSFERENCIA", "CHEQUE", "DEPOSITO"]).optional(),
-  date: z.coerce.date().optional(),
+  // §13.accounting.calendar-day-T12-utc-unified — optional date; when present,
+  // transform applies. Undefined passes through (preservation).
+  date: z.coerce.date().transform((d) => toNoonUtc(d)).optional(),
   amount: z.number().positive().optional(),
   description: z.string().min(1).max(500).optional(),
   referenceNumber: z.number().int().positive().optional(),
