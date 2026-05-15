@@ -14,7 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { SETTINGS_CARDS } from "@/lib/settings/settings-cards";
+import {
+  SETTINGS_CARDS,
+  SETTINGS_GROUPS,
+} from "@/lib/settings/settings-cards";
 
 interface SettingsHubPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -33,6 +36,9 @@ export const metadata: Metadata = {
  * directly (matching `farms/page.tsx`), filter cards individually by
  * `canAccess(role, card.resource, "read", orgId)`, and redirect when the
  * resulting set is empty (page unreachable).
+ *
+ * Cards are rendered grouped by `card.group` in the order declared by
+ * SETTINGS_GROUPS. Groups with no visible cards are skipped.
  */
 export default async function SettingsHubPage({ params }: SettingsHubPageProps) {
   const { orgSlug } = await params;
@@ -86,30 +92,47 @@ export default async function SettingsHubPage({ params }: SettingsHubPageProps) 
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {cards.map(({ id, title, description, href, Icon }) => (
-          <Link
-            key={id}
-            href={href(orgSlug)}
-            className="block h-full hover:no-underline"
-            aria-label={title}
-          >
-            <Card size="sm" className="h-full transition-colors">
-              <CardHeader>
-                <div className="flex items-start gap-3">
-                  <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <CardTitle className="text-sm">{title}</CardTitle>
-                    <CardDescription className="mt-1">
-                      {description}
-                    </CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent />
-            </Card>
-          </Link>
-        ))}
+      <div className="space-y-8">
+        {SETTINGS_GROUPS.map((group) => {
+          const groupCards = cards.filter((c) => c.group === group);
+          if (groupCards.length === 0) return null;
+
+          return (
+            <section key={group} aria-labelledby={`group-${group}`}>
+              <h2
+                id={`group-${group}`}
+                className="text-lg font-semibold mb-3 text-foreground"
+              >
+                {group}
+              </h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {groupCards.map(({ id, title, description, href, Icon }) => (
+                  <Link
+                    key={id}
+                    href={href(orgSlug)}
+                    className="block h-full hover:no-underline"
+                    aria-label={title}
+                  >
+                    <Card size="sm" className="h-full transition-colors">
+                      <CardHeader>
+                        <div className="flex items-start gap-3">
+                          <Icon className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <CardTitle className="text-sm">{title}</CardTitle>
+                            <CardDescription className="mt-1">
+                              {description}
+                            </CardDescription>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent />
+                    </Card>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          );
+        })}
       </div>
     </div>
   );
