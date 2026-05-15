@@ -1,14 +1,17 @@
 /**
  * PR3.1 [RED] — REQ-MS.9: CrossModuleNav per-resource filtering
  *
- * The CrossModuleNav renders three fixed entries — Agente IA, Miembros,
- * Documentos — each independently gated by its own `Resource`:
+ * The CrossModuleNav renders fixed entries — Agente IA and Documentos —
+ * each independently gated by its own `Resource`:
  *   - Agente IA  → resource "agent"
- *   - Miembros   → resource "members"
  *   - Documentos → resource "documents"
  *
  * Agente IA is an action button (opens the chat via onOpenAgentChat),
- * not a navigation link. Miembros and Documentos are links.
+ * not a navigation link. Documentos is a link.
+ *
+ * C2 sidebar-reorg-settings-hub: Miembros and Auditoría removed from
+ * cross-module nav. Miembros is already a Settings hub card; Auditoría
+ * becomes a Settings hub card in C3.
  *
  * Environment: jsdom (.test.tsx — components project)
  */
@@ -56,24 +59,6 @@ const ALL: ClientMatrixSnapshot = {
   canPost: [],
 };
 
-/** Has all cross-module access EXCEPT audit (e.g. contador with members access added) */
-const NO_AUDIT: ClientMatrixSnapshot = {
-  orgId: "org-1",
-  role: "contador",
-  permissionsRead: ["members", "documents", "agent", "farms"],
-  permissionsWrite: [],
-  canPost: [],
-};
-
-/** No members access */
-const NO_MEMBERS: ClientMatrixSnapshot = {
-  orgId: "org-1",
-  role: "contador",
-  permissionsRead: ["documents", "agent", "farms"],
-  permissionsWrite: [],
-  canPost: [],
-};
-
 /** No agent access */
 const NO_AGENT: ClientMatrixSnapshot = {
   orgId: "org-1",
@@ -101,6 +86,15 @@ const NONE: ClientMatrixSnapshot = {
   canPost: [],
 };
 
+/** Members + audit only — both REMOVED in C2, so the nav renders nothing */
+const MEMBERS_AUDIT_ONLY: ClientMatrixSnapshot = {
+  orgId: "org-1",
+  role: "admin",
+  permissionsRead: ["members", "audit", "farms"],
+  permissionsWrite: [],
+  canPost: [],
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -123,44 +117,37 @@ function renderNav(
 afterEach(cleanup);
 
 // ---------------------------------------------------------------------------
-// PR3.1 — REQ-MS.9: Per-resource filtering
+// C2 sidebar-reorg-settings-hub — trimmed nav
 // ---------------------------------------------------------------------------
 
-describe("CrossModuleNav — per-resource filtering (REQ-MS.9)", () => {
-  it("renders Agente IA, Miembros, Documentos and Auditoría when all cross-module resources are accessible", () => {
+describe("CrossModuleNav — C2 trim (Miembros + Auditoría removed)", () => {
+  it("renders ONLY Agente IA + Documentos when all cross-module resources are accessible", () => {
     renderNav(ALL);
 
     expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Auditoría/i })).toBeTruthy();
-  });
 
-  it("hides Auditoría when audit access is denied (REQ-AUDIT.6)", () => {
-    renderNav(NO_AUDIT);
-
-    expect(screen.queryByRole("link", { name: /Auditoría/i })).toBeNull();
-    // sanity: Agente IA / Miembros / Documentos siguen visibles
-    expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
-  });
-
-  it("hides Miembros when members access is denied", () => {
-    renderNav(NO_MEMBERS);
-
+    // Removed entries — NEVER rendered, regardless of permissions
     expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
-    // sanity: Agente IA and Documentos still present
-    expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Auditoría/i })).toBeNull();
+  });
+
+  it("renders nothing when a user has only members + audit read (both moved to /settings)", () => {
+    renderNav(MEMBERS_AUDIT_ONLY);
+
+    // Members and audit access do NOT unlock cross-module nav anymore
+    expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Auditoría/i })).toBeNull();
+    // No agent, no documents → entire nav renders null (no <nav>)
+    expect(screen.queryByRole("button", { name: /Agente IA/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Documentos/i })).toBeNull();
   });
 
   it("hides Agente IA when agent access is denied", () => {
     renderNav(NO_AGENT);
 
     expect(screen.queryByRole("button", { name: /Agente IA/i })).toBeNull();
-    // sanity: Miembros and Documentos still present
-    expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
+    // sanity: Documentos still present
     expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
   });
 
@@ -168,24 +155,21 @@ describe("CrossModuleNav — per-resource filtering (REQ-MS.9)", () => {
     renderNav(NO_DOCS);
 
     expect(screen.queryByRole("link", { name: /Documentos/i })).toBeNull();
-    // sanity: Agente IA and Miembros still present
+    // sanity: Agente IA still present
     expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
   });
 
-  it("renders nothing gated-by-resource when all three cross-module resources are denied", () => {
+  it("renders nothing when no cross-module resources are accessible", () => {
     renderNav(NONE);
 
     expect(screen.queryByRole("button", { name: /Agente IA/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Documentos/i })).toBeNull();
   });
 
-  it("denies all three when matrix snapshot is null (loading state)", () => {
+  it("denies all when matrix snapshot is null (loading state)", () => {
     renderNav(null);
 
     expect(screen.queryByRole("button", { name: /Agente IA/i })).toBeNull();
-    expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Documentos/i })).toBeNull();
   });
 });
@@ -207,25 +191,13 @@ describe("CrossModuleNav — Agente IA invokes onOpenAgentChat (preserves pre-PR
 });
 
 // ---------------------------------------------------------------------------
-// PR3.1 — Behavior: Miembros and Documentos are links to org-scoped routes
+// PR3.1 — Behavior: Documentos link to org-scoped route
 // ---------------------------------------------------------------------------
 
 describe("CrossModuleNav — hrefs resolved with orgSlug", () => {
-  it("Miembros link points to /{orgSlug}/members", () => {
-    renderNav(ALL);
-    const link = screen.getByRole("link", { name: /Miembros/i });
-    expect(link.getAttribute("href")).toBe("/test-org/members");
-  });
-
   it("Documentos link points to /{orgSlug}/documents", () => {
     renderNav(ALL);
     const link = screen.getByRole("link", { name: /Documentos/i });
     expect(link.getAttribute("href")).toBe("/test-org/documents");
-  });
-
-  it("Auditoría link points to /{orgSlug}/audit", () => {
-    renderNav(ALL);
-    const link = screen.getByRole("link", { name: /Auditoría/i });
-    expect(link.getAttribute("href")).toBe("/test-org/audit");
   });
 });

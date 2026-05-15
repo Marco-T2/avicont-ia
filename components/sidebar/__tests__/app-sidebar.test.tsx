@@ -363,11 +363,15 @@ describe("AppSidebar — PR3 composition (REQ-MS.16)", () => {
     expect(link.getAttribute("href")).toBe("/test-org/settings");
   });
 
-  it("renders Agente IA, Miembros, Documentos (CrossModuleNav) for a full-access user", () => {
+  it("renders Agente IA + Documentos (CrossModuleNav) for a full-access user — Miembros + Auditoría moved to Settings", () => {
+    // C2 sidebar-reorg-settings-hub: cross-module nav trimmed to Agente IA
+    // and Documentos. Miembros is a Settings card; Auditoría becomes a
+    // Settings card in C3.
     renderSidebar(OWNER_FULL, "/test-org/farms");
     expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
-    expect(screen.getByRole("link", { name: /Miembros/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Auditoría/i })).toBeNull();
   });
 
   it("renders Mis Granjas (ActiveModuleNav) when pathname is /farms", () => {
