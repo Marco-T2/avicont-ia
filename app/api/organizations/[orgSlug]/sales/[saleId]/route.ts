@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { updateSaleSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
@@ -99,7 +99,7 @@ function computeNewTotal(input: { details?: Array<{ lineAmount?: number; quantit
     const unitPrice = d.unitPrice ?? 0;
     const line = d.lineAmount !== undefined
       ? d.lineAmount
-      : roundHalfUp(new Prisma.Decimal(qty).mul(unitPrice)).toNumber();
+      : roundHalfUp(new Decimal(qty).mul(unitPrice)).toNumber();
     return sum + line;
   }, 0);
 }
