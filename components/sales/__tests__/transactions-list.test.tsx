@@ -12,7 +12,7 @@
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
-import DispatchList from "../dispatch-list";
+import TransactionsList from "../transactions-list";
 
 // Presentation-local HubItem mirror — replaces retired @/modules/dispatch/presentation
 // type re-export (hub.types.ts DELETED in C1 GREEN poc-dispatch-retirement-into-sales).
@@ -139,7 +139,7 @@ interface RenderProps {
 
 function renderList({ items = [], orgSlug = "test-org", periods = [], filters = {} }: RenderProps = {}) {
   return render(
-    <DispatchList
+    <TransactionsList
       orgSlug={orgSlug}
       items={items}
       periods={periods}

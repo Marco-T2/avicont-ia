@@ -11,7 +11,7 @@
 import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import DispatchList from "../dispatch-list";
+import TransactionsList from "../transactions-list";
 
 // Presentation-local HubItem mirror — replaces retired @/modules/dispatch/presentation
 // type re-export (hub.types.ts DELETED in C1 GREEN poc-dispatch-retirement-into-sales).
@@ -86,7 +86,7 @@ const DISPATCH_ITEM: HubItem = {
 describe("DispatchList — date cell format (REQ-C.2)", () => {
   it("C.2.1 — date cell renders DD/MM/YYYY format", () => {
     render(
-      <DispatchList
+      <TransactionsList
         orgSlug="test-org"
         items={[DISPATCH_ITEM]}
         periods={[]}
@@ -98,7 +98,7 @@ describe("DispatchList — date cell format (REQ-C.2)", () => {
 
   it("C.2.2 — date cell does NOT render old locale short-month format", () => {
     render(
-      <DispatchList
+      <TransactionsList
         orgSlug="test-org"
         items={[DISPATCH_ITEM]}
         periods={[]}

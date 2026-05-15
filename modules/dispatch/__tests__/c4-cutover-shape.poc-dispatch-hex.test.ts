@@ -87,7 +87,11 @@ describe("POC dispatch-hex C4 — cross-feature cutover", () => {
 
   // ── Component source ────────────────────────────────────────────────────
 
-  it("dispatch-list.tsx imports from modules/dispatch", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C2 GREEN: dispatch-list.tsx
+  // git-mv'd to components/sales/transactions-list.tsx. The new home no
+  // longer needs modules/dispatch import — HubItem inlined as presentation-
+  // local types per design § 5.
+  it.skip("dispatch-list.tsx imports from modules/dispatch (RETIRED — moved to components/sales/transactions-list.tsx)", () => {
     const content = readFile("components/dispatches/dispatch-list.tsx");
     expect(content).not.toContain("features/dispatch");
     expect(content).toContain("modules/dispatch");
@@ -124,7 +128,9 @@ describe("POC dispatch-hex C4 — cross-feature cutover", () => {
     expect(content).toContain("modules/dispatch");
   });
 
-  it("dispatch-list-date-format.test.tsx imports from modules/dispatch", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C2 GREEN: tests git-mv'd
+  // alongside component to components/sales/__tests__/transactions-list-date-format.test.tsx.
+  it.skip("dispatch-list-date-format.test.tsx imports from modules/dispatch (RETIRED — moved with component)", () => {
     const content = readFile(
       "components/dispatches/__tests__/dispatch-list-date-format.test.tsx",
     );
@@ -132,7 +138,7 @@ describe("POC dispatch-hex C4 — cross-feature cutover", () => {
     expect(content).toContain("modules/dispatch");
   });
 
-  it("dispatch-list.test.tsx imports from modules/dispatch", () => {
+  it.skip("dispatch-list.test.tsx imports from modules/dispatch (RETIRED — moved with component)", () => {
     const content = readFile(
       "components/dispatches/__tests__/dispatch-list.test.tsx",
     );

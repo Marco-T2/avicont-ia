@@ -91,7 +91,7 @@ const TYPE_LABEL: Record<string, string> = {
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 
-interface DispatchListProps {
+interface TransactionsListProps {
   orgSlug: string;
   items: HubItem[];
   periods: { id: string; name: string }[];
@@ -265,12 +265,17 @@ function HubItemRow({ orgSlug, item, periodName, isLoading, onPost, onVoid, onDe
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-export default function DispatchList({
+/**
+ * Renders 3-type unified transactions view (Sale + Boleta Cerrada + Nota de
+ * Despacho). Sale section preserves listPaginated pagination; BC/ND rows
+ * non-paginated alongside per B5 lock (poc-dispatch-retirement-into-sales).
+ */
+export default function TransactionsList({
   orgSlug,
   items,
   periods,
   filters,
-}: DispatchListProps) {
+}: TransactionsListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [postItem, setPostItem] = useState<HubItem | null>(null);
