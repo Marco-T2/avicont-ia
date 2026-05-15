@@ -1,5 +1,5 @@
 import { BaseRepository } from "@/features/shared/base.repository";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { TrialBalanceQueryPort } from "../domain/ports/trial-balance-query.port";
 import type {
   TrialBalanceMovement,
@@ -61,8 +61,10 @@ export class PrismaTrialBalanceRepo extends BaseRepository implements TrialBalan
 
     return rows.map((r) => ({
       accountId: r.account_id,
-      totalDebit: new Prisma.Decimal(r.total_debit),
-      totalCredit: new Prisma.Decimal(r.total_credit),
+      // DEC-1 boundary normalization: convert Prisma's inlined Decimal2 to
+      // top-level decimal.js so `instanceof Decimal` in the serializer matches.
+      totalDebit: new Decimal(r.total_debit),
+      totalCredit: new Decimal(r.total_credit),
     }));
   }
 
