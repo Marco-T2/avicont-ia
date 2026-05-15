@@ -1,4 +1,4 @@
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 
 /**
  * Alícuota IVA Bolivia 13% — exported para consumo cross-module legacy↔hex
@@ -17,5 +17,12 @@ import { Prisma } from "@/generated/prisma/client";
  * (legacy-bridge — Decimal de boundary, NOT domain math). Coexists with
  * `modules/iva-books/domain/compute-iva-totals.ts` numeric `TASA_IVA = 0.13`
  * (different layer, different type — IVA-D2 dual constant lock).
+ *
+ * Backed by `decimal.js@10.6.0` direct dep (post-oleada-money-decimal-hex-purity
+ * sub-POC 1+). The runtime instance is identical: Prisma.Decimal IS the
+ * same `decimal.js` class re-exported through the Prisma namespace; this
+ * swap drops the Prisma value-import to keep this file off the client
+ * bundle's `node:module` blast radius even though the file itself is
+ * server-only — sister to sub-POCs 2/3/4 migrations.
  */
-export const TASA_IVA = new Prisma.Decimal("0.1300");
+export const TASA_IVA = new Decimal("0.1300");
