@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -14,60 +14,62 @@ const siblings = [
   { label: "journal.service.ts", path: JOURNAL_PATH },
 ] as const;
 
-// Block A — existence (2 PASS pre-GREEN — files already exist)
-describe("α01–α02 Block A — Sibling file existence (REQ-001, REQ-002)", () => {
+// Block A — INVERTED at sub-POC 8/8 C4. Originally asserted the sibling shim
+// files EXIST; C4 deletes both, so Block A re-inverts to assert deletion.
+// (Drift not enumerated in the C4 task plan — which named only Block B α03–04
+// + Block G α11–12 — but Blocks A/C/D/F all read the retiring files and so
+// must track the deletion too; surfaced honestly per
+// [[cross_cycle_red_test_cementacion_gate]].)
+describe("α01–α02 Block A — sibling shim files DELETED (sub-POC 8/8 C4)", () => {
   for (const { label, path } of siblings) {
-    it(`α: ${label} exists`, () => {
-      expect(existsSync(path)).toBe(true);
+    it(`α: ${label} physically deleted (shim retired)`, () => {
+      expect(existsSync(path)).toBe(false);
     });
   }
 });
 
-// Block B — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
+// Block B — INVERTED at POC #8 OLEADA 6 sub-POC 8/8 C4 (poc-accounting-shim-
+// retirement).
 //
-// Original intent (poc-accounting-legacy-retirement, 20dce277): assert the
-// legacy `journal.service.ts`/`ledger.service.ts` reach accounts data through
-// the HEX `AccountsCrudPort`, not the retired legacy `accounts.repository`.
-// C5 B2a converts both files into thin delegating SHIMs over the hex
-// `JournalsService`/`LedgerService` — they no longer hold an `accountsRepo`
-// field at all; the hex owns the port. The retirement invariant this block
-// protected (NO legacy `accounts.repository` import / NO `new
-// AccountsRepository()`) is STILL enforced — STRONGER — by Blocks C/D/E,
-// which keep passing against the shims. Block B's POSITIVE "imports
-// AccountsCrudPort" assertion is now obsolete: a thin shim that delegates
-// EVERYTHING (including accounts access) to the hex does not import the port.
+// Genealogy: original intent (poc-accounting-legacy-retirement, 20dce277)
+// asserted the legacy `journal.service.ts`/`ledger.service.ts` reach accounts
+// data through the HEX `AccountsCrudPort`; sub-POC 7 C5 B2a updated it to
+// "sibling files delegate to the hex (delegating shim)" once both became thin
+// shims. sub-POC 8 C4 now DELETES both shims outright — every `app/` consumer
+// was repointed to the hex factory (`makeJournalsService()` /
+// `makeLedgerService()`) across C0–C3, and the `features/accounting/server.ts`
+// barrel drops its re-exports in the same C4 GREEN. `readFileSync` on a
+// deleted file throws ENOENT, so Block B re-inverts to assert the deletion.
 // Honest prior-cycle sentinel collision per [[invariant_collision_elevation]],
-// updated in the C5 GREEN that causes it (cannot ship a red suite).
-describe("α03–α04 Block B — sibling files delegate to the hex (C5 B2a — no direct AccountsCrudPort)", () => {
-  const HEX_SERVICE_IMPORT =
-    /from\s+["']@\/modules\/accounting\/presentation\/server["']/;
+// re-inverted in the C4 GREEN that causes it (cannot ship a red suite).
+describe("α03–α04 Block B — sibling shims DELETED (sub-POC 8/8 C4 — consumers on hex factory)", () => {
   for (const { label, path } of siblings) {
-    it(`α: ${label} imports the hex accounting service surface (delegating shim)`, () => {
-      const src = readFileSync(path, "utf-8");
-      expect(src).toMatch(HEX_SERVICE_IMPORT);
+    it(`α: ${label} physically deleted (shim retired)`, () => {
+      expect(existsSync(path)).toBe(false);
     });
   }
 });
 
-// Block C — legacy ./accounts.repository import ABSENT (2 FAIL pre-GREEN)
-describe("α05–α06 Block C — Legacy accounts.repository import absent (REQ-001, REQ-002)", () => {
-  const LEGACY_IMPORT =
-    /import\s*\{[^}]*\bAccountsRepository\b[^}]*\}\s*from\s*["']\.\/accounts\.repository["']/;
+// Block C — INVERTED at sub-POC 8/8 C4. Originally asserted the sibling shims
+// carry NO legacy `./accounts.repository` import. C4 deletes the shims, so the
+// invariant is vacuously satisfied — the assertion re-inverts to confirm the
+// file is gone (a deleted file trivially has no such import). Same drift class
+// as Block A; surfaced honestly per [[cross_cycle_red_test_cementacion_gate]].
+describe("α05–α06 Block C — sibling shims DELETED → legacy accounts.repository import vacuously absent (sub-POC 8/8 C4)", () => {
   for (const { label, path } of siblings) {
-    it(`α: ${label} has NO legacy ./accounts.repository import`, () => {
-      const src = readFileSync(path, "utf-8");
-      expect(src).not.toMatch(LEGACY_IMPORT);
+    it(`α: ${label} physically deleted — no legacy ./accounts.repository import possible`, () => {
+      expect(existsSync(path)).toBe(false);
     });
   }
 });
 
-// Block D — new AccountsRepository() absent (2 FAIL pre-GREEN)
-describe("α07–α08 Block D — new AccountsRepository() instantiation absent (REQ-001, REQ-002)", () => {
-  const LEGACY_CTOR = /new\s+AccountsRepository\s*\(\s*\)/;
+// Block D — INVERTED at sub-POC 8/8 C4. Originally asserted the sibling shims
+// carry NO `new AccountsRepository()` call. C4 deletes the shims, so the
+// invariant is vacuously satisfied. Same drift class as Block A/C.
+describe("α07–α08 Block D — sibling shims DELETED → new AccountsRepository() vacuously absent (sub-POC 8/8 C4)", () => {
   for (const { label, path } of siblings) {
-    it(`α: ${label} has NO new AccountsRepository() call`, () => {
-      const src = readFileSync(path, "utf-8");
-      expect(src).not.toMatch(LEGACY_CTOR);
+    it(`α: ${label} physically deleted — no new AccountsRepository() call possible`, () => {
+      expect(existsSync(path)).toBe(false);
     });
   }
 });
@@ -79,31 +81,35 @@ describe("α09 Block E — accounts.repository.ts deleted (REQ-003)", () => {
   });
 });
 
-// Block F — SHIM re-export block removed (1 FAIL pre-GREEN)
-describe("α10 Block F — SHIM re-export block removed from accounting.validation.ts (REQ-004)", () => {
-  it("α: accounting.validation.ts has NO createAccountSchema/updateAccountSchema re-export block", () => {
-    const src = readFileSync(SHIM_PATH, "utf-8");
-    expect(src).not.toMatch(/export\s*\{[^}]*(?:createAccountSchema|updateAccountSchema)[^}]*\}/);
+// Block F — INVERTED at sub-POC 8/8 C4. Originally asserted the
+// `accounting.validation.ts` SHIM had its account-schema re-export block
+// removed (the schemas were folded into the hex `presentation/validation.ts`).
+// C4 deletes the `accounting.validation.ts` re-export shim outright — the
+// `features/accounting/server.ts` barrel drops its `export * from
+// "./accounting.validation"` in the same C4 GREEN. `readFileSync` on a deleted
+// file throws ENOENT, so Block F re-inverts to assert the deletion. Drift not
+// enumerated in the C4 task plan; surfaced honestly per
+// [[cross_cycle_red_test_cementacion_gate]].
+describe("α10 Block F — accounting.validation.ts re-export shim DELETED (sub-POC 8/8 C4)", () => {
+  it("α: features/accounting/accounting.validation.ts physically deleted (re-export shim retired — schemas live in hex presentation/validation.ts)", () => {
+    expect(existsSync(SHIM_PATH)).toBe(false);
   });
 });
 
-// Block G — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
+// Block G — INVERTED at sub-POC 8/8 C4.
 //
-// Original intent: the legacy sibling classes hold an `AccountsCrudPort`-typed
-// field (the hex port, post-retirement of the legacy `accounts.repository`).
-// C5 B2a converts both into thin delegating SHIMs — they hold only a lazily
-// resolved hex-service reference and NO `accountsCrudPort` field. The shim
-// does not touch accounts data directly; the hex `JournalsService` /
-// `LedgerService` own that. Block G now asserts the shim shape: the class
-// body declares no legacy repository field and delegates through the hex.
-// Honest prior-cycle sentinel collision per [[invariant_collision_elevation]].
-describe("α11–α12 Block G — sibling classes are delegating shims (C5 B2a — no AccountsCrudPort field)", () => {
-  const LEGACY_REPO_FIELD =
-    /private\s+(?:readonly\s+)?\w+\s*:\s*(?:AccountsCrudPort|AccountsRepository|JournalRepository)\b/;
+// Genealogy: original intent asserted the legacy sibling classes hold an
+// `AccountsCrudPort`-typed field; sub-POC 7 C5 B2a updated it to "delegating
+// shim — no legacy repository field" once both became thin shims. sub-POC 8
+// C4 DELETES both shims outright (consumers repointed to the hex factory
+// across C0–C3, barrel re-exports dropped in the same C4 GREEN). `readFileSync`
+// on a deleted file throws ENOENT, so Block G re-inverts to assert the
+// deletion. Honest prior-cycle sentinel collision per
+// [[invariant_collision_elevation]], re-inverted in the C4 GREEN that causes it.
+describe("α11–α12 Block G — sibling shims DELETED → no legacy repository field possible (sub-POC 8/8 C4)", () => {
   for (const { label, path } of siblings) {
-    it(`α: ${label} class body holds NO legacy repository field (delegates to the hex)`, () => {
-      const src = readFileSync(path, "utf-8");
-      expect(src).not.toMatch(LEGACY_REPO_FIELD);
+    it(`α: ${label} physically deleted — class body gone, no legacy repository field possible`, () => {
+      expect(existsSync(path)).toBe(false);
     });
   }
 });

@@ -49,6 +49,10 @@ const LEGACY_LEDGER_SERVICE = resolve(
   REPO_ROOT,
   "features/accounting/ledger.service.ts",
 );
+const LEGACY_ACCOUNTING_VALIDATION = resolve(
+  REPO_ROOT,
+  "features/accounting/accounting.validation.ts",
+);
 const HEX_AUTO_ENTRY_GENERATOR = resolve(
   REPO_ROOT,
   "modules/accounting/application/auto-entry-generator.ts",
@@ -253,22 +257,19 @@ describe("α13 Block C1 — LedgerService float money-math parity (DEV-1 / R-mon
   const LEGACY_NUMBER_COERCE_DEBIT = `const debit = Number(line.debit);`;
   const LEGACY_NUMBER_COERCE_CREDIT = `const credit = Number(line.credit);`;
 
-  // α13a — INVERTED at C5 B2a. This was a C1 snapshot anchor asserting the
-  // legacy `ledger.service.ts` STILL carried the float `Number()`
-  // running-balance accumulation (it did, through C1–C4 — additive cutover).
-  // C5 B2a converts `ledger.service.ts` into a thin delegating shim over the
-  // hex, so the float math no longer lives in the legacy file — it delegates.
-  // The parity anchor moved to α13b (hex source) which is unchanged and still
-  // asserts the float arithmetic verbatim. Honest same-file prior-cycle
-  // sentinel collision per [[invariant_collision_elevation]] — surfaced and
-  // inverted in the C5 GREEN that causes it (cannot ship C5 GREEN with a red
-  // suite).
-  it("α13a: legacy ledger.service.ts is a shim — no longer carries the float running-balance accumulation (C5 B2a)", () => {
-    const src = readFileSync(LEGACY_LEDGER_SERVICE, "utf-8");
-    expect(src).not.toContain(LEGACY_ACCUMULATION);
-    expect(src).not.toContain(LEGACY_RUNNING_BALANCE);
-    // It delegates to the hex LedgerService instead.
-    expect(src).toMatch(/makeLedgerService|LedgerService/);
+  // α13a — RE-INVERTED at sub-POC 8/8 C4 (poc-accounting-shim-retirement).
+  // Genealogy: a C1 snapshot anchor (legacy `ledger.service.ts` STILL carries
+  // the float `Number()` accumulation), then INVERTED at sub-POC 7 C5 B2a to
+  // "legacy file is a thin shim — no float math". C4 DELETES the shim outright
+  // — `readFileSync(LEGACY_LEDGER_SERVICE)` would now throw ENOENT, so the
+  // anchor must track the deletion. Drift not enumerated in the C4 task plan
+  // (the plan scoped α21/α22/α24/α25/α27); surfaced honestly per
+  // [[cross_cycle_red_test_cementacion_gate]] — α13a is a same-file sentinel
+  // that reads a retiring file, so it re-inverts in the same C4 GREEN that
+  // deletes it (cannot ship a red suite). The float-math parity anchor stays
+  // on α13b (hex source) — unchanged, still asserts the arithmetic verbatim.
+  it("α13a: legacy ledger.service.ts DELETED (sub-POC 8/8 C4 shim retirement — float-math parity now sole-anchored on α13b hex source)", () => {
+    expect(existsSync(LEGACY_LEDGER_SERVICE)).toBe(false);
   });
 
   it("α13b: hex ledger.service.ts preserves the SAME float `Number()` running-balance accumulation post-fold", () => {
@@ -426,94 +427,49 @@ describe("α20 Block C4 — journal/ledger zod schemas merged into hex presentat
   }
 });
 
-// ── Block C5 — legacy journal/ledger services → thin delegating shims ────────
+// ── Block C4 (sub-POC 8/8) — legacy journal/ledger/validation shims RETIRED ──
 //
-// C5 FINAL scope = Option B2a (Marco-approved after THREE escalations,
-// supersedes design #2405's "wholesale-delete"). The C5 PRE-CN re-inventory
-// gate surfaced three jointly-unsatisfiable constraints in the literal
-// "wholesale-delete" scope (engram `c5-blocker` / `c5-blocker-2` /
-// `c5-blocker-3`):
-//   #1 — legacy `JournalService`/`LedgerService` are FULL live classes; the
-//        `server.ts` barrel re-exports them by name; the hex exposes a
-//        `JournalsService` factory with no name+shape-compatible drop-in.
-//   #2 — a pure `Journal → JournalEntryWithLines` mapper is impossible (the
-//        aggregate carries no joined account/contact/voucherType relations);
-//        the hex `CreateJournalEntryInput` dropped `sourceType`/`aiOriginalText`.
-//   #3 — shim-ifying the subject orphans ~27 legacy tests coupled to the
-//        class's internal impl logic.
-// B2a disposition: KEEP `journal.service.ts`/`ledger.service.ts` as thin
-// delegating SHIMs over the hex (NOT deleted — barrel + ~10 app/ consumers
-// stay, sub-POC 8); fold `sourceType`/`aiOriginalText` into the hex input
-// contract; shim `createEntry` = `hex.createEntry()` then `hex.getById()`
-// (byte-identical DB write + byte-identical re-hydrated DTO); delete the 5
-// orphaned legacy test files as test-cementación (hex `__tests__/` cover the
-// behavior — per the coverage-disposition table); KEEP `journal.repository.ts`
-// (barrel re-export + live test consumers — blocker-3 Finding C).
+// poc-accounting-shim-retirement C4 is the DELETION cycle. Genealogy: sub-POC
+// 7 C5 Option B2a (Marco-approved after THREE escalations) converted
+// `journal.service.ts`/`ledger.service.ts` from FULL legacy classes into thin
+// delegating SHIMs over the hex `JournalsService`/`LedgerService`, keeping the
+// `features/accounting/server.ts` barrel surface byte-stable so the ~10 `app/`
+// runtime consumers stayed put — their repoint to the hex factory was scoped
+// to sub-POC 8. sub-POC 8 C0–C3 repointed all of them
+// (`makeJournalsService()` / `makeLedgerService()` at the consumer leaves).
+// C4 now retires the three shims: `journal.service.ts`, `ledger.service.ts`,
+// and the thin `accounting.validation.ts` re-export — the
+// `features/accounting/server.ts` barrel drops all three re-exports in the
+// SAME C4 GREEN. `journal.repository.ts` is RETAINED (design #2422 invariant
+// collision — live payment-adapter consumer + test consumers + α26 guard).
+// The C4.1 PROJECT-scope re-inventory grep gate confirmed zero non-shim
+// importers of the three retiring files before any `git rm`.
 
-const LEGACY_JOURNAL_DUP_IMPL = [
-  // Tokens that can ONLY appear if the legacy class still carries its own
-  // implementation logic. A thin delegating shim has none of these.
-  /\bMath\.round\s*\(/, // balance / money-math cents comparison
-  /\bwithAuditTx\s*\(/, // audit-tx orchestration
-  /\bvalidateLockedEdit\s*\(/, // LOCKED-edit enforcement
-  /\bcanTransition\s*\(/, // status-transition table check
-  /\bnew\s+Map<string,\s*Account>\s*\(/, // the account-cache loop
-] as const;
-
-// α21 — legacy journal.service.ts EXISTS but is a thin delegating shim over
-// the hex (imports `makeJournalsService`/`JournalsService`, carries NO
-// duplicated implementation logic, small LOC).
-//   Expected FAIL pre-GREEN: journal.service.ts is the FULL legacy class
-//   (~661 LOC, contains Math.round / withAuditTx / validateLockedEdit /
-//   canTransition / the account-cache Map loop) and imports the legacy
-//   JournalRepository, not the hex factory.
-describe("α21 Block C5 — legacy journal.service.ts is a thin delegating shim", () => {
-  it("α21: journal.service.ts still EXISTS (B2a keeps it — barrel + app/ consumers, sub-POC 8)", () => {
-    expect(existsSync(LEGACY_JOURNAL_SERVICE)).toBe(true);
-  });
-  it("α21: journal.service.ts imports the hex JournalsService surface (makeJournalsService / JournalsService)", () => {
-    const src = readFileSync(LEGACY_JOURNAL_SERVICE, "utf-8");
-    expect(src).toMatch(
-      /\b(makeJournalsService|JournalsService)\b[\s\S]*from\s+["']@\/modules\/accounting\/(presentation\/server|presentation\/composition-root|application\/journals\.service)["']/,
-    );
-  });
-  it("α21: journal.service.ts carries NO duplicated implementation logic", () => {
-    const src = readFileSync(LEGACY_JOURNAL_SERVICE, "utf-8");
-    for (const dupToken of LEGACY_JOURNAL_DUP_IMPL) {
-      expect(src).not.toMatch(dupToken);
-    }
-  });
-  it("α21: journal.service.ts is small (< 200 LOC incl. JSDoc — a shim, not the 661-LOC class)", () => {
-    const loc = readFileSync(LEGACY_JOURNAL_SERVICE, "utf-8").split("\n").length;
-    expect(loc).toBeLessThan(200);
+// α21 — INVERTED at sub-POC 8/8 C4 (poc-accounting-shim-retirement). The
+// legacy `journal.service.ts` shim is DELETED outright: all ~10 `app/` runtime
+// consumers were repointed to the hex factory `makeJournalsService()` across
+// C0–C2, the C4.1 re-inventory grep gate confirmed zero non-shim importers,
+// and the `features/accounting/server.ts` barrel drops its re-export in the
+// same C4 GREEN (see α27). Genealogy: sub-POC 7 C5 B2a converted this file
+// from the full legacy class into a thin delegating shim; C4 retires the shim.
+//   Expected FAIL pre-GREEN: journal.service.ts still EXISTS (the shim) →
+//   existsSync === true → toBe(false) FAILS.
+describe("α21 Block C4 (sub-POC 8) — legacy journal.service.ts shim DELETED", () => {
+  it("α21: features/accounting/journal.service.ts physically deleted (shim retired — consumers on hex factory)", () => {
+    expect(existsSync(LEGACY_JOURNAL_SERVICE)).toBe(false);
   });
 });
 
-// α22 — legacy ledger.service.ts EXISTS but is a thin delegating shim over the
-// hex `makeLedgerService` / `LedgerService` (the hex LedgerService has
-// IDENTICAL public method signatures, so the shim is a pure pass-through).
-//   Expected FAIL pre-GREEN: ledger.service.ts is the FULL legacy class
-//   (~113 LOC, contains the `runningBalance` float accumulation + the
-//   `aggregateByAccount` fallback loop) and imports the legacy
-//   JournalRepository.
-describe("α22 Block C5 — legacy ledger.service.ts is a thin delegating shim", () => {
-  it("α22: ledger.service.ts still EXISTS (B2a keeps it — barrel + app/ consumers, sub-POC 8)", () => {
-    expect(existsSync(LEGACY_LEDGER_SERVICE)).toBe(true);
-  });
-  it("α22: ledger.service.ts imports the hex LedgerService surface (makeLedgerService / LedgerService)", () => {
-    const src = readFileSync(LEGACY_LEDGER_SERVICE, "utf-8");
-    expect(src).toMatch(
-      /\b(makeLedgerService|LedgerService)\b[\s\S]*from\s+["']@\/modules\/accounting\/(presentation\/server|presentation\/composition-root|application\/ledger\.service)["']/,
-    );
-  });
-  it("α22: ledger.service.ts carries NO duplicated implementation logic (no runningBalance accumulation)", () => {
-    const src = readFileSync(LEGACY_LEDGER_SERVICE, "utf-8");
-    expect(src).not.toMatch(/runningBalance\s*\+=/);
-    expect(src).not.toMatch(/from\s+["']\.\/journal\.repository["']/);
-  });
-  it("α22: ledger.service.ts is small (< 90 LOC incl. JSDoc — a shim, not the 113-LOC class)", () => {
-    const loc = readFileSync(LEGACY_LEDGER_SERVICE, "utf-8").split("\n").length;
-    expect(loc).toBeLessThan(90);
+// α22 — INVERTED at sub-POC 8/8 C4. The legacy `ledger.service.ts` shim is
+// DELETED outright: the sole runtime consumer (`app/api/.../ledger/route.ts`)
+// was repointed to `makeLedgerService()` in C3, the C4.1 re-inventory grep
+// gate confirmed zero non-shim importers, and the barrel drops its re-export
+// in the same C4 GREEN (see α27).
+//   Expected FAIL pre-GREEN: ledger.service.ts still EXISTS (the shim) →
+//   existsSync === true → toBe(false) FAILS.
+describe("α22 Block C4 (sub-POC 8) — legacy ledger.service.ts shim DELETED", () => {
+  it("α22: features/accounting/ledger.service.ts physically deleted (shim retired — consumer on hex factory)", () => {
+    expect(existsSync(LEGACY_LEDGER_SERVICE)).toBe(false);
   });
 });
 
@@ -546,25 +502,27 @@ describe("α23 Block C5 — hex CreateJournalEntryInput carries sourceType + aiO
   });
 });
 
-// α24 — the shim `createEntry` re-hydrates the full DTO via `getById` after
-// the hex `createEntry` persists. A pure `Journal → JournalEntryWithLines`
-// mapper is impossible (the aggregate has no joined relations); the
-// behavior-preserving equivalent is `hex.createEntry()` then `hex.getById()`
-// (byte-identical DB write + byte-identical re-hydrated DTO via the same
-// `journalIncludeLines` include).
-//   Expected FAIL pre-GREEN: journal.service.ts createEntry is the full
-//   legacy implementation — it calls `this.repo.create(...)`, never the hex
-//   `getById` re-hydration.
-describe("α24 Block C5 — shim createEntry re-hydrates via getById", () => {
-  it("α24: journal.service.ts createEntry calls the hex createEntry then getById", () => {
-    const src = readFileSync(LEGACY_JOURNAL_SERVICE, "utf-8");
-    // Anchor on the METHOD declaration `async createEntry(` — not the first
-    // bare "createEntry" token (which appears in the file-level JSDoc).
-    const methodStart = src.search(/async\s+createEntry\s*\(/);
-    expect(methodStart).toBeGreaterThan(-1);
-    const fn = src.slice(methodStart, methodStart + 400);
-    expect(fn).toMatch(/\.createEntry\s*\(/);
-    expect(fn).toMatch(/\.getById\s*\(/);
+// α24 — INVERTED at sub-POC 8/8 C4. α24 previously asserted the shim
+// `createEntry` re-hydration path (`hex.createEntry()` then `hex.getById()`)
+// inside `journal.service.ts`; with the shim DELETED that anchor is obsolete
+// — the re-hydration logic never existed in the hex itself (the shim added it
+// to bridge the aggregate→DTO gap for the legacy barrel surface; the repointed
+// `app/` consumers consume the `Journal` aggregate directly via `.toSnapshot()`
+// per C2). α24 is re-purposed to the third retiring file: the thin
+// `accounting.validation.ts` re-export shim. It was an `export *` pass-through
+// to the hex `presentation/validation.ts` (sub-POC 7 C4 merged the 8
+// journal/ledger zod schemas there). C4 deletes it and the barrel drops the
+// `export * from "./accounting.validation"` re-export (see α27). NOTE: this
+// re-purposing diverges from the C4 task plan, which referenced α23 for the
+// "accounting.validation deleted" assertion — α23 is occupied by the
+// sourceType/aiOriginalText hex-input-contract sentinel (sub-POC 7 C5, still
+// TRUE post-C4) and MUST NOT be touched; α24 is the honest home for the third
+// file's deletion sentinel.
+//   Expected FAIL pre-GREEN: accounting.validation.ts still EXISTS (the
+//   re-export shim) → existsSync === true → toBe(false) FAILS.
+describe("α24 Block C4 (sub-POC 8) — legacy accounting.validation.ts re-export shim DELETED", () => {
+  it("α24: features/accounting/accounting.validation.ts physically deleted (re-export shim retired — schemas live in hex presentation/validation.ts)", () => {
+    expect(existsSync(LEGACY_ACCOUNTING_VALIDATION)).toBe(false);
   });
 });
 
@@ -719,19 +677,41 @@ describe("α30 Block C0 (sub-POC 8) — page test files vi.mock target rewritten
   });
 });
 
-// α27 — the `server.ts` barrel still re-exports `JournalService` /
-// `LedgerService` (out-of-scope guard — barrel + ~10 app/ consumers are
-// sub-POC 8; the shims keep the barrel surface byte-stable).
-//   PASSES pre-GREEN and MUST keep passing post-GREEN.
-describe("α27 Block C5 — server.ts barrel surface intact (out-of-scope guard)", () => {
+// α27 — INVERTED at sub-POC 8/8 C4. The `features/accounting/server.ts` barrel
+// is SLIMMED in the same C4 GREEN that deletes the three shim files: it drops
+// `export { JournalService } from "./journal.service"`,
+// `export { LedgerService } from "./ledger.service"`, and
+// `export * from "./accounting.validation"`. The barrel RETAINS everything
+// else — `JournalRepository`, `journal.types`, `parseEntryDate`
+// (`journal.dates`), `AutoEntryGenerator` / `EntryLineTemplate`,
+// `accounting-helpers`, the `document-lifecycle` re-exports (incl.
+// `validateLockedEdit` + `TrimPreviewItem` for payment/dispatch/sales
+// consumers), and `correlative.utils` — those have live cross-module
+// consumers and are NOT in C4 scope.
+//   Expected FAIL pre-GREEN: server.ts still re-exports all three (the shims
+//   keep the barrel surface byte-stable through C0–C3) → the `.not.toMatch`
+//   assertions FAIL.
+describe("α27 Block C4 (sub-POC 8) — server.ts barrel slimmed: 3 shim re-exports dropped", () => {
   const BARREL = resolve(REPO_ROOT, "features/accounting/server.ts");
-  it("α27: server.ts still re-exports JournalService", () => {
+  it("α27: server.ts no longer re-exports JournalService from ./journal.service", () => {
     const src = readFileSync(BARREL, "utf-8");
-    expect(src).toMatch(/export\s*\{\s*JournalService\s*\}\s*from\s+["']\.\/journal\.service["']/);
+    expect(src).not.toMatch(/from\s+["']\.\/journal\.service["']/);
   });
-  it("α27: server.ts still re-exports LedgerService", () => {
+  it("α27: server.ts no longer re-exports LedgerService from ./ledger.service", () => {
     const src = readFileSync(BARREL, "utf-8");
-    expect(src).toMatch(/export\s*\{\s*LedgerService\s*\}\s*from\s+["']\.\/ledger\.service["']/);
+    expect(src).not.toMatch(/from\s+["']\.\/ledger\.service["']/);
+  });
+  it("α27: server.ts no longer re-exports * from ./accounting.validation", () => {
+    const src = readFileSync(BARREL, "utf-8");
+    expect(src).not.toMatch(/from\s+["']\.\/accounting\.validation["']/);
+  });
+  it("α27: server.ts RETAINS the non-shim re-exports (JournalRepository, journal.types, journal.dates, document-lifecycle, correlative.utils)", () => {
+    const src = readFileSync(BARREL, "utf-8");
+    expect(src).toMatch(/from\s+["']\.\/journal\.repository["']/);
+    expect(src).toMatch(/from\s+["']\.\/journal\.types["']/);
+    expect(src).toMatch(/from\s+["']\.\/journal\.dates["']/);
+    expect(src).toMatch(/from\s+["']\.\/correlative\.utils["']/);
+    expect(src).toMatch(/document-lifecycle/);
   });
 });
 

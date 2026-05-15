@@ -54,25 +54,23 @@ describe("POC document-signature-config hex C4 — cross-feature cutover shape (
   });
 
   // ── C: features/accounting cross-feature consumers ──
-  // α39 — UPDATED at POC #7 OLEADA 6 sub-POC 7/8 C5 B2a.
-  // Original intent: the legacy `journal.service.ts` consumes the HEX
-  // document-signature-config service (for `exportVoucherPdf`), NOT the
-  // retired `@/features/document-signature-config`. C5 B2a converts
-  // `journal.service.ts` into a thin delegating SHIM over the hex
-  // `JournalsService` — the doc-sig-config dependency now lives entirely
-  // inside the hex use case; the shim imports neither the hex DSC service
-  // nor the legacy one. The "NO legacy import" half of the invariant STILL
-  // holds (asserted below); the positive "imports the hex DSC service" half
-  // is obsolete — a pure delegating shim has no such import. Honest
-  // prior-cycle collision per [[invariant_collision_elevation]].
-  it("α39: features/accounting/journal.service.ts is a shim — NO legacy document-signature-config import", () => {
-    const src = readRepoFile("features/accounting/journal.service.ts");
-    expect(src).not.toMatch(LEGACY_FEATURES_DSC_SERVER_IMPORT_RE);
-    expect(src).not.toMatch(LEGACY_FEATURES_DSC_BARREL_IMPORT_RE);
-    // It delegates to the hex JournalsService, which owns the DSC dep.
-    expect(src).toMatch(
-      /from\s+["']@\/modules\/accounting\/presentation\/server["']/,
-    );
+  // α39 — INVERTED at POC #8 OLEADA 6 sub-POC 8/8 C4 (poc-accounting-shim-
+  // retirement). Genealogy: original intent asserted the legacy
+  // `journal.service.ts` consumes the HEX document-signature-config service
+  // (not the retired `@/features/document-signature-config`); sub-POC 7 C5 B2a
+  // updated it to "journal.service.ts is a shim — NO legacy DSC import" once
+  // the file became a thin delegating shim. sub-POC 8 C4 DELETES that shim
+  // outright — every `app/` consumer was repointed to `makeJournalsService()`
+  // across C0–C2, and the `features/accounting/server.ts` barrel drops its
+  // re-export in the same C4 GREEN. `readRepoFile` on a deleted file throws
+  // ENOENT, so α39 re-inverts to assert the deletion: with the file gone the
+  // "NO legacy DSC import" invariant is vacuously and permanently satisfied.
+  // Honest prior-cycle collision per [[invariant_collision_elevation]],
+  // re-inverted in the C4 GREEN that causes it.
+  it("α39: features/accounting/journal.service.ts DELETED (sub-POC 8/8 C4 shim retirement — legacy DSC import vacuously absent)", () => {
+    expect(
+      existsSync(resolve(REPO_ROOT, "features/accounting/journal.service.ts")),
+    ).toBe(false);
   });
 
   // α40
