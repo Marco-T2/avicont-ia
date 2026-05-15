@@ -1,16 +1,14 @@
 /**
  * Shared canonical money math utilities for `modules/accounting/*`.
  *
- * **R1-permissible-value-type-exception**: this domain file runtime-imports
- * `Prisma` from `@/generated/prisma/client` to access `Prisma.Decimal`
- * (re-export of `decimal.js`). Decimal is a VALUE-TYPE arithmetic engine,
- * not a Prisma-generated entity. Sister precedent textually verified:
- * `modules/shared/domain/value-objects/money.ts:4-10`:
- *   "Decimal-based monetary VO. Uses Prisma.Decimal (re-export of decimal.js)
- *    internally because partida-doble requires bit-perfect equality on sums; a
- *    number-based VO with rounding can drift in journals with many lines.
- *    Domain does NOT expose Prisma.Decimal — only the methods on Money."
- * Locked invariant OLEADA 5 archive #2282.
+ * **decimal.js direct dep**: this domain file value-imports `Decimal` from
+ * `decimal.js@10.6.0` (pure math, no node builtins — legitimate domain dep).
+ * Sister precedent: `modules/shared/domain/value-objects/money.ts:1` and
+ * `monetary-amount.ts:1`. Locked invariant OLEADA 5 archive #2282.
+ * (sub-POC 1 unblock-bundle: swapped from Prisma.Decimal value-import to
+ * decimal.js default-import to remove node:module bundle leak —
+ * oleada-money-decimal-hex-purity. EX-D3 R1-permissible-value-type-exception
+ * formally revoked at umbrella archive — final sub-POC.)
  *
  * **EX-D3 consolidation**: this is the canonical home for `sumDecimals` + `eq`.
  * Verbatim copy of the 2 helpers from
@@ -22,20 +20,17 @@
  * MUST NOT import from any module under
  * `modules/accounting/{financial-statements,trial-balance,equity-statement,worksheet,initial-balance}`.
  */
-import { Prisma } from "@/generated/prisma/client";
-
-// Alias local para no repetir Prisma.Decimal en firmas
-type Decimal = Prisma.Decimal;
+import Decimal from "decimal.js";
 
 // Tolerancia estándar para la verificación de ecuación contable
-const TOLERANCE = new Prisma.Decimal("0.01");
+const TOLERANCE = new Decimal("0.01");
 
 /**
  * Suma un array de Decimals. Lista vacía → 0.
  * No usa Number() — mantiene precisión arbitraria de decimal.js.
  */
 export function sumDecimals(xs: Decimal[]): Decimal {
-  return xs.reduce((acc, x) => acc.plus(x), new Prisma.Decimal(0));
+  return xs.reduce((acc, x) => acc.plus(x), new Decimal(0));
 }
 
 /**
@@ -57,5 +52,5 @@ export function eq(a: Decimal, b: Decimal): boolean {
  * (shared NO importa de FS). Duplicación aceptable per design #2447 D1.
  */
 export function roundHalfUp(d: Decimal): Decimal {
-  return d.toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP);
+  return d.toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
 }

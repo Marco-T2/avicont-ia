@@ -20,7 +20,7 @@ import {
 import { Plus, Trash2, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import type { Account } from "@/generated/prisma/client";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { eq, sumDecimals } from "@/modules/accounting/presentation";
 import { todayLocal } from "@/lib/date-utils";
 
@@ -90,8 +90,8 @@ export default function CreateJournalEntryForm({
     );
   }
 
-  const debits = lines.map((l) => new Prisma.Decimal(l.debit || "0"));
-  const credits = lines.map((l) => new Prisma.Decimal(l.credit || "0"));
+  const debits = lines.map((l) => new Decimal(l.debit || "0"));
+  const credits = lines.map((l) => new Decimal(l.credit || "0"));
   const totalDebitD = sumDecimals(debits);
   const totalCreditD = sumDecimals(credits);
   const totalDebit = totalDebitD.toNumber();

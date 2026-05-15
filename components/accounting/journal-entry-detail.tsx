@@ -19,7 +19,7 @@ import {
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { eq, sumDecimals } from "@/modules/accounting/presentation";
 import { Gated } from "@/components/common/gated";
 
@@ -87,8 +87,8 @@ export default function JournalEntryDetail({
   const [actionDialog, setActionDialog] = useState<"POST" | "VOID" | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const debits = entry.lines.map((l) => new Prisma.Decimal(l.debit || "0"));
-  const credits = entry.lines.map((l) => new Prisma.Decimal(l.credit || "0"));
+  const debits = entry.lines.map((l) => new Decimal(l.debit || "0"));
+  const credits = entry.lines.map((l) => new Decimal(l.credit || "0"));
   const totalDebitD = sumDecimals(debits);
   const totalCreditD = sumDecimals(credits);
   const totalDebit = totalDebitD.toNumber();

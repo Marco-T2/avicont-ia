@@ -25,7 +25,7 @@ import JournalLineRow, { type JournalLineData } from "./journal-line-row";
 import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { eq, sumDecimals } from "@/modules/accounting/presentation";
 import { todayLocal } from "@/lib/date-utils";
 
@@ -168,8 +168,8 @@ export default function JournalEntryForm({
     );
   }
 
-  const debits = lines.map((l) => new Prisma.Decimal(l.debit || "0"));
-  const credits = lines.map((l) => new Prisma.Decimal(l.credit || "0"));
+  const debits = lines.map((l) => new Decimal(l.debit || "0"));
+  const credits = lines.map((l) => new Decimal(l.credit || "0"));
   const totalDebitD = sumDecimals(debits);
   const totalCreditD = sumDecimals(credits);
   const totalDebit = totalDebitD.toNumber();
