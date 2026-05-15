@@ -641,6 +641,75 @@ Status: DISCHARGED OLEADA 8 POC #1 (poc-tier2-money-decimal-convergence — this
 - **Decisión**: D1 cementación commit (this entry) — single docs commit per Q8 lock + POC #2 D1 precedent. Updates `01-migration-roadmap.md` (OLEADA 8 POC #1 row CLOSED), `02-current-state.md` (TIER 2 R-money-tier2 DISCHARGED row with explicit ~75% convergence declaration), and this file (new §13.accounting.money-math-decimal-convergence-TIER2 section). **MonetaryAmount VO partial-convergence honest surface**: `modules/shared/domain/value-objects/monetary-amount.ts:6` `round2 = Math.round((n+EPSILON)*100)/100` REMAINS float-internal — distinct surface from TIER 2 builders' compute-time arithmetic. VO upstream feeds TIER 2 builder inputs as `number` (via `.value` accessor); convergence at TIER 2 is ~75% partial. Future POC queued: `poc-monetary-amount-vo-retirement` (TIER 2.5 / TIER 3) — distinct VO retirement scope, orthogonal to R-money-tier2 textual scope. Surface-honest declaration per OLEADA charter. **Canonical homes**: TIER 2 money-math = `Prisma.Decimal` via `modules/accounting/shared/domain/money.utils` (`roundHalfUp` helper — reused from POC #2 C0); TIER 2 DTO monetary fields = `number` at builder boundary (SHAPE-A-mirror per Q2 lock); `.toNumber()` boundary preserves `number` contract end-to-end (no UI ripple). **R-money-tier2 DISCHARGED — OLEADA 8 POC #1 CLOSED**. Pending: `pnpm build` GREEN gate (Marco-run, post-D1 per repo convention).
 - **Cementado**: D1 (this commit). Genealogy chain locked: R-money (TIER 1, archive #2452, OLEADA 7) → R-money-tier2 (TIER 2, this POC, OLEADA 8). 9 commits total (4 RED + 4 GREEN + D1).
 
+## §13.accounting.money-math-decimal-convergence-VO — Canonical Decimal pipeline VO retirement (NEW poc-monetary-amount-vo-retirement — OLEADA 8 POC #2 — R-money-vo DISCHARGED)
+
+> **AXIS-DISTINCT from §13.accounting.money-math-decimal-convergence (TIER 1)** + **AXIS-DISTINCT from §13.accounting.money-math-decimal-convergence-TIER2**: this POC discharges the **R-money-vo** DERIVATIVE named deviation (per [[named_rule_immutability]]) — converging the internal arithmetic of the `MonetaryAmount` Value Object (`modules/shared/domain/value-objects/monetary-amount.ts`) from float `round2` cents-arithmetic to `Prisma.Decimal` arithmetic. **SHAPE-A interno**: `.value: number` public boundary PRESERVED via `this.raw.toNumber()`; 88 RUNTIME-IMPORT consumer sites UNCHANGED (no ripple). Sentinel file: `modules/accounting/__tests__/poc-monetary-amount-vo-shape.test.ts` (1 sentinel block — α-vo-01 — GREEN). **R-money-vo textual deviation DISCHARGED**.
+
+### §13.accounting.money-math-decimal-convergence-VO-R-money-vo-textual-rule (NEW derivative rule cementación)
+
+- **1ra evidencia**: POC poc-monetary-amount-vo-retirement (OLEADA 8 POC #2)
+- **Rule (verbatim — locked at proposal phase + design textual verification)**:
+
+```
+Rule: R-money-vo
+
+Derived from: R-money (OLEADA 7 archive #2452 — sdd/poc-money-math-decimal-convergence/archive-report)
+
+Scope (textual):
+  Float `round2` cents-arithmetic (Math.round of float * 100, divided by 100)
+  INTERNAL to the MonetaryAmount Value Object:
+    - modules/shared/domain/value-objects/monetary-amount.ts:
+        - private `round2(n: number): number` helper (DELETED — replaced by
+          `roundHalfUp` import from `@/modules/accounting/shared/domain/money.utils`)
+        - `parse(input)` validation pipeline (`Number()` coercion → `new Prisma.Decimal(value)`
+          try/catch + `isFinite()` + `isNegative()` + `greaterThan(MAX_VALUE)` guards)
+        - `minus(other)` direct `round2` call → Decimal `.minus()` + `roundHalfUp` + `isNegative()` throw
+        - `MAX_VALUE = 9_999_999_999.99` float constant → `new Prisma.Decimal("9999999999.99")`
+        - `equals` / `isGreaterThan` / `isLessThan` numeric comparators routed
+          through Decimal `.equals` / `.greaterThan` / `.lessThan`
+        - `private raw: number` field → `private raw: Prisma.Decimal`
+        - `get value(): number` getter body → `return this.raw.toNumber()` (BOUNDARY preserved)
+
+  EXCLUDED:
+    - Public VO API contract: `.value: number`, `.equals(other): boolean`,
+      `.isGreaterThan(other): boolean`, `.isLessThan(other): boolean`,
+      `.plus(other): MonetaryAmount`, `.minus(other): MonetaryAmount`,
+      static `MonetaryAmount.of`, static `MonetaryAmount.zero` — all
+      preserve external `number`/`boolean`/`MonetaryAmount` shapes via
+      `.toNumber()` boundary (SHAPE-A interno). NO consumer migration.
+    - Caller-side float math OUTSIDE the VO (e.g. `modules/iva-books/domain/compute-iva-totals.ts:88`
+      `MonetaryAmount.of(baseImponible.value * TASA_IVA)` — caller arithmetic on
+      `.value` boundary `number`, NOT VO-internal). Future POC if ever needed.
+    - All TIER 3 presentation formatters (toFixed2 family, voucher-pdf, amount-to-words).
+    - components/accounting/(create-)?journal-entry-(form|detail).tsx
+      balance-check UI math (UI-only invariant; queued POC #3).
+
+Why a new rule (not extension of R-money or R-money-tier2):
+  R-money's textual scope locks TIER 1 (rebuilt reads + folded LedgerService +
+  auto-entry-generator). R-money-tier2's textual scope locks TIER 2 builders +
+  route fallbacks and EXPLICITLY EXCLUDES the VO at sigma-13 L594-595
+  ("rule sister R-money-vo applies if/when retired"). Per [[named_rule_immutability]],
+  both contracts are immutable historical contracts. R-money-vo preserves
+  genealogy via explicit `Derived from: R-money` clause and closes the
+  placeholder named by R-money-tier2.
+
+Status: DISCHARGED OLEADA 8 POC #2 (poc-monetary-amount-vo-retirement — this entry).
+```
+
+- **Cementado**: R-money-vo cementación commit (this D1). R-money entry at L507-510 + L545-567 textually UNTOUCHED. R-money-tier2 entry at L569-642 textually UNTOUCHED. Both retain their prior closure markers verbatim per [[named_rule_immutability]] (pure-append discipline: derivative rule is a NEW section, not an edit). Genealogy chain locked: R-money (TIER 1 archive #2452, OLEADA 7 POC #2) → R-money-tier2 (TIER 2, OLEADA 8 POC #1) → R-money-vo (VO internal arithmetic, this POC, OLEADA 8 POC #2).
+
+### §13.accounting.money-math-decimal-convergence-VO-C1 monetary-amount-Decimal-internal-α-vo-01
+
+- **1ra evidencia**: POC poc-monetary-amount-vo-retirement C1 (OLEADA 8 POC #2)
+- **Decisión**: `modules/shared/domain/value-objects/monetary-amount.ts` Decimal-internal migration — `private raw: number → Prisma.Decimal`; `round2` helper DELETED (replaced by `roundHalfUp` import from `@/modules/accounting/shared/domain/money.utils`); `parse()` mirror sister `money.ts:9-25` verbatim (try/catch + `isFinite` + `isNegative`) + MAX_VALUE guard via `d.greaterThan(MAX_DECIMAL)`; `MAX_VALUE` float `9_999_999_999.99` → `new Prisma.Decimal("9999999999.99")` constant; `.value: number` getter body `return this.raw.toNumber()` (BOUNDARY preserved per SHAPE-A interno); `plus/minus` Decimal-internal with `roundHalfUp` wrap; `equals/isGreaterThan/isLessThan` routed through `.equals/.greaterThan/.lessThan` Decimal methods. NEW sentinel α-vo-01 (2 assertions — `roundHalfUp` import + call present; legacy cents-arithmetic absent) per [[red_acceptance_failure_mode]] + [[red_regex_discipline]] + [[sentinel_regex_line_bound]] mirroring sister α-tier2-sale-01 shape verbatim. **88 RUNTIME consumer sites UNCHANGED** (explore §6 enumerated; SHAPE-A interno preserves all public surfaces). **Existing `monetary-amount.test.ts` 18 assertions PASS unchanged** — pivotal L83 `expect(a.plus(b).value).toBe(0.3)` for `0.1 + 0.2` becomes deterministically exact under Decimal (no IEEE drift); L19 `toBeCloseTo(10.01, 2)` for `MonetaryAmount.of(10.005)` PASS via `roundHalfUp` half-away-from-zero mode 4. **Caller-side float math OUT** (e.g. `iva-totals.ts:88 baseImponible.value * TASA_IVA`) per R-money-vo EXCLUDED clause — caller arithmetic post-boundary, future POC if needed.
+- **Cementado**: C1 RED `348bd6f9` · GREEN `c342d4ff`. α-vo-01 GREEN. Suite delta +2 PASS (2 sentinel assertions); 0 NEW failures; tsc 0.
+
+### §13.accounting.money-math-decimal-convergence-VO-D1 OLEADA-8-POC-2-cementación-100-percent-convergence-declared
+
+- **1ra evidencia**: POC poc-monetary-amount-vo-retirement D1 (OLEADA 8 POC #2)
+- **Decisión**: D1 cementación commit (this entry) — single docs commit per [[paired_sister_default_no_surface]] POC #1 D1 precedent. Updates `01-migration-roadmap.md` (OLEADA 8 POC #2 row CLOSED), `02-current-state.md` (L89-91 "~75% partial" → "100% (TIER 1 + TIER 2 + VO retired)" — TIER 2.5 / VO row updated), and this file (new §13.accounting.money-math-decimal-convergence-VO section). **Convergence status post-D1**: TIER 1 (R-money) DISCHARGED · TIER 2 (R-money-tier2) DISCHARGED · VO (R-money-vo) DISCHARGED. Aggregate money-math convergence = **100%** across application + domain + VO layers (TIER 3 presentation formatters orthogonal). **Canonical homes**: VO internal arithmetic = `Prisma.Decimal` via `modules/accounting/shared/domain/money.utils` (`roundHalfUp` helper); VO public API = `number`/`boolean`/`MonetaryAmount` boundary (SHAPE-A interno per Q1 lock); `.toNumber()` boundary preserves `.value: number` end-to-end (zero ripple across 88 consumers). **R-money-vo DISCHARGED — OLEADA 8 POC #2 CLOSED**. Pending: `pnpm build` GREEN gate (Marco-run, post-D1 per [[git_commit_no_verify_default]]).
+- **Cementado**: D1 (this commit). Genealogy chain locked: R-money (TIER 1, archive #2452, OLEADA 7) → R-money-tier2 (TIER 2, OLEADA 8 POC #1) → R-money-vo (VO, this POC, OLEADA 8 POC #2). 3 commits total (C1 RED + C1 GREEN + D1).
+
 ## §13.accounting.pagination-journal — Canonical Homes pagination-journal (NEW poc-pagination-journal — Journal/Libro Diario pagination replication — CLOSED)
 
 > **AXIS-DISTINCT from POC pagination-sale (pilot) + POC pagination-replication Purchase/Payment**: replication target Journal/Libro Diario module — split-port 3-touchpoint asymmetry (port + adapter + repo) vs Sale/Purchase 2-touchpoint single-port. Filters scalar/enum (no Path 2 array unification needed — Journal asymmetry vs Purchase). Sentinel file: `modules/accounting/__tests__/c1-macro-pagination-additive-shape-journal.poc-pagination-journal.test.ts` (10α existence-only, T11 shadcn drop redundant heredado).
