@@ -13,8 +13,17 @@
  *     `dfCfIva = baseIvaSujetoCf × 0.13`. Línea de gasto = base − IVA.
  *     Si exentos > 0, 4ta línea de gasto residual.
  *     Invariante: `base + exentos = importeTotal` (tolerance 0.005 cuando exentos explícito).
+ *
+ * **Money math**: Decimal-internal arithmetic via `Prisma.Decimal` + `roundHalfUp`
+ * from `modules/accounting/shared/domain/money.utils`. `.toNumber()` at the
+ * `EntryLineTemplate.debit/credit: number` boundary (SHAPE-A — number DTO
+ * preserved). R-money-tier2 discharged at poc-tier2-money-decimal-convergence
+ * C2 GREEN (OLEADA 8 POC #1) — derivative from R-money (OLEADA 7 archive #2452)
+ * per [[named_rule_immutability]].
  */
 
+import { Prisma } from "@/generated/prisma/client";
+import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import type { PurchaseType } from "./purchase.entity";
 
 /** Código de cuenta Crédito Fiscal IVA (compras). Fijo Bolivia SIN. */
@@ -79,7 +88,9 @@ export function buildPurchaseEntryLines(
     const exentos =
       exentosExplicit !== undefined
         ? exentosExplicit
-        : Math.round((importeTotal - baseIvaSujetoCf) * 100) / 100;
+        : roundHalfUp(
+            new Prisma.Decimal(importeTotal).minus(baseIvaSujetoCf),
+          ).toNumber();
 
     if (exentosExplicit !== undefined) {
       const residual = Math.abs(baseIvaSujetoCf + exentosExplicit - importeTotal);
@@ -93,7 +104,9 @@ export function buildPurchaseEntryLines(
       }
     }
 
-    const gastoNeto = Math.round((baseIvaSujetoCf - dfCfIva) * 100) / 100;
+    const gastoNeto = roundHalfUp(
+      new Prisma.Decimal(baseIvaSujetoCf).minus(dfCfIva),
+    ).toNumber();
 
     const lines: EntryLineTemplate[] = [
       { accountCode: expenseAccount, debit: gastoNeto, credit: 0 },
