@@ -39,6 +39,7 @@ interface WorksheetFiltersProps {
   initialDateFrom?: string;
   initialDateTo?: string;
   periods?: FiscalPeriodOption[];
+  initialFiscalPeriodId?: string;
 }
 
 function toIsoDate(d: Date): string {
@@ -58,11 +59,12 @@ export function WorksheetFilters({
   initialDateFrom,
   initialDateTo,
   periods = [],
+  initialFiscalPeriodId,
 }: WorksheetFiltersProps) {
   const defaults = defaultRange();
   const [dateFrom, setDateFrom] = useState(initialDateFrom || defaults.from);
   const [dateTo, setDateTo] = useState(initialDateTo || defaults.to);
-  const [fiscalPeriodId, setFiscalPeriodId] = useState<string>("");
+  const [fiscalPeriodId, setFiscalPeriodId] = useState<string>(initialFiscalPeriodId ?? "");
 
   function handlePeriodChange(e: React.ChangeEvent<HTMLSelectElement>) {
     const id = e.target.value;

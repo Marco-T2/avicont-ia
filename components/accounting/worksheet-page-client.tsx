@@ -78,13 +78,17 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
   const [error, setError] = useState<string | null>(null);
   const [lastFilters, setLastFilters] = useState<WorksheetFilterValues | null>(null);
   const [periods, setPeriods] = useState<FiscalPeriodOption[]>([]);
+  const [periodsLoaded, setPeriodsLoaded] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
     async function loadPeriods() {
       try {
         const res = await fetch(`/api/organizations/${orgSlug}/periods`);
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setPeriodsLoaded(true);
+          return;
+        }
         const data = (await res.json()) as Array<{
           id: string;
           name: string;
@@ -102,6 +106,8 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
         );
       } catch {
         // silent — period selector is optional UX
+      } finally {
+        if (!cancelled) setPeriodsLoaded(true);
       }
     }
     void loadPeriods();
@@ -109,6 +115,14 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
       cancelled = true;
     };
   }, [orgSlug]);
+
+  // Pick the fiscal period that contains today (mirrors journal-entry-form
+  // and sale-form pattern via findPeriodCoveringDate, but inlined here because
+  // our FiscalPeriodOption uses string dates rather than Date instances).
+  const today = new Date().toISOString().slice(0, 10);
+  const currentPeriod = periods.find(
+    (p) => p.startDate <= today && today <= p.endDate,
+  );
 
   const fetchReport = useCallback(
     async (filters: WorksheetFilterValues) => {
@@ -167,10 +181,25 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
+      {/* Filters — render only after periods fetch resolves so initial* props
+          (computed from currentPeriod) apply at mount, not after a remount. */}
       <Card>
         <CardContent className="pt-6">
-          <WorksheetFilters onFilter={handleFilter} loading={loading} periods={periods} />
+          {periodsLoaded ? (
+            <WorksheetFilters
+              onFilter={handleFilter}
+              loading={loading}
+              periods={periods}
+              initialFiscalPeriodId={currentPeriod?.id}
+              initialDateFrom={currentPeriod?.startDate}
+              initialDateTo={currentPeriod?.endDate}
+            />
+          ) : (
+            <div className="flex items-center gap-2 py-2 text-muted-foreground text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando períodos…
+            </div>
+          )}
         </CardContent>
       </Card>
 

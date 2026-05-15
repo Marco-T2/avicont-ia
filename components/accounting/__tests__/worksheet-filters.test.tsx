@@ -151,4 +151,41 @@ describe("WorksheetFilters — defaults + fiscal period selector", () => {
     expect(onFilter).toHaveBeenCalledOnce();
     expect(onFilter.mock.calls[0][0].fiscalPeriodId).toBeUndefined();
   });
+
+  it("(l) initialFiscalPeriodId pre-selects the period at mount", () => {
+    const periods: FiscalPeriodOption[] = [
+      { id: "p1", name: "Mayo 2026", startDate: "2026-05-01", endDate: "2026-05-31" },
+      { id: "p2", name: "Abril 2026", startDate: "2026-04-01", endDate: "2026-04-30" },
+    ];
+    render(
+      <WorksheetFilters
+        onFilter={vi.fn()}
+        loading={false}
+        periods={periods}
+        initialFiscalPeriodId="p1"
+      />,
+    );
+    const select = screen.getByLabelText(/per[ií]odo fiscal/i) as HTMLSelectElement;
+    expect(select.value).toBe("p1");
+  });
+
+  it("(m) initialFiscalPeriodId is emitted in onFilter without manual interaction", () => {
+    const onFilter = vi.fn();
+    const periods: FiscalPeriodOption[] = [
+      { id: "p1", name: "Mayo 2026", startDate: "2026-05-01", endDate: "2026-05-31" },
+    ];
+    render(
+      <WorksheetFilters
+        onFilter={onFilter}
+        loading={false}
+        periods={periods}
+        initialFiscalPeriodId="p1"
+        initialDateFrom="2026-05-01"
+        initialDateTo="2026-05-31"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /generar/i }));
+    expect(onFilter).toHaveBeenCalledOnce();
+    expect(onFilter.mock.calls[0][0]).toMatchObject({ fiscalPeriodId: "p1" });
+  });
 });

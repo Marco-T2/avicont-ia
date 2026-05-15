@@ -68,19 +68,19 @@ afterEach(() => cleanup());
 import { WorksheetPageClient } from "../worksheet-page-client";
 
 describe("WorksheetPageClient (REQ-10)", () => {
-  it("(a) renders WorksheetFilters on initial render", () => {
+  it("(a) renders WorksheetFilters on initial render", async () => {
     render(<WorksheetPageClient orgSlug={ORG_SLUG} />);
 
-    // Should show the date from label (from WorksheetFilters)
-    expect(screen.getByLabelText(/fecha de inicio|dateFrom|desde/i)).toBeInTheDocument();
+    // Filter renders after periods fetch resolves (mocked → []).
+    expect(await screen.findByLabelText(/fecha de inicio|dateFrom|desde/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/fecha de fin|dateTo|hasta/i)).toBeInTheDocument();
   });
 
   it("(b) renders WorksheetTable after data fetch", async () => {
     render(<WorksheetPageClient orgSlug={ORG_SLUG} />);
 
-    // Fill in dates and submit
-    const dateFromInput = screen.getByLabelText(/fecha de inicio|dateFrom|desde/i);
+    // Wait for periods fetch to resolve before grabbing the filter inputs.
+    const dateFromInput = await screen.findByLabelText(/fecha de inicio|dateFrom|desde/i);
     const dateToInput = screen.getByLabelText(/fecha de fin|dateTo|hasta/i);
     fireEvent.change(dateFromInput, { target: { value: "2025-01-01" } });
     fireEvent.change(dateToInput, { target: { value: "2025-12-31" } });
@@ -104,7 +104,7 @@ describe("WorksheetPageClient (REQ-10)", () => {
   it("(c) renders PDF and XLSX download links/buttons after data fetch", async () => {
     render(<WorksheetPageClient orgSlug={ORG_SLUG} />);
 
-    const dateFromInput = screen.getByLabelText(/fecha de inicio|dateFrom|desde/i);
+    const dateFromInput = await screen.findByLabelText(/fecha de inicio|dateFrom|desde/i);
     const dateToInput = screen.getByLabelText(/fecha de fin|dateTo|hasta/i);
     fireEvent.change(dateFromInput, { target: { value: "2025-01-01" } });
     fireEvent.change(dateToInput, { target: { value: "2025-12-31" } });
@@ -126,14 +126,17 @@ describe("WorksheetPageClient (REQ-10)", () => {
   });
 
   it("(d) shows 'sin asientos de ajuste' note when allAjustesZero=true", async () => {
-    mockFetch.mockResolvedValue({
-      ok: true,
-      json: async () => ({ ...MINIMAL_REPORT, allAjustesZero: true }),
+    // URL-aware override: /periods → [], /worksheet → report with allAjustesZero=true.
+    mockFetch.mockImplementation(async (url: string) => {
+      if (typeof url === "string" && url.includes("/periods")) {
+        return { ok: true, json: async () => [] };
+      }
+      return { ok: true, json: async () => ({ ...MINIMAL_REPORT, allAjustesZero: true }) };
     });
 
     render(<WorksheetPageClient orgSlug={ORG_SLUG} />);
 
-    const dateFromInput = screen.getByLabelText(/fecha de inicio|dateFrom|desde/i);
+    const dateFromInput = await screen.findByLabelText(/fecha de inicio|dateFrom|desde/i);
     const dateToInput = screen.getByLabelText(/fecha de fin|dateTo|hasta/i);
     fireEvent.change(dateFromInput, { target: { value: "2025-01-01" } });
     fireEvent.change(dateToInput, { target: { value: "2025-12-31" } });
