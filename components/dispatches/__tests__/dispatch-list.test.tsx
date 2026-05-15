@@ -13,7 +13,40 @@ import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/re
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi, beforeEach } from "vitest";
 import DispatchList from "../dispatch-list";
-import type { HubItem } from "@/modules/dispatch/presentation";
+
+// Presentation-local HubItem mirror — replaces retired @/modules/dispatch/presentation
+// type re-export (hub.types.ts DELETED in C1 GREEN poc-dispatch-retirement-into-sales).
+// Tests local to dispatch-list keep type fidelity with the inline declaration.
+type CommonStatus = "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
+type HubItem =
+  | {
+      source: "sale";
+      type: "VENTA_GENERAL";
+      id: string;
+      displayCode: string;
+      referenceNumber: number | null;
+      date: Date;
+      contactId: string;
+      contactName: string;
+      periodId: string;
+      description: string;
+      totalAmount: string;
+      status: CommonStatus;
+    }
+  | {
+      source: "dispatch";
+      type: "NOTA_DESPACHO" | "BOLETA_CERRADA";
+      id: string;
+      displayCode: string;
+      referenceNumber: number | null;
+      date: Date;
+      contactId: string;
+      contactName: string;
+      periodId: string;
+      description: string;
+      totalAmount: string;
+      status: CommonStatus;
+    };
 
 afterEach(() => cleanup());
 

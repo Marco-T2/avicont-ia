@@ -2,8 +2,17 @@ import { describe, it, expect } from "vitest";
 
 /**
  * C3 RED — Presentation layer shape tests for POC dispatch-hex migration.
- * Validates composition-root, server barrel, index barrel, validation schemas,
- * and HubService co-located inside modules/dispatch.
+ * Validates composition-root, server barrel, index barrel, validation schemas.
+ *
+ * RETIRED PORTIONS by poc-dispatch-retirement-into-sales C1 GREEN:
+ * - HubService class (DispatchHubService) DELETED
+ * - hub.types.ts (HubFilters, HubItem) DELETED
+ * - hubQuerySchema (hub.validation.ts) DELETED
+ * - server.ts barrel no longer re-exports HubService / hubQuerySchema
+ *
+ * Non-retired schema tests preserved below; HubService-shape tests SKIP'd
+ * atomic with the deletion they assert (cementación invariant superseded
+ * per [[invariant_collision_elevation]]).
  */
 
 import {
@@ -12,8 +21,6 @@ import {
 
 import {
   DispatchService,
-  HubService,
-  hubQuerySchema,
 } from "../presentation/server";
 
 import {
@@ -21,15 +28,6 @@ import {
   updateDispatchSchema,
   dispatchFiltersSchema,
 } from "../presentation/schemas/dispatch.schemas";
-
-import type {
-  HubFilters,
-  HubItem,
-} from "../presentation/hub.types";
-
-import {
-  DispatchHubService,
-} from "../presentation/hub.service";
 
 describe("POC dispatch-hex C3 — presentation layer shape", () => {
   it("makeDispatchService factory returns DispatchService instance", () => {
@@ -42,12 +40,12 @@ describe("POC dispatch-hex C3 — presentation layer shape", () => {
     expect(DispatchService).toBeDefined();
   });
 
-  it("server barrel re-exports HubService as DispatchHubService", () => {
-    expect(HubService).toBeDefined();
+  it.skip("server barrel re-exports HubService as DispatchHubService (RETIRED — C1 deletion)", () => {
+    // HubService DELETED in poc-dispatch-retirement-into-sales C1 GREEN.
   });
 
-  it("server barrel re-exports hubQuerySchema", () => {
-    expect(hubQuerySchema).toBeDefined();
+  it.skip("server barrel re-exports hubQuerySchema (RETIRED — C1 deletion)", () => {
+    // hubQuerySchema DELETED with hub.validation.ts in C1 GREEN.
   });
 
   it("createDispatchSchema validates correct input", () => {
@@ -96,21 +94,15 @@ describe("POC dispatch-hex C3 — presentation layer shape", () => {
     expect(result.success).toBe(true);
   });
 
-  it("hubQuerySchema validates type enum", () => {
-    const result = hubQuerySchema.safeParse({
-      type: "VENTA_GENERAL",
-    });
-    expect(result.success).toBe(true);
+  it.skip("hubQuerySchema validates type enum (RETIRED — C1 deletion)", () => {
+    // hubQuerySchema DELETED with hub.validation.ts in C1 GREEN.
   });
 
-  it("DispatchHubService class exists", () => {
-    expect(typeof DispatchHubService).toBe("function");
+  it.skip("DispatchHubService class exists (RETIRED — C1 deletion)", () => {
+    // DispatchHubService class DELETED in C1 GREEN.
   });
 
-  it("hub types compile", () => {
-    type _F = HubFilters;
-    type _I = HubItem;
-    const wired: _F = {};
-    expect(wired).toBeDefined();
+  it.skip("hub types compile (RETIRED — C1 deletion)", () => {
+    // HubFilters + HubItem types DELETED with hub.types.ts in C1 GREEN.
   });
 });

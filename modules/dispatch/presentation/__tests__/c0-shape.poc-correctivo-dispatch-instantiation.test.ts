@@ -180,13 +180,16 @@ describe("POC correctivo dispatch-instantiation — C0 RED shape gate 18α", () 
 
   // ── α13-α14: app/api/organizations/[orgSlug]/dispatches-hub/route.ts ─────
 
-  it("α13 POS: dispatches-hub/route.ts contains makeDispatchService() call (POS)", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C1 GREEN: dispatches-hub/route.ts
+  // DELETED atomically with HubService class — internal-only endpoint, zero
+  // external consumers confirmed per [[retirement_reinventory_gate]].
+  it.skip("α13 POS: dispatches-hub/route.ts contains makeDispatchService() call (POS) (RETIRED — endpoint deleted)", () => {
     expect(
       read("app/api/organizations/[orgSlug]/dispatches-hub/route.ts"),
     ).toMatch(MAKE_DISPATCH_SERVICE_CALL_REGEX);
   });
 
-  it("α14 NEG: dispatches-hub/route.ts does NOT contain new DispatchService() zero-args (NEG)", () => {
+  it.skip("α14 NEG: dispatches-hub/route.ts does NOT contain new DispatchService() zero-args (NEG) (RETIRED — endpoint deleted)", () => {
     expect(
       read("app/api/organizations/[orgSlug]/dispatches-hub/route.ts"),
     ).not.toMatch(NEW_DISPATCH_SERVICE_ZERO_ARGS_REGEX);
@@ -223,7 +226,9 @@ describe("POC correctivo dispatch-instantiation — C0 RED shape gate 18α", () 
     ).toMatch(MOCK_MAKE_DISPATCH_SERVICE_REGEX);
   });
 
-  it("α18 MOCK: dispatches-hub/route.test.ts vi.mock factory contains makeDispatchService keyword (PASS-lock pre-C1b: C1a delivers)", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C1 GREEN: route.test.ts
+  // DELETED atomically with API endpoint it tested.
+  it.skip("α18 MOCK: dispatches-hub/route.test.ts vi.mock factory contains makeDispatchService keyword (PASS-lock pre-C1b: C1a delivers) (RETIRED — endpoint deleted)", () => {
     expect(
       read(
         "app/api/organizations/[orgSlug]/dispatches-hub/__tests__/route.test.ts",

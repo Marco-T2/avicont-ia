@@ -74,7 +74,10 @@ describe("POC dispatch-hex C4 — cross-feature cutover", () => {
     expect(content).toContain("modules/dispatch");
   });
 
-  it("dispatches-hub/route.ts imports from modules/dispatch", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C1 GREEN: dispatches-hub/route.ts
+  // DELETED atomically with HubService class + hub.types.ts + hub.validation.ts.
+  // Internal-only API endpoint; zero external consumers confirmed.
+  it.skip("dispatches-hub/route.ts imports from modules/dispatch (RETIRED — endpoint deleted)", () => {
     const content = readFile(
       "app/api/organizations/[orgSlug]/dispatches-hub/route.ts",
     );
@@ -111,7 +114,9 @@ describe("POC dispatch-hex C4 — cross-feature cutover", () => {
     expect(content).toContain("modules/dispatch");
   });
 
-  it("dispatches-hub/__tests__/route.test.ts mocks modules/dispatch", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C1 GREEN: route.test.ts
+  // DELETED atomically with the API route it tested.
+  it.skip("dispatches-hub/__tests__/route.test.ts mocks modules/dispatch (RETIRED — endpoint deleted)", () => {
     const content = readFile(
       "app/api/organizations/[orgSlug]/dispatches-hub/__tests__/route.test.ts",
     );

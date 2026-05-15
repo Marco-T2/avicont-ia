@@ -36,8 +36,42 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
-import type { HubItem } from "@/modules/dispatch/presentation";
 import { formatDateBO } from "@/lib/date-utils";
+
+// Presentation-local discriminated union — replaces retired
+// @/modules/dispatch/presentation HubItem (hub.types.ts DELETED in C1 GREEN
+// poc-dispatch-retirement-into-sales). Inlined here pre-C2 component move
+// per design § 5 presentation-local types decision.
+type CommonStatus = "DRAFT" | "POSTED" | "LOCKED" | "VOIDED";
+type HubItemSale = {
+  source: "sale";
+  type: "VENTA_GENERAL";
+  id: string;
+  displayCode: string;
+  referenceNumber: number | null;
+  date: Date;
+  contactId: string;
+  contactName: string;
+  periodId: string;
+  description: string;
+  totalAmount: string;
+  status: CommonStatus;
+};
+type HubItemDispatch = {
+  source: "dispatch";
+  type: "NOTA_DESPACHO" | "BOLETA_CERRADA";
+  id: string;
+  displayCode: string;
+  referenceNumber: number | null;
+  date: Date;
+  contactId: string;
+  contactName: string;
+  periodId: string;
+  description: string;
+  totalAmount: string;
+  status: CommonStatus;
+};
+type HubItem = HubItemSale | HubItemDispatch;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
