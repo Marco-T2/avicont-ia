@@ -10,15 +10,8 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-  DialogDescription,
-} from "@/components/ui/dialog";
-import { ArrowLeft, Loader2, Pencil, CheckCircle, XCircle, FileDown } from "lucide-react";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { ArrowLeft, Pencil, CheckCircle, XCircle, FileDown } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -344,74 +337,27 @@ export default function JournalEntryDetail({
         </CardContent>
       </Card>
 
-      {/* Confirmation dialog — POST */}
-      <Dialog open={actionDialog === "POST"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Contabilizar Asiento</DialogTitle>
-            <DialogDescription>
-              Esta acción publicará el asiento #{entry.number} y actualizará los saldos
-              contables. Una vez contabilizado, el asiento seguirá siendo editable mientras
-              el período esté abierto. Al cerrar el período quedará inmutable.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={isSubmitting}
-              onClick={() => setActionDialog(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="bg-success hover:bg-success/90 text-success-foreground"
-              disabled={isSubmitting}
-              onClick={() => executeTransition("POSTED")}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              Contabilizar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={actionDialog === "POST"}
+        onOpenChange={(open) => !open && setActionDialog(null)}
+        title="Contabilizar asiento"
+        description={`Esta acción publicará el asiento #${entry.number} y actualizará los saldos contables. Una vez contabilizado, el asiento seguirá siendo editable mientras el período esté abierto. Al cerrar el período quedará inmutable.`}
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={isSubmitting}
+        onConfirm={() => executeTransition("POSTED")}
+      />
 
-      {/* Confirmation dialog — VOID */}
-      <Dialog open={actionDialog === "VOID"} onOpenChange={() => setActionDialog(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Anular Asiento</DialogTitle>
-            <DialogDescription>
-              Esta acción anulará el asiento #{entry.number} y revertirá los saldos
-              contables. Esta operación no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={isSubmitting}
-              onClick={() => setActionDialog(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={isSubmitting}
-              onClick={() => executeTransition("VOIDED")}
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ConfirmDialog
+        open={actionDialog === "VOID"}
+        onOpenChange={(open) => !open && setActionDialog(null)}
+        title="Anular asiento"
+        description={`Esta acción anulará el asiento #${entry.number} y revertirá los saldos contables. Esta operación no se puede deshacer.`}
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={isSubmitting}
+        onConfirm={() => executeTransition("VOIDED")}
+      />
     </div>
   );
 }

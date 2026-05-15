@@ -13,14 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -656,79 +649,39 @@ export default function JournalEntryList({
         </p>
       )}
 
-      {/* Confirmation dialog — CONTABILIZAR */}
-      <Dialog
+      <ConfirmDialog
         open={postEntry !== null}
         onOpenChange={(open) => !open && setPostEntry(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Contabilizar Asiento</DialogTitle>
-            <DialogDescription>
-              Esta acción contabilizará el asiento #{postEntry?.number} y
-              actualizará los saldos contables.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={actioningId !== null}
-              onClick={() => setPostEntry(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="bg-success hover:bg-success/90 text-success-foreground"
-              disabled={actioningId !== null}
-              onClick={() => postEntry && executeTransition(postEntry, "POSTED")}
-            >
-              {actioningId !== null ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <CheckCircle className="h-4 w-4 mr-2" />
-              )}
-              Contabilizar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Contabilizar asiento"
+        description={
+          postEntry
+            ? `Esta acción contabilizará el asiento #${postEntry.number} y actualizará los saldos contables.`
+            : null
+        }
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={actioningId !== null}
+        onConfirm={async () => {
+          if (postEntry) await executeTransition(postEntry, "POSTED");
+        }}
+      />
 
-      {/* Confirmation dialog — ANULAR */}
-      <Dialog
+      <ConfirmDialog
         open={voidEntry !== null}
         onOpenChange={(open) => !open && setVoidEntry(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Anular Asiento</DialogTitle>
-            <DialogDescription>
-              Esta acción anulará el asiento #{voidEntry?.number} y revertirá
-              los saldos contables. Esta operación no se puede deshacer.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              disabled={actioningId !== null}
-              onClick={() => setVoidEntry(null)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={actioningId !== null}
-              onClick={() => voidEntry && executeTransition(voidEntry, "VOIDED")}
-            >
-              {actioningId !== null ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <XCircle className="h-4 w-4 mr-2" />
-              )}
-              Anular
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+        title="Anular asiento"
+        description={
+          voidEntry
+            ? `Esta acción anulará el asiento #${voidEntry.number} y revertirá los saldos contables. Esta operación no se puede deshacer.`
+            : null
+        }
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={async () => {
+          if (voidEntry) await executeTransition(voidEntry, "VOIDED");
+        }}
+      />
     </>
   );
 }
