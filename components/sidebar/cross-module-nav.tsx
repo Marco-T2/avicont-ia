@@ -5,15 +5,15 @@
  *
  * Renders fixed entries regardless of the active module:
  *   - Agente IA  (action button — opens chat drawer, NOT a navigation link)
- *   - Miembros   (link → /{orgSlug}/members)
  *   - Documentos (link → /{orgSlug}/documents)
- *   - Auditoría  (link → /{orgSlug}/audit) — admin-only, REQ-AUDIT.6
  *
  * Each is individually gated by `matrix.canAccess(resource, "read")`:
  *   - Agente IA  → "agent"
- *   - Miembros   → "members"
  *   - Documentos → "documents"
- *   - Auditoría  → "audit"
+ *
+ * C2 sidebar-reorg-settings-hub: Miembros and Auditoría removed from this
+ * nav. Miembros is already a Settings hub card; Auditoría becomes a Settings
+ * hub card in C3. Both are still reachable from /settings.
  *
  * Design notes:
  * - `onOpenAgentChat` is threaded through from <AppSidebar> — Agente IA
@@ -22,13 +22,13 @@
  *   look & feel (icons, collapsed-mode tooltips, active-route highlighting).
  */
 
-import { Bot, FileText, History, Users } from "lucide-react";
+import { Bot, FileText } from "lucide-react";
 import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
 import type { Resource } from "@/features/permissions";
 import { NavItem } from "./nav-item";
 
 interface CrossModuleNavProps {
-  /** Current org slug — used to build hrefs for Miembros and Documentos */
+  /** Current org slug — used to build hrefs for cross-module links */
   orgSlug: string;
   /** Callback to open the Agente IA chat drawer */
   onOpenAgentChat: () => void;
@@ -54,22 +54,10 @@ export function CrossModuleNav({ orgSlug, onOpenAgentChat }: CrossModuleNavProps
       onClick: onOpenAgentChat,
     },
     {
-      icon: <Users className="h-5 w-5" />,
-      label: "Miembros",
-      resource: "members",
-      href: `/${orgSlug}/members`,
-    },
-    {
       icon: <FileText className="h-5 w-5" />,
       label: "Documentos",
       resource: "documents",
       href: `/${orgSlug}/documents`,
-    },
-    {
-      icon: <History className="h-5 w-5" />,
-      label: "Auditoría",
-      resource: "audit",
-      href: `/${orgSlug}/audit`,
     },
   ];
 
