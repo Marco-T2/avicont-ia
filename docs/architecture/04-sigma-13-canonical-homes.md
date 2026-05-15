@@ -659,3 +659,40 @@ Status: DISCHARGED OLEADA 8 POC #1 (poc-tier2-money-decimal-convergence — this
 - **1ra evidencia**: POC poc-pagination-journal C1-MACRO GREEN `45135b82`
 - **Decisión**: **CANONICAL** — `sourceType IS NULL / IS NOT NULL` origin filter (manual=NULL, auto=NOT NULL) extracted to shared `buildJournalEntryWhere(scope, filters)` DRY helper. Mirror Purchase `buildPurchaseWhere` pattern. Preserves the legacy `findAll` filter shape EXACT — `findAll` refactored to call `buildJournalEntryWhere` (behavior unchanged, internals DRY). `findPaginated` reuses same builder. Origin filter logic isolated to one source of truth; preserves Journal-specific SQL pattern (vs Sale `statusFilter` single-value / Purchase `purchaseTypeIn` array).
 - **Cementado**: RED `fe63d671` · GREEN `45135b82`. Helper at `modules/accounting/infrastructure/prisma-journal-entries.repo.ts` (function declaration private al módulo, convention 9). Behavior test coverage via legacy `findAll` integration tests + existing `journal.repository.origin-filter.test.ts` (mocked Prisma) unchanged. **Heredados matures cumulative cross-POC**: dual-method-additive-transitional 4ta · shared-presentation-carve-out 4ta · vo-generic-paginated-result-shape 4ta · shadcn drop redundant T11 4ta.
+
+## §13.dispatch.hubservice-retirement — Canonical Homes (NEW poc-dispatch-retirement-into-sales — RETIREMENT + cross-module unified presentation — CLOSED)
+
+### §13.dispatch.hubservice-retirement-pre-cross-module-unified-presentation
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C1 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **RETIRED** — `DispatchHubService` class (`modules/dispatch/presentation/hub.service.ts`, 198 LOC) DELETED. `hub.types.ts` (HubItem discriminated union + HubFilters) DELETED. `hub.validation.ts` (`hubQuerySchema`) DELETED. `/api/organizations/[orgSlug]/dispatches-hub` route DELETED (internal-only — zero external consumers confirmed per [[retirement_reinventory_gate]] 5-class classification). Supersedes prior `§13.dispatch-presentation` decision (line 266) which had documented HubService as load-bearing arch debt acceptance. Categ C++ in-memory slice anti-pattern (mathematically incorrect pagination proxy) retired.
+- **Cementado**: C1 RED `24ab9db4` · GREEN `c6938639`. 4α PASS (hub.service.ts absent, hub.types.ts absent, dispatches-hub/route.ts absent, server.ts barrel re-export absent). [[paired_sister_default_no_surface]]: HubService retirement paired sister #2428 (poc-accounting-shim-retirement) applied directly; surface honest divergence — test files DELETED not rewritten per design D5 ([[cross_module_boundary_mock_target_rewrite]] N/A path).
+
+### §13.dispatch.cross-module-direct-read-presentation-layer-no-merge-service
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C0 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **CANONICAL** — `/sales/page.tsx` reads `modules/sale` + `modules/dispatch` DIRECT via `Promise.all([saleService.listPaginated, dispatchService.list])`. Merge happens in the RSC (presentation-layer composition); NO merge service (anti-pattern that HubService was). Source discriminator union `{source: "sale"|"dispatch"}` inlined as presentation-local types per design § 5. Marco-3 Option B lock honored: `modules/dispatch` + `modules/sale` stay separate code-side; cross-module composition lives in presentation only.
+- **Cementado**: C0 RED `c91b340c` · GREEN `fb1374f6`. 4α sentinels (dispatch-import, no-hubservice, twin-call, three-types). Twin-call wired with concurrent Promise.all; cross-module composition in `app/(dashboard)/[orgSlug]/sales/page.tsx`.
+
+### §13.dispatch.categC-app-level-slice-retirement-defer-pagination-correctness
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C1 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **RETIRED** — Categ C++ in-memory slice anti-pattern (load-all-then-slice across modules — #2474) RETIRED. Cross-module UNION pagination is mathematically incorrect (cannot UNION two paginated streams without violating ordering invariants). B5 LOCK = canonical home for the defer rationale; supersedes #1807 defer rationale (now RETIREMENT, not preservation).
+- **Cementado**: C1 GREEN `c6938639`. HubService.listHub() slice logic DELETED with the class.
+
+### §13.dispatch.dispatches-route-redirect-shim-preserve-detail-route
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C3 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **CANONICAL** — `/dispatches` LIST page becomes Next.js 16 `permanentRedirect(\`/\${orgSlug}/sales\`)` shim (308). `/dispatches/[dispatchId]` detail route PRESERVED (Marco-lock #3). `/dispatches/new` create route PRESERVED (defer create-route consolidation — separate POC). Sidebar `registry.ts:87` Ventas entry repointed `/dispatches` → `/sales`. R-HIGH-3 "Despachos" label audit: 3 LEGIT BC+ND subdomain labels at `monthly-close-panel.tsx:266,284` + `close-event/page.tsx:22` UNCHANGED — domain labels, not URL refs.
+- **Cementado**: C3 RED `9923074f` · GREEN `9ceae7ef`. 3α sentinels (redirect-present, sidebar-href, no-data-fetch).
+
+### §13.dispatch.transactions-list-component-3-type-discriminator-cross-module-read
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C2 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **CANONICAL** — `components/sales/transactions-list.tsx` (git-mv'd from `components/dispatches/dispatch-list.tsx`) discriminates Sale|ND|BC via `source: "sale"|"dispatch"` union. Presentation-local types (HubItem inlined per design § 5 — NOT domain). Coexists with `components/sales/sale-list.tsx` (Sale-paginated single-type for existing `/sales` flow context — design D4). Marco may consolidate (drop sale-list) in future POC.
+- **Cementado**: C2 RED `027d3c5d` · GREEN `e3562bda`. 3α sentinels (dispatch-list-absent, transactions-list-exists, discriminator). JSDoc 1-2 lines action-first per [[jsdoc_adapter_calibration]] + [[jsdoc_adapter_framing]].
+
+### §13.dispatch.sale-pagination-preserved-bc-nd-non-paginated-alongside-unified-view
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C0 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **ACCEPTED TRADEOFF** — Marco-resolved B5 side-effect: Sale rows preserve `saleService.listPaginated` (paginated as today); BC + ND rows fetched non-paginated alongside (`dispatchService.list` returns all). UI surfaces both in unified `TransactionsList`. NO cross-module UNION pagination math (mathematically incorrect — see §13.dispatch.categC-app-level-slice-retirement). Mixed paging semantics flagged honest for future UX consolidation; not blocking.
+- **Cementado**: C0 GREEN `fb1374f6`. Implementation in `app/(dashboard)/[orgSlug]/sales/page.tsx` (Promise.all wrapper).
+
+### §13.dispatch.permanentredirect-308-vs-redirect-307-retirement-semantics
+- **1ra evidencia**: POC poc-dispatch-retirement-into-sales C3 GREEN (OLEADA 8 POC #2)
+- **Decisión**: **CANONICAL** — `permanentRedirect` (308) elected over `redirect` (307) for URL-consolidation RETIREMENT. Signals retirement intent + bookmark/SEO-friendly (browsers and bots cache aggressively). Source verified: `node_modules/next/dist/docs/01-app/02-guides/redirecting.md` (Next.js 16). Import: `import { permanentRedirect } from "next/navigation"`. Surface honest D3 OQ-1: spec wording said "redirect() (308 permanent)" — strict reading impossible; design ELECTED `permanentRedirect` per RETIREMENT semantics.
+- **Cementado**: C3 GREEN `9ceae7ef`. `app/(dashboard)/[orgSlug]/dispatches/page.tsx` body = `permanentRedirect(\`/\${orgSlug}/sales\`)`. **Heredados matures cumulative cross-POC**: paired-sister-precedent #2428 (HubService is shim-retirement cousin) · cross-module-boundary-mock-target-rewrite #2470 honest divergence (N/A path — test files DELETED not rewritten) · [[retirement_reinventory_gate]] 5-class classification at C1 pre-GREEN · pure-append discipline preserved (zero deletion in this D1 cementación) · atomic cementación retirement for prior-CLOSED POC sentinels (c4-cutover-shape, c0-shape, c1-shape α18 baseline 84→82) per [[invariant_collision_elevation]].
