@@ -304,11 +304,11 @@ export default function TransactionsList({
 
   function applyFilter(key: string, value: string) {
     const query = buildQuery({ [key]: value });
-    router.push(`/${orgSlug}/dispatches${query ? `?${query}` : ""}`);
+    router.push(`/${orgSlug}/sales${query ? `?${query}` : ""}`);
   }
 
   function clearFilters() {
-    router.push(`/${orgSlug}/dispatches`);
+    router.push(`/${orgSlug}/sales`);
   }
 
   function handlePostFromList(item: HubItem) {
