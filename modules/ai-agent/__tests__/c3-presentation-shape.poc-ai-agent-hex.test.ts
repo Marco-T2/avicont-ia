@@ -5,7 +5,7 @@
 // This is a test-precondition pattern, not a sentinel guard.
 process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "test-key-for-vitest";
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi, test } from "vitest";
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -235,4 +235,14 @@ describe("POC ai-agent-hex C3 — Zod schemas via server barrel", () => {
     // §C3 Block 5: "parses suggestion" means schema is invocable.
     expect(typeof result.success).toBe("boolean");
   });
+});
+
+// ── α-sentinel: mock stability guard ────────────────────────────────────────
+// α-mock-stability-c3-01: If vi.mock("@google/generative-ai", ...) is removed,
+// GoogleGenerativeAI is the real SDK class — vi.isMockFunction returns false.
+// Expected failure mode: assertion-fail `expected false to be true`
+// (NOT timeout). [[red_acceptance_failure_mode]] compliance.
+test("α-mock-stability-c3-01: @google/generative-ai is mocked (prevents 1500ms cold-import timeout regression)", async () => {
+  const { GoogleGenerativeAI } = await import("@google/generative-ai");
+  expect(vi.isMockFunction(GoogleGenerativeAI)).toBe(true);
 });
