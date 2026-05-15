@@ -224,3 +224,193 @@ describe("LedgerService.getTrialBalance", () => {
     expect(rows[0].balance).toBe("0.00");
   });
 });
+
+describe("LedgerService.getAccountLedgerPaginated", () => {
+  function row(debit: number, credit: number, date: string, num: number) {
+    return {
+      debit,
+      credit,
+      description: null,
+      journalEntry: {
+        date: new Date(date),
+        number: num,
+        description: `E${num}`,
+      },
+    };
+  }
+
+  it("T1 page 1 running-balance: openingBalance=0.00, balance chain starts at 0 (mirror legacy getAccountLedger SC-3)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByAccountPaginated = [
+      row(100, 0, "2099-01-01", 1),
+      row(0, 30, "2099-01-02", 2),
+      row(5.5, 0, "2099-01-03", 3),
+    ];
+    query.openingBalanceDeltaPrimed = 0;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.openingBalance).toBe("0.00");
+    expect(result.items.map((e) => e.balance)).toEqual([
+      "100.00",
+      "70.00",
+      "75.50",
+    ]);
+    expect(result.page).toBe(1);
+    expect(result.pageSize).toBe(25);
+    expect(result.total).toBe(3);
+    expect(result.totalPages).toBe(1);
+  });
+
+  it("T2 page N running-balance: accumulator seeded FROM openingBalanceDelta=42.5 NOT from Decimal(0) (SC-2)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByAccountPaginated = [
+      row(200, 0, "2099-02-01", 11),
+      row(0, 50, "2099-02-02", 12),
+    ];
+    query.openingBalanceDeltaPrimed = 42.5;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.openingBalance).toBe("42.50");
+    // 42.5 + 200 = 242.5 → 242.5 - 50 = 192.5
+    expect(result.items.map((e) => e.balance)).toEqual(["242.50", "192.50"]);
+  });
+
+  it("T3 empty page: no rows → items=[], total=0, totalPages=1, openingBalance=0.00 (SC-10)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByAccountPaginated = [];
+    query.openingBalanceDeltaPrimed = 0;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
+    expect(result.totalPages).toBe(1);
+    expect(result.openingBalance).toBe("0.00");
+  });
+
+  it("T4 empty page with nonzero opening boundary: items=[] but openingBalance=100.00 preserved", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByAccountPaginated = [];
+    query.openingBalanceDeltaPrimed = 100;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items).toEqual([]);
+    expect(result.openingBalance).toBe("100.00");
+  });
+
+  it("T5 NotFoundError when account missing (parity with legacy getAccountLedger, SC-11)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map()),
+      makeBalancesStub([]),
+    );
+
+    const err = await service
+      .getAccountLedgerPaginated(
+        "org-1",
+        "missing",
+        undefined,
+        undefined,
+        { page: 1, pageSize: 25 },
+      )
+      .catch((e: unknown) => e);
+
+    expect(err).toBeInstanceOf(NotFoundError);
+  });
+
+  it("T6 DTO serialization: openingBalance is string, debit/credit/balance are strings via .toFixed(2) (REQ-6/SC-12)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByAccountPaginated = [row(123.456, 0, "2099-01-01", 1)];
+    query.openingBalanceDeltaPrimed = 50;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(typeof result.openingBalance).toBe("string");
+    expect(result.openingBalance).toBe("50.00");
+    expect(typeof result.items[0].debit).toBe("string");
+    expect(result.items[0].debit).toBe("123.46");
+    expect(typeof result.items[0].balance).toBe("string");
+    expect(result.items[0].balance).toBe("173.46");
+  });
+
+  it("T7 pagination metadata: page=2, pageSize=5 threaded through (SC-7)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByAccountPaginated = [row(10, 0, "2099-01-05", 5)];
+    query.openingBalanceDeltaPrimed = 0;
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(new Map([["acc-1", account("acc-1", "1.1", "Caja")]])),
+      makeBalancesStub([]),
+    );
+
+    const result = await service.getAccountLedgerPaginated(
+      "org-1",
+      "acc-1",
+      undefined,
+      undefined,
+      { page: 2, pageSize: 5 },
+    );
+
+    expect(result.page).toBe(2);
+    expect(result.pageSize).toBe(5);
+  });
+});
