@@ -85,7 +85,10 @@ const MOCK_MAKE_DISPATCH_SERVICE_REGEX = /makeDispatchService/;
 describe("POC correctivo dispatch-instantiation — C0 RED shape gate 18α", () => {
   // ── α1-α2: app/(dashboard)/[orgSlug]/dispatches/page.tsx ─────────────────
 
-  it("α1 POS: dispatches/page.tsx contains makeDispatchService() call (POS)", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C3 GREEN: dispatches/page.tsx
+  // is a 308 permanentRedirect shim — no DispatchService instantiation. The
+  // makeDispatchService() factory call moved to /sales/page.tsx (C0 GREEN).
+  it.skip("α1 POS: dispatches/page.tsx contains makeDispatchService() call (POS) (RETIRED — redirect shim)", () => {
     expect(
       read("app/(dashboard)/[orgSlug]/dispatches/page.tsx"),
     ).toMatch(MAKE_DISPATCH_SERVICE_CALL_REGEX);
@@ -202,7 +205,9 @@ describe("POC correctivo dispatch-instantiation — C0 RED shape gate 18α", () 
   // factory. `makeDispatchService` keyword currently absent — FAIL at RED.
   // After C1a, keyword added to all 3 → PASS (pre-C1b, source files unchanged).
 
-  it("α16 MOCK: page.test.ts vi.mock factory contains makeDispatchService keyword (PASS-lock pre-C1b: C1a delivers)", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C3 GREEN: page.test.ts now
+  // asserts permanentRedirect shim — no vi.mock for modules/dispatch needed.
+  it.skip("α16 MOCK: page.test.ts vi.mock factory contains makeDispatchService keyword (PASS-lock pre-C1b: C1a delivers) (RETIRED — redirect shim test)", () => {
     expect(
       read(
         "app/(dashboard)/[orgSlug]/dispatches/__tests__/page.test.ts",

@@ -171,15 +171,18 @@ describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggr
 
 // ── α18: DUAL-SENTINEL — baseline 84 vi.mock count invariant ─────────────────
 
-describe("α18 DUAL-SENTINEL — baseline 84 vi.mock count (REQ-010 invariant)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 84 (baseline preserved; consumer edits = 0)", () => {
+describe("α18 DUAL-SENTINEL — baseline 83 vi.mock count (REQ-010 invariant, drifted -1 by poc-dispatch-retirement-into-sales C3)", () => {
+  it("α18: vi.mock count for @/features/permissions/server equals 83 (baseline preserved; -1 drift from /dispatches retirement)", () => {
     // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
     // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
-    // 84 expected in both RED and post-GREEN per spec REQ-010.
+    // Original baseline: 84. Adjusted to 83 by poc-dispatch-retirement-into-sales C3 GREEN:
+    // dispatches/__tests__/page.test.ts was rewritten as redirect-shim test and no longer
+    // mocks @/features/permissions/server (the redirect-shim has no auth gate). REQ-010
+    // invariant preserved; drift accounted explicitly per [[invariant_collision_elevation]].
     const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
     const count = Number(stdout);
-    expect(count).toBe(84);
+    expect(count).toBe(83);
   });
 });
 

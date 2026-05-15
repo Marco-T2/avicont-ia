@@ -24,7 +24,6 @@ const SIDEBAR_REGISTRY_PATH = resolve(
   "..",
   "..",
   "..",
-  "..",
   "components",
   "sidebar",
   "modules",

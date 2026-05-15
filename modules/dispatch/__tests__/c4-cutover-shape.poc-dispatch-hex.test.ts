@@ -23,7 +23,10 @@ function readFile(relativePath: string): string {
 describe("POC dispatch-hex C4 — cross-feature cutover", () => {
   // ── App source files ────────────────────────────────────────────────────
 
-  it("dispatches/page.tsx imports from modules/dispatch", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C3 GREEN: dispatches/page.tsx
+  // is now a 308 permanentRedirect shim to /sales (no longer a consumer of
+  // modules/dispatch). Cementación invariant superseded by retirement intent.
+  it.skip("dispatches/page.tsx imports from modules/dispatch (RETIRED — redirect shim)", () => {
     const content = readFile(
       "app/(dashboard)/[orgSlug]/dispatches/page.tsx",
     );
@@ -89,7 +92,10 @@ describe("POC dispatch-hex C4 — cross-feature cutover", () => {
 
   // ── Test files ──────────────────────────────────────────────────────────
 
-  it("dispatches/__tests__/page.test.ts mocks modules/dispatch", () => {
+  // RETIRED by poc-dispatch-retirement-into-sales C3 GREEN: page.test.ts now
+  // asserts permanentRedirect shim semantics (no modules/dispatch mock needed).
+  // Cementación invariant superseded by retirement intent.
+  it.skip("dispatches/__tests__/page.test.ts mocks modules/dispatch (RETIRED — redirect shim test)", () => {
     const content = readFile(
       "app/(dashboard)/[orgSlug]/dispatches/__tests__/page.test.ts",
     );

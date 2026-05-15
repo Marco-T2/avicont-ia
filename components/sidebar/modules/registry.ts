@@ -84,7 +84,7 @@ export const MODULES: Module[] = [
       { label: "Operaciones", isSeparator: true },
       {
         label: "Ventas",
-        href: (orgSlug) => `/${orgSlug}/dispatches`,
+        href: (orgSlug) => `/${orgSlug}/sales`,
         resource: "sales",
         iconKey: "ventas-despachos",
       },
