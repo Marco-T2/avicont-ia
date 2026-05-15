@@ -12,6 +12,10 @@ export { makeLedgerService } from "./composition-root";
 export { AccountsService } from "../application/accounts.service";
 export type { AccountsServiceDeps } from "../application/accounts.service";
 export { makeAccountsService } from "./composition-root";
+
+// ── Dashboard composition (accounting-dashboard-pro) ──
+export { AccountingDashboardService } from "../application/dashboard.service";
+export { makeAccountingDashboardService } from "./composition-root";
 export type * from "./dto/journal.types";
 export type * from "./dto/accounts.types";
 export type * from "./dto/ledger.types";

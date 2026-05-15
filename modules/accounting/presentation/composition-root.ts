@@ -3,6 +3,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 
+import { AccountingDashboardService } from "../application/dashboard.service";
 import { JournalsService } from "../application/journals.service";
 import { LedgerService } from "../application/ledger.service";
 import { ContactsReadAdapter } from "../infrastructure/contacts-read.adapter";
@@ -75,4 +76,19 @@ export function makeAccountsService(): AccountsService {
     repo: new PrismaAccountsRepo(),
     prisma,
   });
+}
+
+/**
+ * Factory for AccountingDashboardService — composes JournalsService,
+ * LedgerService, and FiscalPeriodsService into a single read-model
+ * orchestrator consumed by the accounting hub page. No new infra
+ * adapters; this factory wires already-composed services to keep the
+ * R4 carve-out surface minimal.
+ */
+export function makeAccountingDashboardService(): AccountingDashboardService {
+  return new AccountingDashboardService(
+    makeJournalsService(),
+    makeLedgerService(),
+    makeFiscalPeriodsService(),
+  );
 }
