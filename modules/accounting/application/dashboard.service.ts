@@ -1,35 +1,55 @@
 import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
-import type { AccountingDashboardDTO } from "./dto/dashboard.types";
+import type { Role } from "@/modules/permissions/domain/permissions";
+import type {
+  AccountingDashboardDTO,
+  DashboardMonthlyTrendPoint,
+} from "./dto/dashboard.types";
+import type { FinancialStatementsService } from "../financial-statements/application/financial-statements.service";
+import type { IncomeStatement } from "../financial-statements/domain/types/financial-statements.types";
 import type { JournalsService } from "./journals.service";
 import type { LedgerService } from "./ledger.service";
 
 type AccountTypeLiteral = "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
 
+const TREND_MONTHS = 12;
+
 /**
  * Application-layer dashboard composition for the accounting hub.
  *
- * Orchestrates journal counts, current-period lookup, and trial-balance
- * aggregates into a single `AccountingDashboardDTO`. All monetary fields
- * cross the boundary as fixed-2 decimal strings — recharts and any other
- * client consumer never see `Prisma.Decimal` or `decimal.js`.
+ * Orchestrates journal counts, current-period lookup, trial-balance
+ * aggregates, and a trailing 12-month Ingresos vs Egresos series into a
+ * single `AccountingDashboardDTO`. All monetary fields cross the boundary
+ * as fixed-2 decimal strings — recharts and any other client consumer
+ * never see `Prisma.Decimal` or `decimal.js`.
  *
- * v1 scope: KPI row + top-10 accounts. `monthlyTrend` and `closeStatus`
- * intentionally return empty/null until follow-up cycles (12m FS trend +
- * monthly-close integration) — DTO shape is forward-compatible.
+ * The Decimal type from `IncomeStatement.current.income.total` arrives as
+ * a TYPE ONLY (no runtime `Prisma` import in this file) and is consumed
+ * via `.toFixed(2)`, a method shared by `decimal.js` and our fake-decimal
+ * test stub. R5 (application/ must not import Prisma) preserved.
+ *
+ * `closeStatus` still returns `null` — monthly-close integration deferred.
  */
 export class AccountingDashboardService {
   constructor(
     private readonly journals: JournalsService,
     private readonly ledger: LedgerService,
     private readonly fiscalPeriods: FiscalPeriodsService,
+    private readonly financialStatements: FinancialStatementsService,
   ) {}
 
-  async load(orgId: string): Promise<AccountingDashboardDTO> {
+  async load(orgId: string, userRole: Role): Promise<AccountingDashboardDTO> {
     const today = new Date();
+    const buckets = buildMonthBuckets(today, TREND_MONTHS);
 
-    const [entries, currentPeriodRaw] = await Promise.all([
+    const [entries, currentPeriodRaw, ...trendStatements] = await Promise.all([
       this.journals.list(orgId),
       this.fiscalPeriods.findByDate(orgId, today),
+      ...buckets.map((b) =>
+        this.financialStatements.generateIncomeStatement(orgId, userRole, {
+          dateFrom: b.dateFrom,
+          dateTo: b.dateTo,
+        }),
+      ),
     ]);
 
     const currentPeriod = currentPeriodRaw
@@ -59,7 +79,7 @@ export class AccountingDashboardService {
         patrimonioTotal: aggregateByType(trialBalance, "PATRIMONIO"),
       },
       topAccounts: topTen(trialBalance),
-      monthlyTrend: [],
+      monthlyTrend: foldTrend(buckets, trendStatements),
       closeStatus: null,
     };
   }
@@ -124,4 +144,42 @@ function topTen(rows: TrialBalanceRowLike[]) {
       name,
       movementTotal: movement.toFixed(2),
     }));
+}
+
+interface MonthBucket {
+  month: string;
+  dateFrom: Date;
+  dateTo: Date;
+}
+
+/**
+ * Builds N trailing month buckets ending at the month of `today`,
+ * ascending order. Each bucket's `dateFrom` is the first UTC midnight of
+ * the month and `dateTo` is the last UTC midnight of the month
+ * (`Date.UTC(y, m+1, 0)`). Labels are `YYYY-MM` zero-padded.
+ */
+function buildMonthBuckets(today: Date, count: number): MonthBucket[] {
+  const year = today.getUTCFullYear();
+  const month = today.getUTCMonth();
+  const buckets: MonthBucket[] = [];
+  for (let offset = count - 1; offset >= 0; offset--) {
+    const m = month - offset;
+    const dateFrom = new Date(Date.UTC(year, m, 1));
+    const dateTo = new Date(Date.UTC(year, m + 1, 0));
+    const y = dateFrom.getUTCFullYear();
+    const mm = String(dateFrom.getUTCMonth() + 1).padStart(2, "0");
+    buckets.push({ month: `${y}-${mm}`, dateFrom, dateTo });
+  }
+  return buckets;
+}
+
+function foldTrend(
+  buckets: MonthBucket[],
+  statements: IncomeStatement[],
+): DashboardMonthlyTrendPoint[] {
+  return buckets.map((b, i) => ({
+    month: b.month,
+    ingresos: statements[i].current.income.total.toFixed(2),
+    egresos: statements[i].current.expenses.total.toFixed(2),
+  }));
 }
