@@ -975,3 +975,46 @@ describe("α37 Block C2 (sub-POC 8) — agent route test vi.mock target rewritte
     expect(LEGACY_MOCK_TARGET.test(src)).toBe(false);
   });
 });
+
+// ── Block C3 (sub-POC 8/8) — ledger/route.ts repoints to hex ─────────────────
+//
+// After GREEN C3:
+//   - ledger/route.ts imports `makeLedgerService` from the hex barrel.
+//   - ledger/route.ts imports `dateRangeSchema` from the hex barrel.
+//   - No `vi.mock` rewrite needed — ledger/route.ts has no sibling test file.
+//
+// Expected FAIL pre-GREEN:
+//   - α38a: route still imports `LedgerService` from `@/features/accounting/server`
+//     → LEGACY_LS_IMPORT regex matches → toBe(false) FAILS.
+//   - α38b: route does not yet import `makeLedgerService` from the hex barrel
+//     → HEX_BARREL_IMPORT does not match → toMatch FAILS.
+//   - α38c: route still imports `dateRangeSchema` from the legacy features barrel
+//     → LEGACY_DATE_RANGE_IMPORT matches → toBe(false) FAILS.
+
+const LEDGER_ROUTE = resolve(
+  REPO_ROOT,
+  "app/api/organizations/[orgSlug]/ledger/route.ts",
+);
+
+describe("α38 Block C3 (sub-POC 8) — ledger/route.ts repoints to hex makeLedgerService + dateRangeSchema", () => {
+  const LEGACY_LS_IMPORT =
+    /\bLedgerService\b[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?\bLedgerService\b/;
+  const HEX_BARREL_IMPORT =
+    /from\s+["']@\/modules\/accounting\/presentation\/server["']/;
+  const LEGACY_DATE_RANGE_IMPORT =
+    /\bdateRangeSchema\b[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?\bdateRangeSchema\b/;
+
+  it("α38a: ledger/route.ts does not import LedgerService from @/features/accounting/server", () => {
+    const src = readFileSync(LEDGER_ROUTE, "utf-8");
+    expect(LEGACY_LS_IMPORT.test(src)).toBe(false);
+  });
+  it("α38b: ledger/route.ts imports makeLedgerService from @/modules/accounting/presentation/server", () => {
+    const src = readFileSync(LEDGER_ROUTE, "utf-8");
+    expect(src).toMatch(HEX_BARREL_IMPORT);
+    expect(src).toMatch(/\bmakeLedgerService\b/);
+  });
+  it("α38c: ledger/route.ts does not import dateRangeSchema from @/features/accounting/server", () => {
+    const src = readFileSync(LEDGER_ROUTE, "utf-8");
+    expect(LEGACY_DATE_RANGE_IMPORT.test(src)).toBe(false);
+  });
+});
