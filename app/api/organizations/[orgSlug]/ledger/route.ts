@@ -1,10 +1,12 @@
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { LedgerService } from "@/features/accounting/server";
-import { dateRangeSchema } from "@/features/accounting/server";
+import {
+  makeLedgerService,
+  dateRangeSchema,
+} from "@/modules/accounting/presentation/server";
 import { ValidationError } from "@/features/shared/errors";
 
-const service = new LedgerService();
+const service = makeLedgerService();
 
 export async function GET(
   request: Request,
