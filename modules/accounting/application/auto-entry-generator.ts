@@ -5,10 +5,14 @@ import {
   JOURNAL_NOT_BALANCED,
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
-import type { Prisma } from "@/generated/prisma/client";
+import { Prisma } from "@/generated/prisma/client";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import {
+  sumDecimals,
+  eq,
+} from "@/modules/accounting/shared/domain/money.utils";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
 
 // ── Entry template types ──
@@ -106,11 +110,20 @@ export class AutoEntryGenerator {
       });
     }
 
-    // 3. Validate double-entry balance (sum debits == sum credits)
-    const totalDebit = resolvedLines.reduce((s, l) => s + l.debit, 0);
-    const totalCredit = resolvedLines.reduce((s, l) => s + l.credit, 0);
+    // 3. Validate double-entry balance using arbitrary-precision Decimal
+    //    arithmetic (sumDecimals + eq from shared/domain/money.utils).
+    //    R-money textual deviation discharged per poc-money-math-decimal-
+    //    convergence C2 GREEN (OLEADA 7 POC #2). EntryLineTemplate.amount
+    //    stays `number` per Q4 lock (TIER 2 deferred); coerce via
+    //    new Prisma.Decimal(value) at this boundary.
+    const totalDebit = sumDecimals(
+      resolvedLines.map((l) => new Prisma.Decimal(l.debit)),
+    );
+    const totalCredit = sumDecimals(
+      resolvedLines.map((l) => new Prisma.Decimal(l.credit)),
+    );
 
-    if (Math.round(totalDebit * 100) !== Math.round(totalCredit * 100)) {
+    if (!eq(totalDebit, totalCredit)) {
       throw new ValidationError(
         "El asiento no balancea: débitos y créditos son distintos",
         JOURNAL_NOT_BALANCED,
