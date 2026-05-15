@@ -734,3 +734,155 @@ describe("α27 Block C5 — server.ts barrel surface intact (out-of-scope guard)
     expect(src).toMatch(/export\s*\{\s*LedgerService\s*\}\s*from\s+["']\.\/ledger\.service["']/);
   });
 });
+
+// ── Block C1 (sub-POC 8) — journal API routes repoint to hex factory + schemas ─
+//
+// C1 repoints 5 journal API route files away from `new JournalService()` /
+// features-barrel schema imports toward `makeJournalsService()` + schemas from
+// the hex `@/modules/accounting/presentation/server` surface. Also adds
+// `export * from './validation'` to the hex server.ts so the schema surface
+// is accessible from the single hex barrel.
+//
+// Expected FAIL pre-GREEN (C1 RED):
+//   α31: journal routes still import JournalService from @/features/accounting/server → FAILS
+//   α32: journal routes + status route still import schemas from @/features/accounting/server → FAILS
+//   α33: hex server.ts does not yet re-export validation → FAILS
+//   α34: route test files vi.mock targets still point at features barrel or composition-root → FAILS
+
+const JOURNAL_API_ROUTES = [
+  {
+    label: "journal/route.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/route.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/route.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/[entryId]/route.ts",
+    ),
+  },
+  {
+    label: "journal/last-reference/route.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/last-reference/route.ts",
+    ),
+  },
+  {
+    label: "accounting/correlation-audit/route.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/accounting/correlation-audit/route.ts",
+    ),
+  },
+] as const;
+
+const JOURNAL_STATUS_ROUTE = resolve(
+  REPO_ROOT,
+  "app/api/organizations/[orgSlug]/journal/[entryId]/status/route.ts",
+);
+
+const HEX_SERVER_PATH = resolve(
+  REPO_ROOT,
+  "modules/accounting/presentation/server.ts",
+);
+
+// α31 — none of the 4 factory-swap routes imports `JournalService` from the
+//   features barrel.
+//   Expected FAIL pre-GREEN: routes still import JournalService.
+describe("α31 Block C1 (sub-POC 8) — journal API routes no longer import JournalService from features barrel", () => {
+  const LEGACY_JS_IMPORT =
+    /\bJournalService\b[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?\bJournalService\b/;
+  it("α31: no journal API route imports JournalService from @/features/accounting/server", () => {
+    const offenders = JOURNAL_API_ROUTES.filter(({ path }) =>
+      LEGACY_JS_IMPORT.test(readFileSync(path, "utf-8")),
+    );
+    expect(offenders.map((o) => o.label)).toEqual([]);
+  });
+});
+
+// α32 — all 5 routes import makeJournalsService (or schema) from the hex barrel.
+//   Expected FAIL pre-GREEN: routes still import from features barrel or composition-root only.
+describe("α32 Block C1 (sub-POC 8) — journal API routes import from hex barrel @/modules/accounting/presentation/server", () => {
+  const HEX_BARREL_IMPORT =
+    /from\s+["']@\/modules\/accounting\/presentation\/server["']/;
+  it("α32: all 4 factory-swap routes import from hex barrel", () => {
+    const missing = JOURNAL_API_ROUTES.filter(({ path }) =>
+      !HEX_BARREL_IMPORT.test(readFileSync(path, "utf-8")),
+    );
+    expect(missing.map((o) => o.label)).toEqual([]);
+  });
+  it("α32: status/route.ts imports statusTransitionSchema from hex barrel (not features barrel)", () => {
+    const src = readFileSync(JOURNAL_STATUS_ROUTE, "utf-8");
+    // Must import from hex barrel
+    expect(src).toMatch(HEX_BARREL_IMPORT);
+    // Must NOT import statusTransitionSchema from features barrel
+    expect(src).not.toMatch(
+      /statusTransitionSchema[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?statusTransitionSchema/,
+    );
+  });
+});
+
+// α33 — hex server.ts re-exports the validation schemas so that the single
+//   `@/modules/accounting/presentation/server` barrel is sufficient.
+//   Expected FAIL pre-GREEN: server.ts has no `export * from './validation'`.
+describe("α33 Block C1 (sub-POC 8) — hex server.ts re-exports validation schemas", () => {
+  it("α33: modules/accounting/presentation/server.ts exports * from validation", () => {
+    const src = readFileSync(HEX_SERVER_PATH, "utf-8");
+    expect(src).toMatch(/export\s*\*\s*from\s+["']\.\/validation["']/);
+  });
+  it("α33: hex server.ts surface exports lastReferenceQuerySchema (via validation re-export)", () => {
+    const src = readFileSync(HEX_SERVER_PATH, "utf-8");
+    // Either directly or via the re-export token
+    const exportsValidation = /export\s*\*\s*from\s+["']\.\/validation["']/.test(src);
+    expect(exportsValidation).toBe(true);
+  });
+});
+
+// α34 — route test files vi.mock targets rewritten to hex barrel.
+//   Expected FAIL pre-GREEN: test files still vi.mock @/features/accounting/server
+//   or @/modules/accounting/presentation/composition-root as the primary barrel.
+const JOURNAL_API_ROUTE_TESTS = [
+  {
+    label: "journal/__tests__/route.create.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/__tests__/route.create.test.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/__tests__/route.update.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/[entryId]/__tests__/route.update.test.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/__tests__/route.pdf.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/[entryId]/__tests__/route.pdf.test.ts",
+    ),
+  },
+  {
+    label: "journal/[entryId]/status/__tests__/route.void-guard.test.ts",
+    path: resolve(
+      REPO_ROOT,
+      "app/api/organizations/[orgSlug]/journal/[entryId]/status/__tests__/route.void-guard.test.ts",
+    ),
+  },
+] as const;
+
+describe("α34 Block C1 (sub-POC 8) — route test files vi.mock target rewritten to hex barrel", () => {
+  const LEGACY_MOCK_TARGET =
+    /vi\.mock\s*\(\s*["']@\/features\/accounting\/server["']/;
+  it("α34: no journal API route test vi.mocks @/features/accounting/server", () => {
+    const offenders = JOURNAL_API_ROUTE_TESTS.filter(({ path }) =>
+      LEGACY_MOCK_TARGET.test(readFileSync(path, "utf-8")),
+    );
+    expect(offenders.map((o) => o.label)).toEqual([]);
+  });
+});
