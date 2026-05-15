@@ -1,6 +1,11 @@
 // ── Catálogo de Reportes ─────────────────────────────────────────────────────
-// Registro estático de todos los reportes disponibles y planificados.
-// PR2: tipos + arrays stub (vacíos). PR3 poblará los datos.
+// Registro estático de reportes disponibles.
+//
+// Historia: PR2 introdujo tipos + stubs; PR3 pobló con 11 available + 19
+// planned. La lista de planned se retiró del registry (decision logged in
+// engram topic `reports/roadmap-planned`) — se irá repoblando a medida que
+// cada reporte se implemente. El type union conserva "planned" | "hidden"
+// para soportar reactivación sin tocar contratos.
 
 import type { Resource } from "@/features/permissions";
 
@@ -48,17 +53,14 @@ export const reportCategories: readonly ReportCategory[] = [
   { id: "para-mi-contador",    label: "Para mi contador",         order: 2 },
   { id: "quien-te-debe",       label: "Quién te debe",            order: 3 },
   { id: "lo-que-debes",        label: "Lo que debes",             order: 4 },
-  { id: "ventas-clientes",     label: "Ventas y clientes",        order: 5 },
-  { id: "gastos-proveedores",  label: "Gastos y proveedores",     order: 6 },
-  { id: "empresa",             label: "Empresa y actividad",      order: 7 },
-  { id: "impuestos",           label: "Impuestos",                order: 8 },
-  { id: "nomina-empleados",    label: "Nómina y empleados",       order: 9 },
+  { id: "empresa",             label: "Empresa y actividad",      order: 5 },
+  { id: "impuestos",           label: "Impuestos",                order: 6 },
 ];
 
 // ── Registro de reportes ─────────────────────────────────────────────────────
 
 export const reportRegistry: readonly ReportEntry[] = [
-  // ── Estados Financieros — disponibles ──────────────────────────────────────
+  // ── Estados Financieros ────────────────────────────────────────────────────
   {
     id: "balance-sheet",
     title: "Balance General",
@@ -77,17 +79,6 @@ export const reportRegistry: readonly ReportEntry[] = [
     route: "/accounting/financial-statements/income-statement",
     icon: "TrendingUp",
   },
-
-  // ── Estados Financieros — planificados ─────────────────────────────────────
-  {
-    id: "cash-flow",
-    title: "Flujo de Efectivo",
-    description: "Movimientos de entrada y salida de efectivo del período.",
-    category: "estados-financieros",
-    status: "planned",
-    route: null,
-    icon: "Banknote",
-  },
   {
     id: "equity-changes",
     title: "Cambios en el Patrimonio",
@@ -98,16 +89,16 @@ export const reportRegistry: readonly ReportEntry[] = [
     icon: "GitBranch",
   },
   {
-    id: "balance-comparative",
-    title: "Balance Comparativo",
-    description: "Comparación del Balance General entre dos períodos.",
+    id: "initial-balance",
+    title: "Balance Inicial",
+    description: "Estado de apertura al inicio del ejercicio contable.",
     category: "estados-financieros",
-    status: "planned",
-    route: null,
-    icon: "Columns2",
+    status: "available",
+    route: "/accounting/initial-balance",
+    icon: "FlagTriangleRight",
   },
 
-  // ── Para mi contador — disponibles ─────────────────────────────────────────
+  // ── Para mi contador ───────────────────────────────────────────────────────
   {
     id: "worksheet",
     title: "Hoja de Trabajo",
@@ -126,44 +117,8 @@ export const reportRegistry: readonly ReportEntry[] = [
     route: "/accounting/trial-balance",
     icon: "ListOrdered",
   },
-  {
-    id: "initial-balance",
-    title: "Balance Inicial",
-    description: "Estado de apertura al inicio del ejercicio contable.",
-    category: "estados-financieros",
-    status: "available",
-    route: "/accounting/initial-balance",
-    icon: "FlagTriangleRight",
-  },
-  {
-    id: "caratula",
-    title: "Carátula de Estados Financieros",
-    description: "Portada oficial con datos del ente y período.",
-    category: "para-mi-contador",
-    status: "planned",
-    route: null,
-    icon: "FileText",
-  },
-  {
-    id: "notes-statements",
-    title: "Notas a los Estados Financieros",
-    description: "Revelaciones y notas explicativas de los EEFF.",
-    category: "para-mi-contador",
-    status: "planned",
-    route: null,
-    icon: "FileQuestion",
-  },
-  {
-    id: "general-ledger-detail",
-    title: "Mayor Analítico",
-    description: "Movimientos detallados por cuenta del período.",
-    category: "para-mi-contador",
-    status: "planned",
-    route: null,
-    icon: "Layers",
-  },
 
-  // ── Quién te debe — disponibles ────────────────────────────────────────────
+  // ── Quién te debe ──────────────────────────────────────────────────────────
   {
     id: "cuentas-por-cobrar",
     title: "Cuentas por Cobrar",
@@ -175,36 +130,7 @@ export const reportRegistry: readonly ReportEntry[] = [
     resource: "sales",
   },
 
-  // ── Quién te debe — planificados ───────────────────────────────────────────
-  {
-    id: "ar-aging",
-    title: "Antigüedad de Cuentas por Cobrar",
-    description: "Clasificación de saldos por cobrar según vencimiento.",
-    category: "quien-te-debe",
-    status: "planned",
-    route: null,
-    icon: "Clock",
-  },
-  {
-    id: "customer-balance-summary",
-    title: "Resumen de Saldos de Clientes",
-    description: "Balance consolidado por cliente al corte seleccionado.",
-    category: "quien-te-debe",
-    status: "planned",
-    route: null,
-    icon: "Users",
-  },
-  {
-    id: "ar-statement",
-    title: "Extracto por Cliente",
-    description: "Historial de transacciones y saldo de un cliente.",
-    category: "quien-te-debe",
-    status: "planned",
-    route: null,
-    icon: "UserSearch",
-  },
-
-  // ── Lo que debes — disponibles ─────────────────────────────────────────────
+  // ── Lo que debes ───────────────────────────────────────────────────────────
   {
     id: "cuentas-por-pagar",
     title: "Cuentas por Pagar",
@@ -216,94 +142,7 @@ export const reportRegistry: readonly ReportEntry[] = [
     resource: "purchases",
   },
 
-  // ── Lo que debes — planificados ────────────────────────────────────────────
-  {
-    id: "ap-aging",
-    title: "Antigüedad de Cuentas por Pagar",
-    description: "Clasificación de saldos por pagar según vencimiento.",
-    category: "lo-que-debes",
-    status: "planned",
-    route: null,
-    icon: "Hourglass",
-  },
-  {
-    id: "supplier-balance-summary",
-    title: "Resumen de Saldos de Proveedores",
-    description: "Balance consolidado por proveedor al corte seleccionado.",
-    category: "lo-que-debes",
-    status: "planned",
-    route: null,
-    icon: "Building2",
-  },
-  {
-    id: "ap-statement",
-    title: "Extracto por Proveedor",
-    description: "Historial de transacciones y saldo de un proveedor.",
-    category: "lo-que-debes",
-    status: "planned",
-    route: null,
-    icon: "Search",
-  },
-
-  // ── Ventas y clientes — planificados ───────────────────────────────────────
-  {
-    id: "sales-by-customer",
-    title: "Ventas por Cliente",
-    description: "Total de ventas agrupado por cliente en el período.",
-    category: "ventas-clientes",
-    status: "planned",
-    route: null,
-    icon: "ShoppingCart",
-  },
-  {
-    id: "sales-by-product",
-    title: "Ventas por Producto",
-    description: "Total de ventas agrupado por producto o servicio.",
-    category: "ventas-clientes",
-    status: "planned",
-    route: null,
-    icon: "Package",
-  },
-  {
-    id: "sales-by-period",
-    title: "Ventas por Período",
-    description: "Comparativo de ventas mensuales o por rango de fecha.",
-    category: "ventas-clientes",
-    status: "planned",
-    route: null,
-    icon: "CalendarDays",
-  },
-
-  // ── Gastos y proveedores — planificados ────────────────────────────────────
-  {
-    id: "expenses-by-supplier",
-    title: "Gastos por Proveedor",
-    description: "Detalle de compras y gastos agrupados por proveedor.",
-    category: "gastos-proveedores",
-    status: "planned",
-    route: null,
-    icon: "Receipt",
-  },
-  {
-    id: "expenses-by-category",
-    title: "Gastos por Categoría",
-    description: "Distribución de gastos según tipo o cuenta contable.",
-    category: "gastos-proveedores",
-    status: "planned",
-    route: null,
-    icon: "PieChart",
-  },
-  {
-    id: "purchases-by-period",
-    title: "Compras por Período",
-    description: "Comparativo de compras mensuales o por rango de fecha.",
-    category: "gastos-proveedores",
-    status: "planned",
-    route: null,
-    icon: "CalendarRange",
-  },
-
-  // ── Empresa y actividad — disponibles ──────────────────────────────────────
+  // ── Empresa y actividad ────────────────────────────────────────────────────
   {
     id: "correlation-audit",
     title: "Auditoría de Correlativos",
@@ -314,7 +153,7 @@ export const reportRegistry: readonly ReportEntry[] = [
     icon: "ShieldCheck",
   },
 
-  // ── Impuestos — disponibles ────────────────────────────────────────────────
+  // ── Impuestos ──────────────────────────────────────────────────────────────
   {
     id: "iva-book-sales",
     title: "Libro de Ventas IVA",
@@ -332,27 +171,5 @@ export const reportRegistry: readonly ReportEntry[] = [
     status: "available",
     route: "/informes/impuestos/libro-compras",
     icon: "BookMarked",
-  },
-
-  // ── Impuestos — planificados ───────────────────────────────────────────────
-  {
-    id: "rc-iva-summary",
-    title: "Resumen RC-IVA",
-    description: "Liquidación del régimen complementario al IVA.",
-    category: "impuestos",
-    status: "planned",
-    route: null,
-    icon: "ReceiptText",
-  },
-
-  // ── Nómina y empleados — planificados ──────────────────────────────────────
-  {
-    id: "payroll-summary",
-    title: "Resumen de Planilla",
-    description: "Detalle de haberes, descuentos y aportes del período.",
-    category: "nomina-empleados",
-    status: "planned",
-    route: null,
-    icon: "Users2",
   },
 ];

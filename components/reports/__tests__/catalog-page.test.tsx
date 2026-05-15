@@ -25,7 +25,6 @@ import { reportCategories, reportRegistry } from "@/features/reports";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const availableEntries = reportRegistry.filter((e) => e.status === "available");
-const plannedEntries = reportRegistry.filter((e) => e.status === "planned");
 const orgSlug = "test-org";
 
 afterEach(() => {
@@ -80,29 +79,6 @@ describe("CatalogPage", () => {
       .getAllByRole("link")
       .filter((el) => el.tagName.toLowerCase() === "a");
     expect(anchorLinks).toHaveLength(availableEntries.length);
-  });
-
-  // 4.1-E: Planned entries are non-navigable (aria-disabled, no anchor tag)
-  it("renders planned entries as non-navigable elements with aria-disabled", () => {
-    render(<CatalogPage orgSlug={orgSlug} entries={reportRegistry} />);
-
-    // At least one planned entry to make this test non-trivial
-    expect(plannedEntries.length).toBeGreaterThan(0);
-
-    for (const entry of plannedEntries) {
-      const card = screen.getByTestId(`report-card-${entry.id}`);
-      expect(card.getAttribute("aria-disabled")).toBe("true");
-      // Must NOT be an anchor element
-      expect(card.tagName.toLowerCase()).not.toBe("a");
-    }
-  });
-
-  // 4.1-F: Planned entries show "Próximamente" badge
-  it("renders 'Próximamente' badge on each planned entry", () => {
-    render(<CatalogPage orgSlug={orgSlug} entries={reportRegistry} />);
-
-    const proximamenteBadges = screen.getAllByText("Próximamente");
-    expect(proximamenteBadges).toHaveLength(plannedEntries.length);
   });
 
   // 4.1-G: Available entries show "Disponible" badge

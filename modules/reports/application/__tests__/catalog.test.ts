@@ -191,21 +191,18 @@ describe("validators de invariantes con fixtures no vacíos", () => {
 // Estos tests verifican que el catálogo tiene los datos reales poblados.
 
 describe("reportCategories — datos curados (PR3)", () => {
-  it("tiene exactamente 9 categorías", () => {
-    expect(reportCategories).toHaveLength(9);
+  it("tiene exactamente 6 categorías", () => {
+    expect(reportCategories).toHaveLength(6);
   });
 
-  it("contiene las 9 categorías esperadas por id", () => {
+  it("contiene las 6 categorías esperadas por id", () => {
     const expectedIds = [
       "estados-financieros",
       "para-mi-contador",
       "quien-te-debe",
       "lo-que-debes",
-      "ventas-clientes",
-      "gastos-proveedores",
       "empresa",
       "impuestos",
-      "nomina-empleados",
     ];
     const actualIds = reportCategories.map((c) => c.id);
     for (const id of expectedIds) {
@@ -256,11 +253,6 @@ describe("reportRegistry — datos curados (PR3)", () => {
     expect(entry, "debe existir la entrada 'sumas-saldos'").toBeDefined();
     expect(entry?.status).toBe("available");
     expect(entry?.route).toBe("/accounting/trial-balance");
-  });
-
-  it("tiene al menos 18 entradas con status 'planned'", () => {
-    const planned = reportRegistry.filter((e) => e.status === "planned");
-    expect(planned.length).toBeGreaterThanOrEqual(18);
   });
 
   it("balance-sheet pertenece a la categoría 'estados-financieros'", () => {
