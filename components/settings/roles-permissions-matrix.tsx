@@ -54,6 +54,8 @@ const RESOURCE_ORDER: Resource[] = [
   "farms",
   "documents",
   "agent",
+  "period",
+  "audit",
 ];
 
 const POSTABLE_RESOURCES = new Set<Resource>(["sales", "purchases", "journal"] as PostableResource[]);

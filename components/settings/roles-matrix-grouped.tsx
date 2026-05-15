@@ -28,6 +28,8 @@ const RESOURCE_ORDER: Resource[] = [
   "farms",
   "documents",
   "agent",
+  "period",
+  "audit",
 ];
 
 // ─── Props ────────────────────────────────────────────────────────────────────
