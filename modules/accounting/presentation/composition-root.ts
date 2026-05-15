@@ -6,6 +6,7 @@ import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-
 import { AccountingDashboardService } from "../application/dashboard.service";
 import { JournalsService } from "../application/journals.service";
 import { LedgerService } from "../application/ledger.service";
+import { makeFinancialStatementsService } from "../financial-statements/presentation/server";
 import { ContactsReadAdapter } from "../infrastructure/contacts-read.adapter";
 import { FiscalPeriodsReadAdapter } from "../infrastructure/fiscal-periods-read.adapter";
 import { LegacyAccountsReadAdapter } from "../infrastructure/legacy-accounts-read.adapter";
@@ -90,5 +91,6 @@ export function makeAccountingDashboardService(): AccountingDashboardService {
     makeJournalsService(),
     makeLedgerService(),
     makeFiscalPeriodsService(),
+    makeFinancialStatementsService(),
   );
 }

@@ -138,7 +138,7 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
     const tree = (await AccountingPage({ params: makeParams() })) as ReactElement;
 
     expect(mockCanAccess).toHaveBeenCalledWith("contador", "reports", "read", "org-1");
-    expect(mockDashboardLoad).toHaveBeenCalledWith("org-1");
+    expect(mockDashboardLoad).toHaveBeenCalledWith("org-1", "contador");
     expect(mockJournalsList).not.toHaveBeenCalled();
     expect(findElement(tree, mockDashboardProClient)).not.toBeNull();
     expect(findElement(tree, mockDashboardLight)).toBeNull();

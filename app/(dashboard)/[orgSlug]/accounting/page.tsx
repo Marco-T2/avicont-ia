@@ -43,7 +43,7 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
   const canViewPro = await canAccess(role, "reports", "read", orgId);
 
   if (canViewPro) {
-    const data = await makeAccountingDashboardService().load(orgId);
+    const data = await makeAccountingDashboardService().load(orgId, role);
     return (
       <div className="space-y-6">
         <Header />
