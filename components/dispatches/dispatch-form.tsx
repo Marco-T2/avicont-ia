@@ -28,6 +28,7 @@ import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import { JustificationModal } from "@/components/shared/justification-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
@@ -329,6 +330,9 @@ export default function DispatchForm({
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isActioning, setIsActioning] = useState(false);
+  const [confirmPost, setConfirmPost] = useState(false);
+  const [confirmVoid, setConfirmVoid] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // ── Computed values ──
   const shrinkagePctNum = parseFloat(shrinkagePct) || 0;
@@ -546,9 +550,23 @@ export default function DispatchForm({
 
   // ── Status action handlers ──
 
-  async function handlePost() {
+  function handlePost() {
     if (!existingDispatch) return;
-    if (!window.confirm("¿Contabilizar este despacho? Esta acción generará el asiento contable y la cuenta por cobrar.")) return;
+    setConfirmPost(true);
+  }
+
+  function handleVoid() {
+    if (!existingDispatch) return;
+    setConfirmVoid(true);
+  }
+
+  function handleDelete() {
+    if (!existingDispatch) return;
+    setConfirmDelete(true);
+  }
+
+  async function executePost() {
+    if (!existingDispatch) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -564,6 +582,7 @@ export default function DispatchForm({
         throw new Error(data.error ?? "Error al contabilizar");
       }
       toast.success("Despacho contabilizado exitosamente");
+      setConfirmPost(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar");
@@ -572,9 +591,8 @@ export default function DispatchForm({
     }
   }
 
-  async function handleVoid() {
+  async function executeVoid() {
     if (!existingDispatch) return;
-    if (!window.confirm("¿Anular este despacho? Se revertirá el asiento contable y la cuenta por cobrar. Esta acción no se puede deshacer.")) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -590,6 +608,7 @@ export default function DispatchForm({
         throw new Error(data.error ?? "Error al anular");
       }
       toast.success("Despacho anulado");
+      setConfirmVoid(false);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
@@ -598,11 +617,8 @@ export default function DispatchForm({
     }
   }
 
-
-
-  async function handleDelete() {
+  async function executeDelete() {
     if (!existingDispatch) return;
-    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
     setIsActioning(true);
     try {
       const response = await fetch(
@@ -614,6 +630,7 @@ export default function DispatchForm({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Borrador eliminado");
+      setConfirmDelete(false);
       router.push(`/${orgSlug}/dispatches`);
       router.refresh();
     } catch (err) {
@@ -1644,6 +1661,39 @@ export default function DispatchForm({
           setPendingAction(null);
         }}
         isLoading={isJustificationLoading}
+      />
+
+      <ConfirmDialog
+        open={confirmPost}
+        onOpenChange={setConfirmPost}
+        title="Contabilizar despacho"
+        description="¿Contabilizar este despacho? Esta acción generará el asiento contable y la cuenta por cobrar."
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={isActioning}
+        onConfirm={executePost}
+      />
+
+      <ConfirmDialog
+        open={confirmVoid}
+        onOpenChange={setConfirmVoid}
+        title="Anular despacho"
+        description="¿Anular este despacho? Se revertirá el asiento contable y la cuenta por cobrar. Esta operación no se puede deshacer."
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={isActioning}
+        onConfirm={executeVoid}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Eliminar borrador"
+        description="Esta acción eliminará el borrador permanentemente. No se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={isActioning}
+        onConfirm={executeDelete}
       />
     </form>
   );

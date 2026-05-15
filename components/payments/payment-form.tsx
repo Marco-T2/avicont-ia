@@ -30,6 +30,7 @@ import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/pa
 import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
 import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
 import { JustificationModal } from "@/components/shared/justification-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
@@ -246,6 +247,10 @@ export default function PaymentForm({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPosting, setIsPosting] = useState(false);
   const [isVoiding, setIsVoiding] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [confirmPost, setConfirmPost] = useState(false);
+  const [confirmVoid, setConfirmVoid] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // ── Justification modal state ──
   const [showJustification, setShowJustification] = useState(false);
@@ -779,15 +784,23 @@ export default function PaymentForm({
 
   // ── Post (DRAFT → POSTED) ──
 
-  async function handlePost() {
+  function handlePost() {
     if (!existingPayment) return;
-    if (
-      !confirm(
-        "¿Está seguro de contabilizar este pago? Esta acción generará el asiento contable correspondiente.",
-      )
-    )
-      return;
+    setConfirmPost(true);
+  }
 
+  function handleVoid() {
+    if (!existingPayment) return;
+    setConfirmVoid(true);
+  }
+
+  function handleDelete() {
+    if (!existingPayment) return;
+    setConfirmDelete(true);
+  }
+
+  async function executePost() {
+    if (!existingPayment) return;
     setIsPosting(true);
     try {
       const response = await fetch(
@@ -805,6 +818,7 @@ export default function PaymentForm({
       }
 
       toast.success("Pago contabilizado correctamente");
+      setConfirmPost(false);
       router.push(`/${orgSlug}/payments`);
       router.refresh();
     } catch (err) {
@@ -816,17 +830,8 @@ export default function PaymentForm({
     }
   }
 
-  // ── Void (POSTED → VOIDED) ──
-
-  async function handleVoid() {
+  async function executeVoid() {
     if (!existingPayment) return;
-    if (
-      !confirm(
-        "¿Está seguro de anular este pago? Se revertirán los asientos contables y las actualizaciones de CxC/CxP.",
-      )
-    )
-      return;
-
     setIsVoiding(true);
     try {
       const response = await fetch(
@@ -844,6 +849,7 @@ export default function PaymentForm({
       }
 
       toast.success("Pago anulado correctamente");
+      setConfirmVoid(false);
       router.push(`/${orgSlug}/payments`);
       router.refresh();
     } catch (err) {
@@ -855,12 +861,9 @@ export default function PaymentForm({
     }
   }
 
-  // ── Delete (DRAFT only) ──
-
-  async function handleDelete() {
+  async function executeDelete() {
     if (!existingPayment) return;
-    if (!confirm("¿Está seguro de eliminar este pago borrador?")) return;
-
+    setIsDeleting(true);
     try {
       const response = await fetch(
         `/api/organizations/${orgSlug}/payments/${existingPayment.id}`,
@@ -873,12 +876,15 @@ export default function PaymentForm({
       }
 
       toast.success("Pago eliminado correctamente");
+      setConfirmDelete(false);
       router.push(`/${orgSlug}/payments`);
       router.refresh();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Error al eliminar el pago",
       );
+    } finally {
+      setIsDeleting(false);
     }
   }
 
@@ -1922,6 +1928,39 @@ export default function PaymentForm({
           setPendingAction(null);
         }}
         isLoading={isJustificationLoading}
+      />
+
+      <ConfirmDialog
+        open={confirmPost}
+        onOpenChange={setConfirmPost}
+        title="Contabilizar pago"
+        description="¿Contabilizar este pago? Esta acción generará el asiento contable correspondiente."
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={isPosting}
+        onConfirm={executePost}
+      />
+
+      <ConfirmDialog
+        open={confirmVoid}
+        onOpenChange={setConfirmVoid}
+        title="Anular pago"
+        description="¿Anular este pago? Se revertirán los asientos contables y las actualizaciones de CxC/CxP. Esta operación no se puede deshacer."
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={isVoiding}
+        onConfirm={executeVoid}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title="Eliminar pago borrador"
+        description="Esta acción eliminará el borrador permanentemente. No se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={isDeleting}
+        onConfirm={executeDelete}
       />
     </form>
   );

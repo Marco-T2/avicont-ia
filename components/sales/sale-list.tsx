@@ -27,6 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Pagination,
   PaginationContent,
@@ -92,6 +93,9 @@ export default function SaleList({
 }: SaleListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [postId, setPostId] = useState<string | null>(null);
+  const [voidId, setVoidId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const currentStatus = statusFilter ?? "all";
 
   function handleStatusChange(next: string) {
@@ -101,8 +105,21 @@ export default function SaleList({
     router.push(`/${orgSlug}/sales${q ? `?${q}` : ""}`);
   }
 
-  async function handlePost(saleId: string) {
-    if (!window.confirm("¿Contabilizar esta venta? Esta acción generará el asiento contable y la cuenta por cobrar.")) return;
+  function handlePost(saleId: string) {
+    setPostId(saleId);
+  }
+
+  function handleVoid(saleId: string) {
+    setVoidId(saleId);
+  }
+
+  function handleDelete(saleId: string) {
+    setDeleteId(saleId);
+  }
+
+  async function executePost() {
+    if (!postId) return;
+    const saleId = postId;
     setActioningId(saleId);
     try {
       const response = await fetch(
@@ -118,6 +135,7 @@ export default function SaleList({
         throw new Error(data.error ?? "Error al contabilizar");
       }
       toast.success("Venta contabilizada");
+      setPostId(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar");
@@ -126,8 +144,9 @@ export default function SaleList({
     }
   }
 
-  async function handleVoid(saleId: string) {
-    if (!window.confirm("¿Anular esta venta? Se revertirá el asiento contable y la cuenta por cobrar.")) return;
+  async function executeVoid() {
+    if (!voidId) return;
+    const saleId = voidId;
     setActioningId(saleId);
     try {
       const response = await fetch(
@@ -143,6 +162,7 @@ export default function SaleList({
         throw new Error(data.error ?? "Error al anular");
       }
       toast.success("Venta anulada");
+      setVoidId(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
@@ -151,8 +171,9 @@ export default function SaleList({
     }
   }
 
-  async function handleDelete(saleId: string) {
-    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
+  async function executeDelete() {
+    if (!deleteId) return;
+    const saleId = deleteId;
     setActioningId(saleId);
     try {
       const response = await fetch(
@@ -164,6 +185,7 @@ export default function SaleList({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Borrador eliminado");
+      setDeleteId(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al eliminar");
@@ -397,6 +419,39 @@ export default function SaleList({
           Mostrando {(page - 1) * pageSize + 1}-{Math.min(page * pageSize, total)} de {total}
         </p>
       )}
+
+      <ConfirmDialog
+        open={postId !== null}
+        onOpenChange={(open) => !open && setPostId(null)}
+        title="Contabilizar venta"
+        description="¿Contabilizar esta venta? Esta acción generará el asiento contable y la cuenta por cobrar."
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={actioningId !== null}
+        onConfirm={executePost}
+      />
+
+      <ConfirmDialog
+        open={voidId !== null}
+        onOpenChange={(open) => !open && setVoidId(null)}
+        title="Anular venta"
+        description="¿Anular esta venta? Se revertirá el asiento contable y la cuenta por cobrar. Esta operación no se puede deshacer."
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={executeVoid}
+      />
+
+      <ConfirmDialog
+        open={deleteId !== null}
+        onOpenChange={(open) => !open && setDeleteId(null)}
+        title="Eliminar borrador"
+        description="Esta acción eliminará el borrador permanentemente. No se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={executeDelete}
+      />
     </>
   );
 }
