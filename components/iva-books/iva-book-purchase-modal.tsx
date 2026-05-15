@@ -21,12 +21,21 @@ import { toast } from "sonner";
 
 // ── Cálculo IVA client-side (pure JS — no Prisma.Decimal) ────────────────────
 
-function roundHalfUp(n: number, dp = 2): number {
+/**
+ * Named export added at oleada-money-decimal-hex-purity sub-POC 5 Cycle 2
+ * RED to enable direct parity testing of the client-side IVA math without
+ * driving it through the rendered DOM. Behavior-preserving export-only
+ * refactor — runtime semantics unchanged. Sister `calcClientTotales`
+ * exported in the same commit. The downstream consumers within this
+ * module (handleSubmit + triggerCalc) continue to use these functions
+ * exactly as before.
+ */
+export function roundHalfUp(n: number, dp = 2): number {
   const factor = Math.pow(10, dp);
   return Math.round(n * factor) / factor;
 }
 
-function calcClientTotales(params: {
+export function calcClientTotales(params: {
   importeTotal: number;
   importeIce: number;
   importeIehd: number;
