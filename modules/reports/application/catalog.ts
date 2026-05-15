@@ -2,6 +2,8 @@
 // Registro estático de todos los reportes disponibles y planificados.
 // PR2: tipos + arrays stub (vacíos). PR3 poblará los datos.
 
+import type { Resource } from "@/features/permissions";
+
 export type ReportStatus = "available" | "planned" | "hidden";
 
 export interface ReportCategory {
@@ -30,6 +32,13 @@ export interface ReportEntry {
   route: string | null;
   /** Nombre de ícono Lucide (opcional). Si se omite, la UI usa "FileText". */
   icon?: string;
+  /**
+   * RBAC gate: when set, the entry is only visible if the caller can read this
+   * resource. Resolved server-side in `app/(dashboard)/[orgSlug]/informes/page.tsx`
+   * before passing the filtered list to <CatalogPage>. Entries without a
+   * resource are always visible (back-compat).
+   */
+  resource?: Resource;
 }
 
 // ── Categorías ───────────────────────────────────────────────────────────────
@@ -154,6 +163,18 @@ export const reportRegistry: readonly ReportEntry[] = [
     icon: "Layers",
   },
 
+  // ── Quién te debe — disponibles ────────────────────────────────────────────
+  {
+    id: "cuentas-por-cobrar",
+    title: "Cuentas por Cobrar",
+    description: "Saldos pendientes de cobro por cliente.",
+    category: "quien-te-debe",
+    status: "available",
+    route: "/accounting/cxc",
+    icon: "HandCoins",
+    resource: "sales",
+  },
+
   // ── Quién te debe — planificados ───────────────────────────────────────────
   {
     id: "ar-aging",
@@ -181,6 +202,18 @@ export const reportRegistry: readonly ReportEntry[] = [
     status: "planned",
     route: null,
     icon: "UserSearch",
+  },
+
+  // ── Lo que debes — disponibles ─────────────────────────────────────────────
+  {
+    id: "cuentas-por-pagar",
+    title: "Cuentas por Pagar",
+    description: "Saldos pendientes de pago por proveedor.",
+    category: "lo-que-debes",
+    status: "available",
+    route: "/accounting/cxp",
+    icon: "Receipt",
+    resource: "purchases",
   },
 
   // ── Lo que debes — planificados ────────────────────────────────────────────

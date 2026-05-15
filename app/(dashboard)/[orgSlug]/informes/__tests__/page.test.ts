@@ -5,15 +5,20 @@
  * pre-resolves a per-entry RBAC filter via `canAccess(role, entry.resource, "read", orgId)`
  * and passes the filtered list to <CatalogPage entries={...} />. On gate
  * failure, redirect to /${orgSlug}.
+ *
+ * Note: the page is a Server Component that returns JSX. We do NOT render it;
+ * we inspect the returned React element tree to find the <CatalogPage /> child
+ * and read its props.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { ReactElement } from "react";
 
-const { mockRedirect, mockRequirePermission, mockCanAccess, mockCatalogPage } =
+const { mockRedirect, mockRequirePermission, mockCanAccess, CatalogPageMock } =
   vi.hoisted(() => ({
     mockRedirect: vi.fn(),
     mockRequirePermission: vi.fn(),
     mockCanAccess: vi.fn(),
-    mockCatalogPage: vi.fn().mockReturnValue(null),
+    CatalogPageMock: vi.fn().mockReturnValue(null),
   }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -24,7 +29,7 @@ vi.mock("@/features/permissions/server", () => ({
 }));
 
 vi.mock("@/components/reports/catalog-page", () => ({
-  CatalogPage: mockCatalogPage,
+  CatalogPage: CatalogPageMock,
 }));
 
 import InformesPage from "../page";
@@ -35,10 +40,47 @@ function makeParams() {
   return Promise.resolve({ orgSlug: ORG_SLUG });
 }
 
+/**
+ * Walk the returned ReactElement tree, find the element whose `type` is the
+ * mocked CatalogPage, and return its props. Returns `null` if not found.
+ */
+type CatalogPageProps = {
+  orgSlug: string;
+  entries: ReadonlyArray<{ id: string; resource?: string }>;
+};
+
+function findCatalogPageProps(
+  node: unknown,
+): CatalogPageProps | null {
+  if (!node || typeof node !== "object") return null;
+  // ReactElement
+  const el = node as ReactElement;
+  if (
+    "type" in el &&
+    el.type === (CatalogPageMock as unknown as ReactElement["type"])
+  ) {
+    return el.props as CatalogPageProps;
+  }
+  if ("props" in el) {
+    const children = (el.props as { children?: unknown })?.children;
+    if (Array.isArray(children)) {
+      for (const child of children) {
+        const found = findCatalogPageProps(child);
+        if (found) return found;
+      }
+    } else if (children) {
+      return findCatalogPageProps(children);
+    }
+  }
+  return null;
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   // Default: full access (canAccess returns true for every resource)
   mockCanAccess.mockResolvedValue(true);
+  // Restore the mocked CatalogPage's return after clearAllMocks
+  CatalogPageMock.mockReturnValue(null);
 });
 
 describe("/informes — rbac gate", () => {
@@ -86,23 +128,18 @@ describe("/informes — C0 per-entry RBAC filter", () => {
       },
     );
 
-    await InformesPage({ params: makeParams() });
-
-    // CatalogPage mock must have been called with an `entries` prop
-    expect(mockCatalogPage).toHaveBeenCalled();
-    const props = mockCatalogPage.mock.calls[0]![0] as {
-      orgSlug: string;
-      entries: ReadonlyArray<{ id: string; resource?: string }>;
-    };
-    expect(props.orgSlug).toBe(ORG_SLUG);
-    expect(Array.isArray(props.entries)).toBe(true);
+    const tree = await InformesPage({ params: makeParams() });
+    const props = findCatalogPageProps(tree);
+    expect(props).not.toBeNull();
+    expect(props!.orgSlug).toBe(ORG_SLUG);
+    expect(Array.isArray(props!.entries)).toBe(true);
 
     // CxP (resource=purchases) MUST be filtered out
-    const cxpEntry = props.entries.find((e) => e.id === "cuentas-por-pagar");
+    const cxpEntry = props!.entries.find((e) => e.id === "cuentas-por-pagar");
     expect(cxpEntry).toBeUndefined();
 
     // CxC (resource=sales) MUST be present
-    const cxcEntry = props.entries.find((e) => e.id === "cuentas-por-cobrar");
+    const cxcEntry = props!.entries.find((e) => e.id === "cuentas-por-cobrar");
     expect(cxcEntry).toBeDefined();
   });
 
@@ -110,14 +147,12 @@ describe("/informes — C0 per-entry RBAC filter", () => {
     // Deny EVERY resource
     mockCanAccess.mockResolvedValue(false);
 
-    await InformesPage({ params: makeParams() });
-
-    const props = mockCatalogPage.mock.calls[0]![0] as {
-      entries: ReadonlyArray<{ id: string; resource?: string }>;
-    };
+    const tree = await InformesPage({ params: makeParams() });
+    const props = findCatalogPageProps(tree);
+    expect(props).not.toBeNull();
 
     // Entries WITHOUT resource (e.g., worksheet) survive deny-all
-    const worksheet = props.entries.find((e) => e.id === "worksheet");
+    const worksheet = props!.entries.find((e) => e.id === "worksheet");
     expect(worksheet).toBeDefined();
   });
 });
