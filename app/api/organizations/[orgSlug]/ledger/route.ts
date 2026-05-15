@@ -5,6 +5,7 @@ import {
   dateRangeSchema,
 } from "@/modules/accounting/presentation/server";
 import { ValidationError } from "@/features/shared/errors";
+import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 
 const service = makeLedgerService();
 
@@ -25,12 +26,18 @@ export async function GET(
         dateFrom: searchParams.get("dateFrom") ?? undefined,
         dateTo: searchParams.get("dateTo") ?? undefined,
       });
+      const pagination = parsePaginationParams(searchParams);
 
-      const ledger = await service.getAccountLedger(
+      // D-Route LOCKED: always paginated when accountId present, defaults
+      // applied per design §4.1. API contract changes from LedgerEntry[] to
+      // LedgerPaginatedDto — sole consumer ledger-page-client.tsx rewritten
+      // atomic same commit per [[mock_hygiene_commit_scope]].
+      const ledger = await service.getAccountLedgerPaginated(
         orgId,
         accountId,
         dateRange,
         periodId,
+        pagination,
       );
       return Response.json(ledger);
     }
