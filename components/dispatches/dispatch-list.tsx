@@ -19,6 +19,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   ClipboardList,
   DollarSign,
@@ -238,6 +239,9 @@ export default function DispatchList({
 }: DispatchListProps) {
   const router = useRouter();
   const [actioningId, setActioningId] = useState<string | null>(null);
+  const [postItem, setPostItem] = useState<HubItem | null>(null);
+  const [voidItem, setVoidItem] = useState<HubItem | null>(null);
+  const [deleteItem, setDeleteItem] = useState<HubItem | null>(null);
   const periodMap = new Map(periods.map((p) => [p.id, p.name]));
 
   function buildQuery(overrides: Record<string, string | undefined>): string {
@@ -268,9 +272,22 @@ export default function DispatchList({
     router.push(`/${orgSlug}/dispatches`);
   }
 
-  async function handlePostFromList(item: HubItem) {
+  function handlePostFromList(item: HubItem) {
+    setPostItem(item);
+  }
+
+  function handleVoidFromList(item: HubItem) {
+    setVoidItem(item);
+  }
+
+  function handleDeleteFromList(item: HubItem) {
+    setDeleteItem(item);
+  }
+
+  async function executePost() {
+    if (!postItem) return;
+    const item = postItem;
     const label = item.source === "sale" ? "venta" : "despacho";
-    if (!window.confirm(`¿Contabilizar este ${label}?`)) return;
     setActioningId(item.id);
     try {
       const response = await fetch(getStatusApiPath(orgSlug, item), {
@@ -283,6 +300,7 @@ export default function DispatchList({
         throw new Error(data.error ?? `Error al contabilizar`);
       }
       toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} contabilizado`);
+      setPostItem(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al contabilizar");
@@ -291,9 +309,10 @@ export default function DispatchList({
     }
   }
 
-  async function handleVoidFromList(item: HubItem) {
+  async function executeVoid() {
+    if (!voidItem) return;
+    const item = voidItem;
     const label = item.source === "sale" ? "venta" : "despacho";
-    if (!window.confirm(`¿Anular este ${label}? Se revertirá el asiento contable.`)) return;
     setActioningId(item.id);
     try {
       const response = await fetch(getStatusApiPath(orgSlug, item), {
@@ -306,6 +325,7 @@ export default function DispatchList({
         throw new Error(data.error ?? "Error al anular");
       }
       toast.success(`${label.charAt(0).toUpperCase() + label.slice(1)} anulado`);
+      setVoidItem(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al anular");
@@ -314,8 +334,9 @@ export default function DispatchList({
     }
   }
 
-  async function handleDeleteFromList(item: HubItem) {
-    if (!window.confirm("¿Eliminar este borrador? Esta acción no se puede deshacer.")) return;
+  async function executeDelete() {
+    if (!deleteItem) return;
+    const item = deleteItem;
     setActioningId(item.id);
     try {
       const response = await fetch(getDeleteApiPath(orgSlug, item), { method: "DELETE" });
@@ -324,6 +345,7 @@ export default function DispatchList({
         throw new Error(data.error ?? "Error al eliminar");
       }
       toast.success("Borrador eliminado");
+      setDeleteItem(null);
       router.refresh();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al eliminar");
@@ -508,6 +530,47 @@ export default function DispatchList({
           </div>
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={postItem !== null}
+        onOpenChange={(open) => !open && setPostItem(null)}
+        title="Contabilizar"
+        description={
+          postItem
+            ? `¿Contabilizar este ${postItem.source === "sale" ? "venta" : "despacho"}? Esta acción generará el asiento contable.`
+            : null
+        }
+        confirmLabel="Contabilizar"
+        variant="default"
+        loading={actioningId !== null}
+        onConfirm={executePost}
+      />
+
+      <ConfirmDialog
+        open={voidItem !== null}
+        onOpenChange={(open) => !open && setVoidItem(null)}
+        title="Anular"
+        description={
+          voidItem
+            ? `¿Anular este ${voidItem.source === "sale" ? "venta" : "despacho"}? Se revertirá el asiento contable. Esta operación no se puede deshacer.`
+            : null
+        }
+        confirmLabel="Anular"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={executeVoid}
+      />
+
+      <ConfirmDialog
+        open={deleteItem !== null}
+        onOpenChange={(open) => !open && setDeleteItem(null)}
+        title="Eliminar borrador"
+        description="Esta acción eliminará el borrador permanentemente. No se puede deshacer."
+        confirmLabel="Eliminar"
+        variant="destructive"
+        loading={actioningId !== null}
+        onConfirm={executeDelete}
+      />
     </>
   );
 }
