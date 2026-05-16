@@ -517,11 +517,11 @@ function makeStandardReadyReader(): FiscalYearReaderPort {
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
-    countPeriodsByStatus: vi.fn(async () => ({
-      closed: 11,
-      open: 1,
-      total: 12,
-    })),
+    countPeriodsByStatus: vi.fn(async (_orgId, y) => {
+      if (y === 2026) return { closed: 11, open: 1, total: 12 };
+      // year+1 (or any other year): empty — passes the pre-init gate.
+      return { closed: 0, open: 0, total: 0 };
+    }),
     ccExistsForYear: vi.fn(async () => false),
     decemberPeriodOf: vi.fn(async () => ({
       id: "p_dec",
@@ -544,11 +544,10 @@ function makeEdgeReadyReader(): FiscalYearReaderPort {
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
-    countPeriodsByStatus: vi.fn(async () => ({
-      closed: 12,
-      open: 0,
-      total: 12,
-    })),
+    countPeriodsByStatus: vi.fn(async (_orgId, y) => {
+      if (y === 2026) return { closed: 12, open: 0, total: 12 };
+      return { closed: 0, open: 0, total: 0 };
+    }),
     ccExistsForYear: vi.fn(async () => false),
     decemberPeriodOf: vi.fn(async () => ({
       id: "p_dec",

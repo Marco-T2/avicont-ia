@@ -8,6 +8,20 @@ import type {
 } from "../domain/ports/fiscal-year-reader.port";
 import type { YearAccountingReaderPort } from "../domain/ports/year-accounting-reader.port";
 import type { AnnualCloseUnitOfWork } from "./annual-close-unit-of-work";
+import { Year } from "../domain/value-objects/year";
+import {
+  BalanceNotZeroError,
+  DraftEntriesInDecemberError,
+  FiscalYearAlreadyClosedError,
+  FiscalYearGateNotMetError,
+  JustificationTooShortError,
+  MissingResultAccountError,
+  PeriodAlreadyClosedError,
+  YearOpeningPeriodsExistError,
+} from "../domain/errors/annual-close-errors";
+import { buildCCLines } from "./cc-line.builder";
+import { buildCALines } from "./ca-line.builder";
+import { toNoonUtc } from "@/lib/date-utils";
 
 /**
  * AnnualCloseSummary DTO (design rev 2 §4).
@@ -193,20 +207,367 @@ export class AnnualCloseService {
   }
 
   /**
-   * STUB — Phase 3.4 RED scaffolding. The full orchestration lands in
-   * Phase 3.7 GREEN (per design rev 2 §4 "Close orchestration" — 12 steps).
-   * Method signature is locked here so RED tests compile under tsc; runtime
-   * still throws to keep RED legitimate.
+   * Close the fiscal year for `(organizationId, year)`.
+   *
+   * Orchestration per spec REQ-2.1 / REQ-2.2 + design rev 2 §4.
+   *
+   * ─── Pre-TX (read-only validation) ─────────────────────────────────────
+   *   1. validateJustification (≥50 chars)         → JustificationTooShortError
+   *   2. Year.of(year)                             → InvalidYearError
+   *   3. fiscalYearReader.getByYear (may be null)
+   *      if FY.status === "CLOSED" → FiscalYearAlreadyClosedError
+   *   4. countPeriodsByStatus(year) total === 12   else FiscalYearGateNotMetError
+   *   5. decemberPeriodOf(year)
+   *   6. ccExistsForYear(year)
+   *   7. dispatch standard vs edge path             else FiscalYearGateNotMetError
+   *   8. if Dec OPEN → draftDocuments.countDraftsByPeriod → DraftEntriesInDecemberError
+   *   9. countPeriodsByStatus(year+1) total === 0   else YearOpeningPeriodsExistError
+   *  10. fiscalYearReader.findResultAccount         else MissingResultAccountError (500)
+   *  11. yearAccountingReader.aggregateYearDebitCreditNoTx (C-1/C-4, UNCONDITIONAL)
+   *      if !debit.equals(credit) → BalanceNotZeroError
+   *
+   * ─── INSIDE-TX (uow.run) ───────────────────────────────────────────────
+   *  (a') TOCTOU re-reads as FIRST action (W-2):
+   *       - fiscalYears.upsertOpen → fyId
+   *       - yearAccountingTx.reReadFiscalYearStatusTx(fyId)   != OPEN  → FYAlreadyClosed
+   *       - yearAccountingTx.reReadPeriodStatusTx(dec.id)     mismatch → typed error
+   *       - yearAccountingTx.reReadCcExistsForYearTx(orgId,year)       → FYGateNotMet
+   *  (b)  yearAccountingTx.aggregateYearDebitCredit(orgId,year)
+   *       if !debit.equals(credit) → BalanceNotZeroError
+   *  (c)  Compose CC: yearAccountingTx.aggregateResultAccountsByYear +
+   *       findResultAccount → buildCCLines → closingJournals.createAndPost
+   *       (adapter enforces REQ-2.7 C-5)
+   *  (d)  if standardPath: locking.lock* STRICT ORDER + fiscalPeriods.markClosed(dec)
+   *  (e)  periodAutoCreator.createTwelvePeriodsForYear(year+1) → janPeriodId
+   *  (f)  Compose CA: yearAccountingTx.aggregateBalanceSheetAccountsForCA →
+   *       buildCALines → closingJournals.createAndPost (in Jan year+1)
+   *  (g)  fiscalYears.markClosed (guarded, W-3) → propagates FYAlreadyClosed
+   *
+   * Any failure rolls back the entire TX (uow contract).
    */
   async close(
-    _organizationId: string,
-    _year: number,
-    _userId: string,
-    _justification: string,
+    organizationId: string,
+    year: number,
+    userId: string,
+    justification: string,
   ): Promise<AnnualCloseResult> {
-    throw new Error("AnnualCloseService.close — Phase 3.7 GREEN pending");
+    // ── Pre-TX gates ────────────────────────────────────────────────────
+    if (justification.length < MIN_JUSTIFICATION_LENGTH) {
+      throw new JustificationTooShortError({
+        minLength: MIN_JUSTIFICATION_LENGTH,
+        actualLength: justification.length,
+      });
+    }
+
+    // Year VO validates [1900..2100] + integer; throws InvalidYearError.
+    Year.of(year);
+
+    const fy = await this.deps.fiscalYearReader.getByYear(organizationId, year);
+    if (fy?.status === "CLOSED") {
+      throw new FiscalYearAlreadyClosedError({ fiscalYearId: fy.id });
+    }
+
+    const periods = await this.deps.fiscalYearReader.countPeriodsByStatus(
+      organizationId,
+      year,
+    );
+    if (periods.total !== MONTHS_PER_YEAR) {
+      throw new FiscalYearGateNotMetError({
+        monthsClosed: periods.closed,
+        decStatus: "NOT_FOUND",
+        ccExists: false,
+        periodsCount: periods.total,
+        reason: `El año tiene ${periods.total}/12 períodos creados.`,
+      });
+    }
+
+    const dec = await this.deps.fiscalYearReader.decemberPeriodOf(
+      organizationId,
+      year,
+    );
+    const ccExists = await this.deps.fiscalYearReader.ccExistsForYear(
+      organizationId,
+      year,
+    );
+
+    // Path dispatch (spec REQ-2.1 step 5): standard | edge | reject.
+    const standardPath =
+      periods.closed === MONTHS_PER_YEAR - 1 && dec?.status === "OPEN";
+    const edgePath =
+      periods.closed === MONTHS_PER_YEAR &&
+      dec?.status === "CLOSED" &&
+      !ccExists;
+    if (!standardPath && !edgePath) {
+      throw new FiscalYearGateNotMetError({
+        monthsClosed: periods.closed,
+        decStatus: dec?.status ?? "NOT_FOUND",
+        ccExists,
+        periodsCount: periods.total,
+        reason:
+          "El año no cumple el patrón estándar (11 meses cerrados + diciembre abierto) ni el patrón borde (12 meses cerrados sin CC).",
+      });
+    }
+
+    if (standardPath && dec) {
+      const drafts = await this.deps.draftDocuments.countDraftsByPeriod(
+        organizationId,
+        dec.id,
+      );
+      const totalDrafts =
+        drafts.dispatches +
+        drafts.payments +
+        drafts.journalEntries +
+        drafts.sales +
+        drafts.purchases;
+      if (totalDrafts > 0) {
+        throw new DraftEntriesInDecemberError({
+          dispatches: drafts.dispatches,
+          payments: drafts.payments,
+          journalEntries: drafts.journalEntries,
+          sales: drafts.sales,
+          purchases: drafts.purchases,
+        });
+      }
+    }
+
+    const yearPlus1Counts =
+      await this.deps.fiscalYearReader.countPeriodsByStatus(
+        organizationId,
+        year + 1,
+      );
+    if (yearPlus1Counts.total > 0) {
+      throw new YearOpeningPeriodsExistError({
+        year: year + 1,
+        existingCount: yearPlus1Counts.total,
+      });
+    }
+
+    const resultAcc =
+      await this.deps.fiscalYearReader.findResultAccount(organizationId);
+    if (!resultAcc) {
+      throw new MissingResultAccountError({ organizationId });
+    }
+
+    // C-1 + C-4: year-aggregate balance gate, UNCONDITIONAL.
+    const yearBal =
+      await this.deps.yearAccountingReader.aggregateYearDebitCreditNoTx(
+        organizationId,
+        year,
+      );
+    if (!yearBal.debit.equals(yearBal.credit)) {
+      throw new BalanceNotZeroError(yearBal.debit, yearBal.credit);
+    }
+
+    // ── INSIDE-TX ────────────────────────────────────────────────────────
+    const { result, correlationId } = await this.deps.uow.run(
+      { userId, organizationId, justification },
+      async (scope) => {
+        // (a') TOCTOU re-reads FIRST (W-2 — spec REQ-2.2 step a').
+        const { id: fyId } = await scope.fiscalYears.upsertOpen({
+          organizationId,
+          year,
+          createdById: userId,
+        });
+
+        const fyTx = await scope.yearAccountingTx.reReadFiscalYearStatusTx(
+          fyId,
+        );
+        if (!fyTx || fyTx.status !== "OPEN") {
+          throw new FiscalYearAlreadyClosedError({ fiscalYearId: fyId });
+        }
+
+        if (dec) {
+          const decTx = await scope.yearAccountingTx.reReadPeriodStatusTx(
+            dec.id,
+          );
+          const expected: "OPEN" | "CLOSED" = standardPath ? "OPEN" : "CLOSED";
+          if (!decTx || decTx.status !== expected) {
+            if (expected === "OPEN") {
+              // Dec was OPEN at pre-TX, now CLOSED → race.
+              throw new PeriodAlreadyClosedError({
+                periodId: dec.id,
+                status: decTx?.status ?? "CLOSED",
+              });
+            }
+            // Edge path expected CLOSED but now OPEN.
+            throw new FiscalYearGateNotMetError({
+              monthsClosed: periods.closed,
+              decStatus: decTx?.status ?? "NOT_FOUND",
+              ccExists,
+              periodsCount: periods.total,
+              reason:
+                "El período de diciembre cambió de estado entre la validación previa y la transacción.",
+            });
+          }
+        }
+
+        const ccExistsTx =
+          await scope.yearAccountingTx.reReadCcExistsForYearTx(
+            organizationId,
+            year,
+          );
+        if (ccExistsTx) {
+          throw new FiscalYearGateNotMetError({
+            monthsClosed: periods.closed,
+            decStatus: dec?.status ?? "NOT_FOUND",
+            ccExists: true,
+            periodsCount: periods.total,
+            reason:
+              "Otro proceso registró el Comprobante de Cierre antes de esta transacción.",
+          });
+        }
+
+        // (b) Re-assert year-aggregate balance INSIDE-TX.
+        const yearBalTx = await scope.yearAccountingTx.aggregateYearDebitCredit(
+          organizationId,
+          year,
+        );
+        if (!yearBalTx.debit.equals(yearBalTx.credit)) {
+          throw new BalanceNotZeroError(yearBalTx.debit, yearBalTx.credit);
+        }
+
+        // (c) Compose CC lines.
+        const resultLinesTx =
+          await scope.yearAccountingTx.aggregateResultAccountsByYear(
+            organizationId,
+            year,
+          );
+        const resultAccTx =
+          await scope.yearAccountingTx.findResultAccount(organizationId);
+        if (!resultAccTx) {
+          throw new MissingResultAccountError({ organizationId });
+        }
+        const ccBuilt = buildCCLines(resultLinesTx, resultAccTx);
+        // Builder already asserts Decimal.equals invariant + throws on drift.
+
+        if (!dec) {
+          // Unreachable — pre-TX gate already required dec or threw
+          // FiscalYearGateNotMetError. Belt-and-suspenders for type narrowing.
+          throw new FiscalYearGateNotMetError({
+            monthsClosed: periods.closed,
+            decStatus: "NOT_FOUND",
+            ccExists,
+            periodsCount: periods.total,
+            reason: "No existe el período de diciembre.",
+          });
+        }
+
+        const { entryId: ccEntryId } = await scope.closingJournals.createAndPost(
+          {
+            organizationId,
+            periodId: dec.id,
+            date: toNoonUtc(`${year}-12-31`),
+            voucherTypeCode: "CC",
+            description: `Cierre de Gestión ${year}`,
+            createdById: userId,
+            sourceType: "annual-close",
+            sourceId: fyId,
+            lines: ccBuilt.lines.map((l) => ({
+              accountId: l.accountId,
+              debit: l.debit,
+              credit: l.credit,
+              description: l.description,
+            })),
+          },
+        );
+
+        // (d) Lock cascade STRICT ORDER (standard path only).
+        let decClose: AnnualCloseResult["decClose"] = undefined;
+        if (standardPath) {
+          const lockedDispatches = await scope.locking.lockDispatches(
+            organizationId,
+            dec.id,
+          );
+          const lockedPayments = await scope.locking.lockPayments(
+            organizationId,
+            dec.id,
+          );
+          const lockedJournalEntries = await scope.locking.lockJournalEntries(
+            organizationId,
+            dec.id,
+          );
+          const lockedSales = await scope.locking.lockSales(
+            organizationId,
+            dec.id,
+          );
+          const lockedPurchases = await scope.locking.lockPurchases(
+            organizationId,
+            dec.id,
+          );
+          await scope.fiscalPeriods.markClosed(organizationId, dec.id, userId);
+          decClose = {
+            locked: {
+              dispatches: lockedDispatches,
+              payments: lockedPayments,
+              journalEntries: lockedJournalEntries,
+              sales: lockedSales,
+              purchases: lockedPurchases,
+            },
+          };
+        }
+
+        // (e) Auto-create year+1 12 periods.
+        const { janPeriodId, periodIds } =
+          await scope.periodAutoCreator.createTwelvePeriodsForYear({
+            organizationId,
+            year: year + 1,
+            createdById: userId,
+          });
+
+        // (f) Compose CA lines.
+        const bsLinesTx =
+          await scope.yearAccountingTx.aggregateBalanceSheetAccountsForCA(
+            organizationId,
+            year,
+          );
+        const caBuilt = buildCALines(bsLinesTx);
+
+        const { entryId: caEntryId } = await scope.closingJournals.createAndPost(
+          {
+            organizationId,
+            periodId: janPeriodId,
+            date: toNoonUtc(`${year + 1}-01-01`),
+            voucherTypeCode: "CA",
+            description: `Apertura de Gestión ${year + 1}`,
+            createdById: userId,
+            sourceType: "annual-close",
+            sourceId: fyId,
+            lines: caBuilt.lines.map((l) => ({
+              accountId: l.accountId,
+              debit: l.debit,
+              credit: l.credit,
+              description: l.description,
+            })),
+          },
+        );
+
+        // (g) FY markClosed LAST — guarded (W-3). Throws on race.
+        const { closedAt } = await scope.fiscalYears.markClosed({
+          fiscalYearId: fyId,
+          closedBy: userId,
+          closingEntryId: ccEntryId,
+          openingEntryId: caEntryId,
+        });
+
+        return {
+          fiscalYearId: fyId,
+          year,
+          status: "CLOSED" as const,
+          closedAt,
+          closingEntryId: ccEntryId,
+          openingEntryId: caEntryId,
+          yearPlus1: { periodIds },
+          decClose,
+        };
+      },
+    );
+
+    return { ...result, correlationId };
   }
 }
+
+const MIN_JUSTIFICATION_LENGTH = 50;
+const MONTHS_PER_YEAR = 12;
 
 /**
  * Result of a successful annual close (design rev 2 §4). Inline service file
