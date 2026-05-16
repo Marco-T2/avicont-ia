@@ -75,200 +75,15 @@ describe("PrismaYearAccountingReaderTxAdapter", () => {
     });
   });
 
-  describe("aggregateResultAccountsByYear (CC source — C-2)", () => {
-    it("maps raw rows to YearAggregatedLine[] with Decimal debit/credit + nature", async () => {
-      mockQueryRaw.mockResolvedValue([
-        {
-          account_id: "acc-vta",
-          code: "4.1.1",
-          nature: "ACREEDORA",
-          type: "INGRESO",
-          subtype: "VENTAS",
-          debit_total: "0",
-          credit_total: "100000.00",
-        },
-        {
-          account_id: "acc-suel",
-          code: "5.1.1",
-          nature: "DEUDORA",
-          type: "GASTO",
-          subtype: "SUELDOS",
-          debit_total: "80000.00",
-          credit_total: "0",
-        },
-      ]);
+  // aggregateResultAccountsByYear + aggregateBalanceSheetAccountsForCA test
+  // suites REMOVED Phase J T-30 — both port methods retired (replaced by
+  // gastos/ingresos/balanceSheetAtYearEnd in the canonical 5-asientos flow).
 
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.aggregateResultAccountsByYear("org-1", 2026);
-
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        accountId: "acc-vta",
-        code: "4.1.1",
-        nature: "ACREEDORA",
-        type: "INGRESO",
-        subtype: "VENTAS",
-        debit: new Decimal("0"),
-        credit: new Decimal("100000.00"),
-      });
-      expect(result[0].debit).toBeInstanceOf(Decimal);
-      expect(result[1].credit.equals(new Decimal(0))).toBe(true);
-      expect(result[1].debit.equals(new Decimal("80000.00"))).toBe(true);
-    });
-
-    it("returns empty array when no INGRESO/GASTO movements", async () => {
-      mockQueryRaw.mockResolvedValue([]);
-
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.aggregateResultAccountsByYear("org-1", 2099);
-
-      expect(result).toEqual([]);
-    });
-  });
-
-  describe("aggregateBalanceSheetAccountsForCA (CA source — C-3 delta-from-prior-CA)", () => {
-    it("INCEPTION (no prevCA): aggregates from start of time → year-12-31 (single delta query)", async () => {
-      // Step 1: prevCAdate query returns no row.
-      mockQueryRaw.mockResolvedValueOnce([]);
-      // Step 2: delta aggregation (inception fallback).
-      mockQueryRaw.mockResolvedValueOnce([
-        {
-          account_id: "acc-caja",
-          code: "1.1.1",
-          nature: "DEUDORA",
-          type: "ACTIVO",
-          subtype: "DISPONIBLE",
-          debit_total: "50000.00",
-          credit_total: "10000.00",
-        },
-        {
-          account_id: "acc-cap",
-          code: "3.1.1",
-          nature: "ACREEDORA",
-          type: "PATRIMONIO",
-          subtype: "CAPITAL",
-          debit_total: "0",
-          credit_total: "40000.00",
-        },
-      ]);
-
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.aggregateBalanceSheetAccountsForCA("org-1", 2026);
-
-      // Only 2 queries — step 1 (prevCAdate) + step 2 (delta). NO step 3 because
-      // no prevCA found.
-      expect(mockQueryRaw).toHaveBeenCalledTimes(2);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toEqual({
-        accountId: "acc-caja",
-        code: "1.1.1",
-        nature: "DEUDORA",
-        type: "ACTIVO",
-        subtype: "DISPONIBLE",
-        debit: new Decimal("50000.00"),
-        credit: new Decimal("10000.00"),
-      });
-      expect(result[1].type).toBe("PATRIMONIO");
-      expect(result[1].credit.equals(new Decimal("40000.00"))).toBe(true);
-    });
-
-    it("ONE PRIOR CA: aggregates delta (date > prevCAdate AND <= year-12-31) + merges prevCA contribution per account", async () => {
-      const prevCADate = new Date("2025-01-01T12:00:00Z");
-      // Step 1: prevCAdate row.
-      mockQueryRaw.mockResolvedValueOnce([{ prev_ca_date: prevCADate }]);
-      // Step 2: delta per-account.
-      mockQueryRaw.mockResolvedValueOnce([
-        {
-          account_id: "acc-caja",
-          code: "1.1.1",
-          nature: "DEUDORA",
-          type: "ACTIVO",
-          subtype: null,
-          debit_total: "20000.00",
-          credit_total: "5000.00",
-        },
-      ]);
-      // Step 3: prevCA per-account contribution.
-      mockQueryRaw.mockResolvedValueOnce([
-        {
-          account_id: "acc-caja",
-          code: "1.1.1",
-          nature: "DEUDORA",
-          type: "ACTIVO",
-          subtype: null,
-          prev_debit_total: "30000.00",
-          prev_credit_total: "10000.00",
-        },
-      ]);
-
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.aggregateBalanceSheetAccountsForCA("org-1", 2026);
-
-      // 3 queries: prevCA discover + delta + prevCA contribution.
-      expect(mockQueryRaw).toHaveBeenCalledTimes(3);
-      expect(result).toHaveLength(1);
-      // Merged: delta (20000 D, 5000 H) + prevCA (30000 D, 10000 H) = (50000 D, 15000 H).
-      expect(result[0].accountId).toBe("acc-caja");
-      expect(result[0].debit.equals(new Decimal("50000.00"))).toBe(true);
-      expect(result[0].credit.equals(new Decimal("15000.00"))).toBe(true);
-    });
-
-    it("PREV-CA-ONLY ACCOUNT (no delta movement): prevCA contribution surfaces", async () => {
-      // Account had movement in prevCA but no movement in delta window.
-      mockQueryRaw.mockResolvedValueOnce([
-        { prev_ca_date: new Date("2025-01-01T12:00:00Z") },
-      ]);
-      // Step 2: delta empty.
-      mockQueryRaw.mockResolvedValueOnce([]);
-      // Step 3: prevCA still has the account.
-      mockQueryRaw.mockResolvedValueOnce([
-        {
-          account_id: "acc-banco",
-          code: "1.1.2",
-          nature: "DEUDORA",
-          type: "ACTIVO",
-          subtype: null,
-          prev_debit_total: "100000.00",
-          prev_credit_total: "0",
-        },
-      ]);
-
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.aggregateBalanceSheetAccountsForCA("org-1", 2026);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].accountId).toBe("acc-banco");
-      expect(result[0].debit.equals(new Decimal("100000.00"))).toBe(true);
-      expect(result[0].credit.equals(new Decimal(0))).toBe(true);
-    });
-
-    it("DELTA-ONLY ACCOUNT (new account this year): delta row surfaces unchanged", async () => {
-      mockQueryRaw.mockResolvedValueOnce([
-        { prev_ca_date: new Date("2025-01-01T12:00:00Z") },
-      ]);
-      // Delta has a new account "acc-prov" (introduced this year).
-      mockQueryRaw.mockResolvedValueOnce([
-        {
-          account_id: "acc-prov",
-          code: "2.1.5",
-          nature: "ACREEDORA",
-          type: "PASIVO",
-          subtype: null,
-          debit_total: "0",
-          credit_total: "8000.00",
-        },
-      ]);
-      // PrevCA has NO entry for acc-prov.
-      mockQueryRaw.mockResolvedValueOnce([]);
-
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.aggregateBalanceSheetAccountsForCA("org-1", 2026);
-
-      expect(result).toHaveLength(1);
-      expect(result[0].accountId).toBe("acc-prov");
-      expect(result[0].type).toBe("PASIVO");
-      expect(result[0].credit.equals(new Decimal("8000.00"))).toBe(true);
-    });
+  describe.skip("aggregateBalanceSheetAccountsForCA — REMOVED (Phase J T-30)", () => {
+    it.skip("INCEPTION", async () => {});
+    it.skip("ONE PRIOR CA", async () => {});
+    it.skip("PREV-CA-ONLY", async () => {});
+    it.skip("DELTA-ONLY", async () => {});
   });
 
   describe("findResultAccount (Tx)", () => {
@@ -341,23 +156,9 @@ describe("PrismaYearAccountingReaderTxAdapter", () => {
     });
   });
 
-  describe("reReadCcExistsForYearTx (W-2)", () => {
-    it("returns true when CC posted in year", async () => {
-      mockJournalEntryFindFirst.mockResolvedValue({ id: "je-cc-1" });
-
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.reReadCcExistsForYearTx("org-1", 2026);
-
-      expect(result).toBe(true);
-    });
-
-    it("returns false when no CC", async () => {
-      mockJournalEntryFindFirst.mockResolvedValue(null);
-      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
-      const result = await adapter.reReadCcExistsForYearTx("org-1", 2026);
-      expect(result).toBe(false);
-    });
-  });
+  // reReadCcExistsForYearTx suite REMOVED Phase J T-30 — CAN-5.2 idempotency
+  // is exclusively `FiscalYear.status='CLOSED'`. The port method itself was
+  // removed from YearAccountingReaderTxPort.
 
   // ── annual-close-canonical-flow Phase C T-07: aggregateGastosByYear ─────
   describe("aggregateGastosByYear (asiento #1 source — REQ-A.1)", () => {

@@ -7,7 +7,7 @@ import { toNoonUtc } from "@/lib/date-utils";
 import type {
   AccountNature,
   AccountType,
-} from "../application/cc-line.builder";
+} from "../domain/types/accounting-types";
 import type { YearAggregateBalance } from "../domain/ports/year-accounting-reader.port";
 import type {
   AnnualCloseFiscalYearStatus,
@@ -257,201 +257,17 @@ export class PrismaYearAccountingReaderTxAdapter
     return { id: row.id, code: row.code, nature: row.nature };
   }
 
-  // ── (c) CC source — per-account INGRESO/GASTO with nature (C-2) ─────────
-
-  async aggregateResultAccountsByYear(
-    organizationId: string,
-    year: number,
-  ): Promise<YearAggregatedLine[]> {
-    const rows = await this.tx.$queryRaw<
-      Array<{
-        account_id: string;
-        code: string;
-        nature: AccountNature;
-        type: AccountType;
-        subtype: string | null;
-        debit_total: string;
-        credit_total: string;
-      }>
-    >`
-      SELECT
-        a.id                                          AS account_id,
-        a.code                                        AS code,
-        a.nature                                      AS nature,
-        a.type                                        AS type,
-        a.subtype                                     AS subtype,
-        COALESCE(SUM(jl.debit),  0)::numeric(18,2)::text  AS debit_total,
-        COALESCE(SUM(jl.credit), 0)::numeric(18,2)::text  AS credit_total
-      FROM journal_lines jl
-      JOIN journal_entries je ON je.id = jl."journalEntryId"
-      JOIN accounts        a  ON a.id  = jl."accountId"
-      JOIN fiscal_periods  fp ON fp.id = je."periodId"
-      WHERE je."organizationId" = ${organizationId}
-        AND je.status            IN ('POSTED','LOCKED')
-        AND fp.year              = ${year}
-        AND a.type IN ('INGRESO','GASTO')
-        AND a."isDetail"         = true
-      GROUP BY a.id, a.code, a.nature, a.type, a.subtype
-      HAVING SUM(jl.debit) <> 0 OR SUM(jl.credit) <> 0;
-    `;
-    return rows.map(this.mapAggregatedRow);
-  }
-
-  // ── (f) CA source — C-3 three-step delta-from-prior-CA ──────────────────
-
-  async aggregateBalanceSheetAccountsForCA(
-    organizationId: string,
-    year: number,
-  ): Promise<YearAggregatedLine[]> {
-    const yearEnd = toNoonUtc(`${year}-12-31`);
-
-    // Step 1 — find most-recent prior CA strictly before year-12-31.
-    const prevCARows = await this.tx.$queryRaw<
-      Array<{ prev_ca_date: Date }>
-    >`
-      SELECT je2.date AS prev_ca_date
-      FROM journal_entries je2
-      JOIN voucher_types vt2 ON vt2.id = je2."voucherTypeId"
-      WHERE je2."organizationId" = ${organizationId}
-        AND je2.status            = 'POSTED' /* sentinel-allow:annual-close-out-of-scope */
-        AND vt2.code              = 'CA'
-        AND je2.date              < ${yearEnd}
-        -- TODO: FIN-1 follow-up — annual-close-prev-ca-date-fix (latent
-        -- multi-year bug; see sdd/posted-locked-aggregator-fix/explore §B.3.
-        -- Separate ticket against annual-close territory.)
-      ORDER BY je2.date DESC, je2."createdAt" DESC
-      LIMIT 1;
-    `;
-    const prevCAdate = prevCARows[0]?.prev_ca_date ?? null;
-
-    // Step 2 — delta aggregation: je.date in (prevCAdate, year-12-31].
-    // If prevCAdate null → inception fallback via -infinity (open lower).
-    const deltaRows = prevCAdate
-      ? await this.tx.$queryRaw<
-          Array<{
-            account_id: string;
-            code: string;
-            nature: AccountNature;
-            type: AccountType;
-            subtype: string | null;
-            debit_total: string;
-            credit_total: string;
-          }>
-        >`
-          SELECT
-            a.id                                              AS account_id,
-            a.code                                            AS code,
-            a.nature                                          AS nature,
-            a.type                                            AS type,
-            a.subtype                                         AS subtype,
-            COALESCE(SUM(jl.debit),  0)::numeric(18,2)::text  AS debit_total,
-            COALESCE(SUM(jl.credit), 0)::numeric(18,2)::text  AS credit_total
-          FROM journal_lines jl
-          JOIN journal_entries je ON je.id = jl."journalEntryId"
-          JOIN accounts        a  ON a.id  = jl."accountId"
-          WHERE je."organizationId" = ${organizationId}
-            AND je.status            IN ('POSTED','LOCKED')
-            AND je.date              > ${prevCAdate}
-            AND je.date             <= ${yearEnd}
-            AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
-            AND a."isDetail"         = true
-          GROUP BY a.id, a.code, a.nature, a.type, a.subtype;
-        `
-      : await this.tx.$queryRaw<
-          Array<{
-            account_id: string;
-            code: string;
-            nature: AccountNature;
-            type: AccountType;
-            subtype: string | null;
-            debit_total: string;
-            credit_total: string;
-          }>
-        >`
-          SELECT
-            a.id                                              AS account_id,
-            a.code                                            AS code,
-            a.nature                                          AS nature,
-            a.type                                            AS type,
-            a.subtype                                         AS subtype,
-            COALESCE(SUM(jl.debit),  0)::numeric(18,2)::text  AS debit_total,
-            COALESCE(SUM(jl.credit), 0)::numeric(18,2)::text  AS credit_total
-          FROM journal_lines jl
-          JOIN journal_entries je ON je.id = jl."journalEntryId"
-          JOIN accounts        a  ON a.id  = jl."accountId"
-          WHERE je."organizationId" = ${organizationId}
-            AND je.status            IN ('POSTED','LOCKED')
-            AND je.date             <= ${yearEnd}
-            AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
-            AND a."isDetail"         = true
-          GROUP BY a.id, a.code, a.nature, a.type, a.subtype;
-        `;
-
-    // Inception path — no prevCA to merge, return delta unchanged.
-    if (!prevCAdate) {
-      return deltaRows.map(this.mapAggregatedRow);
-    }
-
-    // Step 3 — prevCA per-account contribution.
-    const prevCAContribRows = await this.tx.$queryRaw<
-      Array<{
-        account_id: string;
-        code: string;
-        nature: AccountNature;
-        type: AccountType;
-        subtype: string | null;
-        prev_debit_total: string;
-        prev_credit_total: string;
-      }>
-    >`
-      SELECT
-        a.id                                              AS account_id,
-        a.code                                            AS code,
-        a.nature                                          AS nature,
-        a.type                                            AS type,
-        a.subtype                                         AS subtype,
-        COALESCE(SUM(jl.debit),  0)::numeric(18,2)::text  AS prev_debit_total,
-        COALESCE(SUM(jl.credit), 0)::numeric(18,2)::text  AS prev_credit_total
-      FROM journal_lines jl
-      JOIN journal_entries je ON je.id = jl."journalEntryId"
-      JOIN accounts        a  ON a.id  = jl."accountId"
-      JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
-      WHERE je."organizationId" = ${organizationId}
-        AND je.status            IN ('POSTED','LOCKED')
-        AND vt.code              = 'CA'
-        AND je.date              = ${prevCAdate}
-        AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
-        AND a."isDetail"         = true
-      GROUP BY a.id, a.code, a.nature, a.type, a.subtype;
-    `;
-
-    // In-memory merge — sum delta + prevCA per accountId.
-    const merged = new Map<string, YearAggregatedLine>();
-    for (const r of deltaRows) {
-      merged.set(r.account_id, this.mapAggregatedRow(r));
-    }
-    for (const r of prevCAContribRows) {
-      const existing = merged.get(r.account_id);
-      if (existing) {
-        merged.set(r.account_id, {
-          ...existing,
-          debit: existing.debit.plus(new Decimal(r.prev_debit_total)),
-          credit: existing.credit.plus(new Decimal(r.prev_credit_total)),
-        });
-      } else {
-        merged.set(r.account_id, {
-          accountId: r.account_id,
-          code: r.code,
-          nature: r.nature,
-          type: r.type,
-          subtype: r.subtype,
-          debit: new Decimal(r.prev_debit_total),
-          credit: new Decimal(r.prev_credit_total),
-        });
-      }
-    }
-    return Array.from(merged.values());
-  }
+  // ── annual-close-canonical-flow Phase J T-30 retired ────────────────────
+  // Removed from this adapter per D-6 + CAN-5.2:
+  //   - aggregateResultAccountsByYear (replaced by aggregateGastosByYear +
+  //     aggregateIngresosByYear).
+  //   - aggregateBalanceSheetAccountsForCA (replaced by aggregateBalanceSheet
+  //     AtYearEnd; latent FIN-1 prevCAdate bug obsoleted as dead code).
+  //   - reReadCcExistsForYearTx (idempotency exclusively via FY.status).
+  //
+  // The legacy `aggregateBalanceSheetAccountsForCA` reader stays in the NoTx
+  // PrismaYearAccountingReader adapter (consumed by initial-balance + equity-
+  // statement modules via vt.code='CA' filter) — NO change to that path.
 
   // ── Tx-bound result-account lookup ──────────────────────────────────────
 
@@ -488,25 +304,6 @@ export class PrismaYearAccountingReaderTxAdapter
     });
     if (!row) return null;
     return { status: row.status };
-  }
-
-  async reReadCcExistsForYearTx(
-    organizationId: string,
-    year: number,
-  ): Promise<boolean> {
-    const row = await this.tx.journalEntry.findFirst({
-      where: {
-        organizationId,
-        status: "POSTED", // sentinel-allow:cc-freshness-read (CC is always POSTED freshly inside the same TX that locks it; pre-TX gate reads before lock — explorer §B.3)
-        voucherType: { code: "CC" },
-        date: {
-          gte: toNoonUtc(`${year}-01-01`),
-          lte: toNoonUtc(`${year}-12-31`),
-        },
-      },
-      select: { id: true },
-    });
-    return row !== null;
   }
 
   // ── helpers ────────────────────────────────────────────────────────────

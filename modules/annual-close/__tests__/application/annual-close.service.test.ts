@@ -300,46 +300,9 @@ function makeYearAccountingTx(
       debit: new Decimal("1000.00"),
       credit: new Decimal("1000.00"),
     })),
-    aggregateResultAccountsByYear: vi.fn(async () => [
-      {
-        accountId: "acc_ingreso_1",
-        code: "4.1.1",
-        nature: "ACREEDORA" as const,
-        type: "INGRESO" as const,
-        subtype: null,
-        debit: new Decimal("0"),
-        credit: new Decimal("100.00"),
-      },
-      {
-        accountId: "acc_gasto_1",
-        code: "5.1.1",
-        nature: "DEUDORA" as const,
-        type: "GASTO" as const,
-        subtype: null,
-        debit: new Decimal("60.00"),
-        credit: new Decimal("0"),
-      },
-    ]),
-    aggregateBalanceSheetAccountsForCA: vi.fn(async () => [
-      {
-        accountId: "acc_activo_1",
-        code: "1.1.1",
-        nature: "DEUDORA" as const,
-        type: "ACTIVO" as const,
-        subtype: null,
-        debit: new Decimal("200.00"),
-        credit: new Decimal("0"),
-      },
-      {
-        accountId: "acc_patrimonio_321",
-        code: "3.2.1",
-        nature: "ACREEDORA" as const,
-        type: "PATRIMONIO" as const,
-        subtype: null,
-        debit: new Decimal("0"),
-        credit: new Decimal("200.00"),
-      },
-    ]),
+    // Legacy aggregateResultAccountsByYear + aggregateBalanceSheetAccountsForCA
+    // REMOVED from port (Phase J T-30) — replaced by gastos/ingresos/
+    // balanceSheetAtYearEnd in the canonical 5-asientos flow.
     findResultAccount: vi.fn(async () => ({
       id: "acc_322",
       code: "3.2.2",
@@ -399,7 +362,7 @@ function makeYearAccountingTx(
     })),
     reReadFiscalYearStatusTx: vi.fn(async () => ({ status: "OPEN" as const })),
     reReadPeriodStatusTx: vi.fn(async () => ({ status: "OPEN" as const })),
-    reReadCcExistsForYearTx: vi.fn(async () => false),
+    // reReadCcExistsForYearTx RETIRED Phase J T-30 (CAN-5.2 — FY.status gate).
     ...overrides,
   };
 }
@@ -818,9 +781,8 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
       .toHaveBeenCalledWith("fy_1");
     expect(ctx.scope.yearAccountingTx.reReadPeriodStatusTx)
       .toHaveBeenCalledWith("p_dec");
-    // reReadCcExistsForYearTx RETIRED per CAN-5.2 — must NOT be called.
-    expect(ctx.scope.yearAccountingTx.reReadCcExistsForYearTx)
-      .not.toHaveBeenCalled();
+    // reReadCcExistsForYearTx RETIRED per CAN-5.2 — port method removed
+    // entirely in Phase J T-30. No assertion required.
 
     // (b) year-aggregate balance re-assert inside-TX
     expect(ctx.scope.yearAccountingTx.aggregateYearDebitCredit)
@@ -882,9 +844,8 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
     expect(caCall![0].periodId).toBe("p_y1_m1");
     expect(caCall![0].sourceType).toBe("annual-close");
     expect(caCall![0].sourceId).toBe("fy_1");
-    // Legacy aggregateBalanceSheetAccountsForCA NOT used in canonical flow.
-    expect(ctx.scope.yearAccountingTx.aggregateBalanceSheetAccountsForCA)
-      .not.toHaveBeenCalled();
+    // Legacy aggregateBalanceSheetAccountsForCA removed from port (T-30) —
+    // no assertion needed since it's no longer a port method.
 
     // (g) FY markClosed LAST — FK args RETIRED per CAN-5.6.
     expect(ctx.scope.fiscalYears.markClosed).toHaveBeenCalledWith(

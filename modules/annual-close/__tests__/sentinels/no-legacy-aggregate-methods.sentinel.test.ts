@@ -47,6 +47,7 @@ function lineIsWhitelisted(line: string): boolean {
     /retired/i.test(line) ||
     /sentinel/i.test(line) ||
     /^\s*\*/.test(line) || // JSDoc body line
+    /^\s*\/\//.test(line) || // line comment (`//`)
     /annual-close-canonical-flow/.test(line)
   );
 }
