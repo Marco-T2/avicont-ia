@@ -1,6 +1,7 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import { Prisma } from "@/generated/prisma/client";
+import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type {
   EquityAccountMetadata,
   PatrimonyVoucherCode,
@@ -62,7 +63,7 @@ export class PrismaEquityStatementRepo
       JOIN accounts        a  ON a.id   = jl."accountId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je.status       = 'POSTED'
+        AND je.status       ${FINALIZED_JE_STATUSES_SQL}
         AND je.date        <= ${cutoff}
         AND a.type          = 'PATRIMONIO'
       GROUP BY jl."accountId", a.nature
@@ -110,7 +111,7 @@ export class PrismaEquityStatementRepo
       JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je.status       = 'POSTED'
+        AND je.status       ${FINALIZED_JE_STATUSES_SQL}
         AND je.date        >= ${dateFrom}
         AND je.date        <= ${dateTo}
         AND a.type          = 'PATRIMONIO'
@@ -164,7 +165,7 @@ export class PrismaEquityStatementRepo
       JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je.status       = 'POSTED'
+        AND je.status       ${FINALIZED_JE_STATUSES_SQL}
         AND je.date        >= ${dateFrom}
         AND je.date        <= ${dateTo}
         AND vt.code         = 'CA'
