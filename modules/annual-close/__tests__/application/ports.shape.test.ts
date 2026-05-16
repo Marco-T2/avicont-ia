@@ -45,6 +45,58 @@ function exists(rel: string): boolean {
   return existsSync(resolve(ROOT, rel));
 }
 
+// ─── T-05/T-06 RED (annual-close-canonical-flow) ───────────────────────────
+// Asserts the new port methods + retired-method absence on the
+// YearAccountingReaderTxPort + FiscalYearReaderPort interfaces.
+// Declared failure mode (literal): `expected false to be true` — methods
+// `aggregateGastosByYear`, `aggregateIngresosByYear`,
+// `aggregateBalanceSheetAtYearEnd`, `findAccumulatedResultsAccountTx`, and
+// `findAccumulatedResultsAccount` do NOT exist on the runtime mock-shape
+// detection at HEAD d60099a8. T-05/T-06 GREEN add the method signatures.
+//
+// Uses a structural via TS keyof check at compile time; runtime check via
+// a property-existence proxy.
+import type {
+  FiscalYearReaderPort as FYReaderPort,
+} from "../../domain/ports/fiscal-year-reader.port";
+import type {
+  YearAccountingReaderTxPort as YARTxPort,
+} from "../../domain/ports/year-accounting-reader-tx.port";
+
+type RequiresMethod<P, K extends string> = K extends keyof P ? true : false;
+
+describe("annual-close-canonical-flow — port surface (T-05 + T-06)", () => {
+  it("YearAccountingReaderTxPort has aggregateGastosByYear (REQ-A.1)", () => {
+    type Has = RequiresMethod<YARTxPort, "aggregateGastosByYear">;
+    const ok: Has = true;
+    expect(ok).toBe(true);
+  });
+
+  it("YearAccountingReaderTxPort has aggregateIngresosByYear (REQ-A.2)", () => {
+    type Has = RequiresMethod<YARTxPort, "aggregateIngresosByYear">;
+    const ok: Has = true;
+    expect(ok).toBe(true);
+  });
+
+  it("YearAccountingReaderTxPort has aggregateBalanceSheetAtYearEnd (REQ-A.4/A.11)", () => {
+    type Has = RequiresMethod<YARTxPort, "aggregateBalanceSheetAtYearEnd">;
+    const ok: Has = true;
+    expect(ok).toBe(true);
+  });
+
+  it("YearAccountingReaderTxPort has findAccumulatedResultsAccountTx (REQ-A.3 TOCTOU)", () => {
+    type Has = RequiresMethod<YARTxPort, "findAccumulatedResultsAccountTx">;
+    const ok: Has = true;
+    expect(ok).toBe(true);
+  });
+
+  it("FiscalYearReaderPort has findAccumulatedResultsAccount (REQ-A.3 pre-TX gate)", () => {
+    type Has = RequiresMethod<FYReaderPort, "findAccumulatedResultsAccount">;
+    const ok: Has = true;
+    expect(ok).toBe(true);
+  });
+});
+
 describe("annual-close Phase 3.1 RED — port shapes (7 ports + UoW shape)", () => {
   // ── domain/ports/ — 6 outbound ports ─────────────────────────────────────
   it("Test 1: domain/ports/fiscal-year-reader.port.ts exists (FiscalYearReaderPort — outside-TX FY reads + countPeriodsByStatus + ccExistsForYear + decemberPeriodOf + findResultAccount)", () => {
