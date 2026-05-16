@@ -35,7 +35,7 @@ export function StatementTable({
   compact = false,
   onRefresh: _onRefresh,
   title,
-  orgName,
+  orgName: _orgName,
   subtitle,
 }: StatementTableProps) {
   // Estado de expansión: raíz expandida por defecto, subtypes colapsados
@@ -159,20 +159,22 @@ export function StatementTable({
         className="sr-only"
       />
 
-      {/* Encabezado QuickBooks-style — centrado, arriba de la tabla */}
-      {(title || orgName || subtitle) && (
-        <div className="text-center mb-4 px-4 pt-2">
+      {/* Sub-header del Card — paridad con initial-balance:
+          TÍTULO grande bold en MAYÚSCULAS + subtítulo (fecha/período) muted
+          + "(Expresado en Bolivianos)" en italic. `orgName` se conserva como
+          prop por backwards-compat pero NO se renderiza (redundante con el
+          H1 de la página). */}
+      {(title || subtitle) && (
+        <div className="px-6 pb-4 text-center">
           {title && (
-            <h2 className="text-2xl font-semibold text-foreground tracking-tight">
-              {title}
-            </h2>
-          )}
-          {orgName && (
-            <div className="text-base text-foreground mt-1">{orgName}</div>
+            <h2 className="text-xl font-bold tracking-wide">{title.toUpperCase()}</h2>
           )}
           {subtitle && (
-            <div className="text-sm text-muted-foreground mt-0.5">{subtitle}</div>
+            <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>
           )}
+          <p className="text-xs italic text-muted-foreground">
+            (Expresado en Bolivianos)
+          </p>
         </div>
       )}
 
