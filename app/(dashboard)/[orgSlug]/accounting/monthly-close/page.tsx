@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { MonthlyClosePanel } from "@/components/accounting/monthly-close-panel";
@@ -46,6 +48,13 @@ export default async function MonthlyClosePage({ params, searchParams }: Monthly
   return (
     <div className="space-y-6">
       <div>
+        <Link
+          href={`/${orgSlug}/settings/periods`}
+          className="mb-3 inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Volver a Períodos Fiscales
+        </Link>
         <h1 className="text-3xl font-bold">Cierre Mensual</h1>
         <p className="text-muted-foreground mt-1">
           Revisión y cierre de períodos fiscales
