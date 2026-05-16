@@ -7,6 +7,12 @@ import type {
 } from "./cc-line.builder";
 
 /**
+ * @deprecated Retired by annual-close-canonical-flow per D-6 (proposal #2695)
+ * + CAN-5.1 (zero-divergence). Replaced by `apertura-line.builder` which
+ * performs pure in-memory inversion of asiento #4 (no second aggregation).
+ * File deletion deferred to Phase J T-30 cleanup. NOT consumed by the
+ * service after Phase E T-17 GREEN.
+ *
  * CA line builder — nature-aware side selection (REQ-4.2/4.3, design rev 2 §4).
  *
  * Input is the ALREADY-merged delta+prevCA per-account aggregate produced by

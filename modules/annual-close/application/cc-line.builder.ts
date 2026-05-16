@@ -6,6 +6,15 @@ import type {
 } from "../domain/types/accounting-types";
 
 /**
+ * @deprecated Retired by annual-close-canonical-flow per D-6 (proposal #2695)
+ * + CAN-5 (5-asientos canonical). Replaced by 4 separate builders:
+ *   - gastos-close-line.builder (asiento #1)
+ *   - ingresos-close-line.builder (asiento #2)
+ *   - resultado-close-line.builder (asiento #3)
+ *   - balance-close-line.builder (asiento #4)
+ * File deletion deferred to Phase J T-30 cleanup. NOT consumed by the
+ * service after Phase E T-17 GREEN.
+ *
  * CC line builder — signed-net algorithm (REQ-3.3, design rev 2 §4, C-2).
  *
  * Mirrors the nature-aware net-balance pattern from
