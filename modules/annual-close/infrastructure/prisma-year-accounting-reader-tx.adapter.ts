@@ -149,14 +149,47 @@ export class PrismaYearAccountingReaderTxAdapter
     return rows.map(this.mapAggregatedRow);
   }
 
-  /** REQ-A.2 — stub; real SQL implementation lands in T-08. */
+  /**
+   * REQ-A.2 — asiento #2 source: per-account INGRESO leaves with `nature`
+   * for the signed-net algorithm in `ingresos-close-line.builder`. FIN-1
+   * preserved. DEC-1: text → `new Decimal(str)`.
+   */
   async aggregateIngresosByYear(
-    _organizationId: string,
-    _year: number,
+    organizationId: string,
+    year: number,
   ): Promise<YearAggregatedLine[]> {
-    throw new Error(
-      "aggregateIngresosByYear not yet implemented — landing in Phase C T-08",
-    );
+    const rows = await this.tx.$queryRaw<
+      Array<{
+        account_id: string;
+        code: string;
+        nature: AccountNature;
+        type: AccountType;
+        subtype: string | null;
+        debit_total: string;
+        credit_total: string;
+      }>
+    >`
+      SELECT
+        a.id                                          AS account_id,
+        a.code                                        AS code,
+        a.nature                                      AS nature,
+        a.type                                        AS type,
+        a.subtype                                     AS subtype,
+        COALESCE(SUM(jl.debit),  0)::numeric(18,2)::text  AS debit_total,
+        COALESCE(SUM(jl.credit), 0)::numeric(18,2)::text  AS credit_total
+      FROM journal_lines jl
+      JOIN journal_entries je ON je.id = jl."journalEntryId"
+      JOIN accounts        a  ON a.id  = jl."accountId"
+      JOIN fiscal_periods  fp ON fp.id = je."periodId"
+      WHERE je."organizationId" = ${organizationId}
+        AND je.status            IN ('POSTED','LOCKED')
+        AND fp.year              = ${year}
+        AND a.type               = 'INGRESO'
+        AND a."isDetail"         = true
+      GROUP BY a.id, a.code, a.nature, a.type, a.subtype
+      HAVING SUM(jl.debit) <> 0 OR SUM(jl.credit) <> 0;
+    `;
+    return rows.map(this.mapAggregatedRow);
   }
 
   /** REQ-A.4 / REQ-A.11 — stub; real SQL implementation lands in T-09. */
