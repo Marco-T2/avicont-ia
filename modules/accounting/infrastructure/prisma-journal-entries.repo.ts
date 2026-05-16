@@ -486,9 +486,11 @@ export class JournalRepository extends BaseRepository {
       include: {
         journalEntry: {
           select: {
+            id: true,
             date: true,
             number: true,
             description: true,
+            voucherType: { select: { code: true, prefix: true } },
           },
         },
       },
@@ -563,7 +565,13 @@ export class JournalRepository extends BaseRepository {
         take,
         include: {
           journalEntry: {
-            select: { date: true, number: true, description: true },
+            select: {
+              id: true,
+              date: true,
+              number: true,
+              description: true,
+              voucherType: { select: { code: true, prefix: true } },
+            },
           },
         },
       }),

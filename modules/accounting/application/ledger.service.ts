@@ -12,6 +12,7 @@ import {
   roundHalfUp,
   sumDecimals,
 } from "@/modules/accounting/shared/domain/money.utils";
+import { formatCorrelativeNumber } from "@/modules/accounting/domain/correlative.utils";
 import type { PaginationOptions } from "@/modules/shared/domain/value-objects/pagination";
 import type { AccountType } from "@/generated/prisma/client";
 import Decimal from "decimal.js";
@@ -76,8 +77,16 @@ export class LedgerService {
       const runningBalance = sumDecimals(deltas.slice(0, idx + 1));
 
       return {
+        entryId: line.journalEntry.id,
         date: line.journalEntry.date,
         entryNumber: line.journalEntry.number,
+        voucherCode: line.journalEntry.voucherType.code,
+        displayNumber:
+          formatCorrelativeNumber(
+            line.journalEntry.voucherType.prefix,
+            line.journalEntry.date,
+            line.journalEntry.number,
+          ) ?? String(line.journalEntry.number),
         description: line.description ?? line.journalEntry.description,
         debit: roundHalfUp(debit).toFixed(2),
         credit: roundHalfUp(credit).toFixed(2),
@@ -133,8 +142,16 @@ export class LedgerService {
       const credit = new Decimal(String(line.credit));
       running = running.plus(debit).minus(credit);
       return {
+        entryId: line.journalEntry.id,
         date: line.journalEntry.date,
         entryNumber: line.journalEntry.number,
+        voucherCode: line.journalEntry.voucherType.code,
+        displayNumber:
+          formatCorrelativeNumber(
+            line.journalEntry.voucherType.prefix,
+            line.journalEntry.date,
+            line.journalEntry.number,
+          ) ?? String(line.journalEntry.number),
         description: line.description ?? line.journalEntry.description,
         debit: roundHalfUp(debit).toFixed(2),
         credit: roundHalfUp(credit).toFixed(2),

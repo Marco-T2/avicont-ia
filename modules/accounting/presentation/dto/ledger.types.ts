@@ -12,8 +12,14 @@ import type { AccountType } from "@/generated/prisma/client";
 // ── Ledger types ──
 
 export interface LedgerEntry {
+  /** cuid del JournalEntry — usado por la UI para enlazar al detail / PDF. */
+  entryId: string;
   date: Date;
   entryNumber: number;
+  /** Código del voucher type (CD, CV, CP, etc.) — para columna "Tipo". */
+  voucherCode: string;
+  /** Correlativo formateado tipo "P-001" (prefix + año + número). */
+  displayNumber: string;
   description: string;
   debit: string;
   credit: string;

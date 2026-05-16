@@ -67,8 +67,11 @@ function makeLedger(overrides: Partial<{
   page: number;
   openingBalance: string;
   items: Array<{
+    entryId: string;
     date: string;
     entryNumber: number;
+    voucherCode: string;
+    displayNumber: string;
     description: string;
     debit: string;
     credit: string;
@@ -106,8 +109,11 @@ describe("LedgerPageClient — opening balance in-table row (D5'')", () => {
           total: 1,
           items: [
             {
+              entryId: "je-1",
               date: "2025-06-01T00:00:00.000Z",
               entryNumber: 1,
+              voucherCode: "CD",
+              displayNumber: "D2506-000001",
               description: "Movimiento dentro del rango",
               debit: "50.00",
               credit: "0.00",
@@ -142,8 +148,11 @@ describe("LedgerPageClient — opening balance in-table row (D5'')", () => {
           total: 1,
           items: [
             {
+              entryId: "je-1",
               date: "2025-06-01T00:00:00.000Z",
               entryNumber: 1,
+              voucherCode: "CD",
+              displayNumber: "D2506-000001",
               description: "Movimiento dentro del rango",
               debit: "50.00",
               credit: "0.00",

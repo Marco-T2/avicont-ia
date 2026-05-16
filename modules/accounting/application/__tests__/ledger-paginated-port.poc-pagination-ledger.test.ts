@@ -29,9 +29,11 @@ function row(debit: number, credit: number, date: string, num: number) {
     credit,
     description: null,
     journalEntry: {
+      id: `je-${num}`,
       date: new Date(date),
       number: num,
       description: `E${num}`,
+      voucherType: { code: "CD", prefix: "D" },
     },
   };
 }

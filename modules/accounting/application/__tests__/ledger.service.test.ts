@@ -75,19 +75,37 @@ describe("LedgerService.getAccountLedger", () => {
         debit: 100,
         credit: 0,
         description: "Apertura",
-        journalEntry: { date: new Date("2099-01-01"), number: 1, description: "E1" },
+        journalEntry: {
+          id: "je-1",
+          date: new Date("2099-01-01"),
+          number: 1,
+          description: "E1",
+          voucherType: { code: "CD", prefix: "D" },
+        },
       },
       {
         debit: 0,
         credit: 30,
         description: null,
-        journalEntry: { date: new Date("2099-01-02"), number: 2, description: "E2" },
+        journalEntry: {
+          id: "je-2",
+          date: new Date("2099-01-02"),
+          number: 2,
+          description: "E2",
+          voucherType: { code: "CD", prefix: "D" },
+        },
       },
       {
         debit: 5.5,
         credit: 0,
         description: "Ajuste",
-        journalEntry: { date: new Date("2099-01-03"), number: 3, description: "E3" },
+        journalEntry: {
+          id: "je-3",
+          date: new Date("2099-01-03"),
+          number: 3,
+          description: "E3",
+          voucherType: { code: "CD", prefix: "D" },
+        },
       },
     ];
     const service = new LedgerService(
@@ -232,9 +250,11 @@ describe("LedgerService.getAccountLedgerPaginated", () => {
       credit,
       description: null,
       journalEntry: {
+        id: `je-${num}`,
         date: new Date(date),
         number: num,
         description: `E${num}`,
+        voucherType: { code: "CD", prefix: "D" },
       },
     };
   }

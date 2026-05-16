@@ -41,15 +41,21 @@ import type {
  */
 
 /** A journal line projected for the libro-mayor view, with its parent entry's
- *  date/number/description. Mirrors the legacy `findLinesByAccount` select. */
+ *  date/number/description + entry id + voucher type (code+prefix) para que la
+ *  UI pueda mostrar el tipo de comprobante y enlazar al detail del asiento. */
 export interface LedgerLineRow {
   debit: unknown;
   credit: unknown;
   description: string | null;
   journalEntry: {
+    id: string;
     date: Date;
     number: number;
     description: string;
+    voucherType: {
+      code: string;
+      prefix: string;
+    };
   };
 }
 

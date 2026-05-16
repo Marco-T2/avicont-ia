@@ -20,7 +20,8 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import AccountSelector from "@/components/accounting/account-selector";
-import { Search, Calculator } from "lucide-react";
+import { Search, Calculator, Eye, Printer } from "lucide-react";
+import Link from "next/link";
 import type { Account } from "@/generated/prisma/client";
 import { formatDateBO } from "@/lib/date-utils";
 
@@ -28,8 +29,11 @@ import { formatDateBO } from "@/lib/date-utils";
 // @/modules/accounting/presentation/dto/ledger.types. Monetary fields wire
 // as string (Decimal precision preserved server-side, parsed at display).
 interface LedgerEntry {
+  entryId: string;
   date: string;
   entryNumber: number;
+  voucherCode: string;
+  displayNumber: string;
   description: string;
   debit: string;
   credit: string;
@@ -254,10 +258,13 @@ export default function LedgerPageClient({
                       Fecha
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                      # Asiento
+                      Tipo
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                      Descripcion
+                      Nº
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Descripción
                     </th>
                     <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Debe
@@ -267,6 +274,9 @@ export default function LedgerPageClient({
                     </th>
                     <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Saldo
+                    </th>
+                    <th className="text-center py-3 px-4 font-medium text-muted-foreground">
+                      Acciones
                     </th>
                   </tr>
                 </thead>
@@ -289,6 +299,7 @@ export default function LedgerPageClient({
                     >
                       <td className="py-3 px-4 text-muted-foreground">—</td>
                       <td className="py-3 px-4 text-muted-foreground">—</td>
+                      <td className="py-3 px-4 text-muted-foreground">—</td>
                       <td className="py-3 px-4 italic text-muted-foreground">
                         Saldo inicial acumulado
                       </td>
@@ -301,11 +312,12 @@ export default function LedgerPageClient({
                       <td className="py-3 px-4 text-right font-mono">
                         {formatCurrency(ledger.openingBalance)}
                       </td>
+                      <td className="py-3 px-4 text-muted-foreground">—</td>
                     </tr>
                   )}
                   {ledger.items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-12 text-center">
+                      <td colSpan={8} className="py-12 text-center">
                         <Calculator className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
                         <p className="text-muted-foreground">
                           No hay movimientos para esta cuenta
@@ -313,11 +325,14 @@ export default function LedgerPageClient({
                       </td>
                     </tr>
                   ) : (
-                    ledger.items.map((entry, idx) => (
-                      <tr key={idx} className="border-b">
-                        <td className="py-3 px-4">{formatDateBO(entry.date)}</td>
-                        <td className="py-3 px-4 font-mono">
-                          {entry.entryNumber}
+                    ledger.items.map((entry) => (
+                      <tr key={entry.entryId} className="border-b hover:bg-accent/50 transition-colors">
+                        <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(entry.date)}</td>
+                        <td className="py-3 px-4 font-mono text-xs uppercase">
+                          {entry.voucherCode}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
+                          {entry.displayNumber}
                         </td>
                         <td className="py-3 px-4">{entry.description}</td>
                         <td className="py-3 px-4 text-right font-mono">
@@ -338,6 +353,30 @@ export default function LedgerPageClient({
                           }`}
                         >
                           {formatCurrency(entry.balance)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <div className="flex items-center justify-center gap-1">
+                            <Link
+                              href={`/${orgSlug}/accounting/journal/${entry.entryId}`}
+                              aria-label={`Ver asiento ${entry.displayNumber}`}
+                              title="Ver asiento"
+                            >
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <Eye className="h-4 w-4" />
+                              </Button>
+                            </Link>
+                            <a
+                              href={`/api/organizations/${orgSlug}/journal/${entry.entryId}?format=pdf`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              aria-label={`Abrir PDF del comprobante ${entry.displayNumber}`}
+                              title="Abrir PDF en pestaña nueva"
+                            >
+                              <Button variant="ghost" size="icon" className="h-7 w-7">
+                                <Printer className="h-4 w-4" />
+                              </Button>
+                            </a>
+                          </div>
                         </td>
                       </tr>
                     ))
