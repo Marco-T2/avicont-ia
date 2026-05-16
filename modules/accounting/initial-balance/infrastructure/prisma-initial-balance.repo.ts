@@ -2,6 +2,7 @@ import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import { Prisma } from "@/generated/prisma/client";
 import type { AccountSubtype } from "@/generated/prisma/client";
+import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type {
   InitialBalanceOrgHeader,
   InitialBalanceRow,
@@ -50,8 +51,9 @@ export class PrismaInitialBalanceRepo
   implements InitialBalanceQueryPort
 {
   /**
-   * Returns signed-net lines from the MOST-RECENT POSTED CA (Comprobante de
-   * Apertura) voucher of the organization.
+   * Returns signed-net lines from the MOST-RECENT **finalized** (POSTED or
+   * LOCKED, per FIN-1) CA (Comprobante de Apertura) voucher of the
+   * organization.
    *
    * **BREAKING SEMANTIC CHANGE (Phase 6.4 — spec REQ-6.0 + design rev 2 §9)**:
    * Prior to this change, the method aggregated `SUM(debit−credit)` across
@@ -94,14 +96,14 @@ export class PrismaInitialBalanceRepo
       JOIN accounts        a  ON a.id   = jl."accountId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je."status"     = 'POSTED'
+        AND je."status"     ${FINALIZED_JE_STATUSES_SQL}
         AND a.subtype IS NOT NULL
         AND je.id = (
           SELECT je2.id
           FROM journal_entries je2
           JOIN voucher_types   vt2 ON vt2.id = je2."voucherTypeId"
           WHERE je2."organizationId" = ${orgId}
-            AND je2."status"         = 'POSTED'
+            AND je2."status"         ${FINALIZED_JE_STATUSES_SQL}
             AND vt2.code             = 'CA'
           ORDER BY je2.date DESC, je2."createdAt" DESC
           LIMIT 1
@@ -119,10 +121,10 @@ export class PrismaInitialBalanceRepo
   }
 
   /**
-   * Counts the number of POSTED CA vouchers (JournalEntry rows with voucher
-   * code='CA' and status='POSTED') for the organization. DRAFT entries are
-   * excluded; other orgs' CAs never appear thanks to the explicit
-   * `je."organizationId" = ${orgId}` filter.
+   * Counts the number of **finalized** (POSTED or LOCKED, per FIN-1) CA
+   * vouchers (JournalEntry rows with voucher code='CA') for the organization.
+   * DRAFT and VOIDED entries are excluded; other orgs' CAs never appear thanks
+   * to the explicit `je."organizationId" = ${orgId}` filter.
    *
    * Used by the service layer to emit the `multipleCA` warning flag when the
    * organization has more than one opening-balance voucher.
@@ -136,7 +138,7 @@ export class PrismaInitialBalanceRepo
       JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je."status"     = 'POSTED'
+        AND je."status"     ${FINALIZED_JE_STATUSES_SQL}
         AND vt.code         = 'CA'
     `;
 
@@ -145,7 +147,8 @@ export class PrismaInitialBalanceRepo
   }
 
   /**
-   * Year-scoped count of POSTED CA vouchers (NEW per spec REQ-6.1).
+   * Year-scoped count of **finalized** (POSTED or LOCKED, per FIN-1) CA
+   * vouchers (NEW per spec REQ-6.1).
    *
    * Filters CA `JournalEntry` rows whose `date` falls within
    * `[${year}-01-01, ${year}-12-31]` (inclusive — noon-UTC anchored, see
@@ -164,7 +167,7 @@ export class PrismaInitialBalanceRepo
       JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je."status"     = 'POSTED'
+        AND je."status"     ${FINALIZED_JE_STATUSES_SQL}
         AND vt.code         = 'CA'
         AND je.date        >= ${new Date(`${year}-01-01T00:00:00Z`)}
         AND je.date        <= ${new Date(`${year}-12-31T23:59:59.999Z`)}
@@ -212,7 +215,7 @@ export class PrismaInitialBalanceRepo
       JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je."status"     = 'POSTED'
+        AND je."status"     ${FINALIZED_JE_STATUSES_SQL}
         AND vt.code         = 'CA'
         AND a.subtype IS NOT NULL
         AND je.date        >= ${new Date(`${year}-01-01T00:00:00Z`)}
@@ -263,11 +266,12 @@ export class PrismaInitialBalanceRepo
   }
 
   /**
-   * Returns the earliest date among all POSTED CA voucher journal entries for
-   * the organization (`MIN(je.date)`). This is the opening-balance date shown
-   * in the report title and used as `dateAt` in the statement.
+   * Returns the earliest date among all **finalized** (POSTED or LOCKED, per
+   * FIN-1) CA voucher journal entries for the organization (`MIN(je.date)`).
+   * This is the opening-balance date shown in the report title and used as
+   * `dateAt` in the statement.
    *
-   * Returns `null` when no POSTED CA entries exist (same guard as
+   * Returns `null` when no finalized CA entries exist (same guard as
    * `countCAVouchers === 0`).
    */
   async getCADate(orgId: string): Promise<Date | null> {
@@ -281,7 +285,7 @@ export class PrismaInitialBalanceRepo
       JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je."status"     = 'POSTED'
+        AND je."status"     ${FINALIZED_JE_STATUSES_SQL}
         AND vt.code         = 'CA'
     `;
 
@@ -291,8 +295,9 @@ export class PrismaInitialBalanceRepo
   /**
    * Year-scoped variant of `getCADate` (NEW per spec REQ-6.1).
    *
-   * Returns `MIN(je.date)` among POSTED CA entries dated within
-   * `[${year}-01-01, ${year}-12-31]`. Returns `null` if no CA in that year.
+   * Returns `MIN(je.date)` among **finalized** (POSTED or LOCKED, per FIN-1)
+   * CA entries dated within `[${year}-01-01, ${year}-12-31]`. Returns `null`
+   * if no finalized CA in that year.
    */
   async getCADateForYear(orgId: string, year: number): Promise<Date | null> {
     this.requireOrg(orgId);
@@ -305,7 +310,7 @@ export class PrismaInitialBalanceRepo
       JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je."status"     = 'POSTED'
+        AND je."status"     ${FINALIZED_JE_STATUSES_SQL}
         AND vt.code         = 'CA'
         AND je.date        >= ${new Date(`${year}-01-01T00:00:00Z`)}
         AND je.date        <= ${new Date(`${year}-12-31T23:59:59.999Z`)}
