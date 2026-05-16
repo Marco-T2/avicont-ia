@@ -44,15 +44,48 @@ export default function ContactSelector({
 }: ContactSelectorProps) {
   const [open, setOpen] = useState(false);
   const [contacts, setContacts] = useState<Contact[]>([]);
+  // Contacto resuelto eagerly cuando llega `value` poblado pero sin
+  // `initialContact` que matchee — fetch al mount al endpoint /contacts/{id}.
+  // Garantiza que el botón muestre el nombre del contacto sin obligar al
+  // usuario a abrir el popover (UX de edit/duplicate de asientos).
+  const [resolvedContact, setResolvedContact] = useState<Contact | null>(null);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const initialContactMatch =
+    value && initialContact && initialContact.id === value
+      ? (initialContact as unknown as Contact)
+      : null;
+
   const selectedContact =
     contacts.find((c) => c.id === value)
-    ?? (value && initialContact && initialContact.id === value
-      ? (initialContact as unknown as Contact)
-      : null);
+    ?? initialContactMatch
+    ?? (value && resolvedContact?.id === value ? resolvedContact : null);
+
+  // Fetch puntual del contacto al mount cuando llega value pre-poblado pero
+  // no tenemos initialContact que matchee — fallback robusto para edit/duplicate.
+  useEffect(() => {
+    if (!value) return;
+    if (initialContactMatch) return; // ya lo tenemos del prop
+    if (resolvedContact?.id === value) return; // ya lo resolvimos
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`/api/organizations/${orgSlug}/contacts/${value}`);
+        if (!res.ok) return;
+        const data = (await res.json()) as Contact | { contact: Contact };
+        if (cancelled) return;
+        const contact = "contact" in data ? data.contact : data;
+        setResolvedContact(contact);
+      } catch {
+        // silent — el popover sigue siendo la forma de elegir uno
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [value, orgSlug, initialContactMatch, resolvedContact]);
 
   useEffect(() => {
     if (!open) return;
