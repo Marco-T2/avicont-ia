@@ -9,6 +9,7 @@ import AnnualPeriodList, {
   type PeriodsByYear,
   type YearGroup,
 } from "@/components/accounting/annual-period-list";
+import NewGestionButton from "@/components/accounting/new-gestion-button";
 import type { FiscalPeriod } from "@/modules/fiscal-periods/presentation/index";
 
 interface PeriodsPageProps {
@@ -83,6 +84,8 @@ export default async function PeriodsPage({ params }: PeriodsPageProps) {
     }),
   );
 
+  const isEmpty = periodsByYear.length === 0;
+
   return (
     <div className="space-y-6">
       <Link href={`/${orgSlug}/settings`}>
@@ -92,11 +95,14 @@ export default async function PeriodsPage({ params }: PeriodsPageProps) {
         </Button>
       </Link>
 
-      <div>
-        <h1 className="text-3xl font-bold">Períodos Fiscales</h1>
-        <p className="text-muted-foreground mt-1">
-          Gestión de períodos contables de la organización
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Períodos Fiscales</h1>
+          <p className="text-muted-foreground mt-1">
+            Gestión de períodos contables de la organización
+          </p>
+        </div>
+        {!isEmpty && <NewGestionButton orgSlug={orgSlug} />}
       </div>
 
       <AnnualPeriodList

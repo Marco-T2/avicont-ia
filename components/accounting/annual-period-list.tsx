@@ -95,7 +95,7 @@ export default function AnnualPeriodList({
 
   return (
     <>
-      {isEmpty ? (
+      {isEmpty && (
         <Card>
           <CardContent className="py-12 text-center">
             <CalendarDays className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
@@ -114,13 +114,6 @@ export default function AnnualPeriodList({
             </Button>
           </CardContent>
         </Card>
-      ) : (
-        <div className="flex justify-end">
-          <Button onClick={() => setShowCreateDialog(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nueva gestión
-          </Button>
-        </div>
       )}
       <Accordion type="multiple" defaultValue={defaultOpen}>
         {sortedYears.map((group) => {

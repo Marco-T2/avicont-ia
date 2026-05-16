@@ -1,27 +1,10 @@
 /**
- * RED — empty-state CTA + header "Nueva gestión" button + PeriodCreateDialog wire.
+ * AnnualPeriodList — empty-state CTA tests.
  *
- * Bug: when an organization is newly created (no FiscalPeriods yet),
- * `app/(dashboard)/[orgSlug]/settings/periods/page.tsx` passes
- * `periodsByYear = []` to `AnnualPeriodList`, which renders an empty
- * accordion with NO call-to-action — the user is blocked from creating
- * the 12 monthly periods that frame their first fiscal year ("gestión").
- *
- * Fix scope: empty-state with prominent "Crear primera gestión" button +
- * always-visible header "Nueva gestión" button (covers forward/historical
- * planning). Both buttons open the existing (orphan) `PeriodCreateDialog`,
- * which already supports batch creation of 12 months via its internal
- * "Crear los 12 meses de {year}" action.
- *
- * Conceptual note (Marco aclaró): the ANNUAL gestión is the externally
- * validated unit (fiscal/regulator). The monthly close is an INTERNAL
- * org control — important but not externally validated.
- *
- * Expected RED failure mode:
- *   - TEST 1: empty state text NOT rendered today (component returns
- *     empty <Accordion /> when periodsByYear=[]).
- *   - TEST 2: header "Nueva gestión" button does not exist.
- *   - TEST 3: PeriodCreateDialog mock is NEVER opened — no consumer wired.
+ * The empty state (org with no fiscal periods yet) renders a prominent Card
+ * with "Crear primera gestión" button. The non-empty header "Nueva gestión"
+ * button moved out to `<NewGestionButton />` so it can sit on the same row
+ * as the page title — its own test lives in `new-gestion-button.test.tsx`.
  */
 import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
@@ -132,8 +115,8 @@ describe("AnnualPeriodList — empty state (org sin gestiones)", () => {
   });
 });
 
-describe("AnnualPeriodList — header 'Nueva gestión' button (siempre visible)", () => {
-  it("renderiza botón 'Nueva gestión' en header cuando hay gestiones existentes", () => {
+describe("AnnualPeriodList — does NOT render the header 'Nueva gestión' button", () => {
+  it("no renderiza 'Nueva gestión' cuando hay gestiones (moved to NewGestionButton in page header)", () => {
     render(
       <AnnualPeriodList
         orgSlug={ORG_SLUG}
@@ -141,17 +124,19 @@ describe("AnnualPeriodList — header 'Nueva gestión' button (siempre visible)"
       />,
     );
 
-    const btn = screen.getByRole("button", { name: /nueva gestión/i });
-    expect(btn).toBeInTheDocument();
-    expect(btn).not.toBeDisabled();
+    // Empty-state CTA stays inside this component; the always-visible
+    // "Nueva gestión" header CTA moved to <NewGestionButton /> at the page
+    // level so it can share a row with the page title.
+    expect(
+      screen.queryByRole("button", { name: /nueva gestión/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
-describe("AnnualPeriodList — PeriodCreateDialog wire", () => {
+describe("AnnualPeriodList — empty-state PeriodCreateDialog wire", () => {
   it("click en CTA empty state abre PeriodCreateDialog (mock renderea cuando open=true)", () => {
     render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={[]} />);
 
-    // Antes del click: dialog stub NO renderea
     expect(
       screen.queryByTestId("period-create-dialog-stub"),
     ).not.toBeInTheDocument();
@@ -160,28 +145,8 @@ describe("AnnualPeriodList — PeriodCreateDialog wire", () => {
       screen.getByRole("button", { name: /crear primera gestión/i }),
     );
 
-    // Después del click: dialog stub renderea con orgSlug propagado
     const dialog = screen.getByTestId("period-create-dialog-stub");
     expect(dialog).toBeInTheDocument();
     expect(dialog).toHaveAttribute("data-org-slug", ORG_SLUG);
-  });
-
-  it("click en botón header 'Nueva gestión' abre PeriodCreateDialog", () => {
-    render(
-      <AnnualPeriodList
-        orgSlug={ORG_SLUG}
-        periodsByYear={[singleYearGroup(2026)]}
-      />,
-    );
-
-    expect(
-      screen.queryByTestId("period-create-dialog-stub"),
-    ).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: /nueva gestión/i }));
-
-    expect(
-      screen.getByTestId("period-create-dialog-stub"),
-    ).toBeInTheDocument();
   });
 });

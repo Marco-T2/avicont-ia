@@ -65,6 +65,14 @@ vi.mock("@/components/accounting/annual-period-list", () => ({
   },
 }));
 
+// Header CTA — extracted from AnnualPeriodList so the button can sit on the
+// same row as the page title. Stubbed because this test only cares about
+// the data shape passed to AnnualPeriodList, not the create-button wire.
+vi.mock("@/components/accounting/new-gestion-button", () => ({
+  __esModule: true,
+  default: vi.fn().mockReturnValue(null),
+}));
+
 // Keep stale PeriodList mock too — page must NOT import it anymore.
 vi.mock("@/components/accounting/period-list", () => ({
   __esModule: true,
