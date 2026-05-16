@@ -1,4 +1,3 @@
-import { Badge } from "@/components/ui/badge";
 import { DashboardShell } from "@/components/sidebar/dashboard-shell";
 import { RolesMatrixProvider } from "@/components/common/roles-matrix-provider";
 import { buildClientMatrixSnapshot } from "@/features/permissions/server";
@@ -45,28 +44,8 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   return (
     <RolesMatrixProvider snapshot={matrixSnapshot}>
       <DashboardShell>
-        <div className="bg-muted">
-          {/* Organization Banner */}
-          <div className="w-full border-b bg-card px-4 py-3.5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-sm font-medium leading-none">
-                  {organization.name}
-                </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Espacio de trabajo
-                </p>
-              </div>
-              <Badge variant="outline" className="px-2 py-0.5 text-xs">
-                {membership.role}
-              </Badge>
-            </div>
-          </div>
-
-          {/* Main Content */}
-          <div className="py-8">
-            <div className="px-4 lg:px-8">{children}</div>
-          </div>
+        <div className="bg-muted py-8">
+          <div className="px-4 lg:px-8">{children}</div>
         </div>
       </DashboardShell>
     </RolesMatrixProvider>
