@@ -401,4 +401,42 @@ describe("PrismaYearAccountingReaderTxAdapter", () => {
       expect(result).toEqual([]);
     });
   });
+
+  // ── annual-close-canonical-flow Phase C T-08: aggregateIngresosByYear ──
+  describe("aggregateIngresosByYear (asiento #2 source — REQ-A.2)", () => {
+    it("returns Decimal-typed INGRESO leaves with nature", async () => {
+      mockQueryRaw.mockResolvedValue([
+        {
+          account_id: "acc-vta",
+          code: "4.1.1",
+          nature: "ACREEDORA",
+          type: "INGRESO",
+          subtype: "VENTAS",
+          debit_total: "0",
+          credit_total: "100000.00",
+        },
+      ]);
+
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.aggregateIngresosByYear("org-1", 2026);
+
+      expect(result).toHaveLength(1);
+      expect(result[0]).toEqual({
+        accountId: "acc-vta",
+        code: "4.1.1",
+        nature: "ACREEDORA",
+        type: "INGRESO",
+        subtype: "VENTAS",
+        debit: new Decimal(0),
+        credit: new Decimal("100000.00"),
+      });
+    });
+
+    it("returns empty array when no INGRESO movements", async () => {
+      mockQueryRaw.mockResolvedValue([]);
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.aggregateIngresosByYear("org-1", 2099);
+      expect(result).toEqual([]);
+    });
+  });
 });
