@@ -59,11 +59,13 @@ export async function GET(
         orgMeta?.name ?? orgSlug,
         orgMeta?.taxId ?? undefined,
         orgMeta?.address ?? undefined,
+        orgMeta?.city ?? undefined,
       );
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="eepn-${orgSlug}-${periodLabel}.pdf"`,
+          // inline → browser renderiza en pestaña nueva, filename preservado.
+          "Content-Disposition": `inline; filename="eepn-${orgSlug}-${periodLabel}.pdf"`,
         },
       });
     }

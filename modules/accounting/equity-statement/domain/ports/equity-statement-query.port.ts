@@ -12,7 +12,10 @@ import type {
 export type EquityOrgMetadata = {
   name: string;
   taxId: string | null;
+  /** Dirección sin ciudad. */
   address: string | null;
+  /** Ciudad — renderizada en línea propia debajo de Dirección. */
+  city: string | null;
 };
 
 /**

@@ -121,16 +121,16 @@ describe("exportEquityStatementPdf — smoke tests", () => {
     expect(result.docDef.pageSize).toBe("A4");
   });
 
-  it("watermark present when preliminary=true", async () => {
-    const result = await exportEquityStatementPdf(makeStatement({ preliminary: true }), "Cooperativa Test");
-    const watermark = result.docDef.watermark as { text: string } | undefined;
-    expect(watermark).toBeDefined();
-    expect(watermark?.text).toContain("PRELIMINAR");
-  });
+  it("never renders PRELIMINAR watermark (removed for paridad con los otros reportes)", async () => {
+    // Watermark eliminado de los 5 reportes (balance-sheet, income-statement,
+    // initial-balance, worksheet, equity-statement) por decisión UX. El flag
+    // `statement.preliminary` se mantiene en el dominio pero ya no se proyecta
+    // al PDF.
+    const prelResult = await exportEquityStatementPdf(makeStatement({ preliminary: true }), "Cooperativa Test");
+    expect(prelResult.docDef.watermark).toBeUndefined();
 
-  it("no watermark when preliminary=false", async () => {
-    const result = await exportEquityStatementPdf(makeStatement({ preliminary: false }), "Cooperativa Test");
-    expect(result.docDef.watermark).toBeUndefined();
+    const nonPrelResult = await exportEquityStatementPdf(makeStatement({ preliminary: false }), "Cooperativa Test");
+    expect(nonPrelResult.docDef.watermark).toBeUndefined();
   });
 
   it("pérdida rendered with parentheses in table cell", async () => {

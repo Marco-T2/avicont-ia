@@ -15,6 +15,7 @@
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { buildExecutivePdfHeader } from "@/modules/accounting/shared/infrastructure/exporters/executive-pdf-header";
 import { formatDateBO } from "@/lib/date-utils";
 import type { EquityStatement } from "../../domain/equity-statement.types";
 import {
@@ -41,10 +42,11 @@ interface EquityStatementPdfResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BODY_SIZE = 7;
-const HEADER_SIZE = 7;
-const TITLE_SIZE = 11;
-const SUBTITLE_SIZE = 8;
+const BODY_SIZE = 7;            // landscape con N cols visibles — body chico
+const HEADER_SIZE = 7;          // header de columnas de la tabla
+const TITLE_SIZE = 16;          // "ESTADO DE EVOLUCIÓN..." (landscape, un poco menor que portrait 18)
+const SUBTITLE_SIZE = 10;       // período + (Expresado en Bolivianos)
+const ORG_INFO_SIZE = 8;        // Empresa/NIT/Dirección/Ciudad — izquierda
 
 const STYLE = {
   text: "#000000",
@@ -79,6 +81,7 @@ function buildDocDefinition(
   orgName: string,
   orgNit?: string,
   orgAddress?: string,
+  orgCity?: string,
 ): TDocumentDefinitions {
   // Determine visible columns
   const visibleCols = COLUMNS_ORDER.filter((key) => {
@@ -86,24 +89,26 @@ function buildDocDefinition(
     return col?.visible ?? key !== "OTROS_PATRIMONIO";
   });
 
-  // Column widths — Concepto + visible cols + Total
-  const numCols = visibleCols.length + 1; // +1 for total
+  // Column widths — Concepto + visible cols + Total. Concepto y resto usan
+  // "*" para que pdfmake distribuya canto a canto la zona de números.
   const conceptWidth = 140;
-  const numWidth = Math.floor((792 - conceptWidth) / numCols);
-  const colWidths: (number | string)[] = [conceptWidth, ...Array(numCols).fill(numWidth)];
+  const numColsWithTotal = visibleCols.length + 1;
+  const colWidths: (number | string)[] = [conceptWidth, ...Array(numColsWithTotal).fill("*")];
 
-  // Header content
-  const headerContent: Content[] = [];
-  headerContent.push({ text: `Empresa: ${orgName}`, fontSize: SUBTITLE_SIZE, bold: true, alignment: "center", margin: [0, 0, 0, 2] });
-  const nitPart = orgNit ? `NIT: ${orgNit}` : null;
-  const addrPart = orgAddress ? `Dirección: ${orgAddress}` : null;
-  const line2 = [nitPart, addrPart].filter(Boolean).join(" · ");
-  if (line2) {
-    headerContent.push({ text: line2, fontSize: SUBTITLE_SIZE, alignment: "center", margin: [0, 0, 0, 2] });
-  }
-  headerContent.push({ text: "ESTADO DE EVOLUCIÓN DEL PATRIMONIO NETO", fontSize: TITLE_SIZE, bold: true, alignment: "center", margin: [0, 2, 0, 2] });
-  headerContent.push({ text: `DEL ${fmtDate(statement.dateFrom)} AL ${fmtDate(statement.dateTo)}`, fontSize: SUBTITLE_SIZE, alignment: "center", margin: [0, 0, 0, 2] });
-  headerContent.push({ text: "(Expresado en Bolivianos)", fontSize: SUBTITLE_SIZE, italics: true, alignment: "center", margin: [0, 0, 0, 6] });
+  // Header ejecutivo compartido (Empresa/NIT/Dir/Ciudad izquierda 8pt +
+  // título centrado 16pt + período + Expresado en Bolivianos)
+  const headerContent = buildExecutivePdfHeader({
+    orgName,
+    orgNit,
+    orgAddress,
+    orgCity,
+    title: "Estado de Evolución del Patrimonio Neto",
+    subtitle: `Del ${fmtDate(statement.dateFrom)} al ${fmtDate(statement.dateTo)}`,
+    titleFontSize: TITLE_SIZE,
+    subtitleFontSize: SUBTITLE_SIZE,
+    orgInfoFontSize: ORG_INFO_SIZE,
+    orgInfoAlignment: "left",
+  }) as unknown as Content[];
 
   const imbalanceBanner: Content[] = statement.imbalanced
     ? [{
@@ -163,15 +168,12 @@ function buildDocDefinition(
     },
   ];
 
-  const watermark = statement.preliminary ? { text: "PRELIMINAR", angle: 45, opacity: 0.15, bold: true, color: "#6b7280", fontSize: 60 } : undefined;
-
   return {
     pageSize: "A4",
     pageOrientation: "landscape",
     pageMargins: [25, 45, 25, 35],
     defaultStyle: { font: "Roboto", fontSize: BODY_SIZE, color: STYLE.text },
     content: content as unknown as import("pdfmake/interfaces").Content[],
-    ...(watermark ? { watermark } : {}),
   };
 }
 
@@ -182,11 +184,12 @@ export async function exportEquityStatementPdf(
   orgName: string,
   orgNit?: string,
   orgAddress?: string,
+  orgCity?: string,
 ): Promise<EquityStatementPdfResult> {
   if (!orgName) throw new MissingOrgNameError();
 
   registerFonts();
-  const docDef = buildDocDefinition(statement, orgName, orgNit, orgAddress);
+  const docDef = buildDocDefinition(statement, orgName, orgNit, orgAddress, orgCity);
   const buffer = await pdfmakeRuntime.createPdf(docDef).getBuffer();
   return { buffer: Buffer.from(buffer), docDef };
 }
