@@ -103,6 +103,13 @@ export const updateJournalEntrySchema = z.object({
     .min(1, "El número de referencia debe ser mayor a 0")
     .nullable()
     .optional(),
+  // El voucher type puede cambiarse en update — el service reasigna el
+  // correlativo (number) según la nueva secuencia (org, voucherType, periodId).
+  // El viejo número queda como gap en la secuencia anterior.
+  voucherTypeId: z
+    .string()
+    .min(1, "ID de tipo de comprobante inválido")
+    .optional(),
   lines: z
     .array(journalLineSchema)
     .min(2, "Se requieren al menos 2 líneas de asiento")

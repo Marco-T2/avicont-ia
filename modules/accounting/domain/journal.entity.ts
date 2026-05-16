@@ -55,6 +55,16 @@ export interface UpdateJournalInput {
   referenceNumber?: number | null;
   contactId?: string | null;
   updatedById?: string;
+  /**
+   * Permite cambiar el tipo de comprobante de un asiento. Cuando se cambia,
+   * el caller (service) debe también proveer `number` con el siguiente
+   * correlativo de la nueva secuencia (org, voucherType, periodId) — el
+   * aggregate no consulta al repo. El viejo `number` se descarta (queda gap
+   * en la secuencia vieja).
+   */
+  voucherTypeId?: string;
+  /** Nuevo correlativo cuando cambia `voucherTypeId`. */
+  number?: number | null;
   // `sourceType`/`sourceId`/`aiOriginalText` son inmutables post-creación
   // (I9). No se exponen en el input de update.
   // Las líneas se reemplazan por `replaceLines()`, no por `update()`.
@@ -242,6 +252,8 @@ export class Journal {
       next.referenceNumber = input.referenceNumber ?? null;
     }
     if ("contactId" in input) next.contactId = input.contactId ?? null;
+    if (input.voucherTypeId !== undefined) next.voucherTypeId = input.voucherTypeId;
+    if ("number" in input) next.number = input.number ?? null;
     if (input.updatedById !== undefined) next.updatedById = input.updatedById;
     return new Journal(next);
   }

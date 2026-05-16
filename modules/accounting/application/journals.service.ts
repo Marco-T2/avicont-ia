@@ -74,6 +74,13 @@ export interface UpdateJournalEntryInput {
   description?: string;
   contactId?: string | null;
   referenceNumber?: number | null;
+  /**
+   * Si se provee y difiere del actual, el service:
+   *   1. valida que el nuevo voucherType existe y pertenece a la org
+   *   2. asigna un nuevo `number` correlativo via `getNextNumber(org, newVT, periodId)`
+   *   3. el viejo `number` queda como gap en la secuencia del voucherType anterior
+   */
+  voucherTypeId?: string;
   updatedById: string;
   lines?: CreateJournalEntryLineInput[];
 }
@@ -400,6 +407,16 @@ export class JournalsService {
       throw new NotFoundError("Asiento contable");
     }
 
+    // Si el voucherType cambia, validamos su existencia y reservamos un nuevo
+    // correlativo en la secuencia (org, newVoucherType, periodId). El viejo
+    // `number` se descarta — queda gap en la secuencia anterior, comportamiento
+    // contable equivalente a anular y crear de nuevo.
+    const resolvedInput = await this.resolveVoucherTypeChange(
+      organizationId,
+      current,
+      input,
+    );
+
     // POSTED branch — revert-rewrite-reapply (parity legacy
     // `journal.service.ts:441-465` updatePostedManualEntryTx). 3 writes
     // intra-tx: applyVoid(current) → update(mutated) → applyPost(updated).
@@ -412,7 +429,7 @@ export class JournalsService {
     // porque no tiene aggregate; el hexagonal sí). Period check deferred
     // to B3.
     if (current.status === "POSTED") {
-      let mutated = current.update(input);
+      let mutated = current.update(resolvedInput);
 
       // I6 — período debe estar OPEN. Orden parity legacy l340-349:
       // sourceType (I9, manejado por aggregate vía assertMutable arriba)
@@ -481,7 +498,7 @@ export class JournalsService {
       );
       assertDateWithinPeriod(input.date, period);
     }
-    let mutated = current.update(input);
+    let mutated = current.update(resolvedInput);
     if (input.lines !== undefined) {
       validateLineRules(input.lines);
       await validateLinesAgainstPorts(
@@ -502,6 +519,39 @@ export class JournalsService {
     );
 
     return { journal: result, correlationId };
+  }
+
+  /**
+   * Si el input pide cambiar `voucherTypeId` a uno distinto del actual:
+   *   - valida que el nuevo voucherType existe (lanza si no)
+   *   - reserva el siguiente correlativo en la secuencia (org, newVT, periodId)
+   *   - retorna un input enriquecido con `voucherTypeId` + `number` resueltos
+   *
+   * Cuando no hay cambio (input.voucherTypeId === current.voucherTypeId, o
+   * undefined), devuelve el input tal cual.
+   */
+  private async resolveVoucherTypeChange(
+    organizationId: string,
+    current: Journal,
+    input: UpdateJournalEntryInput,
+  ): Promise<UpdateJournalEntryInput> {
+    if (
+      input.voucherTypeId === undefined ||
+      input.voucherTypeId === current.voucherTypeId
+    ) {
+      return input;
+    }
+
+    await this.voucherTypes.getById(organizationId, input.voucherTypeId);
+    const nextNumber = await this.journalLedgerQuery.getNextNumber(
+      organizationId,
+      input.voucherTypeId,
+      current.periodId,
+    );
+
+    return { ...input, number: nextNumber } as UpdateJournalEntryInput & {
+      number: number;
+    };
   }
 
   // Cross-feature validation + DRAFT aggregate construction shared by
