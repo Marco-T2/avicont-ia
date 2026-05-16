@@ -13,18 +13,36 @@
  */
 import { describe, it, expect, vi } from "vitest";
 
-// Bucket B fix: canAccess/canPost call getMatrix(orgId) → real Prisma → connection hang
-// in test env (no Postgres). Mock only getMatrix to throw fast; other cache exports
-// (_setLoader, _resetCache, revalidateOrgMatrix) preserved from actual for other tests.
-// This preserves the smoke test intent: assert the functions exist and return Promises.
-vi.mock("@/modules/permissions/infrastructure/permissions.cache", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/permissions/infrastructure/permissions.cache")>();
-  return {
-    ...actual,
-    getMatrix: vi.fn().mockRejectedValue(new Error("no-db-in-test")),
-    ensureOrgSeeded: vi.fn().mockRejectedValue(new Error("no-db-in-test")),
-  };
-});
+// Bucket B fix: el import-chain `permissions.server → composition-root → repos →
+// lib/prisma` instancia `new PrismaPg + new PrismaClient` en module-eval, lo cual
+// colgaba el `await import` bajo carga de workers (flaky 5s timeout en suite full).
+// Mockeamos TODA la cadena pesada con stubs estáticos (sin importOriginal para
+// no cargar los módulos reales):
+//   - @/lib/prisma → vacío (no pool pg)
+//   - permissions.cache → stubs estáticos (sin importOriginal que cargue el real)
+//   - composition-root organizations → factories vacíos (no Prisma repos)
+//   - @clerk/nextjs/server → auth stub (no clerk SDK init)
+vi.mock("@/lib/prisma", () => ({
+  prisma: {},
+}));
+vi.mock("@/modules/permissions/infrastructure/permissions.cache", () => ({
+  getMatrix: vi.fn().mockRejectedValue(new Error("no-db-in-test")),
+  ensureOrgSeeded: vi.fn().mockRejectedValue(new Error("no-db-in-test")),
+  _setLoader: vi.fn(),
+  _resetCache: vi.fn(),
+  revalidateOrgMatrix: vi.fn(),
+}));
+vi.mock("@/modules/organizations/presentation/composition-root", () => ({
+  makeOrganizationsService: () => ({}),
+  makeMembersService: () => ({}),
+  makeRolesService: () => ({}),
+  makeReadOnlyRolesService: () => ({}),
+  makeEnsureFromClerkService: () => ({ ensure: async () => undefined }),
+  __resetEnsureFromClerkForTesting: () => undefined,
+}));
+vi.mock("@clerk/nextjs/server", () => ({
+  auth: vi.fn(async () => ({ userId: "test-user", orgId: "test-org" })),
+}));
 
 describe("permissions.ts — client-safe module (no server deps)", () => {
   it("canAccess is NOT exported from permissions.ts", async () => {
