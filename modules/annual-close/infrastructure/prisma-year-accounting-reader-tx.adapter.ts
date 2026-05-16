@@ -192,23 +192,69 @@ export class PrismaYearAccountingReaderTxAdapter
     return rows.map(this.mapAggregatedRow);
   }
 
-  /** REQ-A.4 / REQ-A.11 — stub; real SQL implementation lands in T-09. */
+  /**
+   * REQ-A.4 / REQ-A.11 — asiento #4 source: cumulative ACTIVO/PASIVO/
+   * PATRIMONIO aggregation at year-end. Runs INSIDE the TX AFTER asientos
+   * #1 + #2 + #3 have posted, so 3.2.2 falls out via the HAVING filter
+   * (now zero) and 3.2.1 carries the period result. FIN-1 preserved. NO
+   * prevCAdate logic (D-6 — the legacy `aggregateBalanceSheetAccountsForCA`
+   * carried a latent FIN-1 prevCAdate bug; this method has no such bug).
+   * DEC-1: text → `new Decimal(str)`.
+   */
   async aggregateBalanceSheetAtYearEnd(
-    _organizationId: string,
-    _year: number,
+    organizationId: string,
+    year: number,
   ): Promise<YearAggregatedLine[]> {
-    throw new Error(
-      "aggregateBalanceSheetAtYearEnd not yet implemented — landing in Phase C T-09",
-    );
+    const yearEnd = toNoonUtc(`${year}-12-31`);
+    const rows = await this.tx.$queryRaw<
+      Array<{
+        account_id: string;
+        code: string;
+        nature: AccountNature;
+        type: AccountType;
+        subtype: string | null;
+        debit_total: string;
+        credit_total: string;
+      }>
+    >`
+      SELECT
+        a.id                                          AS account_id,
+        a.code                                        AS code,
+        a.nature                                      AS nature,
+        a.type                                        AS type,
+        a.subtype                                     AS subtype,
+        COALESCE(SUM(jl.debit),  0)::numeric(18,2)::text  AS debit_total,
+        COALESCE(SUM(jl.credit), 0)::numeric(18,2)::text  AS credit_total
+      FROM journal_lines jl
+      JOIN journal_entries je ON je.id = jl."journalEntryId"
+      JOIN accounts        a  ON a.id  = jl."accountId"
+      JOIN fiscal_periods  fp ON fp.id = je."periodId"
+      WHERE je."organizationId" = ${organizationId}
+        AND je.status            IN ('POSTED','LOCKED')
+        AND fp.year             <= ${year}
+        AND je.date             <= ${yearEnd}
+        AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
+        AND a."isDetail"         = true
+      GROUP BY a.id, a.code, a.nature, a.type, a.subtype
+      HAVING SUM(jl.debit) <> 0 OR SUM(jl.credit) <> 0;
+    `;
+    return rows.map(this.mapAggregatedRow);
   }
 
-  /** REQ-A.3 TOCTOU — stub; real impl lands in T-09. */
+  /**
+   * REQ-A.3 — tx-bound TOCTOU lookup for `3.2.1 Resultados Acumulados`.
+   * Mirror of `findResultAccount` with code='3.2.1'. Used by service step
+   * (a') to re-check the chart of accounts inside the TX before asiento #3.
+   */
   async findAccumulatedResultsAccountTx(
-    _organizationId: string,
+    organizationId: string,
   ): Promise<{ id: string; code: string; nature: AccountNature } | null> {
-    throw new Error(
-      "findAccumulatedResultsAccountTx not yet implemented — landing in Phase C T-09",
-    );
+    const row = await this.tx.account.findFirst({
+      where: { organizationId, code: "3.2.1" },
+      select: { id: true, code: true, nature: true },
+    });
+    if (!row) return null;
+    return { id: row.id, code: row.code, nature: row.nature };
   }
 
   // ── (c) CC source — per-account INGRESO/GASTO with nature (C-2) ─────────
