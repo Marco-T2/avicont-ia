@@ -64,9 +64,11 @@ export default async function JournalPage({
   const currentYear = new Date().getFullYear();
   const availableYears = uniqueYears.length > 0 ? uniqueYears : [currentYear];
 
-  // Default gestión = the FiscalYear with status='OPEN' (year DESC tiebreaker),
-  // else the most recent year with periods. N lookups (≤ ~10 historical years)
-  // — same pattern as settings/periods/page.tsx:65.
+  // Default gestión: prioriza el año calendario actual si tiene períodos
+  // (UX: usuario abre el diario esperando ver el año en curso, no el más
+  // reciente cargado). Fallback a la FiscalYear con status='OPEN' (year DESC
+  // tiebreaker), y por último al año más reciente con períodos. N lookups
+  // (≤ ~10 años históricos) — same pattern as settings/periods/page.tsx:65.
   const fiscalYearStatuses = await Promise.all(
     uniqueYears.map((y) =>
       annualCloseService.getFiscalYearByYear(orgId, y).catch(() => null),
@@ -75,7 +77,9 @@ export default async function JournalPage({
   const openYear = uniqueYears.find(
     (_, i) => fiscalYearStatuses[i]?.status === "OPEN",
   );
-  const defaultYear = openYear ?? availableYears[0];
+  const defaultYear = availableYears.includes(currentYear)
+    ? currentYear
+    : (openYear ?? availableYears[0]);
 
   // URL `?year=` wins when valid; else fall back to default. Same defense for
   // `periodId`: drop it if it belongs to a different year (URL incoherence).
