@@ -1326,7 +1326,7 @@ export default function PaymentForm({
       {/* Importe recibido — aparece antes de las asignaciones (estilo QuickBooks) */}
       {!isVoided && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-6 flex-wrap">
               <div className="space-y-1 flex-1 min-w-[200px]">
                 <Label htmlFor="payment-amount-override">Importe recibido (Bs.)</Label>
@@ -1736,7 +1736,7 @@ export default function PaymentForm({
       {/* Journal Entry reference (POSTED) */}
       {isPosted && existingPayment?.journalEntry && (
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-medium">Asiento Contable:</span>
               <span className="font-mono text-info">

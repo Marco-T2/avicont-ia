@@ -163,7 +163,7 @@ export default function LedgerPageClient({
     <>
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <form
             onSubmit={handleConsultar}
             className="flex flex-wrap items-end gap-4"

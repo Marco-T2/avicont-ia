@@ -112,7 +112,7 @@ export function EquityStatementPageClient({ orgSlug }: EquityStatementPageClient
     <div className="space-y-4">
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <WorksheetFilters onFilter={handleFilter} loading={loading} />
         </CardContent>
       </Card>

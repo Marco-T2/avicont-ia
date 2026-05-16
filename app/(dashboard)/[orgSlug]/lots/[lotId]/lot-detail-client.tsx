@@ -170,7 +170,7 @@ export default function LotDetailClient({
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-2 mb-2">
               <Egg className="h-4 w-4 text-green-600 dark:text-green-400" />
               <p className="text-sm text-muted-foreground">Pollos Vivos</p>
@@ -185,7 +185,7 @@ export default function LotDetailClient({
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-2 mb-2">
               <DollarSign className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <p className="text-sm text-muted-foreground">Total Gastos</p>
@@ -195,7 +195,7 @@ export default function LotDetailClient({
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-2 mb-2">
               <Skull className="h-4 w-4 text-red-600 dark:text-red-400" />
               <p className="text-sm text-muted-foreground">Mortalidad</p>
@@ -212,7 +212,7 @@ export default function LotDetailClient({
         </Card>
 
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <div className="flex items-center gap-2 mb-2">
               <Calculator className="h-4 w-4 text-purple-600 dark:text-purple-400" />
               <p className="text-sm text-muted-foreground">Costo/Pollo</p>

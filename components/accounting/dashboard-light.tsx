@@ -82,7 +82,7 @@ export function DashboardLight({
     <div className="space-y-8">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <p className="text-sm text-muted-foreground">Total de Asientos</p>
             <p className="text-2xl font-bold mt-1">
               {totalEntries.toLocaleString("es-BO")}
@@ -90,7 +90,7 @@ export function DashboardLight({
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="pt-6">
+          <CardContent>
             <p className="text-sm text-muted-foreground">Último Asiento</p>
             <p className="text-2xl font-bold mt-1">
               {lastEntryDate ? formatISODate(lastEntryDate) : "Sin registros"}

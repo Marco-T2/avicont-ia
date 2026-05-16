@@ -424,7 +424,7 @@ export default function JournalEntryList({
     <>
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-wrap items-end gap-4">
             <PeriodFilter
               periods={periods}

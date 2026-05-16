@@ -519,7 +519,7 @@ export default function TransactionsList({
 
       {/* Filters */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
               <label className="text-sm font-medium">Tipo</label>

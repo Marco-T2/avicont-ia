@@ -160,7 +160,7 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
       {/* Filters — render only after periods fetch resolves so initial* props
           apply at mount instead of after a remount. */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           {periodsLoaded ? (
             <WorksheetFilters
               onFilter={handleFilter}

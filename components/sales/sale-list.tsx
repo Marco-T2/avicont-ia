@@ -223,7 +223,7 @@ export default function SaleList({
 
       {/* Filtros */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1">
               <Label className="text-sm">Estado</Label>

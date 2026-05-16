@@ -126,7 +126,7 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
         {/* Balance summary card */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <p className="text-sm text-muted-foreground">Total CxC</p>
               <p className="text-2xl font-bold text-info mt-1">
                 {formatCurrency(totalReceivable)}
@@ -136,7 +136,7 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <p className="text-sm text-muted-foreground">Total CxP</p>
               <p className="text-2xl font-bold text-warning mt-1">
                 {formatCurrency(totalPayable)}
@@ -146,7 +146,7 @@ export default function ContactDetail({ contact, orgSlug }: ContactDetailProps) 
           </Card>
 
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <p className="text-sm text-muted-foreground">Posición Neta</p>
               <p
                 className={`text-2xl font-bold mt-1 ${

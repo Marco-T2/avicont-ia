@@ -184,7 +184,7 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
       {/* Filters — render only after periods fetch resolves so initial* props
           (computed from currentPeriod) apply at mount, not after a remount. */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           {periodsLoaded ? (
             <WorksheetFilters
               onFilter={handleFilter}

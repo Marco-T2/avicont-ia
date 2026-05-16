@@ -70,7 +70,7 @@ export default function FarmsPageClient({
                 href={`/${orgSlug}/farms/${farm.id}`}
               >
                 <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-                  <CardContent className="pt-6">
+                  <CardContent>
                     <div className="flex items-start justify-between">
                       <div className="space-y-2">
                         <h3 className="font-semibold text-lg">{farm.name}</h3>

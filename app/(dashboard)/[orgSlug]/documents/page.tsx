@@ -162,7 +162,7 @@ export default function DocumentsPage() {
       {documents.length > 0 && !isLoading && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="text-center">
                 <div className="text-3xl font-bold">{documents.length}</div>
                 <p className="text-sm text-muted-foreground">Total de Documentos</p>
@@ -170,7 +170,7 @@ export default function DocumentsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="text-center">
                 <div className="text-3xl font-bold text-success">
                   {documents.filter((d) => d.aiSummary).length}
@@ -180,7 +180,7 @@ export default function DocumentsPage() {
             </CardContent>
           </Card>
           <Card>
-            <CardContent className="pt-6">
+            <CardContent>
               <div className="text-center">
                 <div className="text-3xl font-bold">
                   {formatFileSize(

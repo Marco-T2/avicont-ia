@@ -90,7 +90,7 @@ export default function BalanceTable({
     <>
       {/* Period selector */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <div className="flex flex-wrap items-end gap-4">
             <div className="space-y-1 min-w-[280px]">
               <Label className="text-sm">Período Fiscal</Label>
