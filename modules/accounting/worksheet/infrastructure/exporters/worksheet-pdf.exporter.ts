@@ -38,13 +38,13 @@ const STYLE = {
   danger: "#b91c1c",
 } as const;
 
-// Column widths in pt for pdfmake
+// Column widths in pt for pdfmake.
+// Código y Cuenta tienen anchos fijos; las 12 numéricas usan "*" para que
+// pdfmake distribuya el espacio restante de canto a canto.
+// A4 landscape printable area ≈ 802pt (297mm × 2.835 − margins 40pt).
+//   (802 − 35 − 130) / 12 ≈ 53pt por columna numérica (calculado por pdfmake).
 const COL_CODIGO = 35;
 const COL_CUENTA = 130;
-// 12 numeric columns: remaining space divided equally.
-// A4 landscape printable area ≈ 728pt (297mm × 2.835 − margins 40pt each side).
-// (728 − 35 − 130) / 12 ≈ 47pt
-const COL_NUMERIC = 47;
 
 const BODY_SIZE = 7;            // filas de datos — landscape con 14 cols → no subir
 const HEADER_SIZE = 7;          // header de columnas
@@ -56,7 +56,7 @@ const FOOTER_SIZE = 7;
 // ── Column widths array ───────────────────────────────────────────────────────
 
 function buildWidths(): (string | number)[] {
-  return [COL_CODIGO, COL_CUENTA, ...Array(12).fill(COL_NUMERIC)];
+  return [COL_CODIGO, COL_CUENTA, ...Array(12).fill("*")];
 }
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────
