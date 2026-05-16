@@ -8,7 +8,6 @@ import {
   ShieldCheck,
   Building2,
   FolderTree,
-  CalendarCheck,
   History,
   type LucideIcon,
 } from "lucide-react";
@@ -18,17 +17,17 @@ import type { Resource } from "@/features/permissions";
  * Card definition for the settings hub page.
  *
  * REQ-OP.8 originally introduced the "Perfil de Empresa" card. C3
- * sidebar-reorg-settings-hub adds three new cards — Plan de Cuentas,
- * Cierre Mensual, Auditoría — and adds optional `resource?: Resource`
- * for per-card RBAC filtering at the page route (`app/(dashboard)/[orgSlug]/settings/page.tsx`).
+ * sidebar-reorg-settings-hub added Plan de Cuentas + Cierre Mensual +
+ * Auditoría. Cierre Mensual was later REMOVED — the unfiltered entry let
+ * users land on /accounting/monthly-close without a periodId and manually
+ * close December, breaking annual-close atomicity (December must be locked
+ * inside the same tx as CC + auto-periods + CA). The only legitimate entry
+ * to monthly-close is now the per-row "Cerrar" link from
+ * `/{orgSlug}/settings/periods` (annual-period-list.tsx:301), which carries
+ * `?periodId=...`.
  *
  * `group` buckets the card into a SETTINGS_GROUPS heading on the hub page.
- * Render order is determined by SETTINGS_GROUPS for headings and by the
- * order within this array for cards inside each group.
- *
- * Convention: `roles` shares the `members` resource gate (managing roles is
- * gated by members permission per Avicont RBAC). Cards without `resource`
- * fall through the filter (always visible).
+ * Convention: `roles` shares the `members` resource gate.
  */
 interface SettingsCard {
   id: string;
@@ -98,15 +97,6 @@ export const SETTINGS_CARDS: SettingsCard[] = [
     Icon: Calendar,
     group: "Contabilidad",
     resource: "accounting-config",
-  },
-  {
-    id: "monthly-close",
-    title: "Cierre Mensual",
-    description: "Cierre del período contable mes a mes.",
-    href: (orgSlug) => `/${orgSlug}/accounting/monthly-close`,
-    Icon: CalendarCheck,
-    group: "Contabilidad",
-    resource: "period",
   },
   {
     id: "general",

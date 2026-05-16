@@ -94,7 +94,7 @@ function collectLinkAriaLabels(node: unknown, acc: string[] = []): string[] {
 }
 
 describe("/settings — C3 per-card RBAC + entry-gate broadening", () => {
-  it("admin with all permissions reaches hub; 11 cards rendered", async () => {
+  it("admin with all permissions reaches hub; 10 cards rendered", async () => {
     mockGetMemberByClerkUserId.mockResolvedValue({ role: "admin" });
     mockCanAccess.mockResolvedValue(true);
 
@@ -102,7 +102,8 @@ describe("/settings — C3 per-card RBAC + entry-gate broadening", () => {
     expect(mockRedirect).not.toHaveBeenCalled();
 
     const labels = collectLinkAriaLabels(tree);
-    expect(labels).toHaveLength(11);
+    expect(labels).toHaveLength(10);
+    expect(labels).not.toContain("Cierre Mensual");
   });
 
   it("custom-role with ONLY members:read reaches hub (entry gate broadened)", async () => {
