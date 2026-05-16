@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 /**
  * Phase 7.5 RED — periods page server-side data shape: year-grouped.
  *
@@ -70,7 +71,18 @@ vi.mock("@/components/accounting/period-list", () => ({
   default: vi.fn().mockReturnValue(null),
 }));
 
+import { render } from "@testing-library/react";
 import PeriodsPage from "../page";
+
+/**
+ * Render the async server component output. The page is `async`, returns a
+ * JSX tree. `render(await PeriodsPage(...))` actually invokes the component
+ * functions inside the tree so our mock captures the AnnualPeriodList call.
+ */
+async function renderPage() {
+  const element = await PeriodsPage({ params: makeParams() });
+  render(element);
+}
 
 const ORG_SLUG = "acme";
 const ORG_ID = "org-1";
@@ -159,7 +171,7 @@ beforeEach(() => {
 
 describe("/settings/periods — Phase 7.5 server-side year grouping", () => {
   it("preserves RBAC: requirePermission('period','read', orgSlug)", async () => {
-    await PeriodsPage({ params: makeParams() });
+    await renderPage();
     expect(mockRequirePermission).toHaveBeenCalledWith(
       "period",
       "read",
@@ -168,7 +180,7 @@ describe("/settings/periods — Phase 7.5 server-side year grouping", () => {
   });
 
   it("fetches periods AND annual-close summary per year, then passes periodsByYear to AnnualPeriodList", async () => {
-    await PeriodsPage({ params: makeParams() });
+    await renderPage();
 
     // Period reader called once for the org.
     expect(mockList).toHaveBeenCalledWith(ORG_ID);
@@ -196,7 +208,7 @@ describe("/settings/periods — Phase 7.5 server-side year grouping", () => {
   });
 
   it("calls getSummary for OPEN years and attaches result to YearGroup.summary", async () => {
-    await PeriodsPage({ params: makeParams() });
+    await renderPage();
 
     // 2026 OPEN → getSummary(orgId, 2026) called.
     expect(mockGetSummary).toHaveBeenCalledWith(ORG_ID, 2026);
@@ -213,7 +225,7 @@ describe("/settings/periods — Phase 7.5 server-side year grouping", () => {
   });
 
   it("attaches FiscalYear snapshot to YearGroup.fiscalYear (status, closedAt, etc.)", async () => {
-    await PeriodsPage({ params: makeParams() });
+    await renderPage();
 
     const props = mockAnnualPeriodList.mock.calls[0][0] as {
       periodsByYear: Array<{
@@ -228,7 +240,7 @@ describe("/settings/periods — Phase 7.5 server-side year grouping", () => {
 
   it("redirects to org root when requirePermission throws", async () => {
     mockRequirePermission.mockRejectedValue(new Error("forbidden"));
-    await PeriodsPage({ params: makeParams() });
+    await renderPage();
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });
 });

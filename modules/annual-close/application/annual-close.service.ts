@@ -207,6 +207,20 @@ export class AnnualCloseService {
   }
 
   /**
+   * Thin facade over `FiscalYearReaderPort.getByYear` — exposed at the
+   * service surface so the UI (Phase 7.5+) can render `closedAt` /
+   * `closingEntryId` / `openingEntryId` without depending on the reader
+   * port directly (R5 — only the service is the consumer-facing surface).
+   *
+   * Returns `null` when no FiscalYear row exists for `(orgId, year)` — common
+   * for years that were never closed (status would be inferred OPEN by the
+   * UI's badge logic).
+   */
+  async getFiscalYearByYear(organizationId: string, year: number) {
+    return this.deps.fiscalYearReader.getByYear(organizationId, year);
+  }
+
+  /**
    * Close the fiscal year for `(organizationId, year)`.
    *
    * Orchestration per spec REQ-2.1 / REQ-2.2 + design rev 2 §4.
