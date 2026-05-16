@@ -1,6 +1,6 @@
 "use client";
 
-// Barra de acciones del informe: compacto, actualizar, exportar PDF/Excel.
+// Barra de acciones del informe: actualizar, exportar PDF/Excel.
 // Sin botón de email ni edición de título (spec: propuesta §4).
 //
 // PDF: abre en pestaña nueva vía window.open — el browser lo renderiza con su
@@ -11,7 +11,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  AlignJustify,
   RefreshCw,
   Printer,
   FileSpreadsheet,
@@ -24,9 +23,6 @@ interface StatementToolbarProps {
   endpoint: "balance-sheet" | "income-statement";
   // Params actuales para construir la URL de exportación (mismos que se usaron para generar)
   queryParams: Record<string, string>;
-  // Controla si la tabla usa modo compacto
-  compact: boolean;
-  onToggleCompact: () => void;
   // Callback para refrescar datos desde la API
   onRefresh: () => void;
   refreshing?: boolean;
@@ -43,8 +39,6 @@ export function StatementToolbar({
   orgSlug,
   endpoint,
   queryParams,
-  compact,
-  onToggleCompact,
   onRefresh,
   refreshing = false,
   hasStatement = false,
@@ -91,19 +85,6 @@ export function StatementToolbar({
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
-      {/* Compacto: alterna densidad de filas */}
-      <Button
-        type="button"
-        variant={compact ? "default" : "outline"}
-        size="sm"
-        onClick={onToggleCompact}
-        aria-pressed={compact}
-        aria-label={compact ? "Desactivar vista compacta" : "Activar vista compacta"}
-      >
-        <AlignJustify className="h-4 w-4 mr-1.5" />
-        Compacto
-      </Button>
-
       {/* Actualizar */}
       <Button
         type="button"

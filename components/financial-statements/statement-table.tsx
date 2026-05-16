@@ -23,7 +23,6 @@ type SemanticClass = StatementTableRow["semanticClass"];
 interface StatementTableProps {
   columns: SerializedColumn[];
   rows: StatementTableRow[];
-  compact?: boolean;
   /** Reservado para futuras integraciones — no usado por la tabla plana. */
   onRefresh?: () => void;
   title?: string;
@@ -35,7 +34,6 @@ interface StatementTableProps {
 export function StatementTable({
   columns,
   rows,
-  compact = false,
   onRefresh: _onRefresh,
   title,
   orgName: _orgName,
@@ -43,8 +41,6 @@ export function StatementTable({
 }: StatementTableProps) {
   // Aplanamos las subRows recursivamente — todo siempre visible (sin expand)
   const flatRows = flattenRows(rows);
-
-  const cellPadY = compact ? "py-0.5" : "py-1";
 
   return (
     <div className="overflow-x-auto">
@@ -68,7 +64,7 @@ export function StatementTable({
           {flatRows.map((row) => (
             <tr key={row.id} className={rowClassName(row.semanticClass)}>
               <td
-                className={`px-3 ${cellPadY} text-left w-[320px] border-b border-border`}
+                className={`px-3 py-1 text-left w-[320px] border-b border-border`}
                 style={nameCellIndent(row.semanticClass)}
               >
                 {rowLabel(row)}
@@ -78,7 +74,7 @@ export function StatementTable({
                 return (
                   <td
                     key={col.id}
-                    className={`px-3 ${cellPadY} text-right w-[140px] font-mono tabular-nums border-b border-border`}
+                    className={`px-3 py-1 text-right w-[140px] font-mono tabular-nums border-b border-border`}
                   >
                     {formatCell(raw, col.role)}
                   </td>

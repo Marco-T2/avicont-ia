@@ -33,7 +33,6 @@ export function IncomeStatementPageClient({ orgSlug, orgName, periods }: IncomeS
   const [statement, setStatement] = useState<SerializedIncomeStatementResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [compact, setCompact] = useState(false);
   const [lastParams, setLastParams] = useState<QuickBooksFilterParams | null>(null);
   const [exportQueryParams, setExportQueryParams] = useState<Record<string, string>>({});
   // Análisis IA — efímero, se reinicia al re-fetch del estado.
@@ -187,8 +186,6 @@ export function IncomeStatementPageClient({ orgSlug, orgName, periods }: IncomeS
           orgSlug={orgSlug}
           endpoint="income-statement"
           queryParams={exportQueryParams}
-          compact={compact}
-          onToggleCompact={() => setCompact((c) => !c)}
           onRefresh={handleRefresh}
           refreshing={loading}
           hasStatement={!!statement}
@@ -223,7 +220,6 @@ export function IncomeStatementPageClient({ orgSlug, orgName, periods }: IncomeS
               <StatementTable
                 columns={tableColumns}
                 rows={tableRows}
-                compact={compact}
                 onRefresh={handleRefresh}
                 title="Estado de Resultados"
                 orgName={displayOrgName}

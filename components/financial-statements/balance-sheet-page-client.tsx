@@ -35,7 +35,6 @@ export function BalanceSheetPageClient({ orgSlug, orgName, periods }: BalanceShe
   const [statement, setStatement] = useState<SerializedBalanceSheetResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [compact, setCompact] = useState(false);
   // Guardamos los params para reutilizarlos en refresh y exportación
   const [lastParams, setLastParams] = useState<QuickBooksFilterParams | null>(null);
   // Params como Record<string, string> para la toolbar de exportación
@@ -187,8 +186,6 @@ export function BalanceSheetPageClient({ orgSlug, orgName, periods }: BalanceShe
           orgSlug={orgSlug}
           endpoint="balance-sheet"
           queryParams={exportQueryParams}
-          compact={compact}
-          onToggleCompact={() => setCompact((c) => !c)}
           onRefresh={handleRefresh}
           refreshing={loading}
           hasStatement={!!statement}
@@ -231,7 +228,6 @@ export function BalanceSheetPageClient({ orgSlug, orgName, periods }: BalanceShe
               <StatementTable
                 columns={tableColumns}
                 rows={tableRows}
-                compact={compact}
                 onRefresh={handleRefresh}
                 title="Balance General"
                 orgName={displayOrgName}
