@@ -20,6 +20,14 @@ vi.mock("@/modules/organizations/presentation/server", () => ({
   requireRole: vi.fn(),
 }));
 
+// Lazy-sync (EnsureFromClerkService) is a no-op in these tests — it's
+// orthogonal to the permission-matrix logic these tests cover.
+vi.mock("@/modules/organizations/presentation/composition-root", () => ({
+  makeEnsureFromClerkService: vi.fn(() => ({
+    ensure: vi.fn(async () => ({ orgId: "org_acme" })),
+  })),
+}));
+
 vi.mock("../../infrastructure/permissions.cache", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../../infrastructure/permissions.cache")>();
   return {
@@ -67,7 +75,13 @@ const ORG_ID = "org_acme";
 const CLERK_USER = "user_1";
 
 function mockSessionAndOrg(userId = CLERK_USER, orgId = ORG_ID) {
-  mockedRequireAuth.mockResolvedValue({ userId } as never);
+  // `session.orgId` is the Clerk org id (used by lazy-sync), not the local
+  // org id — but the value doesn't matter here since the composition-root
+  // mock returns a no-op `ensure`.
+  mockedRequireAuth.mockResolvedValue({
+    userId,
+    orgId: "clerk_org_xyz",
+  } as never);
   mockedRequireOrgAccess.mockResolvedValue(orgId);
 }
 

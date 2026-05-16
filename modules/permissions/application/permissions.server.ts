@@ -1,7 +1,9 @@
 import "server-only";
 import { requireAuth } from "@/features/shared/middleware";
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
+import { makeEnsureFromClerkService } from "@/modules/organizations/presentation/composition-root";
 import { ensureOrgSeeded, getMatrix } from "../infrastructure/permissions.cache";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 import type { Action, Resource, PostableResource } from "../domain/permissions";
 import type { OrgMatrix } from "../infrastructure/permissions.cache";
 
@@ -39,6 +41,17 @@ export async function requirePermission(
   orgSlug: string,
 ) {
   const session = await requireAuth();
+
+  // Lazy sync DB ↔ Clerk: materializa Organization + OrganizationMember
+  // antes de cualquier check de permisos. Idempotente — en cache-hit (org+
+  // member ya existen local) son 2 reads DB, sin pegar a Clerk. Sólo paga
+  // el costo de Clerk API la primera vez tras borrar la tabla. Modo
+  // restrictivo: el primer init exige Clerk-owner; ver EnsureFromClerkService.
+  if (!session.orgId) {
+    throw new ForbiddenError();
+  }
+  await makeEnsureFromClerkService().ensure(session.orgId, session.userId);
+
   const orgId = await requireOrgAccess(session.userId, orgSlug);
 
   // Load permission matrix from cache, seeding 5 system roles if the org has none.

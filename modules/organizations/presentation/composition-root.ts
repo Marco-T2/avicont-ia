@@ -3,6 +3,7 @@ import "server-only";
 import { OrganizationsService } from "../application/organizations.service";
 import { MembersService } from "../application/members.service";
 import { RolesService } from "../application/roles.service";
+import { EnsureFromClerkService } from "../application/ensure-from-clerk.service";
 import { PrismaOrganizationsRepository } from "../infrastructure/prisma-organizations.repository";
 import { PrismaRolesRepository } from "../infrastructure/prisma-roles.repository";
 import { LegacyClerkAuthAdapter } from "../infrastructure/adapters/legacy-clerk-auth.adapter";
@@ -55,4 +56,26 @@ export function makeReadOnlyRolesService(): RolesService {
     permissionCache: new LegacyPermissionCacheAdapter(),
     getCallerRoleSlug: async () => null,
   });
+}
+
+let _ensureFromClerkInstance: EnsureFromClerkService | undefined;
+
+/**
+ * Lazy-sync service: keeps DB ↔ Clerk in step on each `requirePermission`
+ * call. Memoized — single instance per process. See ensure-from-clerk.service
+ * for the contract and trade-offs.
+ */
+export function makeEnsureFromClerkService(): EnsureFromClerkService {
+  if (_ensureFromClerkInstance) return _ensureFromClerkInstance;
+  _ensureFromClerkInstance = new EnsureFromClerkService({
+    clerkAuth: new LegacyClerkAuthAdapter(),
+    organizations: makeOrganizationsService(),
+    members: makeMembersService(),
+  });
+  return _ensureFromClerkInstance;
+}
+
+/** Test-only: reset the memoized EnsureFromClerkService instance. */
+export function __resetEnsureFromClerkForTesting(): void {
+  _ensureFromClerkInstance = undefined;
 }
