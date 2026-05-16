@@ -34,10 +34,17 @@ describe("C3 presentation shape — Lot module (existence-only regex)", () => {
     expect(src).toMatch(/^export const closeLotSchema\s*=\s*z\.object\(/m);
   });
 
-  // α13
-  it("validation.ts preserves farmId.cuid() validation EXACT legacy (D5 lock)", () => {
+  // α13 — REVOKED per ZID-1 (sdd/poc-zod-id-validators-domain-alignment).
+  // Original D5 lock: farmId.cuid() EXACT legacy preservation. Revoked because
+  // domain entities generate UUIDs via crypto.randomUUID(), and .cuid() rejected
+  // those at the presentation boundary causing 400s for UI-created records.
+  // New EXACT lock per ZID-1: farmId.min(1, ...) — format-agnostic.
+  // Original assertion preserved here as historical reference (commented):
+  //   expect(src).toMatch(/farmId:\s*z\.string\(\)\.cuid\(/);  // ← REVOKED
+  it("validation.ts uses farmId.min(1) per ZID-1 (Derived from: D5 lock REVOKED)", () => {
     const src = readLotFile("presentation/validation.ts");
-    expect(src).toMatch(/farmId:\s*z\.string\(\)\.cuid\(/);
+    expect(src).toMatch(/farmId:\s*z\.string\(\)\.min\(1,/);
+    expect(src).not.toMatch(/farmId:\s*z\.string\(\)\.cuid\(/);
   });
 
   // α14
