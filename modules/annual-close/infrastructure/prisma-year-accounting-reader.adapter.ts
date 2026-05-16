@@ -21,6 +21,14 @@ import type {
  * per-period sums. UNCONDITIONAL (no Dec-status branching) — the gate
  * evaluates on edge path too (all 12 CLOSED, C-4).
  *
+ * **POSTED+LOCKED trial balance**: prior monthly-closes lock all entries in
+ * closed periods (status POSTED → LOCKED via `lockJournalEntries`). LOCKED is
+ * semantically POSTED-plus-immutable; both contribute to the trial balance.
+ * Filtering `status='POSTED'` ONLY would silently miss every JE in any month
+ * that was monthly-closed before annual-close runs (months 1-11 on the
+ * standard path are CLOSED periods → their JEs are LOCKED). Phase 8.1
+ * E2E test exposed this — surfaced honest per [[invariant_collision_elevation]].
+ *
  * **DEC-1 boundary**: the `::numeric(18,2)::text` cast emits a Postgres
  * decimal as a TS `string` (no float drift via implicit Number coerce).
  * `new Decimal(str)` keeps the bit-perfect value into the domain.
@@ -44,7 +52,7 @@ export class PrismaYearAccountingReaderAdapter
       JOIN journal_entries je ON je.id = jl."journalEntryId"
       JOIN fiscal_periods  fp ON fp.id = je."periodId"
       WHERE je."organizationId" = ${organizationId}
-        AND je.status            = 'POSTED'
+        AND je.status IN ('POSTED','LOCKED')
         AND fp.year              = ${year};
     `;
 

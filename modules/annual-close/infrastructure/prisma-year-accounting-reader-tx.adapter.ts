@@ -33,6 +33,23 @@ import type {
  *
  * **DEC-1 boundary**: every `::numeric(18,2)::text` cast → `new Decimal(str)`.
  *
+ * **POSTED+LOCKED trial balance** (Phase 8.1 fix): every aggregation here
+ * filters `je.status IN ('POSTED','LOCKED')` — the trial balance view treats
+ * both as live. Two paths matter:
+ *   1. Months 1-11 are CLOSED periods when annual-close runs → their JEs
+ *      have been LOCKED by monthly-close's `lockJournalEntries`. POSTED-only
+ *      filtering would silently exclude them from the year-aggregate balance
+ *      gate (b) and the result-account roll-up (c).
+ *   2. Step (f) `aggregateBalanceSheetAccountsForCA` runs AFTER step (d)
+ *      lock-cascade on the standard path — the JUST-POSTED CC has been
+ *      transitioned POSTED → LOCKED by `lockJournalEntries` on Dec. POSTED-
+ *      only filtering would silently drop the CC's contribution to the result
+ *      account (3.2.2), producing CA DEBE ≠ HABER.
+ *   3. The prevCAdate lookup (step 1 of CA reader) targets prior-year CAs
+ *      sitting in long-closed periods → their JEs are LOCKED.
+ * Surfaced honest per [[invariant_collision_elevation]] — exposed by Phase 8.1
+ * E2E acceptance test, bundled with the W-4 audit-trail test commit.
+ *
  * **C-3 (CA source) — THREE-STEP algorithm**:
  *   1. `prevCAdate`: SELECT most-recent POSTED CA strictly before
  *      `${year}-12-31` (single row or empty). If empty → inception fallback
@@ -77,7 +94,7 @@ export class PrismaYearAccountingReaderTxAdapter
       JOIN journal_entries je ON je.id = jl."journalEntryId"
       JOIN fiscal_periods  fp ON fp.id = je."periodId"
       WHERE je."organizationId" = ${organizationId}
-        AND je.status            = 'POSTED'
+        AND je.status            IN ('POSTED','LOCKED')
         AND fp.year              = ${year};
     `;
     const row = rows[0] ?? { debit_total: "0", credit_total: "0" };
@@ -117,7 +134,7 @@ export class PrismaYearAccountingReaderTxAdapter
       JOIN accounts        a  ON a.id  = jl."accountId"
       JOIN fiscal_periods  fp ON fp.id = je."periodId"
       WHERE je."organizationId" = ${organizationId}
-        AND je.status            = 'POSTED'
+        AND je.status            IN ('POSTED','LOCKED')
         AND fp.year              = ${year}
         AND a.type IN ('INGRESO','GASTO')
         AND a."isDetail"         = true
@@ -177,7 +194,7 @@ export class PrismaYearAccountingReaderTxAdapter
           JOIN journal_entries je ON je.id = jl."journalEntryId"
           JOIN accounts        a  ON a.id  = jl."accountId"
           WHERE je."organizationId" = ${organizationId}
-            AND je.status            = 'POSTED'
+            AND je.status            IN ('POSTED','LOCKED')
             AND je.date              > ${prevCAdate}
             AND je.date             <= ${yearEnd}
             AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
@@ -207,7 +224,7 @@ export class PrismaYearAccountingReaderTxAdapter
           JOIN journal_entries je ON je.id = jl."journalEntryId"
           JOIN accounts        a  ON a.id  = jl."accountId"
           WHERE je."organizationId" = ${organizationId}
-            AND je.status            = 'POSTED'
+            AND je.status            IN ('POSTED','LOCKED')
             AND je.date             <= ${yearEnd}
             AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
             AND a."isDetail"         = true
@@ -244,7 +261,7 @@ export class PrismaYearAccountingReaderTxAdapter
       JOIN accounts        a  ON a.id  = jl."accountId"
       JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
       WHERE je."organizationId" = ${organizationId}
-        AND je.status            = 'POSTED'
+        AND je.status            IN ('POSTED','LOCKED')
         AND vt.code              = 'CA'
         AND je.date              = ${prevCAdate}
         AND a.type IN ('ACTIVO','PASIVO','PATRIMONIO')
