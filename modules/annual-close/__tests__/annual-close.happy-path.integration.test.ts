@@ -8,9 +8,9 @@
  *
  *   • HTTP-equivalent: service.close returns AnnualCloseResult with correct
  *     `fiscalYearId`, `year`, `status=CLOSED`, `closedAt`, `correlationId`,
- *     `closingEntryId`, `openingEntryId` (result entry IDs — service-level
- *     contract preserved, NOT FK columns), `yearPlus1.periodIds` (12),
- *     `decClose.locked.*` (5 cascade counts).
+ *     `closingEntries.{gastos,ingresos,resultado,balance,apertura}` (5
+ *     per-asiento entry IDs, nullable for SKIP-on-zero per CAN-5.4),
+ *     `yearPlus1.periodIds` (12), `decClose.locked.*` (5 cascade counts).
  *   • FiscalYear 2099 row: status=CLOSED with closedAt + closedBy populated
  *     (FK columns RETIRED per CAN-5.6 — JournalEntry.sourceId reverse-lookup).
  *   • CC JournalEntry: Dec 2099, POSTED→LOCKED (post lock-cascade),

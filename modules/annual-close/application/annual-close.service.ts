@@ -595,17 +595,11 @@ export class AnnualCloseService {
           closedBy: userId,
         });
 
-        // Preserved-shape result: closingEntryId/openingEntryId reflect
-        // asiento #4 (cierre balance) + asiento #5 (apertura) respectively
-        // for backward-compat with existing consumers. New consumers should
-        // use the full `closingEntries` map.
         return {
           fiscalYearId: fyId,
           year,
           status: "CLOSED" as const,
           closedAt,
-          closingEntryId: closingEntries.balance,
-          openingEntryId: closingEntries.apertura,
           closingEntries,
           yearPlus1: { periodIds },
           decClose,
@@ -621,13 +615,11 @@ const MIN_JUSTIFICATION_LENGTH = 50;
 const MONTHS_PER_YEAR = 12;
 
 /**
- * Result of a successful annual close (annual-close-canonical-flow rewrite).
+ * Result of a successful annual close (annual-close-canonical-flow).
  *
- * Backward-compat fields `closingEntryId` + `openingEntryId` preserved for
- * existing consumers (route + UI): they map to asiento #4 (Cierre de Balance,
- * the canonical "primary CC") and asiento #5 (Apertura) respectively. New
- * consumers should consume the full `closingEntries` map for per-asiento
- * traceability.
+ * Per-asiento entry IDs are exposed via `closingEntries.{gastos, ingresos,
+ * resultado, balance, apertura}`. Any field may be `null` if the asiento was
+ * skipped (SKIP-on-zero per CAN-5.4).
  */
 export interface AnnualCloseResult {
   fiscalYearId: string;
@@ -635,10 +627,6 @@ export interface AnnualCloseResult {
   status: "CLOSED";
   closedAt: Date;
   correlationId: string;
-  /** @deprecated Use closingEntries.balance. Maps to asiento #4 (Cierre de Balance). */
-  closingEntryId: string | null;
-  /** @deprecated Use closingEntries.apertura. Maps to asiento #5 (Apertura). */
-  openingEntryId: string | null;
   closingEntries: {
     gastos: string | null;
     ingresos: string | null;

@@ -14,9 +14,9 @@
  * Allowed surfaces (excluded from grep):
  *   - prisma/migrations/ — schema-history; the retire-migration itself names them.
  *   - This sentinel file (string literals are the patterns themselves).
- *   - JSDoc + commit-body retirement notes: those are *intentional* historical
- *     references. The sentinel allows lines containing 'RETIRED' or 'retired'
- *     or '@deprecated' (case-insensitive) to whitelist them.
+ *   - JSDoc retirement notes: lines containing 'retired' (case-insensitive),
+ *     'CAN-5.6', 'sentinel', or 'annual-close-canonical-flow' are whitelisted
+ *     as intentional historical references.
  *
  * Fails if any non-whitelisted match is found in non-excluded files.
  *
@@ -65,24 +65,14 @@ function listFilesRecursive(dir: string, acc: string[] = []): string[] {
 }
 
 function lineIsWhitelisted(line: string): boolean {
-  // Allow lines that intentionally reference the retired names:
-  // - JSDoc / commit-context / sentinel patterns
-  // - The backward-compat AnnualCloseResult fields (asiento #4 / #5 entry IDs,
-  //   NOT FK columns — the field names happen to match the retired columns).
-  //   Documented via D-2 carve-out. Marker: presence of `string | null` type
-  //   annotation, or assignment from `closingEntries.balance/.apertura`, or
-  //   test-fixture literal pattern (`"je-cc-..." | "je-ca-..."`).
+  // Allow lines that intentionally reference the retired names in JSDoc,
+  // commit context, or sentinel patterns. Production code MUST NOT carry
+  // these symbols past the retirement (asserted by the grep below).
   return (
     /retired/i.test(line) ||
-    /@deprecated/i.test(line) ||
     /sentinel/i.test(line) ||
     /CAN-5\.6/.test(line) ||
-    /annual-close-canonical-flow/.test(line) ||
-    /Backward-compat/.test(line) ||
-    /Preserved-shape/.test(line) ||
-    /closingEntries\.(balance|apertura)/.test(line) ||
-    /:\s*string \| null/.test(line) ||
-    /"je-(cc|ca)-/i.test(line)
+    /annual-close-canonical-flow/.test(line)
   );
 }
 
