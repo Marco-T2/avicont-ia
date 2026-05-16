@@ -141,6 +141,27 @@ describe("annual-close typed errors (REQ-2.3 canonical)", () => {
     expect(err.details).toMatchObject({ organizationId: "org_1" });
   });
 
+  // RED — REQ-2.3 / REQ-A.3 / CAN-5: MissingAccumulatedResultsAccountError
+  // declared failure mode: `ReferenceError: MissingAccumulatedResultsAccountError
+  // is not defined` (module export missing at HEAD 9e098809). T-03 GREEN
+  // adds the class mirroring MissingResultAccountError shape exactly.
+  it("MissingAccumulatedResultsAccountError — 500 + code (W-7 — 3.2.1 missing in chart of accounts)", async () => {
+    const mod = await import("../../domain/errors/annual-close-errors");
+    const Ctor = (mod as Record<string, unknown>)
+      .MissingAccumulatedResultsAccountError as new (d: {
+        organizationId: string;
+      }) => AppError & { code: string; details: { organizationId: string } };
+    expect(typeof Ctor).toBe("function");
+    const err = new Ctor({ organizationId: "org_1" });
+    expect(err).toBeInstanceOf(AppError);
+    expect(err.statusCode).toBe(500);
+    expect(err.code).toBe("MISSING_ACCUMULATED_RESULTS_ACCOUNT");
+    expect(err.details).toMatchObject({ organizationId: "org_1" });
+    expect(
+      (mod as Record<string, unknown>).MISSING_ACCUMULATED_RESULTS_ACCOUNT,
+    ).toBe("MISSING_ACCUMULATED_RESULTS_ACCOUNT");
+  });
+
   it("JustificationTooShortError — 422 + code + payload", () => {
     const err = new JustificationTooShortError({ minLength: 50, actualLength: 10 });
     expect(err.statusCode).toBe(422);
