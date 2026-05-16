@@ -22,6 +22,37 @@ vi.mock("@google/generative-ai", () => ({
     this.getGenerativeModel = vi.fn();
   }),
 }));
+
+// Mock @/lib/prisma to eliminate `new PrismaPg(...)` + `new PrismaClient(...)`
+// pool init at module load (lib/prisma.ts:8-9). Necessary but NOT sufficient
+// alone — see farm/lot mocks below.
+// Sister precedent: vi.mock("@google/generative-ai") above.
+vi.mock("@/lib/prisma", () => ({
+  prisma: {} as unknown,
+}));
+
+// Mock @/modules/farm/presentation/server + lot equivalent. Empirical addition:
+// SDD plan (#2630/#2631) chose F2 alone (@/lib/prisma only), based on the
+// assumption that farm/lot composition roots' lazy Prisma init was sufficient.
+// EMPIRICAL FAILURE: even with @/lib/prisma mocked, full-suite c3 timed out at
+// ~5785ms (vs 5000ms default). Loading farm/lot server barrels transitively
+// loads @/generated/prisma/client (huge generated file) + farm/lot domain +
+// validation + entities, regardless of Prisma instantiation. F3 add-on mocks
+// the WHOLE barrels to short-circuit transitive module-graph load cost.
+// Surface honest per [[paired_sister_default_no_surface]] — plan revised
+// empirically; sentinel α-prisma-mock-c3-02 still guards the @/lib/prisma
+// boundary mock (regression sentinel for F2 component).
+// Shape-only test (c3 NEVER invokes makeAgentService) → empty class stubs
+// suffice. Minimum surface: only the 2 symbols ai-agent's presentation/server
+// imports (`LocalFarmInquiryAdapter`, `makeFarmService` + lot equivalents).
+vi.mock("@/modules/farm/presentation/server", () => ({
+  LocalFarmInquiryAdapter: class {},
+  makeFarmService: () => ({}),
+}));
+vi.mock("@/modules/lot/presentation/server", () => ({
+  LocalLotInquiryAdapter: class {},
+  makeLotService: () => ({}),
+}));
 import * as fs from "node:fs";
 import * as path from "node:path";
 
@@ -81,11 +112,19 @@ function readPresentationFile(relative: string): string {
 // ── Block 1: Composition root (makeAgentService factory) ────────────────────
 
 describe("POC ai-agent-hex C3 — composition root", () => {
-  it("makeAgentService factory exists and is a function", async () => {
-    // Composition-root re-exported from server barrel per design §3.
-    const mod = await import("@/modules/ai-agent/presentation/server");
-    expect(typeof mod.makeAgentService).toBe("function");
-  });
+  it(
+    "makeAgentService factory exists and is a function",
+    async () => {
+      // Composition-root re-exported from server barrel per design §3.
+      const mod = await import("@/modules/ai-agent/presentation/server");
+      expect(typeof mod.makeAgentService).toBe("function");
+    },
+    // F1 safety net (combo with F2+F3 mocks above): default 5000ms is tight
+    // under full-suite fork contention even with mocks. 15000ms covers growth
+    // headroom while keeping signal — if EXCEEDED, indicates new transitive
+    // load-time cost slipped past the boundary mocks. Per SDD #2630 §"options".
+    15000,
+  );
 
   it("makeAgentService is a zero-arg factory (returns AgentService at import time, no top-level throw)", async () => {
     const mod = await import("@/modules/ai-agent/presentation/server");
