@@ -37,7 +37,9 @@ import { describe, it, expect } from "vitest";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
-const ROOT = resolve(__dirname, "../../..");
+// __dirname = modules/annual-close/__tests__/application
+// → ../../../.. = repo root
+const ROOT = resolve(__dirname, "../../../..");
 
 function exists(rel: string): boolean {
   return existsSync(resolve(ROOT, rel));
