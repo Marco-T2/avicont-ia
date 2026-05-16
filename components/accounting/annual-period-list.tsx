@@ -29,6 +29,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import {
   Accordion,
   AccordionContent,
@@ -38,6 +39,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Tooltip,
   TooltipContent,
@@ -45,7 +47,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { CalendarDays, Plus } from "lucide-react";
-import Link from "next/link";
 import type { FiscalPeriod } from "@/modules/fiscal-periods/presentation/index";
 import type { AnnualCloseSummary } from "@/modules/annual-close/presentation/index";
 import { formatDateBO } from "@/lib/date-utils";
@@ -301,13 +302,10 @@ function YearPeriodsTable({ orgSlug, group, onCloseYear }: YearPeriodsTableProps
                               </TooltipContent>
                             </Tooltip>
                           ) : (
-                            <Button variant="outline" size="sm" asChild>
-                              <Link
-                                href={`/${orgSlug}/accounting/monthly-close?periodId=${p.id}`}
-                              >
-                                Cerrar
-                              </Link>
-                            </Button>
+                            <MonthlyCloseButton
+                              orgSlug={orgSlug}
+                              period={{ id: p.id, name: p.name }}
+                            />
                           ))}
                       </td>
                     </tr>
@@ -439,5 +437,133 @@ function YearCloseAction({
       </TooltipTrigger>
       <TooltipContent>{fallbackReason}</TooltipContent>
     </Tooltip>
+  );
+}
+
+// ── MonthlyCloseButton ──────────────────────────────────────────────────────
+//
+// Fast-close UX: click consulta el summary del período. Si está vacío (0
+// posted + 0 drafts), abre confirm dialog inline y POSTea directo al endpoint
+// `/monthly-close` reusando el auto-justification del route. Si tiene
+// registros, redirige al flujo completo `/accounting/monthly-close?periodId=X`
+// donde el panel muestra summary detallado + balance check.
+
+interface MonthlyCloseButtonProps {
+  orgSlug: string;
+  period: { id: string; name: string };
+}
+
+interface PeriodSummaryShape {
+  posted: {
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+  };
+  drafts: {
+    dispatches: number;
+    payments: number;
+    journalEntries: number;
+    sales: number;
+    purchases: number;
+  };
+}
+
+function sumCounts(s: PeriodSummaryShape): number {
+  const { posted, drafts } = s;
+  return (
+    posted.dispatches +
+    posted.payments +
+    posted.journalEntries +
+    drafts.dispatches +
+    drafts.payments +
+    drafts.journalEntries +
+    drafts.sales +
+    drafts.purchases
+  );
+}
+
+function MonthlyCloseButton({ orgSlug, period }: MonthlyCloseButtonProps) {
+  const router = useRouter();
+  const [checking, setChecking] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  async function handleClick() {
+    setChecking(true);
+    try {
+      const res = await fetch(
+        `/api/organizations/${orgSlug}/monthly-close/summary?periodId=${period.id}`,
+      );
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Error al consultar el período.");
+        return;
+      }
+      const summary = (await res.json()) as PeriodSummaryShape;
+      if (sumCounts(summary) === 0) {
+        // Empty period → fast-close flow (mini confirm dialog).
+        setConfirmOpen(true);
+      } else {
+        // Has activity → full flow with summary panel + balance check.
+        router.push(
+          `/${orgSlug}/accounting/monthly-close?periodId=${period.id}`,
+        );
+      }
+    } catch {
+      toast.error("Error de conexión al consultar el período.");
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  async function executeFastClose() {
+    setClosing(true);
+    try {
+      const res = await fetch(`/api/organizations/${orgSlug}/monthly-close`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periodId: period.id }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        toast.error(data.error ?? "Error al cerrar el período.");
+        return;
+      }
+      toast.success(`${period.name} cerrado`);
+      setConfirmOpen(false);
+      router.refresh();
+    } catch {
+      toast.error("Error de conexión al cerrar el período.");
+    } finally {
+      setClosing(false);
+    }
+  }
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleClick}
+        disabled={checking}
+      >
+        {checking ? "Comprobando..." : "Cerrar"}
+      </Button>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={(open) => !closing && setConfirmOpen(open)}
+        title="Cerrar mes vacío"
+        description={
+          <span>
+            <strong>{period.name}</strong> no tiene registros. ¿Cerrar el
+            período directamente?
+          </span>
+        }
+        confirmLabel="Sí, cerrar"
+        variant="default"
+        loading={closing}
+        onConfirm={executeFastClose}
+      />
+    </>
   );
 }

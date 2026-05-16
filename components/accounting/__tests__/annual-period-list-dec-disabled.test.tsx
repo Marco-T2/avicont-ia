@@ -136,7 +136,7 @@ describe("AnnualPeriodList — REQ-7.3 December standalone close button", () => 
     );
   });
 
-  it("(b) month 6 OPEN (not all 1-11 closed) → Dec button is a navigation link, enabled", () => {
+  it("(b) month 6 OPEN (not all 1-11 closed) → Dec button is enabled (click handler dispatches based on period activity)", () => {
     const statuses: ("OPEN" | "CLOSED")[] = Array(12).fill("OPEN");
     statuses[0] = "CLOSED";
     statuses[1] = "CLOSED";
@@ -145,16 +145,17 @@ describe("AnnualPeriodList — REQ-7.3 December standalone close button", () => 
 
     render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />);
 
-    // Dec row should still have its enabled link Cerrar button (asChild Link).
+    // Dec row should render its enabled Cerrar button. The button is no longer
+    // an <a> link — it's a <button onClick> that checks `/monthly-close/summary`
+    // and either fast-closes (empty period) or navigates to the full panel.
     const decCell = Array.from(document.querySelectorAll("td")).find((td) =>
       td.textContent?.startsWith("Diciembre"),
     );
     const decRow = decCell?.closest("tr");
-    const decLink = decRow?.querySelector<HTMLAnchorElement>("a");
-    expect(decLink).not.toBeNull();
-    expect(decLink?.getAttribute("href")).toMatch(
-      /\/accounting\/monthly-close\?periodId=p-2026-12/,
-    );
+    const decBtn = decRow?.querySelector<HTMLButtonElement>("button");
+    expect(decBtn).not.toBeNull();
+    expect(decBtn).not.toBeDisabled();
+    expect(decBtn?.textContent).toMatch(/cerrar/i);
   });
 
   it("(c) FY CLOSED → Dec row shows Cerrado badge, no close button rendered", () => {
