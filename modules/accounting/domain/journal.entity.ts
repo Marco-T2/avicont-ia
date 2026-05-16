@@ -363,10 +363,20 @@ export class Journal {
     if (target === "POSTED") {
       this.assertBalanced();
     }
+    // AI provenance dissolution: la IA es un drafting helper. Cuando el
+    // usuario firma (DRAFT → POSTED), la provenance se disuelve y el asiento
+    // pasa a ser fully user-owned. Limpiar sourceType + aiOriginalText permite
+    // que todos los downstream layers (I9 assertMutable, VOIDED guard del
+    // service, presentation guard de edit, audit classifier, badge UI) lo
+    // traten como manual sin ningún cambio adicional. Aplica SOLO a "ai" —
+    // sale/purchase/payment/dispatch preservan su trazabilidad al upstream.
+    const isAiToPost = target === "POSTED" && this.props.sourceType === "ai";
     return new Journal({
       ...this.props,
       status: target,
       updatedAt: new Date(),
+      sourceType: isAiToPost ? null : this.props.sourceType,
+      aiOriginalText: isAiToPost ? null : this.props.aiOriginalText,
     });
   }
 
