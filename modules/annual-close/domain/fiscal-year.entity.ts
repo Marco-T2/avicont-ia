@@ -11,6 +11,13 @@ import { Year } from "./value-objects/year";
  *
  * Persistence shape (`FiscalYearSnapshot`) unwraps the year VO to int and
  * status VO to literal so adapters can pass it straight to Prisma.
+ *
+ * **CAN-5.6 — FK retirement (annual-close-canonical-flow)**: the legacy
+ * 1:1 FK columns `closingEntryId` / `openingEntryId` are RETIRED. The
+ * 5-asientos canonical flow emits up to 4 CC + 1 CA per FY; the link is
+ * now reverse-lookup via `JournalEntry.sourceType='annual-close' AND
+ * sourceId=FiscalYear.id`. JSDoc atomic revoke applied in the same commit
+ * as the schema drop.
  */
 
 export interface FiscalYearProps {
@@ -20,8 +27,6 @@ export interface FiscalYearProps {
   status: FiscalYearStatus;
   closedAt: Date | null;
   closedBy: string | null;
-  closingEntryId: string | null;
-  openingEntryId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,8 +39,6 @@ export interface CreateFiscalYearInput {
 
 export interface MarkClosedInput {
   closedBy: string;
-  closingEntryId: string;
-  openingEntryId: string;
 }
 
 export interface FiscalYearSnapshot {
@@ -45,8 +48,6 @@ export interface FiscalYearSnapshot {
   status: "OPEN" | "CLOSED";
   closedAt: Date | null;
   closedBy: string | null;
-  closingEntryId: string | null;
-  openingEntryId: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,8 +64,6 @@ export class FiscalYear {
       status: FiscalYearStatus.open(),
       closedAt: null,
       closedBy: null,
-      closingEntryId: null,
-      openingEntryId: null,
       createdAt: now,
       updatedAt: now,
     });
@@ -91,12 +90,6 @@ export class FiscalYear {
   }
   get closedBy(): string | null {
     return this.props.closedBy;
-  }
-  get closingEntryId(): string | null {
-    return this.props.closingEntryId;
-  }
-  get openingEntryId(): string | null {
-    return this.props.openingEntryId;
   }
   get createdAt(): Date {
     return this.props.createdAt;
@@ -131,8 +124,6 @@ export class FiscalYear {
       status: FiscalYearStatus.closed(),
       closedAt: now,
       closedBy: input.closedBy,
-      closingEntryId: input.closingEntryId,
-      openingEntryId: input.openingEntryId,
       updatedAt: now,
     });
   }
@@ -145,8 +136,6 @@ export class FiscalYear {
       status: this.props.status.value,
       closedAt: this.props.closedAt,
       closedBy: this.props.closedBy,
-      closingEntryId: this.props.closingEntryId,
-      openingEntryId: this.props.openingEntryId,
       createdAt: this.props.createdAt,
       updatedAt: this.props.updatedAt,
     };

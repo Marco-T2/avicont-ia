@@ -60,8 +60,6 @@ describe("PrismaFiscalYearReaderAdapter", () => {
         status: "OPEN",
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
         createdAt,
         updatedAt,
       });
@@ -76,8 +74,6 @@ describe("PrismaFiscalYearReaderAdapter", () => {
         status: "OPEN",
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
         createdAt,
         updatedAt,
       });

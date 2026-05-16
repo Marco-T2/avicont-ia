@@ -75,8 +75,6 @@ export default async function PeriodsPage({ params }: PeriodsPageProps) {
               id: fiscalYear.id,
               status: fiscalYear.status,
               closedAt: fiscalYear.closedAt,
-              closingEntryId: fiscalYear.closingEntryId,
-              openingEntryId: fiscalYear.openingEntryId,
             }
           : null,
         summary,

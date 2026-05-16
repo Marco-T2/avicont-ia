@@ -8,10 +8,11 @@
  *
  *   • HTTP-equivalent: service.close returns AnnualCloseResult with correct
  *     `fiscalYearId`, `year`, `status=CLOSED`, `closedAt`, `correlationId`,
- *     `closingEntryId`, `openingEntryId`, `yearPlus1.periodIds` (12),
+ *     `closingEntryId`, `openingEntryId` (result entry IDs — service-level
+ *     contract preserved, NOT FK columns), `yearPlus1.periodIds` (12),
  *     `decClose.locked.*` (5 cascade counts).
- *   • FiscalYear 2099 row: status=CLOSED with closingEntryId + openingEntryId
- *     + closedAt + closedBy populated.
+ *   • FiscalYear 2099 row: status=CLOSED with closedAt + closedBy populated
+ *     (FK columns RETIRED per CAN-5.6 — JournalEntry.sourceId reverse-lookup).
  *   • CC JournalEntry: Dec 2099, POSTED→LOCKED (post lock-cascade),
  *     sourceType="annual-close", sourceId=FY.id, DEBE === HABER bit-perfect
  *     via Decimal.equals.
@@ -287,12 +288,12 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     expect(result.decClose!.locked.purchases).toBe(0);
 
     // ── FiscalYear row state ─────────────────────────────────────────────
+    // FK columns closingEntryId/openingEntryId RETIRED per CAN-5.6 — link is
+    // now reverse-lookup via JournalEntry.sourceId.
     const fyRow = await prisma.fiscalYear.findUniqueOrThrow({
       where: { id: result.fiscalYearId },
     });
     expect(fyRow.status).toBe("CLOSED");
-    expect(fyRow.closingEntryId).toBe(result.closingEntryId);
-    expect(fyRow.openingEntryId).toBe(result.openingEntryId);
     expect(fyRow.closedBy).toBe(testUserId);
     expect(fyRow.closedAt).toBeInstanceOf(Date);
     expect(fyRow.year).toBe(testYear);

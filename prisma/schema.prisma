@@ -393,9 +393,6 @@ model JournalEntry {
   payment         Payment?
   purchase        Purchase?
   sale            Sale?
-  closingForFiscalYear FiscalYear? @relation("FiscalYearClosing")
-  openingForFiscalYear FiscalYear? @relation("FiscalYearOpening")
-
   @@unique([organizationId, voucherTypeId, periodId, number])
   @@unique([organizationId, voucherTypeId, referenceNumber])
   @@index([organizationId, periodId])
@@ -463,8 +460,6 @@ model FiscalYear {
   status          FiscalYearStatus @default(OPEN)
   closedAt        DateTime?        @db.Timestamptz(3)
   closedBy        String?
-  closingEntryId  String?          @unique // FK → JournalEntry (CC) — 1:1
-  openingEntryId  String?          @unique // FK → JournalEntry (CA) — 1:1
   justification   String?
   createdById     String
   createdAt       DateTime         @db.Timestamptz(3) @default(now())
@@ -472,8 +467,6 @@ model FiscalYear {
   organization    Organization     @relation(fields: [organizationId], references: [id])
   closedByUser    User?            @relation("FiscalYearCloser", fields: [closedBy], references: [id])
   createdByUser   User             @relation("FiscalYearCreator", fields: [createdById], references: [id])
-  closingEntry    JournalEntry?    @relation("FiscalYearClosing", fields: [closingEntryId], references: [id])
-  openingEntry    JournalEntry?    @relation("FiscalYearOpening", fields: [openingEntryId], references: [id])
   // NOTE: no inverse `fiscalPeriods FiscalPeriod[]` in v1 — link is logical
   // via (organizationId, year). See annual-close design rev 2 §2.
 

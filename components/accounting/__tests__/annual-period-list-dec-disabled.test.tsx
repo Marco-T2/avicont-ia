@@ -97,8 +97,6 @@ function buildGroup(
       id: `fy-${year}`,
       status: fyStatus,
       closedAt: null,
-      closingEntryId: null,
-      openingEntryId: null,
     },
     summary: null,
   };

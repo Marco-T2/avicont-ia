@@ -9,10 +9,11 @@ import { FiscalYearAlreadyClosedError } from "../../domain/errors/annual-close-e
  *   - `upsertOpen({organizationId, year, createdById})` → {id}
  *      via `tx.fiscalYear.upsert({where:{organizationId_year:{...}},
  *      create:{...status:OPEN, createdById}, update:{}})`. Idempotent.
- *   - `markClosed({fiscalYearId, closedBy, closingEntryId, openingEntryId})`
- *      → {closedAt} via GUARDED `tx.fiscalYear.updateMany({where:{id, status:
- *      "OPEN"}, data:{status:"CLOSED", ...}})`. If count !== 1 → throw
- *      FiscalYearAlreadyClosedError (W-3 lost-update protection).
+ *   - `markClosed({fiscalYearId, closedBy})` → {closedAt} via GUARDED
+ *      `tx.fiscalYear.updateMany({where:{id, status:"OPEN"}, data:{status:
+ *      "CLOSED", ...}})`. If count !== 1 → throw FiscalYearAlreadyClosedError
+ *      (W-3 lost-update protection). FK args RETIRED per CAN-5.6 — link is
+ *      reverse-lookup via JournalEntry.sourceId.
  *
  * Mock-del-colaborador — mocked `Prisma.TransactionClient` surface restricted
  * to `tx.fiscalYear.upsert` + `tx.fiscalYear.updateMany`.
@@ -80,8 +81,6 @@ describe("PrismaFiscalYearWriterTxAdapter", () => {
       const result = await adapter.markClosed({
         fiscalYearId: "fy-1",
         closedBy: "user-1",
-        closingEntryId: "je-cc-1",
-        openingEntryId: "je-ca-1",
       });
       const after = Date.now();
 
@@ -94,8 +93,8 @@ describe("PrismaFiscalYearWriterTxAdapter", () => {
       expect(call?.where).toEqual({ id: "fy-1", status: "OPEN" });
       expect(call?.data?.status).toBe("CLOSED");
       expect(call?.data?.closedBy).toBe("user-1");
-      expect(call?.data?.closingEntryId).toBe("je-cc-1");
-      expect(call?.data?.openingEntryId).toBe("je-ca-1");
+      expect(call?.data?.closingEntryId).toBeUndefined();
+      expect(call?.data?.openingEntryId).toBeUndefined();
       expect(call?.data?.closedAt).toBeInstanceOf(Date);
     });
 
@@ -108,8 +107,6 @@ describe("PrismaFiscalYearWriterTxAdapter", () => {
         adapter.markClosed({
           fiscalYearId: "fy-already-closed",
           closedBy: "user-1",
-          closingEntryId: "je-cc-1",
-          openingEntryId: "je-ca-1",
         }),
       ).rejects.toBeInstanceOf(FiscalYearAlreadyClosedError);
     });
@@ -123,8 +120,6 @@ describe("PrismaFiscalYearWriterTxAdapter", () => {
         await adapter.markClosed({
           fiscalYearId: "fy-race-1",
           closedBy: "user-1",
-          closingEntryId: "je-cc-1",
-          openingEntryId: "je-ca-1",
         });
         expect.fail("should have thrown");
       } catch (e) {

@@ -18,7 +18,7 @@
  *     Array<{
  *       year: number,
  *       periods: FiscalPeriodSnapshot[],           // 0..12 sorted by month asc
- *       fiscalYear: { id, status, closedAt, closingEntryId, openingEntryId } | null,
+ *       fiscalYear: { id, status, closedAt } | null,
  *       summary: AnnualCloseSummary | null,
  *     }>
  *
@@ -133,8 +133,6 @@ function mixedYear(year: number, closedCount: number): PeriodsByYear[number] {
       id: `fy-${year}`,
       status: "OPEN",
       closedAt: null,
-      closingEntryId: null,
-      openingEntryId: null,
     },
     summary: null,
   };
@@ -151,8 +149,6 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
       id: "fy-2025",
       status: "CLOSED",
       closedAt: new Date("2026-01-15"),
-      closingEntryId: "je-cc-2025",
-      openingEntryId: "je-ca-2026",
     };
 
     const { container } = render(
@@ -179,8 +175,6 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
       id: "fy-2025",
       status: "CLOSED",
       closedAt: new Date("2026-01-15"),
-      closingEntryId: "je-cc-2025",
-      openingEntryId: "je-ca-2026",
     };
 
     const { container } = render(
@@ -210,8 +204,6 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
           id: "fy-2022",
           status: "OPEN",
           closedAt: null,
-          closingEntryId: null,
-          openingEntryId: null,
         },
         summary: null,
       },
@@ -228,8 +220,6 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
       id: "fy-2025",
       status: "CLOSED",
       closedAt: new Date("2026-01-15"),
-      closingEntryId: "je-cc-2025",
-      openingEntryId: "je-ca-2026",
     };
 
     const { container } = render(

@@ -32,8 +32,6 @@ export interface UpsertOpenResult {
 export interface MarkClosedInput {
   fiscalYearId: string;
   closedBy: string;
-  closingEntryId: string;
-  openingEntryId: string;
 }
 
 export interface MarkClosedResult {

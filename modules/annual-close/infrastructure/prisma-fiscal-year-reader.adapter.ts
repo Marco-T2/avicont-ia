@@ -57,8 +57,6 @@ export class PrismaFiscalYearReaderAdapter implements FiscalYearReaderPort {
       status: row.status,
       closedAt: row.closedAt,
       closedBy: row.closedBy,
-      closingEntryId: row.closingEntryId,
-      openingEntryId: row.openingEntryId,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     };

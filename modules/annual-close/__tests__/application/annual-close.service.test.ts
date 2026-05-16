@@ -177,8 +177,6 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         status: "OPEN" as const,
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })),
@@ -218,8 +216,6 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         status: "OPEN" as const,
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })),
@@ -255,8 +251,6 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         status: "OPEN" as const,
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       })),
@@ -512,8 +506,6 @@ function makeStandardReadyReader(): FiscalYearReaderPort {
       status: "OPEN" as const,
       closedAt: null,
       closedBy: null,
-      closingEntryId: null,
-      openingEntryId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
@@ -539,8 +531,6 @@ function makeEdgeReadyReader(): FiscalYearReaderPort {
       status: "OPEN" as const,
       closedAt: null,
       closedBy: null,
-      closingEntryId: null,
-      openingEntryId: null,
       createdAt: new Date(),
       updatedAt: new Date(),
     })),
@@ -604,8 +594,6 @@ describe("AnnualCloseService.close — pre-TX gate failures (REQ-2.1, REQ-2.3)",
           status: "CLOSED" as const,
           closedAt: new Date("2025-12-31T12:00:00Z"),
           closedBy: "user_prev",
-          closingEntryId: "je_cc_prev",
-          openingEntryId: "je_ca_prev",
           createdAt: new Date(),
           updatedAt: new Date(),
         })),
@@ -868,15 +856,18 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
     expect(caCall![0].sourceType).toBe("annual-close");
     expect(caCall![0].sourceId).toBe("fy_1");
 
-    // (g) FY markClosed LAST
+    // (g) FY markClosed LAST — FK args RETIRED per CAN-5.6.
     expect(ctx.scope.fiscalYears.markClosed).toHaveBeenCalledWith(
       expect.objectContaining({
         fiscalYearId: "fy_1",
         closedBy: USER,
-        closingEntryId: "je_cc_1",
-        openingEntryId: "je_ca_1",
       }),
     );
+    const markClosedArgs = (
+      ctx.scope.fiscalYears.markClosed as ReturnType<typeof vi.fn>
+    ).mock.calls[0]?.[0] as Record<string, unknown>;
+    expect(markClosedArgs).not.toHaveProperty("closingEntryId");
+    expect(markClosedArgs).not.toHaveProperty("openingEntryId");
 
     // AuditContext propagated to uow.run with justification
     expect(ctx.lastCtx.current).toEqual({

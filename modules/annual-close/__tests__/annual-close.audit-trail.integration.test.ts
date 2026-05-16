@@ -269,7 +269,8 @@ describe("annual-close audit-trail (W-4 acceptance) — Postgres integration", (
   afterAll(async () => {
     // FK-safe cleanup + audit_logs paso 3. Order:
     //   1. journal_lines (child antes de padre por trigger lookup)
-    //   2. fiscal_years (FK self-references journal_entries via closingEntryId)
+    //   2. fiscal_years (FK link via JournalEntry.sourceId reverse-lookup post
+    //      CAN-5.6; no FK columns left on fiscal_years)
     //   3. journal_entries
     //   4. account_balances
     //   5. accounts

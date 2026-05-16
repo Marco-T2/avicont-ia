@@ -63,8 +63,6 @@ export class PrismaFiscalYearWriterTxAdapter implements FiscalYearWriterTxPort {
         status: "CLOSED",
         closedAt,
         closedBy: input.closedBy,
-        closingEntryId: input.closingEntryId,
-        openingEntryId: input.openingEntryId,
       },
     });
     if (result.count !== 1) {

@@ -53,8 +53,6 @@ export interface YearGroup {
     id: string;
     status: "OPEN" | "CLOSED";
     closedAt: Date | string | null;
-    closingEntryId: string | null;
-    openingEntryId: string | null;
   } | null;
   summary: AnnualCloseSummary | null;
 }

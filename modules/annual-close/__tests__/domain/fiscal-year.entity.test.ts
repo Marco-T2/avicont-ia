@@ -31,8 +31,6 @@ describe("FiscalYear entity", () => {
       expect(fy.status.value).toBe("OPEN");
       expect(fy.closedAt).toBeNull();
       expect(fy.closedBy).toBeNull();
-      expect(fy.closingEntryId).toBeNull();
-      expect(fy.openingEntryId).toBeNull();
       expect(typeof fy.id).toBe("string");
       expect(fy.id.length).toBeGreaterThan(0);
       expect(fy.createdAt).toBeInstanceOf(Date);
@@ -52,8 +50,6 @@ describe("FiscalYear entity", () => {
         status: FiscalYearStatus.closed(),
         closedAt,
         closedBy: "user_2",
-        closingEntryId: "je_cc",
-        openingEntryId: "je_ca",
         createdAt,
         updatedAt,
       });
@@ -62,8 +58,6 @@ describe("FiscalYear entity", () => {
       expect(fy.status.isClosed()).toBe(true);
       expect(fy.closedAt).toEqual(closedAt);
       expect(fy.closedBy).toBe("user_2");
-      expect(fy.closingEntryId).toBe("je_cc");
-      expect(fy.openingEntryId).toBe("je_ca");
       expect(fy.createdAt).toEqual(createdAt);
       expect(fy.updatedAt).toEqual(updatedAt);
     });
@@ -80,15 +74,11 @@ describe("FiscalYear entity", () => {
 
       const closed = fy.markClosed({
         closedBy: "user_2",
-        closingEntryId: "je_cc",
-        openingEntryId: "je_ca",
       });
 
       expect(closed.status.isClosed()).toBe(true);
       expect(closed.status.value).toBe("CLOSED");
       expect(closed.closedBy).toBe("user_2");
-      expect(closed.closingEntryId).toBe("je_cc");
-      expect(closed.openingEntryId).toBe("je_ca");
       expect(closed.closedAt).toBeInstanceOf(Date);
       expect(closed.updatedAt.getTime()).toBeGreaterThanOrEqual(
         beforeUpdated.getTime(),
@@ -107,16 +97,12 @@ describe("FiscalYear entity", () => {
         status: FiscalYearStatus.closed(),
         closedAt: new Date("2026-12-31T20:00:00Z"),
         closedBy: "user_2",
-        closingEntryId: "je_cc",
-        openingEntryId: "je_ca",
         createdAt: new Date("2026-01-01T12:00:00Z"),
         updatedAt: new Date("2026-12-31T20:00:00Z"),
       });
       expect(() =>
         fy.markClosed({
           closedBy: "user_3",
-          closingEntryId: "je_cc2",
-          openingEntryId: "je_ca2",
         }),
       ).toThrow(FiscalYearAlreadyClosedError);
     });
@@ -137,8 +123,6 @@ describe("FiscalYear entity", () => {
         status: "OPEN", // unwrapped to literal
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
       });
       expect(snap.createdAt).toBeInstanceOf(Date);
       expect(snap.updatedAt).toBeInstanceOf(Date);
@@ -151,14 +135,10 @@ describe("FiscalYear entity", () => {
         createdById: "user_1",
       }).markClosed({
         closedBy: "user_2",
-        closingEntryId: "je_cc",
-        openingEntryId: "je_ca",
       });
       const snap = fy.toSnapshot();
       expect(snap.status).toBe("CLOSED");
       expect(snap.closedBy).toBe("user_2");
-      expect(snap.closingEntryId).toBe("je_cc");
-      expect(snap.openingEntryId).toBe("je_ca");
       expect(snap.closedAt).toBeInstanceOf(Date);
     });
   });
@@ -203,8 +183,6 @@ describe("FiscalYear entity", () => {
 
       const closed = open.markClosed({
         closedBy: "user_2",
-        closingEntryId: "je_cc",
-        openingEntryId: "je_ca",
       });
       expect(closed.isOpen()).toBe(false);
       expect(closed.isClosed()).toBe(true);

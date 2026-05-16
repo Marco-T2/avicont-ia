@@ -135,8 +135,6 @@ function buildGroup(
       id: `fy-${year}`,
       status: fyStatus,
       closedAt,
-      closingEntryId: fyStatus === "CLOSED" ? "je-cc" : null,
-      openingEntryId: fyStatus === "CLOSED" ? "je-ca" : null,
     },
     summary,
   };

@@ -90,8 +90,6 @@ function singleYearGroup(year: number): PeriodsByYear[number] {
       id: `fy-${year}`,
       status: "OPEN",
       closedAt: null,
-      closingEntryId: null,
-      openingEntryId: null,
     },
     summary: null,
   };

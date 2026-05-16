@@ -155,8 +155,6 @@ beforeEach(() => {
           status: "CLOSED",
           closedAt: new Date("2026-01-15"),
           closedBy: "user-1",
-          closingEntryId: "je-cc-2025",
-          openingEntryId: "je-ca-2026",
           createdAt: new Date(),
           updatedAt: new Date(),
         });
@@ -168,8 +166,6 @@ beforeEach(() => {
         status: "OPEN",
         closedAt: null,
         closedBy: null,
-        closingEntryId: null,
-        openingEntryId: null,
         createdAt: new Date(),
         updatedAt: new Date(),
       });

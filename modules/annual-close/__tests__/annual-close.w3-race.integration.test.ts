@@ -99,8 +99,6 @@ describe("annual-close W-3 race acceptance — Postgres integration", () => {
         await adapter.markClosed({
           fiscalYearId: testFyId,
           closedBy: testUserId,
-          closingEntryId: "fake-cc-id-for-race-test",
-          openingEntryId: "fake-ca-id-for-race-test",
         });
       })
       .catch((e) => {
@@ -112,13 +110,11 @@ describe("annual-close W-3 race acceptance — Postgres integration", () => {
     expect(err.code).toBe(FISCAL_YEAR_ALREADY_CLOSED);
     expect(err.statusCode).toBe(409);
 
-    // Verify the FY row was NOT modified — closingEntryId stays NULL (we did
-    // not set it during seed) and the seeded closedAt is unchanged.
+    // Verify the FY row was NOT modified — closedAt is unchanged from seed.
+    // FK columns closingEntryId/openingEntryId RETIRED per CAN-5.6.
     const fyAfter = await prisma.fiscalYear.findUniqueOrThrow({
       where: { id: testFyId },
     });
     expect(fyAfter.status).toBe("CLOSED");
-    expect(fyAfter.closingEntryId).toBeNull();
-    expect(fyAfter.openingEntryId).toBeNull();
   });
 });

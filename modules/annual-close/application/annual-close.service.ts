@@ -208,9 +208,10 @@ export class AnnualCloseService {
 
   /**
    * Thin facade over `FiscalYearReaderPort.getByYear` — exposed at the
-   * service surface so the UI (Phase 7.5+) can render `closedAt` /
-   * `closingEntryId` / `openingEntryId` without depending on the reader
-   * port directly (R5 — only the service is the consumer-facing surface).
+   * service surface so the UI (Phase 7.5+) can render `closedAt` without
+   * depending on the reader port directly (R5 — only the service is the
+   * consumer-facing surface). FK columns `closingEntryId`/`openingEntryId`
+   * retired per CAN-5.6 — link is reverse-lookup via JournalEntry.sourceId.
    *
    * Returns `null` when no FiscalYear row exists for `(orgId, year)` — common
    * for years that were never closed (status would be inferred OPEN by the
@@ -556,11 +557,11 @@ export class AnnualCloseService {
         );
 
         // (g) FY markClosed LAST — guarded (W-3). Throws on race.
+        // FK args closingEntryId/openingEntryId RETIRED per CAN-5.6 — the
+        // canonical flow links via JournalEntry.sourceId reverse-lookup.
         const { closedAt } = await scope.fiscalYears.markClosed({
           fiscalYearId: fyId,
           closedBy: userId,
-          closingEntryId: ccEntryId,
-          openingEntryId: caEntryId,
         });
 
         return {
