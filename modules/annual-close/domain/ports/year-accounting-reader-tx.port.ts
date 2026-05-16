@@ -68,8 +68,52 @@ export interface YearAccountingReaderTxPort {
    * account that had any movement in the year, with raw `(debit, credit)`
    * sums + `nature`. Rows with `debit=0 AND credit=0` filtered at the SQL
    * `HAVING` level. The builder applies the signed-net algorithm.
+   *
+   * @deprecated Retired by annual-close-canonical-flow per D-6 — replaced
+   * by `aggregateGastosByYear` + `aggregateIngresosByYear` (one query per
+   * asiento #1 / #2). Removed in Phase J cleanup.
    */
   aggregateResultAccountsByYear(
+    organizationId: string,
+    year: number,
+  ): Promise<YearAggregatedLine[]>;
+
+  /**
+   * Asiento #1 source (REQ-A.1) — INGRESO/GASTO split: GASTO leaves only.
+   * Filters `je.status IN ('POSTED','LOCKED')` per FIN-1 + `a.type = 'GASTO'`
+   * + `a.isDetail = true` + year + HAVING `debit<>0 OR credit<>0`.
+   * Returns raw `(debit, credit)` sums per account with `nature` for the
+   * signed-net algorithm in `gastos-close-line.builder`.
+   */
+  aggregateGastosByYear(
+    organizationId: string,
+    year: number,
+  ): Promise<YearAggregatedLine[]>;
+
+  /**
+   * Asiento #2 source (REQ-A.2) — INGRESO leaves only. Same shape as
+   * `aggregateGastosByYear` with `a.type = 'INGRESO'`. Consumed by
+   * `ingresos-close-line.builder`.
+   */
+  aggregateIngresosByYear(
+    organizationId: string,
+    year: number,
+  ): Promise<YearAggregatedLine[]>;
+
+  /**
+   * Asiento #4 source (REQ-A.4 + REQ-A.11) — balance-sheet aggregation at
+   * year-end. Cumulative across prior years (`fp.year <= ${year}`) with
+   * FIN-1 status filter + `a.type IN ('ACTIVO','PASIVO','PATRIMONIO')` +
+   * `a.isDetail = true` + HAVING `debit<>0 OR credit<>0`.
+   *
+   * Runs INSIDE the TX AFTER asientos #1 + #2 + #3 have posted — so 3.2.2
+   * is naturally excluded (zero balance via HAVING) and 3.2.1 carries the
+   * period result. NO prevCAdate / delta logic — the cumulative roll-up is
+   * mathematically equivalent and free of the latent FIN-1 bug that
+   * `aggregateBalanceSheetAccountsForCA` carried. Consumed by
+   * `balance-close-line.builder`.
+   */
+  aggregateBalanceSheetAtYearEnd(
     organizationId: string,
     year: number,
   ): Promise<YearAggregatedLine[]>;
@@ -106,6 +150,17 @@ export interface YearAccountingReaderTxPort {
    * port returns null per snapshot convention.
    */
   findResultAccount(
+    organizationId: string,
+  ): Promise<{ id: string; code: string; nature: AccountNature } | null>;
+
+  /**
+   * Tx-bound accumulated-results-account lookup (REQ-A.3). Same shape as
+   * `findResultAccount` but for `3.2.1 Resultados Acumulados`. TOCTOU
+   * re-check inside the TX (the pre-TX gate already performed an outside-TX
+   * lookup via `FiscalYearReaderPort.findAccumulatedResultsAccount`).
+   * Returns null → caller throws `MissingAccumulatedResultsAccountError`.
+   */
+  findAccumulatedResultsAccountTx(
     organizationId: string,
   ): Promise<{ id: string; code: string; nature: AccountNature } | null>;
 

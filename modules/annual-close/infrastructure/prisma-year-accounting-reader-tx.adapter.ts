@@ -104,6 +104,47 @@ export class PrismaYearAccountingReaderTxAdapter
     };
   }
 
+  // ── annual-close-canonical-flow port methods (impl in Phase C T-07..T-09) ──
+
+  /** REQ-A.1 — stub; real SQL implementation lands in T-07. */
+  async aggregateGastosByYear(
+    _organizationId: string,
+    _year: number,
+  ): Promise<YearAggregatedLine[]> {
+    throw new Error(
+      "aggregateGastosByYear not yet implemented — landing in Phase C T-07",
+    );
+  }
+
+  /** REQ-A.2 — stub; real SQL implementation lands in T-08. */
+  async aggregateIngresosByYear(
+    _organizationId: string,
+    _year: number,
+  ): Promise<YearAggregatedLine[]> {
+    throw new Error(
+      "aggregateIngresosByYear not yet implemented — landing in Phase C T-08",
+    );
+  }
+
+  /** REQ-A.4 / REQ-A.11 — stub; real SQL implementation lands in T-09. */
+  async aggregateBalanceSheetAtYearEnd(
+    _organizationId: string,
+    _year: number,
+  ): Promise<YearAggregatedLine[]> {
+    throw new Error(
+      "aggregateBalanceSheetAtYearEnd not yet implemented — landing in Phase C T-09",
+    );
+  }
+
+  /** REQ-A.3 TOCTOU — stub; real impl lands in T-09. */
+  async findAccumulatedResultsAccountTx(
+    _organizationId: string,
+  ): Promise<{ id: string; code: string; nature: AccountNature } | null> {
+    throw new Error(
+      "findAccumulatedResultsAccountTx not yet implemented — landing in Phase C T-09",
+    );
+  }
+
   // ── (c) CC source — per-account INGRESO/GASTO with nature (C-2) ─────────
 
   async aggregateResultAccountsByYear(

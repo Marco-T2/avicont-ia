@@ -83,4 +83,15 @@ export interface FiscalYearReaderPort {
   findResultAccount(
     organizationId: string,
   ): Promise<AnnualCloseResultAccount | null>;
+
+  /**
+   * REQ-A.3 (annual-close-canonical-flow) — outside-TX lookup for
+   * `3.2.1 Resultados Acumulados`. Pre-TX gate consumed by service
+   * `close()`; null → `MissingAccumulatedResultsAccountError` (HTTP 500,
+   * W-7 carve-out — chart-of-accounts seed bug). Used by asiento #3 to
+   * post the P&G transfer into 3.2.1.
+   */
+  findAccumulatedResultsAccount(
+    organizationId: string,
+  ): Promise<AnnualCloseResultAccount | null>;
 }

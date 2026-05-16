@@ -48,6 +48,12 @@ function makeFiscalYearReader(
       code: "3.2.2",
       nature: "ACREEDORA" as const,
     })),
+    // REQ-A.3 default — pre-TX gate for 3.2.1 Resultados Acumulados.
+    findAccumulatedResultsAccount: vi.fn(async () => ({
+      id: "acc_321",
+      code: "3.2.1",
+      nature: "ACREEDORA" as const,
+    })),
     ...overrides,
   };
 }
@@ -337,6 +343,17 @@ function makeYearAccountingTx(
     findResultAccount: vi.fn(async () => ({
       id: "acc_322",
       code: "3.2.2",
+      nature: "ACREEDORA" as const,
+    })),
+    // annual-close-canonical-flow defaults (REQ-A.1/2/3/4/11). The 5-asientos
+    // service rewrite (Phase E T-17) will exercise these; until then default
+    // mocks satisfy the interface so existing tests compile.
+    aggregateGastosByYear: vi.fn(async () => []),
+    aggregateIngresosByYear: vi.fn(async () => []),
+    aggregateBalanceSheetAtYearEnd: vi.fn(async () => []),
+    findAccumulatedResultsAccountTx: vi.fn(async () => ({
+      id: "acc_321",
+      code: "3.2.1",
       nature: "ACREEDORA" as const,
     })),
     reReadFiscalYearStatusTx: vi.fn(async () => ({ status: "OPEN" as const })),

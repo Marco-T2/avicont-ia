@@ -104,4 +104,20 @@ export class PrismaFiscalYearReaderAdapter implements FiscalYearReaderPort {
     if (!row) return null;
     return { id: row.id, code: row.code, nature: row.nature };
   }
+
+  /**
+   * REQ-A.3 (annual-close-canonical-flow) — outside-TX lookup for
+   * `3.2.1 Resultados Acumulados`. Real implementation lands in Phase C T-09;
+   * for now this is a stub so the interface is satisfied at compile time.
+   */
+  async findAccumulatedResultsAccount(
+    organizationId: string,
+  ): Promise<AnnualCloseResultAccount | null> {
+    const row = await this.db.account.findFirst({
+      where: { organizationId, code: "3.2.1" },
+      select: { id: true, code: true, nature: true },
+    });
+    if (!row) return null;
+    return { id: row.id, code: row.code, nature: row.nature };
+  }
 }
