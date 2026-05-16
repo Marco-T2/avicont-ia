@@ -63,6 +63,7 @@ describe("annual-close error paths + idempotency (E2E) — Postgres integration"
     salesIngreso: string;
     expenseGasto: string;
     resultadoGestion: string;
+    resultadosAcumulados: string;
   };
   const periodIds: string[] = [];
 
@@ -173,12 +174,25 @@ describe("annual-close error paths + idempotency (E2E) — Postgres integration"
         isDetail: true,
       },
     });
+    // REQ-A.3 (annual-close-canonical-flow) — 3.2.1 mandatory for asiento #3.
+    const resultadosAcumulados = await prisma.account.create({
+      data: {
+        organizationId: testOrgId,
+        code: "3.2.1",
+        name: "Resultados Acumulados",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        level: 3,
+        isDetail: true,
+      },
+    });
     testAccountIds = {
       cashActivo: cash.id,
       capitalPatrimonio: capital.id,
       salesIngreso: sales.id,
       expenseGasto: expense.id,
       resultadoGestion: resultadoGestion.id,
+      resultadosAcumulados: resultadosAcumulados.id,
     };
   });
 

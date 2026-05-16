@@ -71,6 +71,7 @@ describe("annual-close audit-trail (W-4 acceptance) — Postgres integration", (
     salesIngreso: string;
     expenseGasto: string;
     resultadoGestion: string;
+    resultadosAcumulados: string;
   };
   const testYear = 2099;
   const periodIds: string[] = []; // 12 periods of testYear
@@ -182,12 +183,25 @@ describe("annual-close audit-trail (W-4 acceptance) — Postgres integration", (
         isDetail: true,
       },
     });
+    // REQ-A.3 (annual-close-canonical-flow): 3.2.1 mandatory for asiento #3.
+    const resultadosAcumulados = await prisma.account.create({
+      data: {
+        organizationId: testOrgId,
+        code: "3.2.1",
+        name: "Resultados Acumulados",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        level: 3,
+        isDetail: true,
+      },
+    });
     testAccountIds = {
       cashActivo: cash.id,
       capitalPatrimonio: capital.id,
       salesIngreso: sales.id,
       expenseGasto: expense.id,
       resultadoGestion: resultadoGestion.id,
+      resultadosAcumulados: resultadosAcumulados.id,
     };
 
     // 12 periods for testYear — months 1..11 CLOSED, month 12 OPEN (standard
@@ -329,8 +343,10 @@ describe("annual-close audit-trail (W-4 acceptance) — Postgres integration", (
 
     // ── Per-entity assertions (5 trigger events expected) ────────────────
 
-    // 2 JournalEntry creates (CC + CA inserts).
-    expect(byEntity["journal_entries:CREATE"] ?? 0).toBe(2);
+    // CAN-5: 4 CC + 1 CA = 5 JournalEntry creates (annual-close-canonical-flow).
+    // Was 2 in the pre-canonical flow (1 CC + 1 CA). REQ-2.4 minimum count
+    // updated from 17 to 20 rows.
+    expect(byEntity["journal_entries:CREATE"] ?? 0).toBe(5);
 
     // JE STATUS_CHANGE — CC POSTED → LOCKED in step (d) lock-cascade.
     expect(byEntity["journal_entries:STATUS_CHANGE"] ?? 0).toBeGreaterThanOrEqual(1);
