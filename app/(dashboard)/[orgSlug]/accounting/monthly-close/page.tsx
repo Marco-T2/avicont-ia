@@ -10,6 +10,17 @@ interface MonthlyClosePageProps {
   searchParams: Promise<{ periodId?: string }>;
 }
 
+/**
+ * /accounting/monthly-close?periodId={id}
+ *
+ * The only legitimate entry is the per-row "Cerrar" link from
+ * `/{orgSlug}/settings/periods` (annual-period-list.tsx:301), which carries
+ * `?periodId=...`. Landing here without a valid OPEN periodId redirects back
+ * to `/settings/periods` — the page used to render a combobox letting the
+ * user pick any period, but that risked manually closing December and
+ * breaking annual-close atomicity (Dec must be locked inside the same tx as
+ * CC + auto-periods + CA per annual-close.service.ts:491-559).
+ */
 export default async function MonthlyClosePage({ params, searchParams }: MonthlyClosePageProps) {
   const { orgSlug } = await params;
   const { periodId } = await searchParams;
@@ -24,12 +35,13 @@ export default async function MonthlyClosePage({ params, searchParams }: Monthly
 
   const periods = (await periodsService.list(orgId)).map((p) => p.toSnapshot());
 
-  // REQ-2: validate periodId against the server-side period list (org-scoped, no extra round-trip).
-  // Only OPEN periods can be pre-selected (a CLOSED period would have nothing to close).
-  const preselectedPeriodId =
-    periodId && periods.some((p) => p.id === periodId && p.status === "OPEN")
-      ? periodId
-      : undefined;
+  const period = periodId
+    ? periods.find((p) => p.id === periodId && p.status === "OPEN")
+    : undefined;
+
+  if (!period) {
+    redirect(`/${orgSlug}/settings/periods`);
+  }
 
   return (
     <div className="space-y-6">
@@ -42,14 +54,13 @@ export default async function MonthlyClosePage({ params, searchParams }: Monthly
 
       <MonthlyClosePanel
         orgSlug={orgSlug}
-        preselectedPeriodId={preselectedPeriodId}
-        periods={periods.map((p) => ({
-          id: p.id,
-          name: p.name,
-          startDate: p.startDate.toISOString(),
-          endDate: p.endDate.toISOString(),
-          status: p.status,
-        }))}
+        selectedPeriod={{
+          id: period.id,
+          name: period.name,
+          startDate: period.startDate.toISOString(),
+          endDate: period.endDate.toISOString(),
+          status: period.status,
+        }}
       />
     </div>
   );

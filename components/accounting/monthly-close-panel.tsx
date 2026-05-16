@@ -8,13 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -58,8 +51,7 @@ interface PeriodSummary {
 
 interface MonthlyClosePanelProps {
   orgSlug: string;
-  periods: Period[];
-  preselectedPeriodId?: string;
+  selectedPeriod: Period;
 }
 
 function formatBs(amount: number): string {
@@ -83,9 +75,8 @@ function totalPosted(posted: PeriodSummary["posted"]): number {
   return posted.dispatches + posted.payments + posted.journalEntries;
 }
 
-export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: MonthlyClosePanelProps) {
+export function MonthlyClosePanel({ orgSlug, selectedPeriod }: MonthlyClosePanelProps) {
   const router = useRouter();
-  const [selectedPeriodId, setSelectedPeriodId] = useState<string>(preselectedPeriodId ?? "");
   const [summary, setSummary] = useState<PeriodSummary | null>(null);
   const [loading, setLoading] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -93,48 +84,38 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
   const [error, setError] = useState<string | null>(null);
   const [justification, setJustification] = useState("");
 
-  const selectedPeriod = periods.find((p) => p.id === selectedPeriodId);
+  const periodId = selectedPeriod.id;
 
-  const fetchSummary = useCallback(
-    async (periodId: string) => {
-      setLoading(true);
-      setError(null);
-      setSummary(null);
-      try {
-        const res = await fetch(
-          `/api/organizations/${orgSlug}/monthly-close/summary?periodId=${periodId}`
-        );
-        if (!res.ok) {
-          const data = await res.json();
-          setError(data.error ?? "Error al cargar el resumen del período.");
-          return;
-        }
-        const data: PeriodSummary = await res.json();
-        setSummary(data);
-      } catch {
-        setError("Error de conexión al cargar el resumen.");
-      } finally {
-        setLoading(false);
+  const fetchSummary = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    setSummary(null);
+    try {
+      const res = await fetch(
+        `/api/organizations/${orgSlug}/monthly-close/summary?periodId=${periodId}`
+      );
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Error al cargar el resumen del período.");
+        return;
       }
-    },
-    [orgSlug]
-  );
-
-  // REQ-2: auto-fetch summary when a period is pre-selected via ?periodId
-  useEffect(() => {
-    if (preselectedPeriodId) {
-      fetchSummary(preselectedPeriodId);
+      const data: PeriodSummary = await res.json();
+      setSummary(data);
+    } catch {
+      setError("Error de conexión al cargar el resumen.");
+    } finally {
+      setLoading(false);
     }
+  }, [orgSlug, periodId]);
+
+  // Auto-fetch summary on mount. The period is always selected (page-level
+  // contract: redirect to /settings/periods if no valid ?periodId in URL).
+  useEffect(() => {
+    fetchSummary();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handlePeriodChange = (periodId: string) => {
-    setSelectedPeriodId(periodId);
-    fetchSummary(periodId);
-  };
-
   const handleClose = async () => {
-    if (!selectedPeriodId) return;
     setClosing(true);
     setError(null);
     try {
@@ -143,7 +124,7 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          periodId: selectedPeriodId,
+          periodId,
           ...(trimmed ? { justification: trimmed } : {}),
         }),
       });
@@ -156,7 +137,6 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
       const correlationId = result?.correlationId as string | undefined;
       setConfirmOpen(false);
       setJustification("");
-      // REQ-3: surface correlationId entry point via toast action (sonner v2 action: { label, onClick })
       if (correlationId) {
         toast.success("Período cerrado", {
           description: "El período fue cerrado exitosamente.",
@@ -170,8 +150,7 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
         });
       }
       router.refresh();
-      // Reload summary to reflect CLOSED state
-      await fetchSummary(selectedPeriodId);
+      await fetchSummary();
     } catch {
       setError("Error de conexión al intentar cerrar el período.");
     } finally {
@@ -186,26 +165,14 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
 
   return (
     <div className="space-y-6">
-      {/* Period selector */}
+      {/* Period header — static label (entry is always pre-filtered by ?periodId) */}
       <Card>
         <CardHeader>
-          <CardTitle>Seleccionar Período</CardTitle>
+          <CardTitle>Período Seleccionado</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
-            <Select value={selectedPeriodId} onValueChange={handlePeriodChange}>
-              <SelectTrigger className="w-72">
-                <SelectValue placeholder="Seleccione un período fiscal..." />
-              </SelectTrigger>
-              <SelectContent>
-                {periods.map((period) => (
-                  <SelectItem key={period.id} value={period.id}>
-                    {period.name}
-                    {period.status === "CLOSED" ? " (Cerrado)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <span className="text-lg font-semibold">{selectedPeriod.name}</span>
 
             {summary && (
               <Badge
@@ -398,7 +365,7 @@ export function MonthlyClosePanel({ orgSlug, periods, preselectedPeriodId }: Mon
               <div className="space-y-2">
                 <p>
                   Está a punto de cerrar el período{" "}
-                  <strong>{selectedPeriod?.name}</strong>.
+                  <strong>{selectedPeriod.name}</strong>.
                 </p>
                 {summary && (
                   <p>
