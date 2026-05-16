@@ -12,6 +12,7 @@
  * UX-T06 — cross-month warning does NOT disable submit (REQ-4)
  * UX-T07 — batch button fires 12 POST requests (REQ-3)
  * UX-T08 — batch tolerates 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)
+ * UX-T09 — batch success invokes onCreated (parent revalidation contract)
  */
 
 import { render, screen, fireEvent, waitFor, cleanup } from "@testing-library/react";
@@ -303,8 +304,8 @@ describe("UX-T07 — Botón batch emite 12 requests (REQ-3)", () => {
 // ── UX-T08 — Batch tolerates 409 duplicates ──────────────────────────────────
 
 describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () => {
-  it("3 respuestas 409 → toast muestra '9 períodos creados, 3 ya existían' y dialog cierra", async () => {
-    const onOpenChange = vi.fn();
+  it("3 respuestas 409 → toast muestra '9 períodos creados, 3 ya existían' e invoca onCreated", async () => {
+    const onCreated = vi.fn();
 
     // months 1, 3, 5 return 409; rest return 201
     const fetchMock = vi.fn().mockImplementation((_url: string, opts?: RequestInit) => {
@@ -328,9 +329,9 @@ describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () =>
     render(
       <PeriodCreateDialog
         open={true}
-        onOpenChange={onOpenChange}
+        onOpenChange={vi.fn()}
         orgSlug="test-org"
-        onCreated={vi.fn()}
+        onCreated={onCreated}
       />,
     );
 
@@ -348,7 +349,10 @@ describe("UX-T08 — Batch tolera 409 FISCAL_PERIOD_MONTH_EXISTS (REQ-3)", () =>
     expect(toastArg).toMatch(/9 períodos creados/);
     expect(toastArg).toMatch(/3 ya existían/);
 
-    expect(onOpenChange).toHaveBeenCalledWith(false);
+    // Parent contract: batch must invoke onCreated so parent can router.refresh.
+    // Even with partial failures (3 skipped), 9 new periods exist on the server
+    // and the list MUST revalidate.
+    expect(onCreated).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -401,6 +405,49 @@ describe("UX-T08b — 409 con código distinto a FISCAL_PERIOD_MONTH_EXISTS cuen
     expect(toastArg).toMatch(/11 períodos creados/);
     expect(toastArg).toMatch(/1 fallidos/);
     expect(toastArg).not.toMatch(/ya existían/);
+  });
+});
+
+// ── UX-T09 — Batch success invokes onCreated (parent revalidation contract) ──
+
+describe("UX-T09 — Batch all-success invoca onCreated (parent revalidation contract)", () => {
+  it("12 períodos creados OK → onCreated es invocado exactamente 1 vez (parent dispara router.refresh)", async () => {
+    const onCreated = vi.fn();
+
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({}),
+    });
+    global.fetch = fetchMock as unknown as typeof fetch;
+
+    render(
+      <PeriodCreateDialog
+        open={true}
+        onOpenChange={vi.fn()}
+        orgSlug="test-org"
+        onCreated={onCreated}
+      />,
+    );
+
+    const yearInput = screen.getByLabelText(/año/i);
+    fireEvent.change(yearInput, { target: { value: "2027" } });
+
+    const batchBtn = screen.getByRole("button", { name: /crear los 12 meses de 2027/i });
+    fireEvent.click(batchBtn);
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(12);
+    });
+
+    // The dialog must NOT self-close via onOpenChange; it must signal the
+    // parent via onCreated (single-create precedent, line 152). Parent's
+    // onCreated callback then closes the dialog AND calls router.refresh()
+    // (annual-period-list.tsx:186-189). Without this, the list shows stale
+    // data until the user manually refreshes.
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalledTimes(1);
+    });
   });
 });
 

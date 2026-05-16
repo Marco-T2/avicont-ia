@@ -214,7 +214,11 @@ export default function PeriodCreateDialog({
     if (result.failed > 0) parts.push(`${result.failed} fallidos`);
 
     toast.success(parts.join(", "));
-    onOpenChange(false);
+    // Signal parent (mirrors single-create at line 152). Parent's onCreated
+    // closes the dialog AND calls router.refresh() so the new periods appear
+    // without a manual page reload. Calling onOpenChange(false) here would
+    // close the dialog but skip the refresh — the list would show stale data.
+    onCreated();
   }
 
   const isBusy = isSubmitting || isBatching;
