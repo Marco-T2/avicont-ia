@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 import type {
   AccountingReaderPort,
@@ -48,7 +49,7 @@ export class PrismaAccountingReaderAdapter implements AccountingReaderPort {
       JOIN journal_entries je ON je.id = jl."journalEntryId"
       WHERE je."organizationId" = ${organizationId}
         AND je."periodId"       = ${periodId}
-        AND je.status            = 'POSTED';
+        AND je.status            ${FINALIZED_JE_STATUSES_SQL};
     `;
 
     const row = rows[0] ?? { debit_total: "0", credit_total: "0" };
