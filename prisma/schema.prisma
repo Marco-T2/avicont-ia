@@ -25,6 +25,7 @@ model Organization {
   accounts        Account[]
   journalEntries  JournalEntry[]
   fiscalPeriods   FiscalPeriod[]
+  fiscalYears     FiscalYear[]
   voucherTypes    VoucherTypeCfg[]
   accountBalances AccountBalance[]
   contacts        Contact[]
@@ -97,6 +98,8 @@ model User {
   purchases      Purchase[]      @relation("PurchaseCreator")
   sales          Sale[]          @relation("SaleCreator")
   closedPeriods  FiscalPeriod[]  @relation("FiscalPeriodCloser")
+  closedFiscalYears  FiscalYear[] @relation("FiscalYearCloser")
+  createdFiscalYears FiscalYear[] @relation("FiscalYearCreator")
 
   @@map("users")
 }
@@ -313,6 +316,11 @@ enum FiscalPeriodStatus {
   CLOSED
 }
 
+enum FiscalYearStatus {
+  OPEN
+  CLOSED
+}
+
 enum JournalEntryStatus {
   DRAFT
   POSTED
@@ -385,6 +393,8 @@ model JournalEntry {
   payment         Payment?
   purchase        Purchase?
   sale            Sale?
+  closingForFiscalYear FiscalYear? @relation("FiscalYearClosing")
+  openingForFiscalYear FiscalYear? @relation("FiscalYearOpening")
 
   @@unique([organizationId, voucherTypeId, periodId, number])
   @@unique([organizationId, voucherTypeId, referenceNumber])
@@ -425,10 +435,12 @@ model FiscalPeriod {
   closedAt       DateTime?          @db.Timestamptz(3)
   closedBy       String?
   createdById    String
+  fiscalYearId   String             // FK → fiscal_years.id (NOT NULL post-backfill, see annual_close migration)
   createdAt      DateTime           @db.Timestamptz(3) @default(now())
   updatedAt      DateTime           @db.Timestamptz(3) @updatedAt
   organization   Organization       @relation(fields: [organizationId], references: [id])
   closedByUser   User?              @relation("FiscalPeriodCloser", fields: [closedBy], references: [id])
+  fiscalYear     FiscalYear         @relation(fields: [fiscalYearId], references: [id])
   journalEntries JournalEntry[]
   balances       AccountBalance[]
   dispatches     Dispatch[]
@@ -440,7 +452,33 @@ model FiscalPeriod {
 
   @@unique([organizationId, year, month])
   @@index([organizationId, status])
+  @@index([fiscalYearId])
   @@map("fiscal_periods")
+}
+
+model FiscalYear {
+  id              String           @id @default(cuid())
+  organizationId  String
+  year            Int              // CHECK 1900..2100 via migration
+  status          FiscalYearStatus @default(OPEN)
+  closedAt        DateTime?        @db.Timestamptz(3)
+  closedBy        String?
+  closingEntryId  String?          @unique // FK → JournalEntry (CC) — 1:1
+  openingEntryId  String?          @unique // FK → JournalEntry (CA) — 1:1
+  justification   String?
+  createdById     String
+  createdAt       DateTime         @db.Timestamptz(3) @default(now())
+  updatedAt       DateTime         @db.Timestamptz(3) @updatedAt
+  organization    Organization     @relation(fields: [organizationId], references: [id])
+  closedByUser    User?            @relation("FiscalYearCloser", fields: [closedBy], references: [id])
+  createdByUser   User             @relation("FiscalYearCreator", fields: [createdById], references: [id])
+  closingEntry    JournalEntry?    @relation("FiscalYearClosing", fields: [closingEntryId], references: [id])
+  openingEntry    JournalEntry?    @relation("FiscalYearOpening", fields: [openingEntryId], references: [id])
+  fiscalPeriods   FiscalPeriod[]
+
+  @@unique([organizationId, year])
+  @@index([organizationId, status])
+  @@map("fiscal_years")
 }
 
 model VoucherTypeCfg {
