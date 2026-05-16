@@ -291,8 +291,8 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     expect(result.fiscalYearId.length).toBeGreaterThan(0);
     expect(typeof result.correlationId).toBe("string");
     expect(result.correlationId.length).toBeGreaterThan(0);
-    expect(result.closingEntryId).toBeTruthy();
-    expect(result.openingEntryId).toBeTruthy();
+    expect(result.closingEntries.balance).toBeTruthy();
+    expect(result.closingEntries.apertura).toBeTruthy();
     expect(result.closedAt).toBeInstanceOf(Date);
     expect(result.yearPlus1.periodIds.length).toBe(12);
     expect(result.decClose).toBeDefined();
@@ -350,15 +350,14 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
       expect(cd.equals(cc_credit)).toBe(true);
     }
 
-    // Asiento #4 corresponds to result.closingEntryId (alias for .balance per
-    // backward-compat).
-    const a4 = allEntries.find((e) => e.id === result.closingEntryId);
+    // Asiento #4 — Cierre de Balance.
+    const a4 = allEntries.find((e) => e.id === result.closingEntries.balance);
     expect(a4).toBeDefined();
     expect(a4!.voucherType.code).toBe("CC");
 
     // ── CA entry (asiento #5) — exact inversion of asiento #4 (CAN-5.1) ──
     const caEntry = caEntries[0]!;
-    expect(caEntry.id).toBe(result.openingEntryId);
+    expect(caEntry.id).toBe(result.closingEntries.apertura);
     expect(caEntry.status).toBe("POSTED"); // CA is NOT locked (Jan 2100 OPEN).
     expect(caEntry.sourceType).toBe("annual-close");
     expect(caEntry.sourceId).toBe(result.fiscalYearId);

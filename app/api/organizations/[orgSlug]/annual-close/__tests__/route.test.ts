@@ -98,8 +98,13 @@ const validResult = {
   status: "CLOSED" as const,
   closedAt: new Date("2026-01-15T12:00:00Z"),
   correlationId: "corr-abc",
-  closingEntryId: "je-cc-1",
-  openingEntryId: "je-ca-1",
+  closingEntries: {
+    gastos: "je-cc-gastos",
+    ingresos: "je-cc-ingresos",
+    resultado: "je-cc-resultado",
+    balance: "je-cc-1",
+    apertura: "je-ca-1",
+  },
   yearPlus1: { periodIds: Array.from({ length: 12 }, (_, i) => `p-${i + 1}`) },
   decClose: {
     locked: {

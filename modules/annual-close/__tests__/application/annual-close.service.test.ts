@@ -760,8 +760,8 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
     expect(result.fiscalYearId).toBe("fy_1");
     expect(result.year).toBe(YEAR);
     expect(result.status).toBe("CLOSED");
-    expect(result.closingEntryId).toBe("je_cc_1");
-    expect(result.openingEntryId).toBe("je_ca_1");
+    expect(result.closingEntries.balance).toBe("je_cc_1");
+    expect(result.closingEntries.apertura).toBe("je_ca_1");
     expect(result.correlationId).toBe("corr-test-1");
     expect(result.closedAt).toBeInstanceOf(Date);
     expect(result.yearPlus1.periodIds).toHaveLength(12);
@@ -904,8 +904,8 @@ describe("AnnualCloseService.close — edge path (all 12 CLOSED + Dec CLOSED + n
       .toHaveBeenCalledTimes(1);
     expect(ctx.scope.fiscalYears.markClosed).toHaveBeenCalledTimes(1);
     expect(result.status).toBe("CLOSED");
-    expect(result.closingEntryId).toBe("je_cc_1"); // asiento #4 maps to legacy field
-    expect(result.openingEntryId).toBe("je_ca_1"); // asiento #5 maps to legacy field
+    expect(result.closingEntries.balance).toBe("je_cc_1"); // asiento #4
+    expect(result.closingEntries.apertura).toBe("je_ca_1"); // asiento #5
   });
 });
 
