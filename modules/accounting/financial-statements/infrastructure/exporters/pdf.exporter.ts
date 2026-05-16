@@ -350,7 +350,7 @@ function rowToTableRow(
 
     // subtotal standalone (ej. Utilidad Operativa) — bold normal + línea encima del saldo
     const nameCell: Content = {
-      text: row.label,
+      text: row.label.toUpperCase(),
       bold: true,
       fontSize: BODY_FONT_SIZE,
       color: STYLE.text,
@@ -384,6 +384,8 @@ function rowToTableRow(
     nameText = row.label.toUpperCase();
   } else if (isTotalSection) {
     nameText = spaceLetters(row.label);
+  } else if (isSubtotalStandalone) {
+    nameText = row.label.toUpperCase();
   } else {
     nameText = row.label;
   }
