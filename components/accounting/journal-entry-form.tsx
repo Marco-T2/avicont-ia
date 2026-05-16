@@ -405,12 +405,6 @@ export default function JournalEntryForm({
                     ))}
                 </SelectContent>
               </Select>
-              {editEntry && (
-                <p className="text-xs text-muted-foreground">
-                  No editable — el número correlativo está atado al tipo. Para
-                  cambiar, anular el asiento y crear uno nuevo.
-                </p>
-              )}
             </div>
 
             <div className="space-y-2">
