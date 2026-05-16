@@ -439,28 +439,36 @@ export class JournalRepository extends BaseRepository {
     id: string,
     status: JournalEntryStatus,
     updatedById: string,
+    fields?: { sourceType?: string | null; aiOriginalText?: string | null },
   ): Promise<JournalEntryWithLines> {
     const scope = this.requireOrg(organizationId);
 
     return this.db.journalEntry.update({
       where: { id, ...scope },
-      data: { status, updatedById },
+      data: { status, updatedById, ...(fields ?? {}) },
       include: journalIncludeLines,
     }) as Promise<JournalEntryWithLines>;
   }
 
+  // `fields` opcional persiste cambios del aggregate que las transiciones de
+  // status pueden traer en memoria. Caso concreto: sdd/ai-journal-posted-
+  // editable — Journal.transitionTo("POSTED") sobre sourceType="ai" disuelve
+  // provenance a null en memoria; sin propagar al UPDATE, la fila DB conserva
+  // sourceType="ai" + aiOriginalText="..." → badge UI "Generado por IA" no
+  // cambia + edit page guard bloquea (POSTED + sourceType!==null → redirect).
   async updateStatusTx(
     tx: Prisma.TransactionClient,
     organizationId: string,
     id: string,
     status: JournalEntryStatus,
     updatedById: string,
+    fields?: { sourceType?: string | null; aiOriginalText?: string | null },
   ): Promise<JournalEntryWithLines> {
     const scope = this.requireOrg(organizationId);
 
     return tx.journalEntry.update({
       where: { id, ...scope },
-      data: { status, updatedById },
+      data: { status, updatedById, ...(fields ?? {}) },
       include: journalIncludeLines,
     }) as Promise<JournalEntryWithLines>;
   }
@@ -652,12 +660,20 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
   }
 
   async updateStatus(journal: Journal, userId: string): Promise<Journal> {
+    // Propagar sourceType + aiOriginalText desde el aggregate. Necesario
+    // para que la disolución AI (transitionTo POSTED clears these on
+    // sourceType="ai") aterrice en DB. No-op para transiciones que no
+    // mutan provenance (lock/void, post sale/purchase/payment/dispatch).
     const row = await journalRepo.updateStatusTx(
       this.tx,
       journal.organizationId,
       journal.id,
       journal.status,
       userId,
+      {
+        sourceType: journal.sourceType,
+        aiOriginalText: journal.aiOriginalText,
+      },
     );
     return hydrateJournalFromRow(row);
   }
