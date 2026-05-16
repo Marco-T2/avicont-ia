@@ -111,7 +111,16 @@ export class JournalRepository extends BaseRepository {
       this.db.journalEntry.findMany({
         where,
         include: journalIncludeLines,
-        orderBy: { number: "desc" },
+        // Libro contable: cronología por fecha del asiento, no por captura.
+        // Diverge de Sale/Purchase/Payment/Dispatch (createdAt desc) porque
+        // `number` resetea por voucherType+período → mezclar I/E/D en una
+        // tabla por `number desc` produce interleaving sin semántica.
+        // Tiebreakers (createdAt desc, id desc) per AD-2 — page-shift safe.
+        orderBy: [
+          { date: "desc" as const },
+          { createdAt: "desc" as const },
+          { id: "desc" as const },
+        ],
         skip: skip,
         take: take,
       }),
