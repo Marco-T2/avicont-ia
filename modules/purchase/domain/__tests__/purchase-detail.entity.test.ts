@@ -103,7 +103,7 @@ describe("PurchaseDetail entity", () => {
     expect(detail.lineAmount.value).toBe(0);
   });
 
-  it("rechaza description vacío", () => {
+  it("acepta description vacío", () => {
     expect(() =>
       PurchaseDetail.create({
         purchaseId: "purchase-1",
@@ -111,10 +111,10 @@ describe("PurchaseDetail entity", () => {
         lineAmount: MonetaryAmount.of(100),
         order: 0,
       }),
-    ).toThrow(InvalidPurchaseDetailLine);
+    ).not.toThrow();
   });
 
-  it("rechaza description con solo whitespace", () => {
+  it("acepta description con solo whitespace", () => {
     expect(() =>
       PurchaseDetail.create({
         purchaseId: "purchase-1",
@@ -122,7 +122,7 @@ describe("PurchaseDetail entity", () => {
         lineAmount: MonetaryAmount.of(100),
         order: 0,
       }),
-    ).toThrow(InvalidPurchaseDetailLine);
+    ).not.toThrow();
   });
 
   it("rechaza order negativo", () => {

@@ -6,7 +6,7 @@ import { z } from "zod";
  */
 
 const saleDetailSchema = z.object({
-  description: z.string().min(1).max(500),
+  description: z.string().max(500).default(""),
   lineAmount: z.number().optional(),
   order: z.number().int().min(0).optional(),
   quantity: z.number().positive().optional(),

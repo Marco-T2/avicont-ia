@@ -26,12 +26,6 @@ export class SaleDetail {
   private constructor(private readonly props: SaleDetailProps) {}
 
   static create(input: CreateSaleDetailInput): SaleDetail {
-    if (input.description.trim().length === 0) {
-      throw new InvalidSaleDetailLine(
-        "La descripción de la línea no puede estar vacía",
-        { field: "description" },
-      );
-    }
     if (input.incomeAccountId.length === 0) {
       throw new InvalidSaleDetailLine(
         "Cada línea de detalle debe tener una cuenta de ingreso asociada",

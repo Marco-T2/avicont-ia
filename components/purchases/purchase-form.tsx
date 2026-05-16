@@ -513,7 +513,7 @@ export default function PurchaseForm({
     }
     // COMPRA_GENERAL / SERVICIO
     return generalLines.length > 0 && generalLines.every(
-      (l) => l.description.trim() && (parseFloat(l.unitPrice) || 0) > 0,
+      (l) => (parseFloat(l.unitPrice) || 0) > 0,
     );
   })();
 

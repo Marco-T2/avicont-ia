@@ -63,7 +63,7 @@ describe("SaleDetail entity", () => {
     expect(detail.lineAmount.value).toBe(0);
   });
 
-  it("rechaza description vacío", () => {
+  it("acepta description vacío", () => {
     expect(() =>
       SaleDetail.create({
         saleId: "sale-1",
@@ -72,10 +72,10 @@ describe("SaleDetail entity", () => {
         incomeAccountId: "acc-1",
         order: 0,
       }),
-    ).toThrow(InvalidSaleDetailLine);
+    ).not.toThrow();
   });
 
-  it("rechaza description con solo whitespace", () => {
+  it("acepta description con solo whitespace", () => {
     expect(() =>
       SaleDetail.create({
         saleId: "sale-1",
@@ -84,7 +84,7 @@ describe("SaleDetail entity", () => {
         incomeAccountId: "acc-1",
         order: 0,
       }),
-    ).toThrow(InvalidSaleDetailLine);
+    ).not.toThrow();
   });
 
   it("rechaza incomeAccountId vacío", () => {

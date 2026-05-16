@@ -52,12 +52,6 @@ export class PurchaseDetail {
   private constructor(private readonly props: PurchaseDetailProps) {}
 
   static create(input: CreatePurchaseDetailInput): PurchaseDetail {
-    if (input.description.trim().length === 0) {
-      throw new InvalidPurchaseDetailLine(
-        "La descripción de la línea no puede estar vacía",
-        { field: "description" },
-      );
-    }
     if (!Number.isInteger(input.order) || input.order < 0) {
       throw new InvalidPurchaseDetailLine(
         `El orden de la línea debe ser un entero no negativo: ${input.order}`,

@@ -262,7 +262,7 @@ export default function SaleForm({
   const canSubmit = (() => {
     if (!contactId || !periodId || !date) return false;
     return lines.length > 0 && lines.every(
-      (l) => l.description.trim() && l.incomeAccountId && (parseFloat(l.unitPrice) || 0) > 0,
+      (l) => l.incomeAccountId && (parseFloat(l.unitPrice) || 0) > 0,
     );
   })();
 
