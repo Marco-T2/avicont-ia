@@ -1,5 +1,6 @@
 import { BaseRepository } from "@/features/shared/base.repository";
 import Decimal from "decimal.js";
+import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";
 import type {
   WorksheetMovementAggregation,
@@ -80,7 +81,7 @@ export class PrismaWorksheetRepo extends BaseRepository implements WorksheetQuer
       JOIN voucher_types     vtc ON vtc.id = je."voucherTypeId"
       WHERE
         je."organizationId"  = ${orgId}
-        AND je.status        = 'POSTED'
+        AND je.status        ${FINALIZED_JE_STATUSES_SQL}
         AND vtc."isAdjustment" = ${isAdjustment}
         AND je.date         >= ${range.dateFrom}
         AND je.date         <= ${range.dateTo}
