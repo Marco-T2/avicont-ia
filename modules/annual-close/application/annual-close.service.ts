@@ -15,30 +15,25 @@ import {
   FiscalYearAlreadyClosedError,
   FiscalYearGateNotMetError,
   JustificationTooShortError,
+  MissingAccumulatedResultsAccountError,
   MissingResultAccountError,
   PeriodAlreadyClosedError,
   YearOpeningPeriodsExistError,
 } from "../domain/errors/annual-close-errors";
-import { buildCCLines } from "./cc-line.builder";
-import { buildCALines } from "./ca-line.builder";
+import { buildGastosCloseLines } from "./gastos-close-line.builder";
+import { buildIngresosCloseLines } from "./ingresos-close-line.builder";
+import { buildResultadoCloseLines } from "./resultado-close-line.builder";
+import { buildBalanceCloseLines } from "./balance-close-line.builder";
+import { buildAperturaLines } from "./apertura-line.builder";
 import { toNoonUtc } from "@/lib/date-utils";
 
 /**
- * AnnualCloseSummary DTO (design rev 2 §4).
+ * AnnualCloseSummary DTO — read-only snapshot consumed by the UI accordion
+ * and the future `/annual-close/summary` endpoint.
  *
- * Year-aggregate read-only snapshot consumed by the UI accordion (REQ-7.x)
- * and the API `/annual-close/summary` endpoint (deferred). Inline service
- * file mirror cumulative-precedent (sale `PostSaleResult`, monthly-close
- * `MonthlyCloseSummary` — 4+ evidencias supersede absoluto).
- *
- * `balance.{debit,credit}` are 2-decimal strings (mirror monthly-close
- * `moneyToFixed` precedent — bit-perfect when SQL aggregation
- * `::numeric(18,2)` cast guarantees ≤2 decimals input). `balance.balanced`
- * sourced via `Decimal.equals` (W-6 — no `money.utils.eq` tolerance).
- *
- * **C-1 invariant**: `balance.*` is year-aggregate (sum across all 12 months),
- * NEVER per-period sums. Sourced via `YearAccountingReaderPort.aggregateYear
- * DebitCreditNoTx` exactly once per `getSummary` call.
+ * Per annual-close-canonical-flow CAN-5.2: the `ccExists` field is RETIRED
+ * as an idempotency signal; it remains as a literal `false` in the DTO
+ * until the UI rework strips it entirely (Phase 7.5+ deferred).
  */
 export interface AnnualCloseSummary {
   year: number;
@@ -47,8 +42,7 @@ export interface AnnualCloseSummary {
   decemberStatus: "OPEN" | "CLOSED" | "NOT_FOUND";
   /**
    * @deprecated Retired per CAN-5.2 / REQ-A.8 — idempotency is now exclusively
-   * `FiscalYear.status='CLOSED'`. Kept as compile-time literal `false` to
-   * preserve the consumer DTO surface until Phase 7.5+ UI rework.
+   * `FiscalYear.status='CLOSED'`.
    */
   ccExists: boolean;
   gateAllowed: boolean;
@@ -69,12 +63,6 @@ export interface AnnualCloseServiceDeps {
 
 const TWO = 2;
 
-/**
- * Format a `decimal.js` Decimal to a fixed-places decimal string bit-perfect.
- * Mirror of monthly-close `moneyToFixed` precedent EXACT — SQL aggregation
- * `::numeric(18,2)` cast guarantees ≤2 decimals input, so we only ever pad
- * with zeros (NO float drift via `Number()` parse).
- */
 function decimalToFixed(d: Decimal, places = TWO): string {
   const s = d.toString();
   const dotIdx = s.indexOf(".");
@@ -86,12 +74,6 @@ function decimalToFixed(d: Decimal, places = TWO): string {
   return `${s.slice(0, dotIdx)}.${decPart.padEnd(places, "0")}`;
 }
 
-/**
- * Decide the gate state for the close button + tooltip reason. Mirrors the
- * pre-TX gate dispatch from spec REQ-2.1 step 5 (standard | edge), but does
- * NOT enforce drafts, justification, or result-account checks — those belong
- * to `close()`, not the read-only `getSummary`.
- */
 function decideGate(args: {
   fiscalYearStatus: "OPEN" | "CLOSED" | "NOT_INITIALIZED";
   periods: FiscalYearPeriodCounts;
@@ -112,15 +94,12 @@ function decideGate(args: {
       reason: "No existe el período de diciembre para la gestión.",
     };
   }
-  // Standard path: months 1-11 CLOSED AND Dec OPEN.
   if (args.periods.closed === 11 && args.decemberStatus === "OPEN") {
     return { allowed: true };
   }
-  // Edge path: all 12 CLOSED AND FY OPEN (CAN-5.2 — idempotency via FY.status).
   if (args.periods.closed === 12 && args.decemberStatus === "CLOSED") {
     return { allowed: true };
   }
-  // Otherwise: months still open.
   const openMonths = args.periods.open;
   return {
     allowed: false,
@@ -131,32 +110,30 @@ function decideGate(args: {
 /**
  * Annual-close application service — orchestrator puro.
  *
- * Composition: ports + UoW; NO infrastructure imports (R5). Mirror
- * monthly-close service shape EXACT (cumulative-precedent: 13 service-class
- * evidencias supersede absoluto + 4 deps interface evidencias + 4 inline
- * DTO evidencias + 4 spread `correlationId` UoW.run evidencias).
+ * annual-close-canonical-flow rewrite (Phase E T-16 + T-17):
+ *   Emits up to 5 journal entries per close (4×CC + 1×CA), atomically inside
+ *   `uow.run`. Per CAN-5 / CAN-5.5 — strict step ordering: all 4 CC into Dec
+ *   OPEN, THEN lock cascade + Dec markClosed, THEN year+1 period creation,
+ *   THEN CA into Jan year+1, THEN FY markClosed (W-3 guarded).
  *
- * **Phase 3.3** ships `getSummary` only. The load-bearing `close()` method
- * lands in Phase 3.4-3.7 (separate paired RED+GREEN cycles).
+ *   SKIP-on-zero (CAN-5.4): empty builder outputs cause the corresponding
+ *   asiento to be skipped without breaking the atomicity invariant.
  *
- * **R3 cross-module port REUSE** (design rev 2 §4): `draftDocuments` is
- * imported from `@/modules/monthly-close/domain/ports/`. Composition under
- * §17 carve-out — see composition root JSDoc when it lands in Phase 5.
+ *   FK columns retired (CAN-5.6): FY.markClosed takes only `{fiscalYearId,
+ *   closedBy}`; the canonical link is reverse-lookup via JournalEntry.sourceId.
  */
 export class AnnualCloseService {
   constructor(private readonly deps: AnnualCloseServiceDeps) {}
 
   /**
-   * Year-aggregate read-only snapshot. Drives the UI accordion + future
-   * `/annual-close/summary` endpoint. Pre-TX semantics — NO uow.run.
+   * Year-aggregate read-only snapshot. Pre-TX semantics — NO uow.run.
    *
-   * Composition (design rev 2 §4):
+   * Composition (annual-close-canonical-flow):
    *   1. fiscalYearReader.getByYear        → FiscalYearStatus | NOT_INITIALIZED
    *   2. fiscalYearReader.countPeriodsByStatus → {closed, open, total}
    *   3. fiscalYearReader.decemberPeriodOf → Dec status | NOT_FOUND
-   *   4. yearAccountingReader.aggregateYearDebitCreditNoTx → year-aggregate
-   *      balance (C-1 — single query, NOT per-period). UNCONDITIONAL.
-   *   5. decideGate(...) → standard|edge|blocked + reason string.
+   *   4. yearAccountingReader.aggregateYearDebitCreditNoTx → year-aggregate balance
+   *   5. decideGate(...) → standard|edge|blocked + reason
    *
    *   Idempotency gate `ccExistsForYear` RETIRED per CAN-5.2 / REQ-A.8 —
    *   FY.status='CLOSED' is the canonical idempotency source.
@@ -192,7 +169,7 @@ export class AnnualCloseService {
       fiscalYearStatus,
       periods,
       decemberStatus,
-      ccExists: false, // CAN-5.2 — retired; literal false until UI rework.
+      ccExists: false,
       gateAllowed: allowed,
       gateReason: reason,
       balance: {
@@ -204,15 +181,8 @@ export class AnnualCloseService {
   }
 
   /**
-   * Thin facade over `FiscalYearReaderPort.getByYear` — exposed at the
-   * service surface so the UI (Phase 7.5+) can render `closedAt` without
-   * depending on the reader port directly (R5 — only the service is the
-   * consumer-facing surface). FK columns `closingEntryId`/`openingEntryId`
-   * retired per CAN-5.6 — link is reverse-lookup via JournalEntry.sourceId.
-   *
-   * Returns `null` when no FiscalYear row exists for `(orgId, year)` — common
-   * for years that were never closed (status would be inferred OPEN by the
-   * UI's badge logic).
+   * Facade for the UI to render the FY snapshot. FK columns
+   * `closingEntryId`/`openingEntryId` retired per CAN-5.6.
    */
   async getFiscalYearByYear(organizationId: string, year: number) {
     return this.deps.fiscalYearReader.getByYear(organizationId, year);
@@ -221,41 +191,36 @@ export class AnnualCloseService {
   /**
    * Close the fiscal year for `(organizationId, year)`.
    *
-   * Orchestration per spec REQ-2.1 / REQ-2.2 + design rev 2 §4.
+   * Orchestration per spec REQ-2.1 / REQ-2.2 (annual-close-canonical-flow).
    *
-   * ─── Pre-TX (read-only validation) ─────────────────────────────────────
-   *   1. validateJustification (≥50 chars)         → JustificationTooShortError
-   *   2. Year.of(year)                             → InvalidYearError
-   *   3. fiscalYearReader.getByYear (may be null)
-   *      if FY.status === "CLOSED" → FiscalYearAlreadyClosedError
-   *   4. countPeriodsByStatus(year) total === 12   else FiscalYearGateNotMetError
+   * ─── Pre-TX gates ──────────────────────────────────────────────────────
+   *   1. validateJustification
+   *   2. Year.of(year)
+   *   3. getByYear → FY.status==='CLOSED' → FiscalYearAlreadyClosedError
+   *   4. countPeriodsByStatus(year) total === 12
    *   5. decemberPeriodOf(year)
-   *   6. dispatch standard vs edge path             else FiscalYearGateNotMetError
-   *   7. if Dec OPEN → draftDocuments.countDraftsByPeriod → DraftEntriesInDecemberError
-   *   8. countPeriodsByStatus(year+1) total === 0   else YearOpeningPeriodsExistError
-   *   9. fiscalYearReader.findResultAccount         else MissingResultAccountError (500)
-   *  10. yearAccountingReader.aggregateYearDebitCreditNoTx (C-1/C-4, UNCONDITIONAL)
-   *      if !debit.equals(credit) → BalanceNotZeroError
+   *   6. dispatch standard | edge
+   *   7. drafts-in-Dec gate (standard path)
+   *   8. countPeriodsByStatus(year+1) total === 0
+   *   9. findResultAccount (3.2.2)
+   *  10. findAccumulatedResultsAccount (3.2.1) → MissingAccumulatedResults
+   *      AccountError (NEW per REQ-A.3, 500)
+   *  11. aggregateYearDebitCreditNoTx → BalanceNotZeroError on drift
    *
-   * ─── INSIDE-TX (uow.run) ───────────────────────────────────────────────
-   *  (a') TOCTOU re-reads as FIRST action (W-2):
-   *       - fiscalYears.upsertOpen → fyId
-   *       - yearAccountingTx.reReadFiscalYearStatusTx(fyId)   != OPEN  → FYAlreadyClosed
-   *       - yearAccountingTx.reReadPeriodStatusTx(dec.id)     mismatch → typed error
-   *       - reReadCcExistsForYearTx RETIRED per CAN-5.2 — FY.status is the
-   *         single source of truth; W-3 markClosed guard absorbs concurrent races.
-   *  (b)  yearAccountingTx.aggregateYearDebitCredit(orgId,year)
-   *       if !debit.equals(credit) → BalanceNotZeroError
-   *  (c)  Compose CC: yearAccountingTx.aggregateResultAccountsByYear +
-   *       findResultAccount → buildCCLines → closingJournals.createAndPost
-   *       (adapter enforces REQ-2.7 C-5)
-   *  (d)  if standardPath: locking.lock* STRICT ORDER + fiscalPeriods.markClosed(dec)
-   *  (e)  periodAutoCreator.createTwelvePeriodsForYear(year+1) → janPeriodId
-   *  (f)  Compose CA: yearAccountingTx.aggregateBalanceSheetAccountsForCA →
-   *       buildCALines → closingJournals.createAndPost (in Jan year+1)
-   *  (g)  fiscalYears.markClosed (guarded, W-3) → propagates FYAlreadyClosed
+   * ─── INSIDE-TX ─────────────────────────────────────────────────────────
+   *  (a') TOCTOU re-reads: upsertOpen + FY status + Dec status +
+   *       findAccumulatedResultsAccountTx (CAN-5.2 — no ccExists re-check).
+   *  (b)  Re-assert year-aggregate balance.
+   *  (c)  Asiento #1 — Cerrar Gastos+Costos (CC, Dec OPEN). SKIP if empty.
+   *  (d)  Asiento #2 — Cerrar Ingresos (CC, Dec OPEN). SKIP if empty.
+   *  (e)  Asiento #3 — Cerrar P&G → 3.2.1 (CC, Dec OPEN). SKIP if break-even.
+   *  (f)  Asiento #4 — Cerrar Balance (CC, Dec OPEN). SKIP if empty.
+   *  (g)  STANDARD PATH ONLY: lock cascade STRICT ORDER + Dec markClosed.
+   *  (h)  createTwelvePeriodsForYear(year+1) → janPeriodId.
+   *  (i)  Asiento #5 — Apertura (CA, Jan year+1 OPEN). SKIP if #4 skipped.
+   *  (j)  FY markClosed (W-3 guarded). Throws on race.
    *
-   * Any failure rolls back the entire TX (uow contract).
+   * Any failure rolls back the entire TX (uow contract — CAN-5.3 atomic).
    */
   async close(
     organizationId: string,
@@ -271,7 +236,6 @@ export class AnnualCloseService {
       });
     }
 
-    // Year VO validates [1900..2100] + integer; throws InvalidYearError.
     Year.of(year);
 
     const fy = await this.deps.fiscalYearReader.getByYear(organizationId, year);
@@ -298,9 +262,6 @@ export class AnnualCloseService {
       year,
     );
 
-    // Path dispatch (spec REQ-2.1 step 5): standard | edge | reject.
-    // CAN-5.2 / REQ-A.8: edge-path idempotency anchored on FY.status (CLOSED
-    // already thrown above) — no ccExists check needed.
     const standardPath =
       periods.closed === MONTHS_PER_YEAR - 1 && dec?.status === "OPEN";
     const edgePath =
@@ -356,7 +317,15 @@ export class AnnualCloseService {
       throw new MissingResultAccountError({ organizationId });
     }
 
-    // C-1 + C-4: year-aggregate balance gate, UNCONDITIONAL.
+    // REQ-A.3 — pre-TX gate for 3.2.1 Resultados Acumulados.
+    const accumAcc =
+      await this.deps.fiscalYearReader.findAccumulatedResultsAccount(
+        organizationId,
+      );
+    if (!accumAcc) {
+      throw new MissingAccumulatedResultsAccountError({ organizationId });
+    }
+
     const yearBal =
       await this.deps.yearAccountingReader.aggregateYearDebitCreditNoTx(
         organizationId,
@@ -391,13 +360,11 @@ export class AnnualCloseService {
           const expected: "OPEN" | "CLOSED" = standardPath ? "OPEN" : "CLOSED";
           if (!decTx || decTx.status !== expected) {
             if (expected === "OPEN") {
-              // Dec was OPEN at pre-TX, now CLOSED → race.
               throw new PeriodAlreadyClosedError({
                 periodId: dec.id,
                 status: decTx?.status ?? "CLOSED",
               });
             }
-            // Edge path expected CLOSED but now OPEN.
             throw new FiscalYearGateNotMetError({
               monthsClosed: periods.closed,
               decStatus: decTx?.status ?? "NOT_FOUND",
@@ -409,11 +376,16 @@ export class AnnualCloseService {
           }
         }
 
+        // REQ-A.3 TOCTOU — re-check 3.2.1 inside TX.
+        const accumAccTx =
+          await scope.yearAccountingTx.findAccumulatedResultsAccountTx(
+            organizationId,
+          );
+        if (!accumAccTx) {
+          throw new MissingAccumulatedResultsAccountError({ organizationId });
+        }
+
         // (b) Re-assert year-aggregate balance INSIDE-TX.
-        // CAN-5.2 / REQ-A.8: reReadCcExistsForYearTx RETIRED — idempotency is
-        // exclusively `fyTx.status` (already re-read above). Strictly stronger:
-        // FY.status only flips at step (g) AFTER all writes commit, so concurrent
-        // races are caught by the W-3 markClosed guard rather than a CC gate.
         const yearBalTx = await scope.yearAccountingTx.aggregateYearDebitCredit(
           organizationId,
           year,
@@ -422,23 +394,14 @@ export class AnnualCloseService {
           throw new BalanceNotZeroError(yearBalTx.debit, yearBalTx.credit);
         }
 
-        // (c) Compose CC lines.
-        const resultLinesTx =
-          await scope.yearAccountingTx.aggregateResultAccountsByYear(
-            organizationId,
-            year,
-          );
         const resultAccTx =
           await scope.yearAccountingTx.findResultAccount(organizationId);
         if (!resultAccTx) {
           throw new MissingResultAccountError({ organizationId });
         }
-        const ccBuilt = buildCCLines(resultLinesTx, resultAccTx);
-        // Builder already asserts Decimal.equals invariant + throws on drift.
 
         if (!dec) {
-          // Unreachable — pre-TX gate already required dec or threw
-          // FiscalYearGateNotMetError. Belt-and-suspenders for type narrowing.
+          // Unreachable defensive — pre-TX gate required dec.
           throw new FiscalYearGateNotMetError({
             monthsClosed: periods.closed,
             decStatus: "NOT_FOUND",
@@ -448,26 +411,120 @@ export class AnnualCloseService {
           });
         }
 
-        const { entryId: ccEntryId } = await scope.closingJournals.createAndPost(
-          {
+        const ccDate = toNoonUtc(`${year}-12-31`);
+        const closingEntries: AnnualCloseResult["closingEntries"] = {
+          gastos: null,
+          ingresos: null,
+          resultado: null,
+          balance: null,
+          apertura: null,
+        };
+
+        // (c) Asiento #1 — Cerrar Gastos+Costos. SKIP if empty.
+        const gastosLines = await scope.yearAccountingTx.aggregateGastosByYear(
+          organizationId,
+          year,
+        );
+        const a1 = buildGastosCloseLines(gastosLines, resultAccTx);
+        if (a1.lines.length > 0) {
+          const { entryId } = await scope.closingJournals.createAndPost({
             organizationId,
             periodId: dec.id,
-            date: toNoonUtc(`${year}-12-31`),
+            date: ccDate,
             voucherTypeCode: "CC",
-            description: `Cierre de Gestión ${year}`,
+            description: `Cierre de Gastos y Costos ${year}`,
             createdById: userId,
             sourceType: "annual-close",
             sourceId: fyId,
-            lines: ccBuilt.lines.map((l) => ({
+            lines: a1.lines.map((l) => ({
               accountId: l.accountId,
               debit: l.debit,
               credit: l.credit,
               description: l.description,
             })),
-          },
-        );
+          });
+          closingEntries.gastos = entryId;
+        }
 
-        // (d) Lock cascade STRICT ORDER (standard path only).
+        // (d) Asiento #2 — Cerrar Ingresos. SKIP if empty.
+        const ingresosLines =
+          await scope.yearAccountingTx.aggregateIngresosByYear(
+            organizationId,
+            year,
+          );
+        const a2 = buildIngresosCloseLines(ingresosLines, resultAccTx);
+        if (a2.lines.length > 0) {
+          const { entryId } = await scope.closingJournals.createAndPost({
+            organizationId,
+            periodId: dec.id,
+            date: ccDate,
+            voucherTypeCode: "CC",
+            description: `Cierre de Ingresos ${year}`,
+            createdById: userId,
+            sourceType: "annual-close",
+            sourceId: fyId,
+            lines: a2.lines.map((l) => ({
+              accountId: l.accountId,
+              debit: l.debit,
+              credit: l.credit,
+              description: l.description,
+            })),
+          });
+          closingEntries.ingresos = entryId;
+        }
+
+        // (e) Asiento #3 — Cerrar P&G → 3.2.1. SKIP if break-even.
+        // netResult = ingresoNet - gastoNet (positive = profit).
+        const netResult = a2.netForResultAccount.minus(a1.netForResultAccount);
+        const a3 = buildResultadoCloseLines(netResult, resultAccTx, accumAccTx);
+        if (a3.lines.length > 0) {
+          const { entryId } = await scope.closingJournals.createAndPost({
+            organizationId,
+            periodId: dec.id,
+            date: ccDate,
+            voucherTypeCode: "CC",
+            description: `Cierre Resultado a Acumulados ${year}`,
+            createdById: userId,
+            sourceType: "annual-close",
+            sourceId: fyId,
+            lines: a3.lines.map((l) => ({
+              accountId: l.accountId,
+              debit: l.debit,
+              credit: l.credit,
+              description: l.description,
+            })),
+          });
+          closingEntries.resultado = entryId;
+        }
+
+        // (f) Asiento #4 — Cerrar Balance. POSTS into Dec OPEN BEFORE lock-cascade.
+        const bsLines =
+          await scope.yearAccountingTx.aggregateBalanceSheetAtYearEnd(
+            organizationId,
+            year,
+          );
+        const a4 = buildBalanceCloseLines(bsLines);
+        if (a4.lines.length > 0) {
+          const { entryId } = await scope.closingJournals.createAndPost({
+            organizationId,
+            periodId: dec.id,
+            date: ccDate,
+            voucherTypeCode: "CC",
+            description: `Cierre de Balance ${year}`,
+            createdById: userId,
+            sourceType: "annual-close",
+            sourceId: fyId,
+            lines: a4.lines.map((l) => ({
+              accountId: l.accountId,
+              debit: l.debit,
+              credit: l.credit,
+              description: l.description,
+            })),
+          });
+          closingEntries.balance = entryId;
+        }
+
+        // (g) Lock cascade STRICT ORDER (standard path only).
         let decClose: AnnualCloseResult["decClose"] = undefined;
         if (standardPath) {
           const lockedDispatches = await scope.locking.lockDispatches(
@@ -502,7 +559,7 @@ export class AnnualCloseService {
           };
         }
 
-        // (e) Auto-create year+1 12 periods.
+        // (h) Auto-create year+1 12 periods.
         const { janPeriodId, periodIds } =
           await scope.periodAutoCreator.createTwelvePeriodsForYear({
             organizationId,
@@ -510,16 +567,10 @@ export class AnnualCloseService {
             createdById: userId,
           });
 
-        // (f) Compose CA lines.
-        const bsLinesTx =
-          await scope.yearAccountingTx.aggregateBalanceSheetAccountsForCA(
-            organizationId,
-            year,
-          );
-        const caBuilt = buildCALines(bsLinesTx);
-
-        const { entryId: caEntryId } = await scope.closingJournals.createAndPost(
-          {
+        // (i) Asiento #5 — Apertura (CA, Jan year+1 OPEN). SKIP if #4 skipped.
+        if (a4.lines.length > 0) {
+          const a5 = buildAperturaLines(a4);
+          const { entryId } = await scope.closingJournals.createAndPost({
             organizationId,
             periodId: janPeriodId,
             date: toNoonUtc(`${year + 1}-01-01`),
@@ -528,30 +579,34 @@ export class AnnualCloseService {
             createdById: userId,
             sourceType: "annual-close",
             sourceId: fyId,
-            lines: caBuilt.lines.map((l) => ({
+            lines: a5.lines.map((l) => ({
               accountId: l.accountId,
               debit: l.debit,
               credit: l.credit,
               description: l.description,
             })),
-          },
-        );
+          });
+          closingEntries.apertura = entryId;
+        }
 
-        // (g) FY markClosed LAST — guarded (W-3). Throws on race.
-        // FK args closingEntryId/openingEntryId RETIRED per CAN-5.6 — the
-        // canonical flow links via JournalEntry.sourceId reverse-lookup.
+        // (j) FY markClosed LAST — guarded (W-3). FK args RETIRED CAN-5.6.
         const { closedAt } = await scope.fiscalYears.markClosed({
           fiscalYearId: fyId,
           closedBy: userId,
         });
 
+        // Preserved-shape result: closingEntryId/openingEntryId reflect
+        // asiento #4 (cierre balance) + asiento #5 (apertura) respectively
+        // for backward-compat with existing consumers. New consumers should
+        // use the full `closingEntries` map.
         return {
           fiscalYearId: fyId,
           year,
           status: "CLOSED" as const,
           closedAt,
-          closingEntryId: ccEntryId,
-          openingEntryId: caEntryId,
+          closingEntryId: closingEntries.balance,
+          openingEntryId: closingEntries.apertura,
+          closingEntries,
           yearPlus1: { periodIds },
           decClose,
         };
@@ -566,9 +621,13 @@ const MIN_JUSTIFICATION_LENGTH = 50;
 const MONTHS_PER_YEAR = 12;
 
 /**
- * Result of a successful annual close (design rev 2 §4). Inline service file
- * mirror precedent EXACT (4+ evidencias cumulative — sale `PostSaleResult`,
- * monthly-close `CloseResult`).
+ * Result of a successful annual close (annual-close-canonical-flow rewrite).
+ *
+ * Backward-compat fields `closingEntryId` + `openingEntryId` preserved for
+ * existing consumers (route + UI): they map to asiento #4 (Cierre de Balance,
+ * the canonical "primary CC") and asiento #5 (Apertura) respectively. New
+ * consumers should consume the full `closingEntries` map for per-asiento
+ * traceability.
  */
 export interface AnnualCloseResult {
   fiscalYearId: string;
@@ -576,8 +635,17 @@ export interface AnnualCloseResult {
   status: "CLOSED";
   closedAt: Date;
   correlationId: string;
-  closingEntryId: string;
-  openingEntryId: string;
+  /** @deprecated Use closingEntries.balance. Maps to asiento #4 (Cierre de Balance). */
+  closingEntryId: string | null;
+  /** @deprecated Use closingEntries.apertura. Maps to asiento #5 (Apertura). */
+  openingEntryId: string | null;
+  closingEntries: {
+    gastos: string | null;
+    ingresos: string | null;
+    resultado: string | null;
+    balance: string | null;
+    apertura: string | null;
+  };
   yearPlus1: { periodIds: string[] };
   decClose?: {
     locked: {

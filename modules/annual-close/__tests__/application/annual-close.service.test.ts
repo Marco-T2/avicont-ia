@@ -345,12 +345,53 @@ function makeYearAccountingTx(
       code: "3.2.2",
       nature: "ACREEDORA" as const,
     })),
-    // annual-close-canonical-flow defaults (REQ-A.1/2/3/4/11). The 5-asientos
-    // service rewrite (Phase E T-17) will exercise these; until then default
-    // mocks satisfy the interface so existing tests compile.
-    aggregateGastosByYear: vi.fn(async () => []),
-    aggregateIngresosByYear: vi.fn(async () => []),
-    aggregateBalanceSheetAtYearEnd: vi.fn(async () => []),
+    // annual-close-canonical-flow defaults (REQ-A.1/2/3/4/11). After Phase E
+    // T-17 service rewrite these defaults make the happy path emit the full
+    // 5-asientos sequence (4 CC + 1 CA) — per [[mock_hygiene_commit_scope]]:
+    // default mocks updated atomically with service rewrite to keep happy-path
+    // assertions working. Tests that need degenerate (empty) flow override.
+    aggregateGastosByYear: vi.fn(async () => [
+      {
+        accountId: "acc_g",
+        code: "5.1.1",
+        nature: "DEUDORA" as const,
+        type: "GASTO" as const,
+        subtype: null,
+        debit: new Decimal("1000"),
+        credit: new Decimal("0"),
+      },
+    ]),
+    aggregateIngresosByYear: vi.fn(async () => [
+      {
+        accountId: "acc_i",
+        code: "4.1.1",
+        nature: "ACREEDORA" as const,
+        type: "INGRESO" as const,
+        subtype: null,
+        debit: new Decimal("0"),
+        credit: new Decimal("3000"),
+      },
+    ]),
+    aggregateBalanceSheetAtYearEnd: vi.fn(async () => [
+      {
+        accountId: "acc_caja",
+        code: "1.1.1",
+        nature: "DEUDORA" as const,
+        type: "ACTIVO" as const,
+        subtype: null,
+        debit: new Decimal("2000"),
+        credit: new Decimal("0"),
+      },
+      {
+        accountId: "acc_321",
+        code: "3.2.1",
+        nature: "ACREEDORA" as const,
+        type: "PATRIMONIO" as const,
+        subtype: null,
+        debit: new Decimal("0"),
+        credit: new Decimal("2000"),
+      },
+    ]),
     findAccumulatedResultsAccountTx: vi.fn(async () => ({
       id: "acc_321",
       code: "3.2.1",
@@ -785,21 +826,32 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
     expect(ctx.scope.yearAccountingTx.aggregateYearDebitCredit)
       .toHaveBeenCalledWith(ORG, YEAR);
 
-    // (c) CC source + result account
-    expect(ctx.scope.yearAccountingTx.aggregateResultAccountsByYear)
+    // (c) 5-asientos canonical: 4 CC + 1 CA per CAN-5.
+    // Updated from legacy "single CC source + findResultAccount" — now 3 reader
+    // methods (gastos/ingresos/balanceSheetAtYearEnd) + 1 TOCTOU 3.2.1.
+    expect(ctx.scope.yearAccountingTx.aggregateGastosByYear)
+      .toHaveBeenCalledWith(ORG, YEAR);
+    expect(ctx.scope.yearAccountingTx.aggregateIngresosByYear)
+      .toHaveBeenCalledWith(ORG, YEAR);
+    expect(ctx.scope.yearAccountingTx.aggregateBalanceSheetAtYearEnd)
       .toHaveBeenCalledWith(ORG, YEAR);
     expect(ctx.scope.yearAccountingTx.findResultAccount)
       .toHaveBeenCalledWith(ORG);
+    expect(ctx.scope.yearAccountingTx.findAccumulatedResultsAccountTx)
+      .toHaveBeenCalledWith(ORG);
 
-    // (c.2) CC posted
-    const ccCall = (
+    // (c.2) 4 CC entries posted into Dec OPEN BEFORE lock cascade (CAN-5.5)
+    const allCalls = (
       ctx.scope.closingJournals.createAndPost as ReturnType<typeof vi.fn>
-    ).mock.calls.find((c) => c[0].voucherTypeCode === "CC");
-    expect(ccCall).toBeDefined();
-    expect(ccCall![0].periodId).toBe("p_dec");
-    expect(ccCall![0].sourceType).toBe("annual-close");
-    expect(ccCall![0].sourceId).toBe("fy_1");
-    expect(ccCall![0].createdById).toBe(USER);
+    ).mock.calls;
+    const ccCalls = allCalls.filter((c) => c[0].voucherTypeCode === "CC");
+    expect(ccCalls).toHaveLength(4);
+    for (const ccCall of ccCalls) {
+      expect(ccCall[0].periodId).toBe("p_dec");
+      expect(ccCall[0].sourceType).toBe("annual-close");
+      expect(ccCall[0].sourceId).toBe("fy_1");
+      expect(ccCall[0].createdById).toBe(USER);
+    }
 
     // (d) lock cascade STRICT ORDER (standard path only)
     expect(ctx.scope.locking.lockDispatches).toHaveBeenCalledWith(ORG, "p_dec");
@@ -815,7 +867,7 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
       USER,
     );
 
-    // (e) auto-create year+1 12 periods
+    // (h) auto-create year+1 12 periods
     expect(ctx.scope.periodAutoCreator.createTwelvePeriodsForYear)
       .toHaveBeenCalledWith({
         organizationId: ORG,
@@ -823,18 +875,16 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
         createdById: USER,
       });
 
-    // (f) CA source
-    expect(ctx.scope.yearAccountingTx.aggregateBalanceSheetAccountsForCA)
-      .toHaveBeenCalledWith(ORG, YEAR);
-
-    // (f.2) CA posted into Jan year+1 period
-    const caCall = (
-      ctx.scope.closingJournals.createAndPost as ReturnType<typeof vi.fn>
-    ).mock.calls.find((c) => c[0].voucherTypeCode === "CA");
+    // (f) CA #5 posted into Jan year+1 period — derived in-memory from #4
+    // per CAN-5.1, NOT via the retired aggregateBalanceSheetAccountsForCA.
+    const caCall = allCalls.find((c) => c[0].voucherTypeCode === "CA");
     expect(caCall).toBeDefined();
     expect(caCall![0].periodId).toBe("p_y1_m1");
     expect(caCall![0].sourceType).toBe("annual-close");
     expect(caCall![0].sourceId).toBe("fy_1");
+    // Legacy aggregateBalanceSheetAccountsForCA NOT used in canonical flow.
+    expect(ctx.scope.yearAccountingTx.aggregateBalanceSheetAccountsForCA)
+      .not.toHaveBeenCalled();
 
     // (g) FY markClosed LAST — FK args RETIRED per CAN-5.6.
     expect(ctx.scope.fiscalYears.markClosed).toHaveBeenCalledWith(
@@ -885,14 +935,16 @@ describe("AnnualCloseService.close — edge path (all 12 CLOSED + Dec CLOSED + n
     expect(ctx.scope.fiscalPeriods.markClosed).not.toHaveBeenCalled();
     expect(result.decClose).toBeUndefined();
 
-    // Still runs CC + year+1 + CA + FY markClosed
-    expect(ctx.scope.closingJournals.createAndPost).toHaveBeenCalledTimes(2);
+    // Still runs 4×CC + 1×CA = 5 createAndPost + year+1 + FY markClosed
+    // (CAN-5 canonical 5-asientos; edge path differs only in skipping the
+    // Dec lock cascade + Dec markClosed because Dec is already CLOSED).
+    expect(ctx.scope.closingJournals.createAndPost).toHaveBeenCalledTimes(5);
     expect(ctx.scope.periodAutoCreator.createTwelvePeriodsForYear)
       .toHaveBeenCalledTimes(1);
     expect(ctx.scope.fiscalYears.markClosed).toHaveBeenCalledTimes(1);
     expect(result.status).toBe("CLOSED");
-    expect(result.closingEntryId).toBe("je_cc_1");
-    expect(result.openingEntryId).toBe("je_ca_1");
+    expect(result.closingEntryId).toBe("je_cc_1"); // asiento #4 maps to legacy field
+    expect(result.openingEntryId).toBe("je_ca_1"); // asiento #5 maps to legacy field
   });
 });
 
