@@ -1,4 +1,8 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import {
+  FINALIZED_JE_STATUSES,
+  FINALIZED_JE_STATUSES_SQL,
+} from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 import type {
   MonthlyCloseSummaryReaderPort,
@@ -46,13 +50,25 @@ export class PrismaMonthlyCloseSummaryReaderAdapter
   ): Promise<MonthlyClosePostedCounts> {
     const [dispatches, payments, journalEntries] = await Promise.all([
       this.db.dispatch.count({
-        where: { organizationId, periodId, status: "POSTED" },
+        where: {
+          organizationId,
+          periodId,
+          status: { in: [...FINALIZED_JE_STATUSES] },
+        },
       }),
       this.db.payment.count({
-        where: { organizationId, periodId, status: "POSTED" },
+        where: {
+          organizationId,
+          periodId,
+          status: { in: [...FINALIZED_JE_STATUSES] },
+        },
       }),
       this.db.journalEntry.count({
-        where: { organizationId, periodId, status: "POSTED" },
+        where: {
+          organizationId,
+          periodId,
+          status: { in: [...FINALIZED_JE_STATUSES] },
+        },
       }),
     ]);
     return { dispatches, payments, journalEntries };
@@ -63,7 +79,11 @@ export class PrismaMonthlyCloseSummaryReaderAdapter
     periodId: string,
   ): Promise<MonthlyCloseVoucherTypeSummary[]> {
     const entries = await this.db.journalEntry.findMany({
-      where: { organizationId, periodId, status: "POSTED" },
+      where: {
+        organizationId,
+        periodId,
+        status: { in: [...FINALIZED_JE_STATUSES] },
+      },
       select: {
         voucherType: { select: { code: true, name: true } },
         lines: { select: { debit: true } },
@@ -110,7 +130,7 @@ export class PrismaMonthlyCloseSummaryReaderAdapter
       JOIN journal_entries je ON je.id = jl."journalEntryId"
       WHERE je."organizationId" = ${organizationId}
         AND je."periodId"       = ${periodId}
-        AND je.status            = 'POSTED';
+        AND je.status            ${FINALIZED_JE_STATUSES_SQL};
     `;
 
     const row = rows[0] ?? { debit_total: "0", credit_total: "0" };
