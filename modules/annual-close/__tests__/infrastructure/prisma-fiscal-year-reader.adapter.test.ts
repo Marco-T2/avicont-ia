@@ -118,31 +118,16 @@ describe("PrismaFiscalYearReaderAdapter", () => {
     });
   });
 
-  describe("ccExistsForYear", () => {
-    it("returns true when a POSTED CC dated in year exists", async () => {
-      mockJournalEntryFindFirst.mockResolvedValue({ id: "je-cc-1" });
+  describe("ccExistsForYear retirement (CAN-5.2 / REQ-A.8)", () => {
+    // RED — declared failure mode: `expected typeof to be 'undefined' received
+    // 'function'`. At HEAD edb6a634 ccExistsForYear is still implemented on
+    // the adapter. T-02 GREEN removes it from port + adapter; idempotency gate
+    // moves exclusively to FY.status='CLOSED' (stronger — FK-anchored).
+    it("ccExistsForYear method has been retired from the adapter (CAN-5.2 idempotency moved to FY.status)", () => {
       const adapter = new PrismaFiscalYearReaderAdapter(mockPrisma as never);
-      const result = await adapter.ccExistsForYear("org-1", 2026);
-
-      expect(result).toBe(true);
-      const call = mockJournalEntryFindFirst.mock.calls[0]?.[0];
-      expect(call?.where?.organizationId).toBe("org-1");
-      expect(call?.where?.status).toBe("POSTED");
-      expect(call?.where?.voucherType).toEqual({ code: "CC" });
-      // date range: [year-01-01T12:00:00Z, year-12-31T12:00:00Z]
-      expect((call?.where?.date?.gte as Date).toISOString()).toBe(
-        "2026-01-01T12:00:00.000Z",
-      );
-      expect((call?.where?.date?.lte as Date).toISOString()).toBe(
-        "2026-12-31T12:00:00.000Z",
-      );
-    });
-
-    it("returns false when no CC exists in year", async () => {
-      mockJournalEntryFindFirst.mockResolvedValue(null);
-      const adapter = new PrismaFiscalYearReaderAdapter(mockPrisma as never);
-      const result = await adapter.ccExistsForYear("org-1", 2026);
-      expect(result).toBe(false);
+      expect(
+        typeof (adapter as unknown as Record<string, unknown>).ccExistsForYear,
+      ).toBe("undefined");
     });
   });
 
