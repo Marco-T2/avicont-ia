@@ -991,6 +991,151 @@ describe("AnnualCloseService.close — W-3 race (guarded markClosed)", () => {
   });
 });
 
+// ─────────────────────────────────────────────────────────────────────────
+// T-16 + T-17 RED — annual-close-canonical-flow 5-asientos rewrite
+// ─────────────────────────────────────────────────────────────────────────
+//
+// REQ refs: REQ-2.2 (11-step canonical order) + REQ-A.1..A.8 + CAN-5 +
+//   CAN-5.3 (atomic) + CAN-5.5 (step ordering) + CAN-5.6 (FK retirement) +
+//   REQ-A.3 (MissingAccumulatedResultsAccountError pre-TX gate).
+//
+// Expected failure modes (literal):
+//   - "expected mock to have been called 4 times, but was called 1" — current
+//     service emits 1 CC + 1 CA = 2 createAndPost. After T-17 GREEN the
+//     standard happy-path emits 4 CC + 1 CA = 5 createAndPost.
+//   - "expected error to be instance of MissingAccumulatedResultsAccountError,
+//     received no error" — pre-TX gate not yet wired at HEAD d3309d29.
+
+import {
+  MissingAccumulatedResultsAccountError,
+} from "../../domain/errors/annual-close-errors";
+
+describe("AnnualCloseService.close — 5-asientos canonical flow (T-16 + T-17 RED)", () => {
+  function makeAccumAccReader(): FiscalYearReaderPort {
+    return makeFiscalYearReader({
+      getByYear: vi.fn(async () => ({
+        id: "fy_1",
+        organizationId: "org_test",
+        year: 2026,
+        status: "OPEN" as const,
+        closedAt: null,
+        closedBy: null,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })),
+      countPeriodsByStatus: vi.fn(async (_o, y) =>
+        y === 2026
+          ? { closed: 11, open: 1, total: 12 }
+          : { closed: 0, open: 0, total: 0 },
+      ),
+      decemberPeriodOf: vi.fn(async () => ({
+        id: "p_dec",
+        status: "OPEN" as const,
+      })),
+      findResultAccount: vi.fn(async () => ({
+        id: "acc_322",
+        code: "3.2.2",
+        nature: "ACREEDORA" as const,
+      })),
+      findAccumulatedResultsAccount: vi.fn(async () => null),
+    });
+  }
+
+  it("pre-TX gate: missing 3.2.1 Resultados Acumulados → MissingAccumulatedResultsAccountError", async () => {
+    const { uow, runSpy } = makeUowWithScope();
+    const service = new AnnualCloseService({
+      fiscalYearReader: makeAccumAccReader(),
+      yearAccountingReader: makeYearAccountingReader(),
+      draftDocuments: makeDraftDocumentsReader(),
+      uow,
+    });
+
+    await expect(
+      service.close(ORG, YEAR, USER, VALID_JUSTIFICATION),
+    ).rejects.toBeInstanceOf(MissingAccumulatedResultsAccountError);
+    expect(runSpy).not.toHaveBeenCalled();
+  });
+
+  it("happy path: emits 4 CC + 1 CA = 5 createAndPost in canonical order (CAN-5 + CAN-5.5)", async () => {
+    const ctx = makeUowWithScope({
+      yearAccountingTx: {
+        // Force all 4 asientos to emit lines so we can count 5 createAndPost.
+        aggregateGastosByYear: vi.fn(async () => [
+          {
+            accountId: "acc_g",
+            code: "5.1.1",
+            nature: "DEUDORA" as const,
+            type: "GASTO" as const,
+            subtype: null,
+            debit: new Decimal("1000"),
+            credit: new Decimal("0"),
+          },
+        ]),
+        aggregateIngresosByYear: vi.fn(async () => [
+          {
+            accountId: "acc_i",
+            code: "4.1.1",
+            nature: "ACREEDORA" as const,
+            type: "INGRESO" as const,
+            subtype: null,
+            debit: new Decimal("0"),
+            credit: new Decimal("3000"),
+          },
+        ]),
+        aggregateBalanceSheetAtYearEnd: vi.fn(async () => [
+          {
+            accountId: "acc_caja",
+            code: "1.1.1",
+            nature: "DEUDORA" as const,
+            type: "ACTIVO" as const,
+            subtype: null,
+            debit: new Decimal("2000"),
+            credit: new Decimal("0"),
+          },
+          {
+            accountId: "acc_321",
+            code: "3.2.1",
+            nature: "ACREEDORA" as const,
+            type: "PATRIMONIO" as const,
+            subtype: null,
+            debit: new Decimal("0"),
+            credit: new Decimal("2000"),
+          },
+        ]),
+      },
+    });
+
+    const service = new AnnualCloseService({
+      fiscalYearReader: makeStandardReadyReader(),
+      yearAccountingReader: makeYearAccountingReader(),
+      draftDocuments: makeDraftDocumentsReader(),
+      uow: ctx.uow,
+    });
+
+    await service.close(ORG, YEAR, USER, VALID_JUSTIFICATION);
+
+    const createAndPost = ctx.scope.closingJournals.createAndPost as ReturnType<
+      typeof vi.fn
+    >;
+    expect(createAndPost).toHaveBeenCalledTimes(5);
+
+    const calls = createAndPost.mock.calls.map((c) => c[0]);
+    const voucherSequence = calls.map((c) => c.voucherTypeCode);
+    expect(voucherSequence).toEqual(["CC", "CC", "CC", "CC", "CA"]);
+
+    // CAN-5.5 step ordering: ALL 4 CC into Dec OPEN BEFORE lockJournalEntries
+    // + markClosed(Dec); CA into Jan year+1 AFTER createTwelvePeriodsForYear.
+    const lockJEMock = ctx.scope.locking.lockJournalEntries as ReturnType<
+      typeof vi.fn
+    >;
+    const lockJECallOrder = lockJEMock.mock.invocationCallOrder[0]!;
+    const ccCallOrders = createAndPost.mock.invocationCallOrder.slice(0, 4);
+    for (const ccOrder of ccCallOrders) {
+      expect(ccOrder).toBeLessThan(lockJECallOrder);
+    }
+  });
+});
+
 describe("AnnualCloseService.close — C-5 PeriodAlreadyClosedError propagation (REQ-2.7)", () => {
   it("AnnualClosingJournalWriterTxPort.createAndPost rejects CC into CLOSED period → propagates + rolls back", async () => {
     const ctx = makeUowWithScope({
