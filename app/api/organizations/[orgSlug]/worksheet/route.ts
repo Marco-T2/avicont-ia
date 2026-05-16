@@ -7,6 +7,7 @@ import {
   exportWorksheetPdf,
   exportWorksheetXlsx,
 } from "@/modules/accounting/worksheet/presentation/server";
+import { PrismaWorksheetRepo } from "@/modules/accounting/worksheet/infrastructure/prisma-worksheet.repo";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import type { Role } from "@/features/permissions";
 
@@ -14,6 +15,7 @@ import type { Role } from "@/features/permissions";
 export const runtime = "nodejs";
 
 const service = makeWorksheetService();
+const repo = new PrismaWorksheetRepo();
 
 /**
  * GET /api/organizations/[orgSlug]/worksheet
@@ -79,13 +81,21 @@ export async function GET(
       .replace(/-{2,}/g, "-")
       .replace(/^-|-$/g, "");
 
-    // 6a. PDF response
+    // 6a. PDF response — inline para que el browser lo renderice en pestaña nueva
     if (query.format === "pdf") {
-      const { buffer } = await exportWorksheetPdf(report, orgSlug);
+      const orgMeta = await repo.getOrgMetadata(orgId);
+      const orgDisplayName = orgMeta?.name ?? orgSlug;
+      const { buffer } = await exportWorksheetPdf(
+        report,
+        orgDisplayName,
+        orgMeta?.taxId ?? undefined,
+        orgMeta?.address ?? undefined,
+        orgMeta?.city ?? undefined,
+      );
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="hoja-de-trabajo-${orgSlug}-${periodLabel}.pdf"`,
+          "Content-Disposition": `inline; filename="hoja-de-trabajo-${orgSlug}-${periodLabel}.pdf"`,
         },
       });
     }

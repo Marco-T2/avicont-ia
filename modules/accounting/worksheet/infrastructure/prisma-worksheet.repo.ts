@@ -5,6 +5,7 @@ import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";
 import type {
   WorksheetMovementAggregation,
   WorksheetAccountMetadata,
+  WorksheetOrgMetadata,
 } from "../domain/types";
 
 // Raw row returned by $queryRaw aggregations
@@ -136,5 +137,52 @@ export class PrismaWorksheetRepo extends BaseRepository implements WorksheetQuer
       isDetail: a.isDetail,
       isContraAccount: a.isContraAccount,
     }));
+  }
+
+  /**
+   * Resuelve metadata de organización para encabezados ejecutivos de PDF/XLSX.
+   *
+   * JOIN con OrgProfile. Preferimos `profile.razonSocial` sobre `Organization.name`;
+   * NIT, dirección y ciudad vienen del profile por separado — null si vacíos para
+   * que el helper de encabezado los omita gracefully.
+   *
+   * Sister precedent: `modules/accounting/trial-balance/infrastructure/
+   * prisma-trial-balance.repo.ts.getOrgMetadata`.
+   */
+  async getOrgMetadata(orgId: string): Promise<WorksheetOrgMetadata | null> {
+    const org = await this.db.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        name: true,
+        profile: {
+          select: {
+            razonSocial: true,
+            nit: true,
+            direccion: true,
+            ciudad: true,
+          },
+        },
+      },
+    });
+
+    if (!org) return null;
+
+    const profile = org.profile;
+    const name =
+      profile?.razonSocial && profile.razonSocial.trim().length > 0
+        ? profile.razonSocial
+        : org.name;
+
+    const trimOrNull = (v: string | undefined | null): string | null => {
+      const t = v?.trim();
+      return t && t.length > 0 ? t : null;
+    };
+
+    return {
+      name,
+      taxId: trimOrNull(profile?.nit),
+      address: trimOrNull(profile?.direccion),
+      city: trimOrNull(profile?.ciudad),
+    };
   }
 }

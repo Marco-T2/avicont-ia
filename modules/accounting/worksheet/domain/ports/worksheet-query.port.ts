@@ -1,4 +1,8 @@
-import type { WorksheetMovementAggregation, WorksheetAccountMetadata } from "../types";
+import type {
+  WorksheetMovementAggregation,
+  WorksheetAccountMetadata,
+  WorksheetOrgMetadata,
+} from "../types";
 
 /**
  * WorksheetQueryPort — outbound port for worksheet data queries.
@@ -35,4 +39,11 @@ export interface WorksheetQueryPort {
    * Finds all active accounts with detail metadata for building the worksheet grid.
    */
   findAccountsWithDetail(orgId: string): Promise<WorksheetAccountMetadata[]>;
+
+  /**
+   * Resuelve metadata de organización (razón social / NIT / dirección / ciudad)
+   * para el encabezado ejecutivo del PDF/XLSX. Consumido por el route handler
+   * antes de invocar `exportWorksheetPdf`. Retorna null si la org no existe.
+   */
+  getOrgMetadata(orgId: string): Promise<WorksheetOrgMetadata | null>;
 }

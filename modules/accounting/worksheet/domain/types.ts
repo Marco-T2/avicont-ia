@@ -39,3 +39,21 @@ export type WorksheetAccountMetadata = {
   isDetail: boolean;
   isContraAccount: boolean;
 };
+
+/**
+ * Metadata de organización para el encabezado ejecutivo del PDF/XLSX.
+ *
+ * Resolución (en el repo): JOIN con OrgProfile. Preferimos `razonSocial`
+ * sobre `Organization.name`. NIT, dirección y ciudad por separado — null
+ * si vacíos para graceful omission en el helper de encabezado.
+ *
+ * Sister precedent: `TrialBalanceOrgMetadata`, `FinancialStatementsOrgMetadata`.
+ */
+export type WorksheetOrgMetadata = {
+  name: string;
+  taxId: string | null;
+  /** Dirección sin ciudad. */
+  address: string | null;
+  /** Ciudad — se renderiza en línea propia debajo de Dirección. */
+  city: string | null;
+};

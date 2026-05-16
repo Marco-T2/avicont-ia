@@ -22,9 +22,10 @@
  * cross-module FS-INFRA dependency no longer exists.
  */
 
-import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
+import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal, type DecimalLike } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { buildExecutivePdfHeader } from "@/modules/accounting/shared/infrastructure/exporters/executive-pdf-header";
 import { formatDateBO } from "@/lib/date-utils";
 import type { WorksheetReport, WorksheetRow, WorksheetTotals } from "../../domain/worksheet.types";
 
@@ -35,7 +36,6 @@ const STYLE = {
   textMuted: "#6b7280",
   border: "#000000",
   danger: "#b91c1c",
-  preliminary: "#b45309",
 } as const;
 
 // Column widths in pt for pdfmake
@@ -46,10 +46,11 @@ const COL_CUENTA = 130;
 // (728 − 35 − 130) / 12 ≈ 47pt
 const COL_NUMERIC = 47;
 
-const BODY_SIZE = 7;
-const HEADER_SIZE = 7;
-const TITLE_SIZE = 12;
-const SUBTITLE_SIZE = 9;
+const BODY_SIZE = 7;            // filas de datos — landscape con 14 cols → no subir
+const HEADER_SIZE = 7;          // header de columnas
+const TITLE_SIZE = 16;          // "Hoja de Trabajo" — paridad con los otros (landscape, un poco menos que 18)
+const SUBTITLE_SIZE = 9;        // período + (Expresado en Bolivianos)
+const ORG_INFO_SIZE = 8;        // Empresa/NIT/Dirección/Ciudad — izquierda, chico
 const FOOTER_SIZE = 7;
 
 // ── Column widths array ───────────────────────────────────────────────────────
@@ -234,6 +235,9 @@ function buildRowKinds(report: WorksheetReport): RowKind[] {
 function buildDocDefinition(
   report: WorksheetReport,
   orgName: string,
+  orgNit?: string,
+  orgAddress?: string,
+  orgCity?: string,
 ): TDocumentDefinitions {
   // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice for the
   // calendar-day period labels. The `generatedAt` timestamp below remains
@@ -275,14 +279,6 @@ function buildDocDefinition(
     paddingBottom: () => 1,
   };
 
-  const watermark: Watermark = {
-    text: "PRELIMINAR",
-    color: STYLE.textMuted,
-    opacity: 0.15,
-    bold: true,
-    italics: false,
-  };
-
   const imbalanceBanner: Content[] = report.imbalanced
     ? [
         {
@@ -296,27 +292,18 @@ function buildDocDefinition(
     : [];
 
   const content: Content[] = [
-    {
-      text: "Hoja de Trabajo",
-      fontSize: TITLE_SIZE,
-      bold: true,
-      alignment: "center",
-      margin: [0, 0, 0, 2],
-    } as Content,
-    {
-      text: orgName,
-      fontSize: SUBTITLE_SIZE,
-      bold: true,
-      alignment: "center",
-      margin: [0, 0, 0, 2],
-    } as Content,
-    {
-      text: `Del ${fmt(report.dateFrom)} al ${fmt(report.dateTo)}`,
-      fontSize: SUBTITLE_SIZE,
-      color: STYLE.textMuted,
-      alignment: "center",
-      margin: [0, 0, 0, 6],
-    } as Content,
+    ...buildExecutivePdfHeader({
+      orgName,
+      orgNit,
+      orgAddress,
+      orgCity,
+      title: "Hoja de Trabajo",
+      subtitle: `Del ${fmt(report.dateFrom)} al ${fmt(report.dateTo)}`,
+      titleFontSize: TITLE_SIZE,
+      subtitleFontSize: SUBTITLE_SIZE,
+      orgInfoFontSize: ORG_INFO_SIZE,
+      orgInfoAlignment: "left",
+    }),
     ...imbalanceBanner,
     {
       table: {
@@ -333,8 +320,6 @@ function buildDocDefinition(
     pageSize: "A4",
     pageOrientation: "landscape",
     pageMargins: [20, 40, 20, 40],
-
-    watermark,
 
     footer: (_currentPage: number, _pageCount: number): Content =>
       ({
@@ -379,15 +364,21 @@ interface WorksheetPdfResult {
  *
  * Returns both the Buffer and the docDef for testing/inspection.
  *
- * @param report   The computed WorksheetReport with Decimal columns
- * @param orgName  Organization display name for the document header
+ * @param report     The computed WorksheetReport with Decimal columns
+ * @param orgName    Organization display name (razón social / Organization.name)
+ * @param orgNit     NIT/tax-id (optional — graceful omission)
+ * @param orgAddress Dirección sin ciudad (optional)
+ * @param orgCity    Ciudad — línea propia debajo de Dirección (optional)
  */
 export async function exportWorksheetPdf(
   report: WorksheetReport,
   orgName: string,
+  orgNit?: string,
+  orgAddress?: string,
+  orgCity?: string,
 ): Promise<WorksheetPdfResult> {
   registerFonts();
-  const docDef = buildDocDefinition(report, orgName);
+  const docDef = buildDocDefinition(report, orgName, orgNit, orgAddress, orgCity);
   const buffer = await pdfmakeRuntime.createPdf(docDef).getBuffer();
   return { buffer: Buffer.from(buffer), docDef };
 }
