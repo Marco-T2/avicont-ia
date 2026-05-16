@@ -18,6 +18,7 @@ import { ValidationError } from "@/modules/shared/domain/errors";
  */
 
 export const INVALID_YEAR = "INVALID_YEAR";
+export const INVALID_FISCAL_YEAR_STATUS = "INVALID_FISCAL_YEAR_STATUS";
 
 /**
  * Thrown by `Year.of(value)` when `value` is outside `[1900, 2100]` or
@@ -31,5 +32,21 @@ export class InvalidYearError extends ValidationError {
       { value },
     );
     this.name = "InvalidYearError";
+  }
+}
+
+/**
+ * Thrown by `FiscalYearStatus.of(value)` when `value` is not `OPEN | CLOSED`.
+ * Not part of the canonical REQ-2.3 list (it's a VO-internal guard, mirror
+ * of `InvalidFiscalPeriodStatus`); HTTP 422 via the ValidationError base.
+ */
+export class InvalidFiscalYearStatus extends ValidationError {
+  constructor(value: string) {
+    super(
+      `Estado de gestión inválido: ${value}`,
+      INVALID_FISCAL_YEAR_STATUS,
+      { value },
+    );
+    this.name = "InvalidFiscalYearStatus";
   }
 }
