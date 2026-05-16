@@ -11,7 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { ArrowLeft, Pencil, CheckCircle, XCircle, FileDown } from "lucide-react";
+import { ArrowLeft, Pencil, CheckCircle, XCircle, FileDown, Copy } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
 import {
@@ -174,6 +174,12 @@ export default function JournalEntryDetail({
                 </Button>
               </a>
               <Gated resource="journal" action="write">
+                <Link href={`/${orgSlug}/accounting/journal/new?duplicateFrom=${entry.id}`}>
+                  <Button variant="outline" size="sm">
+                    <Copy className="h-4 w-4 mr-1" />
+                    Duplicar
+                  </Button>
+                </Link>
                 {canEdit && (
                   <Link href={`/${orgSlug}/accounting/journal/${entry.id}/edit`}>
                     <Button variant="outline" size="sm">

@@ -46,28 +46,39 @@ function emptyLine(): JournalLineData {
   return { id: nextRowId(), accountId: "", debit: "", credit: "", description: "", contactId: "" };
 }
 
+/** Shape compartido para edit/template — un asiento que pre-llena el form. */
+interface JournalEntryTemplate {
+  id?: string;
+  number?: number;
+  date: string;
+  description: string;
+  periodId: string;
+  voucherTypeId: string;
+  referenceNumber?: number | null;
+  lines: Array<{
+    accountId: string;
+    debit: number | string;
+    credit: number | string;
+    description?: string | null;
+    contactId?: string | null;
+  }>;
+}
+
 interface JournalEntryFormProps {
   orgSlug: string;
   accounts: Account[];
   periods: FiscalPeriod[];
   voucherTypes: VoucherTypeCfg[];
-  /** When set, the form is in edit mode for this entry (DRAFT only). */
-  editEntry?: {
-    id: string;
-    number: number;
-    date: string;
-    description: string;
-    periodId: string;
-    voucherTypeId: string;
-    referenceNumber?: number | null;
-    lines: Array<{
-      accountId: string;
-      debit: number | string;
-      credit: number | string;
-      description?: string | null;
-      contactId?: string | null;
-    }>;
-  };
+  /** Cuando está seteado, el form está en modo edición (PATCH) y bloquea el voucher type. */
+  editEntry?: JournalEntryTemplate & { id: string; number: number };
+  /**
+   * Cuando está seteado, el form se pre-llena con estos valores PERO está en
+   * modo creación (POST). El voucher type queda EDITABLE — caso de uso típico:
+   * "duplicar como nuevo" para cambiar el tipo de comprobante de un asiento
+   * existente sin re-tipear N líneas. Reference number NO se copia (se asigna
+   * uno nuevo al guardar).
+   */
+  templateEntry?: JournalEntryTemplate;
 }
 
 export default function JournalEntryForm({
@@ -76,16 +87,17 @@ export default function JournalEntryForm({
   periods,
   voucherTypes,
   editEntry,
+  templateEntry,
 }: JournalEntryFormProps) {
   const router = useRouter();
   const isEditing = !!editEntry;
+  // Fuente única para pre-llenar — edit tiene precedencia sobre template.
+  const initial = editEntry ?? templateEntry;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCreatingAndPosting, setIsCreatingAndPosting] = useState(false);
-  const [date, setDate] = useState(
-    editEntry?.date ?? todayLocal(),
-  );
-  const [description, setDescription] = useState(editEntry?.description ?? "");
+  const [date, setDate] = useState(initial?.date ?? todayLocal());
+  const [description, setDescription] = useState(initial?.description ?? "");
   // Período = derivado puro de la fecha (no es un input editable). El contador
   // captura la fecha y el período se resuelve por `findPeriodCoveringDate`
   // (filtra por OPEN). Si la fecha no cae en ningún período OPEN, periodId
@@ -94,10 +106,11 @@ export default function JournalEntryForm({
   // ya valida invariante I12 (date ∈ período), entonces el periodId existente
   // siempre es coherente con la fecha actual del entry.
   const [periodId, setPeriodId] = useState(() => {
-    if (editEntry?.periodId) return editEntry.periodId;
-    return findPeriodCoveringDate(editEntry?.date ?? todayLocal(), periods)?.id ?? "";
+    if (initial?.periodId) return initial.periodId;
+    return findPeriodCoveringDate(initial?.date ?? todayLocal(), periods)?.id ?? "";
   });
-  const [voucherTypeId, setVoucherTypeId] = useState(editEntry?.voucherTypeId ?? "");
+  const [voucherTypeId, setVoucherTypeId] = useState(initial?.voucherTypeId ?? "");
+  // El reference number NO se copia en modo template — se asigna uno nuevo.
   const [referenceNumber, setReferenceNumber] = useState<string>(
     editEntry?.referenceNumber?.toString() ?? "",
   );
@@ -105,8 +118,8 @@ export default function JournalEntryForm({
   const [nextNumber, setNextNumber] = useState<number | null>(null);
   const [loadingLastRef, setLoadingLastRef] = useState(false);
   const [lines, setLines] = useState<JournalLineData[]>(() => {
-    if (editEntry && editEntry.lines.length >= 2) {
-      return editEntry.lines.map((l) => ({
+    if (initial && initial.lines.length >= 2) {
+      return initial.lines.map((l) => ({
         id: nextRowId(),
         accountId: l.accountId,
         debit: Number(l.debit) > 0 ? String(l.debit) : "",

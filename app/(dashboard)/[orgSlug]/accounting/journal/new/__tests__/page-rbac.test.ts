@@ -11,12 +11,14 @@ const {
   mockAccountsList,
   mockPeriodsList,
   mockVoucherTypesList,
+  mockJournalGetById,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockAccountsList: vi.fn(),
   mockPeriodsList: vi.fn(),
   mockVoucherTypesList: vi.fn(),
+  mockJournalGetById: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -27,6 +29,7 @@ vi.mock("@/features/permissions/server", () => ({
 
 vi.mock("@/modules/accounting/presentation/server", () => ({
   makeAccountsService: () => ({ list: mockAccountsList }),
+  makeJournalsService: () => ({ getById: mockJournalGetById }),
 }));
 
 vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
@@ -60,7 +63,10 @@ describe("/accounting/journal/new — rbac gate", () => {
   it("renders when requirePermission resolves", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
 
-    await NewJournalEntryPage({ params: makeParams() });
+    await NewJournalEntryPage({
+      params: makeParams(),
+      searchParams: Promise.resolve({}),
+    });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
       "journal",
@@ -73,7 +79,10 @@ describe("/accounting/journal/new — rbac gate", () => {
   it("redirects to org root when requirePermission throws", async () => {
     mockRequirePermission.mockRejectedValue(new Error("forbidden"));
 
-    await NewJournalEntryPage({ params: makeParams() });
+    await NewJournalEntryPage({
+      params: makeParams(),
+      searchParams: Promise.resolve({}),
+    });
 
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });
