@@ -16,10 +16,9 @@ import { FiscalPeriodsReadAdapter } from "../fiscal-periods-read.adapter";
 
 /**
  * Mock-del-colaborador test for FiscalPeriodsReadAdapter (POC #10 C3-C Ciclo 5
- * — Block C). Forma 1 sub-variante c: narrow map (13→2 fields) del retorno
- * legacy con throw pass-through. Body-shape promocionable bajo mismo helper
- * que Ciclos 1 (hydrate) y 2 (narrow + null collapse) — la diferencia
- * null/throw viene del contrato legacy, no del wrapper.
+ * — Block C). Forma 1 sub-variante c: narrow map (13→5 fields) del retorno
+ * legacy con throw pass-through. name/startDate/endDate añadidos al narrow
+ * para invariante I12 (date∈período) — ver `fiscal-periods-read.port.ts`.
  *
  * Aspirational mock check (`feedback/aspirational_mock_signals_unimplemented_contract`):
  * el legacy `FiscalPeriodsService.getById` está implementado y verificado por
@@ -28,12 +27,14 @@ import { FiscalPeriodsReadAdapter } from "../fiscal-periods-read.adapter";
  * contrato del legacy. NO aspirational.
  */
 
-describe("FiscalPeriodsReadAdapter — narrow 13→2 con throw pass-through", () => {
+describe("FiscalPeriodsReadAdapter — narrow 13→5 con throw pass-through", () => {
   beforeEach(() => {
     mockGetById.mockReset();
   });
 
-  it("getById: narrows aggregate to { id, status } and forwards args (orgId, periodId)", async () => {
+  it("getById: narrows aggregate to { id, status, name, startDate, endDate } and forwards args (orgId, periodId)", async () => {
+    const startDate = new Date("2026-01-01");
+    const endDate = new Date("2026-01-31");
     mockGetById.mockResolvedValue({
       toSnapshot: () => ({
         id: "p-2026-01",
@@ -41,8 +42,8 @@ describe("FiscalPeriodsReadAdapter — narrow 13→2 con throw pass-through", ()
         name: "Enero 2026",
         year: 2026,
         month: 1,
-        startDate: new Date("2026-01-01"),
-        endDate: new Date("2026-01-31"),
+        startDate,
+        endDate,
         status: "OPEN",
         closedAt: null,
         closedBy: null,
@@ -55,7 +56,13 @@ describe("FiscalPeriodsReadAdapter — narrow 13→2 con throw pass-through", ()
     const adapter = new FiscalPeriodsReadAdapter();
     const result = await adapter.getById("org-1", "p-2026-01");
 
-    expect(result).toEqual({ id: "p-2026-01", status: "OPEN" });
+    expect(result).toEqual({
+      id: "p-2026-01",
+      status: "OPEN",
+      name: "Enero 2026",
+      startDate,
+      endDate,
+    });
     expect(mockGetById).toHaveBeenCalledTimes(1);
     expect(mockGetById).toHaveBeenCalledWith("org-1", "p-2026-01");
   });

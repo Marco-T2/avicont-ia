@@ -2034,9 +2034,17 @@ describe("JournalsService.updateEntry", () => {
   // `lines` to `aggregate.update`) MUST keep all four header fields wired
   // through, or this test breaks loudly.
   it("happy DRAFT update full header (description + date + contactId + referenceNumber) propagates all fields", async () => {
-    const { service, uow, journalEntriesRead } = setup();
+    const { service, uow, journalEntriesRead, periods } = setup();
     const draft = makeDraft();
     journalEntriesRead.entriesById.set(draft.id, draft);
+    // I12 — el service ahora llama periods.getById(periodId) cuando la fecha cambia.
+    periods.periodsById.set("period-1", {
+      id: "period-1",
+      status: "OPEN",
+      name: "Mayo 2026",
+      startDate: new Date("2026-05-01"),
+      endDate: new Date("2026-05-31"),
+    });
 
     const newDate = new Date("2026-05-15");
     const { journal } = await service.updateEntry(
