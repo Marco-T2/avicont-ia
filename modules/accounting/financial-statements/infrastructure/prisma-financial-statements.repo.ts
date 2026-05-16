@@ -1,6 +1,7 @@
 import "server-only";
 import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import Decimal from "decimal.js";
+import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type { AccountSubtype } from "@/generated/prisma/enums";
 import type {
   AccountMetadata,
@@ -125,7 +126,7 @@ export class PrismaFinancialStatementsRepo
       JOIN accounts         a  ON a.id  = jl."accountId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je.status       = 'POSTED'
+        AND je.status       ${FINALIZED_JE_STATUSES_SQL}
         AND je.date        <= ${cutoff}
       GROUP BY jl."accountId", a.nature, a.subtype
     `;
@@ -170,7 +171,7 @@ export class PrismaFinancialStatementsRepo
       JOIN accounts         a  ON a.id  = jl."accountId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je.status       = 'POSTED'
+        AND je.status       ${FINALIZED_JE_STATUSES_SQL}
         AND je.date        >= ${dateFrom}
         AND je.date        <= ${dateTo}
       GROUP BY jl."accountId", a.nature, a.subtype
