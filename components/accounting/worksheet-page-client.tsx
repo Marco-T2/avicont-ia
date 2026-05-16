@@ -303,7 +303,7 @@ export function WorksheetPageClient({ orgSlug }: WorksheetPageClientProps) {
 
           {/* Table */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0 overflow-auto">
+            <CardContent className="pt-0 pb-6 px-0 overflow-auto">
               {/* Sub-header del Card — paridad con los otros reportes */}
               <div className="px-6 pb-4 text-center">
                 <h2 className="text-xl font-bold tracking-wide">

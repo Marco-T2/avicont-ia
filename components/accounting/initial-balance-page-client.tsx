@@ -187,7 +187,7 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
 
           {/* View */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
+            <CardContent className="pt-0 pb-6 px-0 overflow-hidden">
               {/* Sub-header dentro del card: título + fecha + moneda */}
               <div className="px-6 pb-4 text-center">
                 <h2 className="text-xl font-bold tracking-wide">BALANCE INICIAL</h2>

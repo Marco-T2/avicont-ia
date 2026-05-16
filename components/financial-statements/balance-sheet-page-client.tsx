@@ -224,7 +224,7 @@ export function BalanceSheetPageClient({ orgSlug, orgName, periods }: BalanceShe
 
           {/* Tabla TanStack */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
+            <CardContent className="pt-0 pb-6 px-0 overflow-hidden">
               <StatementTable
                 columns={tableColumns}
                 rows={tableRows}

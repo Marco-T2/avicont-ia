@@ -272,7 +272,7 @@ export function TrialBalancePageClient({ orgSlug }: TrialBalancePageClientProps)
 
           {/* Table */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0 overflow-auto">
+            <CardContent className="pt-0 pb-6 px-0 overflow-auto">
               {/* Sub-header del Card — título + período + (Expresado en Bolivianos) */}
               <div className="px-6 pb-4 text-center">
                 <h2 className="text-xl font-bold tracking-wide">
