@@ -435,18 +435,13 @@ model FiscalPeriod {
   closedAt       DateTime?          @db.Timestamptz(3)
   closedBy       String?
   createdById    String
-  // FK → fiscal_years.id. Optional at the Prisma client surface so legacy
-  // test fixtures + scripts that pre-existed the annual_close migration keep
-  // type-checking; the DB column itself IS NOT NULL (enforced by the
-  // 20260516030000_annual_close migration after backfill). Code paths that
-  // CREATE new periods MUST set fiscalYearId — see PrismaPeriodAutoCreator
-  // (annual-close Phase 4) for the canonical year+1 path.
-  fiscalYearId   String?
+  // NOTE: no FK to FiscalYear in v1 — the canonical link is logical via
+  // (organizationId, year) joined against fiscal_years.@@unique([organizationId, year]).
+  // See annual-close design rev 2 §2 and proposal §11 OUT.
   createdAt      DateTime           @db.Timestamptz(3) @default(now())
   updatedAt      DateTime           @db.Timestamptz(3) @updatedAt
   organization   Organization       @relation(fields: [organizationId], references: [id])
   closedByUser   User?              @relation("FiscalPeriodCloser", fields: [closedBy], references: [id])
-  fiscalYear     FiscalYear?        @relation(fields: [fiscalYearId], references: [id])
   journalEntries JournalEntry[]
   balances       AccountBalance[]
   dispatches     Dispatch[]
@@ -458,7 +453,6 @@ model FiscalPeriod {
 
   @@unique([organizationId, year, month])
   @@index([organizationId, status])
-  @@index([fiscalYearId])
   @@map("fiscal_periods")
 }
 
@@ -480,7 +474,8 @@ model FiscalYear {
   createdByUser   User             @relation("FiscalYearCreator", fields: [createdById], references: [id])
   closingEntry    JournalEntry?    @relation("FiscalYearClosing", fields: [closingEntryId], references: [id])
   openingEntry    JournalEntry?    @relation("FiscalYearOpening", fields: [openingEntryId], references: [id])
-  fiscalPeriods   FiscalPeriod[]
+  // NOTE: no inverse `fiscalPeriods FiscalPeriod[]` in v1 — link is logical
+  // via (organizationId, year). See annual-close design rev 2 §2.
 
   @@unique([organizationId, year])
   @@index([organizationId, status])

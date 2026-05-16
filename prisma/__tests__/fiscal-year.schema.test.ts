@@ -1,24 +1,20 @@
 /**
- * Phase 1.1 RED — annual-close schema integration test.
+ * Phase 1.1 — annual-close schema integration test (post-fix-forward).
  *
- * Asserts that after the `annual_close` migration runs, the following Postgres
- * objects exist:
+ * Asserts that after the `annual_close` migrations run, the following Postgres
+ * objects are in the design-correct state:
  *   - enum `FiscalYearStatus` with exactly the values [OPEN, CLOSED]
  *   - table `fiscal_years`
- *   - column `fiscal_periods.fiscalYearId` of type UUID/text NOT NULL
+ *   - column `fiscal_periods.fiscalYearId` does NOT exist — design rev 2 §2
+ *     keeps the FiscalYear ↔ FiscalPeriod link LOGICAL via (organizationId, year)
+ *     joined against fiscal_years.@@unique([organizationId, year]); v1 has no
+ *     physical FK column on fiscal_periods (per proposal §11 OUT).
  *   - `prisma.fiscalYear.findMany({ take: 0 })` runs without throwing
  *     (proves the Prisma client knows the model)
  *
  * Read-only schema introspection via `pg_catalog` and `information_schema`
  * (no rows inserted or deleted). Sister of
  * `prisma/__tests__/migration-smoke.test.ts` (organization-profile pattern).
- *
- * Declared failure mode (per [[red_acceptance_failure_mode]]):
- *  - `findMany` throws because `prisma.fiscalYear` is undefined on the
- *    current generated client.
- *  - enum/table/column existence queries return empty arrays/false.
- * All four assertions FAIL pre-migration; flip to GREEN once Phase 1.2
- * lands the schema + migration and Phase 1.3 regenerates the client.
  *
  * Covers: REQ-1.1 (FiscalYear aggregate fields), REQ-1.3 first-touch
  * (table existence — backfill semantics validated in Phase 1.4).
@@ -82,10 +78,9 @@ describe("annual-close migration smoke — fiscal_years schema (REQ-1.1)", () =>
     expect(await tableExists("fiscal_years")).toBe(true);
   });
 
-  it("fiscal_periods.fiscalYearId column exists and is NOT NULL", async () => {
+  it("fiscal_periods.fiscalYearId column does NOT exist (design rev 2 §2 — logical link only)", async () => {
     const col = await columnInfo("fiscal_periods", "fiscalYearId");
-    expect(col.exists).toBe(true);
-    expect(col.isNullable).toBe("NO");
+    expect(col.exists).toBe(false);
   });
 
   it("prisma.fiscalYear model is queryable (findMany({take:0}) does not throw)", async () => {
