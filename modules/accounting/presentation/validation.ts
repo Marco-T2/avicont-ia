@@ -90,31 +90,32 @@ export const createJournalEntrySchema = z.object({
     .min(2, "Se requieren al menos 2 líneas de asiento"),
 });
 
-export const updateJournalEntrySchema = z.object({
-  date: z.coerce.date({ message: "Fecha inválida" }).optional(),
-  description: z
-    .string()
-    .max(500, "La glosa no puede superar los 500 caracteres")
-    .optional(),
-  contactId: z.string().min(1, "ID de contacto inválido").nullable().optional(),
-  referenceNumber: z
-    .number()
-    .int("El número de referencia debe ser entero")
-    .min(1, "El número de referencia debe ser mayor a 0")
-    .nullable()
-    .optional(),
-  // El voucher type puede cambiarse en update — el service reasigna el
-  // correlativo (number) según la nueva secuencia (org, voucherType, periodId).
-  // El viejo número queda como gap en la secuencia anterior.
-  voucherTypeId: z
-    .string()
-    .min(1, "ID de tipo de comprobante inválido")
-    .optional(),
-  lines: z
-    .array(journalLineSchema)
-    .min(2, "Se requieren al menos 2 líneas de asiento")
-    .optional(),
-});
+export const updateJournalEntrySchema = z
+  .object({
+    date: z.coerce.date({ message: "Fecha inválida" }).optional(),
+    description: z
+      .string()
+      .max(500, "La glosa no puede superar los 500 caracteres")
+      .optional(),
+    contactId: z.string().min(1, "ID de contacto inválido").nullable().optional(),
+    referenceNumber: z
+      .number()
+      .int("El número de referencia debe ser entero")
+      .min(1, "El número de referencia debe ser mayor a 0")
+      .nullable()
+      .optional(),
+    lines: z
+      .array(journalLineSchema)
+      .min(2, "Se requieren al menos 2 líneas de asiento")
+      .optional(),
+  })
+  // voucherTypeId y periodId NO son mutables — el `number` correlativo del
+  // asiento está scoped por (org, voucherTypeId, periodId), cambiar cualquiera
+  // de los dos rompería la secuencia y dejaría gap en la anterior. Para mover
+  // el asiento, anular y crear uno nuevo. strict() hace que el backend RECHACE
+  // explícitamente esos campos (antes los descartaba silenciosamente, lo que
+  // hacía pensar al usuario que el cambio se había aplicado).
+  .strict();
 
 export const statusTransitionSchema = z.object({
   status: z.enum(["POSTED", "VOIDED"], { message: "Transición de estado inválida" }),
