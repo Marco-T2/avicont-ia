@@ -25,10 +25,16 @@ import {
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const { mockRequirePermission, mockClose, mockResolveByClerkId } = vi.hoisted(() => ({
+const {
+  mockRequirePermission,
+  mockClose,
+  mockResolveByClerkId,
+  mockGetPeriodById,
+} = vi.hoisted(() => ({
   mockRequirePermission: vi.fn(),
   mockClose: vi.fn(),
   mockResolveByClerkId: vi.fn(),
+  mockGetPeriodById: vi.fn(),
 }));
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -40,6 +46,10 @@ vi.mock("@/features/permissions/server", () => ({
 vi.mock("@/modules/monthly-close/presentation/server", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/modules/monthly-close/presentation/server")>()),
   makeMonthlyCloseService: vi.fn().mockImplementation(() => ({ close: mockClose })),
+}));
+
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ getById: mockGetPeriodById })),
 }));
 
 vi.mock("@/features/users/server", () => ({
@@ -89,6 +99,7 @@ beforeEach(() => {
   mockRequirePermission.mockResolvedValue({ session: { userId: "clerk-u1" }, orgId: "org-1" });
   mockResolveByClerkId.mockResolvedValue({ id: "db-user-1" });
   mockClose.mockResolvedValue(validCloseResult);
+  mockGetPeriodById.mockResolvedValue({ id: "period-1", name: "Enero 2026" });
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -106,23 +117,16 @@ describe("POST /api/.../monthly-close — success", () => {
       locked: expect.objectContaining({ dispatches: 5 }),
     });
     // Verify service was called with hex positional signature
-    // close(organizationId, periodId, userId, justification?)
+    // close(organizationId, periodId, userId, justification)
+    // Justification is now auto-generated server-side (textarea removed from UI
+    // — mirror del annual-close pattern). Shape: includes period name + ISO date.
     expect(mockClose).toHaveBeenCalledWith(
       "org-1",
       "period-1",
       "db-user-1",
-      undefined,
-    );
-  });
-
-  it("(a) passes justification when provided", async () => {
-    await POST(makeRequest({ periodId: "period-2", justification: "End of month" }), { params: makeParams() });
-
-    expect(mockClose).toHaveBeenCalledWith(
-      "org-1",
-      "period-2",
-      "db-user-1",
-      "End of month",
+      expect.stringMatching(
+        /^Cierre mensual del período Enero 2026 ejecutado el \d{4}-\d{2}-\d{2} \(justificación auto-generada por el sistema\)$/,
+      ),
     );
   });
 });

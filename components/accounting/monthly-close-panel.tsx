@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -82,7 +81,6 @@ export function MonthlyClosePanel({ orgSlug, selectedPeriod }: MonthlyClosePanel
   const [closing, setClosing] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [justification, setJustification] = useState("");
 
   const periodId = selectedPeriod.id;
 
@@ -119,14 +117,10 @@ export function MonthlyClosePanel({ orgSlug, selectedPeriod }: MonthlyClosePanel
     setClosing(true);
     setError(null);
     try {
-      const trimmed = justification.trim();
       const res = await fetch(`/api/organizations/${orgSlug}/monthly-close`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          periodId,
-          ...(trimmed ? { justification: trimmed } : {}),
-        }),
+        body: JSON.stringify({ periodId }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -136,7 +130,6 @@ export function MonthlyClosePanel({ orgSlug, selectedPeriod }: MonthlyClosePanel
       const result = await res.json();
       const correlationId = result?.correlationId as string | undefined;
       setConfirmOpen(false);
-      setJustification("");
       if (correlationId) {
         toast.success("Período cerrado", {
           description: "El período fue cerrado exitosamente.",
@@ -349,15 +342,7 @@ export function MonthlyClosePanel({ orgSlug, selectedPeriod }: MonthlyClosePanel
       )}
 
       {/* Confirmation dialog */}
-      <Dialog
-        open={confirmOpen}
-        onOpenChange={(open) => {
-          if (!open) {
-            setJustification("");
-          }
-          setConfirmOpen(open);
-        }}
-      >
+      <Dialog open={confirmOpen} onOpenChange={setConfirmOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Cierre de Período</DialogTitle>
@@ -382,28 +367,10 @@ export function MonthlyClosePanel({ orgSlug, selectedPeriod }: MonthlyClosePanel
               </div>
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-1 px-0">
-            <label
-              htmlFor="close-justification"
-              className="text-sm font-medium text-foreground"
-            >
-              Justificación (opcional)
-            </label>
-            <Textarea
-              id="close-justification"
-              placeholder="Justificación (opcional)"
-              value={justification}
-              onChange={(e) => setJustification(e.target.value)}
-              disabled={closing}
-            />
-          </div>
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setJustification("");
-                setConfirmOpen(false);
-              }}
+              onClick={() => setConfirmOpen(false)}
               disabled={closing}
             >
               Cancelar

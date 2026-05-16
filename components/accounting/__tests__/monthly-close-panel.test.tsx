@@ -14,7 +14,8 @@
  *
  * Asserts:
  *  (a) Shows DEBE≠HABER banner when summary.balance.balanced = false.
- *  (b) Passes justification string in POST body on confirm-close.
+ *  (b) POSTs only { periodId } on confirm-close (justification is now auto-
+ *      generated server-side; textarea removed from UI per annual-close mirror).
  *  (c) Auto-fetches summary on mount for selectedPeriod.id.
  *  (d) Renders period name as static label (NO combobox).
  *  (e) toast.success on close includes "Ver registro" action navigating to
@@ -139,7 +140,7 @@ describe("MonthlyClosePanel — balance + close flow", () => {
     expect(alert).toHaveTextContent(/DEBE.*HABER/i);
   });
 
-  it("(b) passes justification to POST payload on confirm-close", async () => {
+  it("(b) POSTs only { periodId } on confirm-close (justification auto-generated server-side)", async () => {
     const postMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({
@@ -165,18 +166,15 @@ describe("MonthlyClosePanel — balance + close flow", () => {
 
     fireEvent.click(closeBtn);
 
-    const textarea = await screen.findByPlaceholderText(/justificación/i);
-    fireEvent.change(textarea, { target: { value: "Justificación de prueba completa" } });
-
-    const confirmBtn = screen.getByRole("button", { name: /confirmar cierre/i });
+    const confirmBtn = await screen.findByRole("button", { name: /confirmar cierre/i });
     fireEvent.click(confirmBtn);
 
     await waitFor(() => expect(postMock).toHaveBeenCalled());
 
     const [, options] = postMock.mock.calls[0] as [string, RequestInit];
     const body = JSON.parse(options.body as string);
-    expect(body.justification).toBe("Justificación de prueba completa");
-    expect(body.periodId).toBe(PERIOD_ID);
+    expect(body).toEqual({ periodId: PERIOD_ID });
+    expect(body).not.toHaveProperty("justification");
   });
 });
 

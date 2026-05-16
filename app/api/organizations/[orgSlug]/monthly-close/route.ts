@@ -4,9 +4,11 @@ import {
   makeMonthlyCloseService,
   closeRequestSchema,
 } from "@/modules/monthly-close/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { UsersService } from "@/features/users/server";
 
 const service = makeMonthlyCloseService();
+const periodsService = makeFiscalPeriodsService();
 const usersService = new UsersService();
 
 export async function POST(
@@ -22,11 +24,20 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(session.userId);
 
+    // Justification was removed from the UI (friction without audit value —
+    // mirror del annual-close pattern). Auto-generate a deterministic string
+    // que pase la MIN_JUSTIFICATION_LENGTH invariant del service y deje un
+    // audit_logs.justification trail legible. Resolvemos el period name
+    // primero para evitar UUIDs feos en la audit trail.
+    const period = await periodsService.getById(orgId, parsed.periodId);
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const autoJustification = `Cierre mensual del período ${period.name} ejecutado el ${today} (justificación auto-generada por el sistema)`;
+
     const result = await service.close(
       orgId,
       parsed.periodId,
       user.id,
-      parsed.justification,
+      autoJustification,
     );
 
     return Response.json(result);
