@@ -40,15 +40,38 @@ import type {
  * root passes `(tx) => new JournalRepository(tx)`.
  *
  * ─────────────────────────────────────────────────────────────────────────
- * **DEC-1 boundary**. The adapter is the ONLY place `decimal.js Decimal` is
- * converted into `Prisma.Decimal`: `new Prisma.Decimal(d.toString())`.
- * Domain and application layers stay `decimal.js`-pure.
+ * **DEC-1 boundary — signature drift honest surface** per [[shim_retirement_signature_drift]]:
  *
- * The `sourceType` + `sourceId` linkage (annual-close + FY id) is written
- * post-INSERT via a same-TX `journalEntry.update` because the
- * `JournalRepository.createWithRetryTx` signature already accepts both
- * fields via its `data` argument — handled inline below.
+ * Design rev 2 §5 sketched `lines[].debit: new Prisma.Decimal(d.toString())`.
+ * The real `JournalRepository.createWithRetryTx` signature consumes
+ * `JournalLineInput[]` (canonical at `modules/accounting/presentation/dto/
+ * journal.types.ts:13`) where `debit: number, credit: number`. Prisma's
+ * Decimal column coerces from `number | string | Decimal` at the driver
+ * boundary, so passing numbers works at runtime — but the existing legacy
+ * type drives the static contract.
+ *
+ * The DEC-1 boundary in this adapter therefore uses `Decimal.toNumber()`
+ * (NOT `new Prisma.Decimal(d.toString())`). Annual-close values come from
+ * `::numeric(18,2)` aggregations bounded < 1e10 BOB (Bolivian SME max
+ * realistic) — well within `Number.MAX_SAFE_INTEGER` (~9e15). Zero
+ * precision loss for any realistic ledger; the bit-perfect balance gate
+ * already ran via `Decimal.equals` in the cc/ca-line builders BEFORE
+ * the .toNumber() conversion here. Diverging from design rev 2 §5 — revisit
+ * if `JournalRepository.createWithRetryTx` evolves to accept `Decimal`
+ * inputs directly.
+ *
+ * The `sourceType` + `sourceId` linkage (annual-close + FY id) is passed
+ * inline via the `data` arg — `createWithRetryTx` persists both fields.
  */
+
+interface JournalLineInputLike {
+  accountId: string;
+  debit: number;
+  credit: number;
+  description?: string;
+  contactId?: string;
+  order: number;
+}
 
 interface JournalRepositoryLike {
   createWithRetryTx(
@@ -63,14 +86,8 @@ interface JournalRepositoryLike {
       sourceType?: string;
       sourceId?: string;
     },
-    lines: Array<{
-      accountId: string;
-      debit: Prisma.Decimal;
-      credit: Prisma.Decimal;
-      description?: string | null;
-      order?: number;
-    }>,
-    status: "DRAFT" | "POSTED",
+    lines: JournalLineInputLike[],
+    status?: "DRAFT" | "POSTED",
   ): Promise<{ id: string }>;
 }
 
@@ -135,10 +152,11 @@ export class PrismaAnnualClosingJournalWriterTxAdapter
       },
       input.lines.map((l, idx) => ({
         accountId: l.accountId,
-        // DEC-1 boundary — decimal.js → Prisma.Decimal via toString.
-        debit: new Prisma.Decimal(l.debit.toString()),
-        credit: new Prisma.Decimal(l.credit.toString()),
-        description: l.description ?? null,
+        // DEC-1 boundary — decimal.js → number (bounded < 1e10 BOB, no
+        // precision loss; signature drift cited in file-level JSDoc).
+        debit: l.debit.toNumber(),
+        credit: l.credit.toNumber(),
+        description: l.description,
         order: idx,
       })),
       "POSTED",
