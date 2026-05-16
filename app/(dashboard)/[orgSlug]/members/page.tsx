@@ -22,7 +22,7 @@ export default async function MembersPage({ params }: MembersPageProps) {
   const members = await service.listMembers(orgId);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <MembersPageClient orgSlug={orgSlug} members={members} />
     </div>
   );

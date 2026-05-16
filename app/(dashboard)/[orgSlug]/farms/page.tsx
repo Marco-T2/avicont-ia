@@ -46,7 +46,7 @@ export default async function FarmsPage({ params }: FarmsPageProps) {
   const farms = await attachLots(orgId, farmEntities);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <FarmsPageClient orgSlug={orgSlug} memberId={member.id} farms={farms} />
     </div>
   );
