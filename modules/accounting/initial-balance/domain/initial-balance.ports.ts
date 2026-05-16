@@ -15,10 +15,26 @@ import type { InitialBalanceRow, InitialBalanceOrgHeader } from "./initial-balan
  */
 export interface InitialBalanceQueryPort {
   /**
-   * Returns all initial-balance rows for a given Chart of Accounts (CA).
-   * Rows are signed-net: DEUDORA = debit − credit; ACREEDORA = credit − debit.
+   * Returns initial-balance rows for the organization. Rows are signed-net:
+   * DEUDORA = debit − credit; ACREEDORA = credit − debit.
+   *
+   * **Legacy semantics (post Phase 6.4 narrowing — spec REQ-6.0)**: returns
+   * lines from the MOST-RECENT POSTED CA voucher only. Prior to Phase 6.4
+   * this method aggregated lines from ALL CAs (which caused multi-year
+   * corruption when multiple CAs existed — annual-close C-3 root cause).
+   * Year-scoped callers MUST use `getInitialBalanceFromCAForYear`.
    */
   getInitialBalanceFromCA(orgId: string): Promise<InitialBalanceRow[]>;
+
+  /**
+   * Year-scoped variant of `getInitialBalanceFromCA`. Returns lines from
+   * the POSTED CA voucher dated within `[year-01-01, year-12-31]`. NEW for
+   * annual-close (spec REQ-6.0).
+   */
+  getInitialBalanceFromCAForYear(
+    orgId: string,
+    year: number,
+  ): Promise<InitialBalanceRow[]>;
 
   /**
    * Returns organization header metadata needed for PDF/XLSX export layout.
@@ -32,8 +48,22 @@ export interface InitialBalanceQueryPort {
   countCAVouchers(orgId: string): Promise<number>;
 
   /**
+   * Year-scoped variant of `countCAVouchers`. Returns the count of POSTED
+   * CA vouchers dated within `[year-01-01, year-12-31]`. NEW for annual-close
+   * (spec REQ-6.1). Typically 0 or 1.
+   */
+  countCAVouchersForYear(orgId: string, year: number): Promise<number>;
+
+  /**
    * Returns the opening date for the CA: min(je.date) of POSTED CA entries.
    * Returns null if no CA vouchers found.
    */
   getCADate(orgId: string): Promise<Date | null>;
+
+  /**
+   * Year-scoped variant of `getCADate`. Returns the date of the POSTED CA
+   * voucher dated within `[year-01-01, year-12-31]` (or null). NEW for
+   * annual-close (spec REQ-6.1).
+   */
+  getCADateForYear(orgId: string, year: number): Promise<Date | null>;
 }

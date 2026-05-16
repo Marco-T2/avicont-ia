@@ -128,6 +128,91 @@ export class PrismaInitialBalanceRepo
   }
 
   /**
+   * Year-scoped count of POSTED CA vouchers (NEW per spec REQ-6.1).
+   *
+   * Filters CA `JournalEntry` rows whose `date` falls within
+   * `[${year}-01-01, ${year}-12-31]` (inclusive — noon-UTC anchored, see
+   * `lib/date-utils.ts:toNoonUtc`). Typically returns 0 or 1 — multiple CAs
+   * in the same year indicate manual reconciliation drift.
+   *
+   * Annual-close consumes this in Phase 8 acceptance tests + future
+   * per-year `InitialBalanceService.generateForYear` flow.
+   */
+  async countCAVouchersForYear(orgId: string, year: number): Promise<number> {
+    this.requireOrg(orgId);
+
+    const rows = await this.db.$queryRaw<RawCACountRow[]>`
+      SELECT COUNT(DISTINCT je.id)::text AS count
+      FROM journal_entries je
+      JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
+      WHERE
+        je."organizationId" = ${orgId}
+        AND je."status"     = 'POSTED'
+        AND vt.code         = 'CA'
+        AND je.date        >= ${new Date(`${year}-01-01T00:00:00Z`)}
+        AND je.date        <= ${new Date(`${year}-12-31T23:59:59.999Z`)}
+    `;
+
+    if (rows.length === 0) return 0;
+    return Number.parseInt(rows[0].count, 10);
+  }
+
+  /**
+   * Year-scoped variant of `getInitialBalanceFromCA` (NEW per spec REQ-6.0).
+   *
+   * Filters the CA aggregation to vouchers dated within
+   * `[${year}-01-01, ${year}-12-31]`. Returns lines from THAT year's CA(s)
+   * only — does NOT include prior or future CAs (this is the fix for the
+   * annual-close C-3 multi-year corruption root cause).
+   *
+   * If a year has multiple CAs (manual drift), all matching CAs aggregate.
+   * `getInitialBalanceFromCAForYear` does NOT silently narrow to most-recent
+   * — that's the LEGACY method's post-6.4 semantic. Callers that need the
+   * most-recent CA within a year MUST use `getInitialBalanceFromCA` after
+   * the legacy narrowing in Phase 6.4.
+   */
+  async getInitialBalanceFromCAForYear(
+    orgId: string,
+    year: number,
+  ): Promise<InitialBalanceRow[]> {
+    this.requireOrg(orgId);
+
+    const rows = await this.db.$queryRaw<RawInitialBalanceRow[]>`
+      SELECT
+        jl."accountId" AS account_id,
+        a.code         AS code,
+        a.name         AS name,
+        a.subtype      AS subtype,
+        SUM(
+          CASE
+            WHEN a.nature = 'DEUDORA'   THEN jl.debit - jl.credit
+            WHEN a.nature = 'ACREEDORA' THEN jl.credit - jl.debit
+          END
+        )::text AS amount
+      FROM journal_lines   jl
+      JOIN journal_entries je ON je.id  = jl."journalEntryId"
+      JOIN accounts        a  ON a.id   = jl."accountId"
+      JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
+      WHERE
+        je."organizationId" = ${orgId}
+        AND je."status"     = 'POSTED'
+        AND vt.code         = 'CA'
+        AND a.subtype IS NOT NULL
+        AND je.date        >= ${new Date(`${year}-01-01T00:00:00Z`)}
+        AND je.date        <= ${new Date(`${year}-12-31T23:59:59.999Z`)}
+      GROUP BY jl."accountId", a.code, a.name, a.subtype
+    `;
+
+    return rows.map((r) => ({
+      accountId: r.account_id,
+      code: r.code,
+      name: r.name,
+      subtype: r.subtype,
+      amount: new Prisma.Decimal(r.amount),
+    }));
+  }
+
+  /**
    * Fetches organization header metadata for the exporter banners. Pulls from
    * `OrgProfile` (razón social, NIT, representante legal, dirección).
    *
@@ -181,6 +266,32 @@ export class PrismaInitialBalanceRepo
         je."organizationId" = ${orgId}
         AND je."status"     = 'POSTED'
         AND vt.code         = 'CA'
+    `;
+
+    return rows[0]?.date_at ?? null;
+  }
+
+  /**
+   * Year-scoped variant of `getCADate` (NEW per spec REQ-6.1).
+   *
+   * Returns `MIN(je.date)` among POSTED CA entries dated within
+   * `[${year}-01-01, ${year}-12-31]`. Returns `null` if no CA in that year.
+   */
+  async getCADateForYear(orgId: string, year: number): Promise<Date | null> {
+    this.requireOrg(orgId);
+
+    type RawDateRow = { date_at: Date | null };
+
+    const rows = await this.db.$queryRaw<RawDateRow[]>`
+      SELECT MIN(je.date) AS date_at
+      FROM journal_entries je
+      JOIN voucher_types   vt ON vt.id = je."voucherTypeId"
+      WHERE
+        je."organizationId" = ${orgId}
+        AND je."status"     = 'POSTED'
+        AND vt.code         = 'CA'
+        AND je.date        >= ${new Date(`${year}-01-01T00:00:00Z`)}
+        AND je.date        <= ${new Date(`${year}-12-31T23:59:59.999Z`)}
     `;
 
     return rows[0]?.date_at ?? null;
