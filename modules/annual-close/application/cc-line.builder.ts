@@ -1,5 +1,9 @@
 import Decimal from "decimal.js";
 import { BalanceNotZeroError } from "../domain/errors/annual-close-errors";
+import type {
+  AccountNature,
+  AccountType,
+} from "../domain/types/accounting-types";
 
 /**
  * CC line builder — signed-net algorithm (REQ-3.3, design rev 2 §4, C-2).
@@ -31,8 +35,7 @@ import { BalanceNotZeroError } from "../domain/errors/annual-close-errors";
  * DEC-1: `decimal.js` direct.
  */
 
-export type AccountNature = "DEUDORA" | "ACREEDORA";
-export type AccountType = "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
+export type { AccountNature, AccountType };
 
 export interface YearAggregatedLine {
   accountId: string;

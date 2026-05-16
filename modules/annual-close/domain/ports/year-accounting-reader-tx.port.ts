@@ -3,7 +3,7 @@ import type { YearAggregateBalance } from "./year-accounting-reader.port";
 import type {
   AccountNature,
   AccountType,
-} from "../../application/cc-line.builder";
+} from "../types/accounting-types";
 
 /**
  * INSIDE-TX year-aggregate reader (design rev 2 §4 + §5).
