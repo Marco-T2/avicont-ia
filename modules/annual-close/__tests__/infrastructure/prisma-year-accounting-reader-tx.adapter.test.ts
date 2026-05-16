@@ -358,4 +358,47 @@ describe("PrismaYearAccountingReaderTxAdapter", () => {
       expect(result).toBe(false);
     });
   });
+
+  // ── annual-close-canonical-flow Phase C T-07: aggregateGastosByYear ─────
+  describe("aggregateGastosByYear (asiento #1 source — REQ-A.1)", () => {
+    it("returns Decimal-typed GASTO leaves with nature for the signed-net builder", async () => {
+      mockQueryRaw.mockResolvedValue([
+        {
+          account_id: "acc-suel",
+          code: "5.1.1",
+          nature: "DEUDORA",
+          type: "GASTO",
+          subtype: "SUELDOS",
+          debit_total: "80000.00",
+          credit_total: "0",
+        },
+        {
+          account_id: "acc-alq",
+          code: "5.2.1",
+          nature: "DEUDORA",
+          type: "GASTO",
+          subtype: "ALQUILER",
+          debit_total: "12000.00",
+          credit_total: "0",
+        },
+      ]);
+
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.aggregateGastosByYear("org-1", 2026);
+
+      expect(result).toHaveLength(2);
+      expect(result[0].accountId).toBe("acc-suel");
+      expect(result[0].type).toBe("GASTO");
+      expect(result[0].debit).toBeInstanceOf(Decimal);
+      expect(result[0].debit.equals(new Decimal("80000.00"))).toBe(true);
+      expect(result[1].credit.equals(new Decimal(0))).toBe(true);
+    });
+
+    it("returns empty array when no GASTO movements", async () => {
+      mockQueryRaw.mockResolvedValue([]);
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.aggregateGastosByYear("org-1", 2099);
+      expect(result).toEqual([]);
+    });
+  });
 });
