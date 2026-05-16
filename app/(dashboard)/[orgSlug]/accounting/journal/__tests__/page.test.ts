@@ -11,12 +11,14 @@ const {
   mockListPaginated,
   mockPeriodsList,
   mockVoucherTypesList,
+  mockGetFiscalYearByYear,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
   mockListPaginated: vi.fn(),
   mockPeriodsList: vi.fn(),
   mockVoucherTypesList: vi.fn(),
+  mockGetFiscalYearByYear: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -37,6 +39,12 @@ vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => {
 
 vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
+}));
+
+vi.mock("@/modules/annual-close/presentation/server", () => ({
+  makeAnnualCloseService: vi.fn(() => ({
+    getFiscalYearByYear: mockGetFiscalYearByYear,
+  })),
 }));
 
 vi.mock("@/modules/voucher-types/presentation/server", () => ({
@@ -70,6 +78,7 @@ beforeEach(() => {
   });
   mockPeriodsList.mockResolvedValue([]);
   mockVoucherTypesList.mockResolvedValue([]);
+  mockGetFiscalYearByYear.mockResolvedValue(null);
 });
 
 describe("/accounting/journal — rbac gate", () => {

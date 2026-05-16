@@ -731,6 +731,10 @@ function buildJournalEntryWhere(
     where.periodId = filters.periodId;
   }
 
+  if (filters?.year) {
+    where.period = { year: filters.year };
+  }
+
   if (filters?.voucherTypeId) {
     where.voucherTypeId = filters.voucherTypeId;
   }

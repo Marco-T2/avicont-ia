@@ -35,6 +35,7 @@ import {
   Loader2,
 } from "lucide-react";
 import JournalEntryAiModal from "./journal-entry-ai-modal";
+import PeriodFilter from "./period-filter";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
@@ -104,17 +105,17 @@ interface JournalEntry {
 function buildHref(
   orgSlug: string,
   page: number,
+  year: number | undefined,
   periodId: string | undefined,
   voucherTypeId: string | undefined,
   status: string | undefined,
-  origin: string | undefined,
 ): string {
   const sp = new URLSearchParams();
   if (page > 1) sp.set("page", String(page));
+  if (year) sp.set("year", String(year));
   if (periodId) sp.set("periodId", periodId);
   if (voucherTypeId) sp.set("voucherTypeId", voucherTypeId);
   if (status) sp.set("status", status);
-  if (origin) sp.set("origin", origin);
   const q = sp.toString();
   return `/${orgSlug}/accounting/journal${q ? `?${q}` : ""}`;
 }
@@ -122,13 +123,17 @@ function buildHref(
 type JournalEntryListProps = PaginatedResult<JournalEntry> & {
   orgSlug: string;
   periods: FiscalPeriod[];
+  /** Distinct fiscal years (4-digit) the org has periods for, sorted DESC. */
+  availableYears: number[];
+  /** Currently-selected fiscal year (driven by URL `?year=`, or defaulted server-side
+   *  to the OPEN FiscalYear). All filters scope to this year. */
+  selectedYear: number;
   voucherTypes: VoucherTypeCfg[];
   /** Active filter values (from URL search params) */
   filters: {
     periodId?: string;
     voucherTypeId?: string;
     status?: string;
-    origin?: "manual" | "auto";
   };
   /**
    * ID del entry recién creado por el modal de captura asistida. Lo pinta con
@@ -302,6 +307,8 @@ export default function JournalEntryList({
   pageSize,
   totalPages,
   periods,
+  availableYears,
+  selectedYear,
   voucherTypes,
   filters,
   highlightId,
@@ -376,10 +383,10 @@ export default function JournalEntryList({
 
   function applyFilter(key: string, value: string) {
     const params = new URLSearchParams();
+    params.set("year", String(selectedYear));
     if (filters.periodId) params.set("periodId", filters.periodId);
     if (filters.voucherTypeId) params.set("voucherTypeId", filters.voucherTypeId);
     if (filters.status) params.set("status", filters.status);
-    if (filters.origin) params.set("origin", filters.origin);
 
     if (value && value !== "all") {
       params.set(key, value);
@@ -391,11 +398,27 @@ export default function JournalEntryList({
     router.push(`/${orgSlug}/accounting/journal${query ? `?${query}` : ""}`);
   }
 
-  function clearFilters() {
-    router.push(`/${orgSlug}/accounting/journal`);
+  // Año changes invalidate periodId (periods belong to a single year). Mantener
+  // el resto de filtros (voucherType/status) — son ortogonales al año.
+  function changeYear(year: number) {
+    const params = new URLSearchParams();
+    params.set("year", String(year));
+    if (filters.voucherTypeId) params.set("voucherTypeId", filters.voucherTypeId);
+    if (filters.status) params.set("status", filters.status);
+    router.push(`/${orgSlug}/accounting/journal?${params.toString()}`);
   }
 
-  const hasFilters = !!(filters.periodId || filters.voucherTypeId || filters.status || filters.origin);
+  function changePeriod(periodId: string | null) {
+    applyFilter("periodId", periodId ?? "all");
+  }
+
+  function clearFilters() {
+    // Limpieza preserva la gestión activa — "limpiar filtros" no debería
+    // mandar al usuario a otra gestión.
+    router.push(`/${orgSlug}/accounting/journal?year=${selectedYear}`);
+  }
+
+  const hasFilters = !!(filters.periodId || filters.voucherTypeId || filters.status);
 
   return (
     <>
@@ -403,25 +426,14 @@ export default function JournalEntryList({
       <Card>
         <CardContent className="pt-6">
           <div className="flex flex-wrap items-end gap-4">
-            <div className="space-y-1">
-              <Label className="text-sm">Período</Label>
-              <Select
-                value={filters.periodId ?? "all"}
-                onValueChange={(v) => applyFilter("periodId", v)}
-              >
-                <SelectTrigger className="w-48">
-                  <SelectValue placeholder="Todos los períodos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos los períodos</SelectItem>
-                  {periods.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <PeriodFilter
+              periods={periods}
+              availableYears={availableYears}
+              selectedYear={selectedYear}
+              selectedPeriodId={filters.periodId ?? null}
+              onYearChange={changeYear}
+              onPeriodChange={changePeriod}
+            />
 
             <div className="space-y-1">
               <Label className="text-sm">Tipo de Comprobante</Label>
@@ -457,23 +469,6 @@ export default function JournalEntryList({
                   <SelectItem value="DRAFT">Borrador</SelectItem>
                   <SelectItem value="POSTED">Contabilizado</SelectItem>
                   <SelectItem value="VOIDED">Anulado</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1">
-              <Label className="text-sm">Origen</Label>
-              <Select
-                value={filters.origin ?? "all"}
-                onValueChange={(v) => applyFilter("origin", v)}
-              >
-                <SelectTrigger className="w-40">
-                  <SelectValue placeholder="Todos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="manual">Manual</SelectItem>
-                  <SelectItem value="auto">Automático</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -595,10 +590,10 @@ export default function JournalEntryList({
                 href={buildHref(
                   orgSlug,
                   Math.max(1, page - 1),
+                  selectedYear,
                   filters.periodId,
                   filters.voucherTypeId,
                   filters.status,
-                  filters.origin,
                 )}
                 aria-disabled={page <= 1}
                 className={page <= 1 ? "pointer-events-none opacity-50" : undefined}
@@ -611,10 +606,10 @@ export default function JournalEntryList({
                   href={buildHref(
                     orgSlug,
                     p,
+                    selectedYear,
                     filters.periodId,
                     filters.voucherTypeId,
                     filters.status,
-                    filters.origin,
                   )}
                   isActive={p === page}
                 >
@@ -627,10 +622,10 @@ export default function JournalEntryList({
                 href={buildHref(
                   orgSlug,
                   Math.min(totalPages, page + 1),
+                  selectedYear,
                   filters.periodId,
                   filters.voucherTypeId,
                   filters.status,
-                  filters.origin,
                 )}
                 aria-disabled={page >= totalPages}
                 className={

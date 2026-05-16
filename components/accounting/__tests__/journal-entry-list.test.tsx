@@ -81,6 +81,8 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -98,6 +100,8 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -115,6 +119,8 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -132,6 +138,8 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -149,6 +157,8 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -173,6 +183,8 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -182,64 +194,6 @@ describe("JournalEntryList — origin badge (REQ-B.1)", () => {
     expect(screen.getByText("Generado por Compra")).toBeInTheDocument();
     expect(screen.getByText("Generado por Despacho")).toBeInTheDocument();
     expect(screen.getByText("Generado por Pago")).toBeInTheDocument();
-  });
-});
-
-// ── T5.4: Origen <Select> filter control (REQ-C.1, S-C1.5) ──
-
-describe("JournalEntryList — Origen filter control (REQ-C.1)", () => {
-  it("T5.4a — Origen Select label is rendered in the filters bar", () => {
-    render(
-      <JournalEntryList
-        orgSlug="test-org"
-        items={[]}
-        total={0}
-        page={1}
-        pageSize={25}
-        totalPages={1}
-        periods={[BASE_PERIOD] as any}
-        voucherTypes={[BASE_VOUCHER_TYPE] as any}
-        filters={{}}
-      />,
-    );
-    // "Origen" appears both as filter Label and as table <th> column header
-    const origenElements = screen.getAllByText("Origen");
-    expect(origenElements.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("T5.4b — filters.origin='auto' → Select shows value 'Automático'", () => {
-    render(
-      <JournalEntryList
-        orgSlug="test-org"
-        items={[]}
-        total={0}
-        page={1}
-        pageSize={25}
-        totalPages={1}
-        periods={[BASE_PERIOD] as any}
-        voucherTypes={[BASE_VOUCHER_TYPE] as any}
-        filters={{ origin: "auto" }}
-      />,
-    );
-    // The SelectTrigger value text should be visible
-    expect(screen.getByText("Automático")).toBeInTheDocument();
-  });
-
-  it("T5.4c — filters.origin='manual' → Select shows value 'Manual'", () => {
-    render(
-      <JournalEntryList
-        orgSlug="test-org"
-        items={[]}
-        total={0}
-        page={1}
-        pageSize={25}
-        totalPages={1}
-        periods={[BASE_PERIOD] as any}
-        voucherTypes={[BASE_VOUCHER_TYPE] as any}
-        filters={{ origin: "manual" }}
-      />,
-    );
-    expect(screen.getByText("Manual")).toBeInTheDocument();
   });
 });
 
@@ -261,6 +215,8 @@ describe("JournalEntryList — actions dropdown", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -279,6 +235,8 @@ describe("JournalEntryList — actions dropdown", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -298,6 +256,8 @@ describe("JournalEntryList — actions dropdown", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,
@@ -332,6 +292,8 @@ describe("JournalEntryList — display-date TZ-safe (REQ-D.1)", () => {
         pageSize={25}
         totalPages={1}
         periods={[BASE_PERIOD] as any}
+        availableYears={[2026]}
+        selectedYear={2026}
         voucherTypes={[BASE_VOUCHER_TYPE] as any}
         filters={{}}
       />,

@@ -56,6 +56,10 @@ export interface JournalFilters {
   dateFrom?: Date;
   dateTo?: Date;
   periodId?: string;
+  /** Filters entries whose period belongs to the given fiscal year (4-digit).
+   *  Composes with `periodId` via AND — incoherent combinations (year mismatching
+   *  periodId's year) yield empty results by design. */
+  year?: number;
   voucherTypeId?: string;
   status?: JournalEntryStatus;
   origin?: "manual" | "auto" | "all";
