@@ -10,7 +10,6 @@ import { StatementFilters } from "./statement-filters";
 import type { FiscalPeriod, QuickBooksFilterParams } from "./statement-filters";
 import { StatementTable } from "./statement-table";
 import { StatementToolbar } from "./statement-toolbar";
-import { PreliminaryBanner } from "./preliminary-banner";
 import { ImbalanceBanner } from "./imbalance-banner";
 import { OppositeSignWarning } from "./opposite-sign-warning";
 import {
@@ -220,7 +219,6 @@ export function BalanceSheetPageClient({ orgSlug, orgName, periods }: BalanceShe
       {statement && !loading && (
         <div className="space-y-4">
           {/* Banners */}
-          <PreliminaryBanner show={statement.current.preliminary} />
           <ImbalanceBanner
             imbalanced={statement.current.imbalanced}
             imbalanceDelta={statement.current.imbalanceDelta}

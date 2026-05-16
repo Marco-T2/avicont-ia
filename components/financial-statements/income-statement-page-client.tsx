@@ -10,7 +10,6 @@ import { StatementFilters } from "./statement-filters";
 import type { FiscalPeriod, QuickBooksFilterParams } from "./statement-filters";
 import { StatementTable } from "./statement-table";
 import { StatementToolbar } from "./statement-toolbar";
-import { PreliminaryBanner } from "./preliminary-banner";
 import {
   IncomeStatementAnalysisCard,
   type AnalyzeIncomeStatementResult,
@@ -219,8 +218,6 @@ export function IncomeStatementPageClient({ orgSlug, orgName, periods }: IncomeS
       {/* Resultado */}
       {statement && !loading && (
         <div className="space-y-4">
-          <PreliminaryBanner show={statement.current.preliminary} />
-
           <Card>
             <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
               <StatementTable
