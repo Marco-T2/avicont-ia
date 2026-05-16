@@ -24,7 +24,7 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockList })),
 }));
 
-vi.mock("@/components/accounting/period-list", () => ({
+vi.mock("@/components/accounting/annual-period-list", () => ({
   default: vi.fn().mockReturnValue(null),
 }));
 
