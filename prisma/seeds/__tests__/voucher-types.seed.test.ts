@@ -1,12 +1,16 @@
 /**
  * REQ-D.1 — Seed creates standard voucher types per org, idempotent, prefix-backed
  *
- * D.1-S1 fresh org → 12 rows (CJ for adjustments + CP/CL/CV for patrimony)
+ * D.1-S1 fresh org → 13 rows (CJ for adjustments + CP/CL/CV for patrimony + CC for annual close)
  * D.1-S2 idempotent — re-run → no duplicates (upsert semantics)
  * D.1-S3 every seed entry has a non-empty prefix
  * D.1-S4 seed file text does NOT import VoucherTypeCode enum
- * D.1-S5 CJ carries isAdjustment=true; CP/CL/CV are patrimony codes (isAdjustment=false)
- * D.1-S6 re-seed on org with existing 9 types adds CP/CL/CV without mutating previous rows
+ * D.1-S5 CJ and CC carry isAdjustment=true; CP/CL/CV are patrimony codes (isAdjustment=false)
+ * D.1-S6 re-seed on org with existing 9 types adds CP/CL/CV + CC without mutating previous rows
+ *
+ * Phase 1.6 update (annual-close) — D.1-S1/S5/S6 widened to include CC
+ * (Comprobante de Cierre) per spec REQ-3.1. The CC entry is the source of
+ * year-close JEs and carries isAdjustment=true alongside CJ.
  */
 
 import { describe, expect, it, vi } from "vitest";
@@ -22,6 +26,7 @@ import {
 const EXPECTED_CODES = [
   "CI", "CE", "CD", "CJ", "CT", "CA", "CN", "CM", "CB",
   "CP", "CL", "CV",
+  "CC", // annual-close — Comprobante de Cierre (REQ-3.1)
 ] as const;
 const EXPECTED_PREFIXES: Record<string, string> = {
   CI: "I",
@@ -36,7 +41,9 @@ const EXPECTED_PREFIXES: Record<string, string> = {
   CP: "P",
   CL: "L",
   CV: "V",
+  CC: "C", // annual-close
 };
+const ADJUSTMENT_CODES = ["CJ", "CC"] as const;
 const PATRIMONY_CODES = ["CP", "CL", "CV"] as const;
 
 // Minimal Prisma-shape mock — we only exercise voucherTypeCfg.upsert + $disconnect
@@ -68,8 +75,8 @@ function makeMockPrisma() {
 }
 
 describe("DEFAULT_VOUCHER_TYPES constant (REQ-D.1)", () => {
-  it("D.1-S1a — exports exactly 12 entries (9 legacy + 3 patrimony)", () => {
-    expect(DEFAULT_VOUCHER_TYPES).toHaveLength(12);
+  it("D.1-S1a — exports exactly 13 entries (9 legacy + 3 patrimony + CC annual-close)", () => {
+    expect(DEFAULT_VOUCHER_TYPES).toHaveLength(13);
   });
 
   it("D.1-S1b — includes all standard codes in the Bolivian catalog", () => {
@@ -90,15 +97,16 @@ describe("DEFAULT_VOUCHER_TYPES constant (REQ-D.1)", () => {
     }
   });
 
-  it("D.1-S5 — CJ is the only entry flagged as isAdjustment=true", () => {
+  it("D.1-S5 — CJ and CC are the only entries flagged as isAdjustment=true", () => {
     const adjustments = DEFAULT_VOUCHER_TYPES.filter((t) => t.isAdjustment);
-    expect(adjustments).toHaveLength(1);
-    expect(adjustments[0].code).toBe("CJ");
+    const codes = adjustments.map((a) => a.code).sort();
+    expect(codes).toEqual([...ADJUSTMENT_CODES].sort());
   });
 
-  it("D.1-S5b — every non-CJ entry has isAdjustment=false", () => {
+  it("D.1-S5b — every non-adjustment entry has isAdjustment=false", () => {
+    const adjustmentSet = new Set<string>(ADJUSTMENT_CODES);
     for (const t of DEFAULT_VOUCHER_TYPES) {
-      if (t.code !== "CJ") expect(t.isAdjustment).toBe(false);
+      if (!adjustmentSet.has(t.code)) expect(t.isAdjustment).toBe(false);
     }
   });
 
@@ -122,12 +130,12 @@ describe("DEFAULT_VOUCHER_TYPES constant (REQ-D.1)", () => {
 });
 
 describe("seedVoucherTypes (REQ-D.1)", () => {
-  it("D.1-S1 — fresh org: upsert invoked once per standard code (12 total)", async () => {
+  it("D.1-S1 — fresh org: upsert invoked once per standard code (13 total)", async () => {
     const mock = makeMockPrisma();
 
     await seedVoucherTypes("org-test", mock.client as never);
 
-    expect(mock.upsert).toHaveBeenCalledTimes(12);
+    expect(mock.upsert).toHaveBeenCalledTimes(13);
     const codesCalled = mock.upsert.mock.calls.map(
       (c) => (c[0] as { create: { code: string } }).create.code,
     );
@@ -136,6 +144,7 @@ describe("seedVoucherTypes (REQ-D.1)", () => {
 
   it("D.1-S1c — every upsert payload carries code + name + prefix + organizationId + isAdjustment", async () => {
     const mock = makeMockPrisma();
+    const adjustmentSet = new Set<string>(ADJUSTMENT_CODES);
 
     await seedVoucherTypes("org-test", mock.client as never);
 
@@ -150,11 +159,11 @@ describe("seedVoucherTypes (REQ-D.1)", () => {
         };
       };
       expect(arg.create.organizationId).toBe("org-test");
-      expect(arg.create.code).toMatch(/^C[IEDJTANMBPLV]$/);
+      expect(arg.create.code).toMatch(/^C[IEDJTANMBPLVC]$/);
       expect(arg.create.prefix).toBe(EXPECTED_PREFIXES[arg.create.code]);
       expect(arg.create.name.length).toBeGreaterThan(0);
       expect(typeof arg.create.isAdjustment).toBe("boolean");
-      if (arg.create.code === "CJ") {
+      if (adjustmentSet.has(arg.create.code)) {
         expect(arg.create.isAdjustment).toBe(true);
       } else {
         expect(arg.create.isAdjustment).toBe(false);
@@ -168,8 +177,8 @@ describe("seedVoucherTypes (REQ-D.1)", () => {
     await seedVoucherTypes("org-test", mock.client as never);
     await seedVoucherTypes("org-test", mock.client as never);
 
-    // 2 runs × 12 types = 24 upsert calls; upsert semantics guarantee no duplicate rows
-    expect(mock.upsert).toHaveBeenCalledTimes(24);
+    // 2 runs × 13 types = 26 upsert calls; upsert semantics guarantee no duplicate rows
+    expect(mock.upsert).toHaveBeenCalledTimes(26);
     for (const call of mock.upsert.mock.calls) {
       const arg = call[0] as { where: { organizationId_code: { code: string } } };
       // where clause must be the unique pair — proves idempotency path

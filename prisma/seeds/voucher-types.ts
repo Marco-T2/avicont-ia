@@ -23,6 +23,7 @@ export const DEFAULT_VOUCHER_TYPES: readonly VoucherTypeSeed[] = [
   { code: "CP", prefix: "P", name: "Comprobante de Aporte de Capital",         description: "Registra aportes de socios al capital (cuentas 3.1.x y 3.2.1)",                                    isAdjustment: false },
   { code: "CL", prefix: "L", name: "Comprobante de Constitución de Reserva",   description: "Registra constitución o liberación de reservas (cuentas 3.3.x)",                                  isAdjustment: false },
   { code: "CV", prefix: "V", name: "Comprobante de Distribución a Socios",     description: "Registra retiros, dividendos o distribución de utilidades acumuladas (cuentas 3.4.x / 3.5.x)",    isAdjustment: false },
+  { code: "CC", prefix: "C", name: "Comprobante de Cierre",                    description: "Registra el asiento de cierre del ejercicio (cierre de gestión)",                                isAdjustment: true  },
 ] as const;
 
 type PrismaLike = Pick<PrismaClient, "voucherTypeCfg" | "$disconnect">;
