@@ -262,3 +262,21 @@ test("α-mock-stability-c3-01: @google/generative-ai is mocked (prevents 1500ms 
   const { GoogleGenerativeAI } = await import("@google/generative-ai");
   expect(vi.isMockFunction(GoogleGenerativeAI)).toBe(true);
 });
+
+// α-prisma-mock-c3-02: If vi.mock("@/lib/prisma", ...) is removed, prisma is
+// the real PrismaClient instance — `prisma.$connect` is a function (Prisma
+// public API, present on all PrismaClient instances since v1).
+// Mock `{}` has no such method → `typeof === "undefined"`.
+// Expected failure mode: assertion-fail
+// `expected 'function' to be 'undefined'` (NOT timeout).
+// [[red_acceptance_failure_mode]] compliance. Paired sister α-mock-stability-c3-01.
+//
+// Design diagnostic note: design #2631 (constructor.name) and spec #2632
+// (Object.prototype) BOTH failed empirical RED check. Prisma 7 generated client
+// has constructor.name === "t" (minified) and Object.prototype as direct parent
+// (methods are instance properties via Proxy, not prototype). Behavioral check
+// on public API method is the bulletproof invariant.
+test("α-prisma-mock-c3-02: @/lib/prisma is mocked (prevents PrismaPg pool-init timeout regression)", async () => {
+  const { prisma } = await import("@/lib/prisma");
+  expect(typeof (prisma as { $connect?: unknown }).$connect).toBe("undefined");
+});
