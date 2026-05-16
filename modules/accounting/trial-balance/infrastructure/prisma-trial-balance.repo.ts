@@ -1,5 +1,6 @@
 import { BaseRepository } from "@/features/shared/base.repository";
 import Decimal from "decimal.js";
+import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type { TrialBalanceQueryPort } from "../domain/ports/trial-balance-query.port";
 import type {
   TrialBalanceMovement,
@@ -53,7 +54,7 @@ export class PrismaTrialBalanceRepo extends BaseRepository implements TrialBalan
       JOIN journal_entries je ON je.id = jl."journalEntryId"
       WHERE
         je."organizationId" = ${orgId}
-        AND je.status        = 'POSTED'
+        AND je.status        ${FINALIZED_JE_STATUSES_SQL}
         AND je.date         >= ${dateFrom}
         AND je.date         <= ${dateTo}
       GROUP BY jl."accountId"
