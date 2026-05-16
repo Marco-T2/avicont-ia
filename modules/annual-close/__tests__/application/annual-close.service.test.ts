@@ -47,7 +47,7 @@ function makeFiscalYearReader(
     findResultAccount: vi.fn(async () => ({
       id: "acc_322",
       code: "3.2.2",
-      nature: "ACREEDORA",
+      nature: "ACREEDORA" as const,
     })),
     ...overrides,
   };
@@ -174,7 +174,7 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         id: "fy_1",
         organizationId: ORG,
         year: YEAR,
-        status: "OPEN",
+        status: "OPEN" as const,
         closedAt: null,
         closedBy: null,
         closingEntryId: null,
@@ -190,7 +190,7 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
       ccExistsForYear: vi.fn(async () => false),
       decemberPeriodOf: vi.fn(async () => ({
         id: "p_dec",
-        status: "OPEN",
+        status: "OPEN" as const,
       })),
     });
     const service = new AnnualCloseService({
@@ -215,7 +215,7 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         id: "fy_1",
         organizationId: ORG,
         year: YEAR,
-        status: "OPEN",
+        status: "OPEN" as const,
         closedAt: null,
         closedBy: null,
         closingEntryId: null,
@@ -231,7 +231,7 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
       ccExistsForYear: vi.fn(async () => false),
       decemberPeriodOf: vi.fn(async () => ({
         id: "p_dec",
-        status: "CLOSED",
+        status: "CLOSED" as const,
       })),
     });
     const service = new AnnualCloseService({
@@ -252,7 +252,7 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         id: "fy_1",
         organizationId: ORG,
         year: YEAR,
-        status: "OPEN",
+        status: "OPEN" as const,
         closedAt: null,
         closedBy: null,
         closingEntryId: null,
@@ -268,7 +268,7 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
       ccExistsForYear: vi.fn(async () => true),
       decemberPeriodOf: vi.fn(async () => ({
         id: "p_dec",
-        status: "CLOSED",
+        status: "CLOSED" as const,
       })),
     });
     const service = new AnnualCloseService({
