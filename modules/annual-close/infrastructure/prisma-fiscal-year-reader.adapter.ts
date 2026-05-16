@@ -1,7 +1,5 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { toNoonUtc } from "@/lib/date-utils";
-
 import type { FiscalYearSnapshot } from "../domain/fiscal-year.entity";
 import type {
   AnnualCloseDecemberPeriod,
@@ -78,25 +76,6 @@ export class PrismaFiscalYearReaderAdapter implements FiscalYearReaderPort {
       else if (r.status === "OPEN") open = r._count._all;
     }
     return { closed, open, total: closed + open };
-  }
-
-  async ccExistsForYear(
-    organizationId: string,
-    year: number,
-  ): Promise<boolean> {
-    const row = await this.db.journalEntry.findFirst({
-      where: {
-        organizationId,
-        status: "POSTED", // sentinel-allow:cc-freshness-read (CC always POSTED freshly inside same TX; pre-TX gate reads before lock — explorer §B.3)
-        voucherType: { code: "CC" },
-        date: {
-          gte: toNoonUtc(`${year}-01-01`),
-          lte: toNoonUtc(`${year}-12-31`),
-        },
-      },
-      select: { id: true },
-    });
-    return row !== null;
   }
 
   async decemberPeriodOf(

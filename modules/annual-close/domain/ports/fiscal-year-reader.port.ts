@@ -15,10 +15,13 @@ import type { FiscalYearSnapshot } from "../fiscal-year.entity";
  *    reader returns null so the orchestrator can decide between OPEN/CREATE
  *    semantics (a FY may not yet exist for OPEN years).
  *  - `countPeriodsByStatus` returns the 3-count Snapshot LOCAL.
- *  - `ccExistsForYear` is the binary CC-already-posted gate (edge-path
- *    rejection per spec REQ-2.1 + REQ-2.2 step 1).
  *  - `decemberPeriodOf` uses `@@unique([organizationId, year, month])` at
  *    `prisma/schema.prisma:441` (design rev 2 §5, S-5).
+ *
+ *  - `ccExistsForYear` RETIRED per CAN-5.2 / REQ-A.8 — idempotency gate
+ *    moves to `FiscalYear.status='CLOSED'` (stronger, FK-anchored). With
+ *    4 CC entries per FY in the canonical 5-asientos flow, a CC-exists gate
+ *    becomes ambiguous.
  *  - `findResultAccount` pre-TX checks for `3.2.2 Resultado de la Gestión`;
  *    null → `MissingResultAccountError` (HTTP 500, W-7).
  */
@@ -59,13 +62,6 @@ export interface FiscalYearReaderPort {
     organizationId: string,
     year: number,
   ): Promise<FiscalYearPeriodCounts>;
-
-  /**
-   * True iff a POSTED CC voucher dated within `${year}` already exists.
-   * Pre-TX edge-path rejection per spec REQ-2.1; the TX re-checks for
-   * race-safety via `YearAccountingReaderTxPort.reReadCcExistsForYearTx`.
-   */
-  ccExistsForYear(organizationId: string, year: number): Promise<boolean>;
 
   /**
    * Returns December period snapshot for (orgId, year). Null when no Dec

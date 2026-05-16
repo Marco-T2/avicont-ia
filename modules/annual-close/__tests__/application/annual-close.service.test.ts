@@ -42,7 +42,6 @@ function makeFiscalYearReader(
   return {
     getByYear: vi.fn(async () => null),
     countPeriodsByStatus: vi.fn(async () => ({ closed: 0, open: 0, total: 0 })),
-    ccExistsForYear: vi.fn(async () => false),
     decemberPeriodOf: vi.fn(async () => null),
     findResultAccount: vi.fn(async () => ({
       id: "acc_322",
@@ -185,7 +184,6 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         open: 1,
         total: 12,
       })),
-      ccExistsForYear: vi.fn(async () => false),
       decemberPeriodOf: vi.fn(async () => ({
         id: "p_dec",
         status: "OPEN" as const,
@@ -224,7 +222,6 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
         open: 0,
         total: 12,
       })),
-      ccExistsForYear: vi.fn(async () => false),
       decemberPeriodOf: vi.fn(async () => ({
         id: "p_dec",
         status: "CLOSED" as const,
@@ -242,42 +239,9 @@ describe("AnnualCloseService.getSummary — Phase 3.3 (shape + year-aggregate ba
     expect(summary.gateAllowed).toBe(true);
   });
 
-  it("CC already exists for year → gateAllowed=false with reason mentioning CC", async () => {
-    const fyReader = makeFiscalYearReader({
-      getByYear: vi.fn(async () => ({
-        id: "fy_1",
-        organizationId: ORG,
-        year: YEAR,
-        status: "OPEN" as const,
-        closedAt: null,
-        closedBy: null,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      })),
-      countPeriodsByStatus: vi.fn(async () => ({
-        closed: 12,
-        open: 0,
-        total: 12,
-      })),
-      ccExistsForYear: vi.fn(async () => true),
-      decemberPeriodOf: vi.fn(async () => ({
-        id: "p_dec",
-        status: "CLOSED" as const,
-      })),
-    });
-    const service = new AnnualCloseService({
-      fiscalYearReader: fyReader,
-      yearAccountingReader: makeYearAccountingReader(),
-      draftDocuments: makeDraftDocumentsReader(),
-      uow: makeUowStub(),
-    });
-
-    const summary = await service.getSummary(ORG, YEAR);
-
-    expect(summary.ccExists).toBe(true);
-    expect(summary.gateAllowed).toBe(false);
-    expect(summary.gateReason).toBeDefined();
-  });
+  // CC-already-exists gate REMOVED per CAN-5.2 / REQ-A.8 — idempotency is
+  // now exclusively `FiscalYear.status='CLOSED'`. The replacement test for the
+  // FY-CLOSED gate already exists upstream ("getSummary returns CLOSED status").
 });
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -514,7 +478,6 @@ function makeStandardReadyReader(): FiscalYearReaderPort {
       // year+1 (or any other year): empty — passes the pre-init gate.
       return { closed: 0, open: 0, total: 0 };
     }),
-    ccExistsForYear: vi.fn(async () => false),
     decemberPeriodOf: vi.fn(async () => ({
       id: "p_dec",
       status: "OPEN" as const,
@@ -538,7 +501,6 @@ function makeEdgeReadyReader(): FiscalYearReaderPort {
       if (y === 2026) return { closed: 12, open: 0, total: 12 };
       return { closed: 0, open: 0, total: 0 };
     }),
-    ccExistsForYear: vi.fn(async () => false),
     decemberPeriodOf: vi.fn(async () => ({
       id: "p_dec",
       status: "CLOSED" as const,
@@ -798,8 +760,9 @@ describe("AnnualCloseService.close — happy path STANDARD (months 1-11 CLOSED +
       .toHaveBeenCalledWith("fy_1");
     expect(ctx.scope.yearAccountingTx.reReadPeriodStatusTx)
       .toHaveBeenCalledWith("p_dec");
+    // reReadCcExistsForYearTx RETIRED per CAN-5.2 — must NOT be called.
     expect(ctx.scope.yearAccountingTx.reReadCcExistsForYearTx)
-      .toHaveBeenCalledWith(ORG, YEAR);
+      .not.toHaveBeenCalled();
 
     // (b) year-aggregate balance re-assert inside-TX
     expect(ctx.scope.yearAccountingTx.aggregateYearDebitCredit)
@@ -961,24 +924,10 @@ describe("AnnualCloseService.close — TOCTOU re-reads (W-2, spec REQ-2.2 step a
     expect(ctx.scope.closingJournals.createAndPost).not.toHaveBeenCalled();
   });
 
-  it("re-read shows CC already exists for year → throws FiscalYearGateNotMetError + rolls back", async () => {
-    const ctx = makeUowWithScope({
-      yearAccountingTx: {
-        reReadCcExistsForYearTx: vi.fn(async () => true),
-      },
-    });
-    const service = new AnnualCloseService({
-      fiscalYearReader: makeStandardReadyReader(),
-      yearAccountingReader: makeYearAccountingReader(),
-      draftDocuments: makeDraftDocumentsReader(),
-      uow: ctx.uow,
-    });
-
-    await expect(
-      service.close(ORG, YEAR, USER, VALID_JUSTIFICATION),
-    ).rejects.toBeInstanceOf(FiscalYearGateNotMetError);
-    expect(ctx.scope.closingJournals.createAndPost).not.toHaveBeenCalled();
-  });
+  // CC-already-exists TOCTOU re-check RETIRED per CAN-5.2 / REQ-A.8.
+  // Replaced by the existing FY-status TOCTOU re-read (which throws
+  // FiscalYearAlreadyClosedError on CLOSED). The W-3 markClosed guard
+  // absorbs any race that slips past upsertOpen + status re-read.
 
   it("INSIDE-TX year-aggregate balance fails → BalanceNotZeroError + rolls back", async () => {
     const ctx = makeUowWithScope({

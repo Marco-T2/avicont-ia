@@ -45,6 +45,11 @@ export interface AnnualCloseSummary {
   fiscalYearStatus: "OPEN" | "CLOSED" | "NOT_INITIALIZED";
   periods: FiscalYearPeriodCounts;
   decemberStatus: "OPEN" | "CLOSED" | "NOT_FOUND";
+  /**
+   * @deprecated Retired per CAN-5.2 / REQ-A.8 — idempotency is now exclusively
+   * `FiscalYear.status='CLOSED'`. Kept as compile-time literal `false` to
+   * preserve the consumer DTO surface until Phase 7.5+ UI rework.
+   */
   ccExists: boolean;
   gateAllowed: boolean;
   gateReason?: string;
@@ -91,7 +96,6 @@ function decideGate(args: {
   fiscalYearStatus: "OPEN" | "CLOSED" | "NOT_INITIALIZED";
   periods: FiscalYearPeriodCounts;
   decemberStatus: "OPEN" | "CLOSED" | "NOT_FOUND";
-  ccExists: boolean;
 }): { allowed: boolean; reason?: string } {
   if (args.fiscalYearStatus === "CLOSED") {
     return { allowed: false, reason: "La gestión ya está cerrada." };
@@ -108,18 +112,11 @@ function decideGate(args: {
       reason: "No existe el período de diciembre para la gestión.",
     };
   }
-  if (args.ccExists) {
-    return {
-      allowed: false,
-      reason:
-        "Ya existe un Comprobante de Cierre (CC) registrado para esta gestión.",
-    };
-  }
   // Standard path: months 1-11 CLOSED AND Dec OPEN.
   if (args.periods.closed === 11 && args.decemberStatus === "OPEN") {
     return { allowed: true };
   }
-  // Edge path: all 12 CLOSED AND no CC yet.
+  // Edge path: all 12 CLOSED AND FY OPEN (CAN-5.2 — idempotency via FY.status).
   if (args.periods.closed === 12 && args.decemberStatus === "CLOSED") {
     return { allowed: true };
   }
@@ -157,20 +154,21 @@ export class AnnualCloseService {
    *   1. fiscalYearReader.getByYear        → FiscalYearStatus | NOT_INITIALIZED
    *   2. fiscalYearReader.countPeriodsByStatus → {closed, open, total}
    *   3. fiscalYearReader.decemberPeriodOf → Dec status | NOT_FOUND
-   *   4. fiscalYearReader.ccExistsForYear  → boolean (CC already posted)
-   *   5. yearAccountingReader.aggregateYearDebitCreditNoTx → year-aggregate
+   *   4. yearAccountingReader.aggregateYearDebitCreditNoTx → year-aggregate
    *      balance (C-1 — single query, NOT per-period). UNCONDITIONAL.
-   *   6. decideGate(...) → standard|edge|blocked + reason string.
+   *   5. decideGate(...) → standard|edge|blocked + reason string.
+   *
+   *   Idempotency gate `ccExistsForYear` RETIRED per CAN-5.2 / REQ-A.8 —
+   *   FY.status='CLOSED' is the canonical idempotency source.
    */
   async getSummary(
     organizationId: string,
     year: number,
   ): Promise<AnnualCloseSummary> {
-    const [fy, periods, dec, ccExists, balance] = await Promise.all([
+    const [fy, periods, dec, balance] = await Promise.all([
       this.deps.fiscalYearReader.getByYear(organizationId, year),
       this.deps.fiscalYearReader.countPeriodsByStatus(organizationId, year),
       this.deps.fiscalYearReader.decemberPeriodOf(organizationId, year),
-      this.deps.fiscalYearReader.ccExistsForYear(organizationId, year),
       this.deps.yearAccountingReader.aggregateYearDebitCreditNoTx(
         organizationId,
         year,
@@ -187,7 +185,6 @@ export class AnnualCloseService {
       fiscalYearStatus,
       periods,
       decemberStatus,
-      ccExists,
     });
 
     return {
@@ -195,7 +192,7 @@ export class AnnualCloseService {
       fiscalYearStatus,
       periods,
       decemberStatus,
-      ccExists,
+      ccExists: false, // CAN-5.2 — retired; literal false until UI rework.
       gateAllowed: allowed,
       gateReason: reason,
       balance: {
@@ -233,12 +230,11 @@ export class AnnualCloseService {
    *      if FY.status === "CLOSED" → FiscalYearAlreadyClosedError
    *   4. countPeriodsByStatus(year) total === 12   else FiscalYearGateNotMetError
    *   5. decemberPeriodOf(year)
-   *   6. ccExistsForYear(year)
-   *   7. dispatch standard vs edge path             else FiscalYearGateNotMetError
-   *   8. if Dec OPEN → draftDocuments.countDraftsByPeriod → DraftEntriesInDecemberError
-   *   9. countPeriodsByStatus(year+1) total === 0   else YearOpeningPeriodsExistError
-   *  10. fiscalYearReader.findResultAccount         else MissingResultAccountError (500)
-   *  11. yearAccountingReader.aggregateYearDebitCreditNoTx (C-1/C-4, UNCONDITIONAL)
+   *   6. dispatch standard vs edge path             else FiscalYearGateNotMetError
+   *   7. if Dec OPEN → draftDocuments.countDraftsByPeriod → DraftEntriesInDecemberError
+   *   8. countPeriodsByStatus(year+1) total === 0   else YearOpeningPeriodsExistError
+   *   9. fiscalYearReader.findResultAccount         else MissingResultAccountError (500)
+   *  10. yearAccountingReader.aggregateYearDebitCreditNoTx (C-1/C-4, UNCONDITIONAL)
    *      if !debit.equals(credit) → BalanceNotZeroError
    *
    * ─── INSIDE-TX (uow.run) ───────────────────────────────────────────────
@@ -246,7 +242,8 @@ export class AnnualCloseService {
    *       - fiscalYears.upsertOpen → fyId
    *       - yearAccountingTx.reReadFiscalYearStatusTx(fyId)   != OPEN  → FYAlreadyClosed
    *       - yearAccountingTx.reReadPeriodStatusTx(dec.id)     mismatch → typed error
-   *       - yearAccountingTx.reReadCcExistsForYearTx(orgId,year)       → FYGateNotMet
+   *       - reReadCcExistsForYearTx RETIRED per CAN-5.2 — FY.status is the
+   *         single source of truth; W-3 markClosed guard absorbs concurrent races.
    *  (b)  yearAccountingTx.aggregateYearDebitCredit(orgId,year)
    *       if !debit.equals(credit) → BalanceNotZeroError
    *  (c)  Compose CC: yearAccountingTx.aggregateResultAccountsByYear +
@@ -300,26 +297,22 @@ export class AnnualCloseService {
       organizationId,
       year,
     );
-    const ccExists = await this.deps.fiscalYearReader.ccExistsForYear(
-      organizationId,
-      year,
-    );
 
     // Path dispatch (spec REQ-2.1 step 5): standard | edge | reject.
+    // CAN-5.2 / REQ-A.8: edge-path idempotency anchored on FY.status (CLOSED
+    // already thrown above) — no ccExists check needed.
     const standardPath =
       periods.closed === MONTHS_PER_YEAR - 1 && dec?.status === "OPEN";
     const edgePath =
-      periods.closed === MONTHS_PER_YEAR &&
-      dec?.status === "CLOSED" &&
-      !ccExists;
+      periods.closed === MONTHS_PER_YEAR && dec?.status === "CLOSED";
     if (!standardPath && !edgePath) {
       throw new FiscalYearGateNotMetError({
         monthsClosed: periods.closed,
         decStatus: dec?.status ?? "NOT_FOUND",
-        ccExists,
+        ccExists: false,
         periodsCount: periods.total,
         reason:
-          "El año no cumple el patrón estándar (11 meses cerrados + diciembre abierto) ni el patrón borde (12 meses cerrados sin CC).",
+          "El año no cumple el patrón estándar (11 meses cerrados + diciembre abierto) ni el patrón borde (12 meses cerrados con la gestión abierta).",
       });
     }
 
@@ -408,7 +401,7 @@ export class AnnualCloseService {
             throw new FiscalYearGateNotMetError({
               monthsClosed: periods.closed,
               decStatus: decTx?.status ?? "NOT_FOUND",
-              ccExists,
+              ccExists: false,
               periodsCount: periods.total,
               reason:
                 "El período de diciembre cambió de estado entre la validación previa y la transacción.",
@@ -416,23 +409,11 @@ export class AnnualCloseService {
           }
         }
 
-        const ccExistsTx =
-          await scope.yearAccountingTx.reReadCcExistsForYearTx(
-            organizationId,
-            year,
-          );
-        if (ccExistsTx) {
-          throw new FiscalYearGateNotMetError({
-            monthsClosed: periods.closed,
-            decStatus: dec?.status ?? "NOT_FOUND",
-            ccExists: true,
-            periodsCount: periods.total,
-            reason:
-              "Otro proceso registró el Comprobante de Cierre antes de esta transacción.",
-          });
-        }
-
         // (b) Re-assert year-aggregate balance INSIDE-TX.
+        // CAN-5.2 / REQ-A.8: reReadCcExistsForYearTx RETIRED — idempotency is
+        // exclusively `fyTx.status` (already re-read above). Strictly stronger:
+        // FY.status only flips at step (g) AFTER all writes commit, so concurrent
+        // races are caught by the W-3 markClosed guard rather than a CC gate.
         const yearBalTx = await scope.yearAccountingTx.aggregateYearDebitCredit(
           organizationId,
           year,
@@ -461,7 +442,7 @@ export class AnnualCloseService {
           throw new FiscalYearGateNotMetError({
             monthsClosed: periods.closed,
             decStatus: "NOT_FOUND",
-            ccExists,
+            ccExists: false,
             periodsCount: periods.total,
             reason: "No existe el período de diciembre.",
           });
