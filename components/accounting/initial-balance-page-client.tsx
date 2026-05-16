@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, Printer, FileSpreadsheet } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { formatDateBO } from "@/lib/date-utils";
@@ -156,24 +156,31 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
       {/* Results */}
       {statement && !loading && (
         <div className="space-y-4">
-          {/* Export buttons */}
+          {/* Export buttons — match al statement-toolbar (balance-sheet/income) */}
           <div className="flex gap-2">
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={handleOpenPdf}
-              aria-label="Abrir Balance Inicial en pestaña nueva"
+              aria-label="Abrir PDF en pestaña nueva"
             >
-              Abrir PDF
+              <Printer className="h-4 w-4 mr-1.5" />
+              PDF
             </Button>
             <Button
+              type="button"
               variant="outline"
               size="sm"
               onClick={handleDownloadXlsx}
               disabled={loadingXlsx}
-              aria-label="Descargar Balance Inicial como Excel"
+              aria-label="Descargar como Excel"
             >
-              {loadingXlsx && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {loadingXlsx ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+              )}
               Excel
             </Button>
           </div>
