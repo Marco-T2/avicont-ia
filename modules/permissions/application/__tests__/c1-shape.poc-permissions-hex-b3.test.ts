@@ -171,8 +171,8 @@ describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggr
 
 // ── α18: DUAL-SENTINEL — baseline 85 vi.mock count invariant ─────────────────
 
-describe("α18 DUAL-SENTINEL — baseline 85 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 85 (baseline preserved; net +1 from original)", () => {
+describe("α18 DUAL-SENTINEL — baseline 86 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5)", () => {
+  it("α18: vi.mock count for @/features/permissions/server equals 86 (baseline preserved; net +2 from original)", () => {
     // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
     // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
     // Original baseline: 84. Adjusted by:
@@ -188,11 +188,13 @@ describe("α18 DUAL-SENTINEL — baseline 85 vi.mock count (REQ-010 invariant, d
     //     canAccess moved to the server page — so no light-view consumer mock.)
     //   - annual-close Phase 5.4 GREEN: app/api/organizations/[orgSlug]/annual-close/__tests__/route.test.ts
     //     mocks requirePermission to assert 403 on RBAC reject + RBAC call shape (+1).
+    //   - annual-close Phase 7.5 GREEN: app/(dashboard)/[orgSlug]/settings/periods/__tests__/page-annual-grouping.test.ts
+    //     NEW — mocks requirePermission to assert preserved RBAC gate on the year-grouped periods page (+1).
     // REQ-010 invariant preserved; drifts accounted explicit per [[invariant_collision_elevation]].
     const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
     const count = Number(stdout);
-    expect(count).toBe(85);
+    expect(count).toBe(86);
   });
 });
 
