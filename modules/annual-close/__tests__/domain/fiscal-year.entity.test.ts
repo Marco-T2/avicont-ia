@@ -163,6 +163,34 @@ describe("FiscalYear entity", () => {
     });
   });
 
+  describe("FK retirement — REQ-A.9 / CAN-5.6 (annual-close-canonical-flow)", () => {
+    // RED — declared failure mode: `expected true to be false` — the keys
+    // `closingEntryId` and `openingEntryId` STILL exist in FiscalYearProps +
+    // snapshot at HEAD 8c1a4bff. Phase A T-01 GREEN drops them.
+    it("FiscalYearSnapshot has no closingEntryId / openingEntryId keys", () => {
+      const snap = FiscalYear.create({
+        organizationId: "org_1",
+        year: Year.of(2026),
+        createdById: "user_1",
+      }).toSnapshot();
+      expect("closingEntryId" in snap).toBe(false);
+      expect("openingEntryId" in snap).toBe(false);
+    });
+
+    it("FiscalYear instance has no closingEntryId / openingEntryId getters", () => {
+      const fy = FiscalYear.create({
+        organizationId: "org_1",
+        year: Year.of(2026),
+        createdById: "user_1",
+      });
+      const hostKeys = Object.keys(
+        Object.getOwnPropertyDescriptors(Object.getPrototypeOf(fy)),
+      );
+      expect(hostKeys).not.toContain("closingEntryId");
+      expect(hostKeys).not.toContain("openingEntryId");
+    });
+  });
+
   describe("predicates", () => {
     it("isOpen / isClosed delegate to status VO", () => {
       const open = FiscalYear.create({
