@@ -43,7 +43,9 @@ export async function GET(
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="balance-inicial-${orgSlug}.pdf"`,
+          // inline → el browser lo renderiza en pestaña nueva. Filename se
+          // mantiene por si el usuario descarga desde el visor.
+          "Content-Disposition": `inline; filename="balance-inicial-${orgSlug}.pdf"`,
         },
       });
     }

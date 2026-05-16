@@ -4,9 +4,9 @@
  * Asserts:
  * (a) Mocks global fetch for `/api/organizations/{orgSlug}/initial-balance?format=json`
  *     returning a fixture statement; asserts the view renders with fetched data.
- * (b) Clicking "Export PDF" button triggers a fetch to `?format=pdf`
- *     AND a blob download via `URL.createObjectURL` (mocked).
- * (c) Clicking "Export XLSX" button triggers a fetch to `?format=xlsx`
+ * (b) Clicking "Abrir PDF" button calls window.open with the ?format=pdf URL
+ *     in a new tab (browser renders the PDF inline; no fetch+blob).
+ * (c) Clicking "Excel" button triggers a fetch to `?format=xlsx`
  *     AND a blob download via `URL.createObjectURL`.
  *
  * Fails because `components/accounting/initial-balance-page-client.tsx` does not exist yet.
@@ -133,7 +133,7 @@ describe("InitialBalancePageClient", () => {
     expect(screen.getByText("1.1.01 — Caja")).toBeInTheDocument();
   });
 
-  it("(b) clicking Export PDF button fetches ?format=pdf and triggers blob download", async () => {
+  it("(b) clicking Abrir PDF opens window.open with ?format=pdf in a new tab", async () => {
     render(<InitialBalancePageClient orgSlug={ORG_SLUG} />);
 
     // Wait for initial JSON fetch + view to render
@@ -141,23 +141,23 @@ describe("InitialBalancePageClient", () => {
       expect(screen.getByText("ACTIVO")).toBeInTheDocument();
     });
 
-    vi.clearAllMocks();
-    mockFetch.mockResolvedValue({ ok: true, blob: async () => FAKE_BLOB });
-    mockCreateObjectURL.mockReturnValue("blob:fake-url");
+    const mockWindowOpen = vi.fn();
+    const originalOpen = window.open;
+    window.open = mockWindowOpen as unknown as typeof window.open;
 
-    const pdfButton = screen.getByRole("button", { name: /export.*pdf|pdf/i });
-    fireEvent.click(pdfButton);
+    try {
+      // El accessible name viene del aria-label ("Abrir Balance Inicial en pestaña nueva")
+      const pdfButton = screen.getByRole("button", { name: /abrir.*pdf|abrir.*balance/i });
+      fireEvent.click(pdfButton);
 
-    await waitFor(() => {
-      const pdfCall = mockFetch.mock.calls.find((args: unknown[]) =>
-        String(args[0]).includes("format=pdf"),
-      );
-      expect(pdfCall).toBeDefined();
-    });
-
-    await waitFor(() => {
-      expect(mockCreateObjectURL).toHaveBeenCalledWith(expect.any(Blob));
-    });
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      const [url, target] = mockWindowOpen.mock.calls[0];
+      expect(String(url)).toContain("format=pdf");
+      expect(String(url)).toContain(`/api/organizations/${ORG_SLUG}/initial-balance`);
+      expect(target).toBe("_blank");
+    } finally {
+      window.open = originalOpen;
+    }
   });
 
   it("(c) clicking Export XLSX button fetches ?format=xlsx and triggers blob download", async () => {

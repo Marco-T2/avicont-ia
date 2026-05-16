@@ -58,7 +58,6 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
   const [statement, setStatement] = useState<SerializedStatement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [loadingPdf, setLoadingPdf] = useState(false);
   const [loadingXlsx, setLoadingXlsx] = useState(false);
 
   // ── Fetch on mount ─────────────────────────────────────────────────────────
@@ -95,19 +94,24 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
     }
   }
 
-  // ── Blob download helper ───────────────────────────────────────────────────
+  // ── Export handlers ────────────────────────────────────────────────────────
+  // PDF: navegación nativa — el browser hace el GET, renderiza con su visor
+  // y respeta las cookies de Clerk (mismo origen). Sin fetch+blob.
+  // Excel: blob+download — el browser no renderiza .xlsx inline.
 
-  async function handleExport(format: "pdf" | "xlsx") {
-    const setExportLoading = format === "pdf" ? setLoadingPdf : setLoadingXlsx;
-    setExportLoading(true);
+  function handleOpenPdf() {
+    const url = `/api/organizations/${orgSlug}/initial-balance?format=pdf`;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
 
-    const ext = format === "pdf" ? "pdf" : "xlsx";
-    const url = `/api/organizations/${orgSlug}/initial-balance?format=${format}`;
+  async function handleDownloadXlsx() {
+    setLoadingXlsx(true);
+    const url = `/api/organizations/${orgSlug}/initial-balance?format=xlsx`;
 
     try {
       const res = await fetch(url);
       if (!res.ok) {
-        console.error(`Error al exportar Balance Inicial (${format}):`, res.status);
+        console.error(`Error al exportar Balance Inicial (xlsx):`, res.status);
         return;
       }
 
@@ -115,7 +119,7 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `balance-inicial.${ext}`;
+      a.download = `balance-inicial.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -123,7 +127,7 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
     } catch (err) {
       console.error("Error al descargar Balance Inicial:", err);
     } finally {
-      setExportLoading(false);
+      setLoadingXlsx(false);
     }
   }
 
@@ -157,22 +161,20 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleExport("pdf")}
-              disabled={loadingPdf || loadingXlsx}
-              aria-label="Exportar Balance Inicial en formato PDF"
+              onClick={handleOpenPdf}
+              aria-label="Abrir Balance Inicial en pestaña nueva"
             >
-              {loadingPdf && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Export PDF
+              Abrir PDF
             </Button>
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleExport("xlsx")}
-              disabled={loadingPdf || loadingXlsx}
-              aria-label="Exportar Balance Inicial en formato Excel"
+              onClick={handleDownloadXlsx}
+              disabled={loadingXlsx}
+              aria-label="Descargar Balance Inicial como Excel"
             >
               {loadingXlsx && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              Export XLSX
+              Excel
             </Button>
           </div>
 
