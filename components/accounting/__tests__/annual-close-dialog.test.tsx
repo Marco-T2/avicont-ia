@@ -81,9 +81,9 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
     expect(
       screen.getByText(/Confirmar Cierre de Gestión/i),
     ).toBeInTheDocument();
-    // Dialog body mentions year + balance figures
+    // Dialog body mentions year + balance figures (Debe + Haber both show 150000.00).
     expect(screen.getByText(/2026/)).toBeInTheDocument();
-    expect(screen.getByText(/150000\.00/)).toBeInTheDocument();
+    expect(screen.getAllByText(/150000\.00/).length).toBeGreaterThanOrEqual(1);
   });
 
   it("when open=false, does NOT render dialog content", () => {
