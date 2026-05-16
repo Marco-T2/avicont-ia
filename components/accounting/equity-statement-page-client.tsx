@@ -7,7 +7,9 @@
 
 import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, Printer, FileSpreadsheet } from "lucide-react";
+import { formatDateBO } from "@/lib/date-utils";
 import { WorksheetFilters, type WorksheetFilterValues } from "./worksheet-filters";
 import { EquityStatementView } from "./equity-statement-view";
 
@@ -98,14 +100,51 @@ export function EquityStatementPageClient({ orgSlug }: EquityStatementPageClient
     void fetchStatement(filters);
   }
 
-  function buildExportUrl(format: "pdf" | "xlsx"): string {
-    if (!lastFilters) return "#";
+  const [loadingXlsx, setLoadingXlsx] = useState(false);
+
+  function buildExportUrl(format: "pdf" | "xlsx"): string | null {
+    if (!lastFilters) return null;
     const params = new URLSearchParams({
       dateFrom: lastFilters.dateFrom.toISOString().slice(0, 10),
       dateTo: lastFilters.dateTo.toISOString().slice(0, 10),
       format,
     });
     return `/api/organizations/${orgSlug}/equity-statement?${params.toString()}`;
+  }
+
+  function handleOpenPdf() {
+    const url = buildExportUrl("pdf");
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleDownloadXlsx() {
+    const url = buildExportUrl("xlsx");
+    if (!url) return;
+    setLoadingXlsx(true);
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error(`Error al exportar EEPN (xlsx):`, res.status);
+        return;
+      }
+
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const periodLabel = `${lastFilters!.dateFrom.toISOString().slice(0, 10)}_${lastFilters!.dateTo.toISOString().slice(0, 10)}`;
+      a.download = `eepn-${periodLabel}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Error al descargar EEPN:", err);
+    } finally {
+      setLoadingXlsx(false);
+    }
   }
 
   return (
@@ -140,27 +179,51 @@ export function EquityStatementPageClient({ orgSlug }: EquityStatementPageClient
       {/* Results */}
       {statement && !loading && (
         <div className="space-y-4">
-          {/* Export buttons */}
+          {/* Export buttons — paridad con balance-sheet/trial-balance/worksheet */}
           <div className="flex gap-2">
-            <a
-              href={buildExportUrl("pdf")}
-              download
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleOpenPdf}
+              aria-label="Abrir PDF en pestaña nueva"
             >
-              Descargar PDF
-            </a>
-            <a
-              href={buildExportUrl("xlsx")}
-              download
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
+              <Printer className="h-4 w-4 mr-1.5" />
+              PDF
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadXlsx}
+              disabled={loadingXlsx}
+              aria-label="Descargar como Excel"
             >
-              Descargar Excel
-            </a>
+              {loadingXlsx ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+              )}
+              Excel
+            </Button>
           </div>
 
           {/* View */}
           <Card>
-            <CardContent className="pt-4 pb-6 px-0 overflow-auto">
+            <CardContent className="pt-0 pb-6 px-0 overflow-auto">
+              {/* Sub-header del Card — paridad con los otros reportes */}
+              <div className="px-6 pb-4 text-center">
+                <h2 className="text-xl font-bold tracking-wide">
+                  ESTADO DE EVOLUCIÓN DEL PATRIMONIO NETO
+                </h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Del {formatDateBO(new Date(statement.dateFrom))} al{" "}
+                  {formatDateBO(new Date(statement.dateTo))}
+                </p>
+                <p className="text-xs italic text-muted-foreground">
+                  (Expresado en Bolivianos)
+                </p>
+              </div>
               <EquityStatementView statement={statement} />
             </CardContent>
           </Card>
