@@ -360,6 +360,67 @@ describe("Journal aggregate root — construction & snapshot (B6)", () => {
       });
       expect(() => j.post()).toThrow(InvalidJournalStatusTransition);
     });
+
+    // ── AI provenance dissolution on DRAFT→POSTED ──
+    //
+    // AI es un drafting helper. Al firmar el usuario (post), la provenance se
+    // disuelve: sourceType + aiOriginalText pasan a null. La entry queda
+    // indistinguible de un asiento manual desde POSTED en adelante, y todos
+    // los downstream layers (I9 assertMutable, VOIDED guard, presentation
+    // guard de edit, audit classifier, badge UI) la tratan como manual sin
+    // ningún cambio adicional.
+    describe("AI provenance dissolution", () => {
+      it("AI DRAFT → POSTED limpia sourceType y aiOriginalText", () => {
+        const j = Journal.create({
+          ...balancedInput,
+          sourceType: "ai",
+          aiOriginalText: "compra de bolsas",
+        });
+        const posted = j.post();
+        expect(posted.sourceType).toBeNull();
+        expect(posted.aiOriginalText).toBeNull();
+      });
+
+      it("AI DRAFT → POSTED preserva el resto de props (id, description, date, periodId, voucherTypeId, contactId, lines, createdById)", () => {
+        const j = Journal.create({
+          ...balancedInput,
+          contactId: "contact-1",
+          sourceType: "ai",
+          aiOriginalText: "compra de bolsas",
+        });
+        const posted = j.post();
+        expect(posted.id).toBe(j.id);
+        expect(posted.description).toBe(j.description);
+        expect(posted.date.getTime()).toBe(j.date.getTime());
+        expect(posted.periodId).toBe(j.periodId);
+        expect(posted.voucherTypeId).toBe(j.voucherTypeId);
+        expect(posted.contactId).toBe(j.contactId);
+        expect(posted.createdById).toBe(j.createdById);
+        expect(posted.lines.length).toBe(j.lines.length);
+        expect(posted.status).toBe("POSTED");
+      });
+
+      // Regression: sale/purchase/payment/dispatch auto-entries preservan
+      // provenance. Dissolution aplica ÚNICAMENTE a sourceType="ai".
+      it("sourceType='sale' DRAFT → POSTED preserva sourceType + sourceId (no dissolution)", () => {
+        const j = Journal.create({
+          ...balancedInput,
+          sourceType: "sale",
+          sourceId: "sale-1",
+        });
+        const posted = j.post();
+        expect(posted.sourceType).toBe("sale");
+        expect(posted.sourceId).toBe("sale-1");
+      });
+
+      // Regression: asientos manuales no afectados (sourceType ya null).
+      it("manual entry (sourceType=null) DRAFT → POSTED es no-op para provenance", () => {
+        const j = Journal.create(balancedInput);
+        const posted = j.post();
+        expect(posted.sourceType).toBeNull();
+        expect(posted.aiOriginalText).toBeNull();
+      });
+    });
   });
 
   describe("lock() — I5 + I7 (B8)", () => {
