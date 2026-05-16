@@ -16,6 +16,7 @@ import type {
 import type { DateRangeFilter } from "@/features/accounting/ledger.types";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
+import { FINALIZED_JE_STATUSES } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
 import type { LedgerPageResult, LedgerLineRow } from "@/modules/accounting/domain/ports/journal-ledger-query.port";
 import type {
@@ -614,7 +615,7 @@ export class JournalRepository extends BaseRepository {
         accountId,
         journalEntry: {
           organizationId,
-          status: "POSTED",
+          status: { in: [...FINALIZED_JE_STATUSES] },
           periodId,
         },
       },
@@ -777,7 +778,7 @@ function buildLedgerLineWhere(
     accountId,
     journalEntry: {
       organizationId,
-      status: "POSTED",
+      status: { in: [...FINALIZED_JE_STATUSES] },
       ...(filters?.periodId && { periodId: filters.periodId }),
       ...dateFilter,
     },
@@ -806,7 +807,7 @@ function buildLedgerLinePriorWhere(
     accountId,
     journalEntry: {
       organizationId,
-      status: "POSTED",
+      status: { in: [...FINALIZED_JE_STATUSES] },
       ...(options.periodId && { periodId: options.periodId }),
       date: { lt: options.dateFrom },
     },
