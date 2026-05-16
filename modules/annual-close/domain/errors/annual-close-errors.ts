@@ -40,6 +40,8 @@ export const MISSING_RESULT_ACCOUNT = "MISSING_RESULT_ACCOUNT";
 export const JUSTIFICATION_TOO_SHORT = "JUSTIFICATION_TOO_SHORT";
 export const INVALID_YEAR = "INVALID_YEAR";
 export const FISCAL_YEAR_NOT_FOUND = "FISCAL_YEAR_NOT_FOUND";
+export const MISSING_ACCUMULATED_RESULTS_ACCOUNT =
+  "MISSING_ACCUMULATED_RESULTS_ACCOUNT";
 
 /**
  * Explicit HTTP status for `MissingResultAccountError` (500). The spec calls
@@ -47,6 +49,7 @@ export const FISCAL_YEAR_NOT_FOUND = "FISCAL_YEAR_NOT_FOUND";
  * surfaced as a named constant to make the W-7 carve-out greppable.
  */
 export const MISSING_RESULT_ACCOUNT_HTTP = 500;
+export const MISSING_ACCUMULATED_RESULTS_ACCOUNT_HTTP = 500;
 
 // VO-internal guard (mirror of InvalidFiscalPeriodStatus). Not part of the
 // canonical REQ-2.3 list; HTTP 422 via the ValidationError base.
@@ -184,6 +187,24 @@ export class MissingResultAccountError extends AppError {
       details as unknown as Record<string, unknown>,
     );
     this.name = "MissingResultAccountError";
+  }
+}
+
+/**
+ * MissingAccumulatedResultsAccountError — HTTP 500 (W-7). The absence of
+ * `3.2.1 Resultados Acumulados` is a chart-of-accounts seed bug, NOT user
+ * input. Required by asiento #3 (P&G → 3.2.1) per REQ-A.3 of
+ * annual-close-canonical-flow. Symmetric with MissingResultAccountError.
+ */
+export class MissingAccumulatedResultsAccountError extends AppError {
+  constructor(details: { organizationId: string }) {
+    super(
+      `Falta la cuenta de resultados acumulados (3.2.1 Resultados Acumulados) para la organización ${details.organizationId}. Contactá al soporte: es un error de configuración del plan de cuentas.`,
+      MISSING_ACCUMULATED_RESULTS_ACCOUNT_HTTP,
+      MISSING_ACCUMULATED_RESULTS_ACCOUNT,
+      details as unknown as Record<string, unknown>,
+    );
+    this.name = "MissingAccumulatedResultsAccountError";
   }
 }
 
