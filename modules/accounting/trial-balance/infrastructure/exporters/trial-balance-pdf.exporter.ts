@@ -32,6 +32,7 @@
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { buildExecutivePdfHeader } from "@/modules/accounting/shared/infrastructure/exporters/executive-pdf-header";
 import { formatDateBO } from "@/lib/date-utils";
 import type { TrialBalanceReport, TrialBalanceTotals, TrialBalanceRow } from "../../domain/trial-balance.types";
 
@@ -56,10 +57,10 @@ const STYLE = {
 // Sum = 535pt (A4 portrait printable width 595mm − 60pt margins)
 const COL_WIDTHS: (number | string)[] = [25, 55, 185, 70, 70, 65, 65];
 
-const BODY_SIZE = 7;
-const HEADER_SIZE = 7;
-const TITLE_SIZE = 11;
-const SUBTITLE_SIZE = 8;
+const BODY_SIZE = 8;            // filas de datos y header de columnas
+const TITLE_SIZE = 18;          // BALANCE DE COMPROBACIÓN... — paridad con balance-sheet
+const SUBTITLE_SIZE = 10;       // "Del X al Y" + "(Expresado en Bolivianos)"
+const ORG_INFO_SIZE = 8;        // Empresa/NIT/Dirección/Ciudad — izquierda, chico
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────
 
@@ -96,7 +97,7 @@ function centerCell(text: string | number, bold: boolean, fontSize = BODY_SIZE):
 function headerCell(text: string): Content {
   return {
     text,
-    fontSize: HEADER_SIZE,
+    fontSize: BODY_SIZE,
     bold: true,
     alignment: "center",
     margin: [1, 2, 1, 2],
@@ -177,59 +178,24 @@ function buildDocDefinition(
   orgName: string,
   orgNit?: string,
   orgAddress?: string,
+  orgCity?: string,
 ): TDocumentDefinitions {
   const tableBody = buildTableBody(report);
 
-  // Build header lines
-  const headerContent: Content[] = [];
-
-  // Line 1: Empresa
-  headerContent.push({
-    text: `Empresa: ${orgName}`,
-    fontSize: SUBTITLE_SIZE,
-    bold: true,
-    alignment: "center",
-    margin: [0, 0, 0, 2],
-  } as Content);
-
-  // Line 2: NIT + Dirección (graceful omission)
-  const nitPart = orgNit ? `NIT: ${orgNit}` : null;
-  const addrPart = orgAddress ? `Dirección: ${orgAddress}` : null;
-  const line2Parts = [nitPart, addrPart].filter(Boolean);
-  if (line2Parts.length > 0) {
-    headerContent.push({
-      text: line2Parts.join(" · "),
-      fontSize: SUBTITLE_SIZE,
-      alignment: "center",
-      margin: [0, 0, 0, 2],
-    } as Content);
-  }
-
-  // Line 3: Title
-  headerContent.push({
-    text: "BALANCE DE COMPROBACIÓN DE SUMAS Y SALDOS",
-    fontSize: TITLE_SIZE,
-    bold: true,
-    alignment: "center",
-    margin: [0, 2, 0, 2],
-  } as Content);
-
-  // Line 4: Period
-  headerContent.push({
-    text: `DEL ${fmtDate(report.dateFrom)} AL ${fmtDate(report.dateTo)}`,
-    fontSize: SUBTITLE_SIZE,
-    alignment: "center",
-    margin: [0, 0, 0, 2],
-  } as Content);
-
-  // Line 5: Expresado en
-  headerContent.push({
-    text: "(Expresado en Bolivianos)",
-    fontSize: SUBTITLE_SIZE,
-    italics: true,
-    alignment: "center",
-    margin: [0, 0, 0, 6],
-  } as Content);
+  // Header ejecutivo compartido (Empresa/NIT/Dir/Ciudad izquierda 8pt +
+  // título centrado 18pt + período + Expresado en Bolivianos)
+  const headerContent = buildExecutivePdfHeader({
+    orgName,
+    orgNit,
+    orgAddress,
+    orgCity,
+    title: "Balance de Comprobación de Sumas y Saldos",
+    subtitle: `Del ${fmtDate(report.dateFrom)} al ${fmtDate(report.dateTo)}`,
+    titleFontSize: TITLE_SIZE,
+    subtitleFontSize: SUBTITLE_SIZE,
+    orgInfoFontSize: ORG_INFO_SIZE,
+    orgInfoAlignment: "left",
+  });
 
   // Imbalance banner
   const imbalanceBanner: Content[] = report.imbalanced
@@ -303,18 +269,20 @@ interface TrialBalancePdfResult {
  * @param report     The computed TrialBalanceReport
  * @param orgName    Organization display name (required — throws MissingOrgNameError if falsy)
  * @param orgNit     NIT/tax-id (optional)
- * @param orgAddress Physical address (optional)
+ * @param orgAddress Physical address — sin ciudad (optional)
+ * @param orgCity    Ciudad — se renderiza en línea propia debajo de Dirección (optional)
  */
 export async function exportTrialBalancePdf(
   report: TrialBalanceReport,
   orgName: string,
   orgNit?: string,
   orgAddress?: string,
+  orgCity?: string,
 ): Promise<TrialBalancePdfResult> {
   if (!orgName) throw new MissingOrgNameError();
 
   registerFonts();
-  const docDef = buildDocDefinition(report, orgName, orgNit, orgAddress);
+  const docDef = buildDocDefinition(report, orgName, orgNit, orgAddress, orgCity);
   const buffer = await pdfmakeRuntime.createPdf(docDef).getBuffer();
   return { buffer: Buffer.from(buffer), docDef };
 }

@@ -73,6 +73,7 @@ export async function GET(
         orgDisplayName,
         orgMeta?.taxId ?? undefined,
         orgMeta?.address ?? undefined,
+        orgMeta?.city ?? undefined,
       );
       return new Response(new Uint8Array(buffer), {
         headers: {

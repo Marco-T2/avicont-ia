@@ -90,7 +90,10 @@ export type TrialBalanceAccountMetadata = {
 export type TrialBalanceOrgMetadata = {
   name: string;
   taxId: string | null;
+  /** Dirección (calle/zona, sin ciudad) — null si no está configurada en OrgProfile. */
   address: string | null;
+  /** Ciudad — null si no está configurada en OrgProfile. */
+  city: string | null;
 };
 
 // ── Tipos serializados (frontera JSON) ────────────────────────────────────────

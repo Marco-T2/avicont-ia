@@ -98,24 +98,50 @@ export class PrismaTrialBalanceRepo extends BaseRepository implements TrialBalan
   }
 
   /**
-   * Fetches org metadata for exporter headers.
-   * The Organization model only has `name` (no taxId/address columns in schema v1).
-   * taxId and address are returned as null — graceful omission in exporter headers.
+   * Resuelve metadata de organización para encabezados ejecutivos de PDF/XLSX.
+   *
+   * Estrategia: JOIN con OrgProfile. Preferimos `profile.razonSocial` (nombre
+   * legal/comercial) sobre `organization.name` (slug/handle). NIT, dirección y
+   * ciudad vienen del profile por separado — null si están vacíos para que el
+   * helper de encabezado los omita gracefully.
+   *
+   * Sister precedent: `modules/accounting/financial-statements/infrastructure/
+   * prisma-financial-statements.repo.ts.getOrgMetadata`.
    */
   async getOrgMetadata(orgId: string): Promise<TrialBalanceOrgMetadata | null> {
     const org = await this.db.organization.findUnique({
       where: { id: orgId },
       select: {
         name: true,
+        profile: {
+          select: {
+            razonSocial: true,
+            nit: true,
+            direccion: true,
+            ciudad: true,
+          },
+        },
       },
     });
 
     if (!org) return null;
 
+    const profile = org.profile;
+    const name =
+      profile?.razonSocial && profile.razonSocial.trim().length > 0
+        ? profile.razonSocial
+        : org.name;
+
+    const trimOrNull = (v: string | undefined | null): string | null => {
+      const t = v?.trim();
+      return t && t.length > 0 ? t : null;
+    };
+
     return {
-      name: org.name,
-      taxId: null,
-      address: null,
+      name,
+      taxId: trimOrNull(profile?.nit),
+      address: trimOrNull(profile?.direccion),
+      city: trimOrNull(profile?.ciudad),
     };
   }
 }
