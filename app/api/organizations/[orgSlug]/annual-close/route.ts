@@ -50,11 +50,18 @@ export async function POST(
 
     const user = await usersService.resolveByClerkId(session.userId);
 
+    // Justification was removed from the UI (REQ: friction without audit
+    // value). Auto-generate a deterministic, locale-agnostic string ≥50 chars
+    // so the service-layer MIN_JUSTIFICATION_LENGTH invariant and the
+    // audit_logs.justification trail remain intact.
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const autoJustification = `Cierre anual de la gestión ${parsed.year} ejecutado el ${today} (justificación auto-generada por el sistema)`;
+
     const result = await service.close(
       orgId,
       parsed.year,
       user.id,
-      parsed.justification,
+      autoJustification,
     );
 
     return Response.json(result);

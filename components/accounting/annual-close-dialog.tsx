@@ -1,26 +1,18 @@
 "use client";
 
 /**
- * AnnualCloseDialog — confirm + justification + POST /annual-close.
+ * AnnualCloseDialog — confirm + POST /annual-close.
  *
  * Triggered by 'Cerrar la gestión {year}' in `annual-period-list.tsx`.
- * Mirror `monthly-close-panel.tsx` confirm flow EXACT (Dialog + textarea +
- * sonner toast + router.refresh).
  *
- * Voseo Rioplatense (REQ-7.4):
- *  - Title: 'Confirmar Cierre de Gestión'
- *  - Body: 'Estás a punto de cerrar la gestión {year}'
- *  - Justification label: 'Justificación (mínimo 50 caracteres)'
- *  - Confirm button: 'Confirmar Cierre'
- *  - Success toast: 'Gestión cerrada exitosamente'
+ * Voseo Rioplatense (REQ-7.4): 'Confirmar Cierre de Gestión',
+ * 'Estás a punto de cerrar la gestión {year}', 'Confirmar Cierre',
+ * 'Gestión cerrada exitosamente'.
  *
- * POST contract (matches modules/annual-close/presentation/validation.ts):
- *  body { year, justification }
- *  200 → { fiscalYearId, correlationId, status, ... }
- *  4xx/5xx → { error: string }
- *
- * Citation: orchestrator prompt 'Expected deliverables #2' + design rev 2
- * section 8 + spec REQ-2.6 (API route) + REQ-7.4 voseo.
+ * POST contract: body `{ year }`. Justification was removed from the UI
+ * (friction without audit value); the route handler auto-generates a
+ * deterministic string ≥50 chars so the service-layer
+ * MIN_JUSTIFICATION_LENGTH invariant and audit_logs trail stay intact.
  */
 
 import { useState } from "react";
@@ -35,7 +27,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Textarea } from "@/components/ui/textarea";
 import { AlertTriangle, Lock } from "lucide-react";
 import type { AnnualCloseSummary } from "@/modules/annual-close/presentation/index";
 
@@ -47,8 +38,6 @@ export interface AnnualCloseDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const MIN_JUSTIFICATION = 50;
-
 export default function AnnualCloseDialog({
   orgSlug,
   year,
@@ -57,13 +46,10 @@ export default function AnnualCloseDialog({
   onOpenChange,
 }: AnnualCloseDialogProps) {
   const router = useRouter();
-  const [justification, setJustification] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  const canConfirm = justification.trim().length >= MIN_JUSTIFICATION && !submitting;
-
   async function handleConfirm() {
-    if (!canConfirm) return;
+    if (submitting) return;
     setSubmitting(true);
     try {
       const res = await fetch(
@@ -71,7 +57,7 @@ export default function AnnualCloseDialog({
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ year, justification: justification.trim() }),
+          body: JSON.stringify({ year }),
         },
       );
       if (!res.ok) {
@@ -81,9 +67,7 @@ export default function AnnualCloseDialog({
         toast.error(data?.error ?? "Error al cerrar la gestión.");
         return;
       }
-      // Success path.
       toast.success("Gestión cerrada exitosamente");
-      setJustification("");
       router.refresh();
       onOpenChange(false);
     } catch {
@@ -94,13 +78,7 @@ export default function AnnualCloseDialog({
   }
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(next) => {
-        if (!next) setJustification("");
-        onOpenChange(next);
-      }}
-    >
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Confirmar Cierre de Gestión</DialogTitle>
@@ -144,26 +122,6 @@ export default function AnnualCloseDialog({
           </div>
         )}
 
-        <div className="space-y-1">
-          <label
-            htmlFor="annual-close-justification"
-            className="text-sm font-medium text-foreground"
-          >
-            Justificación (mínimo {MIN_JUSTIFICATION} caracteres)
-          </label>
-          <Textarea
-            id="annual-close-justification"
-            placeholder="Explicá por qué cerrás la gestión..."
-            value={justification}
-            onChange={(e) => setJustification(e.target.value)}
-            disabled={submitting}
-            rows={4}
-          />
-          <p className="text-xs text-muted-foreground">
-            {justification.trim().length}/{MIN_JUSTIFICATION} caracteres
-          </p>
-        </div>
-
         <DialogFooter>
           <Button
             variant="outline"
@@ -174,7 +132,7 @@ export default function AnnualCloseDialog({
           </Button>
           <Button
             variant="default"
-            disabled={!canConfirm}
+            disabled={submitting}
             onClick={handleConfirm}
           >
             <Lock className="mr-2 h-4 w-4" />

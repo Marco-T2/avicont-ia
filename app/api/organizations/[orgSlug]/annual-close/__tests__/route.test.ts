@@ -112,16 +112,11 @@ const validResult = {
   },
 };
 
-const validJustification =
-  "Cierre de la gestión anual 2025 — aprobado por dirección financiera tras revisión.";
-
 function makeParams(slug = ORG_SLUG) {
   return Promise.resolve({ orgSlug: slug });
 }
 
-function makeRequest(
-  body: unknown = { year: 2025, justification: validJustification },
-) {
+function makeRequest(body: unknown = { year: 2025 }) {
   return new Request(
     "http://localhost/api/organizations/test-org/annual-close",
     {
@@ -157,12 +152,18 @@ describe("POST /api/.../annual-close — success", () => {
       status: "CLOSED",
       correlationId: "corr-abc",
     });
+    // Justification is auto-generated server-side: deterministic prefix +
+    // ISO date + suffix. Always ≥50 chars (satisfies service pre-tx gate).
     expect(mockClose).toHaveBeenCalledWith(
       "org-1",
       2025,
       "db-user-1",
-      validJustification,
+      expect.stringMatching(
+        /^Cierre anual de la gestión 2025 ejecutado el \d{4}-\d{2}-\d{2} \(justificación auto-generada por el sistema\)$/,
+      ),
     );
+    const autoJustif = mockClose.mock.calls[0][3] as string;
+    expect(autoJustif.length).toBeGreaterThanOrEqual(50);
   });
 });
 
@@ -301,18 +302,15 @@ describe("POST /api/.../annual-close — error → HTTP mapping (REQ-2.3)", () =
 });
 
 describe("POST /api/.../annual-close — Zod validation", () => {
-  it("(m) returns 400 on missing justification (Zod validation failure)", async () => {
-    const res = await POST(makeRequest({ year: 2025 }), {
-      params: makeParams(),
-    });
+  it("(m) returns 400 on missing year (Zod validation failure)", async () => {
+    const res = await POST(makeRequest({}), { params: makeParams() });
     expect(res.status).toBe(400);
   });
 
-  it("(m') returns 400 on short justification (Zod validation failure)", async () => {
-    const res = await POST(
-      makeRequest({ year: 2025, justification: "x" }),
-      { params: makeParams() },
-    );
+  it("(m') returns 400 on out-of-range year (Zod validation failure)", async () => {
+    const res = await POST(makeRequest({ year: 1800 }), {
+      params: makeParams(),
+    });
     expect(res.status).toBe(400);
   });
 });

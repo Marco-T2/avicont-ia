@@ -1,17 +1,14 @@
 /**
- * Phase 7.4 RED — AnnualCloseDialog: opens, shows summary, validates min50
- * justification, POSTs to API on confirm, handles errors with voseo toast.
+ * AnnualCloseDialog — opens, shows summary, POSTs to API on confirm, handles
+ * errors with voseo toast.
  *
- * Component contract:
+ * Component contract (post-justification-removal):
  *   Props: { orgSlug, year, summary, open, onOpenChange }
  *   On confirm:
  *     POST /api/organizations/{orgSlug}/annual-close
- *     body: { year, justification }
+ *     body: { year } — justification is auto-generated server-side
  *     Success → sonner toast 'Gestión cerrada exitosamente' + router.refresh
  *     Error   → sonner toast.error with server error message
- *
- * RED expected failure mode: Phase 7.1 stub returns null; tests assert
- * dialog content + POST behavior — all FAIL.
  *
  * Test layer: unit (mock fetch + sonner + next/navigation).
  */
@@ -102,7 +99,7 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("Confirm button is DISABLED while justification < 50 chars", () => {
+  it("does NOT render a textarea (justification removed — auto-generated server-side)", () => {
     render(
       <AnnualCloseDialog
         orgSlug={ORG_SLUG}
@@ -113,14 +110,11 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
       />,
     );
 
-    const textarea = screen.getByRole("textbox");
-    fireEvent.change(textarea, { target: { value: "muy corta" } });
-
-    const confirmBtn = screen.getByRole("button", { name: /Confirmar Cierre/i });
-    expect(confirmBtn).toBeDisabled();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Justificación/i)).not.toBeInTheDocument();
   });
 
-  it("Confirm button is ENABLED when justification reaches 50 chars", () => {
+  it("Confirm button is ENABLED on render (no justification gate)", () => {
     render(
       <AnnualCloseDialog
         orgSlug={ORG_SLUG}
@@ -130,16 +124,12 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
         onOpenChange={() => {}}
       />,
     );
-
-    const textarea = screen.getByRole("textbox");
-    const longText = "x".repeat(60);
-    fireEvent.change(textarea, { target: { value: longText } });
 
     const confirmBtn = screen.getByRole("button", { name: /Confirmar Cierre/i });
     expect(confirmBtn).not.toBeDisabled();
   });
 
-  it("On confirm with valid justification, POSTs to /api/organizations/{slug}/annual-close with {year, justification}", async () => {
+  it("On confirm, POSTs to /api/organizations/{slug}/annual-close with only {year}", async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({
@@ -159,10 +149,6 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
       />,
     );
 
-    const textarea = screen.getByRole("textbox");
-    const longText = "Cierre de la gestión 2026 — saldos verificados y borradores resueltos.";
-    fireEvent.change(textarea, { target: { value: longText } });
-
     fireEvent.click(screen.getByRole("button", { name: /Confirmar Cierre/i }));
 
     await waitFor(() => {
@@ -173,7 +159,8 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
     expect(url).toBe(`/api/organizations/${ORG_SLUG}/annual-close`);
     expect(init).toMatchObject({ method: "POST" });
     const body = JSON.parse((init as RequestInit).body as string);
-    expect(body).toEqual({ year: 2026, justification: longText });
+    expect(body).toEqual({ year: 2026 });
+    expect(body).not.toHaveProperty("justification");
   });
 
   it("On 200 success, shows toast 'Gestión cerrada exitosamente' (voseo) and calls router.refresh", async () => {
@@ -196,9 +183,6 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "x".repeat(60) },
-    });
     fireEvent.click(screen.getByRole("button", { name: /Confirmar Cierre/i }));
 
     await waitFor(() => {
@@ -225,9 +209,6 @@ describe("AnnualCloseDialog — REQ-7.4 voseo + POST flow", () => {
       />,
     );
 
-    fireEvent.change(screen.getByRole("textbox"), {
-      target: { value: "x".repeat(60) },
-    });
     fireEvent.click(screen.getByRole("button", { name: /Confirmar Cierre/i }));
 
     await waitFor(() => {
