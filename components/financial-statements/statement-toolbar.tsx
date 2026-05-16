@@ -2,7 +2,11 @@
 
 // Barra de acciones del informe: compacto, actualizar, exportar PDF/Excel.
 // Sin botón de email ni edición de título (spec: propuesta §4).
-// Los exportadores PDF y Excel son stubs en PR3; se conectan en PR4.
+//
+// PDF: abre en pestaña nueva vía window.open — el browser lo renderiza con su
+// visor nativo (Content-Disposition: inline en el backend). El usuario puede
+// imprimir o descargar desde ese visor.
+// Excel: descarga directa vía blob — el browser no renderiza .xlsx inline.
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -47,21 +51,25 @@ export function StatementToolbar({
   onAnalyze,
   analyzing = false,
 }: StatementToolbarProps) {
-  const [loadingPdf, setLoadingPdf] = useState(false);
   const [loadingXlsx, setLoadingXlsx] = useState(false);
 
-  async function handleExport(format: ExportFormat) {
-    // Stub PR3 — la implementación completa se conecta en PR4
-    const setLoading = format === "pdf" ? setLoadingPdf : setLoadingXlsx;
-    setLoading(true);
+  function buildExportUrl(format: ExportFormat): string {
+    const params = new URLSearchParams({ ...queryParams, format });
+    return `/api/organizations/${orgSlug}/financial-statements/${endpoint}?${params.toString()}`;
+  }
 
+  function handleOpenPdf() {
+    // Navegación nativa — el browser hace el GET, renderiza el PDF en su visor
+    // y respeta las cookies de sesión (Clerk) por ser mismo origen.
+    window.open(buildExportUrl("pdf"), "_blank", "noopener,noreferrer");
+  }
+
+  async function handleDownloadXlsx() {
+    setLoadingXlsx(true);
     try {
-      const params = new URLSearchParams({ ...queryParams, format });
-      const url = `/api/organizations/${orgSlug}/financial-statements/${endpoint}?${params.toString()}`;
-
-      const res = await fetch(url);
+      const res = await fetch(buildExportUrl("xlsx"));
       if (!res.ok) {
-        console.error(`[toolbar] Error al exportar ${format}:`, res.status);
+        console.error(`[toolbar] Error al exportar xlsx:`, res.status);
         return;
       }
 
@@ -69,19 +77,17 @@ export function StatementToolbar({
       const blobUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = blobUrl;
-      a.download = `${endpoint}-${queryParams["date"] ?? queryParams["dateFrom"] ?? "reporte"}.${format === "pdf" ? "pdf" : "xlsx"}`;
+      a.download = `${endpoint}-${queryParams["date"] ?? queryParams["dateFrom"] ?? "reporte"}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(blobUrl);
     } catch (err) {
-      console.error("[toolbar] Error al descargar:", err);
+      console.error("[toolbar] Error al descargar xlsx:", err);
     } finally {
-      setLoading(false);
+      setLoadingXlsx(false);
     }
   }
-
-  const exportBusy = loadingPdf || loadingXlsx;
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
@@ -115,31 +121,27 @@ export function StatementToolbar({
         Actualizar
       </Button>
 
-      {/* Imprimir PDF — stub PR3, completo en PR4 */}
+      {/* PDF — abre en pestaña nueva (browser viewer) */}
       <Button
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => handleExport("pdf")}
-        disabled={!hasStatement || exportBusy}
-        aria-label="Exportar como PDF"
+        onClick={handleOpenPdf}
+        disabled={!hasStatement}
+        aria-label="Abrir PDF en pestaña nueva"
       >
-        {loadingPdf ? (
-          <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-        ) : (
-          <Printer className="h-4 w-4 mr-1.5" />
-        )}
+        <Printer className="h-4 w-4 mr-1.5" />
         PDF
       </Button>
 
-      {/* Exportar Excel — stub PR3, completo en PR4 */}
+      {/* Excel — descarga directa */}
       <Button
         type="button"
         variant="outline"
         size="sm"
-        onClick={() => handleExport("xlsx")}
-        disabled={!hasStatement || exportBusy}
-        aria-label="Exportar como Excel"
+        onClick={handleDownloadXlsx}
+        disabled={!hasStatement || loadingXlsx}
+        aria-label="Descargar como Excel"
       >
         {loadingXlsx ? (
           <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />

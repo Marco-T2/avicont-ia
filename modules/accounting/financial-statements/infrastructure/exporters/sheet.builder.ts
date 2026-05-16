@@ -6,12 +6,24 @@
 // - ExportSheet.columns: ExportColumn[] derivadas de BalanceSheet.columns / IncomeStatement.columns
 // - ExportSheet.orientation: siempre "portrait" — el PDF usa chunking horizontal (QB-style)
 // - ExportRow.balances: Record<columnId, saldo formateado> — complementa balance (backward compat)
+//
+// Org metadata: en lugar de un único `orgName` string, los builders aceptan un
+// objeto `{ name, nit, address }` para alimentar el encabezado ejecutivo del PDF.
+// NIT y address son nullables — el helper buildExecutivePdfHeader los omite
+// gracefully cuando vienen vacíos.
 
 import { formatSubtypeLabel } from "@/modules/accounting/domain/account-subtype.utils";
 import { formatDateBO } from "@/lib/date-utils";
 import { roundHalfUp } from "../../domain/money.utils";
 import type { ExportColumn, ExportRow, ExportSheet } from "./statement-shape";
 import type { BalanceSheet, IncomeStatement, SubtypeGroup, StatementColumn } from "../../domain/types/financial-statements.types";
+
+export type OrgHeaderMetadata = {
+  name: string;
+  nit: string | null;
+  address: string | null;
+  city: string | null;
+};
 
 // ── Constantes ──
 
@@ -162,7 +174,10 @@ function groupToRows(
  * PR4: propaga columns y orientation. Si bs.columns tiene > 1 elemento,
  * el sheet tendrá múltiples columnas de valor.
  */
-export function buildBalanceSheetExportSheet(bs: BalanceSheet, orgName: string): ExportSheet {
+export function buildBalanceSheetExportSheet(
+  bs: BalanceSheet,
+  org: OrgHeaderMetadata,
+): ExportSheet {
   const { current } = bs;
   const exportColumns = toExportColumns(bs.columns);
   const orientation = resolveOrientation(exportColumns);
@@ -243,9 +258,11 @@ export function buildBalanceSheetExportSheet(bs: BalanceSheet, orgName: string):
     title: "Balance General",
     subtitle: `Al ${dateLabel}`,
     dateLabel: `Al ${dateLabel}`,
-    orgName,
+    orgName: org.name,
+    orgNit: org.nit,
+    orgAddress: org.address,
+    orgCity: org.city,
     rows,
-    preliminary: current.preliminary,
     imbalanced: current.imbalanced,
     imbalanceDelta: current.imbalanced ? fmt(current.imbalanceDelta) : undefined,
     columns: exportColumns,
@@ -262,7 +279,7 @@ export function buildBalanceSheetExportSheet(bs: BalanceSheet, orgName: string):
  */
 export function buildIncomeStatementExportSheet(
   is: IncomeStatement,
-  orgName: string,
+  org: OrgHeaderMetadata,
 ): ExportSheet {
   const { current } = is;
   const exportColumns = toExportColumns(is.columns);
@@ -330,9 +347,11 @@ export function buildIncomeStatementExportSheet(
     title: "Estado de Resultados",
     subtitle: dateLabel,
     dateLabel,
-    orgName,
+    orgName: org.name,
+    orgNit: org.nit,
+    orgAddress: org.address,
+    orgCity: org.city,
     rows,
-    preliminary: current.preliminary,
     imbalanced: false,
     columns: exportColumns,
     orientation,

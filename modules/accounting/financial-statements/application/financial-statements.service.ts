@@ -471,17 +471,36 @@ export class FinancialStatementsService {
   // ── Exporters — implementados en PR4 ──
 
   /**
+   * Resuelve metadata de organización para encabezados de export.
+   * Si el repo no encuentra la org, devolvemos un fallback con `name = orgId`
+   * — esto NO debería pasar en producción (orgId viene de Clerk vía requirePermission),
+   * pero el fallback evita crashear el export si la fila desaparece entre auth y export.
+   */
+  private async resolveOrgHeader(orgId: string): Promise<{
+    name: string;
+    nit: string | null;
+    address: string | null;
+    city: string | null;
+  }> {
+    const meta = await this.repo.getOrgMetadata(orgId);
+    return meta ?? { name: orgId, nit: null, address: null, city: null };
+  }
+
+  /**
    * Genera el Balance General como PDF y retorna el Buffer.
+   * El header ejecutivo (Empresa, NIT, Dirección) se resuelve vía repo.getOrgMetadata.
    */
   async exportBalanceSheetPdf(
     orgId: string,
     userRole: Role,
     input: GenerateBalanceSheetInput,
-    orgName: string,
   ): Promise<Buffer> {
     assertFinancialStatementsAccess(userRole);
-    const statement = await this.generateBalanceSheet(orgId, userRole, input);
-    return exportBalanceSheetPdf(statement, orgName);
+    const [statement, org] = await Promise.all([
+      this.generateBalanceSheet(orgId, userRole, input),
+      this.resolveOrgHeader(orgId),
+    ]);
+    return exportBalanceSheetPdf(statement, org);
   }
 
   /**
@@ -491,11 +510,13 @@ export class FinancialStatementsService {
     orgId: string,
     userRole: Role,
     input: GenerateBalanceSheetInput,
-    orgName: string,
   ): Promise<Buffer> {
     assertFinancialStatementsAccess(userRole);
-    const statement = await this.generateBalanceSheet(orgId, userRole, input);
-    return exportBalanceSheetExcel(statement, orgName);
+    const [statement, org] = await Promise.all([
+      this.generateBalanceSheet(orgId, userRole, input),
+      this.resolveOrgHeader(orgId),
+    ]);
+    return exportBalanceSheetExcel(statement, org);
   }
 
   /**
@@ -505,11 +526,13 @@ export class FinancialStatementsService {
     orgId: string,
     userRole: Role,
     input: GenerateIncomeStatementInput,
-    orgName: string,
   ): Promise<Buffer> {
     assertFinancialStatementsAccess(userRole);
-    const statement = await this.generateIncomeStatement(orgId, userRole, input);
-    return exportIncomeStatementPdf(statement, orgName);
+    const [statement, org] = await Promise.all([
+      this.generateIncomeStatement(orgId, userRole, input),
+      this.resolveOrgHeader(orgId),
+    ]);
+    return exportIncomeStatementPdf(statement, org);
   }
 
   /**
@@ -519,10 +542,12 @@ export class FinancialStatementsService {
     orgId: string,
     userRole: Role,
     input: GenerateIncomeStatementInput,
-    orgName: string,
   ): Promise<Buffer> {
     assertFinancialStatementsAccess(userRole);
-    const statement = await this.generateIncomeStatement(orgId, userRole, input);
-    return exportIncomeStatementExcel(statement, orgName);
+    const [statement, org] = await Promise.all([
+      this.generateIncomeStatement(orgId, userRole, input),
+      this.resolveOrgHeader(orgId),
+    ]);
+    return exportIncomeStatementExcel(statement, org);
   }
 }

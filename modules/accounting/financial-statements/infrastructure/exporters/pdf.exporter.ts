@@ -11,13 +11,15 @@
 // Single-column backward compat: cuando columns.length === 1 se mantiene
 // el layout de 3 columnas (Cuenta / Código / Saldo BOB).
 
-import type { TDocumentDefinitions, Content, Watermark } from "pdfmake/interfaces";
+import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
+import { buildExecutivePdfHeader } from "@/modules/accounting/shared/infrastructure/exporters/executive-pdf-header";
 import type { ExportColumn, ExportRow, ExportRowType, ExportSheet } from "./statement-shape";
 import {
   buildBalanceSheetExportSheet,
   buildIncomeStatementExportSheet,
   chunkColumnsForPage,
+  type OrgHeaderMetadata,
 } from "./sheet.builder";
 import type { BalanceSheet, IncomeStatement } from "../../domain/types/financial-statements.types";
 
@@ -31,12 +33,17 @@ const STYLE = {
   danger: "#b91c1c",
 } as const;
 
-const BODY_FONT_SIZE = 8;
+/** Tamaño de las filas de datos (cuentas, totales, subtotales). */
+const BODY_FONT_SIZE = 10;
+
+/** Tamaño de los encabezados de columna ("Cuenta", "Código", "Saldo BOB"). */
+const HEADER_COL_FONT_SIZE = 11;
 
 const BASE_FONT_SIZES = {
-  title: 14,
-  subtitle: 10,
-  footer: 7,
+  title: 18,           // BALANCE GENERAL / ESTADO DE RESULTADOS — centrado
+  orgInfo: 8,          // Empresa + NIT/Dirección — chico, alineado a la derecha (membrete)
+  subtitle: 10,        // Fecha "Al ..." + (Expresado en ...)
+  footer: 8,           // Generado: dd/mm/yyyy + N / M
 } as const;
 
 // ── Helpers de construcción ──
@@ -50,10 +57,11 @@ const BASE_FONT_SIZES = {
 function buildColumnWidths(valueColumns: ExportColumn[]): (string | number)[] {
   if (valueColumns.length > 1) {
     const numCols = valueColumns.length;
-    const valWidth = Math.min(85, Math.max(50, Math.floor(380 / numCols)));
+    const valWidth = Math.min(95, Math.max(60, Math.floor(420 / numCols)));
     return ["*", ...valueColumns.map(() => valWidth)];
   }
-  return ["*", 60, 80];
+  // Single-col: cuenta* + código(75) + saldo(110) — anchos compatibles con 11pt.
+  return ["*", 75, 110];
 }
 
 /** Total de columnas en la tabla pdfmake. */
@@ -224,9 +232,7 @@ function rowToTableRow(
  * Construye los bloques de contenido pdfmake para una página (chunk de columnas).
  *
  * Cada página incluye:
- * - Título centrado
- * - Nombre de organización centrado
- * - Subtítulo / período centrado
+ * - Header ejecutivo (Empresa / NIT · Dirección / TÍTULO / período / Expresado en)
  * - Banner de desbalance (solo en la primera página)
  * - Tabla con el chunk de columnas de valor
  */
@@ -236,13 +242,13 @@ function buildPageSection(
   isFirstPage: boolean,
   rowTypes: ExportRowType[],
 ): Content[] {
-  // Fila de encabezado de columnas
+  // Fila de encabezado de columnas — un punto más grande que el body
   const headerRow: Content[] = [
     {
       text: "Cuenta",
       bold: true,
-      fontSize: BODY_FONT_SIZE,
-      margin: [4, 3, 4, 3],
+      fontSize: HEADER_COL_FONT_SIZE,
+      margin: [4, 4, 4, 4],
     } as Content,
   ];
 
@@ -251,9 +257,9 @@ function buildPageSection(
       headerRow.push({
         text: col.label,
         bold: true,
-        fontSize: BODY_FONT_SIZE,
+        fontSize: HEADER_COL_FONT_SIZE,
         alignment: "right",
-        margin: [2, 3, 4, 3],
+        margin: [2, 4, 4, 4],
       } as Content);
     }
   } else {
@@ -261,16 +267,16 @@ function buildPageSection(
       {
         text: "Código",
         bold: true,
-        fontSize: BODY_FONT_SIZE,
+        fontSize: HEADER_COL_FONT_SIZE,
         alignment: "center",
-        margin: [2, 3, 2, 3],
+        margin: [2, 4, 2, 4],
       } as Content,
       {
         text: "Saldo BOB",
         bold: true,
-        fontSize: BODY_FONT_SIZE,
+        fontSize: HEADER_COL_FONT_SIZE,
         alignment: "right",
-        margin: [2, 3, 4, 3],
+        margin: [2, 4, 4, 4],
       } as Content,
     );
   }
@@ -324,27 +330,18 @@ function buildPageSection(
       : [];
 
   return [
-    {
-      text: exportSheet.title,
-      fontSize: BASE_FONT_SIZES.title,
-      bold: true,
-      color: STYLE.text,
-      alignment: "center",
-      margin: [0, 0, 0, 2],
-    } as Content,
-    {
-      text: exportSheet.orgName,
-      fontSize: BASE_FONT_SIZES.subtitle,
-      alignment: "center",
-      margin: [0, 0, 0, 2],
-    } as Content,
-    {
-      text: exportSheet.subtitle,
-      fontSize: BASE_FONT_SIZES.subtitle,
-      color: STYLE.textMuted,
-      alignment: "center",
-      margin: [0, 0, 0, 8],
-    } as Content,
+    ...buildExecutivePdfHeader({
+      orgName: exportSheet.orgName,
+      orgNit: exportSheet.orgNit,
+      orgAddress: exportSheet.orgAddress,
+      orgCity: exportSheet.orgCity,
+      title: exportSheet.title,
+      subtitle: exportSheet.subtitle,
+      titleFontSize: BASE_FONT_SIZES.title,
+      subtitleFontSize: BASE_FONT_SIZES.subtitle,
+      orgInfoFontSize: BASE_FONT_SIZES.orgInfo,
+      orgInfoAlignment: "left",
+    }),
     ...imbalanceBanner,
     {
       table: {
@@ -383,17 +380,6 @@ function buildDocDefinition(exportSheet: ExportSheet): TDocumentDefinitions {
   // Parallel array de tipos de fila para el layout de líneas.
   const rowTypes: ExportRowType[] = exportSheet.rows.map((r) => r.type);
 
-  // Watermark PRELIMINAR
-  const watermark: Watermark | undefined = exportSheet.preliminary
-    ? {
-        text: "PRELIMINAR",
-        color: STYLE.textMuted,
-        opacity: 0.15,
-        bold: true,
-        italics: false,
-      }
-    : undefined;
-
   const content: Content[] = [];
   for (let i = 0; i < chunks.length; i++) {
     const section = buildPageSection(exportSheet, chunks[i], i === 0, rowTypes);
@@ -408,8 +394,6 @@ function buildDocDefinition(exportSheet: ExportSheet): TDocumentDefinitions {
     pageSize: "LETTER",
     pageOrientation: "portrait",
     pageMargins: [40, 50, 40, 50],
-
-    ...(watermark ? { watermark } : {}),
 
     footer: (_currentPage: number, _pageCount: number): Content =>
       ({
@@ -447,13 +431,16 @@ function buildDocDefinition(exportSheet: ExportSheet): TDocumentDefinitions {
 /**
  * Genera el Balance General como Buffer PDF.
  *
- * @param bs      Resultado de `generateBalanceSheet` (con Decimals)
- * @param orgName Nombre de la organización para el encabezado
- * @returns       Buffer con el PDF generado
+ * @param bs  Resultado de `generateBalanceSheet` (con Decimals)
+ * @param org Metadata de organización (name, nit, address) para el encabezado ejecutivo
+ * @returns   Buffer con el PDF generado
  */
-export async function exportBalanceSheetPdf(bs: BalanceSheet, orgName: string): Promise<Buffer> {
+export async function exportBalanceSheetPdf(
+  bs: BalanceSheet,
+  org: OrgHeaderMetadata,
+): Promise<Buffer> {
   registerFonts();
-  const exportSheet = buildBalanceSheetExportSheet(bs, orgName);
+  const exportSheet = buildBalanceSheetExportSheet(bs, org);
   const docDef = buildDocDefinition(exportSheet);
   return pdfmakeRuntime.createPdf(docDef).getBuffer();
 }
@@ -461,16 +448,16 @@ export async function exportBalanceSheetPdf(bs: BalanceSheet, orgName: string): 
 /**
  * Genera el Estado de Resultados como Buffer PDF.
  *
- * @param is      Resultado de `generateIncomeStatement` (con Decimals)
- * @param orgName Nombre de la organización para el encabezado
- * @returns       Buffer con el PDF generado
+ * @param is  Resultado de `generateIncomeStatement` (con Decimals)
+ * @param org Metadata de organización (name, nit, address) para el encabezado ejecutivo
+ * @returns   Buffer con el PDF generado
  */
 export async function exportIncomeStatementPdf(
   is: IncomeStatement,
-  orgName: string,
+  org: OrgHeaderMetadata,
 ): Promise<Buffer> {
   registerFonts();
-  const exportSheet = buildIncomeStatementExportSheet(is, orgName);
+  const exportSheet = buildIncomeStatementExportSheet(is, org);
   const docDef = buildDocDefinition(exportSheet);
   return pdfmakeRuntime.createPdf(docDef).getBuffer();
 }

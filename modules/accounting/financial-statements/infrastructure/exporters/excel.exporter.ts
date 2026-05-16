@@ -11,7 +11,11 @@
 
 import ExcelJS from "exceljs";
 import type { ExportColumn, ExportRow, ExportSheet } from "./statement-shape";
-import { buildBalanceSheetExportSheet, buildIncomeStatementExportSheet } from "./sheet.builder";
+import {
+  buildBalanceSheetExportSheet,
+  buildIncomeStatementExportSheet,
+  type OrgHeaderMetadata,
+} from "./sheet.builder";
 import type { BalanceSheet, IncomeStatement } from "../../domain/types/financial-statements.types";
 
 // ── Constantes de estilo (QB-style: sin colores de fondo) ──
@@ -22,7 +26,6 @@ const STYLE = {
   border: "000000",
   borderLight: "D1D5DB",
   danger: "B91C1C",
-  preliminary: "B45309",
 } as const;
 
 // Formato numérico para saldos BOB (negativo entre paréntesis)
@@ -80,8 +83,22 @@ function lastExcelCol(valueColumns: ExportColumn[]): string {
 
 /**
  * Escribe el encabezado del documento (organización, título, fecha, columnas).
- * Estructura QB: fila 1=título, fila 2=empresa, fila 3=período, fila 4=PRELIMINAR (opcional),
- * fila 5=vacía, fila 6=encabezados de columna.
+ *
+ * Estructura ejecutiva (paralela al PDF, estilo membrete — datos a la izquierda,
+ * cada campo en su propia fila):
+ *   Empresa: {orgName}                    (bold, izquierda, 8pt)
+ *   NIT: {nit}                            (izquierda, 8pt) — opcional
+ *   Dirección: {address}                  (izquierda, 8pt) — opcional
+ *   {city}                                (izquierda, 8pt) — opcional
+ *   {TÍTULO EN CAPS}                      (bold, grande, centrado)
+ *   {subtitle / período}                  (centrado)
+ *   (Expresado en Bolivianos)             (italic, centrado)
+ *   <fila vacía>
+ *   <encabezados de columna>
+ *
+ * Las filas opcionales se omiten cuando el campo está vacío; el número total
+ * de filas varía y `frozenRows` se deriva dinámicamente del rowNum resultante.
+ *
  * Retorna el número de la última fila escrita (la fila de encabezados de columna).
  */
 function writeDocumentHeader(
@@ -93,39 +110,55 @@ function writeDocumentHeader(
   const lastCol = lastExcelCol(valueColumns);
   let rowNum = 1;
 
-  // Fila 1: título del estado (ej. "Balance General")
-  const titleRow = sheet.getRow(rowNum++);
+  // Líneas de identidad organizacional — una por fila (membrete), izquierda.
+  // Graceful omission por campo: si está vacío, no se emite la fila.
+  const pushOrgRow = (text: string, bold = false) => {
+    const r = sheet.getRow(rowNum);
+    const c = r.getCell(1);
+    c.value = text;
+    c.font = arial({ bold, size: 8 });
+    c.alignment = { horizontal: "left" };
+    sheet.mergeCells(`A${rowNum}:${lastCol}${rowNum}`);
+    rowNum++;
+  };
+
+  pushOrgRow(`Empresa: ${exportSheet.orgName}`, true);
+  if (exportSheet.orgNit && exportSheet.orgNit.trim().length > 0) {
+    pushOrgRow(`NIT: ${exportSheet.orgNit}`);
+  }
+  if (exportSheet.orgAddress && exportSheet.orgAddress.trim().length > 0) {
+    pushOrgRow(`Dirección: ${exportSheet.orgAddress}`);
+  }
+  if (exportSheet.orgCity && exportSheet.orgCity.trim().length > 0) {
+    pushOrgRow(exportSheet.orgCity);
+  }
+
+  // Título en CAPS
+  const titleRow = sheet.getRow(rowNum);
   const titleCell = titleRow.getCell(1);
-  titleCell.value = exportSheet.title;
+  titleCell.value = exportSheet.title.toUpperCase();
   titleCell.font = arial({ bold: true, size: 14 });
   titleCell.alignment = { horizontal: "center" };
-  sheet.mergeCells(`A1:${lastCol}1`);
+  sheet.mergeCells(`A${rowNum}:${lastCol}${rowNum}`);
+  rowNum++;
 
-  // Fila 2: nombre de la organización
-  const orgRow = sheet.getRow(rowNum++);
-  const orgCell = orgRow.getCell(1);
-  orgCell.value = exportSheet.orgName;
-  orgCell.font = arial({ bold: true, size: 12 });
-  orgCell.alignment = { horizontal: "center" };
-  sheet.mergeCells(`A2:${lastCol}2`);
-
-  // Fila 3: rango de fechas / fecha de corte
-  const dateRow = sheet.getRow(rowNum++);
+  // Subtítulo / período
+  const dateRow = sheet.getRow(rowNum);
   const dateCell = dateRow.getCell(1);
   dateCell.value = exportSheet.subtitle;
   dateCell.font = arial({ size: 10 });
   dateCell.alignment = { horizontal: "center" };
-  sheet.mergeCells(`A3:${lastCol}3`);
+  sheet.mergeCells(`A${rowNum}:${lastCol}${rowNum}`);
+  rowNum++;
 
-  // Fila 4: aviso PRELIMINAR si aplica
-  if (exportSheet.preliminary) {
-    const prelRow = sheet.getRow(rowNum++);
-    const prelCell = prelRow.getCell(1);
-    prelCell.value = "ESTADO PRELIMINAR — basado en datos no confirmados";
-    prelCell.font = arial({ bold: true, size: 9, color: STYLE.preliminary });
-    prelCell.alignment = { horizontal: "center" };
-    sheet.mergeCells(`A${rowNum - 1}:${lastCol}${rowNum - 1}`);
-  }
+  // (Expresado en Bolivianos)
+  const currencyRow = sheet.getRow(rowNum);
+  const currencyCell = currencyRow.getCell(1);
+  currencyCell.value = "(Expresado en Bolivianos)";
+  currencyCell.font = arial({ size: 10, italic: true });
+  currencyCell.alignment = { horizontal: "center" };
+  sheet.mergeCells(`A${rowNum}:${lastCol}${rowNum}`);
+  rowNum++;
 
   // Fila vacía de separación
   rowNum++;
@@ -377,6 +410,10 @@ async function exportSheetToBuffer(exportSheet: ExportSheet): Promise<Buffer> {
 
   let rowNum = writeDocumentHeader(worksheet, exportSheet);
 
+  // Congelar: columna nombre (xSplit:1) + todas las filas del header doc
+  // incluyendo los encabezados de columna (en rowNum - 1).
+  const frozenRows = rowNum - 1;
+
   for (const row of exportSheet.rows) {
     writeExportRow(worksheet, row, rowNum, valueColumns);
     rowNum++;
@@ -384,9 +421,6 @@ async function exportSheetToBuffer(exportSheet: ExportSheet): Promise<Buffer> {
 
   writeDocumentFooter(worksheet, rowNum);
 
-  // Congelar: columna nombre (xSplit:1) + filas de encabezado doc (ySplit)
-  // Estructura: fila 1=título, 2=empresa, 3=período, [4=PRELIMINAR], 5=vacía, 6=col-headers
-  const frozenRows = exportSheet.preliminary ? 6 : 5;
   worksheet.views = [{ state: "frozen", ySplit: frozenRows, xSplit: 1 }];
 
   const buffer = await workbook.xlsx.writeBuffer();
@@ -398,26 +432,29 @@ async function exportSheetToBuffer(exportSheet: ExportSheet): Promise<Buffer> {
 /**
  * Genera el Balance General como Buffer XLSX (Excel).
  *
- * @param bs      Resultado de `generateBalanceSheet` (con Decimals)
- * @param orgName Nombre de la organización para el encabezado
- * @returns       Buffer con el archivo XLSX generado
+ * @param bs  Resultado de `generateBalanceSheet` (con Decimals)
+ * @param org Metadata de organización (name, nit, address) para el encabezado ejecutivo
+ * @returns   Buffer con el archivo XLSX generado
  */
-export async function exportBalanceSheetExcel(bs: BalanceSheet, orgName: string): Promise<Buffer> {
-  const sheet = buildBalanceSheetExportSheet(bs, orgName);
+export async function exportBalanceSheetExcel(
+  bs: BalanceSheet,
+  org: OrgHeaderMetadata,
+): Promise<Buffer> {
+  const sheet = buildBalanceSheetExportSheet(bs, org);
   return exportSheetToBuffer(sheet);
 }
 
 /**
  * Genera el Estado de Resultados como Buffer XLSX (Excel).
  *
- * @param is      Resultado de `generateIncomeStatement` (con Decimals)
- * @param orgName Nombre de la organización para el encabezado
- * @returns       Buffer con el archivo XLSX generado
+ * @param is  Resultado de `generateIncomeStatement` (con Decimals)
+ * @param org Metadata de organización (name, nit, address) para el encabezado ejecutivo
+ * @returns   Buffer con el archivo XLSX generado
  */
 export async function exportIncomeStatementExcel(
   is: IncomeStatement,
-  orgName: string,
+  org: OrgHeaderMetadata,
 ): Promise<Buffer> {
-  const sheet = buildIncomeStatementExportSheet(is, orgName);
+  const sheet = buildIncomeStatementExportSheet(is, org);
   return exportSheetToBuffer(sheet);
 }

@@ -11,6 +11,7 @@ import type {
   FinancialStatementsQueryPort,
   FiscalPeriodRow,
   AccountBalanceRow,
+  OrgMetadata,
 } from "../domain/ports/financial-statements-query.port";
 
 /**
@@ -235,5 +236,52 @@ export class PrismaFinancialStatementsRepo
       map.set(columnId, aggregations);
     }
     return map;
+  }
+
+  /**
+   * Resuelve metadata de organización para encabezados ejecutivos de PDF/XLSX.
+   *
+   * Estrategia: JOIN con OrgProfile. Preferimos `profile.razonSocial` (nombre
+   * legal/comercial completo) sobre `organization.name` (que suele ser un slug
+   * o handle corto). NIT, dirección y ciudad vienen del profile y se exponen
+   * por separado (no concatenados) para que el header los renderice en líneas
+   * distintas. Si algún campo está en "" (default), devuelve null para ese
+   * campo y el exporter lo omite gracefully.
+   */
+  async getOrgMetadata(orgId: string): Promise<OrgMetadata | null> {
+    const org = await this.db.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        name: true,
+        profile: {
+          select: {
+            razonSocial: true,
+            nit: true,
+            direccion: true,
+            ciudad: true,
+          },
+        },
+      },
+    });
+
+    if (!org) return null;
+
+    const profile = org.profile;
+    const name =
+      profile?.razonSocial && profile.razonSocial.trim().length > 0
+        ? profile.razonSocial
+        : org.name;
+
+    const trimOrNull = (v: string | undefined | null): string | null => {
+      const t = v?.trim();
+      return t && t.length > 0 ? t : null;
+    };
+
+    return {
+      name,
+      nit: trimOrNull(profile?.nit),
+      address: trimOrNull(profile?.direccion),
+      city: trimOrNull(profile?.ciudad),
+    };
   }
 }

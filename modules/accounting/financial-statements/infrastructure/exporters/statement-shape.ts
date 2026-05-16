@@ -48,9 +48,13 @@ export type ExportSheet = {
   subtitle: string;
   dateLabel: string;
   orgName: string;
+  /** NIT de la organización — null si no está configurado en OrgProfile. */
+  orgNit: string | null;
+  /** Dirección (calle/zona, sin ciudad) — null si no está configurada en OrgProfile. */
+  orgAddress: string | null;
+  /** Ciudad — null si no está configurada en OrgProfile. */
+  orgCity: string | null;
   rows: ExportRow[];
-  /** Si el estado es preliminar (muestra watermark/banner) */
-  preliminary: boolean;
   /** Si la ecuación está desbalanceada */
   imbalanced: boolean;
   /** Delta de desbalance formateado (solo presente si imbalanced=true) */

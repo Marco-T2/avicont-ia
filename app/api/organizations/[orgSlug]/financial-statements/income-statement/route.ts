@@ -72,25 +72,22 @@ export async function GET(
       : (query.periodId ?? "periodo");
     const periodLabel = rawPeriodLabel.replace(/[^a-zA-Z0-9\-_]/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
 
-    // 5a. Respuesta en formato PDF
+    // 5a. Respuesta en formato PDF — inline para que el browser lo renderice
+    // en una nueva pestaña; el filename se mantiene por si el usuario descarga
+    // desde el visor del browser.
     if (query.format === "pdf") {
-      const buffer = await service.exportIncomeStatementPdf(orgId, userRole, incomeInput, orgSlug);
+      const buffer = await service.exportIncomeStatementPdf(orgId, userRole, incomeInput);
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="estado-resultados-${orgSlug}-${periodLabel}.pdf"`,
+          "Content-Disposition": `inline; filename="estado-resultados-${orgSlug}-${periodLabel}.pdf"`,
         },
       });
     }
 
     // 5b. Respuesta en formato Excel
     if (query.format === "xlsx") {
-      const buffer = await service.exportIncomeStatementXlsx(
-        orgId,
-        userRole,
-        incomeInput,
-        orgSlug,
-      );
+      const buffer = await service.exportIncomeStatementXlsx(orgId, userRole, incomeInput);
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type":

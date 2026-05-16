@@ -16,6 +16,23 @@ export type AccountBalanceRow = {
 };
 
 /**
+ * Metadata de la organización para encabezados de exporters (PDF/XLSX).
+ *
+ * Resolución: prefer OrgProfile (razón social / NIT / dirección / ciudad)
+ * y cae a Organization.name si el profile está vacío. Cualquier campo no
+ * disponible queda en null — el exporter aplica graceful omission.
+ *
+ * `address` y `city` se exponen separados para que el header pueda renderizar
+ * cada uno en su propia línea (estilo membrete).
+ */
+export type OrgMetadata = {
+  name: string;
+  nit: string | null;
+  address: string | null;
+  city: string | null;
+};
+
+/**
  * Port for read-side access to financial-statements data.
  *
  * Lifted from `features/accounting/financial-statements/financial-statements.repository.ts`
@@ -71,4 +88,11 @@ export interface FinancialStatementsQueryPort {
     orgId: string,
     buckets: Array<{ columnId: string; dateFrom: Date; dateTo: Date }>,
   ): Promise<Map<string, MovementAggregation[]>>;
+
+  /**
+   * Metadata para encabezados de exporters (nombre, NIT, dirección).
+   * Consultada por exportBalanceSheetPdf/Xlsx y exportIncomeStatementPdf/Xlsx.
+   * Retorna null si la organización no existe.
+   */
+  getOrgMetadata(orgId: string): Promise<OrgMetadata | null>;
 }
