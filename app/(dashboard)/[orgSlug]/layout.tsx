@@ -44,8 +44,8 @@ export default async function OrgLayout({ children, params }: OrgLayoutProps) {
   return (
     <RolesMatrixProvider snapshot={matrixSnapshot}>
       <DashboardShell>
-        <div className="bg-muted py-8">
-          <div className="px-4 lg:px-8">{children}</div>
+        <div className="bg-muted py-5">
+          <div className="px-5">{children}</div>
         </div>
       </DashboardShell>
     </RolesMatrixProvider>
