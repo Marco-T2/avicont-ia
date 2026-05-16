@@ -155,9 +155,9 @@ function getYearCloseButton(headerRowYear: number): HTMLElement | null {
         txt.includes(`Cerrar la gestión ${headerRowYear}`) ||
         txt.includes("Año cerrado") ||
         txt.includes("Falta cerrar meses") ||
-        txt.includes("Resolve los pendientes") ||
+        txt.includes("Resolvé los pendientes") ||
         txt.includes("Asientos no cuadran") ||
-        txt.includes("Resolve borradores")
+        txt.includes("Resolvé borradores")
       );
     }) ?? null
   );
@@ -224,7 +224,7 @@ describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
     expect(reasonText).toMatch(/no cuadran/i);
   });
 
-  it("gate denied via summary with December drafts → button text 'Resolve borradores de diciembre' + voseo tooltip", () => {
+  it("gate denied via summary with December drafts → button text 'Resolvé borradores de diciembre' + voseo tooltip", () => {
     const periodsByYear: PeriodsByYear = [
       buildGroup(
         2026,
@@ -240,7 +240,7 @@ describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
     render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />);
 
     const btn = screen.getByRole("button", {
-      name: /Resolve borradores de diciembre/i,
+      name: /Resolvé borradores de diciembre/i,
     });
     expect(btn).toBeDisabled();
     const reasonText =

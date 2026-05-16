@@ -286,11 +286,11 @@ interface YearCloseActionProps {
  *  1. FY status CLOSED       → 'Año cerrado el {dd/mm/yyyy}'   disabled outline
  *  2. summary.balance ≠ 0    → 'Asientos no cuadran'           disabled outline
  *  3. summary.gateReason has 'borradores'
- *                            → 'Resolve borradores de diciembre' disabled outline
+ *                            → 'Resolvé borradores de diciembre' disabled outline
  *  4. summary.gateAllowed true → 'Cerrar la gestión {year}'    enabled  default
  *  5. closedCount<11 (no summary or summary denied)
  *                            → 'Falta cerrar meses (N)'        disabled outline
- *  6. fallback              → 'Resolve los pendientes'         disabled outline
+ *  6. fallback              → 'Resolvé los pendientes'         disabled outline
  *
  * Tooltip mechanic: `title` attribute (and `aria-label` for screen-readers)
  * carries `summary.gateReason` (server-computed voseo string) so the user
@@ -346,7 +346,7 @@ function YearCloseAction({
   ) {
     return (
       <Button variant="outline" size="sm" disabled title={reasonTooltip}>
-        Resolve borradores de diciembre
+        Resolvé borradores de diciembre
       </Button>
     );
   }
@@ -366,13 +366,13 @@ function YearCloseAction({
     reasonTooltip ??
     (missing > 0
       ? `Falta cerrar ${missing} mes(es) antes de cerrar la gestión ${group.year}.`
-      : `Aun no podes cerrar la gestión ${group.year}.`);
+      : `Aún no podés cerrar la gestión ${group.year}.`);
 
   return (
     <Button variant="outline" size="sm" disabled title={fallbackReason}>
       {missing > 0
         ? `Falta cerrar meses (${missing})`
-        : "Resolve los pendientes"}
+        : "Resolvé los pendientes"}
     </Button>
   );
 }
