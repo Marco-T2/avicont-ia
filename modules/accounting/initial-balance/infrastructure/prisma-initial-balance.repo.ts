@@ -1,6 +1,6 @@
 import "server-only";
+import Decimal from "decimal.js";
 import { BaseRepository } from "@/features/shared/base.repository";
-import { Prisma } from "@/generated/prisma/client";
 import type { AccountSubtype } from "@/generated/prisma/client";
 import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type {
@@ -116,7 +116,7 @@ export class PrismaInitialBalanceRepo
       code: r.code,
       name: r.name,
       subtype: r.subtype,
-      amount: new Prisma.Decimal(r.amount),
+      amount: new Decimal(r.amount),
     }));
   }
 
@@ -228,7 +228,7 @@ export class PrismaInitialBalanceRepo
       code: r.code,
       name: r.name,
       subtype: r.subtype,
-      amount: new Prisma.Decimal(r.amount),
+      amount: new Decimal(r.amount),
     }));
   }
 

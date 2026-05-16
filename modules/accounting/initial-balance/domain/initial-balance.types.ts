@@ -1,6 +1,18 @@
-import type { Prisma, AccountSubtype } from "@/generated/prisma/client";
+import type { AccountSubtype } from "@/generated/prisma/client";
+import type DecimalJs from "decimal.js";
 
-export type Decimal = Prisma.Decimal;
+/**
+ * Alias canónico de Decimal — decimal.js direct (DEC-1).
+ *
+ * Previo a este fix el alias apuntaba a `Prisma.Decimal`, lo que provocaba un
+ * bug visual en `/initial-balance`: `serializeStatement` (financial-statements)
+ * detecta Decimal vía `instanceof` de decimal.js, así que las filas con
+ * Prisma.Decimal no se serializaban a string y llegaban al cliente como `{}`
+ * → `parseFloat` daba NaN → `formatBOB` retornaba "Bs. 0,00" por su guard.
+ * Los subtotales sí se renderizaban OK porque pasan por `sumDecimals` que
+ * parte de `new Decimal(0)` (decimal.js) — de ahí la asimetría 0,00 vs 3.459.
+ */
+export type Decimal = DecimalJs;
 
 /**
  * A single row of the Initial Balance report: one account with its signed-net

@@ -7,7 +7,8 @@
  */
 
 import { describe, it, expectTypeOf } from "vitest";
-import type { Prisma, AccountSubtype } from "@/generated/prisma/client";
+import type { AccountSubtype } from "@/generated/prisma/client";
+import type Decimal from "decimal.js";
 import type {
   InitialBalanceRow,
   InitialBalanceGroup,
@@ -22,14 +23,14 @@ describe("initial-balance.types — type shape", () => {
     expectTypeOf<InitialBalanceRow["code"]>().toEqualTypeOf<string>();
     expectTypeOf<InitialBalanceRow["name"]>().toEqualTypeOf<string>();
     expectTypeOf<InitialBalanceRow["subtype"]>().toEqualTypeOf<AccountSubtype>();
-    expectTypeOf<InitialBalanceRow["amount"]>().toEqualTypeOf<Prisma.Decimal>();
+    expectTypeOf<InitialBalanceRow["amount"]>().toEqualTypeOf<Decimal>();
   });
 
   it("InitialBalanceGroup has subtype, label, rows, subtotal fields", () => {
     expectTypeOf<InitialBalanceGroup["subtype"]>().toEqualTypeOf<AccountSubtype>();
     expectTypeOf<InitialBalanceGroup["label"]>().toEqualTypeOf<string>();
     expectTypeOf<InitialBalanceGroup["rows"]>().toEqualTypeOf<InitialBalanceRow[]>();
-    expectTypeOf<InitialBalanceGroup["subtotal"]>().toEqualTypeOf<Prisma.Decimal>();
+    expectTypeOf<InitialBalanceGroup["subtotal"]>().toEqualTypeOf<Decimal>();
   });
 
   it("InitialBalanceSection has key, label, groups, sectionTotal fields", () => {
@@ -38,7 +39,7 @@ describe("initial-balance.types — type shape", () => {
     >();
     expectTypeOf<InitialBalanceSection["label"]>().toEqualTypeOf<string>();
     expectTypeOf<InitialBalanceSection["groups"]>().toEqualTypeOf<InitialBalanceGroup[]>();
-    expectTypeOf<InitialBalanceSection["sectionTotal"]>().toEqualTypeOf<Prisma.Decimal>();
+    expectTypeOf<InitialBalanceSection["sectionTotal"]>().toEqualTypeOf<Decimal>();
   });
 
   it("InitialBalanceStatement has orgId, dateAt, sections, flags, caCount", () => {
@@ -48,7 +49,7 @@ describe("initial-balance.types — type shape", () => {
       [InitialBalanceSection, InitialBalanceSection]
     >();
     expectTypeOf<InitialBalanceStatement["imbalanced"]>().toEqualTypeOf<boolean>();
-    expectTypeOf<InitialBalanceStatement["imbalanceDelta"]>().toEqualTypeOf<Prisma.Decimal>();
+    expectTypeOf<InitialBalanceStatement["imbalanceDelta"]>().toEqualTypeOf<Decimal>();
     expectTypeOf<InitialBalanceStatement["multipleCA"]>().toEqualTypeOf<boolean>();
     expectTypeOf<InitialBalanceStatement["caCount"]>().toEqualTypeOf<number>();
   });
