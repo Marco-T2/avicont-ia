@@ -57,6 +57,7 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     salesIngreso: string;
     expenseGasto: string;
     resultadoGestion: string;
+    resultadosAcumulados: string;
   };
   const testYear = 2099;
   const periodIds: string[] = [];
@@ -167,12 +168,26 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
         isDetail: true,
       },
     });
+    // REQ-A.3 (annual-close-canonical-flow): 3.2.1 Resultados Acumulados
+    // is mandatory for asiento #3 (Cerrar P&G → Resultados Acumulados).
+    const resultadosAcumulados = await prisma.account.create({
+      data: {
+        organizationId: testOrgId,
+        code: "3.2.1",
+        name: "Resultados Acumulados",
+        type: "PATRIMONIO",
+        nature: "ACREEDORA",
+        level: 3,
+        isDetail: true,
+      },
+    });
     testAccountIds = {
       cashActivo: cash.id,
       capitalPatrimonio: capital.id,
       salesIngreso: sales.id,
       expenseGasto: expense.id,
       resultadoGestion: resultadoGestion.id,
+      resultadosAcumulados: resultadosAcumulados.id,
     };
 
     // 12 periods — months 1-11 CLOSED, month 12 OPEN (standard path).
@@ -283,7 +298,9 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     expect(result.decClose).toBeDefined();
     expect(result.decClose!.locked.dispatches).toBe(0);
     expect(result.decClose!.locked.payments).toBe(0);
-    expect(result.decClose!.locked.journalEntries).toBe(1); // the just-posted CC.
+    // CAN-5: 4 CC entries posted in Dec OPEN → locked by lockJournalEntries cascade
+    // (asientos #1, #2, #3, #4). If a builder skipped (degenerate), fewer.
+    expect(result.decClose!.locked.journalEntries).toBeGreaterThanOrEqual(1);
     expect(result.decClose!.locked.sales).toBe(0);
     expect(result.decClose!.locked.purchases).toBe(0);
 
@@ -299,43 +316,50 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     expect(fyRow.year).toBe(testYear);
     expect(fyRow.organizationId).toBe(testOrgId);
 
-    // ── CC JournalEntry state ────────────────────────────────────────────
-    const ccEntry = await prisma.journalEntry.findUniqueOrThrow({
-      where: { id: result.closingEntryId! },
+    // ── CAN-5: 4 CC entries (asientos #1..#4) + 1 CA entry (asiento #5) ──
+    // Query ALL entries via sourceType reverse-lookup (CAN-5.6 — no FK col).
+    const allEntries = await prisma.journalEntry.findMany({
+      where: {
+        sourceType: "annual-close",
+        sourceId: result.fiscalYearId,
+      },
       include: { lines: true, voucherType: true },
+      orderBy: { createdAt: "asc" },
     });
-    expect(ccEntry.status).toBe("LOCKED"); // POSTED then locked in cascade.
-    expect(ccEntry.voucherType.code).toBe("CC");
-    expect(ccEntry.sourceType).toBe("annual-close");
-    expect(ccEntry.sourceId).toBe(result.fiscalYearId);
-    expect(ccEntry.periodId).toBe(periodIds[11]); // Dec 2099.
-    expect(ccEntry.date.toISOString()).toBe(`${testYear}-12-31T12:00:00.000Z`);
+    const ccEntries = allEntries.filter((e) => e.voucherType.code === "CC");
+    const caEntries = allEntries.filter((e) => e.voucherType.code === "CA");
+    expect(ccEntries).toHaveLength(4);
+    expect(caEntries).toHaveLength(1);
 
-    const ccDebit = ccEntry.lines.reduce(
-      (s, l) => s.plus(new Decimal(l.debit.toString())),
-      new Decimal(0),
-    );
-    const ccCredit = ccEntry.lines.reduce(
-      (s, l) => s.plus(new Decimal(l.credit.toString())),
-      new Decimal(0),
-    );
-    expect(ccDebit.equals(ccCredit)).toBe(true); // bit-perfect via Decimal.equals.
+    // All 4 CC entries: Dec 2099, LOCKED (post lock cascade), sourceType set.
+    for (const cc of ccEntries) {
+      expect(cc.status).toBe("LOCKED");
+      expect(cc.sourceType).toBe("annual-close");
+      expect(cc.sourceId).toBe(result.fiscalYearId);
+      expect(cc.periodId).toBe(periodIds[11]); // Dec 2099
+      expect(cc.date.toISOString()).toBe(`${testYear}-12-31T12:00:00.000Z`);
+      // Each CC balances (Decimal.equals — bit-perfect, W-6).
+      const cd = cc.lines.reduce(
+        (s, l) => s.plus(new Decimal(l.debit.toString())),
+        new Decimal(0),
+      );
+      const cc_credit = cc.lines.reduce(
+        (s, l) => s.plus(new Decimal(l.credit.toString())),
+        new Decimal(0),
+      );
+      expect(cd.equals(cc_credit)).toBe(true);
+    }
 
-    // 3.2.2 should be on HABER 20k (profit year — Ventas 60k - Gastos 40k).
-    const ccResultLine = ccEntry.lines.find(
-      (l) => l.accountId === testAccountIds.resultadoGestion,
-    );
-    expect(ccResultLine).toBeDefined();
-    expect(new Decimal(ccResultLine!.credit.toString()).equals(new Decimal("20000"))).toBe(true);
-    expect(new Decimal(ccResultLine!.debit.toString()).equals(new Decimal(0))).toBe(true);
+    // Asiento #4 corresponds to result.closingEntryId (alias for .balance per
+    // backward-compat).
+    const a4 = allEntries.find((e) => e.id === result.closingEntryId);
+    expect(a4).toBeDefined();
+    expect(a4!.voucherType.code).toBe("CC");
 
-    // ── CA JournalEntry state ────────────────────────────────────────────
-    const caEntry = await prisma.journalEntry.findUniqueOrThrow({
-      where: { id: result.openingEntryId! },
-      include: { lines: true, voucherType: true },
-    });
-    expect(caEntry.status).toBe("POSTED"); // CA is NOT locked (Jan 2100 is OPEN).
-    expect(caEntry.voucherType.code).toBe("CA");
+    // ── CA entry (asiento #5) — exact inversion of asiento #4 (CAN-5.1) ──
+    const caEntry = caEntries[0]!;
+    expect(caEntry.id).toBe(result.openingEntryId);
+    expect(caEntry.status).toBe("POSTED"); // CA is NOT locked (Jan 2100 OPEN).
     expect(caEntry.sourceType).toBe("annual-close");
     expect(caEntry.sourceId).toBe(result.fiscalYearId);
     expect(caEntry.date.toISOString()).toBe(`${testYear + 1}-01-01T12:00:00.000Z`);
@@ -350,13 +374,14 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     );
     expect(caDebit.equals(caCredit)).toBe(true);
 
-    // CA should NOT contain any INGRESO/GASTO lines (zeroed by CC).
+    // CA should NOT contain INGRESO/GASTO (zeroed by #1+#2) or 3.2.2 (zeroed by #3).
     const caAccountIds = new Set(caEntry.lines.map((l) => l.accountId));
     expect(caAccountIds.has(testAccountIds.salesIngreso)).toBe(false);
     expect(caAccountIds.has(testAccountIds.expenseGasto)).toBe(false);
+    expect(caAccountIds.has(testAccountIds.resultadoGestion)).toBe(false);
 
     // CA should contain Caja (ACTIVO 120k DEBE) + Capital (PATRIMONIO 100k
-    // HABER) + 3.2.2 (PATRIMONIO 20k HABER from the just-posted CC).
+    // HABER) + 3.2.1 (PATRIMONIO 20k HABER from asiento #3 transfer).
     const caCash = caEntry.lines.find((l) => l.accountId === testAccountIds.cashActivo);
     expect(caCash).toBeDefined();
     expect(new Decimal(caCash!.debit.toString()).equals(new Decimal("120000"))).toBe(true);
@@ -367,11 +392,14 @@ describe("annual-close happy path (E2E) — Postgres integration", () => {
     expect(caCapital).toBeDefined();
     expect(new Decimal(caCapital!.credit.toString()).equals(new Decimal("100000"))).toBe(true);
 
-    const caResult = caEntry.lines.find(
-      (l) => l.accountId === testAccountIds.resultadoGestion,
+    // 3.2.1 Resultados Acumulados — receives the 20k profit from asiento #3
+    // (REQ-A.3). #5 inverts #4 which had DEBE 3.2.1 (closing the patrimonio);
+    // so #5 has HABER 3.2.1 (re-opening the patrimonio).
+    const caAccum = caEntry.lines.find(
+      (l) => l.accountId === testAccountIds.resultadosAcumulados,
     );
-    expect(caResult).toBeDefined();
-    expect(new Decimal(caResult!.credit.toString()).equals(new Decimal("20000"))).toBe(true);
+    expect(caAccum).toBeDefined();
+    expect(new Decimal(caAccum!.credit.toString()).equals(new Decimal("20000"))).toBe(true);
 
     // ── 12 year+1 periods ────────────────────────────────────────────────
     const yearPlusOne = await prisma.fiscalPeriod.findMany({
