@@ -65,6 +65,8 @@ import {
   type AllocationDirectionInput,
 } from "./helpers/resolve-direction";
 import { buildEntryLines } from "./helpers/build-entry-lines";
+import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
+import { PaymentDateOutsidePeriod } from "../domain/errors/payment-errors";
 
 // ── Service-layer input shapes ─────────────────────────────────────────────
 
@@ -206,6 +208,17 @@ export class PaymentsService {
     userId: string,
     input: CreatePaymentServiceInput,
   ): Promise<Payment> {
+    // I12 — defense in depth: DRAFT permite período CLOSED (legacy parity),
+    // pero exigimos coherencia date∈período. Cierra el gap para callers que
+    // salten el FE (el FE deriva periodId de la fecha).
+    const period = await this.fiscalPeriods.getById(
+      organizationId,
+      input.periodId,
+    );
+    if (!isDateWithinPeriod(input.date, period)) {
+      throw new PaymentDateOutsidePeriod(input.date, period.name);
+    }
+
     const aggregate = PaymentEntity.create({
       organizationId,
       method: input.method,
@@ -255,9 +268,15 @@ export class PaymentsService {
   ): Promise<PaymentResult> {
     const payment = await this.getById(organizationId, id);
     // Pre-validation OUTSIDE the tx (mirror legacy)
-    assertPeriodOpen(
-      await this.fiscalPeriods.getById(organizationId, payment.periodId),
+    const period = await this.fiscalPeriods.getById(
+      organizationId,
+      payment.periodId,
     );
+    assertPeriodOpen(period);
+    // I12 — date∈período antes del POST.
+    if (!isDateWithinPeriod(payment.date, period)) {
+      throw new PaymentDateOutsidePeriod(payment.date, period.name);
+    }
     const settings = await this.orgSettings.getOrCreate(organizationId);
 
     const { result, correlationId } = await withAuditTx(
@@ -275,9 +294,15 @@ export class PaymentsService {
     userId: string,
     input: CreatePaymentServiceInput,
   ): Promise<PaymentResult> {
-    assertPeriodOpen(
-      await this.fiscalPeriods.getById(organizationId, input.periodId),
+    const period = await this.fiscalPeriods.getById(
+      organizationId,
+      input.periodId,
     );
+    assertPeriodOpen(period);
+    // I12 — date∈período (createAndPost: nace con input.date + input.periodId).
+    if (!isDateWithinPeriod(input.date, period)) {
+      throw new PaymentDateOutsidePeriod(input.date, period.name);
+    }
     const settings = await this.orgSettings.getOrCreate(organizationId);
 
     const draft = PaymentEntity.create({
@@ -418,9 +443,16 @@ export class PaymentsService {
 
     if (payment.status === "POSTED") {
       // Atomic reverse-modify-reapply path (mirror legacy updatePostedPaymentTx)
-      assertPeriodOpen(
-        await this.fiscalPeriods.getById(organizationId, payment.periodId),
+      const period = await this.fiscalPeriods.getById(
+        organizationId,
+        payment.periodId,
       );
+      assertPeriodOpen(period);
+      // I12 — si la fecha cambia en update POSTED, la nueva debe caer en el período.
+      const nextDate = input.date ?? payment.date;
+      if (!isDateWithinPeriod(nextDate, period)) {
+        throw new PaymentDateOutsidePeriod(nextDate, period.name);
+      }
       return this.updatePostedPaymentTx(
         organizationId,
         userId,

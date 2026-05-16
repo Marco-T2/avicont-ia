@@ -64,7 +64,7 @@ export default function JournalLineRow({
       </td>
       <td className="py-2 px-2">
         <Input
-          placeholder="Detalle (opcional)"
+          placeholder="Detalle específico (opcional)"
           value={line.description}
           onChange={(e) => onUpdate(line.id, "description", e.target.value)}
         />

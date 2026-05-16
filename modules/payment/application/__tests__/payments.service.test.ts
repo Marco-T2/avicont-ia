@@ -16,6 +16,7 @@ import {
   PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
   PAYMENT_MIXED_ALLOCATION,
   FISCAL_PERIOD_CLOSED,
+  PAYMENT_DATE_OUTSIDE_PERIOD,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
@@ -334,6 +335,27 @@ describe("PaymentsService", () => {
       await expect(bench.svc.post(ORG, USER, p.id)).rejects.toMatchObject({
         code: FISCAL_PERIOD_CLOSED,
       });
+    });
+
+    // I12 — fecha del pago/cobro DEBE caer en [period.startDate, period.endDate].
+    it("rejects post when payment.date falls outside the period range (I12)", async () => {
+      // Primamos un período OPEN específico Mayo 2025 — la fecha por default
+      // del baseCreate (2026-04-15) NO cae adentro, gatillando I12 sin tropezar I6.
+      bench.fiscalPeriods.periods.set("period-mayo-2025", {
+        id: "period-mayo-2025",
+        status: "OPEN",
+        name: "Mayo 2025",
+        startDate: new Date("2025-05-01T00:00:00.000Z"),
+        endDate: new Date("2025-05-31T00:00:00.000Z"),
+      });
+      // Nota: create() también valida I12; usamos createAndPost path para validar el post.
+      await expect(
+        bench.svc.createAndPost(
+          ORG,
+          USER,
+          baseCreate({ periodId: "period-mayo-2025" }),
+        ),
+      ).rejects.toMatchObject({ code: PAYMENT_DATE_OUTSIDE_PERIOD });
     });
 
     it("rejects post when allocation target is VOIDED", async () => {

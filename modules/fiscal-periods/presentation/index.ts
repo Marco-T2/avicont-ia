@@ -7,4 +7,8 @@ export {
   findPeriodCoveringDate,
   type FiscalPeriodLike,
 } from "../domain/fiscal-period-finder";
+export {
+  isDateWithinPeriod,
+  type PeriodRange,
+} from "../domain/date-period-check";
 export type { FiscalPeriodSnapshot as FiscalPeriod } from "../domain/fiscal-period.entity";

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -283,6 +283,8 @@ export default function DispatchForm({
       ? new Date(existingDispatch.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+  // Período = derivado puro de la fecha (no seleccionable). Backend valida
+  // invariante I12 (date ∈ período) en create/post/update.
   const [periodId, setPeriodId] = useState(() => {
     if (existingDispatch?.periodId) return existingDispatch.periodId;
     const initialDate = existingDispatch?.date
@@ -290,18 +292,24 @@ export default function DispatchForm({
       : todayLocal();
     return findPeriodCoveringDate(initialDate, periods)?.id ?? "";
   });
-  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
-  const isFirstPeriodSync = useRef(true);
 
   useEffect(() => {
-    if (isFirstPeriodSync.current) {
-      isFirstPeriodSync.current = false;
-      return;
-    }
-    if (periodManuallySelected || !date) return;
+    if (!date) return;
     const match = findPeriodCoveringDate(date, periods);
     setPeriodId(match?.id ?? "");
-  }, [date, periods, periodManuallySelected]);
+  }, [date, periods]);
+
+  // Período visible incluyendo CLOSED (para el hint rojo).
+  const currentPeriod = (() => {
+    if (!date) return null;
+    return (
+      periods.find((p) => {
+        const start = new Date(p.startDate).toISOString().slice(0, 10);
+        const end = new Date(p.endDate).toISOString().slice(0, 10);
+        return start <= date && date <= end;
+      }) ?? null
+    );
+  })();
   const [referenceNumber, setReferenceNumber] = useState(
     existingDispatch?.referenceNumber !== null && existingDispatch?.referenceNumber !== undefined
       ? String(existingDispatch.referenceNumber)
@@ -880,8 +888,8 @@ export default function DispatchForm({
           ) : (
             <>
               {/* ── Editable form grid ── */}
-              {/* Row 1: Tipo / Nro. Referencia / Fecha / Período (4 cols) */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Row 1: Tipo / Nro. Referencia / Fecha (con hint período) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {/* Tipo (readonly) */}
                 <div className="space-y-2">
                   <Label>Tipo</Label>
@@ -908,7 +916,7 @@ export default function DispatchForm({
                   />
                 </div>
 
-                {/* Fecha */}
+                {/* Fecha (con hint de período derivado) */}
                 <div className="space-y-2">
                   <Label htmlFor="dispatch-date">Fecha</Label>
                   <Input
@@ -920,47 +928,41 @@ export default function DispatchForm({
                     className={isReadOnly ? "bg-muted cursor-default" : undefined}
                     required
                   />
-                </div>
-
-                {/* Período */}
-                <div className="space-y-2">
-                  <Label htmlFor="period">Período</Label>
-                  {isReadOnly ? (
-                    <Input
-                      value={periods.find((p) => p.id === periodId)?.name ?? "—"}
-                      readOnly
-                      className="bg-muted cursor-default"
-                    />
-                  ) : (
-                    <Select
-                      value={periodId}
-                      onValueChange={(value) => {
-                        setPeriodManuallySelected(true);
-                        setPeriodId(value);
-                      }}
+                  {currentPeriod && (
+                    <p
+                      data-testid="period-hint"
+                      className={`text-xs font-medium ${
+                        currentPeriod.status === "OPEN"
+                          ? "text-success"
+                          : "text-destructive"
+                      }`}
                     >
-                      <SelectTrigger id="period" className="w-full">
-                        <SelectValue placeholder="Seleccione período" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {periods.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {currentPeriod.status === "OPEN"
+                        ? `✓ Período: ${currentPeriod.name}`
+                        : `✗ Período: ${currentPeriod.name} — CERRADO`}
+                    </p>
                   )}
                 </div>
               </div>
 
-              {!isReadOnly && date && !periodId && periods.length > 0 && (
+              {/* Banner amarillo: no existe período que cubra la fecha. */}
+              {!isReadOnly && date && !periodId && !currentPeriod && periods.length > 0 && (
                 <div
                   role="alert"
                   className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
                 >
-                  No hay un período abierto que cubra esta fecha. Abrí el período
+                  No hay un período fiscal para esta fecha. Creá el período
                   correspondiente o elegí otra fecha.
+                </div>
+              )}
+              {/* Banner rojo: existe período pero está CLOSED. */}
+              {!isReadOnly && date && !periodId && currentPeriod && currentPeriod.status !== "OPEN" && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground"
+                >
+                  El período <strong>{currentPeriod.name}</strong> está cerrado.
+                  Para registrar en esta fecha, reabrí el período o elegí otra fecha.
                 </div>
               )}
 

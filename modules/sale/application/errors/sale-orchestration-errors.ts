@@ -5,6 +5,7 @@ import {
   POST_NOT_ALLOWED_FOR_ROLE,
   SALE_CONTACT_CHANGE_BLOCKED,
   SALE_CONTACT_INACTIVE,
+  SALE_DATE_OUTSIDE_PERIOD,
   SALE_INCOME_ACCOUNT_REQUIRED,
   SALE_INVALID_CONTACT_TYPE,
   ValidationError,
@@ -16,6 +17,7 @@ export {
   POST_NOT_ALLOWED_FOR_ROLE,
   SALE_CONTACT_CHANGE_BLOCKED,
   SALE_CONTACT_INACTIVE,
+  SALE_DATE_OUTSIDE_PERIOD,
   SALE_INCOME_ACCOUNT_REQUIRED,
   SALE_INVALID_CONTACT_TYPE,
 } from "@/features/shared/errors";
@@ -82,6 +84,23 @@ export class SalePeriodClosed extends ValidationError {
       { periodId },
     );
     this.name = "SalePeriodClosed";
+  }
+}
+
+// I12 — la fecha de la venta DEBE caer en [period.startDate, period.endDate].
+// Gap previo: el use case validaba SOLO period.status (SalePeriodClosed) pero
+// nunca exigía coherencia date∈período. POST directo al API podía mandar
+// `{date: 2026-04-28, periodId: may-2026-open}` sin rechazo. Este invariante
+// cierra el gap a nivel backend para cualquier consumer (FE, API directo,
+// scripts, integraciones AI).
+export class SaleDateOutsidePeriod extends ValidationError {
+  constructor(date: Date, periodName: string) {
+    super(
+      `La fecha de la venta (${date.toISOString().slice(0, 10)}) está fuera del período ${periodName}`,
+      SALE_DATE_OUTSIDE_PERIOD,
+      { date: date.toISOString().slice(0, 10), periodName },
+    );
+    this.name = "SaleDateOutsidePeriod";
   }
 }
 

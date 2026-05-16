@@ -27,6 +27,9 @@ export class LegacyFiscalPeriodsAdapter implements FiscalPeriodsReadPort {
     return {
       id: period.id,
       status: period.status as "OPEN" | "CLOSED",
+      name: period.name,
+      startDate: period.startDate,
+      endDate: period.endDate,
     };
   }
 }

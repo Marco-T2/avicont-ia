@@ -3,6 +3,7 @@ import { ValidationError } from "@/features/shared/errors";
 export {
   DISPATCH_NO_DETAILS,
   DISPATCH_BC_FIELDS_ON_ND,
+  DISPATCH_DATE_OUTSIDE_PERIOD,
   DISPATCH_INVALID_CONTACT_TYPE,
   DISPATCH_NOT_DRAFT,
   DISPATCH_CONTACT_CHANGE_BLOCKED,
@@ -95,5 +96,20 @@ export class DispatchBcFieldsOnNd extends ValidationError {
       DISPATCH_BC_FIELDS_ON_ND,
     );
     this.name = "DispatchBcFieldsOnNd";
+  }
+}
+
+// I12 — la fecha del despacho/boleta DEBE caer en [period.startDate, period.endDate].
+// Mismo invariante familia date-outside-period. El use case ya valida period status
+// (PERIOD_CLOSED inline) pero no exigía coherencia date∈período.
+export class DispatchDateOutsidePeriod extends ValidationError {
+  constructor(date: Date, periodName: string) {
+    // import lazy — el helper de import al top usa el code re-exportado.
+    super(
+      `La fecha del despacho (${date.toISOString().slice(0, 10)}) está fuera del período ${periodName}`,
+      "DISPATCH_DATE_OUTSIDE_PERIOD",
+      { date: date.toISOString().slice(0, 10), periodName },
+    );
+    this.name = "DispatchDateOutsidePeriod";
   }
 }

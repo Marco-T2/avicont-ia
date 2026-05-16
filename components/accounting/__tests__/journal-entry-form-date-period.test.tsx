@@ -1,39 +1,38 @@
 /**
- * RED phase — Phase 2 component tests for journal-entry-form date-aware period auto-selection.
+ * Component tests for journal-entry-form date-driven period derivation.
  *
- * Change: journal-form-date-aware-period
- * Spec:   openspec/changes/journal-form-date-aware-period/specs/journal-entry-form-ux/spec.md
+ * Tras quitar el `<Select>` de Período (Marco UX, 2026-05-16), el período es
+ * un derivado puro de la fecha — no hay input editable. El form muestra un
+ * hint inline (data-testid="period-hint") con el formato:
+ *   "✓ Período: Abril 2026"        (status OPEN)
+ *   "✗ Período: Abril 2026 — CERRADO" (status CLOSED, bloquea submit)
  *
- * JF-T01 — Auto-select on mount, new entry (REQ-1, JF-T01)
- * JF-T02 — Date change re-selects period (REQ-1, JF-T02)
- * JF-T03 — Manual override wins on date change (REQ-1, JF-T03)
+ * JF-T01 — Auto-derive on mount, new entry (REQ-1)
+ * JF-T02 — Date change re-derives period (REQ-1)
  * JF-T04 — No match → warning visible and submit disabled (REQ-2 + REQ-3)
- * JF-T05 — Match restored → warning hidden and submit re-enabled (REQ-2)
- * JF-T06 — Edit mode mount preserves editEntry.periodId (REQ-1, JF-T06)
- * JF-T07 — Edit mode date change re-selects (REQ-1, JF-T07)
- * JF-T08 — Inclusive startDate boundary (REQ-4, JF-T08)
- * JF-T09 — Inclusive endDate boundary (REQ-4, JF-T09)
+ * JF-T05 — Match restored → warning hidden and hint re-derived (REQ-2)
+ * JF-T06 — Edit mode mount: hint matches the entry's period (REQ-1)
+ * JF-T07 — Edit mode date change re-derives (REQ-1)
+ * JF-T08 — Inclusive startDate boundary (REQ-4)
+ * JF-T09 — Inclusive endDate boundary (REQ-4)
+ * JF-T10 — CLOSED period that covers the date renders red hint (Marco UX, 2026-05-16)
+ *
+ * JF-T03 (Manual override wins on date change) — REMOVED. El comportamiento de
+ * override manual desapareció con el rediseño: el período ya no es seleccionable.
  *
  * TZ NOTE: Bolivia is UTC-4. All period dates use explicit UTC midnight (T00:00:00.000Z)
  * so that .toISOString().slice(0,10) returns the correct calendar date.
  * Date inputs are strings "YYYY-MM-DD" — never construct Date from them for comparison.
  */
 
-import { render, screen, fireEvent, cleanup, within } from "@testing-library/react";
+import { render, screen, fireEvent, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── Radix UI polyfills (required in jsdom) ────────────────────────────────────
-
 beforeEach(() => {
   // Pin system clock to an April date so todayLocal() returns "2026-04-15",
-  // which falls inside APRIL_PERIOD. This ensures the lazy periodId init in
-  // journal-entry-form.tsx resolves to "period-april" (not "") regardless of
-  // when the test suite runs. Without this pin, a May (or later) run produces
-  // periodId="" → the "no open period" warning banner renders → /período/i
-  // matches both the <Label> and the banner text (JF-T01), and Radix Select
-  // starts from empty value causing onValueChange issues (JF-T03).
-  // Root cause: commit bbccf573 made periodId init date-aware (lazy init).
+  // which falls inside APRIL_PERIOD. Sin esto el lazy init en May+ runs
+  // resuelve a periodId="" y dispara el banner "no open period".
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(new Date("2026-04-15T12:00:00.000Z"));
 
@@ -77,7 +76,7 @@ import JournalEntryForm from "../journal-entry-form";
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 
- 
+
 function makePeriod(overrides: Record<string, unknown> = {}): any {
   return {
     id: "period-april",
@@ -94,7 +93,7 @@ function makePeriod(overrides: Record<string, unknown> = {}): any {
   };
 }
 
- 
+
 const BASE_VOUCHER_TYPE: any = {
   id: "vt-1",
   code: "CE",
@@ -104,7 +103,7 @@ const BASE_VOUCHER_TYPE: any = {
   organizationId: "org-1",
 };
 
- 
+
 const BASE_ACCOUNT: any = {
   id: "acc-1",
   code: "1.1.1",
@@ -132,21 +131,10 @@ const MAY_PERIOD = makePeriod({
   status: "OPEN",
 });
 
-/** Select the period <Select> trigger and click an option by visible text */
-async function selectPeriodOption(name: string) {
-  const triggers = screen.getAllByRole("combobox");
-  // The period Select is the first combobox (Date field is an <input type="date">, not combobox)
-  const trigger = triggers[0];
-  fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-  fireEvent.click(trigger);
-  const option = await screen.findByRole("option", { name: new RegExp(name) });
-  fireEvent.click(option);
-}
+// ── JF-T01 — Auto-derive on mount, new entry ─────────────────────────────────
 
-// ── JF-T01 — Auto-select on mount, new entry ──────────────────────────────────
-
-describe("JF-T01 — Auto-select on mount: new entry with date inside OPEN period", () => {
-  it("periodId is auto-set to the matching OPEN period on mount", () => {
+describe("JF-T01 — Auto-derive on mount: new entry with date inside OPEN period", () => {
+  it("period hint shows the matching OPEN period name on mount", () => {
     render(
       <JournalEntryForm
         orgSlug="test-org"
@@ -157,19 +145,16 @@ describe("JF-T01 — Auto-select on mount: new entry with date inside OPEN perio
       />,
     );
 
-    // The period Select combobox should display "Abril 2026"
-    // We locate the period Select by its label
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    // The combobox in the period container should show the period name
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
+    const hint = screen.getByTestId("period-hint");
+    expect(hint).toHaveTextContent("Período: Abril 2026");
+    expect(hint.textContent).toMatch(/^✓/);
   });
 });
 
-// ── JF-T02 — Date change re-selects period ────────────────────────────────────
+// ── JF-T02 — Date change re-derives period ────────────────────────────────────
 
-describe("JF-T02 — Date change re-selects period (no manual override)", () => {
-  it("changing date to May auto-sets periodId to May period", () => {
+describe("JF-T02 — Date change re-derives period", () => {
+  it("changing date to May updates the hint to the May period", () => {
     render(
       <JournalEntryForm
         orgSlug="test-org"
@@ -180,42 +165,12 @@ describe("JF-T02 — Date change re-selects period (no manual override)", () => 
       />,
     );
 
-    // Initially date is today (2026-04-xx from todayLocal) → APRIL_PERIOD auto-selected
-    // Change date to a May date
     const dateInput = screen.getByLabelText(/fecha/i);
     fireEvent.change(dateInput, { target: { value: "2026-05-15" } });
 
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Mayo 2026");
-  });
-});
-
-// ── JF-T03 — Manual override wins on date change ─────────────────────────────
-
-describe("JF-T03 — Manual period override is NOT overwritten by subsequent date changes", () => {
-  it("after user selects period manually, date change does not overwrite periodId", async () => {
-    render(
-      <JournalEntryForm
-        orgSlug="test-org"
-        accounts={[BASE_ACCOUNT]}
-        periods={[APRIL_PERIOD, MAY_PERIOD]}
-        voucherTypes={[BASE_VOUCHER_TYPE]}
-        editEntry={undefined}
-      />,
+    expect(screen.getByTestId("period-hint")).toHaveTextContent(
+      "Período: Mayo 2026",
     );
-
-    // Manually select May period via the Select widget
-    await selectPeriodOption("Mayo 2026");
-
-    // Now change date to an April date (would normally auto-select April)
-    const dateInput = screen.getByLabelText(/fecha/i);
-    fireEvent.change(dateInput, { target: { value: "2026-04-15" } });
-
-    // periodId MUST remain May (manual override wins)
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Mayo 2026");
   });
 });
 
@@ -239,7 +194,7 @@ describe("JF-T04 — Uncovered date shows warning banner and disables submit", (
     const alert = screen.getByRole("alert");
     expect(alert).toBeInTheDocument();
     expect(alert).toHaveTextContent(
-      "No hay un período abierto que cubra esta fecha",
+      "No hay un período fiscal para esta fecha",
     );
   });
 
@@ -257,7 +212,6 @@ describe("JF-T04 — Uncovered date shows warning banner and disables submit", (
     const dateInput = screen.getByLabelText(/fecha/i);
     fireEvent.change(dateInput, { target: { value: "2026-06-15" } });
 
-    // Find submit buttons (Guardar Borrador and/or Contabilizar)
     const submitButtons = screen
       .getAllByRole("button")
       .filter(
@@ -266,15 +220,14 @@ describe("JF-T04 — Uncovered date shows warning banner and disables submit", (
           btn.textContent?.includes("Guardar Borrador") ||
           btn.textContent?.includes("Contabilizar"),
       );
-    // At least one submit button must be disabled
     expect(submitButtons.some((btn) => btn.hasAttribute("disabled"))).toBe(true);
   });
 });
 
-// ── JF-T05 — Match restored → warning hidden and periodId auto-set ────────────
+// ── JF-T05 — Match restored → warning hidden and periodId derived ────────────
 
-describe("JF-T05 — Covered date after uncovered: warning hidden, periodId set", () => {
-  it("warning banner disappears and period is auto-set when date returns to a covered value", () => {
+describe("JF-T05 — Covered date after uncovered: warning hidden, hint re-derived", () => {
+  it("warning banner disappears and hint shows period name when date returns to a covered value", () => {
     render(
       <JournalEntryForm
         orgSlug="test-org"
@@ -287,25 +240,22 @@ describe("JF-T05 — Covered date after uncovered: warning hidden, periodId set"
 
     const dateInput = screen.getByLabelText(/fecha/i);
 
-    // Set to uncovered date
     fireEvent.change(dateInput, { target: { value: "2026-06-15" } });
     expect(screen.getByRole("alert")).toBeInTheDocument();
 
-    // Restore to covered date (April)
     fireEvent.change(dateInput, { target: { value: "2026-04-20" } });
 
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
-
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
+    expect(screen.getByTestId("period-hint")).toHaveTextContent(
+      "Período: Abril 2026",
+    );
   });
 });
 
-// ── JF-T06 — Edit mode: mount preserves editEntry.periodId ───────────────────
+// ── JF-T06 — Edit mode: hint reflects entry's period ─────────────────────────
 
-describe("JF-T06 — Edit mode mount preserves editEntry.periodId", () => {
-  it("periodId is not auto-overwritten on mount in edit mode", () => {
+describe("JF-T06 — Edit mode: hint reflects the entry's period on mount", () => {
+  it("hint matches the period covering editEntry.date on mount", () => {
     const editEntry = {
       id: "entry-1",
       number: 42,
@@ -330,16 +280,16 @@ describe("JF-T06 — Edit mode mount preserves editEntry.periodId", () => {
       />,
     );
 
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
+    expect(screen.getByTestId("period-hint")).toHaveTextContent(
+      "Período: Abril 2026",
+    );
   });
 });
 
-// ── JF-T07 — Edit mode: date change re-selects period ────────────────────────
+// ── JF-T07 — Edit mode: date change re-derives period ────────────────────────
 
-describe("JF-T07 — Edit mode: date change re-selects period (no manual override)", () => {
-  it("changing date in edit mode auto-updates periodId to the matching OPEN period", () => {
+describe("JF-T07 — Edit mode: date change re-derives period", () => {
+  it("changing date in edit mode updates the hint to the new period", () => {
     const editEntry = {
       id: "entry-1",
       number: 42,
@@ -367,16 +317,16 @@ describe("JF-T07 — Edit mode: date change re-selects period (no manual overrid
     const dateInput = screen.getByLabelText(/fecha/i);
     fireEvent.change(dateInput, { target: { value: "2026-05-10" } });
 
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Mayo 2026");
+    expect(screen.getByTestId("period-hint")).toHaveTextContent(
+      "Período: Mayo 2026",
+    );
   });
 });
 
 // ── JF-T08 — Inclusive startDate boundary ────────────────────────────────────
 
 describe("JF-T08 — Inclusive startDate boundary (REQ-4)", () => {
-  it("date equal to period.startDate matches and sets periodId", () => {
+  it("date equal to period.startDate matches and hint shows the period", () => {
     render(
       <JournalEntryForm
         orgSlug="test-org"
@@ -390,9 +340,9 @@ describe("JF-T08 — Inclusive startDate boundary (REQ-4)", () => {
     const dateInput = screen.getByLabelText(/fecha/i);
     fireEvent.change(dateInput, { target: { value: "2026-04-01" } });
 
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
+    expect(screen.getByTestId("period-hint")).toHaveTextContent(
+      "Período: Abril 2026",
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
   });
 });
@@ -400,7 +350,7 @@ describe("JF-T08 — Inclusive startDate boundary (REQ-4)", () => {
 // ── JF-T09 — Inclusive endDate boundary ──────────────────────────────────────
 
 describe("JF-T09 — Inclusive endDate boundary (REQ-4)", () => {
-  it("date equal to period.endDate matches and sets periodId", () => {
+  it("date equal to period.endDate matches and hint shows the period", () => {
     render(
       <JournalEntryForm
         orgSlug="test-org"
@@ -414,9 +364,38 @@ describe("JF-T09 — Inclusive endDate boundary (REQ-4)", () => {
     const dateInput = screen.getByLabelText(/fecha/i);
     fireEvent.change(dateInput, { target: { value: "2026-04-30" } });
 
-    const periodLabel = screen.getByText(/período/i);
-    const periodContainer = periodLabel.closest("div")!;
-    expect(within(periodContainer).getByRole("combobox")).toHaveTextContent("Abril 2026");
+    expect(screen.getByTestId("period-hint")).toHaveTextContent(
+      "Período: Abril 2026",
+    );
     expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+});
+
+// ── JF-T10 — CLOSED period that covers the date renders red hint ─────────────
+
+describe("JF-T10 — CLOSED period covering the date: red hint + submit disabled", () => {
+  it("renders red hint and the warning banner when the only covering period is CLOSED", () => {
+    const APRIL_CLOSED = makePeriod({ status: "CLOSED" });
+
+    render(
+      <JournalEntryForm
+        orgSlug="test-org"
+        accounts={[BASE_ACCOUNT]}
+        periods={[APRIL_CLOSED]}
+        voucherTypes={[BASE_VOUCHER_TYPE]}
+        editEntry={undefined}
+      />,
+    );
+
+    const hint = screen.getByTestId("period-hint");
+    expect(hint).toHaveTextContent("Período: Abril 2026");
+    expect(hint).toHaveTextContent("CERRADO");
+    expect(hint.textContent).toMatch(/^✗/);
+
+    // Banner rojo "El período X está cerrado..." (no el amarillo). El amarillo
+    // es para "no existe período"; el rojo es para "existe pero CLOSED".
+    const alert = screen.getByRole("alert");
+    expect(alert).toHaveTextContent("Abril 2026");
+    expect(alert).toHaveTextContent(/está cerrado/i);
   });
 });

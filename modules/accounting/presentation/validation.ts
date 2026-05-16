@@ -71,7 +71,10 @@ const journalLineSchema = z
 
 export const createJournalEntrySchema = z.object({
   date: z.coerce.date({ message: "Fecha inválida" }),
-  description: z.string().min(1, "La descripción es requerida"),
+  description: z
+    .string()
+    .max(500, "La glosa no puede superar los 500 caracteres")
+    .default(""),
   periodId: z.string().min(1, "ID de periodo inválido"),
   voucherTypeId: z.string().min(1, "ID de tipo de comprobante inválido"),
   contactId: z.string().min(1, "ID de contacto inválido").optional(),
@@ -89,7 +92,10 @@ export const createJournalEntrySchema = z.object({
 
 export const updateJournalEntrySchema = z.object({
   date: z.coerce.date({ message: "Fecha inválida" }).optional(),
-  description: z.string().min(1, "La descripción es requerida").optional(),
+  description: z
+    .string()
+    .max(500, "La glosa no puede superar los 500 caracteres")
+    .optional(),
   contactId: z.string().min(1, "ID de contacto inválido").nullable().optional(),
   referenceNumber: z
     .number()

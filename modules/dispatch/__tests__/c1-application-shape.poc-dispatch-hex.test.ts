@@ -109,6 +109,8 @@ function makeInMemoryPeriods(): DispatchFiscalPeriodsPort {
       id: "p-1",
       name: "2026-01",
       status: "OPEN",
+      startDate: new Date("2000-01-01T00:00:00.000Z"),
+      endDate: new Date("2099-12-31T23:59:59.999Z"),
     }),
   };
 }

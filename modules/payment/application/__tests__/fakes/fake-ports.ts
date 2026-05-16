@@ -171,15 +171,34 @@ export class FakeOrgSettingsReadPort implements OrgSettingsReadPort {
   }
 }
 
+/**
+ * Storage shape interno: `name`, `startDate`, `endDate` opcionales (defaults sane
+ * en `getById`) para no obligar a actualizar todos los tests legacy cuando el
+ * port narrow se amplía. Adapter real siempre provee los 5 campos.
+ */
+type StoredPaymentFiscalPeriod = {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  name?: string;
+  startDate?: Date;
+  endDate?: Date;
+};
+
 export class FakeFiscalPeriodsReadPort implements FiscalPeriodsReadPort {
   /** Fixture map: id → period. Missing key → throws like legacy. */
-  periods = new Map<string, PaymentFiscalPeriod>();
+  periods = new Map<string, StoredPaymentFiscalPeriod>();
   notFoundError = new Error("Período fiscal");
 
   async getById(_orgId: string, id: string): Promise<PaymentFiscalPeriod> {
     const p = this.periods.get(id);
     if (!p) throw this.notFoundError;
-    return p;
+    return {
+      id: p.id,
+      status: p.status,
+      name: p.name ?? `Período ${p.id}`,
+      startDate: p.startDate ?? new Date("2000-01-01T00:00:00.000Z"),
+      endDate: p.endDate ?? new Date("2099-12-31T23:59:59.999Z"),
+    };
   }
 }
 

@@ -8,6 +8,7 @@ import type { ContactRepository } from "@/modules/contacts/domain/contact.reposi
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
 import type { FiscalPeriodsReadPort } from "@/modules/accounting/domain/ports/fiscal-periods-read.port";
+import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import type { OrgSettingsReaderPort } from "@/modules/sale/domain/ports/org-settings-reader.port";
 import {
@@ -42,6 +43,7 @@ import {
   PurchaseContactInactive,
   PurchaseContactNotProvider,
   PurchaseLockedEditMissingJustification,
+  PurchaseDateOutsidePeriod,
   PurchasePeriodClosed,
   PurchasePostNotAllowedForRole,
 } from "./errors/purchase-orchestration-errors";
@@ -207,6 +209,18 @@ export class PurchaseService {
       throw new PurchaseContactNotProvider(contact.type);
     }
 
+    // I12 — defense in depth: createDraft NO valida period status (preserva
+    // el comportamiento legacy de DRAFT en CLOSED), pero SÍ exige date∈período.
+    if (this.deps.fiscalPeriods) {
+      const period = await this.deps.fiscalPeriods.getById(
+        organizationId,
+        input.periodId,
+      );
+      if (!isDateWithinPeriod(input.date, period)) {
+        throw new PurchaseDateOutsidePeriod(input.date, period.name);
+      }
+    }
+
     const pfSummary =
       input.purchaseType === "POLLO_FAENADO"
         ? computePfSummary(input.details)
@@ -276,6 +290,10 @@ export class PurchaseService {
     );
     if (period.status === "CLOSED") {
       throw new PurchasePeriodClosed(purchase.periodId);
+    }
+    // I12 — date∈período antes del POST.
+    if (!isDateWithinPeriod(purchase.date, period)) {
+      throw new PurchaseDateOutsidePeriod(purchase.date, period.name);
     }
 
     const posted = purchase.post();
@@ -443,6 +461,10 @@ export class PurchaseService {
     );
     if (period.status === "CLOSED") {
       throw new PurchasePeriodClosed(input.periodId);
+    }
+    // I12 — date∈período (createAndPost: el purchase nace con input.date + input.periodId).
+    if (!isDateWithinPeriod(input.date, period)) {
+      throw new PurchaseDateOutsidePeriod(input.date, period.name);
     }
 
     const pfSummary =
@@ -723,6 +745,10 @@ export class PurchaseService {
     );
     if (period.status === "CLOSED") {
       throw new PurchasePeriodClosed(purchase.periodId);
+    }
+    // I12 — si la fecha cambia en update, la nueva debe caer en el período del purchase.
+    if (input.date !== undefined && !isDateWithinPeriod(input.date, period)) {
+      throw new PurchaseDateOutsidePeriod(input.date, period.name);
     }
 
     if (
@@ -1113,6 +1139,10 @@ export class PurchaseService {
     );
     if (period.status === "CLOSED") {
       throw new PurchasePeriodClosed(purchase.periodId);
+    }
+    // I12 — date∈período antes de regenerar el journal entry asociado.
+    if (!isDateWithinPeriod(purchase.date, period)) {
+      throw new PurchaseDateOutsidePeriod(purchase.date, period.name);
     }
 
     const expenseAccountIds =

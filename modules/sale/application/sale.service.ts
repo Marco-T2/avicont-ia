@@ -4,6 +4,7 @@ import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors
 import type { ReceivableRepository } from "@/modules/receivables/domain/receivable.repository";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
 import type { FiscalPeriodsReadPort } from "@/modules/accounting/domain/ports/fiscal-periods-read.port";
+import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import {
   Sale,
   type ApplySaleEditInput,
@@ -40,6 +41,7 @@ import {
   SaleContactInactive,
   SaleContactNotClient,
   SaleLockedEditMissingJustification,
+  SaleDateOutsidePeriod,
   SalePeriodClosed,
   SalePostNotAllowedForRole,
 } from "./errors/sale-orchestration-errors";
@@ -185,6 +187,19 @@ export class SaleService {
       throw new SaleContactNotClient(contact.type);
     }
 
+    // I12 — defense in depth: createDraft NO valida period status (preserva
+    // el comportamiento legacy de DRAFT en período CLOSED), pero SÍ exige
+    // coherencia date∈período. Cierra el gap para callers que salten el FE.
+    if (this.deps.fiscalPeriods) {
+      const period = await this.deps.fiscalPeriods.getById(
+        organizationId,
+        input.periodId,
+      );
+      if (!isDateWithinPeriod(input.date, period)) {
+        throw new SaleDateOutsidePeriod(input.date, period.name);
+      }
+    }
+
     const sale = Sale.createDraft({
       ...input,
       organizationId,
@@ -230,6 +245,11 @@ export class SaleService {
     );
     if (period.status === "CLOSED") {
       throw new SalePeriodClosed(sale.periodId);
+    }
+    // I12 — defense in depth: date∈período (data ya en DB puede ser inconsistente
+    // si fue creada antes del invariante; rechazamos al postear).
+    if (!isDateWithinPeriod(sale.date, period)) {
+      throw new SaleDateOutsidePeriod(sale.date, period.name);
     }
 
     const posted = sale.post();
@@ -479,6 +499,11 @@ export class SaleService {
     if (period.status === "CLOSED") {
       throw new SalePeriodClosed(sale.periodId);
     }
+    // I12 — si la fecha cambia en update, la nueva debe caer en el período del sale
+    // (periodId NO es mutable en ApplySaleEditInput). Para mover de mes, anular + recrear.
+    if (input.date !== undefined && !isDateWithinPeriod(input.date, period)) {
+      throw new SaleDateOutsidePeriod(input.date, period.name);
+    }
 
     if (
       input.contactId !== undefined &&
@@ -693,6 +718,10 @@ export class SaleService {
     );
     if (period.status === "CLOSED") {
       throw new SalePeriodClosed(input.periodId);
+    }
+    // I12 — date∈período (createAndPost: el sale nace con input.date + input.periodId).
+    if (!isDateWithinPeriod(input.date, period)) {
+      throw new SaleDateOutsidePeriod(input.date, period.name);
     }
 
     const posted = Sale.createDraft({

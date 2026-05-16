@@ -13,8 +13,10 @@ import { fetchLogoAsDataUrl } from "../infrastructure/exporters/logo-fetcher";
 import type { ExportVoucherOpts } from "../infrastructure/exporters/voucher-pdf.types";
 import {
   JournalAutoEntryVoidForbidden,
+  JournalDateOutsidePeriod,
   JournalFiscalPeriodClosed,
 } from "../domain/errors/journal-errors";
+import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import { Journal } from "../domain/journal.entity";
 import {
   type JournalLineRawInput,
@@ -423,6 +425,12 @@ export class JournalsService {
       if (period.status !== "OPEN") {
         throw new JournalFiscalPeriodClosed();
       }
+      // I12 — si la fecha cambió, la nueva debe seguir cayendo en el período
+      // del entry (periodId NO es mutable en update). Si el contador necesita
+      // mover el asiento a otro mes, debe anular y crear uno nuevo.
+      if (input.date !== undefined) {
+        assertDateWithinPeriod(input.date, period);
+      }
 
       if (input.lines !== undefined) {
         validateLineRules(input.lines);
@@ -461,6 +469,17 @@ export class JournalsService {
         period.status,
         context.justification,
       );
+      // I12 — si la fecha cambia en LOCKED-editable, debe caer en el período del entry.
+      if (input.date !== undefined) {
+        assertDateWithinPeriod(input.date, period);
+      }
+    } else if (input.date !== undefined) {
+      // I12 — DRAFT update: si la fecha cambia, también debe caer en el período del entry.
+      const period = await this.periods.getById(
+        organizationId,
+        current.periodId,
+      );
+      assertDateWithinPeriod(input.date, period);
     }
     let mutated = current.update(input);
     if (input.lines !== undefined) {
@@ -500,6 +519,7 @@ export class JournalsService {
     if (period.status !== "OPEN") {
       throw new JournalFiscalPeriodClosed();
     }
+    assertDateWithinPeriod(input.date, period);
     await this.voucherTypes.getById(organizationId, input.voucherTypeId);
 
     validateLineRules(input.lines);
@@ -523,5 +543,19 @@ export class JournalsService {
       aiOriginalText: input.aiOriginalText ?? null,
       lines: mapLinesToDrafts(input.lines),
     });
+  }
+}
+
+/**
+ * I12 — la fecha del asiento DEBE caer dentro del rango [startDate, endDate]
+ * del período. Delegado al helper compartido `isDateWithinPeriod` (consumido
+ * también por sale/purchase services con sus propias error classes).
+ */
+function assertDateWithinPeriod(
+  date: Date,
+  period: { name: string; startDate: Date; endDate: Date },
+): void {
+  if (!isDateWithinPeriod(date, period)) {
+    throw new JournalDateOutsidePeriod(date, period.name);
   }
 }

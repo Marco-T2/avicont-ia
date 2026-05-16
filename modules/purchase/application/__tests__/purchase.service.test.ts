@@ -15,6 +15,7 @@ import {
   PurchaseContactChangeWithAllocations,
   PurchaseContactInactive,
   PurchaseContactNotProvider,
+  PurchaseDateOutsidePeriod,
   PurchaseLockedEditMissingJustification,
   PurchasePeriodClosed,
   PurchasePostNotAllowedForRole,
@@ -627,6 +628,26 @@ describe("PurchaseService.post", () => {
 
     await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
       PurchasePeriodClosed,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  // I12 — la fecha de la compra DEBE caer en [period.startDate, period.endDate].
+  it("throws PurchaseDateOutsidePeriod when purchase.date falls outside the period range (I12)", async () => {
+    const draft = buildDraftPurchase();
+    purchaseRepo.preload(draft);
+    // purchase.date típica del builder (chequear) — primamos período Mayo 2025 OPEN
+    // donde la fecha del draft NO cae, para gatillar I12 sin tropezar con I6 (CLOSED).
+    fiscalPeriods.preloadFull({
+      id: "period-1",
+      status: "OPEN",
+      name: "Mayo 2025",
+      startDate: new Date("2025-05-01T00:00:00.000Z"),
+      endDate: new Date("2025-05-31T00:00:00.000Z"),
+    });
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      PurchaseDateOutsidePeriod,
     );
     expect(uow.ranContexts).toEqual([]);
   });

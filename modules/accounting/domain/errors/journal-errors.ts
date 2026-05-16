@@ -9,6 +9,7 @@ import {
   ENTRY_SYSTEM_GENERATED_IMMUTABLE,
   AUTO_ENTRY_VOID_FORBIDDEN,
   FISCAL_PERIOD_CLOSED,
+  JOURNAL_DATE_OUTSIDE_PERIOD,
   ACCOUNT_NOT_POSTABLE,
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/features/shared/errors";
@@ -142,6 +143,22 @@ export class JournalFiscalPeriodClosed extends ValidationError {
   }
 }
 
+// I12: la fecha del asiento DEBE caer dentro del rango [startDate, endDate] del
+//      período fiscal asociado. Hasta hoy el use-case validaba que el período
+//      estuviese OPEN (I6) pero no exigía coherencia date∈período — un POST
+//      directo al API podía crear `{date: 2026-04-28, periodId: may-2026-open}`
+//      sin que nada lo rechazase, dejando data inconsistente. El FE auto-deriva
+//      periodId de la fecha desde el form, este invariante cierra el gap a nivel
+//      backend para cualquier consumer (API directo, scripts, integraciones).
+export class JournalDateOutsidePeriod extends ValidationError {
+  constructor(date: Date, periodName: string) {
+    super(
+      `La fecha del asiento (${date.toISOString().slice(0, 10)}) está fuera del período ${periodName}`,
+      JOURNAL_DATE_OUTSIDE_PERIOD,
+    );
+  }
+}
+
 // ── I3: account postable — la cuenta debe ser de detalle (isDetail: true).
 //        El check de isActive comparte el invariante I3 desde la perspectiva
 //        del aggregate "cuenta usable", pero el legacy emite código distinto
@@ -193,6 +210,7 @@ export {
   ENTRY_SYSTEM_GENERATED_IMMUTABLE,
   AUTO_ENTRY_VOID_FORBIDDEN,
   FISCAL_PERIOD_CLOSED,
+  JOURNAL_DATE_OUTSIDE_PERIOD,
   ACCOUNT_NOT_POSTABLE,
   CONTACT_REQUIRED_FOR_ACCOUNT,
 };

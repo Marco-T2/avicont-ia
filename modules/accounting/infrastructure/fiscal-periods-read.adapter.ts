@@ -7,10 +7,10 @@ import type {
 const legacy = makeFiscalPeriodsService();
 
 /**
- * Cross-module narrow map (13→2 fields) sobre `makeFiscalPeriodsService().getById`
+ * Cross-module narrow map (13→5 fields) sobre `makeFiscalPeriodsService().getById`
  * via `entity.toSnapshot()` bridge (FiscalPeriod entity → FiscalPeriodSnapshot
  * Prisma row shape). Throw legacy `NotFoundError(PERIOD_NOT_FOUND)` se propaga
- * sin re-wrap.
+ * sin re-wrap. startDate/endDate/name añadidos para invariante I12 (date∈período).
  */
 export class FiscalPeriodsReadAdapter implements FiscalPeriodsReadPort {
   async getById(
@@ -19,6 +19,12 @@ export class FiscalPeriodsReadAdapter implements FiscalPeriodsReadPort {
   ): Promise<AccountingFiscalPeriod> {
     const entity = await legacy.getById(organizationId, periodId);
     const period = entity.toSnapshot();
-    return { id: period.id, status: period.status };
+    return {
+      id: period.id,
+      status: period.status,
+      name: period.name,
+      startDate: period.startDate,
+      endDate: period.endDate,
+    };
   }
 }

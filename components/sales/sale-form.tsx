@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -13,13 +13,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Plus,
   Loader2,
@@ -153,6 +146,9 @@ export default function SaleForm({
       ? new Date(sale.date).toISOString().split("T")[0]
       : todayLocal(),
   );
+  // Período = derivado puro de la fecha. No es seleccionable — el contador
+  // captura la fecha y el período resulta por `findPeriodCoveringDate` (OPEN).
+  // El backend valida invariante I12 (date ∈ período) en createDraft/post/update.
   const [periodId, setPeriodId] = useState(() => {
     if (sale?.periodId) return sale.periodId;
     const initialDate = sale?.date
@@ -160,18 +156,25 @@ export default function SaleForm({
       : todayLocal();
     return findPeriodCoveringDate(initialDate, periods)?.id ?? "";
   });
-  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
-  const isFirstPeriodSync = useRef(true);
 
   useEffect(() => {
-    if (isFirstPeriodSync.current) {
-      isFirstPeriodSync.current = false;
-      return;
-    }
-    if (periodManuallySelected || !date) return;
+    if (!date) return;
     const match = findPeriodCoveringDate(date, periods);
     setPeriodId(match?.id ?? "");
-  }, [date, periods, periodManuallySelected]);
+  }, [date, periods]);
+
+  // Período visible incluyendo CLOSED (para el hint rojo). `findPeriodCoveringDate`
+  // filtra por OPEN — para "Mayo 2026 — CERRADO" resolvemos en la lista completa.
+  const currentPeriod = (() => {
+    if (!date) return null;
+    return (
+      periods.find((p) => {
+        const start = new Date(p.startDate).toISOString().slice(0, 10);
+        const end = new Date(p.endDate).toISOString().slice(0, 10);
+        return start <= date && date <= end;
+      }) ?? null
+    );
+  })();
   const [referenceNumber, setReferenceNumber] = useState(
     sale?.referenceNumber != null ? String(sale.referenceNumber) : "",
   );
@@ -615,8 +618,8 @@ export default function SaleForm({
           ) : (
             /* ── Formulario editable ── */
             <>
-              {/* Fila 1: Fecha / Período / Nro. Referencia */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Fila 1: Fecha (con hint de período derivado) / Nro. Referencia */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="sale-date">Fecha</Label>
                   <Input
@@ -628,35 +631,19 @@ export default function SaleForm({
                     className={isReadOnly ? "bg-muted cursor-default" : undefined}
                     required
                   />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="period">Período</Label>
-                  {isReadOnly ? (
-                    <Input
-                      value={periods.find((p) => p.id === periodId)?.name ?? "—"}
-                      readOnly
-                      className="bg-muted cursor-default"
-                    />
-                  ) : (
-                    <Select
-                      value={periodId}
-                      onValueChange={(value) => {
-                        setPeriodManuallySelected(true);
-                        setPeriodId(value);
-                      }}
+                  {currentPeriod && (
+                    <p
+                      data-testid="period-hint"
+                      className={`text-xs font-medium ${
+                        currentPeriod.status === "OPEN"
+                          ? "text-success"
+                          : "text-destructive"
+                      }`}
                     >
-                      <SelectTrigger id="period" className="w-full">
-                        <SelectValue placeholder="Seleccione período" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {periods.map((p) => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {p.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                      {currentPeriod.status === "OPEN"
+                        ? `✓ Período: ${currentPeriod.name}`
+                        : `✗ Período: ${currentPeriod.name} — CERRADO`}
+                    </p>
                   )}
                 </div>
 
@@ -676,13 +663,24 @@ export default function SaleForm({
                 </div>
               </div>
 
-              {!isReadOnly && date && !periodId && periods.length > 0 && (
+              {/* Banner amarillo: no existe período (ni OPEN ni CLOSED) que cubra la fecha. */}
+              {!isReadOnly && date && !periodId && !currentPeriod && periods.length > 0 && (
                 <div
                   role="alert"
                   className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
                 >
-                  No hay un período abierto que cubra esta fecha. Abrí el período
+                  No hay un período fiscal para esta fecha. Creá el período
                   correspondiente o elegí otra fecha.
+                </div>
+              )}
+              {/* Banner rojo: existe período cubriendo la fecha pero está CLOSED. */}
+              {!isReadOnly && date && !periodId && currentPeriod && currentPeriod.status !== "OPEN" && (
+                <div
+                  role="alert"
+                  className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground"
+                >
+                  El período <strong>{currentPeriod.name}</strong> está cerrado.
+                  Para registrar en esta fecha, reabrí el período o elegí otra fecha.
                 </div>
               )}
 

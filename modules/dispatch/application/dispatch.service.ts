@@ -7,9 +7,11 @@ import {
   INVALID_STATUS_TRANSITION,
   DISPATCH_NOT_DRAFT,
   DispatchBcFieldsOnNd,
+  DispatchDateOutsidePeriod,
   DispatchNoDetails,
   DispatchNotDraft,
 } from "../domain/errors/dispatch-errors";
+import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import {
   Dispatch,
   type CreateDispatchDraftInput,
@@ -157,6 +159,15 @@ export class DispatchService {
       );
     }
 
+    // I12 — defense in depth: date∈período (NO valida status para preservar DRAFT en CLOSED).
+    const periodForI12 = await this.deps.fiscalPeriods.getById(
+      organizationId,
+      input.periodId,
+    );
+    if (!isDateWithinPeriod(input.date, periodForI12)) {
+      throw new DispatchDateOutsidePeriod(input.date, periodForI12.name);
+    }
+
     // Validate BC fields not on ND
     if (input.dispatchType === "NOTA_DESPACHO") {
       if (
@@ -264,6 +275,10 @@ export class DispatchService {
         "El período fiscal debe estar ABIERTO",
         "PERIOD_CLOSED",
       );
+    }
+    // I12 — date∈período (createAndPost: nace con input.date + input.periodId).
+    if (!isDateWithinPeriod(input.date, period)) {
+      throw new DispatchDateOutsidePeriod(input.date, period.name);
     }
 
     // Compute details
@@ -456,6 +471,19 @@ export class DispatchService {
       }
     }
 
+    // I12 — si la fecha cambia en update, la nueva debe caer en el período del
+    // despacho (periodId NO mutable en ApplyDispatchEditInput). Para mover de
+    // mes, anular + recrear.
+    if (input.date !== undefined) {
+      const updatePeriod = await this.deps.fiscalPeriods.getById(
+        organizationId,
+        dispatch.periodId,
+      );
+      if (!isDateWithinPeriod(input.date, updatePeriod)) {
+        throw new DispatchDateOutsidePeriod(input.date, updatePeriod.name);
+      }
+    }
+
     // Validate BC fields on ND
     if (dispatch.dispatchType === "NOTA_DESPACHO") {
       if (
@@ -567,6 +595,10 @@ export class DispatchService {
         "El período fiscal debe estar ABIERTO",
         "PERIOD_CLOSED",
       );
+    }
+    // I12 — date∈período antes del POST.
+    if (!isDateWithinPeriod(dispatch.date, period)) {
+      throw new DispatchDateOutsidePeriod(dispatch.date, period.name);
     }
 
     // Post via entity

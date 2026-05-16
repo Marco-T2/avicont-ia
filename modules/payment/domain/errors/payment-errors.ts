@@ -3,6 +3,7 @@ import {
   NotFoundError,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
+  PAYMENT_DATE_OUTSIDE_PERIOD,
   PAYMENT_MIXED_ALLOCATION,
   PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
 } from "@/features/shared/errors";
@@ -121,9 +122,25 @@ export class PaymentNotFound extends NotFoundError {
   }
 }
 
+// I12 — la fecha del pago/cobro DEBE caer en [period.startDate, period.endDate].
+// Mismo invariante familia date-outside-period — cierra el gap de coherencia
+// date↔período. El use case ya valida period status (assertPeriodOpen) pero
+// no exigía coherencia date∈período.
+export class PaymentDateOutsidePeriod extends ValidationError {
+  constructor(date: Date, periodName: string) {
+    super(
+      `La fecha del pago (${date.toISOString().slice(0, 10)}) está fuera del período ${periodName}`,
+      PAYMENT_DATE_OUTSIDE_PERIOD,
+      { date: date.toISOString().slice(0, 10), periodName },
+    );
+    this.name = "PaymentDateOutsidePeriod";
+  }
+}
+
 export {
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
+  PAYMENT_DATE_OUTSIDE_PERIOD,
   PAYMENT_MIXED_ALLOCATION,
   PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
 };

@@ -264,12 +264,28 @@ export class InMemoryAccountsReadPort implements AccountsReadPort {
 }
 
 /**
+ * Shape almacenada en `periodsById` para tests. `name`, `startDate`, `endDate`
+ * son opcionales al primar (defaults sane los completa `getById`) para no
+ * obligar a actualizar todos los tests legacy cada vez que el port narrow se
+ * amplía. El invariante I12 (date∈período) corre en producción contra el adapter
+ * real que siempre provee los 5 campos — tests que validen I12 priman startDate/endDate
+ * explícitamente.
+ */
+type StoredFiscalPeriod = {
+  id: string;
+  status: "OPEN" | "CLOSED";
+  name?: string;
+  startDate?: Date;
+  endDate?: Date;
+};
+
+/**
  * In-memory read port for fiscal periods. Tests prime `periodsById`; `getById`
  * throws (parity with legacy `periodsService.getById`) when missing — the
  * application layer assumes the period either exists or surfaces NotFoundError.
  */
 export class InMemoryFiscalPeriodsReadPort implements FiscalPeriodsReadPort {
-  periodsById = new Map<string, AccountingFiscalPeriod>();
+  periodsById = new Map<string, StoredFiscalPeriod>();
 
   async getById(
     _organizationId: string,
@@ -279,7 +295,13 @@ export class InMemoryFiscalPeriodsReadPort implements FiscalPeriodsReadPort {
     if (!found) {
       throw new Error(`Fiscal period ${periodId} not found`);
     }
-    return found;
+    return {
+      id: found.id,
+      status: found.status,
+      name: found.name ?? `Período ${found.id}`,
+      startDate: found.startDate ?? new Date("2000-01-01T00:00:00.000Z"),
+      endDate: found.endDate ?? new Date("2099-12-31T23:59:59.999Z"),
+    };
   }
 }
 

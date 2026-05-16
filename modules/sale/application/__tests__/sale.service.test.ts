@@ -13,6 +13,7 @@ import {
   SaleContactChangeWithAllocations,
   SaleContactInactive,
   SaleContactNotClient,
+  SaleDateOutsidePeriod,
   SaleLockedEditMissingJustification,
   SalePeriodClosed,
   SalePostNotAllowedForRole,
@@ -564,6 +565,28 @@ describe("SaleService.post", () => {
 
     await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
       SalePeriodClosed,
+    );
+    expect(uow.ranContexts).toEqual([]);
+  });
+
+  // I12 — la fecha de la venta DEBE caer en [period.startDate, period.endDate].
+  // El backend rechaza incluso si el período está OPEN, evitando data corrupta
+  // por callers que salten el FE (donde el periodId se deriva de la fecha).
+  it("throws SaleDateOutsidePeriod when sale.date falls outside the period range (I12)", async () => {
+    const draft = buildDraftSale();
+    saleRepo.preload(draft);
+    // sale.date es 2025-01-15 — primamos un período OPEN para mayo 2025
+    // (date cae FUERA) para gatillar I12 sin tropezar con I6 (CLOSED).
+    fiscalPeriods.preloadFull({
+      id: "period-1",
+      status: "OPEN",
+      name: "Mayo 2025",
+      startDate: new Date("2025-05-01T00:00:00.000Z"),
+      endDate: new Date("2025-05-31T00:00:00.000Z"),
+    });
+
+    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
+      SaleDateOutsidePeriod,
     );
     expect(uow.ranContexts).toEqual([]);
   });

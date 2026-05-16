@@ -24,6 +24,8 @@ export class LegacyFiscalPeriodsAdapter implements DispatchFiscalPeriodsPort {
       id: period.id,
       name: period.name,
       status: period.status.value,
+      startDate: period.startDate,
+      endDate: period.endDate,
     };
   }
 }

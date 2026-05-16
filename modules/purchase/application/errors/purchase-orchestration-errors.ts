@@ -6,6 +6,7 @@ import {
   PURCHASE_ACCOUNT_NOT_FOUND,
   PURCHASE_CONTACT_CHANGE_BLOCKED,
   PURCHASE_CONTACT_INACTIVE,
+  PURCHASE_DATE_OUTSIDE_PERIOD,
   PURCHASE_INVALID_CONTACT_TYPE,
   ValidationError,
 } from "@/features/shared/errors";
@@ -17,6 +18,7 @@ export {
   PURCHASE_ACCOUNT_NOT_FOUND,
   PURCHASE_CONTACT_CHANGE_BLOCKED,
   PURCHASE_CONTACT_INACTIVE,
+  PURCHASE_DATE_OUTSIDE_PERIOD,
   PURCHASE_INVALID_CONTACT_TYPE,
 } from "@/features/shared/errors";
 
@@ -61,6 +63,20 @@ export class PurchasePeriodClosed extends ValidationError {
       { periodId },
     );
     this.name = "PurchasePeriodClosed";
+  }
+}
+
+// I12 — la fecha de la compra DEBE caer en [period.startDate, period.endDate].
+// Mismo invariante que SaleDateOutsidePeriod / JournalDateOutsidePeriod —
+// cierra el gap de coherencia date↔período para callers que salten el FE.
+export class PurchaseDateOutsidePeriod extends ValidationError {
+  constructor(date: Date, periodName: string) {
+    super(
+      `La fecha de la compra (${date.toISOString().slice(0, 10)}) está fuera del período ${periodName}`,
+      PURCHASE_DATE_OUTSIDE_PERIOD,
+      { date: date.toISOString().slice(0, 10), periodName },
+    );
+    this.name = "PurchaseDateOutsidePeriod";
   }
 }
 

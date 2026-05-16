@@ -1,17 +1,20 @@
 /**
  * Narrow read-only snapshot of a fiscal period as seen by the journal use
- * cases. Carries `id` and `status`. Defined locally — port does not import
- * from `modules/fiscal-periods/...`.
+ * cases. Carries `id`, `status`, `name`, y el rango `[startDate, endDate]` para
+ * que el invariante I12 (date∈período) pueda chequearse sin un segundo round-trip.
+ * Defined locally — port does not import from `modules/fiscal-periods/...`.
  *
- * Cross-module note: identical shape to
- * `modules/payment/domain/ports/fiscal-periods-read.port.ts:PaymentFiscalPeriod`.
- * Candidate for promotion to `modules/shared/domain/ports/` once a third
- * consumer with the same semantics appears (rule of three — likely IVA in
- * POC #11).
+ * Cross-module note: shape parcialmente paralela a
+ * `modules/payment/domain/ports/fiscal-periods-read.port.ts:PaymentFiscalPeriod`
+ * (que solo carga id+status). Candidate for promotion to `modules/shared/domain/ports/`
+ * con esta misma shape ampliada una vez que IVA u otro consumer la pida (POC #11).
  */
 export interface AccountingFiscalPeriod {
   id: string;
   status: "OPEN" | "CLOSED";
+  name: string;
+  startDate: Date;
+  endDate: Date;
 }
 
 /**

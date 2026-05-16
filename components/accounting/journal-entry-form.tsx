@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -86,12 +86,17 @@ export default function JournalEntryForm({
     editEntry?.date ?? todayLocal(),
   );
   const [description, setDescription] = useState(editEntry?.description ?? "");
+  // Período = derivado puro de la fecha (no es un input editable). El contador
+  // captura la fecha y el período se resuelve por `findPeriodCoveringDate`
+  // (filtra por OPEN). Si la fecha no cae en ningún período OPEN, periodId
+  // queda "" y el banner de warning bloquea el submit (canSubmit).
+  // En edit mode arrancamos con el periodId persistido del entry — el backend
+  // ya valida invariante I12 (date ∈ período), entonces el periodId existente
+  // siempre es coherente con la fecha actual del entry.
   const [periodId, setPeriodId] = useState(() => {
     if (editEntry?.periodId) return editEntry.periodId;
     return findPeriodCoveringDate(editEntry?.date ?? todayLocal(), periods)?.id ?? "";
   });
-  const [periodManuallySelected, setPeriodManuallySelected] = useState(false);
-  const isFirstPeriodSync = useRef(true);
   const [voucherTypeId, setVoucherTypeId] = useState(editEntry?.voucherTypeId ?? "");
   const [referenceNumber, setReferenceNumber] = useState<string>(
     editEntry?.referenceNumber?.toString() ?? "",
@@ -114,14 +119,10 @@ export default function JournalEntryForm({
   });
 
   useEffect(() => {
-    if (isFirstPeriodSync.current) {
-      isFirstPeriodSync.current = false;
-      return;
-    }
-    if (periodManuallySelected || !date) return;
+    if (!date) return;
     const match = findPeriodCoveringDate(date, periods);
     setPeriodId(match?.id ?? "");
-  }, [date, periods, periodManuallySelected]);
+  }, [date, periods]);
 
   useEffect(() => {
     if (!voucherTypeId) {
@@ -181,7 +182,21 @@ export default function JournalEntryForm({
     (l) => l.accountId && (parseFloat(l.debit) > 0 || parseFloat(l.credit) > 0),
   );
 
-  const canSubmit = date && description && periodId && voucherTypeId && isBalanced && allLinesValid;
+  const canSubmit = date && periodId && voucherTypeId && isBalanced && allLinesValid;
+
+  // Período derivado para el hint inline bajo Fecha. `findPeriodCoveringDate`
+  // filtra por OPEN — para mostrar "Mayo 2026 — CERRADO" cuando aplica,
+  // resolvemos manualmente sobre la lista completa.
+  const currentPeriod = (() => {
+    if (!date) return null;
+    return (
+      periods.find((p) => {
+        const start = new Date(p.startDate).toISOString().slice(0, 10);
+        const end = new Date(p.endDate).toISOString().slice(0, 10);
+        return start <= date && date <= end;
+      }) ?? null
+    );
+  })();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -341,7 +356,7 @@ export default function JournalEntryForm({
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="entry-date">Fecha</Label>
               <Input
@@ -351,30 +366,20 @@ export default function JournalEntryForm({
                 onChange={(e) => setDate(e.target.value)}
                 required
               />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="period">Período</Label>
-              <Select
-                value={periodId}
-                onValueChange={(value) => {
-                  setPeriodManuallySelected(true);
-                  setPeriodId(value);
-                }}
-              >
-                <SelectTrigger id="period">
-                  <SelectValue placeholder="Seleccione período" />
-                </SelectTrigger>
-                <SelectContent>
-                  {periods
-                    .filter((p) => p.status === "OPEN" || p.id === editEntry?.periodId)
-                    .map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {currentPeriod && (
+                <p
+                  data-testid="period-hint"
+                  className={`text-xs font-medium ${
+                    currentPeriod.status === "OPEN"
+                      ? "text-success"
+                      : "text-destructive"
+                  }`}
+                >
+                  {currentPeriod.status === "OPEN"
+                    ? `✓ Período: ${currentPeriod.name}`
+                    : `✗ Período: ${currentPeriod.name} — CERRADO`}
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
@@ -420,25 +425,36 @@ export default function JournalEntryForm({
               )}
             </div>
 
-            <div className="space-y-2 md:col-span-2 lg:col-span-4">
-              <Label htmlFor="entry-description">Descripción</Label>
+            <div className="space-y-2 md:col-span-2 lg:col-span-3">
+              <Label htmlFor="entry-description">Glosa general</Label>
               <Input
                 id="entry-description"
-                placeholder="Descripción del asiento"
+                placeholder="Glosa del asiento (opcional)"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                required
               />
             </div>
           </div>
 
-          {date && !periodId && periods.length > 0 && (
+          {/* Banner solo cuando NO existe ningún período (OPEN ni CLOSED) que cubra
+              la fecha. Si existe pero está CLOSED, el hint rojo bajo Fecha ya
+              comunica el bloqueo — evitamos doble mensaje. */}
+          {date && !periodId && !currentPeriod && periods.length > 0 && (
             <div
               role="alert"
               className="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-foreground"
             >
-              No hay un período abierto que cubra esta fecha. Abrí el período
+              No hay un período fiscal para esta fecha. Creá el período
               correspondiente o elegí otra fecha.
+            </div>
+          )}
+          {date && !periodId && currentPeriod && currentPeriod.status !== "OPEN" && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-foreground"
+            >
+              El período <strong>{currentPeriod.name}</strong> está cerrado. Para
+              registrar en esta fecha, reabrí el período o elegí otra fecha.
             </div>
           )}
         </CardContent>
@@ -464,7 +480,7 @@ export default function JournalEntryForm({
                     Cuenta
                   </th>
                   <th className="text-left py-3 px-2 font-medium text-muted-foreground">
-                    Descripción
+                    Detalle específico (opcional)
                   </th>
                   <th className="text-left py-3 px-2 font-medium text-muted-foreground w-44">
                     Contacto
