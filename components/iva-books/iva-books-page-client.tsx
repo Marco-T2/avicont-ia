@@ -18,13 +18,14 @@ import { IvaBookPurchaseModal } from "./iva-book-purchase-modal";
 import { IvaBookSaleModal } from "./iva-book-sale-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation";
 
 interface FiscalPeriodOption {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
-  status: string;
+  status: "OPEN" | "CLOSED";
 }
 
 interface IvaBooksPageClientProps {
@@ -34,9 +35,18 @@ interface IvaBooksPageClientProps {
 }
 
 export function IvaBooksPageClient({ orgSlug, kind, periods }: IvaBooksPageClientProps) {
-  const [selectedPeriodId, setSelectedPeriodId] = useState(
-    periods.find((p) => p.status === "OPEN")?.id ?? periods[0]?.id ?? "",
-  );
+  const [selectedPeriodId, setSelectedPeriodId] = useState(() => {
+    // Prioridad: período OPEN que cubra hoy (helper canónico, mismo patrón
+    // que journal/new y financial-statements). Si ninguno cubre, caemos al
+    // primer OPEN, y como último recurso al primero del array.
+    const today = new Date().toISOString().slice(0, 10);
+    return (
+      findPeriodCoveringDate(today, periods)?.id ??
+      periods.find((p) => p.status === "OPEN")?.id ??
+      periods[0]?.id ??
+      ""
+    );
+  });
   const [entries, setEntries] = useState<IvaPurchaseBookDTO[] | IvaSalesBookDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);

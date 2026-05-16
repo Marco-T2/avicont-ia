@@ -1,9 +1,11 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { IncomeStatementPageClient } from "@/components/financial-statements/income-statement-page-client";
 
 const orgProfileService = makeOrgProfileService();
+const fiscalPeriodsService = makeFiscalPeriodsService();
 
 interface IncomeStatementPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -22,7 +24,10 @@ export default async function IncomeStatementPage({
     redirect(`/${orgSlug}`);
   }
 
-  const profile = await orgProfileService.getOrCreate(orgId);
+  const [profile, periods] = await Promise.all([
+    orgProfileService.getOrCreate(orgId),
+    fiscalPeriodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
+  ]);
   const orgName = profile.razonSocial.trim() || undefined;
 
   return (
@@ -34,7 +39,11 @@ export default async function IncomeStatementPage({
         </p>
       </div>
 
-      <IncomeStatementPageClient orgSlug={orgSlug} orgName={orgName} />
+      <IncomeStatementPageClient
+        orgSlug={orgSlug}
+        orgName={orgName}
+        periods={JSON.parse(JSON.stringify(periods))}
+      />
     </div>
   );
 }

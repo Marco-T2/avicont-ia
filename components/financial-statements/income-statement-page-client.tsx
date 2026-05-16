@@ -7,7 +7,7 @@ import { useState, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { StatementFilters } from "./statement-filters";
-import type { QuickBooksFilterParams } from "./statement-filters";
+import type { FiscalPeriod, QuickBooksFilterParams } from "./statement-filters";
 import { StatementTable } from "./statement-table";
 import { StatementToolbar } from "./statement-toolbar";
 import { PreliminaryBanner } from "./preliminary-banner";
@@ -26,9 +26,10 @@ import type {
 interface IncomeStatementPageClientProps {
   orgSlug: string;
   orgName?: string;
+  periods: FiscalPeriod[];
 }
 
-export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementPageClientProps) {
+export function IncomeStatementPageClient({ orgSlug, orgName, periods }: IncomeStatementPageClientProps) {
   const displayOrgName = orgName ?? orgSlug.charAt(0).toUpperCase() + orgSlug.slice(1);
   const [statement, setStatement] = useState<SerializedIncomeStatementResponse | null>(null);
   const [loading, setLoading] = useState(false);
@@ -173,8 +174,8 @@ export function IncomeStatementPageClient({ orgSlug, orgName }: IncomeStatementP
       <Card>
         <CardContent className="pt-6">
           <StatementFilters
-            orgSlug={orgSlug}
             mode="income-statement"
+            periods={periods}
             onSubmit={handleSubmit}
             loading={loading}
           />

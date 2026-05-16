@@ -5,8 +5,10 @@
 // compareWith (con rango custom comparativo opcional).
 // Emite onSubmit(params: QuickBooksFilterParams) cuando el usuario confirma.
 // La precedencia de filtrado es: fiscalPeriodId > preset > custom (diseño §3.2).
+// Los `periods` llegan inyectados server-side (mirror del patrón journal/new)
+// para evitar race condition con fetch en cliente.
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import type { DatePresetId, BreakdownBy, CompareWith } from "@/modules/accounting/financial-statements/presentation";
+import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation";
 
 type StatementMode = "balance-sheet" | "income-statement";
 
@@ -79,82 +82,37 @@ export type QuickBooksFilterParams = {
   compareDateTo?: string;    // IS comparative custom
 };
 
-interface FiscalPeriod {
+export interface FiscalPeriod {
   id: string;
   name: string;
   startDate: string;
   endDate: string;
-  status: string;
+  status: "OPEN" | "CLOSED";
 }
 
 interface StatementFiltersProps {
-  orgSlug: string;
   mode: StatementMode;
+  periods: FiscalPeriod[];
   onSubmit: (params: QuickBooksFilterParams) => void;
   loading?: boolean;
 }
 
 export function StatementFilters({
-  orgSlug,
   mode,
+  periods,
   onSubmit,
   loading = false,
 }: StatementFiltersProps) {
-  // ── Carga de períodos fiscales (lógica original preservada) ──
-  const [periods, setPeriods] = useState<FiscalPeriod[]>([]);
-  const [loadingPeriods, setLoadingPeriods] = useState(true);
-
-  useEffect(() => {
-    const load = async () => {
-      setLoadingPeriods(true);
-      try {
-        const res = await fetch(`/api/organizations/${orgSlug}/periods`);
-        const data: FiscalPeriod[] = res.ok ? await res.json() : [];
-        setPeriods(data);
-
-        // Auto-select OPEN period covering today (mirror of worksheet /
-        // trial-balance UX). String YYYY-MM-DD comparison is safe because
-        // the API returns ISO-prefixed dates.
-        const today = new Date().toISOString().slice(0, 10);
-        const current = data.find(
-          (p) =>
-            p.status === "OPEN" &&
-            p.startDate.slice(0, 10) <= today &&
-            today <= p.endDate.slice(0, 10),
-        );
-        if (current) {
-          setPeriodId(current.id);
-        }
-      } catch {
-        setPeriods([]);
-      } finally {
-        setLoadingPeriods(false);
-      }
-    };
-    load();
-  }, [orgSlug]);
-
-  // Date-field defaults applied once on mount so the user doesn't have to
-  // type fechas for the common case (today / today-1m). The fiscal-period
-  // auto-select above takes precedence — when set, the custom date fields
-  // are hidden by showBSCustomDate / showISCustomRange.
-  useEffect(() => {
-    const today = new Date();
-    const todayIso = today.toISOString().slice(0, 10);
-    const monthAgo = new Date(today);
-    monthAgo.setMonth(monthAgo.getMonth() - 1);
-    const monthAgoIso = monthAgo.toISOString().slice(0, 10);
-
-    setAsOfDate((v) => v || todayIso);
-    setDateFrom((v) => v || monthAgoIso);
-    setDateTo((v) => v || todayIso);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   // ── Estado del formulario ──
 
-  // Período fiscal seleccionado
-  const [periodId, setPeriodId] = useState<string>(NO_PERIOD);
+  // Período fiscal seleccionado — auto-select inicial síncrono via
+  // findPeriodCoveringDate (mismo helper que journal-entry-form).
+  // Si ningún período OPEN cubre hoy, queda en NO_PERIOD y los campos de
+  // fecha custom toman default vía el effect de abajo.
+  const [periodId, setPeriodId] = useState<string>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return findPeriodCoveringDate(today, periods)?.id ?? NO_PERIOD;
+  });
   const hasPeriod = periodId !== NO_PERIOD && periodId !== "";
 
   // Macro de período (preset)
@@ -162,12 +120,24 @@ export function StatementFilters({
   const hasPreset = preset !== NO_PRESET && preset !== "";
   const isCustomDate = preset === "custom_date";
 
+  // Defaults de fecha calculados una sola vez en mount (today / today-1m).
+  // Si el auto-select de período aplicó, los campos custom quedan ocultos
+  // y estos defaults no se muestran — pero igual están listos por si el
+  // usuario limpia el período manualmente.
+  const dateDefaults = useState(() => {
+    const today = new Date();
+    const todayIso = today.toISOString().slice(0, 10);
+    const monthAgo = new Date(today);
+    monthAgo.setMonth(monthAgo.getMonth() - 1);
+    return { todayIso, monthAgoIso: monthAgo.toISOString().slice(0, 10) };
+  })[0];
+
   // Campos custom para Balance General
-  const [asOfDate, setAsOfDate] = useState<string>("");
+  const [asOfDate, setAsOfDate] = useState<string>(dateDefaults.todayIso);
 
   // Campos custom para Estado de Resultados
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<string>(dateDefaults.monthAgoIso);
+  const [dateTo, setDateTo] = useState<string>(dateDefaults.todayIso);
 
   // Breakdown y comparativo
   const [breakdownBy, setBreakdownBy] = useState<BreakdownBy>("total");
@@ -262,14 +232,9 @@ export function StatementFilters({
         <Select
           value={periodId}
           onValueChange={handlePeriodChange}
-          disabled={loadingPeriods}
         >
           <SelectTrigger id="period-select" size="sm" className="w-[180px]">
-            <SelectValue
-              placeholder={
-                loadingPeriods ? "Cargando..." : "Sin período"
-              }
-            />
+            <SelectValue placeholder="Sin período" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={NO_PERIOD}>Sin período (rango libre)</SelectItem>
