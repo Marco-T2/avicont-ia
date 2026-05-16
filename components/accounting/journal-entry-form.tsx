@@ -420,7 +420,7 @@ export default function JournalEntryForm({
               )}
             </div>
 
-            <div className="space-y-2 lg:col-span-1">
+            <div className="space-y-2 md:col-span-2 lg:col-span-4">
               <Label htmlFor="entry-description">Descripción</Label>
               <Input
                 id="entry-description"
