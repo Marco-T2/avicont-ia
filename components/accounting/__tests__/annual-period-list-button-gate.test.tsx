@@ -152,7 +152,7 @@ function getYearCloseButton(headerRowYear: number): HTMLElement | null {
       if (b.getAttribute("data-slot") === "accordion-trigger") return false;
       const txt = b.textContent ?? "";
       return (
-        txt.includes(`Cerrar la gestion ${headerRowYear}`) ||
+        txt.includes(`Cerrar la gestión ${headerRowYear}`) ||
         txt.includes("Año cerrado") ||
         txt.includes("Falta cerrar meses") ||
         txt.includes("Resolve los pendientes") ||
@@ -184,7 +184,7 @@ describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
 
     render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />);
 
-    const btn = screen.getByRole("button", { name: /Cerrar la gestion 2026/i });
+    const btn = screen.getByRole("button", { name: /Cerrar la gestión 2026/i });
     expect(btn).not.toBeDisabled();
     // primary variant — data-variant="default"
     expect(btn).toHaveAttribute("data-variant", "default");

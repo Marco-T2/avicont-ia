@@ -18,8 +18,8 @@
  * that the server pre-fetched (typically current + open prior).
  *
  * **Voseo Rioplatense**: 'Abierta' / 'Cerrada' (feminine — concords with
- * 'la gestion'), 'Cerrar la gestion {year}', 'Diciembre se cierra junto con
- * la gestion anual' (REQ-7.3, REQ-7.4).
+ * 'la gestión'), 'Cerrar la gestión {year}', 'Diciembre se cierra junto con
+ * la gestión anual' (REQ-7.3, REQ-7.4).
  *
  * Citation: design rev 2 section 8 + spec REQ-7.1/7.2/7.3/7.4/7.5.
  *
@@ -173,7 +173,7 @@ function YearPeriodsTable({ orgSlug, group, onCloseYear }: YearPeriodsTableProps
         <CardContent className="py-8 text-center">
           <CalendarDays className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
           <p className="text-sm text-muted-foreground">
-            No hay períodos creados para esta gestion.
+            No hay períodos creados para esta gestión.
           </p>
         </CardContent>
       </Card>
@@ -248,7 +248,7 @@ function YearPeriodsTable({ orgSlug, group, onCloseYear }: YearPeriodsTableProps
                               variant="outline"
                               size="sm"
                               disabled
-                              title="Diciembre se cierra junto con la gestion anual"
+                              title="Diciembre se cierra junto con la gestión anual"
                             >
                               Cerrar
                             </Button>
@@ -287,7 +287,7 @@ interface YearCloseActionProps {
  *  2. summary.balance ≠ 0    → 'Asientos no cuadran'           disabled outline
  *  3. summary.gateReason has 'borradores'
  *                            → 'Resolve borradores de diciembre' disabled outline
- *  4. summary.gateAllowed true → 'Cerrar la gestion {year}'    enabled  default
+ *  4. summary.gateAllowed true → 'Cerrar la gestión {year}'    enabled  default
  *  5. closedCount<11 (no summary or summary denied)
  *                            → 'Falta cerrar meses (N)'        disabled outline
  *  6. fallback              → 'Resolve los pendientes'         disabled outline
@@ -355,7 +355,7 @@ function YearCloseAction({
   if (gateAllowed) {
     return (
       <Button variant="default" size="sm" onClick={onCloseYear}>
-        Cerrar la gestion {group.year}
+        Cerrar la gestión {group.year}
       </Button>
     );
   }
@@ -365,8 +365,8 @@ function YearCloseAction({
   const fallbackReason =
     reasonTooltip ??
     (missing > 0
-      ? `Falta cerrar ${missing} mes(es) antes de cerrar la gestion ${group.year}.`
-      : `Aun no podes cerrar la gestion ${group.year}.`);
+      ? `Falta cerrar ${missing} mes(es) antes de cerrar la gestión ${group.year}.`
+      : `Aun no podes cerrar la gestión ${group.year}.`);
 
   return (
     <Button variant="outline" size="sm" disabled title={fallbackReason}>
