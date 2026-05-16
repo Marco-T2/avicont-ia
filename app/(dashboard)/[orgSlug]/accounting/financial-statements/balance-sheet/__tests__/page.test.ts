@@ -22,6 +22,12 @@ vi.mock("@/modules/org-profile/presentation/server", () => ({
   makeOrgProfileService: () => ({ getOrCreate: mockGetOrCreate }),
 }));
 
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: () => ({
+    list: vi.fn().mockResolvedValue([]),
+  }),
+}));
+
 vi.mock("@/components/financial-statements/balance-sheet-page-client", () => ({
   BalanceSheetPageClient: vi.fn().mockReturnValue(null),
 }));
