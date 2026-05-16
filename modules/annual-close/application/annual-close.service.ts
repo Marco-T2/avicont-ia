@@ -191,4 +191,44 @@ export class AnnualCloseService {
       },
     };
   }
+
+  /**
+   * STUB — Phase 3.4 RED scaffolding. The full orchestration lands in
+   * Phase 3.7 GREEN (per design rev 2 §4 "Close orchestration" — 12 steps).
+   * Method signature is locked here so RED tests compile under tsc; runtime
+   * still throws to keep RED legitimate.
+   */
+  async close(
+    _organizationId: string,
+    _year: number,
+    _userId: string,
+    _justification: string,
+  ): Promise<AnnualCloseResult> {
+    throw new Error("AnnualCloseService.close — Phase 3.7 GREEN pending");
+  }
+}
+
+/**
+ * Result of a successful annual close (design rev 2 §4). Inline service file
+ * mirror precedent EXACT (4+ evidencias cumulative — sale `PostSaleResult`,
+ * monthly-close `CloseResult`).
+ */
+export interface AnnualCloseResult {
+  fiscalYearId: string;
+  year: number;
+  status: "CLOSED";
+  closedAt: Date;
+  correlationId: string;
+  closingEntryId: string;
+  openingEntryId: string;
+  yearPlus1: { periodIds: string[] };
+  decClose?: {
+    locked: {
+      dispatches: number;
+      payments: number;
+      journalEntries: number;
+      sales: number;
+      purchases: number;
+    };
+  };
 }
