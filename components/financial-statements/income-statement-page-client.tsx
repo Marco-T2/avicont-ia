@@ -171,7 +171,7 @@ export function IncomeStatementPageClient({ orgSlug, orgName, periods }: IncomeS
     <div className="space-y-4">
       {/* Formulario de filtros */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <StatementFilters
             mode="income-statement"
             periods={periods}

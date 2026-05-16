@@ -171,7 +171,7 @@ export function BalanceSheetPageClient({ orgSlug, orgName, periods }: BalanceShe
     <div className="space-y-4">
       {/* Formulario de filtros */}
       <Card>
-        <CardContent className="pt-6">
+        <CardContent>
           <StatementFilters
             mode="balance-sheet"
             periods={periods}
