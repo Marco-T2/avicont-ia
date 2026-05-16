@@ -50,8 +50,22 @@ export class PrismaInitialBalanceRepo
   implements InitialBalanceQueryPort
 {
   /**
-   * Aggregates POSTED JournalLines across every CA (Comprobante de Apertura)
-   * voucher of the organization and returns one signed-net row per account.
+   * Returns signed-net lines from the MOST-RECENT POSTED CA (Comprobante de
+   * Apertura) voucher of the organization.
+   *
+   * **BREAKING SEMANTIC CHANGE (Phase 6.4 — spec REQ-6.0 + design rev 2 §9)**:
+   * Prior to this change, the method aggregated `SUM(debit−credit)` across
+   * EVERY POSTED CA for the org. That behavior caused multi-year corruption
+   * when multiple CAs existed (the annual-close C-3 root cause: a fresh CA
+   * minted for year N+1 would compound into year N's initial-balance report).
+   *
+   * Post-narrowing: only lines belonging to the CA with the latest
+   * `je.date` are aggregated (via `je.id = (SELECT … ORDER BY je.date DESC,
+   * je."createdAt" DESC LIMIT 1)` subquery). Result: most-recent CA only.
+   *
+   * Year-scoped callers (annual-close per-year reports) MUST use
+   * `getInitialBalanceFromCAForYear(orgId, year)` — that method filters by
+   * year window without falling back to most-recent semantics.
    *
    * Sign convention (identical to balance-sheet / EEPN v2):
    *   DEUDORA   accounts (Activo):  amount = debit − credit
@@ -59,11 +73,6 @@ export class PrismaInitialBalanceRepo
    *
    * Accounts without a `subtype` (root nodes) are excluded — the Initial
    * Balance report only renders detail/leaf accounts with a defined subtype.
-   *
-   * Mirrors `EquityStatementRepository.getAperturaPatrimonyDelta` but keeps
-   * every AccountType (not just PATRIMONIO) and returns the account catalog
-   * columns (code, name, subtype) inline so the builder can group without a
-   * second query.
    */
   async getInitialBalanceFromCA(orgId: string): Promise<InitialBalanceRow[]> {
     this.requireOrg(orgId);
@@ -83,12 +92,20 @@ export class PrismaInitialBalanceRepo
       FROM journal_lines   jl
       JOIN journal_entries je ON je.id  = jl."journalEntryId"
       JOIN accounts        a  ON a.id   = jl."accountId"
-      JOIN voucher_types   vt ON vt.id  = je."voucherTypeId"
       WHERE
         je."organizationId" = ${orgId}
         AND je."status"     = 'POSTED'
-        AND vt.code         = 'CA'
         AND a.subtype IS NOT NULL
+        AND je.id = (
+          SELECT je2.id
+          FROM journal_entries je2
+          JOIN voucher_types   vt2 ON vt2.id = je2."voucherTypeId"
+          WHERE je2."organizationId" = ${orgId}
+            AND je2."status"         = 'POSTED'
+            AND vt2.code             = 'CA'
+          ORDER BY je2.date DESC, je2."createdAt" DESC
+          LIMIT 1
+        )
       GROUP BY jl."accountId", a.code, a.name, a.subtype
     `;
 
