@@ -67,6 +67,30 @@ import AnnualPeriodList, {
 
 const ORG_SLUG = "acme";
 
+/**
+ * Helper: select only the accordion trigger buttons (year headers). The
+ * accordion body contains many other buttons (per-period "Cerrar" actions)
+ * that would otherwise match `getByRole('button', {name: /2026/})`.
+ */
+function getAccordionTriggers(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      '[data-slot="accordion-trigger"]',
+    ),
+  );
+}
+
+function findTriggerByYear(
+  container: HTMLElement,
+  year: number,
+): HTMLElement | null {
+  return (
+    getAccordionTriggers(container).find((el) =>
+      el.textContent?.includes(String(year)),
+    ) ?? null
+  );
+}
+
 function buildPeriod(year: number, month: number, status: "OPEN" | "CLOSED") {
   return {
     id: `p-${year}-${String(month).padStart(2, "0")}`,
@@ -131,15 +155,18 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
       openingEntryId: "je-ca-2026",
     };
 
-    render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />);
+    const { container } = render(
+      <AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />,
+    );
 
-    // Year numbers visible — both rendered as headers.
-    expect(screen.getByRole("button", { name: /2026/ })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: /2025/ })).toBeInTheDocument();
+    // Year numbers visible — both rendered as accordion-trigger headers.
+    expect(findTriggerByYear(container, 2026)).not.toBeNull();
+    expect(findTriggerByYear(container, 2025)).not.toBeNull();
 
-    // Count text per year — newest first 4/12, prior 12/12.
-    expect(screen.getByText(/4\/12 cerrados/i)).toBeInTheDocument();
-    expect(screen.getByText(/12\/12 cerrados/i)).toBeInTheDocument();
+    // Count text per year — newest first 4/12, prior 12/12. Use getAllByText
+    // because the year body also renders a duplicate count cell.
+    expect(screen.getAllByText(/4\/12 cerrados/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/12\/12 cerrados/i).length).toBeGreaterThan(0);
 
     // Status badge — current year open ("Abierta"), prior closed ("Cerrada").
     expect(screen.getByText(/^Abierta$/)).toBeInTheDocument();
@@ -156,9 +183,11 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
       openingEntryId: "je-ca-2026",
     };
 
-    render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />);
+    const { container } = render(
+      <AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />,
+    );
 
-    const headers = screen.getAllByRole("button", { name: /\d{4}/ });
+    const headers = getAccordionTriggers(container);
     expect(headers).toHaveLength(2);
     expect(headers[0].textContent).toMatch(/2026/);
     expect(headers[1].textContent).toMatch(/2025/);
@@ -203,11 +232,15 @@ describe("AnnualPeriodList — REQ-7.1 + REQ-7.5: accordion structure + counts",
       openingEntryId: "je-ca-2026",
     };
 
-    render(<AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />);
+    const { container } = render(
+      <AnnualPeriodList orgSlug={ORG_SLUG} periodsByYear={periodsByYear} />,
+    );
 
     // Newest year's header has aria-expanded="true"; prior has "false".
-    const newest = screen.getByRole("button", { name: /2026/ });
-    const prior = screen.getByRole("button", { name: /2025/ });
+    const newest = findTriggerByYear(container, 2026);
+    const prior = findTriggerByYear(container, 2025);
+    expect(newest).not.toBeNull();
+    expect(prior).not.toBeNull();
     expect(newest).toHaveAttribute("aria-expanded", "true");
     expect(prior).toHaveAttribute("aria-expanded", "false");
   });
