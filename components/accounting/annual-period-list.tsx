@@ -279,6 +279,23 @@ interface YearCloseActionProps {
   closedCount: number;
 }
 
+/**
+ * Year-close button state matrix (REQ-7.2 + voseo).
+ *
+ * Resolved in priority order:
+ *  1. FY status CLOSED       → 'Año cerrado el {dd/mm/yyyy}'   disabled outline
+ *  2. summary.balance ≠ 0    → 'Asientos no cuadran'           disabled outline
+ *  3. summary.gateReason has 'borradores'
+ *                            → 'Resolve borradores de diciembre' disabled outline
+ *  4. summary.gateAllowed true → 'Cerrar la gestion {year}'    enabled  default
+ *  5. closedCount<11 (no summary or summary denied)
+ *                            → 'Falta cerrar meses (N)'        disabled outline
+ *  6. fallback              → 'Resolve los pendientes'         disabled outline
+ *
+ * Tooltip mechanic: `title` attribute (and `aria-label` for screen-readers)
+ * carries `summary.gateReason` (server-computed voseo string) so the user
+ * sees the same message both in tooltip and assistive-tech.
+ */
 function YearCloseAction({
   group,
   onCloseYear,
@@ -286,6 +303,7 @@ function YearCloseAction({
 }: YearCloseActionProps) {
   const status = group.fiscalYear?.status ?? "OPEN";
 
+  // (1) FY CLOSED.
   if (status === "CLOSED") {
     const closedAt = group.fiscalYear?.closedAt;
     return (
@@ -299,33 +317,62 @@ function YearCloseAction({
 
   const summary = group.summary;
   const gateAllowed = summary?.gateAllowed === true;
+  const reasonTooltip = summary?.gateReason;
 
-  if (!gateAllowed) {
-    const missing = MONTHS_PER_YEAR - 1 - closedCount;
-    const reason =
-      summary?.gateReason ??
-      (missing > 0
-        ? `Falta cerrar ${missing} mes(es) antes de cerrar la gestion ${group.year}.`
-        : `Aun no podes cerrar la gestion ${group.year}.`);
-
+  // (2) Unbalanced balance (REQ-2.1 BalanceNotZeroError surface).
+  // NOTE: `title` carries the voseo reason for the native tooltip.
+  // We do NOT set `aria-label` (would override the visible accessible name).
+  if (summary && summary.balance.balanced === false) {
     return (
       <Button
         variant="outline"
         size="sm"
         disabled
-        title={reason}
-        aria-label={reason}
+        title={
+          reasonTooltip ??
+          "Los asientos del año no cuadran (DEBE no es igual a HABER)."
+        }
       >
-        {missing > 0
-          ? `Falta cerrar meses (${missing})`
-          : "Resolve los pendientes"}
+        Asientos no cuadran
       </Button>
     );
   }
 
+  // (3) Drafts in December (REQ-2.1 DraftEntriesInDecemberError surface).
+  if (
+    !gateAllowed &&
+    reasonTooltip &&
+    /borradores/i.test(reasonTooltip)
+  ) {
+    return (
+      <Button variant="outline" size="sm" disabled title={reasonTooltip}>
+        Resolve borradores de diciembre
+      </Button>
+    );
+  }
+
+  // (4) Gate allowed — primary action.
+  if (gateAllowed) {
+    return (
+      <Button variant="default" size="sm" onClick={onCloseYear}>
+        Cerrar la gestion {group.year}
+      </Button>
+    );
+  }
+
+  // (5) Missing months fallback (no summary OR generic gate-denied).
+  const missing = MONTHS_PER_YEAR - 1 - closedCount;
+  const fallbackReason =
+    reasonTooltip ??
+    (missing > 0
+      ? `Falta cerrar ${missing} mes(es) antes de cerrar la gestion ${group.year}.`
+      : `Aun no podes cerrar la gestion ${group.year}.`);
+
   return (
-    <Button variant="default" size="sm" onClick={onCloseYear}>
-      Cerrar la gestion {group.year}
+    <Button variant="outline" size="sm" disabled title={fallbackReason}>
+      {missing > 0
+        ? `Falta cerrar meses (${missing})`
+        : "Resolve los pendientes"}
     </Button>
   );
 }
