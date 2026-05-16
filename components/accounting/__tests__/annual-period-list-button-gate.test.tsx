@@ -17,7 +17,7 @@
  *
  * Source of truth: spec REQ-7.2 + orchestrator prompt button-state matrix.
  */
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AnnualCloseSummary } from "@/modules/annual-close/presentation/index";
@@ -199,7 +199,7 @@ describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
     expect(btn).toBeDisabled();
   });
 
-  it("gate denied via summary with unbalanced balance → button text 'Asientos no cuadran' + voseo tooltip", () => {
+  it("gate denied via summary with unbalanced balance → button text 'Asientos no cuadran' + voseo tooltip", async () => {
     const periodsByYear: PeriodsByYear = [
       buildGroup(
         2026,
@@ -217,12 +217,13 @@ describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
 
     const btn = screen.getByRole("button", { name: /Asientos no cuadran/i });
     expect(btn).toBeDisabled();
-    const reasonText =
-      btn.getAttribute("title") ?? btn.getAttribute("aria-label") ?? "";
-    expect(reasonText).toMatch(/no cuadran/i);
+    // Tooltip is shadcn (Radix Portal) — focus the trigger span to open it.
+    fireEvent.focus(btn.parentElement as HTMLElement);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent(/no cuadran/i);
   });
 
-  it("gate denied via summary with December drafts → button text 'Resolvé borradores de diciembre' + voseo tooltip", () => {
+  it("gate denied via summary with December drafts → button text 'Resolvé borradores de diciembre' + voseo tooltip", async () => {
     const periodsByYear: PeriodsByYear = [
       buildGroup(
         2026,
@@ -241,8 +242,8 @@ describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
       name: /Resolvé borradores de diciembre/i,
     });
     expect(btn).toBeDisabled();
-    const reasonText =
-      btn.getAttribute("title") ?? btn.getAttribute("aria-label") ?? "";
-    expect(reasonText).toMatch(/borradores/i);
+    fireEvent.focus(btn.parentElement as HTMLElement);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent(/borradores/i);
   });
 });

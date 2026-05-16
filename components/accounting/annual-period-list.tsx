@@ -38,6 +38,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { CalendarDays, Plus } from "lucide-react";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/modules/fiscal-periods/presentation/index";
@@ -92,7 +98,7 @@ export default function AnnualPeriodList({
   const isEmpty = sortedYears.length === 0;
 
   return (
-    <>
+    <TooltipProvider>
       {isEmpty && (
         <Card>
           <CardContent className="py-12 text-center">
@@ -179,7 +185,7 @@ export default function AnnualPeriodList({
           router.refresh();
         }}
       />
-    </>
+    </TooltipProvider>
   );
 }
 
@@ -278,14 +284,22 @@ function YearPeriodsTable({ orgSlug, group, onCloseYear }: YearPeriodsTableProps
                       <td className="px-4 py-2 text-right">
                         {p.status === "OPEN" &&
                           (disableMonthlyClose ? (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled
-                              title="Diciembre se cierra junto con la gestión anual"
-                            >
-                              Cerrar
-                            </Button>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span tabIndex={0} className="inline-block">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled
+                                  >
+                                    Cerrar
+                                  </Button>
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                Diciembre se cierra junto con la gestión anual
+                              </TooltipContent>
+                            </Tooltip>
                           ) : (
                             <Button variant="outline" size="sm" asChild>
                               <Link
@@ -326,9 +340,10 @@ interface YearCloseActionProps {
  *                            → 'Falta cerrar meses (N)'        disabled outline
  *  6. fallback              → 'Resolvé los pendientes'         disabled outline
  *
- * Tooltip mechanic: `title` attribute (and `aria-label` for screen-readers)
- * carries `summary.gateReason` (server-computed voseo string) so the user
- * sees the same message both in tooltip and assistive-tech.
+ * Tooltip mechanic: shadcn `<Tooltip>` (Radix-based) wraps disabled buttons
+ * via a focusable `<span>` so the tooltip fires on hover AND keyboard focus
+ * (native `title=` doesn't work on mobile or keyboard nav). Content carries
+ * `summary.gateReason` (server-computed voseo string).
  */
 function YearCloseAction({
   group,
@@ -358,17 +373,19 @@ function YearCloseAction({
   // We do NOT set `aria-label` (would override the visible accessible name).
   if (summary && summary.balance.balanced === false) {
     return (
-      <Button
-        variant="outline"
-        size="sm"
-        disabled
-        title={
-          reasonTooltip ??
-          "Los asientos del año no cuadran (DEBE no es igual a HABER)."
-        }
-      >
-        Asientos no cuadran
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-block">
+            <Button variant="outline" size="sm" disabled>
+              Asientos no cuadran
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          {reasonTooltip ??
+            "Los asientos del año no cuadran (DEBE no es igual a HABER)."}
+        </TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -379,9 +396,16 @@ function YearCloseAction({
     /borradores/i.test(reasonTooltip)
   ) {
     return (
-      <Button variant="outline" size="sm" disabled title={reasonTooltip}>
-        Resolvé borradores de diciembre
-      </Button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span tabIndex={0} className="inline-block">
+            <Button variant="outline" size="sm" disabled>
+              Resolvé borradores de diciembre
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>{reasonTooltip}</TooltipContent>
+      </Tooltip>
     );
   }
 
@@ -403,10 +427,17 @@ function YearCloseAction({
       : `Aún no podés cerrar la gestión ${group.year}.`);
 
   return (
-    <Button variant="outline" size="sm" disabled title={fallbackReason}>
-      {missing > 0
-        ? `Falta cerrar meses (${missing})`
-        : "Resolvé los pendientes"}
-    </Button>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <span tabIndex={0} className="inline-block">
+          <Button variant="outline" size="sm" disabled>
+            {missing > 0
+              ? `Falta cerrar meses (${missing})`
+              : "Resolvé los pendientes"}
+          </Button>
+        </span>
+      </TooltipTrigger>
+      <TooltipContent>{fallbackReason}</TooltipContent>
+    </Tooltip>
   );
 }

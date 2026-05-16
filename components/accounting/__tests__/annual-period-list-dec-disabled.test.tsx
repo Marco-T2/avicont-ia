@@ -15,7 +15,7 @@
  *  (b) month 6 OPEN (not all 1-11 closed) → Dec button enabled (link)
  *  (c) FY CLOSED → Dec row shows 'Cerrado' badge, no close button
  */
-import { render, screen, cleanup } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -114,7 +114,7 @@ function getDecemberCloseButton(): HTMLElement | null {
 }
 
 describe("AnnualPeriodList — REQ-7.3 December standalone close button", () => {
-  it("(a) months 1-11 CLOSED + Dec OPEN + FY OPEN → Dec button disabled with EXACT voseo tooltip", () => {
+  it("(a) months 1-11 CLOSED + Dec OPEN + FY OPEN → Dec button disabled with EXACT voseo tooltip", async () => {
     const statuses: ("OPEN" | "CLOSED")[] = [
       ...Array(11).fill("CLOSED") as ("OPEN" | "CLOSED")[],
       "OPEN" as const,
@@ -127,7 +127,11 @@ describe("AnnualPeriodList — REQ-7.3 December standalone close button", () => 
     expect(decBtn).not.toBeNull();
     expect(decBtn).toBeDisabled();
     // REQ-7.3 exact text — voseo Rioplatense with accentuated 'gestión'.
-    expect(decBtn?.getAttribute("title")).toBe(
+    // Tooltip is shadcn (Radix Portal) — focus the trigger span to open it.
+    const trigger = decBtn?.parentElement as HTMLElement;
+    fireEvent.focus(trigger);
+    const tooltip = await screen.findByRole("tooltip");
+    expect(tooltip).toHaveTextContent(
       "Diciembre se cierra junto con la gestión anual",
     );
   });
