@@ -12,7 +12,7 @@ const purchaseActionSchema = z.object({
   justification: z.string().optional(),
 });
 
-export async function POST(
+export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ orgSlug: string; purchaseId: string }> },
 ) {

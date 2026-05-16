@@ -7,7 +7,7 @@ import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 const usersService = new UsersService();
 const saleService = makeSaleService();
 
-export async function POST(
+export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ orgSlug: string; saleId: string }> },
 ) {
