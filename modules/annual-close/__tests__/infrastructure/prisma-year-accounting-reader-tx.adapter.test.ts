@@ -439,4 +439,87 @@ describe("PrismaYearAccountingReaderTxAdapter", () => {
       expect(result).toEqual([]);
     });
   });
+
+  // ── Phase C T-09: aggregateBalanceSheetAtYearEnd + findAccumulatedResultsAccountTx
+  describe("aggregateBalanceSheetAtYearEnd (asiento #4 source — REQ-A.4 / REQ-A.11)", () => {
+    it("returns ACTIVO/PASIVO/PATRIMONIO leaves with cumulative Decimal sums", async () => {
+      mockQueryRaw.mockResolvedValue([
+        {
+          account_id: "acc-caja",
+          code: "1.1.1",
+          nature: "DEUDORA",
+          type: "ACTIVO",
+          subtype: "DISPONIBLE",
+          debit_total: "5000.00",
+          credit_total: "0",
+        },
+        {
+          account_id: "acc-cxp",
+          code: "2.1.1",
+          nature: "ACREEDORA",
+          type: "PASIVO",
+          subtype: "CXP",
+          debit_total: "0",
+          credit_total: "2000.00",
+        },
+        {
+          account_id: "acc-321",
+          code: "3.2.1",
+          nature: "ACREEDORA",
+          type: "PATRIMONIO",
+          subtype: null,
+          debit_total: "0",
+          credit_total: "3000.00",
+        },
+      ]);
+
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.aggregateBalanceSheetAtYearEnd("org-1", 2026);
+
+      expect(result).toHaveLength(3);
+      expect(result.map((r) => r.type).sort()).toEqual([
+        "ACTIVO",
+        "PASIVO",
+        "PATRIMONIO",
+      ]);
+      expect(result[0].debit).toBeInstanceOf(Decimal);
+    });
+
+    it("returns empty when no balance-sheet movements (degenerate FY)", async () => {
+      mockQueryRaw.mockResolvedValue([]);
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.aggregateBalanceSheetAtYearEnd("org-1", 2099);
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe("findAccumulatedResultsAccountTx (asiento #3 TOCTOU — REQ-A.3)", () => {
+    it("returns {id, code, nature} when 3.2.1 exists", async () => {
+      mockAccountFindFirst.mockResolvedValue({
+        id: "acc-321",
+        code: "3.2.1",
+        nature: "ACREEDORA",
+      });
+
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.findAccumulatedResultsAccountTx("org-1");
+
+      expect(result).toEqual({
+        id: "acc-321",
+        code: "3.2.1",
+        nature: "ACREEDORA",
+      });
+      expect(mockAccountFindFirst).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", code: "3.2.1" },
+        select: { id: true, code: true, nature: true },
+      });
+    });
+
+    it("returns null when 3.2.1 is missing from chart of accounts", async () => {
+      mockAccountFindFirst.mockResolvedValue(null);
+      const adapter = new PrismaYearAccountingReaderTxAdapter(mockTx as never);
+      const result = await adapter.findAccumulatedResultsAccountTx("org-empty");
+      expect(result).toBeNull();
+    });
+  });
 });
