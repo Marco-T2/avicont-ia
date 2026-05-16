@@ -288,6 +288,64 @@ describe("PrismaJournalEntriesRepository — Postgres integration", () => {
     expect(row!.lines[1].credit.toString()).toBe("100");
   });
 
+  // AI provenance dissolution — RED follow-up al SDD ai-journal-posted-editable.
+  // El aggregate Journal.transitionTo("POSTED") limpia sourceType + aiOriginalText
+  // en memoria cuando sourceType="ai", pero el wrapper updateStatus solo persiste
+  // {status, updatedById} → la disolución NUNCA llegaba a DB. Resultado UI: badge
+  // "Generado por IA" persistente post-post + edit page redirige (sourceType="ai"
+  // en DB hace que isManualEditable falle). Failure mode declarado: pre-impl
+  // row.sourceType === "ai" y row.aiOriginalText !== null porque updateStatusTx
+  // ignora estos campos del aggregate. GREEN extiende updateStatusTx para
+  // persistirlos desde el aggregate.
+  it("updateStatus: AI dissolution at DRAFT→POSTED persists sourceType=null + aiOriginalText=null in DB", async () => {
+    // Setup: persistir un AI DRAFT (sourceType="ai", aiOriginalText set).
+    const aiDraft = Journal.create({
+      organizationId: testOrgId,
+      date: new Date("2099-01-16T00:00:00Z"),
+      description: "AI DRAFT — dissolution integration test",
+      periodId: testPeriodId,
+      voucherTypeId: testVoucherTypeId,
+      createdById: testUserId,
+      sourceType: "ai",
+      aiOriginalText: "pagué 100 de balanceado en efectivo",
+      lines: [
+        { accountId: assetAccountId, side: LineSide.debit(Money.of("100")) },
+        { accountId: liabilityAccountId, side: LineSide.credit(Money.of("100")) },
+      ],
+    });
+    const persistedDraft = await prisma.$transaction(async (tx) => {
+      return new PrismaJournalEntriesRepository(tx).create(aiDraft);
+    });
+    expect(persistedDraft.sourceType).toBe("ai");
+    expect(persistedDraft.aiOriginalText).toBe(
+      "pagué 100 de balanceado en efectivo",
+    );
+
+    // transitionTo("POSTED") dissolves provenance in-memory for AI entries.
+    const transitioned = persistedDraft.post();
+    expect(transitioned.status).toBe("POSTED");
+    expect(transitioned.sourceType).toBeNull();
+    expect(transitioned.aiOriginalText).toBeNull();
+
+    // Acto: persistir la transición via wrapper. El wrapper debe pasar la
+    // disolución al UPDATE, no solo el status.
+    await prisma.$transaction(async (tx) => {
+      return new PrismaJournalEntriesRepository(tx).updateStatus(
+        transitioned,
+        testUserId,
+      );
+    });
+
+    // Verificación crítica: la fila DB refleja la disolución.
+    const row = await prisma.journalEntry.findUnique({
+      where: { id: persistedDraft.id },
+    });
+    expect(row).not.toBeNull();
+    expect(row!.status).toBe("POSTED");
+    expect(row!.sourceType).toBeNull();
+    expect(row!.aiOriginalText).toBeNull();
+  });
+
   it("update with replaceLines: false — persists header only, lines preserved with same ids", async () => {
     // Setup: persistir DRAFT con 2 lines.
     const draft = buildDraftJournal();
