@@ -104,8 +104,9 @@ describe("TrialBalancePageClient (C9.S2)", () => {
     fireEvent.submit(form);
 
     await waitFor(() => {
-      expect(screen.getByText(/descargar pdf/i)).toBeInTheDocument();
-      expect(screen.getByText(/descargar excel/i)).toBeInTheDocument();
+      // Botones con texto "PDF" + "Excel" (refactor paridad con balance-sheet)
+      expect(screen.getByRole("button", { name: /abrir pdf/i })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /descargar.*excel/i })).toBeInTheDocument();
     });
   });
 

@@ -77,7 +77,9 @@ export async function GET(
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
-          "Content-Disposition": `attachment; filename="sumas-y-saldos-${orgSlug}-${periodLabel}.pdf"`,
+          // inline → el browser lo renderiza en pestaña nueva; filename se
+          // mantiene por si el usuario descarga desde el visor.
+          "Content-Disposition": `inline; filename="sumas-y-saldos-${orgSlug}-${periodLabel}.pdf"`,
         },
       });
     }
