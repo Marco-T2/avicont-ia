@@ -16,6 +16,7 @@
 import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { buildExecutivePdfHeader } from "@/modules/accounting/shared/infrastructure/exporters/executive-pdf-header";
+import { spaceLetters, wrapWithTopBorder } from "@/modules/accounting/shared/infrastructure/exporters/pdf-staircase";
 import type { ExportColumn, ExportRow, ExportRowType, ExportSheet } from "./statement-shape";
 import {
   buildBalanceSheetExportSheet,
@@ -108,20 +109,6 @@ function absorbStaircase(rows: ExportRow[]): ExportRow[] {
   return out;
 }
 
-/**
- * Aplica letter-spacing emulado intercalando espacios entre cada letra y doble
- * espacio entre palabras. Reservado para banners (header-section) y grand-totals
- * por sección (TOTAL ACTIVO, etc.) — estilo balance bancario boliviano.
- *
- * Ejemplo: "TOTAL ACTIVO" → "T O T A L   A C T I V O"
- */
-function spaceLetters(text: string): string {
-  return text
-    .split(" ")
-    .map((word) => word.split("").join(" "))
-    .join("   ");
-}
-
 // ── Helpers de construcción ──
 
 /**
@@ -175,31 +162,6 @@ function buildFullSpanRow(
     cells.push({} as Content);
   }
   return cells;
-}
-
-/**
- * pdfmake bug: cuando el layout outer define `hLineWidth: () => 0`, los
- * `cell.border` top quedan suprimidos también (la regla global gana sobre la
- * cell-level). Para dibujar una línea horizontal SOLO bajo la columna del
- * saldo (estilo BCB), envolvemos el saldo en una nested table de 1×1 cuyo
- * layout dibuja su propia hLine en i=0 (encima del contenido).
- */
-function wrapWithTopBorder(content: Record<string, unknown>): Content {
-  return {
-    table: {
-      widths: ["*"],
-      body: [[content as unknown as Content]],
-    },
-    layout: {
-      hLineWidth: (i: number) => (i === 0 ? 0.5 : 0),
-      vLineWidth: () => 0,
-      hLineColor: () => STYLE.border,
-      paddingLeft: () => 0,
-      paddingRight: () => 0,
-      paddingTop: () => 0,
-      paddingBottom: () => 0,
-    },
-  } as unknown as Content;
 }
 
 /** Celdas de valor para una fila multi-columna. */

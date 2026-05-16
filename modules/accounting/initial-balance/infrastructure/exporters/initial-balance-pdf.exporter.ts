@@ -1,19 +1,24 @@
 /**
  * PDF exporter for the Balance Inicial report.
  *
- * **REQ-010 RESOLVED (shared INFRA)**: this file imports `registerFonts` and
- * `pdfmakeRuntime` from `@/modules/accounting/shared/infrastructure/exporters/pdf.fonts`
- * and `fmtDecimal` from `pdf.helpers`. pdf.fonts.ts + pdf.helpers.ts were
- * git-mv'd from FS-infra to the shared canonical home at
- * poc-accounting-exporters-cleanup (sub-POC 6) — shared font registration has a
- * singleton side-effect, so a single canonical home is required. The cross-module
- * FS-INFRA dependency no longer exists.
- * REQ-010 sentinel α44 asserts the shared path.
- * Sister precedent: WS design #2316 §6, WS archive #2327.
+ * Layout: legal Bolivian header (razón social bold italic, NIT, dirección,
+ * representante legal — left aligned) + staircase BCB body + firma del
+ * representante legal al pie. Match al patrón del balance-sheet en el cuerpo
+ * (3 columnas escalonadas + tipografía espaciada en grand-totals + línea
+ * sólo bajo el número) pero conserva el formato legal (firmas) que el
+ * documento de apertura requiere.
+ *
+ * Reuses shared helpers: `spaceLetters` + `wrapWithTopBorder` desde
+ * `@/modules/accounting/shared/infrastructure/exporters/pdf-staircase`.
+ *
+ * **REQ-010 RESOLVED (shared INFRA)**: importa `registerFonts` y `pdfmakeRuntime`
+ * desde `@/modules/accounting/shared/infrastructure/exporters/pdf.fonts` y
+ * `fmtDecimal` desde `pdf.helpers`. REQ-010 sentinel α44 asserts el shared path.
  */
 import type { TDocumentDefinitions } from "pdfmake/interfaces";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
+import { spaceLetters, wrapWithTopBorder } from "@/modules/accounting/shared/infrastructure/exporters/pdf-staircase";
 import { formatDateBO } from "@/lib/date-utils";
 import type { InitialBalanceStatement, InitialBalanceGroup } from "../../domain/initial-balance.types";
 
@@ -26,12 +31,16 @@ interface InitialBalancePdfResult {
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
-const BODY_SIZE = 8;
-const RAZONSOCIAL_SIZE = 11;   // Razón social: bold italic, larger
-const HEADER_SIZE = 8;         // Other header fields
-const TITLE_SIZE = 12;         // BALANCE INICIAL title
-const SUBTITLE_SIZE = 9;       // Subtitle lines
+const BODY_SIZE = 10;            // detalle de cuentas + saldos (match balance-sheet)
+const SECTION_SIZE = 11;         // ACTIVO / PASIVO Y PATRIMONIO (header de sección)
+const RAZONSOCIAL_SIZE = 12;     // razón social bold italic
+const HEADER_SIZE = 8;           // NIT, dirección, ciudad, representante legal
+const TITLE_SIZE = 18;           // BALANCE INICIAL (centrado, grande)
+const SUBTITLE_SIZE = 10;        // Al {fecha}, (Expresado en Bolivianos)
 const FOOTER_SIZE = 8;
+
+// Anchos de columna del cuerpo staircase: [nombre*, detalle, subtotal, total]
+const COL_WIDTHS = ["*", 80, 80, 110] as const;
 
 const STYLE = {
   text: "#000000",
@@ -41,10 +50,6 @@ const STYLE = {
 
 function fmtDateLong(d: Date): string {
   // §13.accounting.calendar-day-T12-utc-unified — TZ-safe ISO-slice.
-  // NOTE: name retained as `fmtDateLong` for source-call-site stability, but
-  // the format is now numeric DD/MM/YYYY (formatDateBO output). The long
-  // "DD de mes de YYYY" variant was lossy on T00 calendar-day inputs (drifted
-  // D-1 in BO TZ); uniformly numeric matches the rest of the §13 sweep.
   return formatDateBO(d);
 }
 
@@ -74,62 +79,70 @@ function textCell(text: string, opts: {
   return cell;
 }
 
-function numCell(text: string, bold: boolean): Content {
-  return {
-    text,
-    fontSize: BODY_SIZE,
-    bold,
-    alignment: "right",
-    margin: [1, 1, 4, 1],
-  };
+function emptyCell(): Content {
+  return { text: "" };
 }
 
-// ── Group rows builder ────────────────────────────────────────────────────────
+/**
+ * Construye una celda de saldo derecha-alineada. Si `borderTop=true`, envuelve
+ * la celda en una nested table que dibuja una línea horizontal SÓLO bajo esta
+ * columna (estilo BCB — la línea no se extiende a lo largo de toda la fila).
+ */
+function saldoCell(
+  value: string,
+  opts: { bold?: boolean; fontSize?: number; borderTop?: boolean },
+): Content {
+  const inner: Content = {
+    text: value,
+    bold: opts.bold === true,
+    fontSize: opts.fontSize ?? BODY_SIZE,
+    color: STYLE.text,
+    alignment: "right",
+    margin: [2, opts.borderTop ? 3 : 2, 4, 2],
+  };
+  return opts.borderTop ? (wrapWithTopBorder(inner) as unknown as Content) : inner;
+}
 
+// ── Section / group row builders (staircase) ──────────────────────────────────
+
+/**
+ * Construye filas pdfmake para un grupo del balance inicial:
+ *   - 1 fila header del subtype con SUBTOTAL absorbido al lado (col subtotal)
+ *   - N filas de detalle con CÓDIGO + NOMBRE en MAYÚS y saldo en col detalle
+ *
+ * Se omite la fila "Total {subtype}" — su saldo va en el header del grupo
+ * (estilo BCB).
+ */
 function buildGroupRows(group: InitialBalanceGroup): Content[][] {
   const rows: Content[][] = [];
+  const subtotalStr = fmtDecimal(group.subtotal, true);
 
-  // Subtype label row (left-aligned, bold, small indent)
+  // Header del subtype con subtotal en col 2 (subtotal column)
   rows.push([
-    textCell(`${group.label}:`, { bold: true, fontSize: BODY_SIZE, margin: [4, 3, 2, 2] }),
-    textCell("", { bold: true }),
+    textCell(group.label.toUpperCase(), {
+      bold: true,
+      fontSize: BODY_SIZE,
+      margin: [8, 3, 2, 3],
+    }),
+    emptyCell(),
+    saldoCell(subtotalStr, { bold: true }),
+    emptyCell(),
   ]);
 
-  // Detail rows — code + name format; skip zero-amount rows
+  // Filas de detalle (skip cuentas con amount=0)
   for (const row of group.rows) {
     if (row.amount.isZero()) continue;
     rows.push([
-      textCell(`  ${row.code} — ${row.name}`, { margin: [12, 1, 2, 1] }),
-      numCell(fmtDecimal(row.amount, false), false),
+      textCell(`${row.code}  ${row.name.toUpperCase()}`, {
+        margin: [20, 0, 2, 0],
+      }),
+      saldoCell(fmtDecimal(row.amount, false), {}),
+      emptyCell(),
+      emptyCell(),
     ]);
   }
 
-  // Subtotal row — single thin rule above
-  rows.push([
-    textCell(`  Total ${group.label}`, { bold: true, margin: [12, 2, 2, 2] }),
-    numCell(fmtDecimal(group.subtotal, true), true),
-  ]);
-
   return rows;
-}
-
-// ── Table layout with heavy top rule on first row ─────────────────────────────
-
-function buildSectionTableLayout(totalRows: number): Record<string, unknown> {
-  return {
-    hLineWidth: (i: number) => {
-      if (i === 0) return 1;     // heavy top rule on section header
-      if (i === 1) return 0;     // no line after section header
-      if (i === totalRows) return 2;  // double bottom rule on section total
-      return 0;
-    },
-    vLineWidth: () => 0,
-    hLineColor: () => STYLE.text,
-    paddingLeft: () => 0,
-    paddingRight: () => 0,
-    paddingTop: () => 1,
-    paddingBottom: () => 1,
-  };
 }
 
 // ── Doc definition ────────────────────────────────────────────────────────────
@@ -139,11 +152,8 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
   const [activoSection, pasivoSection] = sections;
   const fechaLarga = fmtDateLong(dateAt);
 
-  const COL_WIDTHS = ["*", 100];
-
-  // ── Header content — LEFT aligned, Bolivian legal format ───────────────────
+  // ── Header legal — LEFT aligned, formato boliviano ─────────────────────────
   const headerContent: Content[] = [
-    // Razón social: bold italic, larger, left aligned
     textCell(org.razonSocial, {
       bold: true,
       italics: true,
@@ -151,44 +161,38 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
       alignment: "left",
       margin: [0, 0, 0, 2],
     }),
-    // De: representante legal
     textCell(`De: ${org.representanteLegal}`, {
       fontSize: HEADER_SIZE,
       alignment: "left",
       margin: [0, 0, 0, 2],
     }),
-    // NIT
     textCell(`NIT: ${org.nit}`, {
       fontSize: HEADER_SIZE,
       alignment: "left",
       margin: [0, 0, 0, 2],
     }),
-    // Dirección (line 1)
     textCell(org.direccion, {
       fontSize: HEADER_SIZE,
       alignment: "left",
       margin: [0, 0, 0, 2],
     }),
-    // Ciudad (line 2 — separate from dirección)
     textCell(org.ciudad, {
       fontSize: HEADER_SIZE,
       alignment: "left",
-      margin: [0, 0, 0, 8],
+      margin: [0, 0, 0, 10],
     }),
-    // Title: BALANCE INICIAL — big, bold, centered
+    // Título BALANCE INICIAL — centrado, grande
     textCell("BALANCE INICIAL", {
       bold: true,
       fontSize: TITLE_SIZE,
       alignment: "center",
-      margin: [0, 4, 0, 2],
+      margin: [0, 6, 0, 4],
     }),
-    // Subtitle: Al {date} — centered, smaller
     textCell(`Al ${fechaLarga}`, {
       fontSize: SUBTITLE_SIZE,
       alignment: "center",
       margin: [0, 0, 0, 2],
     }),
-    // Expression: (Expresado en Bolivianos) — italic, centered, smaller
     textCell("(Expresado en Bolivianos)", {
       italics: true,
       fontSize: SUBTITLE_SIZE,
@@ -197,7 +201,7 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
     }),
   ];
 
-  // ── Imbalance banner ────────────────────────────────────────────────────────
+  // ── Banners ────────────────────────────────────────────────────────────────
   const imbalanceBanner: Content[] = imbalanced
     ? [{
         text: `ADVERTENCIA: El balance inicial está desbalanceado — Diferencia: Bs. ${fmtDecimal(imbalanceDelta, true)}`,
@@ -208,7 +212,6 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
       }]
     : [];
 
-  // ── Multiple CA banner ──────────────────────────────────────────────────────
   const multipleCaBanner: Content[] = multipleCA
     ? [{
         text: `AVISO: Se encontraron ${statement.caCount} comprobantes de apertura (CA). Los saldos mostrados son el consolidado de todos los CA contabilizados.`,
@@ -218,64 +221,78 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
       }]
     : [];
 
-  // ── ACTIVO section table ────────────────────────────────────────────────────
-  const activoBodyRows: Content[][] = [];
+  // ── Cuerpo staircase ───────────────────────────────────────────────────────
+  // Estructura por sección:
+  //   1. Header de sección (ACTIVO / PASIVO Y PATRIMONIO) con sectionTotal en col total
+  //   2. Grupos via buildGroupRows (header con subtotal + cuentas)
+  //   3. Fila TOTAL letter-spaced con sectionTotal en col total + línea encima
+  function buildSectionRows(
+    label: string,
+    totalLabel: string,
+    section: typeof activoSection,
+  ): Content[][] {
+    const sectionTotalStr = fmtDecimal(section.sectionTotal, true);
+    const rows: Content[][] = [];
 
-  // Section label — CENTERED, heavy top rule (enforced by layout)
-  activoBodyRows.push([
-    textCell("ACTIVO", {
-      bold: true,
-      fontSize: HEADER_SIZE,
-      alignment: "center",
-      margin: [4, 4, 2, 4],
-    }),
-    textCell("", { bold: true }),
-  ]);
+    // Header de sección — MAYÚS plano (no letter-spaced), bold, con saldo en col total
+    rows.push([
+      textCell(label, {
+        bold: true,
+        fontSize: SECTION_SIZE,
+        margin: [4, 6, 4, 6],
+      }),
+      emptyCell(),
+      emptyCell(),
+      saldoCell(sectionTotalStr, { bold: true, fontSize: SECTION_SIZE }),
+    ]);
 
-  for (const group of activoSection.groups) {
-    activoBodyRows.push(...buildGroupRows(group));
+    // Grupos
+    for (const group of section.groups) {
+      rows.push(...buildGroupRows(group));
+    }
+
+    // Fila TOTAL — letter-spaced, padding generoso, línea encima del saldo
+    rows.push([
+      textCell(spaceLetters(totalLabel), {
+        bold: true,
+        fontSize: BODY_SIZE,
+        margin: [4, 6, 4, 6],
+      }),
+      emptyCell(),
+      emptyCell(),
+      saldoCell(sectionTotalStr, { bold: true, borderTop: true }),
+    ]);
+
+    return rows;
   }
 
-  // Section total — bold, double rule above (enforced by layout)
-  activoBodyRows.push([
-    textCell("Total activo", { bold: true, fontSize: BODY_SIZE, margin: [4, 3, 2, 3] }),
-    numCell(fmtDecimal(activoSection.sectionTotal, true), true),
-  ]);
+  const activoBodyRows = buildSectionRows("ACTIVO", "TOTAL ACTIVO", activoSection);
+  const pasivoBodyRows = buildSectionRows(
+    "PASIVO Y PATRIMONIO",
+    "TOTAL PASIVO Y PATRIMONIO",
+    pasivoSection,
+  );
 
-  // ── PASIVO Y PATRIMONIO section table ───────────────────────────────────────
-  const pasivoBodyRows: Content[][] = [];
+  // Layout de tabla sin líneas globales — los bordes se dibujan vía nested table
+  // en las celdas de saldo de las filas TOTAL.
+  const sectionLayout = {
+    hLineWidth: () => 0,
+    vLineWidth: () => 0,
+    paddingLeft: () => 0,
+    paddingRight: () => 0,
+    paddingTop: () => 1,
+    paddingBottom: () => 1,
+  };
 
-  pasivoBodyRows.push([
-    textCell("PASIVO Y PATRIMONIO", {
-      bold: true,
-      fontSize: HEADER_SIZE,
-      alignment: "center",
-      margin: [4, 4, 2, 4],
-    }),
-    textCell("", { bold: true }),
-  ]);
-
-  for (const group of pasivoSection.groups) {
-    pasivoBodyRows.push(...buildGroupRows(group));
-  }
-
-  pasivoBodyRows.push([
-    textCell("Total pasivo y patrimonio", { bold: true, fontSize: BODY_SIZE, margin: [4, 3, 2, 3] }),
-    numCell(fmtDecimal(pasivoSection.sectionTotal, true), true),
-  ]);
-
-  // ── Signature footer — ONE signature, representante legal, centered ─────────
+  // ── Firmas — ONE signature, representante legal, centered ──────────────────
   const signatureBlock: Content[] = [
-    // City + date footer line
     {
       text: `${org.ciudad}, ${fechaLarga}`,
       fontSize: FOOTER_SIZE,
       alignment: "center",
       margin: [0, 16, 0, 0],
     },
-    // Large vertical gap (~3 lines)
     { text: "\n\n\n", fontSize: BODY_SIZE },
-    // Single centered signature block
     {
       stack: [
         { text: "_______________________________", fontSize: BODY_SIZE, alignment: "center" },
@@ -296,8 +313,8 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
         body: activoBodyRows,
         dontBreakRows: false,
       },
-      layout: buildSectionTableLayout(activoBodyRows.length),
-      margin: [0, 0, 0, 6],
+      layout: sectionLayout,
+      margin: [0, 0, 0, 8],
     },
     {
       table: {
@@ -305,7 +322,7 @@ function buildDocDefinition(statement: InitialBalanceStatement): TDocumentDefini
         body: pasivoBodyRows,
         dontBreakRows: false,
       },
-      layout: buildSectionTableLayout(pasivoBodyRows.length),
+      layout: sectionLayout,
       margin: [0, 0, 0, 8],
     },
     ...signatureBlock,

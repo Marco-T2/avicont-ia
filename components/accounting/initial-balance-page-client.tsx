@@ -12,6 +12,7 @@ import { useState, useEffect } from "react";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { formatDateBO } from "@/lib/date-utils";
 import { InitialBalanceView } from "./initial-balance-view";
 
 // ── Serialized types (Decimals as strings) ─────────────────────────────────────
@@ -178,6 +179,16 @@ export function InitialBalancePageClient({ orgSlug }: InitialBalancePageClientPr
           {/* View */}
           <Card>
             <CardContent className="pt-4 pb-6 px-0 overflow-hidden">
+              {/* Sub-header dentro del card: título + fecha + moneda */}
+              <div className="px-6 pb-4 text-center">
+                <h2 className="text-xl font-bold tracking-wide">BALANCE INICIAL</h2>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Al {formatDateBO(new Date(statement.dateAt))}
+                </p>
+                <p className="text-xs italic text-muted-foreground">
+                  (Expresado en Bolivianos)
+                </p>
+              </div>
               <InitialBalanceView statement={statement} />
             </CardContent>
           </Card>

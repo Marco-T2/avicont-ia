@@ -123,12 +123,13 @@ describe("exportInitialBalancePdf — smoke tests", () => {
     expect(json).toContain("PASIVO Y PATRIMONIO");
   });
 
-  it("detail rows contain '{code} — {name}' format with em dash", async () => {
+  it("detail rows contain '{code}  {NAME}' format (code first, name uppercased)", async () => {
     const result = await exportInitialBalancePdf(makeStatement());
     const json = JSON.stringify(result.docDef);
-    // Detail rows now show "1100 — Caja" format (em dash, Bolivian legal format)
-    expect(json).toContain("1100 — Caja");
-    expect(json).toContain("1200 — Banco Nacional");
+    // Staircase BCB layout: code prefix + double space + name in MAYÚS.
+    // Previo: "1100 — Caja" (em dash, legal format) — refactor a estilo BCB.
+    expect(json).toContain("1100  CAJA");
+    expect(json).toContain("1200  BANCO NACIONAL");
   });
 
   it("footer contains ciudad in the closing line", async () => {
