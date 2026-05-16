@@ -92,16 +92,6 @@ export const EquityStatementView: FC<EquityStatementViewProps> = ({ statement })
         </div>
       )}
 
-      {/* Preliminary banner */}
-      {statement.preliminary && !statement.imbalanced && (
-        <div
-          role="status"
-          className="rounded-md border border-warning/40 bg-warning/10 px-4 py-3 text-foreground text-sm font-medium"
-        >
-          PRELIMINAR — Este reporte cubre un período no cerrado
-        </div>
-      )}
-
       {/* Table */}
       <div className="overflow-auto">
         <table className="w-full text-sm border-collapse">
