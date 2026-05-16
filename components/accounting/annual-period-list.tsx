@@ -28,6 +28,7 @@
  */
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   Accordion,
   AccordionContent,
@@ -37,12 +38,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, Plus } from "lucide-react";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/modules/fiscal-periods/presentation/index";
 import type { AnnualCloseSummary } from "@/modules/annual-close/presentation/index";
 import { formatDateBO } from "@/lib/date-utils";
 import AnnualCloseDialog from "./annual-close-dialog";
+import PeriodCreateDialog from "./period-create-dialog";
 
 export interface YearGroup {
   year: number;
@@ -75,6 +77,7 @@ export default function AnnualPeriodList({
   orgSlug,
   periodsByYear,
 }: AnnualPeriodListProps) {
+  const router = useRouter();
   // Sort newest-first defensively (server should already sort, but UI is the
   // last line — voseo phase 7 invariant).
   const sortedYears = [...periodsByYear].sort((a, b) => b.year - a.year);
@@ -83,12 +86,42 @@ export default function AnnualPeriodList({
   const [activeYearForDialog, setActiveYearForDialog] = useState<number | null>(
     null,
   );
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const defaultOpen =
     newestYear != null ? [String(newestYear)] : ([] as string[]);
 
+  const isEmpty = sortedYears.length === 0;
+
   return (
     <>
+      {isEmpty ? (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <CalendarDays className="mx-auto mb-3 h-10 w-10 text-muted-foreground/60" />
+            <p className="text-base font-medium">
+              Esta organización no tiene gestiones registradas
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Creá la primera gestión para empezar a registrar movimientos contables.
+            </p>
+            <Button
+              className="mt-4"
+              onClick={() => setShowCreateDialog(true)}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Crear primera gestión
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="flex justify-end">
+          <Button onClick={() => setShowCreateDialog(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            Nueva gestión
+          </Button>
+        </div>
+      )}
       <Accordion type="multiple" defaultValue={defaultOpen}>
         {sortedYears.map((group) => {
           const closed = countClosed(group.periods);
@@ -145,6 +178,16 @@ export default function AnnualPeriodList({
           }}
         />
       )}
+
+      <PeriodCreateDialog
+        open={showCreateDialog}
+        onOpenChange={setShowCreateDialog}
+        orgSlug={orgSlug}
+        onCreated={() => {
+          setShowCreateDialog(false);
+          router.refresh();
+        }}
+      />
     </>
   );
 }
