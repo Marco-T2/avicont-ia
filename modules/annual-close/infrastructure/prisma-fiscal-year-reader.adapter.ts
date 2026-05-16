@@ -89,7 +89,7 @@ export class PrismaFiscalYearReaderAdapter implements FiscalYearReaderPort {
     const row = await this.db.journalEntry.findFirst({
       where: {
         organizationId,
-        status: "POSTED",
+        status: "POSTED", // sentinel-allow:cc-freshness-read (CC always POSTED freshly inside same TX; pre-TX gate reads before lock — explorer §B.3)
         voucherType: { code: "CC" },
         date: {
           gte: toNoonUtc(`${year}-01-01`),

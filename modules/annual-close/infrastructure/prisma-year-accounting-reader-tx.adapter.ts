@@ -160,9 +160,12 @@ export class PrismaYearAccountingReaderTxAdapter
       FROM journal_entries je2
       JOIN voucher_types vt2 ON vt2.id = je2."voucherTypeId"
       WHERE je2."organizationId" = ${organizationId}
-        AND je2.status            = 'POSTED'
+        AND je2.status            = 'POSTED' /* sentinel-allow:annual-close-out-of-scope */
         AND vt2.code              = 'CA'
         AND je2.date              < ${yearEnd}
+        -- TODO: FIN-1 follow-up — annual-close-prev-ca-date-fix (latent
+        -- multi-year bug; see sdd/posted-locked-aggregator-fix/explore §B.3.
+        -- Separate ticket against annual-close territory.)
       ORDER BY je2.date DESC, je2."createdAt" DESC
       LIMIT 1;
     `;
@@ -341,7 +344,7 @@ export class PrismaYearAccountingReaderTxAdapter
     const row = await this.tx.journalEntry.findFirst({
       where: {
         organizationId,
-        status: "POSTED",
+        status: "POSTED", // sentinel-allow:cc-freshness-read (CC is always POSTED freshly inside the same TX that locks it; pre-TX gate reads before lock — explorer §B.3)
         voucherType: { code: "CC" },
         date: {
           gte: toNoonUtc(`${year}-01-01`),
