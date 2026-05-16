@@ -61,6 +61,14 @@ interface JournalEntryTemplate {
     credit: number | string;
     description?: string | null;
     contactId?: string | null;
+    /** Contacto cargado eagerly desde Prisma (line.contact via include) —
+     *  necesario para que ContactSelector muestre el nombre sin abrir el popover. */
+    contact?: {
+      id: string;
+      name: string;
+      type: string;
+      nit?: string | null;
+    } | null;
   }>;
 }
 
@@ -126,6 +134,9 @@ export default function JournalEntryForm({
         credit: Number(l.credit) > 0 ? String(l.credit) : "",
         description: l.description ?? "",
         contactId: l.contactId ?? "",
+        // Si vino el contacto cargado eagerly, pasarlo para que ContactSelector
+        // muestre el nombre sin tener que abrir el popover y fetchear.
+        initialContact: l.contact ?? undefined,
       }));
     }
     return [emptyLine(), emptyLine()];

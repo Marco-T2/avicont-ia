@@ -14,6 +14,14 @@ export interface JournalLineData {
   credit: string;
   description: string;
   contactId?: string;
+  /** Contacto pre-cargado (modo edit/duplicate) para que ContactSelector
+   *  muestre el nombre sin abrir el popover. */
+  initialContact?: {
+    id: string;
+    name: string;
+    type: string;
+    nit?: string | null;
+  };
 }
 
 interface JournalLineRowProps {
@@ -75,6 +83,7 @@ export default function JournalLineRow({
             orgSlug={orgSlug}
             value={line.contactId ?? null}
             onChange={(val) => onUpdate(line.id, "contactId", val ?? "")}
+            initialContact={line.initialContact}
           />
         ) : null}
       </td>

@@ -54,25 +54,39 @@ export default async function NewJournalEntryPage({
       credit: number | string;
       description?: string | null;
       contactId?: string | null;
+      contact?: { id: string; name: string; type: string; nit?: string | null } | null;
     }>;
   } | undefined;
 
   if (duplicateFrom) {
     try {
       const source = await journalsService.getById(orgId, duplicateFrom);
+      // Serializo y luego mapeo — JSON.parse(JSON.stringify) descarta cualquier
+      // método (toJSON etc.) y deja un objeto plano serializable como props del
+      // client component.
+      const serialized = JSON.parse(JSON.stringify(source));
       templateEntry = {
-        // Input HTML type=date espera YYYY-MM-DD; el form lo usa así.
         date: source.date.toISOString().slice(0, 10),
         description: source.description ?? "",
         periodId: source.periodId,
         voucherTypeId: source.voucherTypeId,
-        lines: source.lines.map((l) => ({
-          accountId: l.accountId,
-          debit: l.debit.toString(),
-          credit: l.credit.toString(),
-          description: l.description,
-          contactId: l.contactId,
-        })),
+        lines: serialized.lines.map(
+          (l: {
+            accountId: string;
+            debit: number | string;
+            credit: number | string;
+            description?: string | null;
+            contactId?: string | null;
+            contact?: { id: string; name: string; type: string; nit?: string | null } | null;
+          }) => ({
+            accountId: l.accountId,
+            debit: l.debit.toString(),
+            credit: l.credit.toString(),
+            description: l.description,
+            contactId: l.contactId,
+            contact: l.contact,
+          }),
+        ),
       };
     } catch {
       // Si el ID no existe en la org, ignoramos silenciosamente y mostramos
