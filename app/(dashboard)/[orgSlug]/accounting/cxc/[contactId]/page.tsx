@@ -136,7 +136,7 @@ export default async function CxcContactLedgerPage({
         </Tabs.Content>
 
         <Tabs.Content value="receivables">
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <ReceivableList
               orgSlug={orgSlug}
               receivables={JSON.parse(JSON.stringify(receivables))}

@@ -118,7 +118,7 @@ export default async function CxpContactLedgerPage({
         </Tabs.Content>
 
         <Tabs.Content value="payables">
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4">
             <PayableList
               orgSlug={orgSlug}
               payables={JSON.parse(JSON.stringify(payables))}
