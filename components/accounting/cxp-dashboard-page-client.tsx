@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/pagination";
 import { Eye, Users, ArrowDown, ArrowUp } from "lucide-react";
 import { formatDateBO } from "@/lib/date-utils";
+import { formatBsAccounting } from "@/lib/format-currency";
 
 // Sister of cxc-dashboard-page-client.tsx — only difference es `BASE = "cxp"`
 // para el Ver link target (PROVEEDOR detail page).
@@ -44,20 +45,6 @@ interface CxpDashboardPageClientProps {
   orgSlug: string;
   dashboard: ContactDashboardPaginatedDto;
   filters: DashboardFilters;
-}
-
-function formatCurrency(amount: string): string {
-  const n = parseFloat(amount);
-  if (n < 0) {
-    return `(${Math.abs(n).toLocaleString("es-BO", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })})`;
-  }
-  return `Bs. ${n.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 function buildDashboardHref(
@@ -246,7 +233,7 @@ export default function CxpDashboardPageClient({
                             balanceNum >= 0 ? "text-info" : "text-destructive"
                           }`}
                         >
-                          {formatCurrency(row.openBalance)}
+                          {formatBsAccounting(row.openBalance)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <Link

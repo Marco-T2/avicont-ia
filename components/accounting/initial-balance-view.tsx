@@ -5,7 +5,7 @@
  * centered compact table with two stacked sections (ACTIVO, then PASIVO Y PATRIMONIO).
  *
  * Visual pattern: mirrors BalanceSheetView — centered compact table (`mx-auto w-auto`)
- * with fixed-width columns for name and amount. formatBOB for all amounts.
+ * with fixed-width columns for name and amount. formatBs for all amounts.
  * Zero-amount detail rows are skipped.
  *
  * Detail rows show "{code} — {name}" format (em dash, Bolivian legal format).
@@ -18,7 +18,7 @@
  */
 
 import { type FC, type CSSProperties } from "react";
-import { formatBOB } from "@/components/financial-statements/format-money";
+import { formatBs } from "@/lib/format-currency";
 
 // ── Serialized types (Decimals as strings) ─────────────────────────────────────
 
@@ -134,7 +134,7 @@ function rowLabel(row: TableRow): string {
 
 function rowAmount(row: TableRow): string | null {
   if (row.kind === "section-header" || row.kind === "group-header") return null;
-  return formatBOB(row.amount);
+  return formatBs(row.amount);
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -160,7 +160,7 @@ export const InitialBalanceView: FC<InitialBalanceViewProps> = ({ statement }) =
         >
           <div className="font-semibold">
             Desequilibrio contable detectado — Diferencia:{" "}
-            {formatBOB(statement.imbalanceDelta)}
+            {formatBs(statement.imbalanceDelta)}
           </div>
           <div className="mt-1 font-normal">
             El total del ACTIVO no coincide con el total del PASIVO Y PATRIMONIO. Revise el

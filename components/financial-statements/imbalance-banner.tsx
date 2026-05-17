@@ -1,3 +1,5 @@
+import { formatBs } from "@/lib/format-currency";
+
 // Banner de ecuación contable desbalanceada — muestra el delta en BOB
 // Solo aplica al Balance General (Estado de Situación Patrimonial)
 interface ImbalanceBannerProps {
@@ -25,7 +27,7 @@ export function ImbalanceBanner({
             <span>
               Delta:{" "}
               <span className="font-mono font-semibold">
-                Bs. {imbalanceDelta}
+                {formatBs(imbalanceDelta)}
               </span>
             </span>
           )}

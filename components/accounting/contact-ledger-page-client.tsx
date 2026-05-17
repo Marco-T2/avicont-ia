@@ -26,6 +26,7 @@ import {
 import type { Contact } from "@/modules/contacts/presentation/index";
 import type { ContactType } from "@/generated/prisma/client";
 import { formatDateBO } from "@/lib/date-utils";
+import { formatBsAccounting } from "@/lib/format-currency";
 
 // Shadow wire shapes — mirror sister precedent (`ledger-page-client.tsx`)
 // where the canonical DTO `date: Date` is downgraded to `string` at the
@@ -74,25 +75,6 @@ interface ContactLedgerPaginatedDto {
   pageSize: number;
   totalPages: number;
   openingBalance: string;
-}
-
-// es-BO negative parens formatter — REQ "Cross-Cutting Constraints"
-// + "Saldo negativo es-BO". Positive amounts render via the sister
-// `formatCurrency` shape (`Bs. 1.234,56`); negatives strip the minus and
-// wrap the absolute value in parens (`(150,50)`) for accountant-friendly
-// reading. Used for the Saldo column where negative balances appear.
-function formatCurrency(amount: string): string {
-  const n = parseFloat(amount);
-  if (n < 0) {
-    return `(${Math.abs(n).toLocaleString("es-BO", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })})`;
-  }
-  return `Bs. ${n.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 // Same local-timezone helpers as sister ledger-page-client — avoid UTC
@@ -539,7 +521,7 @@ export default function ContactLedgerPageClient({
                         —
                       </td>
                       <td className="py-3 px-4 text-right font-mono">
-                        {formatCurrency(ledger.openingBalance)}
+                        {formatBsAccounting(ledger.openingBalance)}
                       </td>
                     </tr>
                   )}
@@ -601,12 +583,12 @@ export default function ContactLedgerPageClient({
                           </td>
                           <td className="py-3 px-4 text-right font-mono">
                             {parseFloat(entry.debit) > 0
-                              ? formatCurrency(entry.debit)
+                              ? formatBsAccounting(entry.debit)
                               : ""}
                           </td>
                           <td className="py-3 px-4 text-right font-mono">
                             {parseFloat(entry.credit) > 0
-                              ? formatCurrency(entry.credit)
+                              ? formatBsAccounting(entry.credit)
                               : ""}
                           </td>
                           <td
@@ -614,7 +596,7 @@ export default function ContactLedgerPageClient({
                               balanceNum >= 0 ? "text-info" : "text-destructive"
                             }`}
                           >
-                            {formatCurrency(entry.balance)}
+                            {formatBsAccounting(entry.balance)}
                           </td>
                         </tr>
                       );

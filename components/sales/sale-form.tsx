@@ -41,17 +41,9 @@ import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
 import { ReactivateLcvConfirmDialog } from "@/components/sales/reactivate-lcv-confirm-dialog";
 import { useLcvReactivate } from "@/components/sales/use-lcv-reactivate";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
-
-// ── Helpers ──
-
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 // ── Derivación del estado LCV ──
 
@@ -599,7 +591,7 @@ export default function SaleForm({
               <div>
                 <dt className="text-muted-foreground">Total</dt>
                 <dd className="font-medium mt-0.5 font-mono font-bold">
-                  {formatCurrency(sale!.totalAmount)}
+                  {formatBs(sale!.totalAmount)}
                 </dd>
               </div>
               {sale!.notes && (
@@ -710,7 +702,7 @@ export default function SaleForm({
                   <div className="space-y-2">
                     <Label>Total</Label>
                     <Input
-                      value={formatCurrency(sale!.totalAmount)}
+                      value={formatBs(sale!.totalAmount)}
                       readOnly
                       className="bg-muted cursor-default font-mono font-bold"
                     />
@@ -900,7 +892,7 @@ export default function SaleForm({
               <div className="flex flex-col gap-1 w-full text-sm">
                 <div className="flex justify-between items-start gap-4 border-b pb-2 font-semibold">
                   <span>Total CxC (Bs.)</span>
-                  <span className="font-mono text-right">{formatCurrency(sale.receivable.amount)}</span>
+                  <span className="font-mono text-right">{formatBs(sale.receivable.amount)}</span>
                 </div>
                 {sale.receivable.allocations.map((alloc) => (
                   <div
@@ -916,7 +908,7 @@ export default function SaleForm({
                       {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
                     </Link>
                     <span className="font-mono text-success text-right whitespace-nowrap">
-                      -{formatCurrency(alloc.amount)}
+                      -{formatBs(alloc.amount)}
                     </span>
                   </div>
                 ))}
@@ -926,7 +918,7 @@ export default function SaleForm({
                   }`}
                 >
                   <span className="text-foreground">Saldo pendiente</span>
-                  <span className="font-mono text-right">{formatCurrency(sale.receivable.balance)}</span>
+                  <span className="font-mono text-right">{formatBs(sale.receivable.balance)}</span>
                 </div>
               </div>
             </CardContent>

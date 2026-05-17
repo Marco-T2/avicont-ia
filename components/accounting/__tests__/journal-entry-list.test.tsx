@@ -246,7 +246,7 @@ describe("JournalEntryList — actions dropdown", () => {
     expect(accionesHeaders.length).toBeGreaterThanOrEqual(1);
   });
 
-  it("empty state usa colSpan=11 para incluir la columna de acciones", () => {
+  it("empty state usa colSpan=10 para incluir la columna de acciones", () => {
     render(
       <JournalEntryList
         orgSlug="test-org"
@@ -266,7 +266,7 @@ describe("JournalEntryList — actions dropdown", () => {
       .getByText(/no hay asientos registrados/i)
       .closest("td");
     expect(emptyCell).not.toBeNull();
-    expect(emptyCell).toHaveAttribute("colspan", "11");
+    expect(emptyCell).toHaveAttribute("colspan", "10");
   });
 });
 

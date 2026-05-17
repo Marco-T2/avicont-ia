@@ -7,11 +7,11 @@
  *     detail row → subtotal → section total).
  * (b) Shows imbalance alert banner when `imbalanced: true`.
  * (c) Shows multipleCA warning banner when `multipleCA: true`.
- * (d) Amount formatting via formatBOB (es-BO locale with "Bs." prefix):
- *     - positive 1234.56 → "Bs. 1.234,56"
- *     - negative -1234.56 → "Bs. -1.234,56" (formatBOB uses es-BO minus sign, not parens)
+ * (d) Amount formatting via formatBs (es-BO locale, sin prefijo "Bs."):
+ *     - positive 1234.56 → "1.234,56"
+ *     - negative -1234.56 → "-1.234,56" (es-BO minus sign, not parens)
  *     - zero in a detail row → row is NOT rendered at all
- *     - zero in a total/subtotal → rendered as "Bs. 0,00"
+ *     - zero in a total/subtotal → rendered as "0,00"
  * (e) Detail rows with amount 0 are skipped entirely (not rendered).
  * (f) Detail rows include account code in format "{code} — {name}".
  */
@@ -118,17 +118,17 @@ describe("InitialBalanceView", () => {
     expect(warning).toHaveTextContent(/múltiples|multiple|varios|comprobante.*apertura/i);
   });
 
-  it("(d1) formats positive amount 1234.56 as 'Bs. 1.234,56' via formatBOB", () => {
+  it("(d1) formats positive amount 1234.56 as '1.234,56' via formatBs", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
     // "Caja" row has amount "1234.56"
-    expect(screen.getByText("Bs. 1.234,56")).toBeInTheDocument();
+    expect(screen.getByText("1.234,56")).toBeInTheDocument();
   });
 
-  it("(d2) formats negative amount -1234.56 with Bs. prefix and minus sign", () => {
+  it("(d2) formats negative amount -1234.56 with minus sign (sin prefijo)", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
     // "Deudas" row has amount "-1234.56"
-    // formatBOB(-1234.56) → "Bs. -1.234,56"
-    expect(screen.getByText("Bs. -1.234,56")).toBeInTheDocument();
+    // formatBs(-1234.56) → "-1.234,56"
+    expect(screen.getByText("-1.234,56")).toBeInTheDocument();
   });
 
   it("(e) zero-amount detail rows are NOT rendered", () => {
@@ -141,11 +141,11 @@ describe("InitialBalanceView", () => {
     expect(screen.queryByText("3.1.01 — Capital")).not.toBeInTheDocument();
   });
 
-  it("(d4) zero totals and subtotals still render (structural zero shows as Bs. 0,00)", () => {
+  it("(d4) zero totals and subtotals still render (structural zero shows as 0,00)", () => {
     render(<InitialBalanceView statement={makeStatement()} />);
     // ACTIVO subtotal is "0.00" and sectionTotal is "0.00" → must render something with 0
-    // formatBOB("0.00") → "Bs. 0,00"
-    const zeros = screen.getAllByText("Bs. 0,00");
+    // formatBs("0.00") → "0,00"
+    const zeros = screen.getAllByText("0,00");
     expect(zeros.length).toBeGreaterThan(0);
   });
 

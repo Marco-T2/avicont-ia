@@ -6,7 +6,7 @@
  * Reemplazo del TanStack Table previo (expand/collapse + chevrons + sticky col)
  * por una tabla simple sin estado, paridad visual con `initial-balance-view`:
  * cuentas con formato "{código} — {NOMBRE}", backgrounds suaves por semántica,
- * formatBOB con prefix literal "Bs. ".
+ * formatBs (sin prefijo "Bs."; sistema mono-moneda BOB).
  *
  * Soporta multi-col (current + comparative + diff_percent) — cada columna del
  * response se renderiza como un `<td>` adicional en cada fila.
@@ -17,6 +17,7 @@ import type {
   StatementTableRow,
   SerializedColumn,
 } from "@/modules/accounting/financial-statements/presentation";
+import { formatBs } from "@/lib/format-currency";
 
 type SemanticClass = StatementTableRow["semanticClass"];
 
@@ -147,20 +148,5 @@ function formatCell(value: string | undefined, role: SerializedColumn["role"]): 
     const num = parseFloat(value);
     return isNaN(num) ? "—" : `${num.toFixed(1)}%`;
   }
-  return formatBOB(value);
-}
-
-/**
- * Formato monetario boliviano: "Bs. 1.234,56" (prefix literal + es-BO decimal).
- * Paridad con `formatBOB` de `format-money.ts` y `initial-balance-view`.
- */
-function formatBOB(value: string): string {
-  const num = parseFloat(value);
-  if (isNaN(num)) return "Bs. 0,00";
-  const formatted = new Intl.NumberFormat("es-BO", {
-    style: "decimal",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(num);
-  return `Bs. ${formatted}`;
+  return formatBs(value);
 }

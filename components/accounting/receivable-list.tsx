@@ -35,12 +35,7 @@ import ReceivableForm from "./receivable-form";
 import ContactSelector from "@/components/contacts/contact-selector";
 import type { ReceivableSnapshotWithContact } from "@/modules/receivables/presentation/server";
 import { formatDateBO } from "@/lib/date-utils";
-
-function formatCurrency(value: number | string): string {
-  return new Intl.NumberFormat("es-BO", { minimumFractionDigits: 2 }).format(
-    Number(value),
-  );
-}
+import { formatBs } from "@/lib/format-currency";
 
 interface ReceivableListProps {
   orgSlug: string;
@@ -242,13 +237,13 @@ export default function ReceivableList({
                           {r.description}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {formatCurrency(amount)}
+                          {formatBs(amount)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono text-success">
-                          {formatCurrency(paid)}
+                          {formatBs(paid)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-semibold">
-                          {formatCurrency(balance)}
+                          {formatBs(balance)}
                         </td>
                         <td className="py-3 px-4">{formatDateBO(r.dueDate)}</td>
                         <td className="py-3 px-4">

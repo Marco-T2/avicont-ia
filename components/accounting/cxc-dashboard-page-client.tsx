@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/pagination";
 import { Eye, Users, ArrowDown, ArrowUp } from "lucide-react";
 import { formatDateBO } from "@/lib/date-utils";
+import { formatBsAccounting } from "@/lib/format-currency";
 
 // Shadow wire shapes — boundary serialization (DEC-1 string for openBalance
 // + ISO string for lastMovementDate). Mirror sister precedent
@@ -46,22 +47,6 @@ interface CxcDashboardPageClientProps {
   orgSlug: string;
   dashboard: ContactDashboardPaginatedDto;
   filters: DashboardFilters;
-}
-
-// es-BO formatter — sister precedent contact-ledger-page-client. Negatives
-// entre parens (saldo neto puede ser < 0 con sobrepagos).
-function formatCurrency(amount: string): string {
-  const n = parseFloat(amount);
-  if (n < 0) {
-    return `(${Math.abs(n).toLocaleString("es-BO", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })})`;
-  }
-  return `Bs. ${n.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 /**
@@ -264,7 +249,7 @@ export default function CxcDashboardPageClient({
                             balanceNum >= 0 ? "text-info" : "text-destructive"
                           }`}
                         >
-                          {formatCurrency(row.openBalance)}
+                          {formatBsAccounting(row.openBalance)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <Link

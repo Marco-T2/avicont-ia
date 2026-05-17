@@ -740,7 +740,7 @@ describe("ContactLedgerPageClient — opening balance row", () => {
     });
     expect(openingRow).toBeInTheDocument();
     expect(openingRow.tagName).toBe("TR");
-    expect(within(openingRow).getByText(/Bs\.\s*120[.,]00/)).toBeInTheDocument();
+    expect(within(openingRow).getByText(/120[.,]00/)).toBeInTheDocument();
   });
 });
 
@@ -797,13 +797,13 @@ describe("ContactLedgerPageClient — running balance", () => {
     const rowB = screen.getByRole("row", { name: /Mov B/i });
     const rowC = screen.getByRole("row", { name: /Mov C/i });
     expect(within(rowA).getAllByRole("cell")[7].textContent).toMatch(
-      /Bs\.\s*100[.,]00/,
+      /100[.,]00/,
     );
     expect(within(rowB).getAllByRole("cell")[7].textContent).toMatch(
-      /Bs\.\s*150[.,]00/,
+      /150[.,]00/,
     );
     expect(within(rowC).getAllByRole("cell")[7].textContent).toMatch(
-      /Bs\.\s*120[.,]00/,
+      /120[.,]00/,
     );
   });
 });

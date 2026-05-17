@@ -19,6 +19,7 @@ import { Search, Calculator, Eye, Printer, FileSpreadsheet, Loader2 } from "luci
 import Link from "next/link";
 import type { Account } from "@/generated/prisma/client";
 import { formatDateBO } from "@/lib/date-utils";
+import { formatBsAccounting } from "@/lib/format-currency";
 
 // Shadow interface mirrors LedgerEntry + LedgerPaginatedDto from
 // @/modules/accounting/presentation/dto/ledger.types. Monetary fields wire
@@ -42,13 +43,6 @@ interface LedgerPaginatedDto {
   pageSize: number;
   totalPages: number;
   openingBalance: string;
-}
-
-function formatCurrency(amount: string): string {
-  return `Bs. ${parseFloat(amount).toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 // Local-timezone ISO date (YYYY-MM-DD). Avoids toISOString UTC drift around
@@ -394,7 +388,7 @@ export default function LedgerPageClient({
                         —
                       </td>
                       <td className="py-3 px-4 text-right font-mono">
-                        {formatCurrency(ledger.openingBalance)}
+                        {formatBsAccounting(ledger.openingBalance)}
                       </td>
                       <td className="py-3 px-4 text-muted-foreground">—</td>
                     </tr>
@@ -421,12 +415,12 @@ export default function LedgerPageClient({
                         <td className="py-3 px-4">{entry.description}</td>
                         <td className="py-3 px-4 text-right font-mono">
                           {parseFloat(entry.debit) > 0
-                            ? formatCurrency(entry.debit)
+                            ? formatBsAccounting(entry.debit)
                             : ""}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
                           {parseFloat(entry.credit) > 0
-                            ? formatCurrency(entry.credit)
+                            ? formatBsAccounting(entry.credit)
                             : ""}
                         </td>
                         <td
@@ -436,7 +430,7 @@ export default function LedgerPageClient({
                               : "text-destructive"
                           }`}
                         >
-                          {formatCurrency(entry.balance)}
+                          {formatBsAccounting(entry.balance)}
                         </td>
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-center gap-1">

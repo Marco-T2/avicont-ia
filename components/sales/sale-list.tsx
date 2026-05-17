@@ -53,15 +53,7 @@ import Link from "next/link";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
 import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
 import { formatDateBO } from "@/lib/date-utils";
-
-// ── Helpers ──
-
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
+import { formatBs } from "@/lib/format-currency";
 
 function buildHref(
   orgSlug: string,
@@ -300,7 +292,7 @@ export default function SaleList({
                           {sale.contact?.name ?? "—"}
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {formatCurrency(sale.totalAmount)}
+                          {formatBs(sale.totalAmount)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <VoucherStatusBadge status={sale.status} />

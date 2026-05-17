@@ -32,17 +32,9 @@ import type { PendingDocument } from "@/modules/contact-balances/presentation/in
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
-
-// ── Helpers ──
-
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 const PAYMENT_METHODS = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -1332,7 +1324,7 @@ export default function PaymentForm({
                 <Label htmlFor="payment-amount-override">Importe recibido (Bs.)</Label>
                 {isReadOnly && !isPosted ? (
                   <Input
-                    value={existingPayment ? formatCurrency(existingPayment.amount) : ""}
+                    value={existingPayment ? formatBs(existingPayment.amount) : ""}
                     readOnly
                     className="bg-muted cursor-default font-mono font-bold"
                   />
@@ -1361,14 +1353,14 @@ export default function PaymentForm({
                 <div className="text-center">
                   <p className="text-muted-foreground">Importe aplicado</p>
                   <p className="font-mono font-semibold text-foreground">
-                    {formatCurrency(totalAllocated)}
+                    {formatBs(totalAllocated)}
                   </p>
                 </div>
                 {creditFromPayment > 0 && (
                   <div className="text-center">
                     <p className="text-warning">Importe a acreditar</p>
                     <p className="font-mono font-semibold text-warning">
-                      {formatCurrency(creditFromPayment)}
+                      {formatBs(creditFromPayment)}
                     </p>
                   </div>
                 )}
@@ -1479,13 +1471,13 @@ export default function PaymentForm({
                           </div>
                         </td>
                         <td className="py-3 px-4 text-right font-mono">
-                          {formatCurrency(alloc.totalAmount)}
+                          {formatBs(alloc.totalAmount)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono text-muted-foreground">
-                          {formatCurrency(alloc.paid)}
+                          {formatBs(alloc.paid)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-medium">
-                          {formatCurrency(alloc.displayBalance)}
+                          {formatBs(alloc.displayBalance)}
                         </td>
                         <td className="py-3 px-4">
                           {isReadOnly ? (
@@ -1534,7 +1526,7 @@ export default function PaymentForm({
                       Importe aplicado:
                     </td>
                     <td className="py-2 px-4 text-right font-mono font-medium">
-                      {formatCurrency(totalAllocated)}
+                      {formatBs(totalAllocated)}
                     </td>
                   </tr>
 
@@ -1548,7 +1540,7 @@ export default function PaymentForm({
                         Importe a acreditar:
                       </td>
                       <td className="py-2 px-4 text-right font-mono text-warning font-medium">
-                        {formatCurrency(creditFromPayment)}
+                        {formatBs(creditFromPayment)}
                       </td>
                     </tr>
                   )}
@@ -1563,7 +1555,7 @@ export default function PaymentForm({
                         Saldo a favor existente del contacto:
                       </td>
                       <td className="py-2 px-4 text-right font-mono text-info font-medium">
-                        {formatCurrency(creditBalance)}
+                        {formatBs(creditBalance)}
                       </td>
                     </tr>
                   )}
@@ -1657,10 +1649,10 @@ export default function PaymentForm({
                             </div>
                           </td>
                           <td className="py-3 px-4 text-right font-mono">
-                            {formatCurrency(credit.originalAmount)}
+                            {formatBs(credit.originalAmount)}
                           </td>
                           <td className="py-3 px-4 text-right font-mono font-medium">
-                            {formatCurrency(credit.available)}
+                            {formatBs(credit.available)}
                           </td>
                           <td className="py-3 px-4">
                             {isReadOnly ? (
@@ -1716,7 +1708,7 @@ export default function PaymentForm({
                         Crédito aplicado:
                       </td>
                       <td className="py-2 px-4 text-right font-mono font-medium">
-                        {formatCurrency(creditApplied)}
+                        {formatBs(creditApplied)}
                       </td>
                     </tr>
                   </tfoot>

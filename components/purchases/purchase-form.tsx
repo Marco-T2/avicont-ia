@@ -46,6 +46,7 @@ import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/react
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
+import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 
@@ -56,13 +57,6 @@ function formatKg(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
 }
 
 // ── Derivación del estado LCV ──
@@ -750,7 +744,7 @@ export default function PurchaseForm({
               <div>
                 <dt className="text-muted-foreground">Total</dt>
                 <dd className="font-medium mt-0.5 font-mono font-bold">
-                  {formatCurrency(purchase!.totalAmount)}
+                  {formatBs(purchase!.totalAmount)}
                 </dd>
               </div>
               {purchaseType === "FLETE" && purchase!.ruta && (
@@ -898,7 +892,7 @@ export default function PurchaseForm({
                   <div className="space-y-2">
                     <Label>Total</Label>
                     <Input
-                      value={formatCurrency(purchase!.totalAmount)}
+                      value={formatBs(purchase!.totalAmount)}
                       readOnly
                       className="bg-muted cursor-default font-mono font-bold"
                     />
@@ -1362,7 +1356,7 @@ export default function PurchaseForm({
                       Subtotal (exacto):
                     </td>
                     <td className="py-2 px-2 text-right font-mono text-sm text-foreground">
-                      {formatCurrency(subtotal)}
+                      {formatBs(subtotal)}
                     </td>
                     {!isReadOnly && <td />}
                   </tr>
@@ -1508,7 +1502,7 @@ export default function PurchaseForm({
               <div className="flex flex-col gap-1 w-full text-sm">
                 <div className="flex justify-between items-start gap-4 border-b pb-2 font-semibold">
                   <span>Total CxP (Bs.)</span>
-                  <span className="font-mono text-right">{formatCurrency(purchase.payable.amount)}</span>
+                  <span className="font-mono text-right">{formatBs(purchase.payable.amount)}</span>
                 </div>
                 {purchase.payable.allocations.map((alloc) => (
                   <div
@@ -1524,7 +1518,7 @@ export default function PurchaseForm({
                       {alloc.payment.description ? ` — ${alloc.payment.description}` : ""}
                     </Link>
                     <span className="font-mono text-success text-right whitespace-nowrap">
-                      -{formatCurrency(alloc.amount)}
+                      -{formatBs(alloc.amount)}
                     </span>
                   </div>
                 ))}
@@ -1534,7 +1528,7 @@ export default function PurchaseForm({
                   }`}
                 >
                   <span className="text-foreground">Saldo pendiente</span>
-                  <span className="font-mono text-right">{formatCurrency(purchase.payable.balance)}</span>
+                  <span className="font-mono text-right">{formatBs(purchase.payable.balance)}</span>
                 </div>
               </div>
             </CardContent>

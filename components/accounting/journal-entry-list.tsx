@@ -45,6 +45,7 @@ import {
   sourceTypeBadgeClassName,
 } from "@/features/accounting/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
+import { formatBs } from "@/lib/format-currency";
 import {
   Pagination,
   PaginationContent,
@@ -54,13 +55,6 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
-
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 const STATUS_BADGE: Record<string, { label: string; className: string }> = {
   DRAFT: {
@@ -153,7 +147,6 @@ interface JournalEntryRowProps {
   entry: JournalEntry;
   voucherName: string;
   voucherPrefix: string | undefined;
-  periodName: string;
   periodStatus: string;
   isLoading: boolean;
   onPost: (entry: JournalEntry) => void;
@@ -165,7 +158,6 @@ function JournalEntryRow({
   entry,
   voucherName,
   voucherPrefix,
-  periodName,
   periodStatus,
   isLoading,
   isHighlighted,
@@ -216,7 +208,6 @@ function JournalEntryRow({
       }`}
       onClick={() => router.push(viewPath)}
     >
-      <td className="py-3 px-4 text-muted-foreground">{periodName}</td>
       <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(entry.date)}</td>
       <td className="py-3 px-4">{voucherName}</td>
       <td className="py-3 px-4 font-mono text-info font-medium">
@@ -236,7 +227,7 @@ function JournalEntryRow({
         </Badge>
       </td>
       <td className="py-3 px-4 text-right font-mono">
-        {formatCurrency(totalDebit)}
+        {formatBs(totalDebit)}
       </td>
       <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
         {isLoading ? (
@@ -341,7 +332,6 @@ export default function JournalEntryList({
   }, [highlightId, orgSlug, router]);
 
   // Build lookup maps
-  const periodMap = new Map(periods.map((p) => [p.id, p.name]));
   const periodStatusMap = new Map(periods.map((p) => [p.id, p.status]));
   const voucherTypeMap = new Map(voucherTypes.map((vt) => [vt.id, vt.name]));
   const voucherTypePrefixMap = new Map(voucherTypes.map((vt) => [vt.id, vt.prefix]));
@@ -516,9 +506,6 @@ export default function JournalEntryList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Período
-                  </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Tipo
@@ -548,7 +535,7 @@ export default function JournalEntryList({
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground/60 mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay asientos registrados</p>
                       <p className="text-sm text-muted-foreground/70 mt-1">
@@ -566,7 +553,6 @@ export default function JournalEntryList({
                       entry={entry}
                       voucherName={voucherTypeMap.get(entry.voucherTypeId) ?? "—"}
                       voucherPrefix={voucherTypePrefixMap.get(entry.voucherTypeId)}
-                      periodName={periodMap.get(entry.periodId) ?? "—"}
                       periodStatus={periodStatusMap.get(entry.periodId) ?? "OPEN"}
                       isLoading={actioningId === entry.id}
                       isHighlighted={activeHighlightId === entry.id}

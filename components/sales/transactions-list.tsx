@@ -46,6 +46,7 @@ import {
 import { toast } from "sonner";
 import Link from "next/link";
 import { formatDateBO } from "@/lib/date-utils";
+import { formatBs } from "@/lib/format-currency";
 
 // Presentation-local discriminated union — replaces retired
 // @/modules/dispatch/presentation HubItem (hub.types.ts DELETED in C1 GREEN
@@ -83,14 +84,6 @@ type HubItemDispatch = {
 type HubItem = HubItemSale | HubItemDispatch;
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
-
-function formatCurrency(amount: string): string {
-  const num = parseFloat(amount);
-  return `Bs. ${num.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
 
 const TYPE_LABEL: Record<string, string> = {
   VENTA_GENERAL: "Venta General",
@@ -234,7 +227,7 @@ function HubItemRow({ orgSlug, item, periodName, isLoading, onPost, onVoid, onDe
       </td>
       <td className="py-3 px-4 text-muted-foreground">{item.contactName}</td>
       <td className="py-3 px-4 text-right font-mono">
-        {formatCurrency(item.totalAmount)}
+        {formatBs(item.totalAmount)}
       </td>
       <td className="py-3 px-4 text-center">
         <VoucherStatusBadge status={item.status} />

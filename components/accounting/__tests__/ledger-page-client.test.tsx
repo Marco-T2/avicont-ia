@@ -133,8 +133,8 @@ describe("LedgerPageClient — opening balance in-table row (D5'')", () => {
     expect(openingRow.tagName).toBe("TR");
 
     // Saldo cell within the opening row renders the formatted opening amount.
-    // formatCurrency uses es-BO locale → "Bs. 120,00" (comma decimal separator).
-    expect(within(openingRow).getByText(/Bs\.\s*120[.,]00/)).toBeInTheDocument();
+    // formatBs uses es-BO locale → "120,00" (comma decimal separator).
+    expect(within(openingRow).getByText(/120[.,]00/)).toBeInTheDocument();
   });
 
   it("opening row text says 'Saldo inicial acumulado' not 'Saldo de Apertura'", () => {
@@ -189,7 +189,7 @@ describe("LedgerPageClient — opening balance in-table row (D5'')", () => {
       name: /Saldo inicial acumulado/i,
     });
     expect(openingRow).toBeInTheDocument();
-    expect(within(openingRow).getByText(/Bs\.\s*960[.,]00/)).toBeInTheDocument();
+    expect(within(openingRow).getByText(/960[.,]00/)).toBeInTheDocument();
 
     // Empty-state placeholder ALSO present (below opening row).
     expect(

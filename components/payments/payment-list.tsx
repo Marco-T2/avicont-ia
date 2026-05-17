@@ -58,16 +58,7 @@ import { toast } from "sonner";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 import type { PaymentDirection } from "@/modules/payment/presentation/server";
 import type { PaginatedResult } from "@/modules/shared/domain/value-objects/pagination";
-
-// ── Helpers ──
-
-function formatCurrency(amount: number): string {
-  return `Bs. ${amount.toLocaleString("es-BO", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`;
-}
-
+import { formatBs } from "@/lib/format-currency";
 
 function buildHref(
   orgSlug: string,
@@ -191,7 +182,7 @@ function PaymentRow({
       </td>
       <td className="py-3 px-4 text-right font-mono">
         <div className="flex flex-col items-end gap-1">
-          <span>{formatCurrency(payment.amount)}</span>
+          <span>{formatBs(payment.amount)}</span>
           {hasUnapplied && (
             <Badge className="bg-info/10 text-info dark:bg-info/20 text-xs font-normal">
               Crédito: Bs
@@ -410,7 +401,7 @@ export default function PaymentList({
                 <CardTitle>Cobros</CardTitle>
                 <CardDescription>
                   {cobros.length} registro{cobros.length !== 1 ? "s" : ""} &mdash;{" "}
-                  {formatCurrency(cobrosTotal)}
+                  {formatBs(cobrosTotal)}
                 </CardDescription>
               </div>
             </div>
@@ -436,7 +427,7 @@ export default function PaymentList({
                 <CardTitle>Pagos</CardTitle>
                 <CardDescription>
                   {pagos.length} registro{pagos.length !== 1 ? "s" : ""} &mdash;{" "}
-                  {formatCurrency(pagosTotal)}
+                  {formatBs(pagosTotal)}
                 </CardDescription>
               </div>
             </div>

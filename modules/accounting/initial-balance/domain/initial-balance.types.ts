@@ -8,7 +8,7 @@ import type DecimalJs from "decimal.js";
  * bug visual en `/initial-balance`: `serializeStatement` (financial-statements)
  * detecta Decimal vía `instanceof` de decimal.js, así que las filas con
  * Prisma.Decimal no se serializaban a string y llegaban al cliente como `{}`
- * → `parseFloat` daba NaN → `formatBOB` retornaba "Bs. 0,00" por su guard.
+ * → `parseFloat` daba NaN → `formatBs` retornaba "0,00" por su guard.
  * Los subtotales sí se renderizaban OK porque pasan por `sumDecimals` que
  * parte de `new Decimal(0)` (decimal.js) — de ahí la asimetría 0,00 vs 3.459.
  */
