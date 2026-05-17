@@ -46,8 +46,6 @@ export class InMemoryDocumentsRepository implements DocumentsRepositoryPort {
       organizationId: input.organizationId,
       userId: input.userId,
       aiSummary: null,
-      aiKeywords: [],
-      sentiment: null,
       createdAt: new Date(),
       user: { name: "test-user", email: "u@test" },
       organization: { name: "test-org", clerkOrgId: "clerk_test" },
@@ -82,7 +80,7 @@ export class InMemoryDocumentsRepository implements DocumentsRepositoryPort {
   async updateAnalysis(
     _organizationId: string,
     documentId: string,
-    data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
+    data: { aiSummary: string },
   ): Promise<unknown> {
     const doc = this.docs.find((d) => d.id === documentId);
     if (doc) Object.assign(doc, data);

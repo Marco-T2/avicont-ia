@@ -1,10 +1,3 @@
-export type AnalysisType =
-  | "summary"
-  | "qa"
-  | "sentiment"
-  | "entities"
-  | "extract";
-
 export interface Document {
   id: string;
   name: string;
@@ -12,8 +5,6 @@ export interface Document {
   fileSize?: number;
   fileType?: string;
   aiSummary?: string;
-  aiKeywords: string[];
-  sentiment?: string;
   scope?: "ORGANIZATION" | "ACCOUNTING" | "FARM";
   createdAt: string;
   user: {

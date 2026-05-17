@@ -272,29 +272,16 @@ export class GeminiLLMAdapter implements LLMProviderPort {
  *
  * Load-bearing arch debt — documented in design D8 + archive (1 consumer).
  */
-export async function analyzeDocument(
-  text: string,
-  analysisType: "summary" | "qa" | "sentiment" | "entities" | "extract",
-): Promise<string> {
+export async function analyzeDocument(text: string): Promise<string> {
   try {
     const model = genAI.getGenerativeModel({ model: MODEL_ID });
-
-    const prompts = {
-      summary: `Please provide a comprehensive summary of the following document. Include main points, key findings, and conclusions:\n\n${text}`,
-      qa: `Based on the following document, generate 5 important questions and their answers:\n\n${text}`,
-      sentiment: `Analyze the sentiment and tone of the following document. Provide overall sentiment (positive/negative/neutral) and key emotional tones detected:\n\n${text}`,
-      entities: `Extract all named entities (people, organizations, locations, dates, etc.) from the following document:\n\n${text}`,
-      extract: `Extract key information from the following document in structured format:\n\n${text}`,
-    };
-
-    const prompt = prompts[analysisType];
+    const prompt = `Please provide a comprehensive summary of the following document. Include main points, key findings, and conclusions:\n\n${text}`;
     const result = await model.generateContent(prompt);
     return result.response.text();
   } catch (err) {
     logStructured({
       event: "gemini_document_analysis_failed",
       level: "warn",
-      analysisType,
       error: err instanceof Error ? err.message : String(err),
     });
     throw err;

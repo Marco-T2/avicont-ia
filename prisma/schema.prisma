@@ -112,8 +112,6 @@ model Document {
   fileSize       Int?
   fileType       String?
   aiSummary      String?
-  aiKeywords     String[]
-  sentiment      String?
   scope          DocumentScope @default(ORGANIZATION)
   organizationId String
   userId         String

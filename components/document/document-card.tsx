@@ -1,4 +1,3 @@
-// components/document-card.tsx
 "use client";
 
 import { Button } from "@/components/ui/button";
@@ -11,20 +10,10 @@ import {
   Loader2,
   Calendar,
   User,
-  Tag,
   File,
-  Sparkles,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Document, AnalysisType } from "@/types";
-import { analysisTypes } from "@/app/data/data";
+import { Document } from "@/types";
 import type { DocumentScope } from "@/features/permissions";
 
 const SCOPE_LABELS: Record<DocumentScope, string> = {
@@ -42,8 +31,6 @@ const SCOPE_COLORS: Record<DocumentScope, string> = {
 interface DocumentCardProps {
   document: Document;
   isAnalyzing: boolean;
-  selectedAnalysisType: AnalysisType;
-  onAnalysisTypeChange: (type: AnalysisType) => void;
   onAnalyze: (documentId: string) => void;
   onDelete: (documentId: string) => void;
   onToggleSummary: (documentId: string) => void;
@@ -54,8 +41,6 @@ interface DocumentCardProps {
 export default function DocumentCard({
   document: doc,
   isAnalyzing,
-  selectedAnalysisType,
-  onAnalysisTypeChange,
   onAnalyze,
   onDelete,
   onToggleSummary,
@@ -63,13 +48,6 @@ export default function DocumentCard({
   formatFileSize,
 }: DocumentCardProps) {
   const isExpanded = expandedSummaries.has(doc.id);
-
-  // Get analysis type icon
-  const getAnalysisIcon = (type: AnalysisType) => {
-    const analysisType = analysisTypes.find((t) => t.value === type);
-    const Icon = analysisType?.icon || Sparkles;
-    return <Icon className="h-4 w-4" />;
-  };
 
   return (
     <div className="border rounded-lg p-6 hover:shadow-lg transition-all">
@@ -110,23 +88,16 @@ export default function DocumentCard({
                     {SCOPE_LABELS[doc.scope as DocumentScope] || doc.scope}
                   </Badge>
                 )}
-                {doc.sentiment && (
-                  <Badge>
-                    <div className="flex items-center gap-1">
-                      <span className="capitalize">{doc.sentiment}</span>
-                    </div>
-                  </Badge>
-                )}
               </div>
             </div>
 
-            {/* AI Analysis Section */}
+            {/* AI Summary Section */}
             {doc.aiSummary && (
               <div className="mt-4 p-4 bg-linear-to-r from-gray-50 to-blue-50 rounded-lg border">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
                     <Brain className="h-5 w-5 text-green-600" />
-                    <span className="font-medium">Análisis de IA</span>
+                    <span className="font-medium">Resumen IA</span>
                     <Badge variant="outline" className="ml-2">
                       Gemini AI
                     </Badge>
@@ -141,7 +112,6 @@ export default function DocumentCard({
                     </Button>
                   )}
                 </div>
-                {/* Summary Content */}
                 <div className="text-gray-700">
                   {isExpanded ? (
                     <div className="prose prose-sm max-w-none">
@@ -157,31 +127,6 @@ export default function DocumentCard({
                     </div>
                   )}
                 </div>
-                {/* Keywords */}
-                {doc.aiKeywords.length > 0 && (
-                  <div className="mt-4 pt-3 border-t">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Tag className="h-4 w-4 text-gray-500" />
-                      <span className="text-sm font-medium">Temas Clave</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {doc.aiKeywords.slice(0, 8).map((keyword, idx) => (
-                        <Badge
-                          key={idx}
-                          variant="secondary"
-                          className="px-3 py-1"
-                        >
-                          {keyword}
-                        </Badge>
-                      ))}
-                      {doc.aiKeywords.length > 8 && (
-                        <Badge variant="outline" className="px-3 py-1">
-                          +{doc.aiKeywords.length - 8} más
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -189,7 +134,6 @@ export default function DocumentCard({
 
         {/* Right Column: Actions */}
         <div className="flex flex-col gap-2 ml-4">
-          {/* Download Button */}
           {doc.fileUrl && (
             <Button
               variant="outline"
@@ -203,64 +147,26 @@ export default function DocumentCard({
             </Button>
           )}
 
-          {/* Analysis Section */}
-          <div className="space-y-2">
-            <div className="text-xs text-gray-500">
-              {doc.aiSummary ? "Re-analizar con:" : "Analizar con:"}
-            </div>
+          <Button
+            variant={doc.aiSummary ? "outline" : "default"}
+            size="sm"
+            onClick={() => onAnalyze(doc.id)}
+            disabled={isAnalyzing}
+            className="justify-start w-full"
+          >
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                {doc.aiSummary ? "Re-analizando..." : "Analizando..."}
+              </>
+            ) : (
+              <>
+                <Brain className="h-4 w-4 mr-2" />
+                {doc.aiSummary ? "Re-analizar" : "Analizar"}
+              </>
+            )}
+          </Button>
 
-            <Select
-              value={selectedAnalysisType}
-              onValueChange={(value: AnalysisType) =>
-                onAnalysisTypeChange(value)
-              }
-            >
-              <SelectTrigger className="w-full">
-                <SelectValue>
-                  <div className="flex items-center gap-2">
-                    {getAnalysisIcon(selectedAnalysisType)}
-                    {
-                      analysisTypes.find(
-                        (type) => type.value === selectedAnalysisType,
-                      )?.label
-                    }
-                  </div>
-                </SelectValue>
-              </SelectTrigger>
-              <SelectContent>
-                {analysisTypes.map((type) => (
-                  <SelectItem key={type.value} value={type.value}>
-                    <div className="flex items-center gap-2">
-                      <type.icon className="h-4 w-4" />
-                      {type.label}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Button
-              variant={doc.aiSummary ? "outline" : "default"}
-              size="sm"
-              onClick={() => onAnalyze(doc.id)}
-              disabled={isAnalyzing}
-              className="justify-start w-full"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {doc.aiSummary ? "Re-analizando..." : "Analizando..."}
-                </>
-              ) : (
-                <>
-                  <Brain className="h-4 w-4 mr-2" />
-                  {doc.aiSummary ? "Re-analizar" : "Analizar"}
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Delete Button */}
           <Button
             variant="ghost"
             size="sm"

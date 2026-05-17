@@ -70,7 +70,6 @@ export class PrismaDocumentsRepository extends BaseRepository {
         scope: input.scope ?? "ORGANIZATION",
         organizationId: scope.organizationId,
         userId: input.userId,
-        aiKeywords: [],
       },
       include: documentInclude,
     }) as Promise<DocumentWithRelations>;
@@ -90,7 +89,7 @@ export class PrismaDocumentsRepository extends BaseRepository {
   async updateAnalysis(
     organizationId: string,
     documentId: string,
-    data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
+    data: { aiSummary: string },
   ) {
     return this.db.document.update({
       where: { id: documentId, organizationId },

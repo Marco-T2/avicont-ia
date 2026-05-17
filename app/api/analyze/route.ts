@@ -12,7 +12,7 @@ export async function POST(request: Request) {
     const { userId } = await requireAuth();
 
     const body = await request.json();
-    const { documentId, analysisType } = analyzeDocumentSchema.parse(body);
+    const { documentId } = analyzeDocumentSchema.parse(body);
 
     const document = await docsService.findForAnalysis(documentId, userId);
 
@@ -33,16 +33,12 @@ export async function POST(request: Request) {
       );
     }
 
-    const summary = await analyzeWithGemini(content, analysisType);
+    const summary = await analyzeWithGemini(content);
 
     const updatedDocument = (await docsService.updateAnalysis(
       docRow.organizationId,
       documentId,
-      {
-        aiSummary: summary,
-        aiKeywords: ["analyzed"],
-        sentiment: "analyzed",
-      },
+      { aiSummary: summary },
     )) as { id: string; name: string; aiSummary: string | null };
 
     return Response.json({

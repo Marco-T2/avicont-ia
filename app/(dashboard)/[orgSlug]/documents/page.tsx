@@ -12,8 +12,8 @@ import {
 import { FileText, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import DocumentUploadDialog from "@/components/document/document-upload-dialog";
-import { AnalysisType, Document } from "@/types";
-import { analysisTypes, formatFileSize } from "@/app/data/data";
+import { Document } from "@/types";
+import { formatFileSize } from "@/app/data/data";
 import DocumentCard from "@/components/document/document-card";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
@@ -26,8 +26,6 @@ export default function DocumentsPage() {
   const [expandedSummaries, setExpandedSummaries] = useState<Set<string>>(
     new Set(),
   );
-  const [selectedAnalysisType, setSelectedAnalysisType] =
-    useState<AnalysisType>("summary");
   const [userRole, setUserRole] = useState<string | undefined>();
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -85,19 +83,12 @@ export default function DocumentsPage() {
         body: JSON.stringify({
           documentId,
           organizationId: organization.id,
-          analysisType: selectedAnalysisType,
         }),
       });
 
       if (response.ok) {
         await response.json();
-        const analysisTypeLabel = analysisTypes.find(
-          (type) => type.value === selectedAnalysisType,
-        )?.label;
-
-        toast.success(
-          `¡Análisis de ${analysisTypeLabel || "Documento"} completado exitosamente!`,
-        );
+        toast.success("¡Resumen generado exitosamente!");
         fetchDocuments(); // Refresh to show analysis
 
         // Expand the summary for the newly analyzed document
@@ -232,8 +223,6 @@ export default function DocumentsPage() {
                   key={doc.id}
                   document={doc}
                   isAnalyzing={isAnalyzing === doc.id}
-                  selectedAnalysisType={selectedAnalysisType}
-                  onAnalysisTypeChange={setSelectedAnalysisType}
                   onAnalyze={handleAnalyze}
                   onDelete={handleDelete}
                   onToggleSummary={toggleSummary}

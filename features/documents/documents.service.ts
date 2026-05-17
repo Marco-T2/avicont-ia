@@ -199,7 +199,7 @@ export class DocumentsService {
   async updateAnalysis(
     organizationId: string,
     documentId: string,
-    data: { aiSummary: string; aiKeywords: string[]; sentiment: string },
+    data: { aiSummary: string },
   ) {
     return this.repo.updateAnalysis(organizationId, documentId, data);
   }

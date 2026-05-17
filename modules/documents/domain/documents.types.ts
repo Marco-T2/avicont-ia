@@ -22,8 +22,6 @@ export interface Document {
   organizationId: string;
   userId: string;
   aiSummary: string | null;
-  aiKeywords: string[];
-  sentiment: string | null;
   createdAt: Date;
 }
 
