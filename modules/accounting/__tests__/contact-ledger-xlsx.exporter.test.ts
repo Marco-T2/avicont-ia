@@ -280,6 +280,79 @@ describe("exportContactLedgerXlsx — data row Estado/Tipo cells", () => {
     const sheet = wb.getWorksheet(SHEET)!;
     expect(sheet.getRow(8).getCell(2).value).toBe("Cobranza (efectivo)");
   });
+
+  // ── DT — código operacional físico (Marco QA) ──
+
+  it("DT — sourceType=sale + documentTypeCode='VG' → Tipo 'VG'", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "sale",
+          documentTypeCode: "VG",
+          voucherTypeHuman: "Nota de despacho",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(2).value).toBe("VG");
+  });
+
+  it("DT — sourceType=payment + documentTypeCode='RC' + EFECTIVO → Tipo 'RC (efectivo)'", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          documentTypeCode: "RC",
+          status: null,
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(2).value).toBe("RC (efectivo)");
+  });
+
+  it("DT — sourceType=dispatch + documentTypeCode='ND' → Tipo 'ND' plano", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "dispatch",
+          documentTypeCode: "ND",
+          voucherTypeHuman: "Nota de despacho",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(2).value).toBe("ND");
+  });
+
+  it("DT — sourceType=purchase + documentTypeCode='FL' → Tipo 'FL' plano", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "purchase",
+          documentTypeCode: "FL",
+          voucherTypeHuman: "Compra de flete",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(2).value).toBe("FL");
+  });
 });
 
 describe("exportContactLedgerXlsx — numFmt", () => {

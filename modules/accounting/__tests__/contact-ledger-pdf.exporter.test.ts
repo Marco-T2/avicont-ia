@@ -391,6 +391,105 @@ describe("exportContactLedgerPdf — Tipo column", () => {
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
     expect(dataRow[1].text).toBe("Ajuste");
   });
+
+  // ── DT — código operacional físico (Marco QA) ──
+  //
+  // El cobrador necesita leer el código del documento físico (VG, RC, ND,
+  // BC, FL, etc.). Antes del fix la columna mostraba "Cobranza (efectivo)"
+  // / "Comprobante de Ingreso" / "Venta" — labels genéricos no actionables.
+
+  it("DT — sourceType=sale + documentTypeCode='VG' → 'VG' (no voucherTypeHuman)", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "sale",
+          documentTypeCode: "VG",
+          voucherTypeHuman: "Nota de despacho",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("VG");
+  });
+
+  it("DT — sourceType=payment + documentTypeCode='RC' + EFECTIVO → 'RC (efectivo)'", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          documentTypeCode: "RC",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("RC (efectivo)");
+  });
+
+  it("DT — sourceType=dispatch + documentTypeCode='ND' → 'ND' plano", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "dispatch",
+          documentTypeCode: "ND",
+          voucherTypeHuman: "Nota de despacho",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("ND");
+  });
+
+  it("DT — sourceType=purchase + documentTypeCode='FL' → 'FL' plano", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "purchase",
+          documentTypeCode: "FL",
+          voucherTypeHuman: "Compra de flete",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("FL");
+  });
+
+  it("DT — withoutAuxiliary=true → 'Ajuste' (overrides documentTypeCode si llegara)", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: null,
+          status: null,
+          withoutAuxiliary: true,
+          documentTypeCode: null,
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("Ajuste");
+  });
 });
 
 describe("exportContactLedgerPdf — es-BO formatting", () => {

@@ -106,6 +106,7 @@ type LedgerEntry = {
   bankAccountName: string | null;
   withoutAuxiliary: boolean;
   paymentDirection: string | null;
+  documentTypeCode: string | null;
 };
 
 function makeLedger(overrides: Partial<{
@@ -143,6 +144,7 @@ function makeEntry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
     bankAccountName: overrides.bankAccountName ?? null,
     withoutAuxiliary: overrides.withoutAuxiliary ?? false,
     paymentDirection: overrides.paymentDirection ?? null,
+    documentTypeCode: overrides.documentTypeCode ?? null,
   };
 }
 
@@ -303,6 +305,129 @@ describe("ContactLedgerPageClient — Tipo column", () => {
 
     const row = screen.getByRole("row", { name: /Ajuste contable/i });
     expect(within(row).getByText("Ajuste")).toBeInTheDocument();
+  });
+
+  // ── DT — código operacional físico (Marco QA) ──
+  //
+  // Cobrador necesita leer VG/RC/ND/BC/FL/PF/CG/SV en la columna Tipo en
+  // lugar de "Comprobante de Ingreso"/"Cobranza (efectivo)" genéricos.
+
+  it("DT — sourceType=sale + documentTypeCode='VG' → 'VG' (no voucherTypeHuman)", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-vg",
+              sourceType: "sale",
+              voucherTypeHuman: "Nota de despacho",
+              documentTypeCode: "VG",
+              description: "Venta general 001",
+              debit: "1000.00",
+              credit: "0.00",
+              balance: "1000.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Venta general 001/i });
+    expect(within(row).getByText("VG")).toBeInTheDocument();
+  });
+
+  it("DT — sourceType=payment + documentTypeCode='RC' + EFECTIVO → 'RC (efectivo)'", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-rc",
+              sourceType: "payment",
+              paymentDirection: "COBRO",
+              paymentMethod: "EFECTIVO",
+              documentTypeCode: "RC",
+              voucherTypeHuman: "Comprobante de Ingreso",
+              description: "Cobro Marcos efectivo",
+              debit: "0.00",
+              credit: "2000.00",
+              balance: "-2000.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Cobro Marcos efectivo/i });
+    expect(within(row).getByText(/RC \(efectivo\)/)).toBeInTheDocument();
+  });
+
+  it("DT — sourceType=dispatch + documentTypeCode='ND' → 'ND' plano", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-nd",
+              sourceType: "dispatch",
+              voucherTypeHuman: "Nota de despacho",
+              documentTypeCode: "ND",
+              description: "Despacho 001",
+              debit: "500.00",
+              credit: "0.00",
+              balance: "500.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Despacho 001/i });
+    expect(within(row).getByText("ND")).toBeInTheDocument();
+  });
+
+  it("DT — sourceType=purchase + documentTypeCode='FL' → 'FL' plano", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-fl",
+              sourceType: "purchase",
+              voucherTypeHuman: "Compra de flete",
+              documentTypeCode: "FL",
+              description: "Flete proveedor X",
+              debit: "0.00",
+              credit: "800.00",
+              balance: "-800.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="PROVEEDOR"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Flete proveedor X/i });
+    expect(within(row).getByText("FL")).toBeInTheDocument();
   });
 });
 
