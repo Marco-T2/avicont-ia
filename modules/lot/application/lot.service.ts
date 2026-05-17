@@ -93,4 +93,33 @@ export class LotService {
     );
     return { lot: found.lot, summary };
   }
+
+  /**
+   * Returns counts of child records (Expense, MortalityLog) that
+   * would be cascade-deleted along with this Lot. UI shows these
+   * counts in the confirm dialog (spec REQ-102). Throws
+   * NotFoundError if the lot does not exist.
+   */
+  async getDeletePreview(
+    organizationId: string,
+    id: string,
+  ): Promise<{ expensesCount: number; mortalityCount: number }> {
+    await this.getById(organizationId, id);
+    const counts = await this.repo.findChildCounts(organizationId, id);
+    return {
+      expensesCount: counts.expenses,
+      mortalityCount: counts.mortality,
+    };
+  }
+
+  /**
+   * Hard-deletes the Lot and all its child Expense + MortalityLog
+   * records. The actual cascade tx is owned by the repo adapter
+   * (design D-1, INV-06 atomicity). Throws NotFoundError if the
+   * lot does not exist. Spec REQ-101.
+   */
+  async delete(organizationId: string, id: string): Promise<void> {
+    await this.getById(organizationId, id);
+    await this.repo.delete(organizationId, id);
+  }
 }
