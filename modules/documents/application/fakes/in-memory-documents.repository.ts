@@ -3,6 +3,7 @@ import type {
   DocumentWithRelations,
 } from "@/modules/documents/domain/documents.types";
 import type { DocumentsRepositoryPort } from "@/modules/documents/application/documents.service";
+import type { DocumentScope } from "@/features/permissions";
 
 /**
  * Minimal in-memory implementation of DocumentsRepositoryPort for testing.
@@ -17,8 +18,15 @@ export class InMemoryDocumentsRepository implements DocumentsRepositoryPort {
     memberships: Array<{ role: string; organizationId: string }>;
   }> = [];
 
-  async findAll(organizationId: string): Promise<DocumentWithRelations[]> {
-    return this.docs.filter((d) => d.organizationId === organizationId);
+  async findAll(
+    organizationId: string,
+    allowedScopes: DocumentScope[],
+  ): Promise<DocumentWithRelations[]> {
+    return this.docs.filter(
+      (d) =>
+        d.organizationId === organizationId &&
+        allowedScopes.includes(d.scope as DocumentScope),
+    );
   }
 
   async findById(

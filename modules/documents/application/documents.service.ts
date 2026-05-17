@@ -13,7 +13,11 @@ import {
   ForbiddenError,
   ValidationError,
 } from "@/features/shared/errors";
-import { canUploadToScope, type DocumentScope } from "@/features/permissions";
+import {
+  canUploadToScope,
+  getRagScopes,
+  type DocumentScope,
+} from "@/features/permissions";
 // cross-module canonical-bypass REQ-004 — rag/ stays at features path (poc-rag-hex)
 import { RagService } from "@/features/documents/rag/server";
 import type { BlobStoragePort } from "@/modules/documents/domain/ports/blob-storage.port";
@@ -55,7 +59,10 @@ const ALLOWED_TYPES = [
 
 /** Structural port for the documents repository (compile-shape only). */
 export interface DocumentsRepositoryPort {
-  findAll(organizationId: string): Promise<DocumentWithRelations[]>;
+  findAll(
+    organizationId: string,
+    allowedScopes: DocumentScope[],
+  ): Promise<DocumentWithRelations[]>;
   findById(id: string, organizationId: string): Promise<DocumentWithRelations | null>;
   findByIdWithMembers(id: string, clerkUserId: string): Promise<unknown>;
   create(input: CreateDocumentInput): Promise<DocumentWithRelations>;
@@ -87,9 +94,18 @@ export class DocumentsService {
 
   async list(clerkOrgId: string, clerkUserId: string): Promise<DocumentListResult> {
     const { orgId, org, user } = await this.resolveOrgAccess(clerkOrgId, clerkUserId);
-
-    const documents = await this.repo.findAll(orgId);
     const membership = user.memberships[0];
+
+    // C1 bug fix — filter the listing by the caller role's RAG scope matrix
+    // (single source of truth shared with the AI agent's RAG search). Previously
+    // findAll returned every doc of the org regardless of scope, so a `member`
+    // (granjero) saw ACCOUNTING-scoped docs and could open their Vercel Blob URL.
+    // Null → role has no RAG access at all; short-circuit with an empty list
+    // BEFORE touching the repo (no DB round-trip for a forbidden viewer).
+    const allowedScopes = getRagScopes(membership.role);
+    const documents = allowedScopes === null
+      ? []
+      : await this.repo.findAll(orgId, allowedScopes);
 
     return {
       documents,
@@ -236,6 +252,7 @@ export class DocumentsService {
     )) as
       | {
           fileUrl: string | null;
+          scope: DocumentScope;
           organizationId: string;
           organization: { members: unknown[] };
         }
@@ -243,6 +260,22 @@ export class DocumentsService {
 
     if (!document) throw new NotFoundError("Documento");
     if (document.organization.members.length === 0) {
+      throw new ForbiddenError();
+    }
+
+    // C1 bug fix — scope-aware RBAC. Same-org membership is necessary but not
+    // sufficient: a `member` (granjero) in an org with ACCOUNTING docs must NOT
+    // be able to delete them by guessing the id. Match the caller role's RAG
+    // scope matrix (same matrix list() and the AI agent use). FAIL CLOSED: if
+    // the role lookup misses (custom role w/o RAG access), getRagScopes returns
+    // null → no scope is allowed → Forbidden.
+    const user = await this.repo.findUserWithMembership(
+      clerkUserId,
+      document.organizationId,
+    );
+    const role = user?.memberships[0]?.role;
+    const allowedScopes = role ? getRagScopes(role) : null;
+    if (!allowedScopes || !allowedScopes.includes(document.scope)) {
       throw new ForbiddenError();
     }
 

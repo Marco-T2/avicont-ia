@@ -9,6 +9,7 @@
  */
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { Prisma } from "@/generated/prisma/client";
+import type { DocumentScope } from "@/features/permissions";
 import type {
   CreateDocumentInput,
   DocumentWithRelations,
@@ -20,11 +21,14 @@ const documentInclude = {
 } as const satisfies Prisma.DocumentInclude;
 
 export class PrismaDocumentsRepository extends BaseRepository {
-  async findAll(organizationId: string): Promise<DocumentWithRelations[]> {
-    const scope = this.requireOrg(organizationId);
+  async findAll(
+    organizationId: string,
+    allowedScopes: DocumentScope[],
+  ): Promise<DocumentWithRelations[]> {
+    const orgWhere = this.requireOrg(organizationId);
 
     return this.db.document.findMany({
-      where: scope,
+      where: { ...orgWhere, scope: { in: allowedScopes } },
       include: documentInclude,
       orderBy: { createdAt: "desc" },
     }) as Promise<DocumentWithRelations[]>;
