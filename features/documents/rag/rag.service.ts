@@ -35,13 +35,27 @@ export class RagService {
     );
   }
 
-  /** Embed a query and search for similar document chunks. */
+  /**
+   * Embed a query and search for similar document chunks.
+   *
+   * Return shape carries optional `documentName` + `chunkIndex` for citations
+   * (REQ-30). C1.0 ships the optional contract; C1.1 populates them via a
+   * Document JOIN in `VectorRepository.searchSimilar`.
+   */
   async search(
     query: string,
     organizationId: string,
     scopes: DocumentScope[],
     topK = 5,
-  ): Promise<{ content: string; documentId: string; score: number }[]> {
+  ): Promise<
+    {
+      content: string;
+      documentId: string;
+      score: number;
+      documentName?: string;
+      chunkIndex?: number;
+    }[]
+  > {
     const queryVector = await this.embeddingService.embed(query);
     return this.vectorRepo.searchSimilar(queryVector, organizationId, scopes, topK);
   }
