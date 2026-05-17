@@ -58,7 +58,15 @@ export async function buildRagContext(
       "",
     ];
 
+    // REQ-32 — citation prefix per snippet. `[{documentName}#{sectionRef}]`
+    // where sectionRef is `sectionPath` when present else `chunk ${chunkIndex}`.
+    // Both the LLM-loop path AND the REQ-25 bypass path (which returns this
+    // text directly) emit verifiable citation tokens. Token regex:
+    // `^\[[^#\n]+#[^\]\n]+\]` (multiline) — locked α-sentinel in C1.4.
     for (const result of results) {
+      const { documentName, chunkIndex, sectionPath } = result.metadata;
+      const sectionRef = sectionPath ?? `chunk ${chunkIndex}`;
+      lines.push(`[${documentName}#${sectionRef}]`);
       lines.push(`> ${result.content}`);
       lines.push("");
     }
