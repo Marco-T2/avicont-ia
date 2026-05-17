@@ -15,6 +15,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.hoisted(() => {
   process.env.GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "test-key-for-vitest";
+  process.env.CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY ?? "test-key-for-vitest";
 });
 
 const {

@@ -1,25 +1,44 @@
 import { describe, it, expect, vi, test } from "vitest";
 
-// vi.hoisted: ensures GEMINI_API_KEY is set BEFORE vi.mock factory runs.
-// vi.mock() declarations are hoisted above all imports by Vitest; a plain
-// module-level `process.env.X = ...` executes AFTER hoisting and would race.
-// Precedent: route.confirm-journal-entry.test.ts:17-19.
+// vi.hoisted: ensures GEMINI_API_KEY + CEREBRAS_API_KEY are set BEFORE
+// vi.mock factory runs. vi.mock() declarations are hoisted above all
+// imports by Vitest; a plain module-level `process.env.X = ...` executes
+// AFTER hoisting and would race. Precedent: route.confirm-journal-entry.test.ts:17-19.
+//
+// Both env vars stubbed: the active composition root wires CerebrasLLMAdapter
+// (production cutover); the GeminiLLMAdapter module is still imported as
+// the home of `analyzeDocument` (D8 arch debt) so its top-level env check
+// also runs at barrel import time.
 vi.hoisted(() => {
   process.env.GEMINI_API_KEY =
     process.env.GEMINI_API_KEY ?? "test-key-for-vitest";
+  process.env.CEREBRAS_API_KEY =
+    process.env.CEREBRAS_API_KEY ?? "test-key-for-vitest";
 });
 
-// Mock @google/generative-ai to eliminate SDK cold-load cost (~1500ms) that
-// races with the 5000ms default testTimeout under full-suite worker contention
-// (forks pool, parallel CPU). Shape-only test: asserts factory/barrel shape,
-// NOT Gemini SDK behavior. [[cross_module_boundary_mock_target_rewrite]] N/A
-// (bare package import, no path relocation needed).
+// Mock @google/generative-ai + @cerebras/cerebras_cloud_sdk to eliminate
+// SDK cold-load cost (~1500ms per provider) that races with the 5000ms
+// default testTimeout under full-suite worker contention (forks pool,
+// parallel CPU). Shape-only test: asserts factory/barrel shape, NOT
+// provider SDK behavior. [[cross_module_boundary_mock_target_rewrite]] —
+// Cerebras mock added in the cutover commit bundled with the wiring per
+// [[mock_hygiene_commit_scope]].
 vi.mock("@google/generative-ai", () => ({
   // Must use regular function (not arrow) — arrow functions are not constructable.
   // gemini-llm.adapter.ts calls `new GoogleGenerativeAI(apiKey)` at module load.
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   GoogleGenerativeAI: vi.fn().mockImplementation(function (this: any) {
     this.getGenerativeModel = vi.fn();
+  }),
+}));
+
+vi.mock("@cerebras/cerebras_cloud_sdk", () => ({
+  // cerebras-llm.adapter.ts calls `new Cerebras({apiKey})` at module load
+  // (default export). Regular function for constructability.
+  default: vi.fn().mockImplementation(function (this: {
+    chat: { completions: { create: ReturnType<typeof vi.fn> } };
+  }) {
+    this.chat = { completions: { create: vi.fn() } };
   }),
 }));
 

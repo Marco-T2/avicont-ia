@@ -20,7 +20,7 @@ import "server-only";
  * so consumer cutover at C4 is a pure path rewrite (no surface drift).
  */
 
-import { GeminiLLMAdapter } from "../infrastructure/llm/gemini-llm.adapter";
+import { CerebrasLLMAdapter } from "../infrastructure/llm/cerebras-llm.adapter";
 import { PrismaChatMemoryRepository } from "../infrastructure/prisma/prisma-chat-memory.repo";
 import { PrismaAgentContextRepository } from "../infrastructure/prisma/prisma-agent-context.repo";
 import { PrismaRateLimitRepository } from "../infrastructure/prisma/prisma-agent-rate-limit.repo";
@@ -51,13 +51,15 @@ import { PricingService } from "../application/pricing/pricing.service";
  * Wires all 6 ports + cross-hex deps once. Mirror of paired sister
  * `makeDispatchService()` (dispatch C3 GREEN `5fd0cd42`).
  *
- * Runtime invocation requires DB + GEMINI_API_KEY env — at import time
+ * Runtime invocation requires DB + CEREBRAS_API_KEY env — at import time
  * only the factory function shape is exposed (no top-level side effects
- * outside the GeminiLLMAdapter module load, which already validates
- * GEMINI_API_KEY at module init per existing C2 behavior).
+ * outside the CerebrasLLMAdapter module load, which validates
+ * CEREBRAS_API_KEY at module init mirror of pre-cutover Gemini behavior).
+ * GeminiLLMAdapter is preserved in tree (multi-provider fallback) but
+ * unused at the composition root.
  */
 export function makeAgentService(): AgentService {
-  const llmProvider = new GeminiLLMAdapter();
+  const llmProvider = new CerebrasLLMAdapter();
   const chatMemory = new PrismaChatMemoryRepository();
   const contextReader = new PrismaAgentContextRepository();
   const rateLimitRepo = new PrismaRateLimitRepository();
