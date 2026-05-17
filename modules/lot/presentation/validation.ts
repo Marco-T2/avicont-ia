@@ -18,3 +18,23 @@ export const createLotSchema = z.object({
 export const closeLotSchema = z.object({
   endDate: z.coerce.date({ message: "La fecha de cierre es requerida" }),
 });
+
+/**
+ * Update fields for an existing Lot. Both `name` and `barnNumber`
+ * are optional, but at least one MUST be present (otherwise the
+ * call is meaningless). `initialCount`, `status`, `farmId`,
+ * `organizationId` are NOT editable post-creation (INV-04).
+ */
+export const updateLotSchema = z
+  .object({
+    name: z.string().min(1, "El nombre es requerido").optional(),
+    barnNumber: z
+      .number()
+      .int("El número de galpón debe ser entero")
+      .min(1, "El número de galpón debe ser al menos 1")
+      .max(10, "El número de galpón no puede superar 10")
+      .optional(),
+  })
+  .refine((d) => d.name !== undefined || d.barnNumber !== undefined, {
+    message: "Debe enviar al menos un campo a actualizar",
+  });

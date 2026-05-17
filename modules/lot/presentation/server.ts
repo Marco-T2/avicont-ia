@@ -7,13 +7,18 @@ export {
   LocalLotInquiryAdapter,
 } from "./composition-root";
 
-export { createLotSchema, closeLotSchema } from "./validation";
+export {
+  createLotSchema,
+  closeLotSchema,
+  updateLotSchema,
+} from "./validation";
 
 export { Lot } from "../domain/lot.entity";
 export type {
   LotProps,
   CreateLotInput,
   CloseLotInput,
+  UpdateLotInput,
 } from "../domain/lot.entity";
 export type {
   LotRepository,
@@ -32,6 +37,7 @@ export type LotSummaryShape = ReturnType<_LotSummaryType["toJSON"]>;
 export {
   LotService,
   type CreateLotServiceInput,
+  type UpdateLotServiceInput,
 } from "../application/lot.service";
 export type {
   LotInquiryPort,
@@ -41,4 +47,6 @@ export {
   InvalidLotStatus,
   InvalidLotStatusTransition,
   CannotCloseInactiveLot,
+  LotNameDuplicate,
+  LotCannotUpdateClosed,
 } from "../domain/errors/lot-errors";

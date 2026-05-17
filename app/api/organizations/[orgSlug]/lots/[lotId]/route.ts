@@ -1,7 +1,13 @@
+// RBAC-EXCEPTION: Auth-only via requireOrgAccess; farms/lots/expenses/mortality
+// NOT in frozen Resource union. Consistent with existing
+// /expenses/[expenseId] DELETE and prior /lots/[lotId] PATCH (close).
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
-import { closeLotSchema } from "@/modules/lot/presentation/validation";
+import {
+  closeLotSchema,
+  updateLotSchema,
+} from "@/modules/lot/presentation/validation";
 
 const service = makeLotService();
 
@@ -22,6 +28,16 @@ export async function GET(
   }
 }
 
+/**
+ * PATCH dispatches on payload shape (discriminator: presence of
+ * `endDate` ↔ close vs `name|barnNumber` ↔ update). Both share the
+ * same route because the previous version (close-only) already lived
+ * here; keeping a single endpoint avoids client URL churn.
+ *
+ * Body must satisfy ONE of:
+ *  - { endDate } → service.close
+ *  - { name?, barnNumber? } (at least one) → service.update
+ */
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ orgSlug: string; lotId: string }> },
@@ -32,11 +48,33 @@ export async function PATCH(
     const organizationId = await requireOrgAccess(userId, orgSlug);
 
     const body = await request.json();
-    const input = closeLotSchema.parse(body);
 
-    const lot = await service.close(organizationId, lotId, input);
+    if (body && typeof body === "object" && "endDate" in body) {
+      const input = closeLotSchema.parse(body);
+      const lot = await service.close(organizationId, lotId, input);
+      return Response.json(lot);
+    }
 
+    const input = updateLotSchema.parse(body);
+    const lot = await service.update(organizationId, lotId, input);
     return Response.json(lot);
+  } catch (error) {
+    return handleError(error);
+  }
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ orgSlug: string; lotId: string }> },
+) {
+  try {
+    const { userId } = await requireAuth();
+    const { orgSlug, lotId } = await params;
+    const organizationId = await requireOrgAccess(userId, orgSlug);
+
+    await service.delete(organizationId, lotId);
+
+    return Response.json({ success: true });
   } catch (error) {
     return handleError(error);
   }
