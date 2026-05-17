@@ -21,14 +21,18 @@ export class RagService {
     text: string,
   ): Promise<void> {
     const chunks = chunkText(text);
-    const embeddings = await this.embeddingService.embedBatch(chunks);
+    const embeddings = await this.embeddingService.embedBatch(
+      chunks.map((c) => c.content),
+    );
 
+    // F2-PRE: sectionPath emitted by chunker but NOT yet persisted —
+    // DB column lands in F2-POST after Marco runs the migration.
     await this.vectorRepo.storeChunks(
-      chunks.map((content, index) => ({
+      chunks.map((chunk, index) => ({
         documentId,
         organizationId,
         scope,
-        content,
+        content: chunk.content,
         chunkIndex: index,
         embedding: embeddings[index],
       })),
