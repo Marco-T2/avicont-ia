@@ -336,7 +336,7 @@ export default function ContactLedgerPageClient({
   }
 
   return (
-    <>
+    <div className="space-y-4">
       {/* Filters */}
       <Card>
         <CardContent>
@@ -664,6 +664,6 @@ export default function ContactLedgerPageClient({
           {ledger.total}
         </p>
       )}
-    </>
+    </div>
   );
 }

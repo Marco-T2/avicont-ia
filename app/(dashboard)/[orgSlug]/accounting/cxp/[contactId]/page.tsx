@@ -118,10 +118,12 @@ export default async function CxpContactLedgerPage({
         </Tabs.Content>
 
         <Tabs.Content value="payables">
-          <PayableList
-            orgSlug={orgSlug}
-            payables={JSON.parse(JSON.stringify(payables))}
-          />
+          <div className="space-y-4">
+            <PayableList
+              orgSlug={orgSlug}
+              payables={JSON.parse(JSON.stringify(payables))}
+            />
+          </div>
         </Tabs.Content>
       </Tabs.Root>
     </div>
