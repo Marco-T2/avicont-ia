@@ -731,7 +731,11 @@ export class JournalRepository extends BaseRepository {
   async findLinesByContactPaginated(
     organizationId: string,
     contactId: string,
-    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    filters?: {
+      dateRange?: DateRangeFilter;
+      periodId?: string;
+      accountCodes?: string[];
+    },
     pagination?: PaginationOptions,
   ): Promise<ContactLedgerPageResult> {
     const where = buildLedgerLineWhereContact(organizationId, contactId, filters);
@@ -747,6 +751,7 @@ export class JournalRepository extends BaseRepository {
           where: buildLedgerLinePriorWhereContact(organizationId, contactId, {
             dateFrom,
             periodId: filters?.periodId,
+            accountCodes: filters?.accountCodes,
           }),
           _sum: { debit: true, credit: true },
         })
@@ -846,10 +851,12 @@ export class JournalRepository extends BaseRepository {
     organizationId: string,
     contactId: string,
     dateFrom: Date,
+    accountCodes?: string[],
   ): Promise<unknown> {
     const agg = await this.db.journalLine.aggregate({
       where: buildLedgerLinePriorWhereContact(organizationId, contactId, {
         dateFrom,
+        accountCodes,
       }),
       _sum: { debit: true, credit: true },
     });
@@ -863,13 +870,20 @@ export class JournalRepository extends BaseRepository {
    * sister `aggregateByAccount` keyed por contacto. NO period-scoped:
    * "open balance" es cumulative desde el primer movimiento POSTED del
    * contacto (diseño D5 dashboard).
+   *
+   * BF1 — `accountCodes` narrows the aggregate to control-account movements
+   * (parity with `findLinesByContactPaginated` filter) so the dashboard saldo
+   * abierto matches the libro mayor por contacto.
    */
   async aggregateOpenBalanceByContact(
     organizationId: string,
     contactId: string,
+    accountCodes?: string[],
   ): Promise<LedgerAggregateRow> {
     const agg = await this.db.journalLine.aggregate({
-      where: buildLedgerLineWhereContact(organizationId, contactId),
+      where: buildLedgerLineWhereContact(organizationId, contactId, {
+        accountCodes,
+      }),
       _sum: {
         debit: true,
         credit: true,
@@ -1098,7 +1112,11 @@ function buildLedgerLinePriorWhere(
 function buildLedgerLineWhereContact(
   organizationId: string,
   contactId: string,
-  filters?: { dateRange?: DateRangeFilter; periodId?: string },
+  filters?: {
+    dateRange?: DateRangeFilter;
+    periodId?: string;
+    accountCodes?: string[];
+  },
 ): Record<string, unknown> {
   const dateFilter: Record<string, unknown> = {};
   if (filters?.dateRange?.dateFrom || filters?.dateRange?.dateTo) {
@@ -1107,11 +1125,20 @@ function buildLedgerLineWhereContact(
       ...(filters.dateRange.dateTo && { lte: filters.dateRange.dateTo }),
     };
   }
+  // BF1 — narrow to control accounts (CxC/CxP) when codes are provided so
+  // contrapartida lines (Caja/Banco/Ventas/Compras) of an auto-generated JE
+  // don't duplicate the entry in the running balance. When undefined the
+  // original surface (all lines via header+line dual surface) applies.
+  const accountFilter =
+    filters?.accountCodes && filters.accountCodes.length > 0
+      ? { account: { code: { in: filters.accountCodes } } }
+      : {};
   return {
     OR: [
       { contactId },
       { journalEntry: { contactId } },
     ],
+    ...accountFilter,
     journalEntry: {
       organizationId,
       status: { in: [...FINALIZED_JE_STATUSES] },
@@ -1131,13 +1158,21 @@ function buildLedgerLineWhereContact(
 function buildLedgerLinePriorWhereContact(
   organizationId: string,
   contactId: string,
-  options: { dateFrom: Date; periodId?: string },
+  options: { dateFrom: Date; periodId?: string; accountCodes?: string[] },
 ): Record<string, unknown> {
+  // BF1 — mirror semantics of `buildLedgerLineWhereContact`: narrow priors
+  // to the same control accounts so the opening balance accumulator stays
+  // consistent with the page rows.
+  const accountFilter =
+    options.accountCodes && options.accountCodes.length > 0
+      ? { account: { code: { in: options.accountCodes } } }
+      : {};
   return {
     OR: [
       { contactId },
       { journalEntry: { contactId } },
     ],
+    ...accountFilter,
     journalEntry: {
       organizationId,
       status: { in: [...FINALIZED_JE_STATUSES] },

@@ -24,6 +24,7 @@ import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/
 import { PrismaReceivablesContactLedgerAdapter } from "../infrastructure/prisma-receivables-contact-ledger.adapter";
 import { PrismaPayablesContactLedgerAdapter } from "../infrastructure/prisma-payables-contact-ledger.adapter";
 import { PrismaPaymentsContactLedgerAdapter } from "../infrastructure/prisma-payments-contact-ledger.adapter";
+import { ControlAccountCodesReadAdapter } from "../infrastructure/control-account-codes-read.adapter";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -76,6 +77,10 @@ export function makeLedgerService(): LedgerService {
       receivables: new PrismaReceivablesContactLedgerAdapter(),
       payables: new PrismaPayablesContactLedgerAdapter(),
       payments: new PrismaPaymentsContactLedgerAdapter(),
+      // BF1 — provides org-wide CxC/CxP account codes used to narrow the
+      // contact-ledger query to control-account movements only, fixing
+      // duplicate-rows / broken running-balance bugs.
+      controlAccountCodes: new ControlAccountCodesReadAdapter(),
     },
   );
 }

@@ -137,25 +137,34 @@ export class PrismaJournalLedgerQueryAdapter implements JournalLedgerQueryPort {
     );
   }
 
-  /** Pass-through. Scalar string per DEC-1 boundary. */
+  /** Pass-through. Scalar string per DEC-1 boundary. BF1 — `accountCodes`
+   *  mirror semantics keep the opening balance consistent with the page rows. */
   findOpeningBalanceByContact(
     organizationId: string,
     contactId: string,
     dateFrom: Date,
+    accountCodes?: string[],
   ): Promise<unknown> {
     return journalRepo.findOpeningBalanceByContact(
       organizationId,
       contactId,
       dateFrom,
+      accountCodes,
     );
   }
 
   /** Pass-through. Mirror del sister `aggregateByAccount`. DEC-1 strings en
-   *  `_sum.{debit,credit}`. */
+   *  `_sum.{debit,credit}`. BF1 — accountCodes mirror semantics applied here
+   *  para que el dashboard saldo abierto coincida con el libro mayor. */
   aggregateOpenBalanceByContact(
     organizationId: string,
     contactId: string,
+    accountCodes?: string[],
   ): Promise<LedgerAggregateRow> {
-    return journalRepo.aggregateOpenBalanceByContact(organizationId, contactId);
+    return journalRepo.aggregateOpenBalanceByContact(
+      organizationId,
+      contactId,
+      accountCodes,
+    );
   }
 }

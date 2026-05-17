@@ -228,16 +228,29 @@ export class LedgerService {
         "LedgerService.getContactLedgerPaginated requires contactLedgerDeps wired at the composition root",
       );
     }
-    const { contacts, receivables, payables, payments } = this.contactLedgerDeps;
+    const { contacts, receivables, payables, payments, controlAccountCodes } =
+      this.contactLedgerDeps;
 
     // 1. Existence check — throws NotFoundError parity sister method.
     await contacts.getActiveById(organizationId, contactId);
+
+    // BF1 — fetch org-wide CxC/CxP control account codes ONCE per call and
+    // forward both as `accountCodes` so the query is narrowed to
+    // control-account movements only. Solves bug #2 (duplicate rows from
+    // header+line dual surface): a JE whose CxC line is the only
+    // contact-tagged debit/credit pair surfaces ONCE, and contrapartida
+    // lines (Caja/Banco/Ventas/Compras) are filtered out. Passing BOTH codes
+    // (instead of one based on contact type) handles the rare edge case of
+    // a contact with movements on both sides.
+    const { cxcAccountCode, cxpAccountCode } =
+      await controlAccountCodes.getControlAccountCodes(organizationId);
+    const accountCodes = [cxcAccountCode, cxpAccountCode];
 
     // 2. Raw page from port (adapter does SQL + opening balance scalar).
     const page = await this.query.findLinesByContactPaginated(
       organizationId,
       contactId,
-      { dateRange, periodId },
+      { dateRange, periodId, accountCodes },
       pagination,
     );
 

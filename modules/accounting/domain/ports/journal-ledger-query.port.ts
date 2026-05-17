@@ -219,11 +219,22 @@ export interface JournalLedgerQueryPort {
    *  optional period). Adapter resolves rows where
    *  `journalEntry.contactId = X` OR `line.contactId = X` (design D4) so the
    *  "asiento manual sin auxiliar" case surfaces; service flags
-   *  `withoutAuxiliary` post-hoc. */
+   *  `withoutAuxiliary` post-hoc.
+   *
+   *  BF1 — `accountCodes` (optional) restricts the result to lines whose
+   *  `account.code` is in the provided set. The contact-ledger service passes
+   *  `[cxcAccountCode, cxpAccountCode]` here so contrapartida lines (Caja,
+   *  Ventas, etc.) of an auto-generated JE do not duplicate the entry in the
+   *  running balance. When `undefined` the legacy behaviour applies (no
+   *  account narrowing) so account-keyed callers stay unaffected. */
   findLinesByContactPaginated(
     organizationId: string,
     contactId: string,
-    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    filters?: {
+      dateRange?: DateRangeFilter;
+      periodId?: string;
+      accountCodes?: string[];
+    },
     pagination?: PaginationOptions,
   ): Promise<ContactLedgerPageResult>;
 
@@ -231,20 +242,29 @@ export interface JournalLedgerQueryPort {
    *  same opaque `unknown` shape as `openingBalanceDelta` — Prisma.Decimal
    *  at the adapter, decimal.js Decimal at the service via
    *  `new Decimal(String(...))` (DEC-1). Powers the "Saldo inicial" row that
-   *  precedes the first paginated rows in the contact-ledger UI. */
+   *  precedes the first paginated rows in the contact-ledger UI.
+   *
+   *  BF1 — `accountCodes` mirror semantics: when provided, the scalar
+   *  aggregates only over lines whose `account.code` is in the set, keeping
+   *  the opening balance consistent with the page rows. */
   findOpeningBalanceByContact(
     organizationId: string,
     contactId: string,
     dateFrom: Date,
+    accountCodes?: string[],
   ): Promise<unknown>;
 
   /** All-time aggregated debit/credit totals for one contact (open-balance
    *  dashboard query). Same `_sum` shape as `aggregateByAccount` so callers
    *  reuse the existing extraction helpers without branching. NOT
    *  period-scoped: open balance is cumulative since the contact's first
-   *  POSTED movement. */
+   *  POSTED movement.
+   *
+   *  BF1 — `accountCodes` mirror semantics applied here so the CxC/CxP
+   *  dashboard saldo abierto stays consistent with the contact-ledger view. */
   aggregateOpenBalanceByContact(
     organizationId: string,
     contactId: string,
+    accountCodes?: string[],
   ): Promise<LedgerAggregateRow>;
 }
