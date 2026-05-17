@@ -134,6 +134,7 @@ model DocumentChunk {
   scope          DocumentScope
   content        String
   chunkIndex     Int
+  sectionPath    String?       @db.VarChar(512)
   embedding      Unsupported("vector(768)")
   document       Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
