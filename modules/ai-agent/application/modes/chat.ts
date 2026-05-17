@@ -399,14 +399,15 @@ function buildSystemPrompt(
     );
   }
 
-  // Tool-result formatting instruction (REQ-26). EXACT Spanish text locked
-  // in design D-26 per [[textual_rule_verification]] +
-  // [[engram_textual_rule_verification]] — change requires a new SDD with a
-  // RED test mirroring the new text. Placed AFTER moduleHintLines and BEFORE
-  // the DATOS block so all chat-mode invocations carry it.
+  // Tool-result formatting instruction (REQ-29, supersedes REQ-26 literal per
+  // [[named_rule_immutability]] — derivative rule with same intent but
+  // prescribed compact format). EXACT Spanish text locked per
+  // [[textual_rule_verification]] + [[engram_textual_rule_verification]] —
+  // any change requires a new SDD with a RED test mirroring the new text.
+  // Placed AFTER moduleHintLines and BEFORE the DATOS block.
   const formatLines = [
     "",
-    "Cuando recibas resultados de herramientas, presenta los datos al usuario en español natural y conciso.",
+    "Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros).",
   ];
 
   return [

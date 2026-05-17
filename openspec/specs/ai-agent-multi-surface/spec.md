@@ -707,6 +707,22 @@ Write tool calls (`createExpense`, `logMortality`, `createJournalEntry`, etc.) S
 
 ---
 
+### Requirement: Prescribed Compact Tool-Result Format (REQ-29)
+
+**Derived from:** REQ-26 (per `[[named_rule_immutability]]` — same intent: instruct LLM to format tool-result lists; this derivative supersedes REQ-26's literal Spanish text with a prescribed compact format so the sidebar stays readable when tool results contain long descriptions or unbroken strings).
+
+`buildSystemPrompt` SHALL include the following Spanish instruction appended after `moduleHintLines` and before the `DATOS:` block: `"Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros)."` This applies to ALL chat-mode invocations regardless of surface or role. EXACT Spanish text locked per `[[textual_rule_verification]]` — any change requires a new SDD with a RED test mirroring the new text.
+
+**Motivation**: smoke test post-`agent-chat-tool-result-rendering` (F3) revealed the LLM was rendering verbose multi-clause sentences per entry ("estado: PUBLICADO, por un total de $2000.00") which combined with `react-markdown` rendering still produced visually noisy output and amplified the long-string overflow issue in the sidebar. The compact format restricts presentation to essential fields and prescribes a short comprobante code (`CX-N`) that the LLM derives from the underlying `displayNumber`.
+
+#### Scenario: SCN-29.1 — Golden test on buildSystemPrompt output
+
+- GIVEN `buildSystemPrompt` is called with any valid args
+- THEN the result includes the literal string `"Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros)."`
+- AND the literal from REQ-26 is NOT present (the derivative supersedes it)
+
+---
+
 ## Notes
 
 - **Runtime alias gotcha**: `modules/ai-agent/domain/tools/surfaces/index.ts` uses the RELATIVE path `../../../../permissions/domain/permissions.ts` instead of the `@/modules/permissions/...` alias. Reason: the `c1-application-shape.poc-ai-agent-hex` smoke test loads `agent.service.ts` via CommonJS `require()`, which bypasses the Vitest alias resolver in the dynamic-import chain. JSDoc at the import site (lines 1-6 of `surfaces/index.ts`) is the durable defense against well-meaning "fix the path back to alias" PRs. Type-only `@/` imports elsewhere are erased by the TS compiler and unaffected.

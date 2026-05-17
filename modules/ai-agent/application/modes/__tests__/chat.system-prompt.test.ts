@@ -10,11 +10,16 @@ import type {
 import type { RagPort } from "../../../domain/ports/rag.port";
 
 /**
- * C8 RED — System prompt addition for tool-result formatting (REQ-26).
+ * REQ-29 — System prompt prescribed compact tool-result format (Spanish).
  *
- * The EXACT Spanish string is LOCKED per design D-26 +
- * [[textual_rule_verification]] / [[engram_textual_rule_verification]]. Any
- * future change requires a new SDD with a RED test mirroring the new text.
+ * Derivative of REQ-26 per [[named_rule_immutability]]: same intent (instruct
+ * LLM to format tool-result lists) but with explicit compact format
+ * 'DD/MM/YYYY CX-N BsMONTO' so the sidebar stays readable. REQ-26 literal
+ * is superseded; this is the active locked string.
+ *
+ * The EXACT Spanish text is LOCKED per [[textual_rule_verification]] +
+ * [[engram_textual_rule_verification]]. Any future change requires a new SDD
+ * with a RED test mirroring the new text.
  *
  * Expected RED failure mode per [[red_acceptance_failure_mode]]:
  *   - assertion failure: the literal string is absent from the systemPrompt
@@ -22,7 +27,7 @@ import type { RagPort } from "../../../domain/ports/rag.port";
  */
 
 const EXACT_FORMAT_INSTRUCTION =
-  "Cuando recibas resultados de herramientas, presenta los datos al usuario en español natural y conciso.";
+  "Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros).";
 
 const logSpy = vi.fn();
 vi.mock("@/lib/logging/structured", () => ({
@@ -86,8 +91,8 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-describe("REQ-26 — system prompt instructs LLM to format tool results (Spanish)", () => {
-  it("SCN-26.1 α1: systemPrompt contains the EXACT locked Spanish instruction", async () => {
+describe("REQ-29 — system prompt prescribed compact tool-result format (supersedes REQ-26)", () => {
+  it("SCN-29.1 α1: systemPrompt contains the EXACT locked Spanish compact-format instruction", async () => {
     const captured: { systemPrompt?: string } = {};
     await executeChatMode(makeDeps(captured), {
       orgId: "org",
@@ -100,7 +105,7 @@ describe("REQ-26 — system prompt instructs LLM to format tool results (Spanish
     expect(captured.systemPrompt).toContain(EXACT_FORMAT_INSTRUCTION);
   });
 
-  it("SCN-26.1 α2: instruction is present even when moduleHint is null (default)", async () => {
+  it("SCN-29.1 α2: instruction is present even when moduleHint is null (default)", async () => {
     const captured: { systemPrompt?: string } = {};
     await executeChatMode(makeDeps(captured), {
       orgId: "org",
@@ -113,7 +118,7 @@ describe("REQ-26 — system prompt instructs LLM to format tool results (Spanish
     expect(captured.systemPrompt).toContain(EXACT_FORMAT_INSTRUCTION);
   });
 
-  it("SCN-26.1 α3: instruction is present when moduleHint is set (accounting)", async () => {
+  it("SCN-29.1 α3: instruction is present when moduleHint is set (accounting)", async () => {
     const captured: { systemPrompt?: string } = {};
     await executeChatMode(makeDeps(captured), {
       orgId: "org",
