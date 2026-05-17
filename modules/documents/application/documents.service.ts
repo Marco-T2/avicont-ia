@@ -24,6 +24,8 @@ import path from "path";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 // processing library accepted exception — no DocxPort (REQ-007, mirrors pdfjs)
 import mammoth from "mammoth";
+// processing library accepted exception — no XlsxPort (REQ-007, mirrors pdfjs)
+import ExcelJS from "exceljs";
 
 // Apuntar al archivo worker real para uso en el servidor
 GlobalWorkerOptions.workerSrc = path.resolve(
@@ -150,6 +152,13 @@ export class DocumentsService {
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       ) {
         extractedContent = await this.extractDocxText(file);
+      } else if (
+        file &&
+        file.size > 0 &&
+        file.type ===
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+      ) {
+        extractedContent = await this.extractXlsxText(file);
       } else if (
         file &&
         file.size > 0 &&
@@ -288,6 +297,62 @@ export class DocumentsService {
       console.error("DOCX text extraction failed:", err);
       throw new ValidationError("No se pudo procesar el archivo");
     }
+  }
+
+  private async extractXlsxText(file: File): Promise<string | null> {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(buffer);
+
+      const sheetBlocks: string[] = [];
+      workbook.eachSheet((sheet) => {
+        const lines: string[] = [`=== ${sheet.name} ===`];
+        sheet.eachRow((row) => {
+          // row.values is 1-indexed: first element is undefined.
+          const raw = (row.values as unknown[]) ?? [];
+          const cells = raw
+            .slice(1)
+            .map((v) => this.flattenXlsxCell(v))
+            .join("\t");
+          lines.push(cells);
+        });
+        sheetBlocks.push(lines.join("\n"));
+      });
+
+      const text = sheetBlocks.join("\n\n").trim();
+      return text || null;
+    } catch (err) {
+      // Paired sister: extractPdfText / extractDocxText — falla explícito
+      // para que la saga del upload limpie blob + doc.
+      console.error("XLSX text extraction failed:", err);
+      throw new ValidationError("No se pudo procesar el archivo");
+    }
+  }
+
+  /** Flatten a single exceljs cell value to its string representation. */
+  private flattenXlsxCell(value: unknown): string {
+    if (value === null || value === undefined) return "";
+    if (value instanceof Date) return value.toISOString();
+    if (typeof value === "object") {
+      const obj = value as Record<string, unknown>;
+      // Rich text: { richText: [{ text: '...' }, ...] }
+      if (Array.isArray(obj.richText)) {
+        return (obj.richText as Array<{ text?: unknown }>)
+          .map((r) => (typeof r.text === "string" ? r.text : ""))
+          .join("");
+      }
+      // Formula cell: { formula, result } — prefer evaluated result
+      if ("result" in obj && obj.result !== undefined && obj.result !== null) {
+        return this.flattenXlsxCell(obj.result);
+      }
+      // Hyperlink: { text, hyperlink }
+      if (typeof obj.text === "string") return obj.text;
+      // Error cell: { error: '#REF!' }
+      if (typeof obj.error === "string") return obj.error;
+      return "";
+    }
+    return String(value);
   }
 
   private async resolveOrgAccess(clerkOrgId: string, clerkUserId: string) {
