@@ -76,4 +76,5 @@ export interface LedgerOrgMetadata {
   taxId: string | null;
   address: string | null;
   city: string | null;
+  logoUrl: string | null;
 }

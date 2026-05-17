@@ -638,6 +638,7 @@ export class JournalRepository extends BaseRepository {
             nit: true,
             direccion: true,
             ciudad: true,
+            logoUrl: true,
           },
         },
       },
@@ -661,6 +662,7 @@ export class JournalRepository extends BaseRepository {
       taxId: trimOrNull(profile?.nit),
       address: trimOrNull(profile?.direccion),
       city: trimOrNull(profile?.ciudad),
+      logoUrl: trimOrNull(profile?.logoUrl),
     };
   }
 

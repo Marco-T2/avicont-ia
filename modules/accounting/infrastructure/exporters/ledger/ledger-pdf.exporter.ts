@@ -21,7 +21,6 @@ import type { TDocumentDefinitions, Content } from "pdfmake/interfaces";
 import Decimal from "decimal.js";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
-import { buildExecutivePdfHeader } from "@/modules/accounting/shared/infrastructure/exporters/executive-pdf-header";
 import { formatDateBO } from "@/lib/date-utils";
 import type { LedgerEntry } from "@/modules/accounting/presentation/dto/ledger.types";
 
@@ -185,6 +184,106 @@ export interface LedgerPdfOptions {
   dateFrom: string;  // YYYY-MM-DD
   dateTo: string;    // YYYY-MM-DD
   openingBalance: string;
+  /**
+   * Logo de la organización como data URL base64 (resultado de
+   * `fetchLogoAsDataUrl`). Si está presente, se renderiza al lado derecho
+   * del bloque de identidad organizacional del header (paridad voucher-pdf).
+   * Tolerante: undefined → header sin logo.
+   */
+  logoDataUrl?: string;
+}
+
+function buildExecutiveHeaderWithLogo(
+  orgName: string,
+  orgNit: string | undefined,
+  orgAddress: string | undefined,
+  orgCity: string | undefined,
+  logoDataUrl: string | undefined,
+  opts: LedgerPdfOptions,
+): Content[] {
+  // Bloque izq: identidad organizacional (membrete) alineado a la izquierda.
+  const orgLines: Content[] = [
+    {
+      text: `Empresa: ${orgName}`,
+      fontSize: ORG_INFO_SIZE,
+      bold: true,
+      alignment: "left",
+      margin: [0, 0, 0, 1],
+    },
+  ];
+  if (orgNit && orgNit.trim().length > 0) {
+    orgLines.push({
+      text: `NIT: ${orgNit}`,
+      fontSize: ORG_INFO_SIZE,
+      alignment: "left",
+      margin: [0, 0, 0, 1],
+    });
+  }
+  if (orgAddress && orgAddress.trim().length > 0) {
+    orgLines.push({
+      text: `Dirección: ${orgAddress}`,
+      fontSize: ORG_INFO_SIZE,
+      alignment: "left",
+      margin: [0, 0, 0, 1],
+    });
+  }
+  if (orgCity && orgCity.trim().length > 0) {
+    orgLines.push({
+      text: orgCity,
+      fontSize: ORG_INFO_SIZE,
+      alignment: "left",
+      margin: [0, 0, 0, 1],
+    });
+  }
+
+  // Bloque der: logo (si hay) right-aligned. Sin logo → placeholder vacío
+  // para preservar el layout de 2 columnas y mantener la altura coherente.
+  const logoStack: Content[] = [];
+  if (logoDataUrl) {
+    logoStack.push({
+      image: logoDataUrl,
+      width: 55,
+      alignment: "right",
+    });
+  } else {
+    logoStack.push({ text: " " });
+  }
+
+  return [
+    {
+      columns: [
+        { width: "*", stack: orgLines },
+        { width: 80, stack: logoStack },
+      ],
+      margin: [0, 0, 0, 6],
+    },
+    {
+      text: "LIBRO MAYOR",
+      fontSize: TITLE_SIZE,
+      bold: true,
+      alignment: "center",
+      margin: [0, 6, 0, 4],
+    },
+    {
+      text: `Cuenta: ${opts.accountCode} — ${opts.accountName}`,
+      fontSize: SUBTITLE_SIZE,
+      alignment: "center",
+      margin: [0, 0, 0, 1],
+    },
+    {
+      text: `Del ${fmtDate(opts.dateFrom)} al ${fmtDate(opts.dateTo)}`,
+      fontSize: SUBTITLE_SIZE,
+      alignment: "center",
+      margin: [0, 0, 0, 2],
+    },
+    {
+      text: "(Expresado en Bolivianos)",
+      fontSize: SUBTITLE_SIZE,
+      italics: true,
+      alignment: "center",
+      margin: [0, 0, 0, 10],
+    },
+  ];
 }
 
 function buildDocDefinition(
@@ -197,23 +296,14 @@ function buildDocDefinition(
 ): TDocumentDefinitions {
   const tableBody = buildTableBody({ entries, openingBalance: opts.openingBalance });
 
-  const subtitle = [
-    `Cuenta: ${opts.accountCode} — ${opts.accountName}`,
-    `Del ${fmtDate(opts.dateFrom)} al ${fmtDate(opts.dateTo)}`,
-  ].join("\n");
-
-  const headerContent = buildExecutivePdfHeader({
+  const headerContent = buildExecutiveHeaderWithLogo(
     orgName,
     orgNit,
     orgAddress,
     orgCity,
-    title: "Libro Mayor",
-    subtitle,
-    titleFontSize: TITLE_SIZE,
-    subtitleFontSize: SUBTITLE_SIZE,
-    orgInfoFontSize: ORG_INFO_SIZE,
-    orgInfoAlignment: "left",
-  });
+    opts.logoDataUrl,
+    opts,
+  );
 
   const content: Content[] = [
     ...headerContent,
@@ -248,6 +338,18 @@ function buildDocDefinition(
     `Libro Mayor — ${opts.accountCode} ${opts.accountName} — ` +
     `Del ${fmtDate(opts.dateFrom)} al ${fmtDate(opts.dateTo)} — ${orgName}`;
 
+  // Generado: timestamp es-BO con TZ La_Paz. Computado UNA vez al generar el
+  // PDF y referenciado por el footer en todas las páginas (consistente entre
+  // hojas). Paridad con balance-sheet (financial-statements/pdf.exporter.ts).
+  const generatedAt = new Date().toLocaleString("es-BO", {
+    timeZone: "America/La_Paz",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
@@ -268,11 +370,21 @@ function buildDocDefinition(
       };
     },
     footer: (currentPage: number, pageCount: number): Content => ({
-      text: `Página ${currentPage} de ${pageCount}`,
-      fontSize: 8,
-      alignment: "center",
-      color: STYLE.textMuted,
-      margin: [0, 10, 0, 0],
+      columns: [
+        {
+          text: `Generado: ${generatedAt}`,
+          fontSize: 8,
+          color: STYLE.textMuted,
+          margin: [30, 0, 0, 0],
+        },
+        {
+          text: `Página ${currentPage} de ${pageCount}`,
+          fontSize: 8,
+          color: STYLE.textMuted,
+          alignment: "right",
+          margin: [0, 0, 30, 0],
+        },
+      ],
     }),
     content,
   };

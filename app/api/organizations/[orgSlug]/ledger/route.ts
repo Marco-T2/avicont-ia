@@ -10,6 +10,7 @@ import {
 import { ValidationError } from "@/features/shared/errors";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import { fetchLogoAsDataUrl } from "@/modules/accounting/infrastructure/exporters/logo-fetcher";
 
 // Node.js runtime requerido por pdfmake + exceljs (Buffer/streams).
 export const runtime = "nodejs";
@@ -94,6 +95,11 @@ export async function GET(
       const orgDisplayName = orgMeta?.name ?? orgSlug;
 
       if (format === "pdf") {
+        // Fetch logo solo en path PDF (XLSX no lo embebe). Tolerante a fallas:
+        // si la URL es null o el fetch rompe, devuelve undefined y el exporter
+        // renderiza sin logo.
+        const logoDataUrl = await fetchLogoAsDataUrl(orgMeta?.logoUrl);
+
         const { buffer } = await exportLedgerPdf(
           entries,
           {
@@ -102,6 +108,7 @@ export async function GET(
             dateFrom: rawDateFrom,
             dateTo: rawDateTo,
             openingBalance,
+            logoDataUrl,
           },
           orgDisplayName,
           orgMeta?.taxId ?? undefined,

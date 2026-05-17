@@ -72,7 +72,7 @@ describe("exportLedgerPdf — column count", () => {
 });
 
 describe("exportLedgerPdf — header metadata", () => {
-  it("renderiza Empresa, Cuenta y período en el header", async () => {
+  it("renderiza Empresa, NIT, Cuenta y período en el header", async () => {
     const { docDef } = await exportLedgerPdf(
       [makeEntry()],
       makeOpts({ accountCode: "1.1.1", accountName: "Caja", dateFrom: "2025-01-01", dateTo: "2025-12-31" }),
@@ -80,21 +80,32 @@ describe("exportLedgerPdf — header metadata", () => {
       "1001",
       "Av. Principal 123",
     );
-    const content = docDef.content as Array<{ text?: string | string[] }>;
+    const content = docDef.content as Array<{
+      text?: string;
+      columns?: Array<{ stack?: Array<{ text?: string }> }>;
+    }>;
 
-    const empresaLine = content.find((c) => typeof c.text === "string" && c.text.includes("Avicont SA"));
-    expect(empresaLine).toBeDefined();
+    // El bloque de identidad organizacional vive dentro de columns[0].stack[]
+    // (col izq, alignment left). Logo opcional vive en columns[1].
+    const headerBlock = content.find((c) => Array.isArray(c.columns));
+    expect(headerBlock).toBeDefined();
+    const orgStack = headerBlock!.columns![0].stack!;
+    const orgTexts = orgStack.map((s) => s.text ?? "");
 
-    const nitLine = content.find((c) => typeof c.text === "string" && c.text.includes("NIT: 1001"));
-    expect(nitLine).toBeDefined();
+    expect(orgTexts.some((t) => t.includes("Empresa: Avicont SA"))).toBe(true);
+    expect(orgTexts.some((t) => t.includes("NIT: 1001"))).toBe(true);
+    expect(orgTexts.some((t) => t.includes("Dirección: Av. Principal 123"))).toBe(true);
 
-    // Subtítulo: "Cuenta: 1.1.1 — Caja\nDel 01/01/2025 al 31/12/2025"
-    const subtitleLine = content.find(
+    // Subtítulos "Cuenta: ..." y "Del A al B" son items text directos en content.
+    const cuentaLine = content.find(
       (c) => typeof c.text === "string" && c.text.includes("Cuenta: 1.1.1") && c.text.includes("Caja"),
     );
-    expect(subtitleLine).toBeDefined();
-    expect((subtitleLine!.text as string)).toContain("Del 01/01/2025");
-    expect((subtitleLine!.text as string)).toContain("al 31/12/2025");
+    expect(cuentaLine).toBeDefined();
+
+    const periodoLine = content.find(
+      (c) => typeof c.text === "string" && c.text.includes("Del 01/01/2025") && c.text.includes("al 31/12/2025"),
+    );
+    expect(periodoLine).toBeDefined();
   });
 
   it("título es 'LIBRO MAYOR' (uppercase)", async () => {
@@ -102,6 +113,40 @@ describe("exportLedgerPdf — header metadata", () => {
     const content = docDef.content as Array<{ text?: string }>;
     const titleLine = content.find((c) => typeof c.text === "string" && c.text === "LIBRO MAYOR");
     expect(titleLine).toBeDefined();
+  });
+
+  it("logoDataUrl presente → image renderizada en col der del header", async () => {
+    // 1×1 transparent PNG — válido para pdfkit (formato real, no AAA dummy).
+    const fakeLogo =
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGNgYGBgAAAABQABh6FO1AAAAABJRU5ErkJggg==";
+    const { docDef } = await exportLedgerPdf(
+      [makeEntry()],
+      makeOpts({ logoDataUrl: fakeLogo }),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{
+      columns?: Array<{ stack?: Array<{ image?: string; width?: number; alignment?: string }> }>;
+    }>;
+    const headerBlock = content.find((c) => Array.isArray(c.columns));
+    const logoStack = headerBlock!.columns![1].stack!;
+    // pdfmake puede normalizar el image durante measure (de data URL inline
+    // a referencia a images dict). Aceptamos cualquier image truthy con la
+    // metadata correcta — la presencia en el shape es lo que validamos.
+    const imageItem = logoStack.find((s) => typeof s.image === "string");
+    expect(imageItem).toBeDefined();
+    expect(imageItem!.width).toBe(55);
+    expect(imageItem!.alignment).toBe("right");
+  });
+
+  it("logoDataUrl undefined → header SIN image (placeholder vacío)", async () => {
+    const { docDef } = await exportLedgerPdf([makeEntry()], makeOpts(), "Avicont SA");
+    const content = docDef.content as Array<{
+      columns?: Array<{ stack?: Array<{ image?: string }> }>;
+    }>;
+    const headerBlock = content.find((c) => Array.isArray(c.columns));
+    const logoStack = headerBlock!.columns![1].stack!;
+    const hasImage = logoStack.some((s) => typeof s.image === "string");
+    expect(hasImage).toBe(false);
   });
 });
 
@@ -233,14 +278,19 @@ describe("exportLedgerPdf — MissingOrgNameError", () => {
 });
 
 describe("exportLedgerPdf — paginación multi-página", () => {
-  it("footer renderiza 'Página X de Y'", async () => {
+  it("footer renderiza 'Generado: ...' izq + 'Página X de Y' der (dos columnas)", async () => {
     const { docDef } = await exportLedgerPdf([makeEntry()], makeOpts(), "Avicont SA");
-    const dd = docDef as { footer?: (cur: number, total: number) => { text: string } };
+    const dd = docDef as {
+      footer?: (cur: number, total: number) => { columns: Array<{ text: string; alignment?: string }> };
+    };
     expect(typeof dd.footer).toBe("function");
     const footer1 = dd.footer!(1, 5);
-    expect(footer1.text).toBe("Página 1 de 5");
+    expect(Array.isArray(footer1.columns)).toBe(true);
+    expect(footer1.columns[0].text).toMatch(/^Generado: /);
+    expect(footer1.columns[1].text).toBe("Página 1 de 5");
+    expect(footer1.columns[1].alignment).toBe("right");
     const footer3 = dd.footer!(3, 5);
-    expect(footer3.text).toBe("Página 3 de 5");
+    expect(footer3.columns[1].text).toBe("Página 3 de 5");
   });
 
   it("header page 1 → null (cabecera completa va en content)", async () => {
