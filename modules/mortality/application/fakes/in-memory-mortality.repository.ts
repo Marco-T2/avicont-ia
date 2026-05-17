@@ -60,4 +60,11 @@ export class InMemoryMortalityRepository implements MortalityRepository {
   async update(mortality: Mortality): Promise<void> {
     this.store.set(mortality.id, mortality);
   }
+
+  async delete(organizationId: string, id: string): Promise<void> {
+    const m = this.store.get(id);
+    if (m && m.organizationId === organizationId) {
+      this.store.delete(id);
+    }
+  }
 }

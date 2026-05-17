@@ -78,6 +78,18 @@ export class MortalityService {
     return updated;
   }
 
+  /**
+   * Hard-deletes the log. Throws MortalityNotFound when id does not
+   * exist (after org scoping). After deletion, the Lot's aliveCount
+   * recovers the removed delta naturally — `getSummary` recomputes
+   * from the remaining logs (no extra recalc needed here). Spec REQ-106.
+   */
+  async delete(organizationId: string, id: string): Promise<void> {
+    const existing = await this.repo.findById(organizationId, id);
+    if (!existing) throw new MortalityNotFound(id);
+    await this.repo.delete(organizationId, id);
+  }
+
   async getTotalByLot(organizationId: string, lotId: string): Promise<number> {
     return this.repo.countByLot(organizationId, lotId);
   }

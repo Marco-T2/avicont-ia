@@ -9,4 +9,5 @@ export interface MortalityRepository {
   countByLot(organizationId: string, lotId: string): Promise<number>;
   save(mortality: Mortality): Promise<void>;
   update(mortality: Mortality): Promise<void>;
+  delete(organizationId: string, id: string): Promise<void>;
 }

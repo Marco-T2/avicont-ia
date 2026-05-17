@@ -60,4 +60,10 @@ export class PrismaMortalityRepository implements MortalityRepository {
       },
     });
   }
+
+  async delete(organizationId: string, id: string): Promise<void> {
+    await this.db.mortalityLog.delete({
+      where: { id, organizationId },
+    });
+  }
 }
