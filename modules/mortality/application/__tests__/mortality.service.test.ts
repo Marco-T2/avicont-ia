@@ -220,6 +220,79 @@ describe("MortalityService.update — happy path", () => {
   });
 });
 
+describe("MortalityService.update — exceeds alive guard", () => {
+  let repo: InMemoryMortalityRepository;
+  let lots: InMemoryLotInquiry;
+  let service: MortalityService;
+
+  beforeEach(() => {
+    repo = new InMemoryMortalityRepository();
+    lots = new InMemoryLotInquiry();
+  });
+
+  // Formula spec REQ-105 / design D-5:
+  //   aliveCountForUpdate = lot.initialCount - (totalAllLogs - oldLogCount)
+  // throws MortalityCountExceedsAlive when newCount > aliveCountForUpdate.
+  it("throws MortalityCountExceedsAlive when newCount > aliveCountForUpdate", async () => {
+    lots.seed(lotSnapshot({ initialCount: 100 }));
+    // existing logs: 95 (this one) + 3 = 98 total. alive = 100 - 98 = 2.
+    // updating THIS log from 95 → 4 means: aliveForUpdate = 100 - (98 - 95) = 97.
+    // newCount=98 exceeds 97 → throws.
+    const target = Mortality.log({
+      lotId: "lot-1",
+      count: 95,
+      date: new Date("2026-03-01"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 100,
+    });
+    const other = Mortality.log({
+      lotId: "lot-1",
+      count: 3,
+      date: new Date("2026-03-02"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 5,
+    });
+    repo.preload(target);
+    repo.preload(other);
+    service = new MortalityService(repo, lots);
+
+    await expect(
+      service.update(ORG, target.id, { count: 98 }),
+    ).rejects.toThrow(MortalityCountExceedsAlive);
+  });
+
+  it("allows update to exactly aliveCountForUpdate (boundary)", async () => {
+    lots.seed(lotSnapshot({ initialCount: 100 }));
+    // target log count=20, other count=30 → total=50.
+    // aliveForUpdate = 100 - (50 - 20) = 70. Update to 70 OK.
+    const target = Mortality.log({
+      lotId: "lot-1",
+      count: 20,
+      date: new Date("2026-03-01"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 100,
+    });
+    const other = Mortality.log({
+      lotId: "lot-1",
+      count: 30,
+      date: new Date("2026-03-02"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 80,
+    });
+    repo.preload(target);
+    repo.preload(other);
+    service = new MortalityService(repo, lots);
+
+    const updated = await service.update(ORG, target.id, { count: 70 });
+
+    expect(updated.count.value).toBe(70);
+  });
+});
+
 describe("MortalityService.getTotalByLot", () => {
   let repo: InMemoryMortalityRepository;
   let lots: InMemoryLotInquiry;
