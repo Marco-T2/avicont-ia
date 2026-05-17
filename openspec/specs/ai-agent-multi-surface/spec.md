@@ -519,6 +519,194 @@ Tool handlers SHALL serialize all monetary values to strings using `roundHalfUp(
 
 ---
 
+---
+
+### Requirement: Multi-Turn LLM Loop for Chat-Mode Read Tools (REQ-19)
+
+The chat mode SHALL drive a multi-turn LLM conversation when read tools are invoked: each LLM response with `tool_call`s SHALL be followed by tool execution and a subsequent LLM call with the tool results appended to the conversation history, until the LLM returns a response with no `tool_call`s OR the max-turn cap is reached.
+
+#### Scenario: SCN-19.1 — Single-tool happy path
+
+- GIVEN user sends "mostrame los últimos asientos" in sidebar-qa
+- WHEN the LLM returns a `listRecentJournalEntries` tool_call
+- THEN the backend executes the tool AND calls the LLM again with the tool result in conversation history
+- AND the LLM returns formatted natural-Spanish text
+- AND the user sees the actual data (NOT the placeholder)
+
+#### Scenario: SCN-19.2 — Multi-tool single turn (S-03 fix)
+
+- GIVEN the LLM returns 2 tool_calls (`listSales` + `listPurchases`) in a single response
+- WHEN the backend processes turn 1
+- THEN BOTH tools execute (none dropped)
+- AND the second LLM call receives both tool results
+- AND the LLM returns a unified response
+
+#### Scenario: SCN-19.3 — Multi-turn sequential (2 tool rounds)
+
+- GIVEN the LLM returns tool_call in turn 1, then another tool_call in turn 2 based on first result
+- WHEN both rounds execute
+- THEN the LLM returns final text on turn 3
+- AND turn count equals 3
+
+#### Scenario: SCN-19.4 — Max-turn cap fires
+
+- GIVEN a mock LLM always returns a tool_call (pathological case)
+- WHEN the loop reaches turn 5
+- THEN the loop stops and returns the fallback message
+- AND a `chat_max_turns_reached` warn event is logged
+
+---
+
+### Requirement: ConversationTurn Domain Type (Port-Neutral) (REQ-20)
+
+The domain SHALL define a `ConversationTurn` discriminated union with variants `{kind: 'user', content: string}`, `{kind: 'model', content: string, toolCalls?: ReadonlyArray<ToolCall>}`, and `{kind: 'tool_result', toolCallId: string, name: string, result: unknown}`. No LLM-vendor types (Gemini `Content`, etc.) SHALL appear in domain modules.
+
+#### Scenario: SCN-20.1 — Domain type narrowing
+
+- GIVEN `ConversationTurn` is imported and a value `t` is assigned
+- WHEN a `switch (t.kind)` is compiled
+- THEN TypeScript narrows correctly to each variant and `tsc --noEmit` passes
+
+#### Scenario: SCN-20.2 — Hex purity assertion
+
+- GIVEN grep runs on `modules/ai-agent/domain/**` for the string `Content[]`
+- THEN zero matches are returned
+
+---
+
+### Requirement: LLMProviderPort.query() Accepts Optional Conversation History (REQ-21)
+
+`LLMQuery` SHALL accept an optional `conversationHistory?: readonly ConversationTurn[]` parameter. When omitted or empty, behavior is identical to the prior single-call shape (backward compatible). When provided, the LLM provider SHALL include the history in the LLM invocation.
+
+#### Scenario: SCN-21.1 — Backward compat: callers without conversationHistory unaffected
+
+- GIVEN existing call `llmProvider.query({ systemPrompt, userMessage, tools })`
+- THEN the response shape and behavior are identical to pre-change behavior
+
+#### Scenario: SCN-21.2 — History-aware multi-turn call
+
+- GIVEN caller passes `conversationHistory` with 3 turns (user → model+tool_call → tool_result)
+- WHEN `query()` is invoked
+- THEN the provider includes all 3 history turns plus the new user message in the LLM call
+- AND returns a new response
+
+---
+
+### Requirement: Gemini Adapter Maps ConversationTurn[] to Content[] (REQ-22)
+
+The Gemini LLM adapter SHALL translate `ConversationTurn[]` into Gemini SDK `Content[]`, mapping `tool_result` turns to `FunctionResponsePart` entries (`{ functionResponse: { name, response } }`) and `model` turns with `toolCalls` to `FunctionCallPart` entries (`{ functionCall: { name, args } }`). The Gemini SDK specifies `FunctionResponsePart` MUST be wrapped in a `Content` with `role: "user"`. `FunctionResponse.response` MUST be `object` — primitives, `null`, and arrays are wrapped via `wrapForFunctionResponse(result)` as `{ value: <raw> }`.
+
+#### Scenario: SCN-22.1 — Mapping round-trip
+
+- GIVEN input history `[user-turn, model-turn-with-tool-call, tool_result-turn]`
+- WHEN the adapter maps to Gemini `Content[]`
+- THEN output length is 3
+- AND the third element is `{ role: "user", parts: [{ functionResponse: { name: <name>, response: <result> } }] }`
+
+#### Scenario: SCN-22.2 — Vendor type leak guard
+
+- GIVEN the `ConversationTurn` interface at `modules/ai-agent/domain/types/conversation.ts`
+- THEN no `@google/generative-ai` type is imported in that file
+
+---
+
+### Requirement: Max-Turn Cap with Safe Exit (REQ-23)
+
+The chat-mode loop SHALL be bounded by `MAX_CHAT_TURNS = 5` (configurable constant in `chat.constants.ts`; hard upper bound `HARD_CAP = 10` enforced at module load via `throw` when exceeded). When the cap is reached, the loop SHALL return the most recent text response or the fallback message `"No pude completar la consulta. Intentá ser más específico."`, and SHALL log a `chat_max_turns_reached` warn event with `turnCount` and `toolNames` invoked.
+
+#### Scenario: SCN-23.1 — Cap fires, fallback returned
+
+- GIVEN mock LLM always returns a tool_call
+- WHEN the loop completes turn 5
+- THEN result message equals `"No pude completar la consulta. Intentá ser más específico."`
+- AND logStructured is called with `event: "chat_max_turns_reached"` and `turnCount: 5`
+
+#### Scenario: SCN-23.2 — Normal flow does not trigger cap
+
+- GIVEN a 2-turn flow (1 tool + 1 text response)
+- THEN no `chat_max_turns_reached` event is logged
+- AND result message equals the LLM's natural-language text
+
+#### Scenario: SCN-23.3 — Hard bound rejects cap > 10
+
+- GIVEN `MAX_CHAT_TURNS` is set to 11
+- THEN the module MUST throw at import time (`MAX_CHAT_TURNS > HARD_CAP` assertion)
+
+---
+
+### Requirement: Telemetry Accumulation Across Turns (REQ-24)
+
+The `agent_invocation` log event in chat mode SHALL accumulate `inputTokens`, `outputTokens`, and `totalTokens` across ALL turns into the existing single fields. A new `turnCount: number` field SHALL be added. The existing `toolCallsCount` and `toolNames` fields SHALL include tool calls from ALL turns.
+
+#### Scenario: SCN-24.1 — Token accumulation across 2 turns
+
+- GIVEN turn 1: inputTokens=1000, outputTokens=10; turn 2: inputTokens=1200, outputTokens=80
+- WHEN `agent_invocation` is logged
+- THEN `inputTokens === 2200`, `outputTokens === 90`, `totalTokens === 2290`, `turnCount === 2`
+- AND `toolCallsCount === 1`, `toolNames === ["listRecentJournalEntries"]`
+
+#### Scenario: SCN-24.2 — Multi-tool telemetry
+
+- GIVEN turn 1 returns 2 tool_calls (`listSales` + `listPurchases`); turn 2 returns text
+- WHEN `agent_invocation` is logged
+- THEN `toolCallsCount === 2`, `toolNames === ["listSales", "listPurchases"]`, `turnCount === 2`
+
+---
+
+### Requirement: searchDocuments Retains Early-Return Bypass (REQ-25)
+
+The `searchDocuments` tool case SHALL continue to bypass the multi-turn loop and return the RAG context text directly in `message`. Multi-turn behavior does NOT apply to `searchDocuments`. The bypass fires ONLY when `searchDocuments` is the sole tool_call at turn 1; mixed-call cases fall through to the normal loop.
+
+#### Scenario: SCN-25.1 — searchDocuments single-turn bypass
+
+- GIVEN user asks "buscame docs sobre X" on sidebar-qa
+- WHEN the LLM returns a `searchDocuments` tool_call (sole call at turn 1)
+- THEN the backend returns `{ message: ragContext, suggestion: null }` immediately
+- AND no second LLM call is made
+
+---
+
+### Requirement: System Prompt Addition for Tool-Result Formatting (REQ-26)
+
+`buildSystemPrompt` SHALL include the following Spanish instruction appended after `moduleHintLines` and before the `DATOS:` block: `"Cuando recibas resultados de herramientas, presenta los datos al usuario en español natural y conciso."` This applies to ALL chat-mode invocations regardless of surface or role. EXACT Spanish text locked per `[[textual_rule_verification]]` — any change requires a new SDD with a RED test mirroring the new text.
+
+#### Scenario: SCN-26.1 — Golden test on buildSystemPrompt output
+
+- GIVEN `buildSystemPrompt` is called with any valid args
+- THEN the result includes the literal string `"Cuando recibas resultados de herramientas, presenta los datos al usuario en español natural y conciso."`
+
+---
+
+### Requirement: Mid-Loop Tool Error Handling (REQ-27)
+
+When a tool execution throws or returns an error mid-loop, the backend SHALL append an error `ToolResultTurn` with `result: { error: msg }` to the conversation history and continue the loop. The loop SHALL NOT abort on tool error unless the cap is also reached.
+
+#### Scenario: SCN-27.1 — Tool throws: error surfaced via LLM
+
+- GIVEN the first tool call throws an error
+- WHEN an error ToolResultTurn (`{ error: msg }`) is appended and the LLM is called again
+- THEN the LLM returns a user-facing text like "Hubo un error al consultar X"
+- AND the user sees the error message (not an uncaught exception)
+
+#### Scenario: SCN-27.2 — Tool error + LLM retries with different tool_call
+
+- GIVEN the LLM emits a new tool_call after seeing an error ToolResultTurn
+- THEN the loop continues normally (error does not short-circuit)
+
+---
+
+### Requirement: Write Flow Unaffected (REQ-28)
+
+Write tool calls (`createExpense`, `logMortality`, `createJournalEntry`, etc.) SHALL retain their current single-turn behavior with `requiresConfirmation: true`. The multi-turn loop applies ONLY to read-mode flows in chat mode. The write-tool short-circuit in `executeChatMode` exits the loop before any read-tool turn is appended.
+
+#### Scenario: SCN-28.1 — Write tool single-turn unchanged
+
+- GIVEN user in modal-registrar triggers `createExpense`
+- THEN flow is unchanged: single LLM call + tool emission, modal handles confirmation
+- AND no multi-turn loop is entered for write tools
+
+---
+
 ## Notes
 
 - **Runtime alias gotcha**: `modules/ai-agent/domain/tools/surfaces/index.ts` uses the RELATIVE path `../../../../permissions/domain/permissions.ts` instead of the `@/modules/permissions/...` alias. Reason: the `c1-application-shape.poc-ai-agent-hex` smoke test loads `agent.service.ts` via CommonJS `require()`, which bypasses the Vitest alias resolver in the dynamic-import chain. JSDoc at the import site (lines 1-6 of `surfaces/index.ts`) is the durable defense against well-meaning "fix the path back to alias" PRs. Type-only `@/` imports elsewhere are erased by the TS compiler and unaffected.
@@ -527,10 +715,16 @@ Tool handlers SHALL serialize all monetary values to strings using `roundHalfUp(
 
 - **`isWriteAction` retention**: `isWriteAction(name)` in the same domain file is unchanged and remains authoritative for the `executeChatMode` write-vs-read suggestion-vs-direct dispatch branch. The surface filter is upstream; `isWriteAction` is downstream; they are orthogonal.
 
-- **Multi-tool-call execution limitation**: `chat.ts:164` drops all but the first tool call when the LLM returns multiple simultaneously (`multiple_tool_calls_dropped` warn log). This pre-existing limitation affects every surface and is out of scope for this capability; it is tracked as a separate follow-up.
+- **Multi-tool-call fix (S-03 resolved)**: The pre-F3 limitation at `chat.ts:164` that dropped all but the first tool call when the LLM returned multiple simultaneously (`multiple_tool_calls_dropped` warn log) has been resolved in change `agent-chat-tool-result-rendering` (F3). The multi-turn loop now executes ALL tool calls per turn via `for (const call of turnToolCalls)` — natural side-effect of the loop architecture.
 
 - **Source-of-truth permissions matrix**: `modules/permissions/domain/permissions.ts` defines `PERMISSIONS_READ` and `PERMISSIONS_WRITE` as `Record<Resource, Role[]>`. Any future tool's RBAC is determined by its `(resource, action)` tag combined with the matrix — no new entries in role-tool arrays are required.
 
 - **MODULE_HINTS location**: `MODULE_HINTS = ["accounting", "farm"] as const` lives at `modules/ai-agent/domain/types/module-hint.types.ts` along with `ModuleHint = (typeof MODULE_HINTS)[number]` and `ModuleHintValue = ModuleHint | null`. It is intentionally SEPARATE from `modules/ai-agent/domain/tools/surfaces/surface.types.ts` because module_hint does NOT narrow the tool set (surface's job) — it is a soft contextual signal for the chat-mode system prompt. Adding a new module hint requires editing only the const tuple and the Spanish mapping table in `modules/ai-agent/application/modes/chat.ts` `buildSystemPrompt`. See Requirement: Module hint for sidebar surface above.
 
 - **AgentService.query signature debt**: as of `agent-sidebar-module-hint` archive (`a5d66f94`), `AgentService.query(...)` carries 9 positional arguments (`orgId, userId, role, prompt, surface, mode, contextHints, sessionId, moduleHint`). The `moduleHint` parameter was inserted at the 9th position (NOT the 7th as originally designed) to preserve the F1 `agent-surface-separation` surface-validation test mocks — documented in apply-progress D-1 and verified per `[[invariant_collision_elevation]]`. A dedicated follow-up SDD is tracked to refactor this to a named-options object.
+
+- **ConversationTurn location**: `modules/ai-agent/domain/types/conversation.ts` — port-neutral discriminated union, no vendor SDK imports. Adapters (Gemini) translate to provider shapes at the infrastructure boundary only.
+
+- **chat.constants.ts**: `MAX_CHAT_TURNS = 5`, `HARD_CAP = 10`, `MAX_TURN_FALLBACK_MESSAGE` — module-load throw enforces the hard cap. Any change to these values requires a new SDD + RED test per `[[textual_rule_verification]]`.
+
+- **Canonicalized from change `agent-chat-tool-result-rendering`** (archived 2026-05-17, baseline `b74c379f` → final `ab45f9d4`). Engram references: spec `#2772`, design `#2771`, archive-report `sdd/agent-chat-tool-result-rendering/archive-report`.
