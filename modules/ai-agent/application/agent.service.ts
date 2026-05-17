@@ -1,5 +1,6 @@
 import type { AgentMode } from "../domain/validation/agent.validation";
 import type { Surface } from "../domain/tools/surfaces/surface.types";
+import type { ModuleHintValue } from "../domain/types/module-hint.types";
 import type {
   AgentResponse,
   AnalyzeBalanceSheetResponse,
@@ -65,6 +66,11 @@ export class AgentService {
     surface: Surface,
     mode: AgentMode = "chat",
     contextHints?: unknown,
+    // moduleHint added as the 9th positional arg AFTER contextHints to keep
+    // all existing F1 positional mock assertions stable (route surface-
+    // validation test asserts callArgs[5] === 'sidebar-qa'). Deviates from
+    // design D3.1 which proposed slotting after `mode`; safer here.
+    moduleHint: ModuleHintValue = null,
   ): Promise<AgentResponse> {
     const { normalizeRole } = await import("../domain/agent-utils.ts");
     const normalizedRole = normalizeRole(role);
@@ -105,6 +111,7 @@ export class AgentService {
         surface,
         sessionId,
         contextHints,
+        moduleHint,
       },
     );
   }

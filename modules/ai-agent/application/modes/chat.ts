@@ -16,6 +16,7 @@ import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
 import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 import type { PricingService } from "../pricing/pricing.service";
 import type { Surface } from "../../domain/tools/surfaces/surface.types";
+import type { ModuleHintValue } from "../../domain/types/module-hint.types";
 
 type AgentLabel = "socio" | "contador" | "admin";
 
@@ -43,6 +44,11 @@ export interface ChatModeArgs {
   role: Role;
   prompt: string;
   surface: Surface;
+  // Optional in TS for incremental adoption. `null` is a real value meaning
+  // "no current module" (sidebar on a non-mapped route); `undefined` is the
+  // legacy-caller signal (modals never set this). buildSystemPrompt coerces
+  // undefined -> null defensively.
+  moduleHint?: ModuleHintValue;
   sessionId?: string;
   contextHints?: unknown;
 }
@@ -99,6 +105,7 @@ export async function executeChatMode(
     pricingService,
   } = deps;
   const { orgId, userId, role, prompt, surface, sessionId, contextHints } = args;
+  const moduleHint: ModuleHintValue = args.moduleHint ?? null;
   const resolvedHints = coerceChatContextHints(contextHints);
   const startedAt = performance.now();
 
@@ -146,7 +153,7 @@ export async function executeChatMode(
     const contextWithHistory = historyContext
       ? `${historyContext}\n\n${fullContext}`
       : fullContext;
-    const systemPrompt = buildSystemPrompt(role, contextWithHistory, resolvedHints);
+    const systemPrompt = buildSystemPrompt(role, contextWithHistory, resolvedHints, moduleHint);
 
     if (sessionId) {
       await chatMemory.append(orgId, userId, sessionId, {
@@ -235,6 +242,7 @@ export async function executeChatMode(
       level: "info",
       mode: "chat",
       surface,
+      moduleHint,
       orgId,
       userId,
       role,
@@ -255,6 +263,7 @@ function buildSystemPrompt(
   role: Role,
   context: string,
   contextHints: ChatContextHintsResolved | undefined,
+  moduleHint: ModuleHintValue,
 ): string {
   const roleDescriptions: Record<AgentLabel, string> = {
     socio:
@@ -279,11 +288,24 @@ function buildSystemPrompt(
     );
   }
 
+  // Module-hint paragraph. EXACT Spanish text locked in design D4.2 per
+  // [[textual_rule_verification]] — any future change requires a dedicated
+  // SDD with a new RED test reflecting the new text.
+  const moduleHintLines: string[] = [];
+  if (moduleHint !== null) {
+    const moduleLabel = moduleHint === "accounting" ? "Contabilidad" : "Granja";
+    moduleHintLines.push(
+      "",
+      `Contexto del usuario: el usuario está actualmente en la sección de ${moduleLabel}. Cuando elijas herramientas, priorizá las que sean relevantes a este módulo. No fuerces el dominio si la pregunta es explícitamente de otra área.`,
+    );
+  }
+
   return [
     "Asistente Avicont.",
     roleDescriptions[label],
     `Hoy: ${todayISO}`,
     ...contextHintsLines,
+    ...moduleHintLines,
     "",
     "DATOS:",
     context,

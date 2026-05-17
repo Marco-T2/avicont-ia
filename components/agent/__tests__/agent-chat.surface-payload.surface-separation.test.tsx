@@ -8,6 +8,14 @@
 
 import { render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// MOCK HYGIENE [[mock_hygiene_commit_scope]]: agent-chat now calls
+// usePathname(); outside a Next router context this throws. Mock with a
+// stable test pathname (agent-sidebar-module-hint SDD).
+vi.mock("next/navigation", () => ({
+  usePathname: () => "/acme/accounting",
+}));
+
 import { AgentChat } from "../agent-chat";
 
 const fetchMock = vi.fn();

@@ -12,7 +12,7 @@
  * mutating `currentPathname` before render.
  */
 
-import { render, screen, fireEvent } from "@testing-library/react";
+import { cleanup, render, screen, fireEvent } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mutable closure pathname — set in beforeEach of each describe.
@@ -39,6 +39,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  cleanup();
   vi.unstubAllGlobals();
 });
 

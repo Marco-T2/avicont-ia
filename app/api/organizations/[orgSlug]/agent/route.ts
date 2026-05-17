@@ -130,6 +130,7 @@ export async function POST(
       parsed.surface,
       parsed.mode,
       parsed.contextHints,
+      parsed.module_hint ?? null, // coerce absent (undefined) -> null at boundary
     );
 
     return Response.json(response);

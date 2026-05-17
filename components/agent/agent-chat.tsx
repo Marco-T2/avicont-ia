@@ -1,11 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Bot, Loader2, RotateCcw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { deriveModuleHint } from "./derive-module-hint";
 
 interface ChatMessage {
   role: "user" | "assistant";
@@ -19,6 +21,7 @@ interface AgentChatProps {
 }
 
 export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
+  const pathname = usePathname();
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -46,6 +49,7 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
       setIsLoading(true);
 
       try {
+        const moduleHint = deriveModuleHint(pathname ?? "");
         const res = await fetch(`/api/organizations/${orgSlug}/agent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -53,6 +57,7 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
             prompt,
             session_id: sessionIdRef.current,
             surface: "sidebar-qa",
+            module_hint: moduleHint,
           }),
         });
 
@@ -75,7 +80,7 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
         setIsLoading(false);
       }
     },
-    [orgSlug]
+    [orgSlug, pathname]
   );
 
   const handleRetry = useCallback(() => {
