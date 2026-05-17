@@ -127,6 +127,7 @@ export async function POST(
       member.role,
       parsed.prompt,
       parsed.session_id,
+      parsed.surface,
       parsed.mode,
       parsed.contextHints,
     );

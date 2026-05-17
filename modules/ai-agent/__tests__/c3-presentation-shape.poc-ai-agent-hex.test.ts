@@ -271,9 +271,11 @@ describe("POC ai-agent-hex C3 — Zod schemas via server barrel", () => {
     const { agentQuerySchema } = await import(
       "@/modules/ai-agent/presentation/server"
     );
+    // surface is REQUIRED after agent-surface-separation (spec REQ-2, D2).
     const result = agentQuerySchema.safeParse({
       prompt: "hola",
       mode: "chat",
+      surface: "sidebar-qa",
     });
     expect(result.success).toBe(true);
   });

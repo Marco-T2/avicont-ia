@@ -1,8 +1,14 @@
+// Relative import (NOT the `@/` alias) for the runtime permissions matrix —
+// the c1 application-shape α68 smoke test loads agent.service.ts via Node
+// require() (CJS), which bypasses Vitest's alias resolver in the dynamic
+// import chain. Type-only `@/` imports elsewhere in this module are fine
+// because they're erased. Relative path keeps the alias working everywhere
+// else and resolves under both require() and ESM.
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,
   type Role,
-} from "@/modules/permissions/domain/permissions";
+} from "../../../../permissions/domain/permissions.ts";
 import type { Tool } from "../../ports/llm-provider.port.ts";
 import { MODAL_JOURNAL_AI_SURFACE } from "./modal-journal-ai.surface.ts";
 import { MODAL_REGISTRAR_SURFACE } from "./modal-registrar.surface.ts";

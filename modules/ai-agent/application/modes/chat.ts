@@ -15,6 +15,7 @@ import type { RagPort } from "../../domain/ports/rag.port";
 import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
 import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 import type { PricingService } from "../pricing/pricing.service";
+import type { Surface } from "../../domain/tools/surfaces/surface.types";
 
 type AgentLabel = "socio" | "contador" | "admin";
 
@@ -41,6 +42,7 @@ export interface ChatModeArgs {
   userId: string;
   role: Role;
   prompt: string;
+  surface: Surface;
   sessionId?: string;
   contextHints?: unknown;
 }
@@ -76,11 +78,13 @@ export async function executeChatMode(
   args: ChatModeArgs,
 ): Promise<AgentResponse> {
   const [
-    { getToolsForRole, isWriteAction, TOOL_REGISTRY },
+    { isWriteAction, TOOL_REGISTRY },
+    { getToolsForSurface },
     { buildAgentContext, buildRagContext },
     { logStructured },
   ] = await Promise.all([
     import("../../domain/tools/agent.tool-definitions.ts"),
+    import("../../domain/tools/surfaces/index.ts"),
     import("../agent.context.ts"),
     import("../../../../lib/logging/structured.ts"),
   ]);
@@ -94,7 +98,7 @@ export async function executeChatMode(
     lotInquiry,
     pricingService,
   } = deps;
-  const { orgId, userId, role, prompt, sessionId, contextHints } = args;
+  const { orgId, userId, role, prompt, surface, sessionId, contextHints } = args;
   const resolvedHints = coerceChatContextHints(contextHints);
   const startedAt = performance.now();
 
@@ -105,7 +109,7 @@ export async function executeChatMode(
   let errorStack: string | undefined;
 
   try {
-    const tools = getToolsForRole(role);
+    const tools = getToolsForSurface({ surface, role });
 
     if (tools.length === 0) {
       outcome = "no_tools_for_role";
@@ -230,6 +234,7 @@ export async function executeChatMode(
       event: "agent_invocation",
       level: "info",
       mode: "chat",
+      surface,
       orgId,
       userId,
       role,

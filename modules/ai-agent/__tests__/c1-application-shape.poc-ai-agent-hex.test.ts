@@ -405,7 +405,17 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
       };
 
       const service = new AgentService(fakeDeps);
-      const result = await service.query("org-1", "user-1", "admin", "hello", undefined, "chat");
+      // Positional signature after agent-surface-separation:
+      //   (orgId, userId, role, prompt, sessionId, surface, mode?, contextHints?)
+      const result = await service.query(
+        "org-1",
+        "user-1",
+        "admin",
+        "hello",
+        undefined,
+        "sidebar-qa",
+        "chat",
+      );
       // AgentResponse must have at least a message field
       expect(result).toHaveProperty("message");
     });

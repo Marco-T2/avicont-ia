@@ -63,18 +63,26 @@ export async function executeJournalEntryAiMode(
   args: JournalEntryAiModeArgs,
 ): Promise<AgentResponse> {
   const [
-    { journalEntryAiTools },
+    { getToolsForSurface },
     { buildJournalEntryAiSystemPrompt, coerceContextHints },
     { executeParseAccountingOperation },
     { AppError },
     { logStructured },
   ] = await Promise.all([
-    import("../../domain/tools/agent.tool-definitions.ts"),
+    import("../../domain/tools/surfaces/index.ts"),
     import("../../domain/prompts/journal-entry-ai.prompt.ts"),
     import("../tools/parse-operation.ts"),
     import("@/features/shared/errors"),
     import("@/lib/logging/structured"),
   ]);
+
+  // Unify with chat mode: journal-entry-ai always runs on the
+  // modal-journal-ai surface. Resolver applies the permissions matrix
+  // (journal:write) — matrix is the single source of truth.
+  const journalEntryAiTools = getToolsForSurface({
+    surface: "modal-journal-ai",
+    role: args.role,
+  });
 
   const { llmProvider, accountsLookup } = deps;
   const { orgId, userId, role, prompt, rawContextHints } = args;
@@ -222,6 +230,7 @@ export async function executeJournalEntryAiMode(
       event: "agent_invocation",
       level: outcome === "error" ? "warn" : "info",
       mode: "journal-entry-ai",
+      surface: "modal-journal-ai",
       orgId,
       userId,
       role,

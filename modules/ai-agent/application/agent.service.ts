@@ -1,4 +1,5 @@
 import type { AgentMode } from "../domain/validation/agent.validation";
+import type { Surface } from "../domain/tools/surfaces/surface.types";
 import type {
   AgentResponse,
   AnalyzeBalanceSheetResponse,
@@ -60,7 +61,8 @@ export class AgentService {
     userId: string,
     role: string,
     prompt: string,
-    sessionId?: string,
+    sessionId: string | undefined,
+    surface: Surface,
     mode: AgentMode = "chat",
     contextHints?: unknown,
   ): Promise<AgentResponse> {
@@ -100,6 +102,7 @@ export class AgentService {
         userId,
         role: normalizedRole,
         prompt,
+        surface,
         sessionId,
         contextHints,
       },

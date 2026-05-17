@@ -136,7 +136,12 @@ describe("POC ai-agent-hex C0 — domain layer shape", () => {
       const agentQuerySchema = requireDomainExport("validation/agent.validation.ts", "agentQuerySchema") as {
         safeParse: (data: unknown) => { success: boolean };
       };
-      const result = agentQuerySchema.safeParse({ prompt: "test", mode: "chat" });
+      // surface is REQUIRED after agent-surface-separation (spec REQ-2, D2).
+      const result = agentQuerySchema.safeParse({
+        prompt: "test",
+        mode: "chat",
+        surface: "sidebar-qa",
+      });
       expect(result.success).toBe(true);
     });
 
