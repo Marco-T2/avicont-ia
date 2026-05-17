@@ -199,6 +199,31 @@ export const listPurchasesTool = defineTool({
   action: "read",
 });
 
+export const listPaymentsTool = defineTool({
+  name: "listPayments",
+  description:
+    "Listar los pagos recientes (cobros y pagos) de la organización, opcionalmente filtrados por rango de fechas. Devuelve fecha, contraparte, monto y dirección (COBRO/PAGO).",
+  inputSchema: z.object({
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de pagos (default 20)"),
+    dateFrom: z
+      .string()
+      .optional()
+      .describe("Fecha desde (ISO YYYY-MM-DD, opcional)"),
+    dateTo: z
+      .string()
+      .optional()
+      .describe("Fecha hasta (ISO YYYY-MM-DD, opcional)"),
+  }),
+  resource: "payments",
+  action: "read",
+});
+
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
 
 export const parseAccountingOperationToSuggestionTool = defineTool({
@@ -254,6 +279,7 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [getAccountBalanceTool.name]: getAccountBalanceTool,
   [listSalesTool.name]: listSalesTool,
   [listPurchasesTool.name]: listPurchasesTool,
+  [listPaymentsTool.name]: listPaymentsTool,
 };
 
 /**

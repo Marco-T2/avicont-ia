@@ -1,0 +1,139 @@
+import { describe, expect, it, vi } from "vitest";
+import { executeChatMode } from "../application/modes/chat.ts";
+import type { ChatMemoryPort } from "../domain/ports/chat-memory.port.ts";
+import type { AgentContextReaderPort } from "../domain/ports/agent-context-reader.port.ts";
+import type { LLMProviderPort } from "../domain/ports/llm-provider.port.ts";
+import type { RagPort } from "../domain/ports/rag.port.ts";
+import type {
+  AccountingQueryPort,
+  PaymentSummaryDto,
+} from "../domain/ports/accounting-query.port.ts";
+import {
+  TOOL_REGISTRY,
+  listPaymentsTool,
+} from "../domain/tools/agent.tool-definitions.ts";
+
+// REQ-15 + REQ-17 + REQ-18 — listPayments tool wiring.
+//   - contactId fallback (Marco lock): when PaymentsService doesn't expose
+//     a denormalized counterparty name, the DTO surfaces the raw contactId
+//     string. Test asserts the field is present as a string.
+
+vi.mock("@/lib/logging/structured", () => ({
+  logStructured: () => {},
+}));
+
+const SAMPLE: PaymentSummaryDto[] = [
+  {
+    id: "pay-1",
+    date: "2026-05-01",
+    status: "POSTED",
+    method: "EFECTIVO",
+    direction: "COBRO",
+    contactId: "ctx-1",
+    amount: "99.90",
+    description: "Cobranza Mayo",
+  },
+];
+
+function makeAccountingQueryStub(
+  capture: { calls: Array<{ method: string; args: unknown[] }> } = { calls: [] },
+): AccountingQueryPort {
+  return {
+    listRecentJournalEntries: async () => [],
+    getAccountMovements: async () => [],
+    getAccountBalance: async () => ({
+      accountId: "",
+      balance: "0.00",
+      asOf: null,
+    }),
+    listSales: async () => [],
+    listPurchases: async () => [],
+    listPayments: async (...args) => {
+      capture.calls.push({ method: "listPayments", args });
+      return SAMPLE;
+    },
+  };
+}
+
+function makeLLMProvider(toolName: string, input: unknown): LLMProviderPort {
+  return {
+    query: async () => ({
+      text: "ok",
+      toolCalls: [{ id: "t1", name: toolName, input }],
+      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+    }),
+  };
+}
+
+function makeBaseDeps(accountingQuery: AccountingQueryPort) {
+  const chatMemory: ChatMemoryPort = {
+    findRecent: async () => [],
+    append: async () => {},
+  };
+  const contextReader: AgentContextReaderPort = {
+    findMemberIdByUserId: async () => null,
+    findFarmsWithActiveLots: async () => [],
+    findRecentExpenses: async () => [],
+    countJournalEntries: async () => 0,
+  };
+  const rag: RagPort = { search: async () => [] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const noopInquiry: any = { list: async () => [] };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const pricingFake: any = { calculateLotCost: async () => ({}) };
+  return {
+    chatMemory,
+    contextReader,
+    rag,
+    farmInquiry: noopInquiry,
+    lotInquiry: noopInquiry,
+    pricingService: pricingFake,
+    accountingQuery,
+  };
+}
+
+describe("REQ-15 — listPayments tool definition", () => {
+  it("exported with resource:payments, action:read", () => {
+    expect(listPaymentsTool).toBeDefined();
+    expect(listPaymentsTool.name).toBe("listPayments");
+    expect(listPaymentsTool.resource).toBe("payments");
+    expect(listPaymentsTool.action).toBe("read");
+  });
+
+  it("registered in TOOL_REGISTRY", () => {
+    expect(TOOL_REGISTRY.listPayments).toBe(listPaymentsTool);
+  });
+});
+
+describe("REQ-15 + REQ-18 — handleReadCall dispatches listPayments", () => {
+  it("invokes deps.accountingQuery.listPayments(orgId, dateFrom?, dateTo?, limit) and surfaces direction + contactId", async () => {
+    const capture: { calls: Array<{ method: string; args: unknown[] }> } = {
+      calls: [],
+    };
+    const accountingQuery = makeAccountingQueryStub(capture);
+    const llmProvider = makeLLMProvider("listPayments", { limit: 3 });
+    const result = await executeChatMode(
+      { llmProvider, ...makeBaseDeps(accountingQuery) },
+      {
+        orgId: "org-1",
+        userId: "u-1",
+        role: "cobrador",
+        prompt: "cobranzas",
+        surface: "sidebar-qa",
+      },
+    );
+    expect(capture.calls[0].args).toEqual([
+      "org-1",
+      undefined,
+      undefined,
+      3,
+    ]);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = (result.suggestion as any).data as PaymentSummaryDto[];
+    expect(data[0].amount).toBe("99.90");
+    expect(data[0].direction).toBe("COBRO");
+    // contactId fallback: present as a string when denormalized name unavailable
+    expect(typeof data[0].contactId).toBe("string");
+    expect(data[0].contactId).toBe("ctx-1");
+  });
+});
