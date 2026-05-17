@@ -318,9 +318,13 @@ export class DocumentsService {
       return null;
     }
     try {
+      // exceljs's `xlsx.load` types want the legacy `Buffer` shape; the
+      // ArrayBuffer-typed `Buffer.from(ArrayBuffer)` is binary-compatible
+      // at runtime but TS narrows it incompatibly. Cast via `never` at the
+      // boundary to bypass the structural-mismatch check.
       const buffer = Buffer.from(await file.arrayBuffer());
       const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer);
+      await workbook.xlsx.load(buffer as unknown as never);
 
       const sheetBlocks: string[] = [];
       workbook.eachSheet((sheet) => {
