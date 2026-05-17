@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { MortalityService } from "../mortality.service";
 import { InMemoryMortalityRepository } from "../fakes/in-memory-mortality.repository";
 import { Mortality } from "../../domain/mortality.entity";
-import { MortalityCountExceedsAlive } from "../../domain/errors/mortality-errors";
+import {
+  MortalityCountExceedsAlive,
+  MortalityNotFound,
+} from "../../domain/errors/mortality-errors";
 import type {
   LotInquiryPort,
   LotSnapshot,
@@ -158,6 +161,62 @@ describe("MortalityRepository.findById (port)", () => {
     const found = await repo.findById(ORG, "missing-id");
 
     expect(found).toBeNull();
+  });
+});
+
+describe("MortalityService.update — happy path", () => {
+  let repo: InMemoryMortalityRepository;
+  let lots: InMemoryLotInquiry;
+  let service: MortalityService;
+
+  beforeEach(() => {
+    repo = new InMemoryMortalityRepository();
+    lots = new InMemoryLotInquiry();
+    lots.seed(lotSnapshot({ initialCount: 100 }));
+    service = new MortalityService(repo, lots);
+  });
+
+  it("updates count and persists the new entity", async () => {
+    const seed = Mortality.log({
+      lotId: "lot-1",
+      count: 10,
+      date: new Date("2026-04-01"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 100,
+    });
+    repo.preload(seed);
+
+    const updated = await service.update(ORG, seed.id, { count: 7 });
+
+    expect(updated.count.value).toBe(7);
+    const persisted = await repo.findById(ORG, seed.id);
+    expect(persisted?.count.value).toBe(7);
+  });
+
+  it("updates cause without touching count when count is omitted", async () => {
+    const seed = Mortality.log({
+      lotId: "lot-1",
+      count: 10,
+      date: new Date("2026-04-01"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 100,
+    });
+    repo.preload(seed);
+
+    const updated = await service.update(ORG, seed.id, {
+      cause: "calor",
+    });
+
+    expect(updated.count.value).toBe(10);
+    expect(updated.cause).toBe("calor");
+  });
+
+  it("throws MortalityNotFound when log id does not exist", async () => {
+    await expect(
+      service.update(ORG, "missing-id", { count: 5 }),
+    ).rejects.toThrow(MortalityNotFound);
   });
 });
 
