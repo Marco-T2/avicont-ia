@@ -22,6 +22,8 @@ import type {
 import path from "path";
 // processing library accepted exception — no PdfPort (REQ-007)
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+// processing library accepted exception — no DocxPort (REQ-007, mirrors pdfjs)
+import mammoth from "mammoth";
 
 // Apuntar al archivo worker real para uso en el servidor
 GlobalWorkerOptions.workerSrc = path.resolve(
@@ -141,6 +143,13 @@ export class DocumentsService {
     try {
       if (file && file.size > 0 && file.type === "application/pdf") {
         extractedContent = await this.extractPdfText(file);
+      } else if (
+        file &&
+        file.size > 0 &&
+        file.type ===
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      ) {
+        extractedContent = await this.extractDocxText(file);
       } else if (
         file &&
         file.size > 0 &&
@@ -264,6 +273,20 @@ export class DocumentsService {
       // de todos modos y nunca llegaba al RAG. Ahora falla explícito.
       console.error("PDF text extraction failed:", err);
       throw new ValidationError("No se pudo procesar el PDF");
+    }
+  }
+
+  private async extractDocxText(file: File): Promise<string | null> {
+    try {
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const result = await mammoth.extractRawText({ buffer });
+      // null legítimo cuando el DOCX no tiene texto en el body.
+      return result.value?.trim() || null;
+    } catch (err) {
+      // Paired sister: extractPdfText — el parser explotó; falla explícito
+      // (saga rollback en upload limpia blob + doc).
+      console.error("DOCX text extraction failed:", err);
+      throw new ValidationError("No se pudo procesar el archivo");
     }
   }
 
