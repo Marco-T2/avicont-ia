@@ -196,14 +196,13 @@ function getDeleteApiPath(orgSlug: string, item: HubItem): string {
 interface HubItemRowProps {
   orgSlug: string;
   item: HubItem;
-  periodName: string;
   isLoading: boolean;
   onPost: (item: HubItem) => void;
   onVoid: (item: HubItem) => void;
   onDelete: (item: HubItem) => void;
 }
 
-function HubItemRow({ orgSlug, item, periodName, isLoading, onPost, onVoid, onDelete }: HubItemRowProps) {
+function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubItemRowProps) {
   const router = useRouter();
   const typeName = TYPE_LABEL[item.type] ?? item.type;
   const viewPath = getViewPath(orgSlug, item);
@@ -214,7 +213,6 @@ function HubItemRow({ orgSlug, item, periodName, isLoading, onPost, onVoid, onDe
       className="border-b hover:bg-accent/50 cursor-pointer"
       onClick={() => router.push(viewPath)}
     >
-      <td className="py-3 px-4 text-muted-foreground">{periodName}</td>
       <td className="py-3 px-4 whitespace-nowrap">
         {formatDateBO(item.date)}
       </td>
@@ -318,7 +316,6 @@ export default function TransactionsList({
   const [postItem, setPostItem] = useState<HubItem | null>(null);
   const [voidItem, setVoidItem] = useState<HubItem | null>(null);
   const [deleteItem, setDeleteItem] = useState<HubItem | null>(null);
-  const periodMap = new Map(periods.map((p) => [p.id, p.name]));
 
   function buildQuery(overrides: Record<string, string | undefined>): string {
     const params = new URLSearchParams();
@@ -567,7 +564,6 @@ export default function TransactionsList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Código</th>
@@ -581,7 +577,7 @@ export default function TransactionsList({
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={9} className="py-12 text-center" data-testid="dispatch-list-empty">
+                    <td colSpan={8} className="py-12 text-center" data-testid="dispatch-list-empty">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay registros</p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -597,7 +593,6 @@ export default function TransactionsList({
                       key={item.id}
                       orgSlug={orgSlug}
                       item={item}
-                      periodName={periodMap.get(item.periodId) ?? "—"}
                       isLoading={actioningId === item.id}
                       onPost={handlePostFromList}
                       onVoid={handleVoidFromList}

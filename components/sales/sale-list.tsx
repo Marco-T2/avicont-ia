@@ -243,7 +243,6 @@ export default function SaleList({
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b bg-muted/50">
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Período</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
@@ -256,7 +255,7 @@ export default function SaleList({
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center">
+                    <td colSpan={7} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">No hay ventas registradas</p>
                       <p className="text-sm text-muted-foreground mt-1">
@@ -276,9 +275,6 @@ export default function SaleList({
                         className="border-b hover:bg-accent/50 cursor-pointer"
                         onClick={() => router.push(`/${orgSlug}/sales/${sale.id}`)}
                       >
-                        <td className="py-3 px-4 text-muted-foreground">
-                          {sale.period?.name ?? "—"}
-                        </td>
                         <td className="py-3 px-4 whitespace-nowrap">
                           {formatDateBO(sale.date)}
                         </td>
