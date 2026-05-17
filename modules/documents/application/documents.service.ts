@@ -8,7 +8,12 @@
  *
  * Paired sister: modules/org-profile/application/org-profile.service.ts.
  */
-import { NotFoundError, ForbiddenError, ValidationError } from "@/features/shared/errors";
+import {
+  NotFoundError,
+  ForbiddenError,
+  ValidationError,
+  ConflictError,
+} from "@/features/shared/errors";
 import { canUploadToScope, type DocumentScope } from "@/features/permissions";
 // cross-module canonical-bypass REQ-004 — rag/ stays at features path (poc-rag-hex)
 import { RagService } from "@/features/documents/rag/server";
@@ -16,6 +21,9 @@ import type { BlobStoragePort } from "@/modules/documents/domain/ports/blob-stor
 // F5/REQ-45 — optional tags attachment port. Optional ctor param keeps every
 // existing instantiation (tests, composition root pre-wire) source-compatible.
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
+// F6/REQ-48 — optional per-org reindex lock port. Optional ctor param keeps
+// every existing instantiation source-compatible (mirrors tagsRepository pattern).
+import type { ReindexLockPort } from "@/modules/documents/domain/ports/reindex-lock.port";
 import type {
   DocumentListResult,
   DocumentUploadResult,
@@ -80,6 +88,10 @@ export class DocumentsService {
     // F5/REQ-45 — optional to preserve back-compat with existing test fakes
     // and composition-root pre-F5 instantiations; upload() guards on null.
     private readonly tagsRepository?: TagsRepositoryPort,
+    // F6/REQ-48 — optional per-org reindex lock. When absent reindex() runs
+    // without concurrency protection (acceptable for tests; production
+    // composition root MUST wire the shared instance).
+    private readonly reindexLock?: ReindexLockPort,
   ) {}
 
   // ── Listar documentos de una organización ──
@@ -316,30 +328,46 @@ export class DocumentsService {
       throw new ForbiddenError();
     }
 
-    // Always clear existing chunks first — idempotent + avoids stale survivors
-    // if the doc was previously indexed and content is now empty.
-    await this.ragService.deleteByDocument(documentId);
-
-    const content = document.content;
-    if (!content || content.length <= 10) {
-      console.warn(
-        `[documents] reindex: doc ${documentId} has no indexable content (len=${content?.length ?? 0}); skipped indexDocument.`,
-      );
-      return { chunkCount: 0 };
+    // F6/REQ-48 — per-org concurrency lock. When wired, a second in-flight
+    // reindex for the same org throws ConflictError BEFORE touching the
+    // pipeline; route handler maps to HTTP 409 with the prescribed Spanish
+    // copy. When the lock is absent (test fakes / pre-F6 composition),
+    // reindex runs unguarded — acceptable per the optional-dep pattern.
+    if (this.reindexLock && !this.reindexLock.acquire(document.organizationId)) {
+      throw new ConflictError("Reindexación en curso para esta organización");
     }
 
-    await this.ragService.indexDocument(
-      documentId,
-      document.organizationId,
-      document.scope,
-      content,
-    );
+    try {
+      // Always clear existing chunks first — idempotent + avoids stale
+      // survivors if the doc was previously indexed and content is now empty.
+      await this.ragService.deleteByDocument(documentId);
 
-    // chunkCount is opaque at this layer — RagService doesn't return it today.
-    // Returning a non-zero sentinel based on content length keeps the API
-    // shape (`{ chunkCount }`) honest without lying about exact count; the
-    // UI uses this only for the success toast wording.
-    return { chunkCount: Math.max(1, Math.ceil(content.length / 500)) };
+      const content = document.content;
+      if (!content || content.length <= 10) {
+        console.warn(
+          `[documents] reindex: doc ${documentId} has no indexable content (len=${content?.length ?? 0}); skipped indexDocument.`,
+        );
+        return { chunkCount: 0 };
+      }
+
+      await this.ragService.indexDocument(
+        documentId,
+        document.organizationId,
+        document.scope,
+        content,
+      );
+
+      // chunkCount is opaque at this layer — RagService doesn't return it
+      // today. Returning a non-zero sentinel based on content length keeps
+      // the API shape (`{ chunkCount }`) honest without lying about exact
+      // count; the UI uses this only for the success toast wording.
+      return { chunkCount: Math.max(1, Math.ceil(content.length / 500)) };
+    } finally {
+      // Release MUST run even on failure — REQ-48 SCN-48.3 (lock releases on
+      // failure). Set-backed adapter's release() is a safe no-op when nothing
+      // is held, so unconditional release is correct here.
+      this.reindexLock?.release(document.organizationId);
+    }
   }
 
   // ── Análisis ──
