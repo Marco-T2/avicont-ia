@@ -372,19 +372,27 @@ describe("α16 Block C2 — purchase unit-of-work imports hex auto-entry-generat
 // `journal.service.ts:67-87` (resolved open question — NO new ports).
 
 // α17 — exporters/ relocated to hex infrastructure (FAIL pre-GREEN: dir absent).
+// Updated post-ledger-export: el directorio aloja TANTO el voucher PDF bundle
+// (relocado en C3) COMO los nuevos exporters de Libro Mayor. La aserción
+// chequea que TODOS los archivos originales del relocate sigan presentes
+// (superset), permitiendo agregar nuevos exporters siguiendo el patrón.
 describe("α17 Block C3 — exporters/ relocated to modules/accounting/infrastructure/", () => {
   it("α17: modules/accounting/infrastructure/exporters/ exists with the exporter files", () => {
     expect(existsSync(HEX_EXPORTERS_DIR)).toBe(true);
     const files = readdirSync(HEX_EXPORTERS_DIR)
       .filter((n) => n.endsWith(".ts"))
       .sort();
-    expect(files).toEqual([
+    // Required (relocados en C3 por el git mv original — invariant histórico).
+    const required = [
       "amount-to-words.ts",
       "logo-fetcher.ts",
       "voucher-pdf.composer.ts",
       "voucher-pdf.exporter.ts",
       "voucher-pdf.types.ts",
-    ]);
+    ];
+    for (const f of required) {
+      expect(files).toContain(f);
+    }
   });
 });
 
