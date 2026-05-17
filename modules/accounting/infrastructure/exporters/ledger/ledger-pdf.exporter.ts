@@ -215,7 +215,7 @@ function buildDocDefinition(
         widths: COL_WIDTHS,
         body: tableBody,
         headerRows: 1,
-        dontBreakRows: false,
+        dontBreakRows: true,
       },
       layout: {
         hLineWidth: (i: number, node: { table: { body: unknown[] } }) => {
@@ -233,6 +233,14 @@ function buildDocDefinition(
     } as Content,
   ];
 
+  // Header compacto para páginas 2+ — mantiene contexto al imprimir hojas
+  // sueltas o al hojear un PDF largo. La página 1 conserva el membrete
+  // completo en `content` (no se duplica). Texto truncable con clip si
+  // accountName es muy largo — la fontSize 8 deja ~120 caracteres por línea.
+  const continuationHeader =
+    `Libro Mayor — ${opts.accountCode} ${opts.accountName} — ` +
+    `Del ${fmtDate(opts.dateFrom)} al ${fmtDate(opts.dateTo)} — ${orgName}`;
+
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
@@ -242,6 +250,23 @@ function buildDocDefinition(
       fontSize: BODY_SIZE,
       color: STYLE.text,
     },
+    header: (currentPage: number): Content | null => {
+      if (currentPage === 1) return null;
+      return {
+        text: continuationHeader,
+        fontSize: 8,
+        alignment: "center",
+        color: STYLE.textMuted,
+        margin: [30, 20, 30, 0],
+      };
+    },
+    footer: (currentPage: number, pageCount: number): Content => ({
+      text: `Página ${currentPage} de ${pageCount}`,
+      fontSize: 8,
+      alignment: "center",
+      color: STYLE.textMuted,
+      margin: [0, 10, 0, 0],
+    }),
     content,
   };
 }

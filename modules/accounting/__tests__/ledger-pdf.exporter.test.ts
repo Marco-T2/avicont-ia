@@ -231,3 +231,45 @@ describe("exportLedgerPdf — MissingOrgNameError", () => {
     );
   });
 });
+
+describe("exportLedgerPdf — paginación multi-página", () => {
+  it("footer renderiza 'Página X de Y'", async () => {
+    const { docDef } = await exportLedgerPdf([makeEntry()], makeOpts(), "Avicont SA");
+    const dd = docDef as { footer?: (cur: number, total: number) => { text: string } };
+    expect(typeof dd.footer).toBe("function");
+    const footer1 = dd.footer!(1, 5);
+    expect(footer1.text).toBe("Página 1 de 5");
+    const footer3 = dd.footer!(3, 5);
+    expect(footer3.text).toBe("Página 3 de 5");
+  });
+
+  it("header page 1 → null (cabecera completa va en content)", async () => {
+    const { docDef } = await exportLedgerPdf([makeEntry()], makeOpts(), "Avicont SA");
+    const dd = docDef as { header?: (cur: number) => unknown };
+    expect(typeof dd.header).toBe("function");
+    expect(dd.header!(1)).toBeNull();
+  });
+
+  it("header page 2+ → resumen compacto con cuenta + período + empresa", async () => {
+    const { docDef } = await exportLedgerPdf(
+      [makeEntry()],
+      makeOpts({ accountCode: "1.1.4.1", accountName: "CxC Comerciales", dateFrom: "2025-01-01", dateTo: "2025-12-31" }),
+      "Avicont SA",
+    );
+    const dd = docDef as { header?: (cur: number) => { text: string } };
+    const header2 = dd.header!(2);
+    expect(header2.text).toContain("Libro Mayor");
+    expect(header2.text).toContain("1.1.4.1");
+    expect(header2.text).toContain("CxC Comerciales");
+    expect(header2.text).toContain("Avicont SA");
+    expect(header2.text).toContain("Del 01/01/2025 al 31/12/2025");
+  });
+
+  it("tabla usa dontBreakRows=true para no cortar filas entre páginas", async () => {
+    const { docDef } = await exportLedgerPdf([makeEntry()], makeOpts(), "Avicont SA");
+    const content = docDef.content as Array<{ table?: { dontBreakRows?: boolean; headerRows?: number } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    expect(tableBlock.table!.dontBreakRows).toBe(true);
+    expect(tableBlock.table!.headerRows).toBe(1);
+  });
+});
