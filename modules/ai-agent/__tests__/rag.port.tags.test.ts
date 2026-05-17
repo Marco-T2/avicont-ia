@@ -41,7 +41,19 @@ import type { RagPort } from "../domain/ports/rag.port";
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
 import type { Tag } from "@/modules/tags/domain/tag.types";
 
-function makeRagServiceStub(spy: ReturnType<typeof vi.fn>) {
+type RagSearchSpy = ReturnType<
+  typeof vi.fn<
+    (
+      query: string,
+      orgId: string,
+      scopes: string[],
+      limit: number,
+      tagIds?: string[],
+    ) => Promise<unknown[]>
+  >
+>;
+
+function makeRagServiceStub(spy: RagSearchSpy) {
   return {
     search: spy,
     indexDocument: vi.fn(),
@@ -70,17 +82,16 @@ function makeTagsRepoFake(tags: Tag[]): TagsRepositoryPort {
 
 describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slugs", () => {
   it("RagPort.search signature accepts `tags?: string[]` as 5th positional param", () => {
-    // Type-level assertion — adapter call below MUST compile.
-    const port: RagPort | undefined = undefined;
-    if (port) {
-      // Should compile after REQ-43 lands.
-      void port.search("q", "org-1", ["ORGANIZATION"], 5, ["a", "b"]);
-    }
+    // Type-level assertion — adapter call below MUST compile under tsc.
+    // Untyped reference; cast through unknown so the compiler treats it as
+    // RagPort and validates the 5th positional arg.
+    const port = undefined as unknown as RagPort;
+    void (() => port.search("q", "org-1", ["ORGANIZATION"], 5, ["a", "b"]));
     expect(true).toBe(true);
   });
 
   it("LegacyRagAdapter resolves slug strings to tag IDs via TagsRepositoryPort.findBySlugs", async () => {
-    const ragSearchSpy = vi.fn(async () => []);
+    const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
     const tagsRepo = makeTagsRepoFake([
       {
@@ -115,7 +126,7 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
   });
 
   it("LegacyRagAdapter passes undefined for tagIds when slugs omitted (back-compat)", async () => {
-    const ragSearchSpy = vi.fn(async () => []);
+    const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
     const tagsRepo = makeTagsRepoFake([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -129,9 +140,9 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
   });
 
   it("LegacyRagAdapter passes undefined for tagIds when slug array is empty (no DB hit on findBySlugs)", async () => {
-    const ragSearchSpy = vi.fn(async () => []);
+    const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
-    const findBySlugsSpy = vi.fn(async () => []);
+    const findBySlugsSpy = vi.fn<TagsRepositoryPort["findBySlugs"]>(async () => []);
     const tagsRepo: TagsRepositoryPort = {
       listByOrg: vi.fn(),
       findBySlugs: findBySlugsSpy,
@@ -148,7 +159,7 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
   });
 
   it("LegacyRagAdapter still resolves and forwards tagIds even when some slugs are unknown (silent drop)", async () => {
-    const ragSearchSpy = vi.fn(async () => []);
+    const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
     const tagsRepo = makeTagsRepoFake([
       {

@@ -26,10 +26,12 @@ function makeRow(overrides: Partial<Tag> = {}): Tag {
   };
 }
 
+type AnySpy = ReturnType<typeof vi.fn<(...args: unknown[]) => unknown>>;
+
 function makeFakeDb(stubs: {
-  findMany?: ReturnType<typeof vi.fn>;
-  create?: ReturnType<typeof vi.fn>;
-  createMany?: ReturnType<typeof vi.fn>;
+  findMany?: AnySpy;
+  create?: AnySpy;
+  createMany?: AnySpy;
 }) {
   return {
     tag: {
@@ -44,7 +46,7 @@ function makeFakeDb(stubs: {
 
 describe("PrismaTagsRepository", () => {
   it("listByOrg delegates to prisma.tag.findMany scoped by organizationId, ordered by name", async () => {
-    const findMany = vi.fn(async () => [makeRow()]);
+    const findMany: AnySpy = vi.fn(async () => [makeRow()]);
     const db = makeFakeDb({ findMany });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
@@ -60,7 +62,7 @@ describe("PrismaTagsRepository", () => {
   });
 
   it("findBySlugs delegates with where { organizationId, slug: { in: [...] } }", async () => {
-    const findMany = vi.fn(async () => [
+    const findMany: AnySpy = vi.fn(async () => [
       makeRow({ slug: "a", id: "ta" }),
       makeRow({ slug: "b", id: "tb" }),
     ]);
@@ -77,7 +79,7 @@ describe("PrismaTagsRepository", () => {
   });
 
   it("findBySlugs returns [] without hitting Prisma when slugs is empty", async () => {
-    const findMany = vi.fn(async () => []);
+    const findMany: AnySpy = vi.fn(async () => []);
     const db = makeFakeDb({ findMany });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
@@ -89,7 +91,7 @@ describe("PrismaTagsRepository", () => {
   });
 
   it("create delegates to prisma.tag.create with derived slug already supplied", async () => {
-    const create = vi.fn(async () =>
+    const create: AnySpy = vi.fn(async () =>
       makeRow({ id: "tx", slug: "contabilidad-avanzada", name: "Contabilidad Avanzada" }),
     );
     const db = makeFakeDb({ create });
@@ -113,7 +115,7 @@ describe("PrismaTagsRepository", () => {
   });
 
   it("attachToDocument inserts N rows via documentTag.createMany with skipDuplicates", async () => {
-    const createMany = vi.fn(async () => ({ count: 2 }));
+    const createMany: AnySpy = vi.fn(async () => ({ count: 2 }));
     const db = makeFakeDb({ createMany });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
@@ -130,7 +132,7 @@ describe("PrismaTagsRepository", () => {
   });
 
   it("attachToDocument is a no-op when tagIds is empty (no Prisma call)", async () => {
-    const createMany = vi.fn(async () => ({ count: 0 }));
+    const createMany: AnySpy = vi.fn(async () => ({ count: 0 }));
     const db = makeFakeDb({ createMany });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);

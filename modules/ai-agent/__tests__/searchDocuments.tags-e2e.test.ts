@@ -34,7 +34,28 @@ import { buildRagContext } from "../application/agent.context";
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
 import type { Tag } from "@/modules/tags/domain/tag.types";
 
-function makeRagServiceStub(spy: ReturnType<typeof vi.fn>) {
+type RagSearchSpy = ReturnType<
+  typeof vi.fn<
+    (
+      query: string,
+      orgId: string,
+      scopes: string[],
+      limit: number,
+      tagIds?: string[],
+    ) => Promise<
+      Array<{
+        content: string;
+        documentId: string;
+        score: number;
+        documentName: string;
+        chunkIndex: number;
+        sectionPath: string | null;
+      }>
+    >
+  >
+>;
+
+function makeRagServiceStub(spy: RagSearchSpy) {
   return {
     search: spy,
     indexDocument: vi.fn(),
@@ -71,7 +92,7 @@ describe("REQ-42/43 e2e — searchDocumentsTool tags flow through to RagService"
     expect(validated.tags).toEqual(["politica", "cobros"]);
 
     // Step 2 — build the adapter with a fake RagService + slug catalog.
-    const ragSearchSpy = vi.fn(async () => [
+    const ragSearchSpy: RagSearchSpy = vi.fn(async () => [
       {
         content: "snippet",
         documentId: "doc-1",
@@ -126,7 +147,7 @@ describe("REQ-42/43 e2e — searchDocumentsTool tags flow through to RagService"
   it("validated { query } (no tags) flows undefined down to RagService.search 5th arg", async () => {
     const validated = searchDocumentsTool.inputSchema.parse({ query: "iva" });
 
-    const ragSearchSpy = vi.fn(async () => []);
+    const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
     const tagsRepo = makeTagsRepo([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
