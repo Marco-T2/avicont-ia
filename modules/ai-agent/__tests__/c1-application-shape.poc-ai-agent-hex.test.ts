@@ -135,6 +135,8 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
           listSales: async () => [],
           listPurchases: async () => [],
           listPayments: async () => [],
+          findAccountsByName: async () => [],
+          listAccounts: async () => [],
         },
       };
       const service = new AgentService(fakeDeps);
@@ -160,6 +162,8 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
           listSales: async () => [],
           listPurchases: async () => [],
           listPayments: async () => [],
+          findAccountsByName: async () => [],
+          listAccounts: async () => [],
         },
       };
       const service = new AgentService(fakeDeps);
@@ -185,6 +189,8 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
           listSales: async () => [],
           listPurchases: async () => [],
           listPayments: async () => [],
+          findAccountsByName: async () => [],
+          listAccounts: async () => [],
         },
       };
       const service = new AgentService(fakeDeps);
@@ -210,6 +216,8 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
           listSales: async () => [],
           listPurchases: async () => [],
           listPayments: async () => [],
+          findAccountsByName: async () => [],
+          listAccounts: async () => [],
         },
       };
       const service = new AgentService(fakeDeps);
@@ -441,6 +449,8 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
           listSales: async () => [],
           listPurchases: async () => [],
           listPayments: async () => [],
+          findAccountsByName: async () => [],
+          listAccounts: async () => [],
         },
       };
 

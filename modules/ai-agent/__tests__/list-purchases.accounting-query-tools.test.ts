@@ -49,6 +49,8 @@ function makeAccountingQueryStub(
       return SAMPLE;
     },
     listPayments: async () => [],
+    findAccountsByName: async () => [],
+    listAccounts: async () => [],
   };
 }
 

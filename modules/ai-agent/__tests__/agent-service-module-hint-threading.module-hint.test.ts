@@ -66,6 +66,8 @@ function makeDeps() {
     listSales: async () => [],
     listPurchases: async () => [],
     listPayments: async () => [],
+    findAccountsByName: async () => [],
+    listAccounts: async () => [],
   };
   return {
     llmProvider,

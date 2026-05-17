@@ -82,6 +82,23 @@ export interface AccountBalanceDto {
   asOf: string | null;
 }
 
+/**
+ * Compact account row returned by `findAccountsByName` / `listAccounts`.
+ *
+ * Inline string-literal union for `type` mirrors the per-method status enum
+ * convention above — keeps the chat-agent domain free of cross-module value
+ * imports. Source of truth: `enum AccountType` in `prisma/schema.prisma`
+ * (ACTIVO / PASIVO / PATRIMONIO / INGRESO / GASTO).
+ */
+export interface AccountSummaryDto {
+  accountId: string;
+  code: string;
+  name: string;
+  type: "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
+  /** `true` when the account is a leaf (postable) account. */
+  isDetail: boolean;
+}
+
 export interface AccountingQueryPort {
   listRecentJournalEntries(
     orgId: string,
@@ -121,4 +138,27 @@ export interface AccountingQueryPort {
     dateTo?: string,
     limit?: number,
   ): Promise<PaymentSummaryDto[]>;
+
+  /**
+   * Resolves nombre→accountId. Case-insensitive substring match against
+   * `code` OR `name`. Default limit 10, adapter caps at 50.
+   * Lets the LLM chain getAccountBalance/getAccountMovements when the user
+   * mentions a cuenta por su nombre (no por CUID).
+   */
+  findAccountsByName(
+    orgId: string,
+    query: string,
+    limit?: number,
+  ): Promise<AccountSummaryDto[]>;
+
+  /**
+   * Lista cuentas con filtros opcionales. Default limit 20, max 50.
+   * Útil para preguntas abiertas ("qué cajas tengo", "qué bancos hay").
+   */
+  listAccounts(
+    orgId: string,
+    type?: "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO",
+    isDetail?: boolean,
+    limit?: number,
+  ): Promise<AccountSummaryDto[]>;
 }

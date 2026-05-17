@@ -633,6 +633,31 @@ async function executeReadTool(
             (args.limit as number | undefined) ?? 20,
           ),
         };
+      case "findAccountsByName":
+        return {
+          ok: true,
+          data: await accountingQuery.findAccountsByName(
+            orgId,
+            args.query as string,
+            args.limit as number | undefined,
+          ),
+        };
+      case "listAccounts":
+        return {
+          ok: true,
+          data: await accountingQuery.listAccounts(
+            orgId,
+            args.type as
+              | "ACTIVO"
+              | "PASIVO"
+              | "PATRIMONIO"
+              | "INGRESO"
+              | "GASTO"
+              | undefined,
+            args.isDetail as boolean | undefined,
+            args.limit as number | undefined,
+          ),
+        };
       default:
         return {
           ok: false,

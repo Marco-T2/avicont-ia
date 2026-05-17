@@ -57,6 +57,8 @@ const accountingQueryStub = {
   listSales: async () => [],
   listPurchases: async () => [],
   listPayments: async () => [],
+  findAccountsByName: async () => [],
+  listAccounts: async () => [],
 };
 
 function makeDeps(llmQuery: (args: LLMQuery) => Promise<LLMResponse>) {

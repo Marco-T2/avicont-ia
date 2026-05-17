@@ -206,6 +206,52 @@ export const listPurchasesTool = defineTool({
   action: "read",
 });
 
+export const findAccountsByNameTool = defineTool({
+  name: "findAccountsByName",
+  description:
+    "Resolver el ID de una cuenta contable por su nombre o código. USAR ESTA TOOL ANTES de getAccountBalance o getAccountMovements cuando el usuario mencione una cuenta por su nombre (ej. 'Caja General', 'Banco BNB') en lugar de un ID. Devuelve hasta `limit` cuentas (default 10, max 50) que matcheen por nombre o código (case insensitive).",
+  inputSchema: z.object({
+    query: z
+      .string()
+      .min(1)
+      .describe("Texto a buscar en nombre o código de la cuenta (case insensitive)"),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de matches (default 10, max 50)"),
+  }),
+  resource: "journal",
+  action: "read",
+});
+
+export const listAccountsTool = defineTool({
+  name: "listAccounts",
+  description:
+    "Listar cuentas contables de la organización con filtros opcionales. Útil para preguntas abiertas tipo 'qué cajas tengo' o 'qué bancos hay'. Devuelve hasta `limit` cuentas (default 20, max 50) ordenadas por código.",
+  inputSchema: z.object({
+    type: z
+      .enum(["ACTIVO", "PASIVO", "PATRIMONIO", "INGRESO", "GASTO"])
+      .optional()
+      .describe("Filtrar por tipo de cuenta (opcional)"),
+    isDetail: z
+      .boolean()
+      .optional()
+      .describe("Si true, solo cuentas de detalle (postables). Opcional."),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de cuentas (default 20, max 50)"),
+  }),
+  resource: "journal",
+  action: "read",
+});
+
 export const listPaymentsTool = defineTool({
   name: "listPayments",
   description:
@@ -287,6 +333,8 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [listSalesTool.name]: listSalesTool,
   [listPurchasesTool.name]: listPurchasesTool,
   [listPaymentsTool.name]: listPaymentsTool,
+  [findAccountsByNameTool.name]: findAccountsByNameTool,
+  [listAccountsTool.name]: listAccountsTool,
 };
 
 /**

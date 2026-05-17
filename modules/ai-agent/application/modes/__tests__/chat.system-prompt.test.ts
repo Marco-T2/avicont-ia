@@ -87,6 +87,8 @@ function makeDeps(captured: { systemPrompt?: string }) {
       listSales: async () => [],
       listPurchases: async () => [],
       listPayments: async () => [],
+      findAccountsByName: async () => [],
+      listAccounts: async () => [],
     },
   };
 }

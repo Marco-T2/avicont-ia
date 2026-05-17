@@ -2,6 +2,7 @@ import Decimal from "decimal.js";
 import type {
   AccountingQueryPort,
   AccountBalanceDto,
+  AccountSummaryDto,
   JournalEntrySummaryDto,
   LedgerEntryDto,
   PaymentSummaryDto,
@@ -9,6 +10,7 @@ import type {
   SaleSummaryDto,
 } from "../../domain/ports/accounting-query.port";
 import {
+  AccountsService,
   JournalsService,
   LedgerService,
 } from "@/modules/accounting/presentation/server";
@@ -55,6 +57,7 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
     private readonly sales: SaleService,
     private readonly purchases: PurchaseService,
     private readonly payments: PaymentsService,
+    private readonly accounts: AccountsService,
   ) {}
 
   async listRecentJournalEntries(
@@ -229,6 +232,48 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
       description: p.description,
     }));
   }
+
+  /**
+   * Case-insensitive substring match against `code` OR `name` via in-memory
+   * filter over the full COA (`AccountsService.list`). Accepted debt: the
+   * existing `AccountsCrudPort.findAll` has no name-search column predicate,
+   * and the COA size in this product (low hundreds) keeps the in-memory pass
+   * cheap. If profiling later flags this as hot, add a dedicated
+   * `findByNameOrCode` port method + Prisma `OR` predicate.
+   */
+  async findAccountsByName(
+    orgId: string,
+    query: string,
+    limit?: number,
+  ): Promise<AccountSummaryDto[]> {
+    const take = Math.min(limit ?? 10, 50);
+    const all = await this.accounts.list(orgId, { isActive: true });
+    const needle = query.trim().toLowerCase();
+    if (needle.length === 0) return [];
+    const matches = all.filter(
+      (a) =>
+        a.code.toLowerCase().includes(needle) ||
+        a.name.toLowerCase().includes(needle),
+    );
+    matches.sort((a, b) => a.code.localeCompare(b.code));
+    return matches.slice(0, take).map(toAccountSummary);
+  }
+
+  async listAccounts(
+    orgId: string,
+    type?: "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO",
+    isDetail?: boolean,
+    limit?: number,
+  ): Promise<AccountSummaryDto[]> {
+    const take = Math.min(limit ?? 20, 50);
+    const all = await this.accounts.list(orgId, {
+      isActive: true,
+      ...(type !== undefined ? { type } : {}),
+      ...(isDetail !== undefined ? { isDetail } : {}),
+    });
+    all.sort((a, b) => a.code.localeCompare(b.code));
+    return all.slice(0, take).map(toAccountSummary);
+  }
 }
 
 // ── Local helpers (not exported — transport concern stays adapter-local) ──
@@ -244,4 +289,20 @@ function sumDecimalsFromStrings(xs: string[]): Decimal {
 function toISODate(d: Date | string): string {
   const date = typeof d === "string" ? new Date(d) : d;
   return date.toISOString().split("T")[0];
+}
+
+function toAccountSummary(a: {
+  id: string;
+  code: string;
+  name: string;
+  type: "ACTIVO" | "PASIVO" | "PATRIMONIO" | "INGRESO" | "GASTO";
+  isDetail: boolean;
+}): AccountSummaryDto {
+  return {
+    accountId: a.id,
+    code: a.code,
+    name: a.name,
+    type: a.type,
+    isDetail: a.isDetail,
+  };
 }

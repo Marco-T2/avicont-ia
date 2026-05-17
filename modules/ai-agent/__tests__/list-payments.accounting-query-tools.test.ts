@@ -52,6 +52,8 @@ function makeAccountingQueryStub(
       capture.calls.push({ method: "listPayments", args });
       return SAMPLE;
     },
+    findAccountsByName: async () => [],
+    listAccounts: async () => [],
   };
 }
 

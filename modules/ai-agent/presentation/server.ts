@@ -35,6 +35,7 @@ import {
   makeLotService,
 } from "@/modules/lot/presentation/server";
 import {
+  makeAccountsService,
   makeJournalsService,
   makeLedgerService,
 } from "@/modules/accounting/presentation/server";
@@ -80,6 +81,7 @@ export function makeAgentService(): AgentService {
     makeSaleService(),
     makePurchaseService(),
     makePaymentsService(),
+    makeAccountsService(),
   );
 
   return new AgentService({

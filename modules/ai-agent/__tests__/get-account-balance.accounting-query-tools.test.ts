@@ -46,6 +46,8 @@ function makeAccountingQueryStub(
     listSales: async () => [],
     listPurchases: async () => [],
     listPayments: async () => [],
+    findAccountsByName: async () => [],
+    listAccounts: async () => [],
   };
 }
 

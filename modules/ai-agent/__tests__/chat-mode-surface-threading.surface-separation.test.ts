@@ -70,6 +70,8 @@ const accountingQueryStub = {
   listSales: async () => [],
   listPurchases: async () => [],
   listPayments: async () => [],
+  findAccountsByName: async () => [],
+  listAccounts: async () => [],
 };
 
 // Spy on logStructured by mocking the module.
