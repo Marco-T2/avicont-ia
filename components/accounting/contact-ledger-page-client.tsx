@@ -567,7 +567,7 @@ export default function ContactLedgerPageClient({
                           </td>
                           <td className="py-3 px-4">{tipo}</td>
                           <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
-                            {entry.displayNumber}
+                            {entry.documentReferenceNumber ?? entry.displayNumber}
                           </td>
                           <td className="py-3 px-4">
                             {estado.variant === "warning" ? (

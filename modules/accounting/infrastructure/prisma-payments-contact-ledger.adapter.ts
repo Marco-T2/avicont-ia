@@ -5,6 +5,7 @@ import type {
   PaymentLedgerEnrichmentRow,
   PaymentsContactLedgerPort,
 } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
+import { formatDocumentReferenceNumber } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
  * Prisma adapter for the contact-ledger payment enrichment lookup.
@@ -45,6 +46,7 @@ export class PrismaPaymentsContactLedgerAdapter
         journalEntryId: true,
         method: true,
         accountCode: true,
+        referenceNumber: true,
         operationalDocType: { select: { code: true } },
         // First allocation reveals direction (RECEIVABLE → COBRO, PAYABLE → PAGO);
         // payment-allocation invariants guarantee homogeneous direction per
@@ -71,12 +73,20 @@ export class PrismaPaymentsContactLedgerAdapter
             : "PAGO"
           : "COBRO"; // no allocations → safe default; UI rarely renders direction
                     // in this case (payment-only rows show forma de pago suffix only).
+        const documentTypeCode = r.operationalDocType?.code ?? null;
         return {
           journalEntryId: r.journalEntryId,
           paymentMethod: r.method,
           bankAccountName: r.accountCode,
           direction,
-          documentTypeCode: r.operationalDocType?.code ?? null,
+          documentTypeCode,
+          // DT4 — formatear desde `referenceNumber` (Int? — el dato físico
+          // que el operador captura al crear el Payment). Si NO está,
+          // documentReferenceNumber=null y la UI cae al displayNumber.
+          documentReferenceNumber: formatDocumentReferenceNumber(
+            documentTypeCode,
+            r.referenceNumber,
+          ),
         };
       });
   }

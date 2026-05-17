@@ -350,6 +350,16 @@ export class LedgerService {
           receivable?.documentTypeCode ??
           payable?.documentTypeCode ??
           null,
+        // DT4 — número físico del documento ("VG-0001", "RC-0042", etc).
+        // Misma precedencia que documentTypeCode (payment > receivable >
+        // payable). El adapter ya formatea el string + maneja el fallback
+        // a null (Payment sin referenceNumber, manual sin auxiliar). UI/PDF/
+        // XLSX caen a `displayNumber` cuando esto es null.
+        documentReferenceNumber:
+          payment?.documentReferenceNumber ??
+          receivable?.documentReferenceNumber ??
+          payable?.documentReferenceNumber ??
+          null,
         withoutAuxiliary,
       };
     });

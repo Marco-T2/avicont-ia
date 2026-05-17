@@ -5,7 +5,10 @@ import type {
   PayableLedgerEnrichmentRow,
   PayablesContactLedgerPort,
 } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
-import { purchaseTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
+import {
+  purchaseTypeToCode,
+  formatDocumentReferenceNumber,
+} from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
  * Prisma adapter for the contact-ledger payable enrichment lookup.
@@ -46,20 +49,24 @@ export class PrismaPayablesContactLedgerAdapter
     });
 
     // Batched purchase lookup: misma forma sister Receivable adapter.
+    // DT4 — adicionar `sequenceNumber` al select para formatear el número
+    // físico ("${code}-${seq padded(4)}", ej "FL-0005").
     const purchaseIds = rows
       .filter((r) => r.sourceType === "purchase" && r.sourceId)
       .map((r) => r.sourceId!) as string[];
     const purchaseTypeById = new Map<string, string>();
+    const purchaseSequenceById = new Map<string, number>();
     if (purchaseIds.length > 0) {
       const purchases = await this.db.purchase.findMany({
         where: {
           organizationId,
           id: { in: purchaseIds },
         },
-        select: { id: true, purchaseType: true },
+        select: { id: true, purchaseType: true, sequenceNumber: true },
       });
       for (const p of purchases) {
         purchaseTypeById.set(p.id, purchaseTypeToCode(p.purchaseType));
+        purchaseSequenceById.set(p.id, p.sequenceNumber);
       }
     }
 
@@ -69,14 +76,20 @@ export class PrismaPayablesContactLedgerAdapter
       )
       .map((r) => {
         let documentTypeCode: string | null = null;
+        let sequence: number | null = null;
         if (r.sourceType === "purchase" && r.sourceId) {
           documentTypeCode = purchaseTypeById.get(r.sourceId) ?? null;
+          sequence = purchaseSequenceById.get(r.sourceId) ?? null;
         }
         return {
           journalEntryId: r.journalEntryId,
           status: r.status,
           dueDate: r.dueDate,
           documentTypeCode,
+          documentReferenceNumber: formatDocumentReferenceNumber(
+            documentTypeCode,
+            sequence,
+          ),
         };
       });
   }

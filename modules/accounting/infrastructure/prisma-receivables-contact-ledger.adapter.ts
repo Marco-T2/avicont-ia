@@ -8,6 +8,7 @@ import type {
 import {
   SALE_DOCUMENT_TYPE_CODE,
   dispatchTypeToCode,
+  formatDocumentReferenceNumber,
 } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
@@ -26,7 +27,7 @@ import {
  *
  * Wired at composition root (C4) into `LedgerService.contactLedgerDeps`.
  */
-type DbClient = Pick<PrismaClient, "accountsReceivable" | "dispatch">;
+type DbClient = Pick<PrismaClient, "accountsReceivable" | "dispatch" | "sale">;
 
 export class PrismaReceivablesContactLedgerAdapter
   implements ReceivablesContactLedgerPort
@@ -54,21 +55,43 @@ export class PrismaReceivablesContactLedgerAdapter
 
     // Batched dispatch lookup: agrupo sourceIds de las receivables con
     // sourceType="dispatch" y hago UNA query para resolver el DispatchType
-    // enum. N+1 mitigation: máximo 1 query adicional por página.
+    // enum + sequenceNumber (DT4 — el número físico del documento). N+1
+    // mitigation: máximo 1 query adicional por página.
     const dispatchIds = rows
       .filter((r) => r.sourceType === "dispatch" && r.sourceId)
       .map((r) => r.sourceId!) as string[];
     const dispatchTypeById = new Map<string, string>();
+    const dispatchSequenceById = new Map<string, number>();
     if (dispatchIds.length > 0) {
       const dispatches = await this.db.dispatch.findMany({
         where: {
           organizationId,
           id: { in: dispatchIds },
         },
-        select: { id: true, dispatchType: true },
+        select: { id: true, dispatchType: true, sequenceNumber: true },
       });
       for (const d of dispatches) {
         dispatchTypeById.set(d.id, dispatchTypeToCode(d.dispatchType));
+        dispatchSequenceById.set(d.id, d.sequenceNumber);
+      }
+    }
+
+    // Batched sale lookup (DT4): resolve `sequenceNumber` para sourceType="sale".
+    // El code es fijo "VG" — sólo necesitamos el sequence para formatear.
+    const saleIds = rows
+      .filter((r) => r.sourceType === "sale" && r.sourceId)
+      .map((r) => r.sourceId!) as string[];
+    const saleSequenceById = new Map<string, number>();
+    if (saleIds.length > 0) {
+      const sales = await this.db.sale.findMany({
+        where: {
+          organizationId,
+          id: { in: saleIds },
+        },
+        select: { id: true, sequenceNumber: true },
+      });
+      for (const s of sales) {
+        saleSequenceById.set(s.id, s.sequenceNumber);
       }
     }
 
@@ -81,16 +104,23 @@ export class PrismaReceivablesContactLedgerAdapter
       )
       .map((r) => {
         let documentTypeCode: string | null = null;
+        let sequence: number | null = null;
         if (r.sourceType === "sale") {
           documentTypeCode = SALE_DOCUMENT_TYPE_CODE;
+          sequence = r.sourceId ? saleSequenceById.get(r.sourceId) ?? null : null;
         } else if (r.sourceType === "dispatch" && r.sourceId) {
           documentTypeCode = dispatchTypeById.get(r.sourceId) ?? null;
+          sequence = dispatchSequenceById.get(r.sourceId) ?? null;
         }
         return {
           journalEntryId: r.journalEntryId,
           status: r.status,
           dueDate: r.dueDate,
           documentTypeCode,
+          documentReferenceNumber: formatDocumentReferenceNumber(
+            documentTypeCode,
+            sequence,
+          ),
         };
       });
   }

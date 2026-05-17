@@ -349,7 +349,11 @@ export async function exportContactLedgerXlsx(
     excelRow.getCell(COL_TYPE).font = arial({ size: 9 });
     excelRow.getCell(COL_TYPE).alignment = { horizontal: "left" };
 
-    excelRow.getCell(COL_NUM).value = entry.displayNumber;
+    // DT4 — número físico del documento ("VG-0001", "RC-0042") con fallback
+    // al displayNumber correlative voucher cuando es null (asiento manual sin
+    // auxiliar / Payment sin referenceNumber). Mirror UI/PDF.
+    excelRow.getCell(COL_NUM).value =
+      entry.documentReferenceNumber ?? entry.displayNumber;
     excelRow.getCell(COL_NUM).font = arial({ size: 9 });
 
     excelRow.getCell(COL_STATUS).value = renderEstado(entry);
