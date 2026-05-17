@@ -30,6 +30,7 @@ const SAMPLE: PaymentSummaryDto[] = [
     method: "EFECTIVO",
     direction: "COBRO",
     contactId: "ctx-1",
+    contactName: "Distribuidora El Sol SRL",
     amount: "99.90",
     description: "Cobranza Mayo",
   },
@@ -159,7 +160,9 @@ describe("REQ-15 + REQ-18 — handleReadCall dispatches listPayments", () => {
     const data = toolResult?.result;
     expect(data?.[0]?.amount).toBe("99.90");
     expect(data?.[0]?.direction).toBe("COBRO");
-    // contactId fallback: present as a string when denormalized name unavailable
+    // QA Fix #3 — contactName is now propagated (no más UUID raw en respuestas).
+    expect(data?.[0]?.contactName).toBe("Distribuidora El Sol SRL");
+    // contactId still preserved for downstream consumers.
     expect(typeof data?.[0]?.contactId).toBe("string");
     expect(data?.[0]?.contactId).toBe("ctx-1");
   });
