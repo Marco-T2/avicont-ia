@@ -23,6 +23,7 @@ import type {
   PaginatedResult,
   PaginationOptions,
 } from "@/modules/shared/domain/value-objects/pagination";
+import type { LedgerOrgMetadata } from "@/modules/accounting/presentation/dto/ledger.types";
 import { hydrateJournalFromRow } from "./journal-mapping";
 
 /**
@@ -608,6 +609,58 @@ export class JournalRepository extends BaseRepository {
       pageSize,
       totalPages,
       openingBalanceDelta,
+    };
+  }
+
+  // ── Org metadata para encabezados PDF/XLSX del Libro Mayor ──
+
+  /**
+   * Resuelve metadata de organización para encabezados ejecutivos de PDF/XLSX
+   * del Libro Mayor.
+   *
+   * Estrategia: JOIN con OrgProfile. Preferimos `profile.razonSocial` (nombre
+   * legal/comercial) sobre `organization.name` (slug/handle). NIT, dirección y
+   * ciudad vienen del profile por separado — null si están vacíos para que el
+   * helper de encabezado los omita gracefully.
+   *
+   * Sister precedent: `modules/accounting/trial-balance/infrastructure/
+   * prisma-trial-balance.repo.ts.getOrgMetadata` (paired sister precedent
+   * EXACT mirror per [[paired_sister_default_no_surface]]).
+   */
+  async getOrgMetadata(orgId: string): Promise<LedgerOrgMetadata | null> {
+    const org = await this.db.organization.findUnique({
+      where: { id: orgId },
+      select: {
+        name: true,
+        profile: {
+          select: {
+            razonSocial: true,
+            nit: true,
+            direccion: true,
+            ciudad: true,
+          },
+        },
+      },
+    });
+
+    if (!org) return null;
+
+    const profile = org.profile;
+    const name =
+      profile?.razonSocial && profile.razonSocial.trim().length > 0
+        ? profile.razonSocial
+        : org.name;
+
+    const trimOrNull = (v: string | undefined | null): string | null => {
+      const t = v?.trim();
+      return t && t.length > 0 ? t : null;
+    };
+
+    return {
+      name,
+      taxId: trimOrNull(profile?.nit),
+      address: trimOrNull(profile?.direccion),
+      city: trimOrNull(profile?.ciudad),
     };
   }
 

@@ -63,3 +63,17 @@ export interface DateRangeFilter {
   dateFrom?: Date;
   dateTo?: Date;
 }
+
+/**
+ * Metadata de organización para encabezados de exporters (PDF/XLSX) del
+ * Libro Mayor. Shape espejo de TrialBalanceOrgMetadata / WorksheetOrgMetadata:
+ * `name` siempre presente (fallback al slug si el profile no resuelve);
+ * `taxId`/`address`/`city` null cuando vacíos para que el helper de
+ * encabezado los omita gracefully.
+ */
+export interface LedgerOrgMetadata {
+  name: string;
+  taxId: string | null;
+  address: string | null;
+  city: string | null;
+}
