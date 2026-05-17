@@ -90,6 +90,13 @@ export interface ContactLedgerEntry extends LedgerEntry {
    *  para ambas direcciones — `paymentDirection` es el único discriminador
    *  fiable para que el helper `renderTipo` elija "Cobranza" vs "Pago". */
   paymentDirection: string | null;
+  /** Código del documento operacional físico para la columna "Tipo":
+   *  VG (Venta General — Sale), ND/BC (Dispatch), FL/PF/CG/SV (Purchase),
+   *  RC/RE/RI/etc (Payment.operationalDocType.code — configurable por org).
+   *  Null cuando el row es asiento manual sin auxiliar (UI muestra "Ajuste")
+   *  o cuando el Payment no tiene operationalDocType wired. El cobrador usa
+   *  este código para identificar qué documento físico ir a buscar. */
+  documentTypeCode: string | null;
 }
 
 /**

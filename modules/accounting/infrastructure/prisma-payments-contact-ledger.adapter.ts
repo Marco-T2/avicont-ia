@@ -16,6 +16,11 @@ import type {
  * the Payment model carries `accountCode` directly (no BankAccount FK), so
  * the human "BNB Cta Cte" the spec mentions surfaces as `accountCode` here.
  *
+ * `documentTypeCode` resuelve desde la relación opcional `operationalDocType`
+ * (Payment.operationalDocTypeId → OperationalDocType.code, ej. "RC"/"RE"/"RI").
+ * Null cuando el Payment no tiene operationalDocType asignado (org sin
+ * configuración o payments legacy) — la UI cae al label genérico.
+ *
  * Service-side merge maps `(method, direction, bankAccountName)` to UI labels
  * — adapter stays pure SQL + projection (DEC-1 / D3 parity).
  */
@@ -40,6 +45,7 @@ export class PrismaPaymentsContactLedgerAdapter
         journalEntryId: true,
         method: true,
         accountCode: true,
+        operationalDocType: { select: { code: true } },
         // First allocation reveals direction (RECEIVABLE → COBRO, PAYABLE → PAGO);
         // payment-allocation invariants guarantee homogeneous direction per
         // payment (PAYMENT_MIXED_ALLOCATION), so any one allocation suffices.
@@ -70,6 +76,7 @@ export class PrismaPaymentsContactLedgerAdapter
           paymentMethod: r.method,
           bankAccountName: r.accountCode,
           direction,
+          documentTypeCode: r.operationalDocType?.code ?? null,
         };
       });
   }

@@ -277,11 +277,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
             journalEntryId: "je-1",
             status: "PENDING",
             dueDate: new Date("2099-12-31"),
+            documentTypeCode: null,
           },
           {
             journalEntryId: "je-2",
             status: "PARTIAL",
             dueDate: new Date("2099-12-31"),
+            documentTypeCode: null,
           },
         ],
       });
@@ -423,6 +425,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           direction: "COBRO",
+          documentTypeCode: null,
         },
       ],
     });

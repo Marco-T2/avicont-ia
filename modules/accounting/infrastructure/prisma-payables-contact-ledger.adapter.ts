@@ -5,6 +5,7 @@ import type {
   PayableLedgerEnrichmentRow,
   PayablesContactLedgerPort,
 } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
+import { purchaseTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
  * Prisma adapter for the contact-ledger payable enrichment lookup.
@@ -12,8 +13,13 @@ import type {
  * Symmetric sister of `PrismaReceivablesContactLedgerAdapter` — same batched
  * findMany + journalEntryId narrow + minimal projection. See sister adapter
  * JSDoc for the N+1 mitigation rationale.
+ *
+ * `documentTypeCode` resolution per `sourceType`:
+ *   - "purchase" → batched lookup `purchase.findMany({id in sourceIds})` para
+ *                  resolver PurchaseType enum → FL|PF|CG|SV.
+ *   - "manual"/null → null (UI muestra "Ajuste").
  */
-type DbClient = Pick<PrismaClient, "accountsPayable">;
+type DbClient = Pick<PrismaClient, "accountsPayable" | "purchase">;
 
 export class PrismaPayablesContactLedgerAdapter
   implements PayablesContactLedgerPort
@@ -34,16 +40,44 @@ export class PrismaPayablesContactLedgerAdapter
         journalEntryId: true,
         status: true,
         dueDate: true,
+        sourceType: true,
+        sourceId: true,
       },
     });
+
+    // Batched purchase lookup: misma forma sister Receivable adapter.
+    const purchaseIds = rows
+      .filter((r) => r.sourceType === "purchase" && r.sourceId)
+      .map((r) => r.sourceId!) as string[];
+    const purchaseTypeById = new Map<string, string>();
+    if (purchaseIds.length > 0) {
+      const purchases = await this.db.purchase.findMany({
+        where: {
+          organizationId,
+          id: { in: purchaseIds },
+        },
+        select: { id: true, purchaseType: true },
+      });
+      for (const p of purchases) {
+        purchaseTypeById.set(p.id, purchaseTypeToCode(p.purchaseType));
+      }
+    }
+
     return rows
       .filter((r): r is typeof r & { journalEntryId: string } =>
         r.journalEntryId !== null,
       )
-      .map((r) => ({
-        journalEntryId: r.journalEntryId,
-        status: r.status,
-        dueDate: r.dueDate,
-      }));
+      .map((r) => {
+        let documentTypeCode: string | null = null;
+        if (r.sourceType === "purchase" && r.sourceId) {
+          documentTypeCode = purchaseTypeById.get(r.sourceId) ?? null;
+        }
+        return {
+          journalEntryId: r.journalEntryId,
+          status: r.status,
+          dueDate: r.dueDate,
+          documentTypeCode,
+        };
+      });
   }
 }

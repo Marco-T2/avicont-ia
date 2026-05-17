@@ -336,6 +336,20 @@ export class LedgerService {
         // UI/PDF/XLSX puede distinguir "Cobranza" vs "Pago" cuando
         // `sourceType="payment"`. `null` para sale/purchase/manual.
         paymentDirection: payment?.direction ?? null,
+        // DT — código operacional físico para la columna "Tipo":
+        //   payment → OperationalDocType.code (RC/RE/RI/etc)
+        //   sale    → "VG"
+        //   dispatch→ ND|BC (DispatchType enum)
+        //   purchase→ FL|PF|CG|SV (PurchaseType enum)
+        // El adapter de Receivable/Payable resuelve sourceType desde la fila
+        // y agrupa por source — el service sólo forwardea. Payment toma
+        // precedencia sobre receivable/payable cuando el JE las trae a las
+        // dos (caso real raro: payment apunta al mismo JE que su CxC/CxP).
+        documentTypeCode:
+          payment?.documentTypeCode ??
+          receivable?.documentTypeCode ??
+          payable?.documentTypeCode ??
+          null,
         withoutAuxiliary,
       };
     });
