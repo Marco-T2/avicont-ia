@@ -107,6 +107,7 @@ type LedgerEntry = {
   withoutAuxiliary: boolean;
   paymentDirection: string | null;
   documentTypeCode: string | null;
+  documentReferenceNumber: string | null;
 };
 
 function makeLedger(overrides: Partial<{
@@ -145,6 +146,7 @@ function makeEntry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
     withoutAuxiliary: overrides.withoutAuxiliary ?? false,
     paymentDirection: overrides.paymentDirection ?? null,
     documentTypeCode: overrides.documentTypeCode ?? null,
+    documentReferenceNumber: overrides.documentReferenceNumber ?? null,
   };
 }
 
@@ -428,6 +430,149 @@ describe("ContactLedgerPageClient — Tipo column", () => {
 
     const row = screen.getByRole("row", { name: /Flete proveedor X/i });
     expect(within(row).getByText("FL")).toBeInTheDocument();
+  });
+});
+
+// ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
+//
+// El cobrador necesita leer en la columna "Nº" el número del documento físico
+// ("VG-0001", "RC-0042", "ND-0005") en vez del correlative voucher contable
+// ("I2605-000001"). Fallback al displayNumber cuando documentReferenceNumber
+// es null (asiento manual sin auxiliar o Payment sin referenceNumber).
+
+describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)", () => {
+  it("DT4 — sale con documentReferenceNumber='VG-0001' → cell Nº muestra 'VG-0001' (no displayNumber)", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-vg-1",
+              sourceType: "sale",
+              voucherTypeHuman: "Nota de despacho",
+              documentTypeCode: "VG",
+              documentReferenceNumber: "VG-0001",
+              displayNumber: "D2506-000001",
+              description: "Venta general 001",
+              debit: "1000.00",
+              credit: "0.00",
+              balance: "1000.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Venta general 001/i });
+    // Columns: Fecha | Tipo | Nº | Estado | Desc | Debe | Haber | Saldo. Nº = idx 2.
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2].textContent).toBe("VG-0001");
+  });
+
+  it("DT4 — payment con documentReferenceNumber='RC-0042' → cell Nº muestra 'RC-0042'", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-rc-42",
+              sourceType: "payment",
+              paymentDirection: "COBRO",
+              paymentMethod: "EFECTIVO",
+              voucherTypeHuman: "Comprobante de Ingreso",
+              documentTypeCode: "RC",
+              documentReferenceNumber: "RC-0042",
+              displayNumber: "I2605-000042",
+              description: "Cobro Marco RC42",
+              debit: "0.00",
+              credit: "200.00",
+              balance: "-200.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Cobro Marco RC42/i });
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2].textContent).toBe("RC-0042");
+  });
+
+  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al displayNumber (asiento manual)", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-manual-1",
+              sourceType: null,
+              voucherTypeHuman: "Comprobante de Diario",
+              documentTypeCode: null,
+              documentReferenceNumber: null,
+              displayNumber: "A2604-000001",
+              description: "Ajuste contable A1",
+              debit: "10.00",
+              credit: "0.00",
+              balance: "10.00",
+              withoutAuxiliary: true,
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Ajuste contable A1/i });
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2].textContent).toBe("A2604-000001");
+  });
+
+  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell Nº cae al displayNumber correlative voucher", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-rc-noref",
+              sourceType: "payment",
+              paymentDirection: "COBRO",
+              paymentMethod: "EFECTIVO",
+              voucherTypeHuman: "Comprobante de Ingreso",
+              documentTypeCode: "RC",
+              documentReferenceNumber: null, // operador NO capturó referenceNumber
+              displayNumber: "I2605-000050",
+              description: "Cobro sin referencia fisica",
+              debit: "0.00",
+              credit: "100.00",
+              balance: "-100.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Cobro sin referencia fisica/i });
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[2].textContent).toBe("I2605-000050");
   });
 });
 

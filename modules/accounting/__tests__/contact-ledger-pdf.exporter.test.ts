@@ -55,6 +55,7 @@ function makeEntry(overrides?: Partial<ContactLedgerEntry>): ContactLedgerEntry 
     withoutAuxiliary: false,
     paymentDirection: null,
     documentTypeCode: null,
+    documentReferenceNumber: null,
     ...overrides,
   };
 }
@@ -489,6 +490,97 @@ describe("exportContactLedgerPdf — Tipo column", () => {
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
     expect(dataRow[1].text).toBe("Ajuste");
+  });
+});
+
+// ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
+//
+// Cell Nº (idx 2 en 8-col layout) muestra documentReferenceNumber con fallback
+// al displayNumber cuando es null. Mirror UI per [[paired_sister_default_no_surface]].
+
+describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", () => {
+  it("DT4 — sale con documentReferenceNumber='VG-0001' → cell Nº muestra 'VG-0001'", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "sale",
+          documentTypeCode: "VG",
+          documentReferenceNumber: "VG-0001",
+          displayNumber: "D2506-000001",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[2].text).toBe("VG-0001");
+  });
+
+  it("DT4 — payment con documentReferenceNumber='RC-0042' → cell Nº muestra 'RC-0042'", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          documentTypeCode: "RC",
+          documentReferenceNumber: "RC-0042",
+          displayNumber: "I2605-000042",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[2].text).toBe("RC-0042");
+  });
+
+  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al displayNumber", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: null,
+          status: null,
+          withoutAuxiliary: true,
+          documentTypeCode: null,
+          documentReferenceNumber: null,
+          displayNumber: "A2604-000001",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[2].text).toBe("A2604-000001");
+  });
+
+  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell Nº cae al displayNumber", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          documentTypeCode: "RC",
+          documentReferenceNumber: null,
+          displayNumber: "I2605-000050",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[2].text).toBe("I2605-000050");
   });
 });
 

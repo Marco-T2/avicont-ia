@@ -51,6 +51,7 @@ function makeEntry(overrides?: Partial<ContactLedgerEntry>): ContactLedgerEntry 
     withoutAuxiliary: false,
     paymentDirection: null,
     documentTypeCode: null,
+    documentReferenceNumber: null,
     ...overrides,
   };
 }
@@ -352,6 +353,95 @@ describe("exportContactLedgerXlsx — data row Estado/Tipo cells", () => {
     const wb = await parseWorkbook(buffer);
     const sheet = wb.getWorksheet(SHEET)!;
     expect(sheet.getRow(8).getCell(2).value).toBe("FL");
+  });
+});
+
+// ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
+//
+// Cell Nº (col C = idx 3 en 8-col layout) muestra documentReferenceNumber con
+// fallback al displayNumber cuando es null. Mirror UI/PDF.
+
+describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)", () => {
+  it("DT4 — sale con documentReferenceNumber='VG-0001' → cell C8 muestra 'VG-0001'", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "sale",
+          documentTypeCode: "VG",
+          documentReferenceNumber: "VG-0001",
+          displayNumber: "D2506-000001",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(3).value).toBe("VG-0001");
+  });
+
+  it("DT4 — payment con documentReferenceNumber='RC-0042' → cell C8 muestra 'RC-0042'", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          documentTypeCode: "RC",
+          documentReferenceNumber: "RC-0042",
+          displayNumber: "I2605-000042",
+          status: null,
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(3).value).toBe("RC-0042");
+  });
+
+  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell C8 cae al displayNumber", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: null,
+          status: null,
+          withoutAuxiliary: true,
+          documentTypeCode: null,
+          documentReferenceNumber: null,
+          displayNumber: "A2604-000001",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(3).value).toBe("A2604-000001");
+  });
+
+  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell C8 cae al displayNumber", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          documentTypeCode: "RC",
+          documentReferenceNumber: null,
+          displayNumber: "I2605-000050",
+          status: null,
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(3).value).toBe("I2605-000050");
   });
 });
 

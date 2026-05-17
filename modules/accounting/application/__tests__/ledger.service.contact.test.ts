@@ -278,12 +278,14 @@ describe("LedgerService.getContactLedgerPaginated", () => {
             status: "PENDING",
             dueDate: new Date("2099-12-31"),
             documentTypeCode: null,
+            documentReferenceNumber: null,
           },
           {
             journalEntryId: "je-2",
             status: "PARTIAL",
             dueDate: new Date("2099-12-31"),
             documentTypeCode: null,
+            documentReferenceNumber: null,
           },
         ],
       });
@@ -426,6 +428,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           bankAccountName: null,
           direction: "COBRO",
           documentTypeCode: null,
+          documentReferenceNumber: null,
         },
       ],
     });
@@ -593,6 +596,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           bankAccountName: null,
           direction: "COBRO",
           documentTypeCode: "RC",
+          documentReferenceNumber: null,
         },
       ],
     });
@@ -639,6 +643,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
           documentTypeCode: "VG",
+          documentReferenceNumber: null,
         },
       ],
     });
@@ -685,6 +690,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
           documentTypeCode: "ND",
+          documentReferenceNumber: null,
         },
       ],
     });
@@ -731,6 +737,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
           documentTypeCode: "FL",
+          documentReferenceNumber: null,
         },
       ],
     });
@@ -792,5 +799,242 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     };
     expect(entry.documentTypeCode).toBeNull();
     expect(entry.withoutAuxiliary).toBe(true);
+  });
+
+  // ── DocumentReferenceNumber propagation (DT4 — QA Marco) ──
+  //
+  // El cobrador necesita leer en la columna "Nº" el número del documento
+  // físico ("VG-0001", "RC-0042", "ND-0005") en vez del correlative voucher
+  // contable. El adapter formatea `${code}-${seq padded(4)}` y devuelve el
+  // string en el enrichment row; el service sólo lo forwardea al DTO.
+  // Fallback: null en el enrichment row → null en el DTO → UI cae al
+  // displayNumber.
+
+  it("DT4-T1 propagates Payment documentReferenceNumber (p.ej. 'RC-0042') al ContactLedgerEntry", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 0,
+        credit: 200,
+        date: "2099-05-16",
+        number: 5,
+        journalEntryId: "je-pay",
+        sourceType: "payment",
+        sourceId: "pay-1",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      payments: [
+        {
+          journalEntryId: "je-pay",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          direction: "COBRO",
+          documentTypeCode: "RC",
+          documentReferenceNumber: "RC-0042",
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const entry = result.items[0] as typeof result.items[number] & {
+      documentReferenceNumber: string | null;
+    };
+    expect(entry.documentReferenceNumber).toBe("RC-0042");
+  });
+
+  it("DT4-T2 propagates Receivable documentReferenceNumber='VG-0001' para sourceType=sale", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 500,
+        credit: 0,
+        date: "2099-05-16",
+        number: 1,
+        journalEntryId: "je-sale",
+        sourceType: "sale",
+        sourceId: "sale-1",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      receivables: [
+        {
+          journalEntryId: "je-sale",
+          status: "PENDING",
+          dueDate: new Date("2099-12-31"),
+          documentTypeCode: "VG",
+          documentReferenceNumber: "VG-0001",
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const entry = result.items[0] as typeof result.items[number] & {
+      documentReferenceNumber: string | null;
+    };
+    expect(entry.documentReferenceNumber).toBe("VG-0001");
+  });
+
+  it("DT4-T3 propagates Payable documentReferenceNumber='FL-0005' para sourceType=purchase", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 0,
+        credit: 1500,
+        date: "2099-05-16",
+        number: 1,
+        journalEntryId: "je-purchase",
+        sourceType: "purchase",
+        sourceId: "purch-1",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      payables: [
+        {
+          journalEntryId: "je-purchase",
+          status: "PENDING",
+          dueDate: new Date("2099-12-31"),
+          documentTypeCode: "FL",
+          documentReferenceNumber: "FL-0005",
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const entry = result.items[0] as typeof result.items[number] & {
+      documentReferenceNumber: string | null;
+    };
+    expect(entry.documentReferenceNumber).toBe("FL-0005");
+  });
+
+  it("DT4-T4 documentReferenceNumber=null para asiento manual sin auxiliar (UI cae al displayNumber)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 500,
+        credit: 0,
+        date: "2099-05-16",
+        number: 99,
+        journalEntryId: "je-manual",
+        sourceType: null,
+        sourceId: null,
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const entry = result.items[0] as typeof result.items[number] & {
+      documentReferenceNumber: string | null;
+    };
+    expect(entry.documentReferenceNumber).toBeNull();
+  });
+
+  it("DT4-T5 documentReferenceNumber=null para Payment sin referenceNumber (fallback semantics — UI cae al displayNumber)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 0,
+        credit: 100,
+        date: "2099-05-16",
+        number: 50,
+        journalEntryId: "je-pay-noref",
+        sourceType: "payment",
+        sourceId: "pay-50",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      payments: [
+        {
+          journalEntryId: "je-pay-noref",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          direction: "COBRO",
+          documentTypeCode: "RC",
+          documentReferenceNumber: null, // operador NO capturó referenceNumber
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const entry = result.items[0] as typeof result.items[number] & {
+      documentReferenceNumber: string | null;
+    };
+    expect(entry.documentReferenceNumber).toBeNull();
   });
 });
