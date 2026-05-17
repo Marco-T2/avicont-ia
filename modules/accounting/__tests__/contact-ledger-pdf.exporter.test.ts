@@ -53,6 +53,7 @@ function makeEntry(overrides?: Partial<ContactLedgerEntry>): ContactLedgerEntry 
     paymentMethod: null,
     bankAccountName: null,
     withoutAuxiliary: false,
+    paymentDirection: null,
     ...overrides,
   };
 }

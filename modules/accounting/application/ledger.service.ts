@@ -332,6 +332,10 @@ export class LedgerService {
         sourceType: row.sourceType,
         paymentMethod: payment?.paymentMethod ?? null,
         bankAccountName: payment?.bankAccountName ?? null,
+        // BF2 — forward Payment.direction (COBRO|PAGO) so renderTipo en
+        // UI/PDF/XLSX puede distinguir "Cobranza" vs "Pago" cuando
+        // `sourceType="payment"`. `null` para sale/purchase/manual.
+        paymentDirection: payment?.direction ?? null,
         withoutAuxiliary,
       };
     });

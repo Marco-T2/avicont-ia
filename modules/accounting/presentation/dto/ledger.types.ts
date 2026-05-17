@@ -85,6 +85,11 @@ export interface ContactLedgerEntry extends LedgerEntry {
   paymentMethod: string | null;
   bankAccountName: string | null;
   withoutAuxiliary: boolean;
+  /** BF2 — `COBRO` (receipt) | `PAGO` (payment) cuando el row origina en un
+   *  Payment; `null` en otro caso. Producción usa `sourceType="payment"`
+   *  para ambas direcciones — `paymentDirection` es el único discriminador
+   *  fiable para que el helper `renderTipo` elija "Cobranza" vs "Pago". */
+  paymentDirection: string | null;
 }
 
 /**
