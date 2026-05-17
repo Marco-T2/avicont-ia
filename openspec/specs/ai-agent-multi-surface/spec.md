@@ -1051,7 +1051,9 @@ Rationale: prevents client drift / inconsistent slugs; locked policy.
 
 ---
 
-### Requirement: Reindex endpoint atomically replaces chunks (REQ-47)
+### Requirement: Reindex endpoint atomically replaces chunks (REQ-47) — RETIRED 2026-05-17
+
+**🚫 RETIRED** post-SDD product call: re-indexing is replaced by delete+re-upload (simpler flow; user trips already covered by `DELETE /api/documents/[id]` + repeat upload). Endpoint, service method, lock, and UI button removed. REQ text preserved per [[named_rule_immutability]] for historical context; no future implementation should re-introduce without a new derivative REQ.
 
 `POST /api/documents/[id]/reindex` SHALL: (a) re-extract content from the stored file blob if present (else use `Document.extractedContent`); (b) re-chunk via current chunker; (c) re-embed via current EmbeddingsPort; (d) replace existing chunks atomically via DB transaction (DELETE existing DocumentChunk rows for this Document, then INSERT new ones). On any failure the transaction SHALL rollback and the previous chunks SHALL remain intact.
 
@@ -1071,7 +1073,9 @@ Rationale: full delete + re-embed is simpler than diff-by-hash (proposal anti-sc
 
 ---
 
-### Requirement: Per-organization reindex concurrency lock + 409 on conflict (REQ-48)
+### Requirement: Per-organization reindex concurrency lock + 409 on conflict (REQ-48) — RETIRED 2026-05-17
+
+**🚫 RETIRED** alongside REQ-47 (parent reindex feature retired). Lock port, in-memory adapter, and composition-root wiring removed. REQ text preserved per [[named_rule_immutability]].
 
 An in-memory `Map<organizationId, Promise<void>>` SHALL prevent concurrent reindex calls within the same org. When a reindex is in-flight for org O and another reindex request arrives for any document in O, the second request SHALL return `409 Conflict` with body `{ error: "Reindexación en curso para esta organización" }`. The lock SHALL release when the in-flight reindex resolves OR rejects.
 
@@ -1099,7 +1103,9 @@ Rationale: prevents thrashing pgvector + embeddings rate limits; per-org scope (
 
 ---
 
-### Requirement: DocumentCard renders Re-indexar button RBAC-gated (REQ-49)
+### Requirement: DocumentCard renders Re-indexar button RBAC-gated (REQ-49) — RETIRED 2026-05-17
+
+**🚫 RETIRED** alongside REQ-47/REQ-48 (parent reindex feature retired). Button + ConfirmDialog wiring removed from `DocumentCard`. REQ text preserved per [[named_rule_immutability]].
 
 `DocumentCard` SHALL render a "Re-indexar" button visible only to roles allowed to delete documents (mirrors RBAC for destructive ops). Clicking opens a `ConfirmDialog` showing: (a) current chunk count, (b) estimated ETA based on chunk count × avg embedding latency, (c) cost warning copy. Confirmation POSTs to the reindex endpoint.
 
