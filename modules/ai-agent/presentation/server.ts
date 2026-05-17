@@ -34,24 +34,13 @@ import {
   LocalLotInquiryAdapter,
   makeLotService,
 } from "@/modules/lot/presentation/server";
-import {
-  makeAccountsService,
-  makeJournalsService,
-  makeLedgerService,
-} from "@/modules/accounting/presentation/server";
-import { makeSaleService } from "@/modules/sale/presentation/composition-root";
-import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
-import { makePaymentsService } from "@/modules/payment/presentation/server";
-import { makeContactsService } from "@/modules/contacts/presentation/server";
-import { AccountingQueryAdapter } from "../infrastructure/adapters/accounting-query.adapter";
 import { AgentService } from "../application/agent.service";
 import { AgentRateLimitService } from "../application/rate-limit.service";
 import { PricingService } from "../application/pricing/pricing.service";
 
 /**
  * Composition root — zero-arg factory per design §3 / D1.
- * Wires all 6 ports + cross-hex deps once. Mirror of paired sister
- * `makeDispatchService()` (dispatch C3 GREEN `5fd0cd42`).
+ * Mirror of paired sister `makeDispatchService()` (dispatch C3 GREEN `5fd0cd42`).
  *
  * Runtime invocation requires DB + CEREBRAS_API_KEY env — at import time
  * only the factory function shape is exposed (no top-level side effects
@@ -59,6 +48,13 @@ import { PricingService } from "../application/pricing/pricing.service";
  * CEREBRAS_API_KEY at module init mirror of pre-cutover Gemini behavior).
  * GeminiLLMAdapter is preserved in tree (multi-provider fallback) but
  * unused at the composition root.
+ *
+ * Cleanup #2026-05-17 — `AccountingQueryAdapter` y los 5 services contables
+ * (journals/ledger/sale/purchase/payments/accounts/contacts) que solo se
+ * usaban acá fueron retirados. Las 8 tools de consulta contable del
+ * sidebar-qa duplicaban las páginas dedicadas; Marco decidió que la UI
+ * exacta es más confiable que la respuesta del LLM. Los services siguen
+ * siendo invocados desde sus propios módulos / otros consumers.
  */
 export function makeAgentService(): AgentService {
   const llmProvider = new CerebrasLLMAdapter();
@@ -72,20 +68,6 @@ export function makeAgentService(): AgentService {
   const pricingService = new PricingService();
   const rateLimit = new AgentRateLimitService(rateLimitRepo);
 
-  // F2 (agent-accounting-query-tools) — umbrella read port over 5 accounting
-  // services constructed once from their own composition roots. No shared
-  // singletons: each `make<X>Service()` owns its instance lifecycle (mirrors
-  // makeFarmService/makeLotService precedent above).
-  const accountingQuery = new AccountingQueryAdapter(
-    makeJournalsService(),
-    makeLedgerService(),
-    makeSaleService(),
-    makePurchaseService(),
-    makePaymentsService(),
-    makeAccountsService(),
-    makeContactsService(),
-  );
-
   return new AgentService({
     llmProvider,
     chatMemory,
@@ -96,7 +78,6 @@ export function makeAgentService(): AgentService {
     farmInquiry,
     lotInquiry,
     pricingService,
-    accountingQuery,
   });
 }
 

@@ -72,28 +72,12 @@ vi.mock("@/modules/lot/presentation/server", () => ({
   LocalLotInquiryAdapter: class {},
   makeLotService: () => ({}),
 }));
-// F2 (agent-accounting-query-tools) — extend the same farm/lot rationale to
-// the 5 NEW composition-root imports in presentation/server.ts. Loading the
-// real accounting/sale/purchase/payment barrels triggers the entire
-// permissions/organizations/accounts module graph at import time (legacy
-// adapters call `makeAccountsService()` in their ctors), which races the
-// 5000ms shape-test budget. Mocks short-circuit to stubs — c3 NEVER invokes
-// `makeAgentService()` so factory bodies are dead at runtime. Mock target
-// rewrites bundled with new wiring per [[mock_hygiene_commit_scope]] +
-// [[cross_module_boundary_mock_target_rewrite]].
-vi.mock("@/modules/accounting/presentation/server", () => ({
-  makeJournalsService: () => ({}),
-  makeLedgerService: () => ({}),
-}));
-vi.mock("@/modules/sale/presentation/composition-root", () => ({
-  makeSaleService: () => ({}),
-}));
-vi.mock("@/modules/purchase/presentation/composition-root", () => ({
-  makePurchaseService: () => ({}),
-}));
-vi.mock("@/modules/payment/presentation/server", () => ({
-  makePaymentsService: () => ({}),
-}));
+// Cleanup #2026-05-17 — los mocks de accounting/sale/purchase/payment se
+// retiraron junto con el `AccountingQueryAdapter` que los consumía en el
+// composition root. El sidebar-qa quedó conversacional + granja read-only,
+// sin imports cross-module a accounting/sale/purchase/payment desde
+// presentation/server.ts. Per [[mock_hygiene_commit_scope]] el retiro de
+// mocks viaja en el mismo commit que el retiro del wiring.
 import * as fs from "node:fs";
 import * as path from "node:path";
 

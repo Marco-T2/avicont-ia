@@ -61,19 +61,6 @@ const pricingFake = {
   calculateLotCost: async () => ({}),
 };
 
-// F2 — AccountingQueryPort stub. These surface/threading tests never trigger
-// tool-call dispatch (no toolCalls in fake LLM response), so a noop suffices.
-const accountingQueryStub = {
-  listRecentJournalEntries: async () => [],
-  getAccountMovements: async () => [],
-  getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-  listSales: async () => [],
-  listPurchases: async () => [],
-  listPayments: async () => [],
-  findAccountsByName: async () => [],
-  listAccounts: async () => [],
-};
-
 // Spy on logStructured by mocking the module.
 const logSpy = vi.fn();
 vi.mock("@/lib/logging/structured", () => ({
@@ -90,8 +77,8 @@ afterEach(() => {
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → only searchDocuments)", () => {
-  it("LLM receives ONLY searchDocuments tool for sidebar-qa × member", async () => {
+describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → 4 tools)", () => {
+  it("LLM receives [searchDocuments, getLotSummary, listFarms, listLots] for sidebar-qa × member (post-cleanup #2026-05-17)", async () => {
     const captured: { tools?: readonly Tool[] } = {};
     const deps = {
       llmProvider: makeLLMProviderCapturingTools(captured),
@@ -104,7 +91,6 @@ describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → only 
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
-      accountingQuery: accountingQueryStub,
     };
     await executeChatMode(deps, {
       orgId: "org",
@@ -114,7 +100,9 @@ describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → only 
       surface: "sidebar-qa",
     });
     const names = (captured.tools ?? []).map((t) => t.name);
-    expect(names).toEqual(["searchDocuments"]);
+    expect(names.sort()).toEqual(
+      ["searchDocuments", "getLotSummary", "listFarms", "listLots"].sort(),
+    );
   });
 });
 
@@ -131,7 +119,6 @@ describe("SCN-4.2: chat mode no_tools path triggered by surface×role with empty
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
-      accountingQuery: accountingQueryStub,
     };
     const result = await executeChatMode(deps, {
       orgId: "org",
@@ -161,7 +148,6 @@ describe("SCN-6.1: logStructured agent_invocation includes surface field", () =>
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
-      accountingQuery: accountingQueryStub,
     };
     await executeChatMode(deps, {
       orgId: "org",
@@ -197,7 +183,6 @@ describe("SCN-6.2: surface appears in telemetry on error path too", () => {
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
-      accountingQuery: accountingQueryStub,
     };
     await executeChatMode(deps, {
       orgId: "org",

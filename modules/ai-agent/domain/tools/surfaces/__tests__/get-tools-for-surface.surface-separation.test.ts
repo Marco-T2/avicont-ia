@@ -10,10 +10,13 @@ import { getToolsForSurface } from "../index.ts";
 //   - cobrador × sidebar-qa AND modal-registrar → [searchDocuments]
 //     (matrix-canonical; PERMISSIONS_READ.documents includes cobrador).
 
-describe("SCN-3.1: sidebar-qa × member", () => {
-  it("returns only searchDocuments", () => {
+describe("SCN-3.1: sidebar-qa × member (post-cleanup #2026-05-17 — searchDocuments + granja reads)", () => {
+  it("returns [searchDocuments, getLotSummary, listFarms, listLots]", () => {
+    // member tiene documents:read + farms:read → ve las 4 tools del bundle.
     const tools = getToolsForSurface({ surface: "sidebar-qa", role: "member" });
-    expect(tools.map((t) => t.name)).toEqual(["searchDocuments"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(
+      ["searchDocuments", "getLotSummary", "listFarms", "listLots"].sort(),
+    );
   });
 });
 
@@ -27,25 +30,22 @@ describe("SCN-3.2: modal-registrar × member", () => {
   });
 });
 
-describe("SCN-3.3: sidebar-qa × cobrador (RBAC delta — gains searchDocuments + sales/payments F2 reads)", () => {
-  it("returns [searchDocuments, listSales, listPayments] — cobrador has documents/sales/payments read in matrix", () => {
-    // F2 (agent-accounting-query-tools) supersession: pre-F2 this set
-    // was [searchDocuments] alone. F2 added listSalesTool (PERMISSIONS_READ.
-    // sales includes cobrador) and listPaymentsTool (PERMISSIONS_READ.payments
-    // includes cobrador) to the sidebar-qa bundle — the new tools are surfaced
-    // to cobrador automatically via the matrix cross-filter.
-    //
-    // listRecentJournalEntries / getAccountMovements / getAccountBalance
-    // (resource:"journal") and listPurchases (resource:"purchases") remain
-    // ABSENT — cobrador has neither read permission. Negative coverage for
-    // these is in sidebar-qa-rbac-f2.accounting-query-tools.test.ts.
+describe("SCN-3.3: sidebar-qa × cobrador (post-cleanup #2026-05-17 — solo searchDocuments)", () => {
+  it("returns [searchDocuments] — cobrador no tiene farms:read", () => {
+    // Cleanup #2026-05-17 retiró las 8 tools contables del sidebar-qa
+    // (Marco: duplicaban las páginas dedicadas, riesgo de imprecisión vs UI
+    // exacta). El bundle quedó en [searchDocuments, getLotSummary, listFarms,
+    // listLots]; cobrador solo gana documents:read (NO farms:read), por lo
+    // tanto el resultado es [searchDocuments].
     const tools = getToolsForSurface({
       surface: "sidebar-qa",
       role: "cobrador",
     });
-    expect(tools.map((t) => t.name).sort()).toEqual(
-      ["searchDocuments", "listSales", "listPayments"].sort(),
-    );
+    expect(tools.map((t) => t.name)).toEqual(["searchDocuments"]);
+    // Negatives explícitos — granja read deniegado para cobrador.
+    expect(tools.map((t) => t.name)).not.toContain("listFarms");
+    expect(tools.map((t) => t.name)).not.toContain("listLots");
+    expect(tools.map((t) => t.name)).not.toContain("getLotSummary");
   });
 });
 

@@ -59,16 +59,6 @@ function makeDeps() {
   };
   const noopInquiry = { list: async () => [] };
   const pricingFake = { calculateLotCost: async () => ({}) };
-  const accountingQueryStub = {
-    listRecentJournalEntries: async () => [],
-    getAccountMovements: async () => [],
-    getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-    listSales: async () => [],
-    listPurchases: async () => [],
-    listPayments: async () => [],
-    findAccountsByName: async () => [],
-    listAccounts: async () => [],
-  };
   return {
     llmProvider,
     chatMemory,
@@ -82,7 +72,6 @@ function makeDeps() {
     lotInquiry: noopInquiry as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pricingService: pricingFake as any,
-    accountingQuery: accountingQueryStub,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }

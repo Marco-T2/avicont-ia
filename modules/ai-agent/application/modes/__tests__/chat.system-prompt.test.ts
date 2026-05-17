@@ -76,20 +76,6 @@ function makeDeps(captured: { systemPrompt?: string }) {
     farmInquiry: noopInquiry,
     lotInquiry: noopInquiry,
     pricingService: pricingFake,
-    accountingQuery: {
-      listRecentJournalEntries: async () => [],
-      getAccountMovements: async () => [],
-      getAccountBalance: async () => ({
-        accountId: "",
-        balance: "0.00",
-        asOf: null,
-      }),
-      listSales: async () => [],
-      listPurchases: async () => [],
-      listPayments: async () => [],
-      findAccountsByName: async () => [],
-      listAccounts: async () => [],
-    },
   };
 }
 

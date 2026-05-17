@@ -128,16 +128,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
-        accountingQuery: {
-          listRecentJournalEntries: async () => [],
-          getAccountMovements: async () => [],
-          getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-          listSales: async () => [],
-          listPurchases: async () => [],
-          listPayments: async () => [],
-          findAccountsByName: async () => [],
-          listAccounts: async () => [],
-        },
       };
       const service = new AgentService(fakeDeps);
       expect(service).toBeInstanceOf(AgentService as new (deps: unknown) => unknown);
@@ -155,16 +145,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
-        accountingQuery: {
-          listRecentJournalEntries: async () => [],
-          getAccountMovements: async () => [],
-          getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-          listSales: async () => [],
-          listPurchases: async () => [],
-          listPayments: async () => [],
-          findAccountsByName: async () => [],
-          listAccounts: async () => [],
-        },
       };
       const service = new AgentService(fakeDeps);
       expect(typeof service["query"]).toBe("function");
@@ -182,16 +162,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
-        accountingQuery: {
-          listRecentJournalEntries: async () => [],
-          getAccountMovements: async () => [],
-          getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-          listSales: async () => [],
-          listPurchases: async () => [],
-          listPayments: async () => [],
-          findAccountsByName: async () => [],
-          listAccounts: async () => [],
-        },
       };
       const service = new AgentService(fakeDeps);
       expect(typeof service["analyzeBalanceSheet"]).toBe("function");
@@ -209,16 +179,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
-        accountingQuery: {
-          listRecentJournalEntries: async () => [],
-          getAccountMovements: async () => [],
-          getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-          listSales: async () => [],
-          listPurchases: async () => [],
-          listPayments: async () => [],
-          findAccountsByName: async () => [],
-          listAccounts: async () => [],
-        },
       };
       const service = new AgentService(fakeDeps);
       expect(typeof service["analyzeIncomeStatement"]).toBe("function");
@@ -442,16 +402,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
-        accountingQuery: {
-          listRecentJournalEntries: async () => [],
-          getAccountMovements: async () => [],
-          getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
-          listSales: async () => [],
-          listPurchases: async () => [],
-          listPayments: async () => [],
-          findAccountsByName: async () => [],
-          listAccounts: async () => [],
-        },
       };
 
       const service = new AgentService(fakeDeps);

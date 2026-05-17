@@ -16,7 +16,6 @@ import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 import type { PricingService } from "../pricing/pricing.service";
 import type { Surface } from "../../domain/tools/surfaces/surface.types";
 import type { ModuleHintValue } from "../../domain/types/module-hint.types";
-import type { AccountingQueryPort } from "../../domain/ports/accounting-query.port";
 import type { ConversationTurn } from "../../domain/types/conversation";
 import {
   MAX_CHAT_TURNS,
@@ -41,7 +40,6 @@ export interface ChatModeDeps {
   farmInquiry: FarmInquiryPort;
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
-  accountingQuery: AccountingQueryPort;
 }
 
 export interface ChatModeArgs {
@@ -109,7 +107,6 @@ export async function executeChatMode(
     farmInquiry,
     lotInquiry,
     pricingService,
-    accountingQuery,
   } = deps;
   const { orgId, userId, role, prompt, surface, sessionId, contextHints } = args;
   const moduleHint: ModuleHintValue = args.moduleHint ?? null;
@@ -282,7 +279,7 @@ export async function executeChatMode(
       // LLM call can see the data.
       for (const call of turnToolCalls) {
         const exec = await executeReadTool(
-          { farmInquiry, lotInquiry, pricingService, accountingQuery },
+          { farmInquiry, lotInquiry, pricingService },
           TOOL_REGISTRY,
           orgId,
           call,
@@ -520,7 +517,6 @@ interface ReadCallDeps {
   farmInquiry: FarmInquiryPort;
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
-  accountingQuery: AccountingQueryPort;
 }
 
 type ReadToolResult =
@@ -546,7 +542,7 @@ async function executeReadTool(
   call: ToolCall,
   logStructured: LogFn,
 ): Promise<ReadToolResult> {
-  const { farmInquiry, lotInquiry, pricingService, accountingQuery } = deps;
+  const { farmInquiry, lotInquiry, pricingService } = deps;
   const validation = validateToolInput(registry, call, logStructured);
   if (!validation.ok) {
     return {
@@ -574,88 +570,6 @@ async function executeReadTool(
           data: await pricingService.calculateLotCost(
             orgId,
             args.lotId as string,
-          ),
-        };
-      case "listRecentJournalEntries":
-        return {
-          ok: true,
-          data: await accountingQuery.listRecentJournalEntries(
-            orgId,
-            (args.limit as number | undefined) ?? 10,
-          ),
-        };
-      case "getAccountMovements":
-        return {
-          ok: true,
-          data: await accountingQuery.getAccountMovements(
-            orgId,
-            args.accountId as string,
-            args.dateFrom as string | undefined,
-            args.dateTo as string | undefined,
-            args.limit as number | undefined,
-          ),
-        };
-      case "getAccountBalance":
-        return {
-          ok: true,
-          data: await accountingQuery.getAccountBalance(
-            orgId,
-            args.accountId as string,
-          ),
-        };
-      case "listSales":
-        return {
-          ok: true,
-          data: await accountingQuery.listSales(
-            orgId,
-            args.dateFrom as string | undefined,
-            args.dateTo as string | undefined,
-            (args.limit as number | undefined) ?? 20,
-          ),
-        };
-      case "listPurchases":
-        return {
-          ok: true,
-          data: await accountingQuery.listPurchases(
-            orgId,
-            args.dateFrom as string | undefined,
-            args.dateTo as string | undefined,
-            (args.limit as number | undefined) ?? 20,
-          ),
-        };
-      case "listPayments":
-        return {
-          ok: true,
-          data: await accountingQuery.listPayments(
-            orgId,
-            args.dateFrom as string | undefined,
-            args.dateTo as string | undefined,
-            (args.limit as number | undefined) ?? 20,
-          ),
-        };
-      case "findAccountsByName":
-        return {
-          ok: true,
-          data: await accountingQuery.findAccountsByName(
-            orgId,
-            args.query as string,
-            args.limit as number | undefined,
-          ),
-        };
-      case "listAccounts":
-        return {
-          ok: true,
-          data: await accountingQuery.listAccounts(
-            orgId,
-            args.type as
-              | "ACTIVO"
-              | "PASIVO"
-              | "PATRIMONIO"
-              | "INGRESO"
-              | "GASTO"
-              | undefined,
-            args.isDetail as boolean | undefined,
-            args.limit as number | undefined,
           ),
         };
       default:
