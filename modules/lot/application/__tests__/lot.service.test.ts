@@ -3,7 +3,10 @@ import { LotService } from "../lot.service";
 import { Lot } from "../../domain/lot.entity";
 import { LotSummary } from "../../domain/value-objects/lot-summary";
 import { InMemoryLotRepository } from "../fakes/in-memory-lot.repository";
-import { CannotCloseInactiveLot } from "../../domain/errors/lot-errors";
+import {
+  CannotCloseInactiveLot,
+  LotNameDuplicate,
+} from "../../domain/errors/lot-errors";
 import { NotFoundError } from "@/features/shared/errors";
 
 const ORG = "org-1";
@@ -125,6 +128,53 @@ describe("LotService", () => {
       await expect(
         svc.close(ORG, l.id, { endDate: new Date("2026-07-01") }),
       ).rejects.toThrow(CannotCloseInactiveLot);
+    });
+  });
+
+  describe("update", () => {
+    // α41
+    it("persists updated name + barnNumber and returns the new entity", async () => {
+      const created = await svc.create(ORG, baseInput({ name: "Lote A" }));
+
+      const updated = await svc.update(ORG, created.id, {
+        name: "Lote A modificado",
+        barnNumber: 9,
+      });
+
+      expect(updated.name).toBe("Lote A modificado");
+      expect(updated.barnNumber).toBe(9);
+      const reloaded = await svc.getById(ORG, created.id);
+      expect(reloaded.name).toBe("Lote A modificado");
+    });
+
+    // α42
+    it("throws NotFoundError when lot does not exist", async () => {
+      await expect(
+        svc.update(ORG, "missing-id", { name: "X" }),
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    // α43
+    it("throws LotNameDuplicate when another lot in the same org already uses the name", async () => {
+      const a = await svc.create(ORG, baseInput({ name: "Galpón A" }));
+      await svc.create(ORG, baseInput({ name: "Galpón B", barnNumber: 2 }));
+
+      await expect(
+        svc.update(ORG, a.id, { name: "Galpón B" }),
+      ).rejects.toThrow(LotNameDuplicate);
+    });
+
+    // α44
+    it("allows update where the new name equals the lot's own current name (idempotent)", async () => {
+      const created = await svc.create(ORG, baseInput({ name: "Lote único" }));
+
+      const updated = await svc.update(ORG, created.id, {
+        name: "Lote único",
+        barnNumber: 7,
+      });
+
+      expect(updated.name).toBe("Lote único");
+      expect(updated.barnNumber).toBe(7);
     });
   });
 
