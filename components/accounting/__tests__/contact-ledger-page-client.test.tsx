@@ -105,6 +105,7 @@ type LedgerEntry = {
   paymentMethod: string | null;
   bankAccountName: string | null;
   withoutAuxiliary: boolean;
+  paymentDirection: string | null;
 };
 
 function makeLedger(overrides: Partial<{
@@ -141,6 +142,7 @@ function makeEntry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
     paymentMethod: overrides.paymentMethod ?? null,
     bankAccountName: overrides.bankAccountName ?? null,
     withoutAuxiliary: overrides.withoutAuxiliary ?? false,
+    paymentDirection: overrides.paymentDirection ?? null,
   };
 }
 
@@ -208,6 +210,70 @@ describe("ContactLedgerPageClient — Tipo column", () => {
 
     const row = screen.getByRole("row", { name: /Venta lote X/i });
     expect(within(row).getByText("Nota de Despacho")).toBeInTheDocument();
+  });
+
+  it("BF3 — renders 'Cobranza (efectivo)' for sourceType=payment + paymentDirection=COBRO (bug #1 root)", () => {
+    // BUG #1: producción crea TODOS los payments con sourceType="payment"
+    // (el valor "receipt" no se usa runtime). Antes de BF3 una cobranza en
+    // efectivo salía como "Pago (efectivo)" porque renderTipo sólo miraba
+    // sourceType. El fix usa paymentDirection como discriminador.
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-cob",
+              sourceType: "payment",
+              paymentDirection: "COBRO",
+              voucherTypeHuman: "Comprobante de Ingreso",
+              paymentMethod: "EFECTIVO",
+              description: "Cobro Marco",
+              debit: "0.00",
+              credit: "2000.00",
+              balance: "-2000.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Cobro Marco/i });
+    expect(within(row).getByText(/Cobranza \(efectivo\)/i)).toBeInTheDocument();
+  });
+
+  it("BF3 — renders 'Pago (efectivo)' for sourceType=payment + paymentDirection=PAGO", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-pag",
+              sourceType: "payment",
+              paymentDirection: "PAGO",
+              voucherTypeHuman: "Comprobante de Egreso",
+              paymentMethod: "EFECTIVO",
+              description: "Pago proveedor",
+              debit: "150.00",
+              credit: "0.00",
+              balance: "-150.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="PROVEEDOR"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Pago proveedor/i });
+    expect(within(row).getByText(/Pago \(efectivo\)/i)).toBeInTheDocument();
   });
 
   it("renders 'Ajuste' for null sourceType with withoutAuxiliary=true", () => {

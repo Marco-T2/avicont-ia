@@ -257,6 +257,28 @@ describe("exportContactLedgerXlsx — data row Estado/Tipo cells", () => {
     const sheet = wb.getWorksheet(SHEET)!;
     expect(sheet.getRow(8).getCell(2).value).toBe("Cobranza (efectivo)");
   });
+
+  it("BF3 — sourceType=payment + paymentDirection=COBRO + EFECTIVO → Tipo 'Cobranza (efectivo)' (bug #1 root)", async () => {
+    // Bug #1: producción crea TODOS los payments con sourceType="payment"
+    // (el valor "receipt" no se usa runtime). renderTipo en XLSX exporter
+    // pasa a usar paymentDirection como discriminador.
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          status: null,
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(2).value).toBe("Cobranza (efectivo)");
+  });
 });
 
 describe("exportContactLedgerXlsx — numFmt", () => {

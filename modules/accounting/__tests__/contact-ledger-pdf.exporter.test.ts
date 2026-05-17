@@ -326,6 +326,29 @@ describe("exportContactLedgerPdf — Tipo column", () => {
     expect(dataRow[1].text).toBe("Cobranza (efectivo)");
   });
 
+  it("BF3 — sourceType=payment + paymentDirection=COBRO + EFECTIVO → 'Cobranza (efectivo)' (bug #1 root)", async () => {
+    // BUG #1 root cause: producción crea TODOS los payments con
+    // sourceType="payment" (el valor "receipt" no se usa runtime). Antes
+    // de BF3 una cobranza en efectivo salía como "Pago (efectivo)" porque
+    // renderTipo sólo miraba sourceType. El fix usa paymentDirection.
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: "payment",
+          paymentDirection: "COBRO",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("Cobranza (efectivo)");
+  });
+
   it("sourceType=payment + TRANSFERENCIA + bankAccountName → 'Pago (transferencia BNB)'", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
