@@ -364,10 +364,12 @@ describe("ContactLedgerPageClient — Estado column", () => {
     const row = screen.getByRole("row", {
       name: /Asiento manual sin auxiliar/i,
     });
-    // Warning text + icon (aria-label "warning" or role=img). We assert the
-    // semantic outcome — accessible warning marker visible to the user.
-    expect(within(row).getByText(/Sin auxiliar/i)).toBeInTheDocument();
-    expect(within(row).getByLabelText(/sin auxiliar/i)).toBeInTheDocument();
+    // Warning text + icon (semantic accessible marker). The Estado cell
+    // wraps the label inside a span with aria-label "Sin auxiliar" so we
+    // assert the label, then verify the span contains the visible text.
+    const warningSpan = within(row).getByLabelText(/sin auxiliar/i);
+    expect(warningSpan).toBeInTheDocument();
+    expect(warningSpan.textContent).toMatch(/Sin auxiliar/i);
   });
 });
 
@@ -450,21 +452,23 @@ describe("ContactLedgerPageClient — running balance", () => {
       />,
     );
 
-    expect(
-      within(screen.getByRole("row", { name: /Mov A/i })).getByText(
-        /Bs\.\s*100[.,]00/,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("row", { name: /Mov B/i })).getByText(
-        /Bs\.\s*150[.,]00/,
-      ),
-    ).toBeInTheDocument();
-    expect(
-      within(screen.getByRole("row", { name: /Mov C/i })).getByText(
-        /Bs\.\s*120[.,]00/,
-      ),
-    ).toBeInTheDocument();
+    // Saldo cell is the last data cell (index 7) of the 8-column row —
+    // scope to that cell explicitly to avoid collisions with Debe / Haber
+    // values that share the same currency formatting (Mov A: Debe=100,
+    // Saldo=100; Mov C: Haber=30, Saldo=120 — but Mov B Debe=50 vs
+    // Saldo=150 would still ambiguity-collide for non-scoped queries).
+    const rowA = screen.getByRole("row", { name: /Mov A/i });
+    const rowB = screen.getByRole("row", { name: /Mov B/i });
+    const rowC = screen.getByRole("row", { name: /Mov C/i });
+    expect(within(rowA).getAllByRole("cell")[7].textContent).toMatch(
+      /Bs\.\s*100[.,]00/,
+    );
+    expect(within(rowB).getAllByRole("cell")[7].textContent).toMatch(
+      /Bs\.\s*150[.,]00/,
+    );
+    expect(within(rowC).getAllByRole("cell")[7].textContent).toMatch(
+      /Bs\.\s*120[.,]00/,
+    );
   });
 });
 
