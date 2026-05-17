@@ -27,13 +27,25 @@ describe("SCN-3.2: modal-registrar × member", () => {
   });
 });
 
-describe("SCN-3.3: sidebar-qa × cobrador (RBAC delta — gains searchDocuments)", () => {
-  it("returns [searchDocuments] — cobrador has documents:read in matrix", () => {
+describe("SCN-3.3: sidebar-qa × cobrador (RBAC delta — gains searchDocuments + sales/payments F2 reads)", () => {
+  it("returns [searchDocuments, listSales, listPayments] — cobrador has documents/sales/payments read in matrix", () => {
+    // F2 (agent-accounting-query-tools) supersession: pre-F2 this set
+    // was [searchDocuments] alone. F2 added listSalesTool (PERMISSIONS_READ.
+    // sales includes cobrador) and listPaymentsTool (PERMISSIONS_READ.payments
+    // includes cobrador) to the sidebar-qa bundle — the new tools are surfaced
+    // to cobrador automatically via the matrix cross-filter.
+    //
+    // listRecentJournalEntries / getAccountMovements / getAccountBalance
+    // (resource:"journal") and listPurchases (resource:"purchases") remain
+    // ABSENT — cobrador has neither read permission. Negative coverage for
+    // these is in sidebar-qa-rbac-f2.accounting-query-tools.test.ts.
     const tools = getToolsForSurface({
       surface: "sidebar-qa",
       role: "cobrador",
     });
-    expect(tools.map((t) => t.name)).toEqual(["searchDocuments"]);
+    expect(tools.map((t) => t.name).sort()).toEqual(
+      ["searchDocuments", "listSales", "listPayments"].sort(),
+    );
   });
 });
 
