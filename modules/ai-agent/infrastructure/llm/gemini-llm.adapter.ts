@@ -6,6 +6,7 @@ import {
   type FunctionDeclaration,
   type Part,
 } from "@google/generative-ai";
+import Cerebras from "@cerebras/cerebras_cloud_sdk";
 import { z } from "zod";
 import { logStructured } from "@/lib/logging/structured";
 import { LLMQuotaExceededError } from "@/modules/shared/domain/errors";
@@ -261,29 +262,56 @@ export class GeminiLLMAdapter implements LLMProviderPort {
   }
 }
 
-// ── Document analysis (Gemini-bound, separate from chat-with-tools) ──
+// ── Document analysis (Cerebras-backed; file name preserved for α71) ──
 
 /**
- * Stays in this file because it speaks Gemini directly and does not match
- * the LLMProviderPort chat-with-tools shape. Keeping it here preserves the
- * one-file-per-provider isolation: anything that imports
- * `@google/generative-ai` lives in this module. Re-exported via
- * presentation/server.ts at C3 for the app/api/analyze/route.ts consumer.
+ * Generates a document summary via Cerebras `gpt-oss-120b`.
  *
- * Load-bearing arch debt — documented in design D8 + archive (1 consumer).
+ * File name (`gemini-llm.adapter.ts`) is preserved per α71 sentinel
+ * immutability ([[named_rule_immutability]]); the implementation swapped
+ * to Cerebras to avoid Gemini free-tier daily quota (20/req) — the chat
+ * agent already migrated in a prior session. The function still bypasses
+ * LLMProviderPort by design (single-shot, no tools, no history) per the
+ * D8 arch debt note. Re-exported via presentation/server.ts for the
+ * app/api/analyze/route.ts consumer.
  */
 export async function analyzeDocument(text: string): Promise<string> {
+  const cerebrasKey = process.env.CEREBRAS_API_KEY;
+  if (!cerebrasKey) {
+    throw new Error(
+      "La API KEY de CEREBRAS no está configurada en las variables de entorno",
+    );
+  }
+  const client = new Cerebras({ apiKey: cerebrasKey });
   try {
-    const model = genAI.getGenerativeModel({ model: MODEL_ID });
-    const prompt = `Please provide a comprehensive summary of the following document. Include main points, key findings, and conclusions:\n\n${text}`;
-    const result = await model.generateContent(prompt);
-    return result.response.text();
+    const response = await client.chat.completions.create({
+      model: "gpt-oss-120b",
+      messages: [
+        {
+          role: "system",
+          content:
+            "Sos un asistente que resume documentos. Generá un resumen integral en español, claro y conciso, con puntos clave y conclusiones. Sin markdown.",
+        },
+        { role: "user", content: text },
+      ],
+    });
+    // OpenAI-compatible response shape — chat.completions returns choices[].
+    const choices = (response as { choices?: Array<{ message?: { content?: string } }> }).choices;
+    const content = choices?.[0]?.message?.content;
+    if (!content) {
+      throw new Error("Cerebras returned empty content for document analysis");
+    }
+    return content;
   } catch (err) {
     logStructured({
-      event: "gemini_document_analysis_failed",
+      event: "document_analysis_failed",
       level: "warn",
+      provider: "cerebras",
       error: err instanceof Error ? err.message : String(err),
     });
+    if (isQuotaExceededError(err)) {
+      throw new LLMQuotaExceededError();
+    }
     throw err;
   }
 }
