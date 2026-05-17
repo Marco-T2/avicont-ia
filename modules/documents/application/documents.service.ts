@@ -13,6 +13,9 @@ import { canUploadToScope, type DocumentScope } from "@/features/permissions";
 // cross-module canonical-bypass REQ-004 — rag/ stays at features path (poc-rag-hex)
 import { RagService } from "@/features/documents/rag/server";
 import type { BlobStoragePort } from "@/modules/documents/domain/ports/blob-storage.port";
+// F5/REQ-45 — optional tags attachment port. Optional ctor param keeps every
+// existing instantiation (tests, composition root pre-wire) source-compatible.
+import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
 import type {
   DocumentListResult,
   DocumentUploadResult,
@@ -74,6 +77,9 @@ export class DocumentsService {
     private readonly repo: DocumentsRepositoryPort,
     private readonly blobStorage: BlobStoragePort,
     private readonly ragService: RagService,
+    // F5/REQ-45 — optional to preserve back-compat with existing test fakes
+    // and composition-root pre-F5 instantiations; upload() guards on null.
+    private readonly tagsRepository?: TagsRepositoryPort,
   ) {}
 
   // ── Listar documentos de una organización ──
@@ -115,6 +121,7 @@ export class DocumentsService {
     content?: string | null,
     file?: File | null,
     scope: DocumentScope = "ORGANIZATION",
+    tagIds?: string[],
   ): Promise<DocumentUploadResult> {
     const { orgId, org, user } = await this.resolveOrgAccess(clerkOrgId, clerkUserId);
 
@@ -184,6 +191,15 @@ export class DocumentsService {
         userId: user.id,
       });
       documentId = document.id;
+
+      // F5/REQ-45 — attach tags BEFORE indexing so a failure still rolls back
+      // the parent document via the existing saga catch (blob + delete). When
+      // tagsRepository is absent (back-compat ctor) any tagIds passed here
+      // are silently dropped — surface honest: caller wired upload without
+      // providing the optional dep, so attach is a no-op by design.
+      if (tagIds && tagIds.length > 0 && this.tagsRepository) {
+        await this.tagsRepository.attachToDocument(document.id, tagIds);
+      }
 
       if (extractedContent && extractedContent.length > 10) {
         await this.ragService.indexDocument(
