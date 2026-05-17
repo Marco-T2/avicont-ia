@@ -1,6 +1,9 @@
 import { LotSummary } from "./value-objects/lot-summary";
 import { type LotStatus, canTransitionLot } from "./value-objects/lot-status";
-import { CannotCloseInactiveLot } from "./errors/lot-errors";
+import {
+  CannotCloseInactiveLot,
+  LotCannotUpdateClosed,
+} from "./errors/lot-errors";
 
 export interface LotProps {
   id: string;
@@ -27,6 +30,11 @@ export interface CreateLotInput {
 
 export interface CloseLotInput {
   endDate: Date;
+}
+
+export interface UpdateLotInput {
+  name?: string;
+  barnNumber?: number;
 }
 
 export interface LotSnapshot {
@@ -87,6 +95,26 @@ export class Lot {
       ...this.props,
       status: "CLOSED",
       endDate,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Returns a new Lot with updated `name` and/or `barnNumber`. Other
+   * fields (id, initialCount, status, farmId, organizationId,
+   * createdAt) are immutable post-creation (INV-04). `updatedAt`
+   * advances on every call. Throws LotCannotUpdateClosed when the
+   * lot is not ACTIVE (closed lots are historical snapshots).
+   * Spec REQ-100, design D-2/D-3.
+   */
+  update(input: UpdateLotInput): Lot {
+    if (this.props.status !== "ACTIVE") {
+      throw new LotCannotUpdateClosed(this.props.id);
+    }
+    return new Lot({
+      ...this.props,
+      name: input.name ?? this.props.name,
+      barnNumber: input.barnNumber ?? this.props.barnNumber,
       updatedAt: new Date(),
     });
   }
