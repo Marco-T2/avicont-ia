@@ -1,5 +1,6 @@
 import type { Lot } from "../../domain/lot.entity";
 import type {
+  LotChildCounts,
   LotRepository,
   LotWithRelationsSnapshot,
 } from "../../domain/lot.repository";
@@ -7,7 +8,6 @@ import type {
 /**
  * Minimal in-memory implementation of LotRepository for service tests.
  * Mirrors `modules/documents/application/fakes/` pattern.
- * Stubs `delete` + `findChildCounts` until those features land (T25-T27).
  */
 export class InMemoryLotRepository implements LotRepository {
   private readonly store = new Map<string, Lot>();
@@ -15,11 +15,7 @@ export class InMemoryLotRepository implements LotRepository {
     string,
     { expenses: { amount: number }[]; mortalityLogs: { count: number }[] }
   >();
-  // Stub-only counters: tests for delete (T26+) set these explicitly.
-  private readonly childCounts = new Map<
-    string,
-    { expenses: number; mortality: number }
-  >();
+  private readonly childCounts = new Map<string, LotChildCounts>();
 
   reset(): void {
     this.store.clear();
@@ -37,10 +33,7 @@ export class InMemoryLotRepository implements LotRepository {
     this.relations.set(lotId, relations);
   }
 
-  preloadChildCounts(
-    lotId: string,
-    counts: { expenses: number; mortality: number },
-  ): void {
+  preloadChildCounts(lotId: string, counts: LotChildCounts): void {
     this.childCounts.set(lotId, counts);
   }
 
@@ -87,5 +80,36 @@ export class InMemoryLotRepository implements LotRepository {
 
   async update(lot: Lot): Promise<void> {
     this.store.set(lot.id, lot);
+  }
+
+  /**
+   * Returns the explicitly-seeded counts via preloadChildCounts. If
+   * not seeded, derives from `preloadRelations` (length-based) or
+   * defaults to zero. Tests stay explicit by preferring preloadChildCounts.
+   */
+  async findChildCounts(
+    organizationId: string,
+    id: string,
+  ): Promise<LotChildCounts> {
+    const lot = this.store.get(id);
+    if (!lot || lot.organizationId !== organizationId) {
+      return { expenses: 0, mortality: 0 };
+    }
+    const explicit = this.childCounts.get(id);
+    if (explicit) return explicit;
+    const rels = this.relations.get(id);
+    return {
+      expenses: rels?.expenses.length ?? 0,
+      mortality: rels?.mortalityLogs.length ?? 0,
+    };
+  }
+
+  async delete(organizationId: string, id: string): Promise<void> {
+    const lot = this.store.get(id);
+    if (lot && lot.organizationId === organizationId) {
+      this.store.delete(id);
+      this.relations.delete(id);
+      this.childCounts.delete(id);
+    }
   }
 }

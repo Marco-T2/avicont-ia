@@ -2,6 +2,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import { type PrismaClient } from "@/generated/prisma/client";
 import type {
+  LotChildCounts,
   LotRepository,
   LotWithRelationsSnapshot,
 } from "../domain/lot.repository";
@@ -73,5 +74,28 @@ export class PrismaLotRepository implements LotRepository {
         farmId: entity.farmId,
       },
     });
+  }
+
+  /**
+   * STUB — real impl lands in T29 GREEN (DbClient must expand to
+   * include `expense | mortalityLog | $transaction`). Kept as
+   * throw so tsc satisfies the LotRepository contract at T25, while
+   * service-layer T26 RED + T27 GREEN can build against the port
+   * via InMemory fake.
+   */
+  async findChildCounts(
+    _organizationId: string,
+    _id: string,
+  ): Promise<LotChildCounts> {
+    throw new Error(
+      "PrismaLotRepository.findChildCounts not implemented yet (T29)",
+    );
+  }
+
+  /** STUB — see findChildCounts JSDoc; real cascade tx lands in T29. */
+  async delete(_organizationId: string, _id: string): Promise<void> {
+    throw new Error(
+      "PrismaLotRepository.delete not implemented yet (T29)",
+    );
   }
 }
