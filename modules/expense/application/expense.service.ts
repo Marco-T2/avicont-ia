@@ -1,6 +1,7 @@
 import {
   Expense,
   type CreateExpenseInput,
+  type UpdateExpenseInput,
 } from "../domain/expense.entity";
 import type {
   ExpensesRepository,
@@ -9,6 +10,7 @@ import type {
 import { ExpenseNotFoundError } from "../domain/errors/expense-errors";
 
 export type CreateExpenseServiceInput = Omit<CreateExpenseInput, "organizationId">;
+export type UpdateExpenseServiceInput = UpdateExpenseInput;
 
 export class ExpenseService {
   constructor(private readonly repo: ExpensesRepository) {}
@@ -34,6 +36,23 @@ export class ExpenseService {
     const expense = Expense.create({ ...input, organizationId });
     await this.repo.save(expense);
     return expense;
+  }
+
+  /**
+   * Updates editable fields (amount/category/date/description) of an
+   * Expense. lotId, organizationId, createdById, createdAt are
+   * preserved (INV-03). updatedAt advances on every call. Spec REQ-103.
+   * Throws ExpenseNotFoundError when id does not exist.
+   */
+  async update(
+    organizationId: string,
+    id: string,
+    input: UpdateExpenseServiceInput,
+  ): Promise<Expense> {
+    const existing = await this.getById(organizationId, id);
+    const updated = existing.update(input);
+    await this.repo.update(updated);
+    return updated;
   }
 
   async delete(organizationId: string, id: string): Promise<void> {

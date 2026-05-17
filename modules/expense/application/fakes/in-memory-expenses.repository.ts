@@ -44,6 +44,10 @@ export class InMemoryExpensesRepository implements ExpensesRepository {
     this.store.set(expense.id, expense);
   }
 
+  async update(expense: Expense): Promise<void> {
+    this.store.set(expense.id, expense);
+  }
+
   async delete(organizationId: string, id: string): Promise<void> {
     const e = this.store.get(id);
     if (e && e.organizationId === organizationId) {

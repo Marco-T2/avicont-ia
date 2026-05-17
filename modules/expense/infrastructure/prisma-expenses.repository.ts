@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { type PrismaClient } from "@/generated/prisma/client";
+import { type PrismaClient, Prisma } from "@/generated/prisma/client";
 import type {
   ExpensesRepository,
   ExpenseTotalByCategory,
@@ -42,6 +42,20 @@ export class PrismaExpensesRepository implements ExpensesRepository {
 
   async save(entity: Expense): Promise<void> {
     await this.db.expense.create({ data: toPersistence(entity) });
+  }
+
+  async update(entity: Expense): Promise<void> {
+    const s = entity.toSnapshot();
+    await this.db.expense.update({
+      where: { id: s.id, organizationId: s.organizationId },
+      data: {
+        amount: new Prisma.Decimal(s.amount),
+        category: s.category,
+        description: s.description,
+        date: s.date,
+        updatedAt: s.updatedAt,
+      },
+    });
   }
 
   async delete(organizationId: string, id: string): Promise<void> {

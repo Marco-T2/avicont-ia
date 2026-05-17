@@ -11,6 +11,7 @@ export interface ExpensesRepository {
   findById(organizationId: string, id: string): Promise<Expense | null>;
   findByLot(organizationId: string, lotId: string): Promise<Expense[]>;
   save(expense: Expense): Promise<void>;
+  update(expense: Expense): Promise<void>;
   delete(organizationId: string, id: string): Promise<void>;
   sumByLot(organizationId: string, lotId: string): Promise<number>;
   totalsByCategory(
