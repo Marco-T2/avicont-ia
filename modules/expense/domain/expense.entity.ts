@@ -23,6 +23,14 @@ export interface CreateExpenseInput {
   createdById: string;
 }
 
+export interface UpdateExpenseInput {
+  amount?: number;
+  category?: ExpenseCategory;
+  date?: Date;
+  /** undefined keeps the prior value; null clears it. */
+  description?: string | null;
+}
+
 export interface ExpenseSnapshot {
   id: string;
   amount: number;
@@ -57,6 +65,29 @@ export class Expense {
 
   static fromPersistence(props: ExpenseProps): Expense {
     return new Expense(props);
+  }
+
+  /**
+   * Returns a new Expense reflecting the updated fields. `lotId`,
+   * `organizationId`, `createdById`, `createdAt` are immutable
+   * post-creation (INV-03). `updatedAt` advances to now() on every
+   * call. Spec REQ-103 / REQ-104.
+   *
+   * `description === undefined` keeps the prior value; `description
+   * === null` clears it explicitly.
+   */
+  update(input: UpdateExpenseInput): Expense {
+    return new Expense({
+      ...this.props,
+      amount: input.amount ?? this.props.amount,
+      category: input.category ?? this.props.category,
+      date: input.date ?? this.props.date,
+      description:
+        input.description === undefined
+          ? this.props.description
+          : input.description,
+      updatedAt: new Date(),
+    });
   }
 
   get id(): string { return this.props.id; }
