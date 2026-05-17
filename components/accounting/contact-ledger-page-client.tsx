@@ -557,7 +557,12 @@ export default function ContactLedgerPageClient({
                               <span>{estado.label}</span>
                             )}
                           </td>
-                          <td className="py-3 px-4">{entry.description}</td>
+                          <td
+                            className="py-3 px-4 max-w-[300px] truncate"
+                            title={entry.description}
+                          >
+                            {entry.description}
+                          </td>
                           <td className="py-3 px-4 text-right font-mono">
                             {parseFloat(entry.debit) > 0
                               ? formatCurrency(entry.debit)
