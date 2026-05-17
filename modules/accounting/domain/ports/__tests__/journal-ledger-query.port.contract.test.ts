@@ -39,7 +39,7 @@ type PortWithContactReads = InMemoryJournalLedgerQueryPort & {
   findLinesByContactPaginated: (
     organizationId: string,
     contactId: string,
-    filters?: unknown,
+    filters?: { accountCodes?: string[] } & Record<string, unknown>,
     pagination?: unknown,
   ) => Promise<{
     items: unknown[];
@@ -109,5 +109,23 @@ describe("JournalLedgerQueryPort — contact-keyed read surface (C1)", () => {
     expect(aggregate).toHaveProperty("_sum");
     expect(aggregate._sum).toHaveProperty("debit");
     expect(aggregate._sum).toHaveProperty("credit");
+  });
+
+  it("BF1 — findLinesByContactPaginated accepts an `accountCodes` filter that the fake records for assertion (real adapter narrows the where to account.code IN [...])", async () => {
+    // BF1: the contact-ledger view must scope movements to the org-wide
+    // CxC/CxP control accounts so contrapartida lines (Caja, Ventas, etc.)
+    // do not duplicate the JE in the running balance.
+    // Contract: filters.accountCodes is propagated all the way down. The fake
+    // captures the last filters arg so the test can assert it round-trips.
+    const port = makePort();
+    const codes = ["1.1.4.1", "2.1.1.1"];
+
+    await port.findLinesByContactPaginated(ORG_ID, CONTACT_ID, {
+      accountCodes: codes,
+    });
+
+    expect(port.findLinesByContactPaginatedLastFilters).toEqual({
+      accountCodes: codes,
+    });
   });
 });

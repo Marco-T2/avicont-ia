@@ -276,12 +276,24 @@ export class InMemoryJournalLedgerQueryPort implements JournalLedgerQueryPort {
     _sum: { debit: null, credit: null },
   };
 
+  /** BF1 — records the last `filters` arg passed to
+   *  `findLinesByContactPaginated` so tests can assert the service forwards
+   *  `accountCodes`. `undefined` when never called. */
+  findLinesByContactPaginatedLastFilters:
+    | { dateRange?: DateRangeFilter; periodId?: string; accountCodes?: string[] }
+    | undefined = undefined;
+
   async findLinesByContactPaginated(
     _organizationId: string,
     _contactId: string,
-    _filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    filters?: {
+      dateRange?: DateRangeFilter;
+      periodId?: string;
+      accountCodes?: string[];
+    },
     pagination?: PaginationOptions,
   ): Promise<ContactLedgerPageResult> {
+    this.findLinesByContactPaginatedLastFilters = filters;
     const page = pagination?.page ?? 1;
     const pageSize = pagination?.pageSize ?? 25;
     const skip = (page - 1) * pageSize;

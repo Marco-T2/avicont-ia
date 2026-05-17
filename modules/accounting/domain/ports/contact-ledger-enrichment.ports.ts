@@ -77,6 +77,23 @@ export interface PaymentsContactLedgerPort {
   ): Promise<PaymentLedgerEnrichmentRow[]>;
 }
 
+/** Org-wide CxC/CxP control account codes used by the service to scope the
+ *  contact-ledger query to control-account movements only.
+ *
+ *  BF1 — fixes duplicate-rows bug where a single JE with debit+credit lines
+ *  both tagged with `contactId` (header surface + line surface) surfaces both
+ *  legs in the ledger (one Debe + one Haber for the SAME entry). The Prisma
+ *  adapter narrows the where clause to `account.code IN [cxc, cxp]` so
+ *  contrapartida lines (Caja, Ventas, etc) are dropped. The "manual sin
+ *  auxiliar" (D4) semantics are preserved: a JE that touches the CxC/CxP
+ *  account but has no Receivable/Payable parent still surfaces — the filter
+ *  only drops lines OFF the control accounts. */
+export interface ControlAccountCodesReadPort {
+  getControlAccountCodes(
+    organizationId: string,
+  ): Promise<{ cxcAccountCode: string; cxpAccountCode: string }>;
+}
+
 /** Bag of enrichment collaborators injected into `LedgerService` for the
  *  contact-ledger use case. Optional at the ctor (back-compat with sister
  *  tests that don't exercise contact-ledger) — `getContactLedgerPaginated`
@@ -86,4 +103,5 @@ export interface ContactLedgerEnrichmentDeps {
   receivables: ReceivablesContactLedgerPort;
   payables: PayablesContactLedgerPort;
   payments: PaymentsContactLedgerPort;
+  controlAccountCodes: ControlAccountCodesReadPort;
 }

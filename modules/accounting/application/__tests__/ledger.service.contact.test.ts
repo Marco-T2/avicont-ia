@@ -101,25 +101,39 @@ function makeEnrichmentDeps(opts: {
   receivables?: ReceivableEnrichmentRow[];
   payables?: PayableEnrichmentRow[];
   payments?: PaymentEnrichmentRow[];
+  /** Org-wide CxC/CxP control account codes the service uses to scope the
+   *  contact-ledger query to control-account movements only. Defaults mirror
+   *  the canonical Bolivian chart (1.1.4.1 / 2.1.1.1) so existing tests work
+   *  without priming. BF1 — fixes duplicate-rows + running-balance bugs by
+   *  filtering out non-control-account contrapartida lines. */
+  controlAccountCodes?: { cxcAccountCode: string; cxpAccountCode: string };
 }): {
   deps: ContactLedgerEnrichmentDeps;
   receivablesSpy: ReturnType<typeof vi.fn>;
   payablesSpy: ReturnType<typeof vi.fn>;
   paymentsSpy: ReturnType<typeof vi.fn>;
+  controlAccountsSpy: ReturnType<typeof vi.fn>;
 } {
   const receivablesSpy = vi.fn(async () => opts.receivables ?? []);
   const payablesSpy = vi.fn(async () => opts.payables ?? []);
   const paymentsSpy = vi.fn(async () => opts.payments ?? []);
+  const codes = opts.controlAccountCodes ?? {
+    cxcAccountCode: "1.1.4.1",
+    cxpAccountCode: "2.1.1.1",
+  };
+  const controlAccountsSpy = vi.fn(async () => codes);
   return {
     deps: {
       contacts: opts.contacts,
       receivables: { findByJournalEntryIds: receivablesSpy },
       payables: { findByJournalEntryIds: payablesSpy },
       payments: { findByJournalEntryIds: paymentsSpy },
+      controlAccountCodes: { getControlAccountCodes: controlAccountsSpy },
     },
     receivablesSpy,
     payablesSpy,
     paymentsSpy,
+    controlAccountsSpy,
   };
 }
 
@@ -375,6 +389,53 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(result.openingBalance).toBe("120.50");
     // Running balance seeded from opening: 120.50 + 30 = 150.50
     expect(result.items[0].balance).toBe("150.50");
+  });
+
+  it("BF1-T1 fetches CxC/CxP control account codes ONCE per call and forwards them to the query port (resolves bug #2 duplicate rows / #4 inconsistent status / #6 broken running balance)", async () => {
+    // BUG #2/#4/#6 ROOT CAUSE: when a JE has both debit and credit lines
+    // tagged with contactId (header surface + line surface dual D4), BOTH
+    // lines surface in the contact ledger — once as Debe, once as Haber —
+    // because the where clause only filters by contact, not by account.
+    // FIX: service fetches org-wide CxC/CxP control account codes and the
+    // port query restricts to `account.code IN [cxc, cxp]` so contrapartida
+    // lines (Caja, Ventas, etc) are dropped.
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps, controlAccountsSpy } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      controlAccountCodes: {
+        cxcAccountCode: "1.1.4.1",
+        cxpAccountCode: "2.1.1.1",
+      },
+    });
+    const findLinesSpy = vi.spyOn(query, "findLinesByContactPaginated");
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(controlAccountsSpy).toHaveBeenCalledTimes(1);
+    expect(controlAccountsSpy).toHaveBeenCalledWith("org-1");
+    // Service forwards accountCodes via the filters bag — adapter narrows.
+    expect(findLinesSpy).toHaveBeenCalledTimes(1);
+    const filtersArg = findLinesSpy.mock.calls[0][2] as
+      | { accountCodes?: string[] }
+      | undefined;
+    expect(filtersArg?.accountCodes).toBeDefined();
+    expect(new Set(filtersArg!.accountCodes!)).toEqual(
+      new Set(["1.1.4.1", "2.1.1.1"]),
+    );
   });
 
   it("T5 NotFoundError when contact missing (parity sister `getAccountLedger`)", async () => {
