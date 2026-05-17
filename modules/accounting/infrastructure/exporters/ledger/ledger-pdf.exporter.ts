@@ -255,14 +255,14 @@ function buildExecutiveHeaderWithLogo(
         { width: "*", stack: orgLines },
         { width: 80, stack: logoStack },
       ],
-      margin: [0, 0, 0, 6],
+      margin: [0, 0, 0, 4],
     },
     {
       text: "LIBRO MAYOR",
       fontSize: TITLE_SIZE,
       bold: true,
       alignment: "center",
-      margin: [0, 6, 0, 4],
+      margin: [0, 2, 0, 2],
     },
     {
       text: `Cuenta: ${opts.accountCode} — ${opts.accountName}`,
@@ -274,14 +274,14 @@ function buildExecutiveHeaderWithLogo(
       text: `Del ${fmtDate(opts.dateFrom)} al ${fmtDate(opts.dateTo)}`,
       fontSize: SUBTITLE_SIZE,
       alignment: "center",
-      margin: [0, 0, 0, 2],
+      margin: [0, 0, 0, 1],
     },
     {
       text: "(Expresado en Bolivianos)",
       fontSize: SUBTITLE_SIZE,
       italics: true,
       alignment: "center",
-      margin: [0, 0, 0, 10],
+      margin: [0, 0, 0, 6],
     },
   ];
 }
@@ -353,7 +353,7 @@ function buildDocDefinition(
   return {
     pageSize: "A4",
     pageOrientation: "portrait",
-    pageMargins: [30, 50, 30, 40],
+    pageMargins: [30, 25, 30, 35],
     defaultStyle: {
       font: "Roboto",
       fontSize: BODY_SIZE,
@@ -366,7 +366,7 @@ function buildDocDefinition(
         fontSize: 8,
         alignment: "center",
         color: STYLE.textMuted,
-        margin: [30, 20, 30, 0],
+        margin: [30, 10, 30, 0],
       };
     },
     footer: (currentPage: number, pageCount: number): Content => ({
