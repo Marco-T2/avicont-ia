@@ -1,69 +1,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ExpenseService } from "../expense.service";
-import { Expense } from "../../domain/expense.entity";
-import type {
-  ExpensesRepository,
-  ExpenseTotalByCategory,
-} from "../../domain/expense.repository";
+import { InMemoryExpensesRepository } from "../fakes/in-memory-expenses.repository";
 import { ExpenseNotFoundError } from "../../domain/errors/expense-errors";
 import type { ExpenseCategory } from "../../domain/value-objects/expense-category";
-
-class InMemoryExpensesRepository implements ExpensesRepository {
-  private readonly store = new Map<string, Expense>();
-
-  reset() {
-    this.store.clear();
-  }
-
-  async findAll(orgId: string): Promise<Expense[]> {
-    return [...this.store.values()].filter(
-      (e) => e.organizationId === orgId,
-    );
-  }
-
-  async findById(orgId: string, id: string): Promise<Expense | null> {
-    const e = this.store.get(id);
-    return e && e.organizationId === orgId ? e : null;
-  }
-
-  async findByLot(orgId: string, lotId: string): Promise<Expense[]> {
-    return [...this.store.values()].filter(
-      (e) => e.organizationId === orgId && e.lotId === lotId,
-    );
-  }
-
-  async save(expense: Expense): Promise<void> {
-    this.store.set(expense.id, expense);
-  }
-
-  async delete(orgId: string, id: string): Promise<void> {
-    const e = this.store.get(id);
-    if (e && e.organizationId === orgId) {
-      this.store.delete(id);
-    }
-  }
-
-  async sumByLot(orgId: string, lotId: string): Promise<number> {
-    return [...this.store.values()]
-      .filter((e) => e.organizationId === orgId && e.lotId === lotId)
-      .reduce((sum, e) => sum + e.amount, 0);
-  }
-
-  async totalsByCategory(
-    orgId: string,
-    lotId: string,
-  ): Promise<ExpenseTotalByCategory[]> {
-    const map = new Map<ExpenseCategory, number>();
-    for (const e of this.store.values()) {
-      if (e.organizationId !== orgId || e.lotId !== lotId) continue;
-      map.set(e.category, (map.get(e.category) ?? 0) + e.amount);
-    }
-    return [...map.entries()].map(([category, total]) => ({
-      category,
-      total,
-    }));
-  }
-}
 
 const ORG = "org-1";
 const LOT = "lot-1";
