@@ -1,10 +1,11 @@
 // components/document-upload-dialog.tsx
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useOrganization, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -25,6 +26,13 @@ import { Upload, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { allowedTypes } from "@/app/data/data";
 import { getUploadScopes, type DocumentScope } from "@/features/permissions";
+
+interface OrgTag {
+  id: string;
+  name: string;
+  slug: string;
+  color: string | null;
+}
 
 const SCOPE_LABELS: Record<DocumentScope, string> = {
   ORGANIZATION: "Organización",
@@ -51,12 +59,44 @@ export default function DocumentUploadDialog({
   const [isUploading, setIsUploading] = useState(false);
   const [documentName, setDocumentName] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  // F5/REQ-45 — org-canonical tags state. Loaded once when the dialog opens
+  // (avoids fetching on every page mount when no upload is in progress).
+  const [orgTags, setOrgTags] = useState<OrgTag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
 
   // Get allowed scopes for the user's role
   const allowedScopes = userRole ? getUploadScopes(userRole) : null;
   const [selectedScope, setSelectedScope] = useState<DocumentScope>(
     allowedScopes?.[0] ?? "ORGANIZATION",
   );
+
+  // Fetch tags lazily on dialog open. Slug comes from Clerk Organization;
+  // failures show a toast but don't block the upload flow.
+  useEffect(() => {
+    if (!isOpen || !organization?.slug) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/organizations/${organization.slug}/tags`,
+        );
+        if (!res.ok) throw new Error("tags fetch failed");
+        const body = (await res.json()) as { tags: OrgTag[] };
+        if (!cancelled) setOrgTags(body.tags ?? []);
+      } catch (err) {
+        console.error("tags fetch failed", err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, organization?.slug]);
+
+  const toggleTag = (id: string) => {
+    setSelectedTagIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,6 +137,12 @@ export default function DocumentUploadDialog({
     formData.append("name", documentName);
     formData.append("organizationId", organization.id);
     formData.append("scope", selectedScope);
+    // F5/REQ-45 — tagIds shipped as JSON to keep FormData arity flat (no
+    // .append per item ambiguity). Server route parses back to string[] via
+    // a Zod array schema. Empty selection is omitted to keep the body minimal.
+    if (selectedTagIds.length > 0) {
+      formData.append("tagIds", JSON.stringify(selectedTagIds));
+    }
 
     if (selectedFile) {
       formData.append("file", selectedFile);
@@ -138,6 +184,7 @@ export default function DocumentUploadDialog({
       setDocumentName("");
       setSelectedFile(null);
       setSelectedScope(allowedScopes?.[0] ?? "ORGANIZATION");
+      setSelectedTagIds([]);
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -204,6 +251,37 @@ export default function DocumentUploadDialog({
               </p>
             </div>
           )}
+
+          {/* F5/REQ-45 — Tag MultiSelect (org-canonical) */}
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Etiquetas
+            </label>
+            <div className="flex flex-wrap gap-2 border rounded-md p-2 min-h-[2.5rem]">
+              {orgTags.length === 0 && (
+                <span className="text-xs text-muted-foreground">
+                  No hay etiquetas en esta organización.
+                </span>
+              )}
+              {orgTags.map((tag) => {
+                const isSelected = selectedTagIds.includes(tag.id);
+                return (
+                  <Badge
+                    key={tag.id}
+                    variant={isSelected ? "default" : "outline"}
+                    className="cursor-pointer select-none"
+                    onClick={() => toggleTag(tag.id)}
+                    data-testid={`tag-option-${tag.slug}`}
+                  >
+                    {tag.name}
+                  </Badge>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Hacé clic para seleccionar las etiquetas que aplican al documento.
+            </p>
+          </div>
 
           <div>
             <label className="block text-sm font-medium mb-2">
