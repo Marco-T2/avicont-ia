@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SURFACES } from "../tools/surfaces/surface.types.ts";
+import { MODULE_HINTS } from "../types/module-hint.types.ts";
 
 // Modos del agente. "chat" es el default (conversación libre). "journal-entry-ai" es
 // el modo de captura asistida del botón "+ Crear Asiento con IA" — single-turn,
@@ -17,6 +18,10 @@ export const agentQuerySchema = z.object({
   mode: z.enum(AGENT_MODES).optional().default("chat"),
   surface: z.enum(SURFACES),
   contextHints: z.unknown().optional(),
+  // Optional + nullable per design D1.2. Modal callers (modal-registrar,
+  // modal-journal-ai) omit this field; sidebar emits explicit null on
+  // non-mapped routes. Route coerces absent -> null at the boundary.
+  module_hint: z.enum(MODULE_HINTS).nullable().optional(),
 });
 
 export const confirmActionSchema = z.object({
