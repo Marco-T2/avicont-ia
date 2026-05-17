@@ -8,6 +8,15 @@ export { makeJournalsService } from "./composition-root";
 export { LedgerService } from "../application/ledger.service";
 export { makeLedgerService } from "./composition-root";
 
+// ── Ledger exporters (PDF + XLSX) ──
+export {
+  exportLedgerPdf,
+  MissingOrgNameError as LedgerMissingOrgNameError,
+} from "../infrastructure/exporters/ledger-pdf.exporter";
+export type { LedgerPdfOptions } from "../infrastructure/exporters/ledger-pdf.exporter";
+export { exportLedgerXlsx } from "../infrastructure/exporters/ledger-xlsx.exporter";
+export type { LedgerXlsxOptions } from "../infrastructure/exporters/ledger-xlsx.exporter";
+
 // ── Accounts hex service (POC #3c) ──
 export { AccountsService } from "../application/accounts.service";
 export type { AccountsServiceDeps } from "../application/accounts.service";
