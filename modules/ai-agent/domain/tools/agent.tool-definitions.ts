@@ -28,6 +28,8 @@ export const createExpenseTool = defineTool({
     lotId: z.string().describe("ID del lote al que corresponde el gasto"),
     date: z.string().describe("Fecha del gasto en formato YYYY-MM-DD"),
   }),
+  resource: "farms",
+  action: "write",
 });
 
 export const logMortalityTool = defineTool({
@@ -40,6 +42,8 @@ export const logMortalityTool = defineTool({
     lotId: z.string().describe("ID del lote"),
     date: z.string().describe("Fecha del evento en formato YYYY-MM-DD"),
   }),
+  resource: "farms",
+  action: "write",
 });
 
 export const getLotSummaryTool = defineTool({
@@ -49,12 +53,16 @@ export const getLotSummaryTool = defineTool({
   inputSchema: z.object({
     lotId: z.string().describe("ID del lote"),
   }),
+  resource: "farms",
+  action: "read",
 });
 
 export const listFarmsTool = defineTool({
   name: "listFarms",
   description: "Listar todas las granjas del usuario en la organización.",
   inputSchema: z.object({}),
+  resource: "farms",
+  action: "read",
 });
 
 export const listLotsTool = defineTool({
@@ -63,6 +71,8 @@ export const listLotsTool = defineTool({
   inputSchema: z.object({
     farmId: z.string().describe("ID de la granja"),
   }),
+  resource: "farms",
+  action: "read",
 });
 
 // ── Shared tools (RAG search) ──
@@ -78,6 +88,8 @@ export const searchDocumentsTool = defineTool({
         "Consulta de búsqueda en lenguaje natural para encontrar documentos relevantes",
       ),
   }),
+  resource: "documents",
+  action: "read",
 });
 
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
@@ -92,6 +104,8 @@ export const parseAccountingOperationToSuggestionTool = defineTool({
     "rechaza cualquier ID que no esté en la base de datos. Esta tool NO persiste el " +
     "asiento; la creación real se confirma desde el modal de la UI.",
   inputSchema: journalEntryAiInputSchema,
+  resource: "journal",
+  action: "write",
 });
 
 // ── Tool sets by role ──

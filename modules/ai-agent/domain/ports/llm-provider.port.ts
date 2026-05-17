@@ -1,14 +1,23 @@
 import type { z } from "zod";
+import type { Action, Resource } from "@/modules/permissions/domain/permissions";
 
 /**
  * Provider-neutral tool descriptor. The schema is a Zod type; the wrapper
  * converts it to JSON Schema for the LLM and the executor uses it for
  * runtime validation of the args produced by the model.
+ *
+ * `resource` + `action` reuse the permissions domain types so the surface
+ * resolver (`getToolsForSurface`) can cross-filter a surface bundle against
+ * PERMISSIONS_READ / PERMISSIONS_WRITE without a parallel role-to-tool table.
+ * Action is narrowed to read|write — close/reopen are period-state
+ * transitions, not tool semantics.
  */
 export type Tool<TSchema extends z.ZodType = z.ZodType> = {
   readonly name: string;
   readonly description: string;
   readonly inputSchema: TSchema;
+  readonly resource: Resource;
+  readonly action: Extract<Action, "read" | "write">;
 };
 
 /**
