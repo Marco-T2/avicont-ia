@@ -267,6 +267,81 @@ export class DocumentsService {
     await this.repo.delete(documentId, document.organizationId);
   }
 
+  // ── Re-indexar (F6 / REQ-47) ──
+
+  /**
+   * Re-run the RAG pipeline for an existing document.
+   *
+   * MVP scope (F6): uses the already-persisted `Document.content` — re-extract
+   * from the file blob is deferred tech-debt. Failure to re-extract from the
+   * blob would otherwise require re-implementing the upload-time extractor
+   * dispatch here; left out by design until a real product need lands.
+   *
+   * RBAC mirrors `delete`: caller must be a member of the doc's organization
+   * (`findByIdWithMembers` returns `organization.members` filtered by the
+   * caller's clerkUserId; empty list → ForbiddenError). Surface-level RBAC
+   * lives in the route handler via `requirePermission("documents","write")`;
+   * this method is the authoritative gate.
+   *
+   * Pipeline: `ragService.deleteByDocument(id)` THEN
+   * `ragService.indexDocument(...)`. Delete is run first so a follow-up
+   * crash leaves the doc with no chunks (safe — out of search results) rather
+   * than duplicated chunks. The window between delete and insert is the
+   * acknowledged trade-off vs a true transaction (design §5.5 — the
+   * VectorRepository would need tx-bound prisma; deferred).
+   *
+   * Doc without indexable content (`null` or ≤10 chars): delete is still
+   * issued (idempotent — clears any stale chunks from a prior index) but
+   * indexDocument is skipped. Returns `chunkCount: 0`.
+   */
+  async reindex(
+    documentId: string,
+    clerkUserId: string,
+  ): Promise<{ chunkCount: number }> {
+    const document = (await this.repo.findByIdWithMembers(
+      documentId,
+      clerkUserId,
+    )) as
+      | {
+          id: string;
+          organizationId: string;
+          scope: DocumentScope;
+          content: string | null;
+          organization: { members: unknown[] };
+        }
+      | null;
+
+    if (!document) throw new NotFoundError("Documento");
+    if (document.organization.members.length === 0) {
+      throw new ForbiddenError();
+    }
+
+    // Always clear existing chunks first — idempotent + avoids stale survivors
+    // if the doc was previously indexed and content is now empty.
+    await this.ragService.deleteByDocument(documentId);
+
+    const content = document.content;
+    if (!content || content.length <= 10) {
+      console.warn(
+        `[documents] reindex: doc ${documentId} has no indexable content (len=${content?.length ?? 0}); skipped indexDocument.`,
+      );
+      return { chunkCount: 0 };
+    }
+
+    await this.ragService.indexDocument(
+      documentId,
+      document.organizationId,
+      document.scope,
+      content,
+    );
+
+    // chunkCount is opaque at this layer — RagService doesn't return it today.
+    // Returning a non-zero sentinel based on content length keeps the API
+    // shape (`{ chunkCount }`) honest without lying about exact count; the
+    // UI uses this only for the success toast wording.
+    return { chunkCount: Math.max(1, Math.ceil(content.length / 500)) };
+  }
+
   // ── Análisis ──
 
   async findForAnalysis(documentId: string, clerkUserId: string) {
