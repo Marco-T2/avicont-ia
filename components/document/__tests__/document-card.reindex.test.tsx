@@ -94,7 +94,7 @@ describe("DocumentCard — Re-indexar button (REQ-49)", () => {
   });
 
   it("(b) does NOT render the Re-indexar button when aiSummary is absent", () => {
-    renderCard({ aiSummary: null });
+    renderCard({ aiSummary: undefined });
     expect(
       screen.queryByRole("button", { name: /Re-indexar/i }),
     ).not.toBeInTheDocument();
