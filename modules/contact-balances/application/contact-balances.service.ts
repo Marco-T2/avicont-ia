@@ -3,12 +3,19 @@ import type { PaymentCreditPort } from "../domain/ports/payment-credit.port";
 import type { ReceivablesQueryPort } from "../domain/ports/receivables-query.port";
 import type { PayablesQueryPort } from "../domain/ports/payables-query.port";
 import type {
+  ContactsLedgerDashboardPort,
+  ContactType,
+  ContactsDashboardListOptions,
+  ContactsDashboardPaginatedResult,
+} from "../domain/ports/contacts-ledger-dashboard.port";
+import type {
   Contact,
   ContactSnapshot,
 } from "@/modules/contacts/domain/contact.entity";
 import type { ContactsService } from "@/modules/contacts/application/contacts.service";
 import type { ContactFilters } from "@/modules/contacts/domain/contact.repository";
 import { CreditBalance } from "../domain/value-objects/credit-balance";
+import { ValidationError } from "@/features/shared/errors";
 
 export interface ContactBalanceSummary {
   contactId: string;
@@ -47,6 +54,7 @@ export interface ContactBalancesDeps {
   payments: PaymentCreditPort;
   receivables: ReceivablesQueryPort;
   payables: PayablesQueryPort;
+  dashboard: ContactsLedgerDashboardPort;
 }
 
 export class ContactBalancesService {
@@ -55,6 +63,7 @@ export class ContactBalancesService {
   private readonly payments: PaymentCreditPort;
   private readonly receivables: ReceivablesQueryPort;
   private readonly payables: PayablesQueryPort;
+  private readonly dashboard: ContactsLedgerDashboardPort;
 
   constructor(deps: ContactBalancesDeps) {
     this.contacts = deps.contacts;
@@ -62,6 +71,7 @@ export class ContactBalancesService {
     this.payments = deps.payments;
     this.receivables = deps.receivables;
     this.payables = deps.payables;
+    this.dashboard = deps.dashboard;
   }
 
   async getCreditBalance(orgId: string, contactId: string): Promise<number> {
@@ -124,5 +134,38 @@ export class ContactBalancesService {
       ...contact.toSnapshot(),
       balanceSummary,
     }));
+  }
+
+  /**
+   * Lists contacts of `type` with their open balance + last-movement date
+   * for the dashboard surface (CxC `/accounting/cxc`, CxP `/accounting/cxp`).
+   *
+   * Defaults (REQ "Contact Dashboard"):
+   *   includeZeroBalance=false (only contacts with non-zero open balance)
+   *   page=1, pageSize=20
+   *   sort=openBalance, direction=desc
+   *
+   * Type validation defends the boundary — domain only accepts
+   * "CLIENTE" | "PROVEEDOR" (Prisma `ContactType` enum). Adapter assumes
+   * a valid value; ValidationError surfaces upstream as 422 via handleError.
+   */
+  async listContactsWithOpenBalance(
+    orgId: string,
+    type: ContactType,
+    options: ContactsDashboardListOptions = {},
+  ): Promise<ContactsDashboardPaginatedResult> {
+    if (type !== "CLIENTE" && type !== "PROVEEDOR") {
+      throw new ValidationError(
+        `Tipo de contacto inválido: ${String(type)}. Debe ser CLIENTE o PROVEEDOR.`,
+      );
+    }
+    const merged: Required<ContactsDashboardListOptions> = {
+      includeZeroBalance: options.includeZeroBalance ?? false,
+      page: options.page ?? 1,
+      pageSize: options.pageSize ?? 20,
+      sort: options.sort ?? "openBalance",
+      direction: options.direction ?? "desc",
+    };
+    return this.dashboard.listContactsWithOpenBalance(orgId, type, merged);
   }
 }

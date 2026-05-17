@@ -4,6 +4,7 @@ import type { ContactExistencePort } from "../../domain/ports/contact-existence.
 import type { PaymentCreditPort } from "../../domain/ports/payment-credit.port";
 import type { ReceivablesQueryPort } from "../../domain/ports/receivables-query.port";
 import type { PayablesQueryPort } from "../../domain/ports/payables-query.port";
+import type { ContactsLedgerDashboardPort } from "../../domain/ports/contacts-ledger-dashboard.port";
 import type { ContactsService } from "@/modules/contacts/application/contacts.service";
 import { Contact } from "@/modules/contacts/domain/contact.entity";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
@@ -49,12 +50,26 @@ const fakeContacts = (
     ...overrides,
   }) as unknown as ContactsService;
 
+const fakeDashboard = (
+  overrides: Partial<ContactsLedgerDashboardPort> = {},
+): ContactsLedgerDashboardPort => ({
+  listContactsWithOpenBalance: vi.fn().mockResolvedValue({
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 20,
+    totalPages: 1,
+  }),
+  ...overrides,
+});
+
 const build = (over: Partial<{
   existence: ContactExistencePort;
   payments: PaymentCreditPort;
   receivables: ReceivablesQueryPort;
   payables: PayablesQueryPort;
   contacts: ContactsService;
+  dashboard: ContactsLedgerDashboardPort;
 }> = {}) =>
   new ContactBalancesService({
     contacts: over.contacts ?? fakeContacts(),
@@ -62,6 +77,7 @@ const build = (over: Partial<{
     payments: over.payments ?? fakePayments(),
     receivables: over.receivables ?? fakeReceivables(),
     payables: over.payables ?? fakePayables(),
+    dashboard: over.dashboard ?? fakeDashboard(),
   });
 
 describe("ContactBalancesService.getCreditBalance", () => {
