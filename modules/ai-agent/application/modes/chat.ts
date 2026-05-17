@@ -453,6 +453,12 @@ async function handleReadCall(
           },
         };
       }
+      case "listRecentJournalEntries":
+        data = await accountingQuery.listRecentJournalEntries(
+          orgId,
+          (args.limit as number | undefined) ?? 10,
+        );
+        break;
       default:
         return {
           outcome: "validation_failed",

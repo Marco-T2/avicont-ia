@@ -92,6 +92,25 @@ export const searchDocumentsTool = defineTool({
   action: "read",
 });
 
+// ── F2 (agent-accounting-query-tools) read tools — sidebar-qa surface ──
+
+export const listRecentJournalEntriesTool = defineTool({
+  name: "listRecentJournalEntries",
+  description:
+    "Listar los últimos N asientos contables de la organización (más recientes primero). Devuelve fecha, número, descripción, estado y totales (sin las líneas).",
+  inputSchema: z.object({
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de asientos a devolver (default 10)"),
+  }),
+  resource: "journal",
+  action: "read",
+});
+
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
 
 export const parseAccountingOperationToSuggestionTool = defineTool({
@@ -142,6 +161,7 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [listLotsTool.name]: listLotsTool,
   [searchDocumentsTool.name]: searchDocumentsTool,
   [parseAccountingOperationToSuggestionTool.name]: parseAccountingOperationToSuggestionTool,
+  [listRecentJournalEntriesTool.name]: listRecentJournalEntriesTool,
 };
 
 /**
