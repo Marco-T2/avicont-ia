@@ -77,10 +77,21 @@ export interface LedgerAggregateRow {
  *  `sourceType`/`sourceId` mirror the persistence columns on JournalEntry
  *  (nullable for manual asientos sin auxiliar — D4 "withoutAuxiliary"
  *  flagging). Service treats `sourceType=null AND no CxC/CxP match` as
- *  a `withoutAuxiliary: true` row. */
-export interface ContactLedgerLineRow extends LedgerLineRow {
+ *  a `withoutAuxiliary: true` row.
+ *
+ *  `voucherType.name` ADDED on top of the sister `LedgerLineRow` projection
+ *  (`code` + `prefix`) for the "Tipo" column human-readable label
+ *  (spec REQ "Type Column"). Adapter extends the existing Prisma select to
+ *  include `name`; fallback (when adapter implementations omit name) uses
+ *  the `code`. */
+export interface ContactLedgerLineRow extends Omit<LedgerLineRow, "journalEntry"> {
   sourceType: string | null;
   sourceId: string | null;
+  journalEntry: LedgerLineRow["journalEntry"] & {
+    voucherType: LedgerLineRow["journalEntry"]["voucherType"] & {
+      name: string;
+    };
+  };
 }
 
 /** Page-window of contact-keyed journal lines + opening balance delta. Same

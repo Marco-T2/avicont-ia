@@ -50,6 +50,61 @@ export interface LedgerPaginatedDto {
   openingBalance: string;
 }
 
+/**
+ * Contact-keyed ledger entry — extends `LedgerEntry` with the columns the
+ * contact-ledger detail view requires beyond the account-keyed sister
+ * (spec REQ "Contact Ledger Detail" + "Status Column" + "Type Column" +
+ * "Fallback — Asiento Manual sin Auxiliar"):
+ *
+ *   - `status`     — Receivable/Payable status (`PENDING|PARTIAL|PAID|VOIDED`)
+ *                    or `null` for rows that have no CxC/CxP parent
+ *                    (RECEIPT/PAYMENT/MANUAL). UI maps to es-BO labels +
+ *                    derives `ATRASADO` runtime from `dueDate < now`.
+ *   - `dueDate`    — fwd from CxC/CxP for the UI to derive ATRASADO. ISO-8601
+ *                    `string` at the JSON boundary. `null` when row has no
+ *                    receivable/payable parent.
+ *   - `voucherTypeHuman` — VoucherType.name (or fallback to code) used by the
+ *                    UI "Tipo" column human label.
+ *   - `sourceType` — raw discriminator forwarded from the JournalLine ("sale"
+ *                    | "purchase" | "payment" | "receipt" | null). UI uses
+ *                    this to pick the human "Tipo" override (Cobranza/Pago/etc).
+ *   - `paymentMethod` — `EFECTIVO|TRANSFERENCIA|CHEQUE|DEPOSITO` when the
+ *                    row originates from a Payment; `null` otherwise.
+ *   - `bankAccountName` — bank account display name for transfers/deposits;
+ *                    `null` otherwise.
+ *   - `withoutAuxiliary` — D4 fallback flag. `true` when the row's parent
+ *                    JournalEntry has no source document AND no
+ *                    Receivable/Payable matches `journalEntryId`. UI renders
+ *                    a "Sin auxiliar" warning row.
+ */
+export interface ContactLedgerEntry extends LedgerEntry {
+  status: string | null;
+  dueDate: string | null;
+  voucherTypeHuman: string;
+  sourceType: string | null;
+  paymentMethod: string | null;
+  bankAccountName: string | null;
+  withoutAuxiliary: boolean;
+}
+
+/**
+ * Paginated contact-ledger DTO at the API/service boundary. Same pagination
+ * + cumulative-state contract as `LedgerPaginatedDto` (account-keyed sister)
+ * — `items: ContactLedgerEntry[]` carries the enriched rows; `openingBalance`
+ * is the Decimal-serialized opening balance for the page window.
+ */
+export interface ContactLedgerPaginatedDto {
+  items: ContactLedgerEntry[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  /** Opening balance for this page (sum of all debit-credit BEFORE the
+   *  current page window across the contact's POSTED lines), serialized as
+   *  string via roundHalfUp+toFixed(2). Page 1 + no dateFrom → "0.00". */
+  openingBalance: string;
+}
+
 export interface TrialBalanceRow {
   accountCode: string;
   accountName: string;

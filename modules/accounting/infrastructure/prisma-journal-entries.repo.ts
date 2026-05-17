@@ -767,7 +767,7 @@ export class JournalRepository extends BaseRepository {
               description: true,
               sourceType: true,
               sourceId: true,
-              voucherType: { select: { code: true, prefix: true } },
+              voucherType: { select: { code: true, prefix: true, name: true } },
             },
           },
         },
