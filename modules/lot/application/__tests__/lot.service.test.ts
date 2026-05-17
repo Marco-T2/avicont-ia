@@ -178,6 +178,52 @@ describe("LotService", () => {
     });
   });
 
+  describe("getDeletePreview", () => {
+    // α45
+    it("returns expensesCount + mortalityCount for the lot", async () => {
+      const lot = await svc.create(ORG, baseInput());
+      repo.preloadChildCounts(lot.id, { expenses: 4, mortality: 7 });
+
+      const preview = await svc.getDeletePreview(ORG, lot.id);
+
+      expect(preview).toEqual({ expensesCount: 4, mortalityCount: 7 });
+    });
+
+    // α46
+    it("returns zero counts when there are no children", async () => {
+      const lot = await svc.create(ORG, baseInput());
+
+      const preview = await svc.getDeletePreview(ORG, lot.id);
+
+      expect(preview).toEqual({ expensesCount: 0, mortalityCount: 0 });
+    });
+
+    // α47
+    it("throws NotFoundError when lot does not exist", async () => {
+      await expect(
+        svc.getDeletePreview(ORG, "missing-id"),
+      ).rejects.toThrow(NotFoundError);
+    });
+  });
+
+  describe("delete", () => {
+    // α48
+    it("removes the lot via repo.delete", async () => {
+      const lot = await svc.create(ORG, baseInput());
+
+      await svc.delete(ORG, lot.id);
+
+      await expect(svc.getById(ORG, lot.id)).rejects.toThrow(NotFoundError);
+    });
+
+    // α49
+    it("throws NotFoundError when lot does not exist", async () => {
+      await expect(svc.delete(ORG, "missing-id")).rejects.toThrow(
+        NotFoundError,
+      );
+    });
+  });
+
   describe("getSummary", () => {
     // α38
     it("throws NotFoundError when lot missing", async () => {
