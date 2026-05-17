@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SURFACES } from "../tools/surfaces/surface.types.ts";
 
 // Modos del agente. "chat" es el default (conversación libre). "journal-entry-ai" es
 // el modo de captura asistida del botón "+ Crear Asiento con IA" — single-turn,
@@ -7,10 +8,14 @@ import { z } from "zod";
 export const AGENT_MODES = ["chat", "journal-entry-ai"] as const;
 export type AgentMode = (typeof AGENT_MODES)[number];
 
+// `surface` is REQUIRED (no default) — missing surface → ZodError → 400
+// via existing handleError middleware. Forces every client to be explicit
+// about its UI entry point; eliminates silent fallback drift.
 export const agentQuerySchema = z.object({
   prompt: z.string().min(1, "Se requiere un prompt"),
   session_id: z.string().optional(),
   mode: z.enum(AGENT_MODES).optional().default("chat"),
+  surface: z.enum(SURFACES),
   contextHints: z.unknown().optional(),
 });
 
