@@ -299,8 +299,13 @@ export class DocumentsService {
     }
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
-      const result = await mammoth.extractRawText({ buffer });
-      // null legítimo cuando el DOCX no tiene texto en el body.
+      // Markdown preserva headings (`# H1`) — el chunker F2 (REQ-33) detecta
+      // `^#+\s` para sectionPath. extractRawText los aplasta a texto plano.
+      // convertToMarkdown existe en runtime (mammoth 1.12) pero falta en d.ts.
+      const mammothExt = mammoth as unknown as {
+        convertToMarkdown: (input: { buffer: Buffer }) => Promise<{ value: string }>;
+      };
+      const result = await mammothExt.convertToMarkdown({ buffer });
       return result.value?.trim() || null;
     } catch (err) {
       // Paired sister: extractPdfText — el parser explotó; falla explícito

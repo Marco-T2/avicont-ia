@@ -2,7 +2,8 @@
  * F3 C3.0/C3.1 — DocumentsService.upload DOCX extraction (REQ-37).
  *
  * Paired sister: documents.service.error-propagation.test.ts (PDF branch).
- * Mock target: `mammoth` boundary-mocked; service calls `mammoth.extractRawText({ buffer })`.
+ * Mock target: `mammoth` boundary-mocked; service calls `mammoth.convertToMarkdown({ buffer })`
+ * (markdown preserves `# H1` headings so the F2 chunker REQ-33 detector picks them up).
  *
  * Expected RED failure (pre-GREEN): no DOCX branch in upload switch — the
  * indexDocument call receives `null`/the original `content` arg, NOT the
@@ -11,18 +12,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const {
-  mockExtractRawText,
+  mockConvertToMarkdown,
   mockIndexDocument,
   mockRagDeleteByDocument,
 } = vi.hoisted(() => ({
-  mockExtractRawText: vi.fn(),
+  mockConvertToMarkdown: vi.fn(),
   mockIndexDocument: vi.fn(),
   mockRagDeleteByDocument: vi.fn(),
 }));
 
 vi.mock("mammoth", () => ({
-  default: { extractRawText: mockExtractRawText },
-  extractRawText: mockExtractRawText,
+  default: { convertToMarkdown: mockConvertToMarkdown },
+  convertToMarkdown: mockConvertToMarkdown,
 }));
 
 vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
@@ -89,13 +90,13 @@ describe("DocumentsService.upload — DOCX extraction (REQ-37)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockIndexDocument.mockResolvedValue(undefined);
-    mockExtractRawText.mockResolvedValue({
-      value: "DOCX BODY TEXTO EXTRAÍDO",
+    mockConvertToMarkdown.mockResolvedValue({
+      value: "# Heading\n\nDOCX BODY TEXTO EXTRAÍDO",
       messages: [],
     });
   });
 
-  it("extracts text via mammoth.extractRawText and feeds it to RAG indexing", async () => {
+  it("extracts markdown via mammoth.convertToMarkdown and feeds it to RAG indexing", async () => {
     const repo = buildRepo();
     const blob = new StubBlobStorage();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -110,15 +111,15 @@ describe("DocumentsService.upload — DOCX extraction (REQ-37)", () => {
     );
 
     expect(result.id).toBe(DOC_ID);
-    expect(mockExtractRawText).toHaveBeenCalledTimes(1);
+    expect(mockConvertToMarkdown).toHaveBeenCalledTimes(1);
     expect(mockIndexDocument).toHaveBeenCalledWith(
       DOC_ID,
       ORG_ID,
       "ORGANIZATION",
-      "DOCX BODY TEXTO EXTRAÍDO",
+      "# Heading\n\nDOCX BODY TEXTO EXTRAÍDO",
     );
     expect(repo.create).toHaveBeenCalledWith(
-      expect.objectContaining({ content: "DOCX BODY TEXTO EXTRAÍDO" }),
+      expect.objectContaining({ content: "# Heading\n\nDOCX BODY TEXTO EXTRAÍDO" }),
     );
   });
 });

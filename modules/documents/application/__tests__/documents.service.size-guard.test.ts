@@ -19,17 +19,17 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-const { mockExtractRawText, mockIndexDocument, mockWorkbookLoad } = vi.hoisted(
+const { mockConvertToMarkdown, mockIndexDocument, mockWorkbookLoad } = vi.hoisted(
   () => ({
-    mockExtractRawText: vi.fn(),
+    mockConvertToMarkdown: vi.fn(),
     mockIndexDocument: vi.fn(),
     mockWorkbookLoad: vi.fn(),
   }),
 );
 
 vi.mock("mammoth", () => ({
-  default: { extractRawText: mockExtractRawText },
-  extractRawText: mockExtractRawText,
+  default: { convertToMarkdown: mockConvertToMarkdown },
+  convertToMarkdown: mockConvertToMarkdown,
 }));
 
 vi.mock("exceljs", () => {
@@ -109,7 +109,7 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
   beforeEach(() => {
     vi.clearAllMocks();
     mockIndexDocument.mockResolvedValue(undefined);
-    mockExtractRawText.mockResolvedValue({ value: "should not be called", messages: [] });
+    mockConvertToMarkdown.mockResolvedValue({ value: "should not be called", messages: [] });
     mockWorkbookLoad.mockResolvedValue(undefined);
   });
 
@@ -124,7 +124,7 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
     const result = await service.upload(CLERK_ORG_ID, CLERK_USER_ID, "big.docx", null, file);
 
     expect(result.id).toBe(DOC_ID);
-    expect(mockExtractRawText).not.toHaveBeenCalled();
+    expect(mockConvertToMarkdown).not.toHaveBeenCalled();
     // Doc row persisted with null content — RAG indexing skipped (no text > 10 chars).
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ content: null }),
@@ -161,11 +161,11 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
     const service = new DocumentsService(repo as any, blob, new RagService());
 
     const file = new File([new Uint8Array(FIVE_MB)], "edge.docx", { type: DOCX_MIME });
-    mockExtractRawText.mockResolvedValueOnce({ value: "parsed body content", messages: [] });
+    mockConvertToMarkdown.mockResolvedValueOnce({ value: "parsed body content", messages: [] });
 
     await service.upload(CLERK_ORG_ID, CLERK_USER_ID, "edge.docx", null, file);
 
-    expect(mockExtractRawText).toHaveBeenCalledTimes(1);
+    expect(mockConvertToMarkdown).toHaveBeenCalledTimes(1);
     expect(repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ content: "parsed body content" }),
     );

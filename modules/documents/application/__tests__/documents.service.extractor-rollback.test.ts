@@ -14,20 +14,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ValidationError } from "@/features/shared/errors";
 
 const {
-  mockExtractRawText,
+  mockConvertToMarkdown,
   mockIndexDocument,
   mockRagDeleteByDocument,
   workbookFactory,
 } = vi.hoisted(() => ({
-  mockExtractRawText: vi.fn(),
+  mockConvertToMarkdown: vi.fn(),
   mockIndexDocument: vi.fn(),
   mockRagDeleteByDocument: vi.fn(),
   workbookFactory: { fn: (): unknown[] => [], shouldThrow: false as boolean },
 }));
 
 vi.mock("mammoth", () => ({
-  default: { extractRawText: mockExtractRawText },
-  extractRawText: mockExtractRawText,
+  default: { convertToMarkdown: mockConvertToMarkdown },
+  convertToMarkdown: mockConvertToMarkdown,
 }));
 
 vi.mock("exceljs", () => {
@@ -118,7 +118,7 @@ describe("DocumentsService.upload — extractor failure rollback (REQ-39)", () =
   });
 
   it("corrupt DOCX: throws ValidationError with REQ-39 literal, rolls back blob, never creates doc", async () => {
-    mockExtractRawText.mockRejectedValue(new Error("DOCX zip is invalid"));
+    mockConvertToMarkdown.mockRejectedValue(new Error("DOCX zip is invalid"));
     const repo = buildRepo();
     const blob = new StubBlobStorage();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
