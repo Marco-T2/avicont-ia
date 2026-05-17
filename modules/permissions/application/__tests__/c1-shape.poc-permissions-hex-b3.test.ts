@@ -169,10 +169,10 @@ describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggr
   });
 });
 
-// ── α18: DUAL-SENTINEL — baseline 91 vi.mock count invariant ─────────────────
+// ── α18: DUAL-SENTINEL — baseline 92 vi.mock count invariant ─────────────────
 
-describe("α18 DUAL-SENTINEL — baseline 91 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5, +1 by equity-statement route test, +1 by contact-ledger route test, +1 by contact-balances dashboard route test, +1 by another untracked post-86 driver, +1 by agent-surface-separation route.surface-validation test)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 91 (baseline preserved; net +7 from original 84)", () => {
+describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5, +1 by equity-statement route test, +1 by contact-ledger route test, +1 by contact-balances dashboard route test, +1 by another untracked post-86 driver, +1 by agent-surface-separation route.surface-validation test, +1 by agent-sidebar-module-hint route.module-hint test)", () => {
+  it("α18: vi.mock count for @/features/permissions/server equals 92 (baseline preserved; net +8 from original 84)", () => {
     // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
     // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
     // Original baseline: 84. Adjusted by:
@@ -201,11 +201,14 @@ describe("α18 DUAL-SENTINEL — baseline 91 vi.mock count (REQ-010 invariant, d
     //   - agent-surface-separation F1+F2: app/api/organizations/[orgSlug]/agent/__tests__/route.surface-validation.surface-separation.test.ts
     //     NEW — mocks requirePermission alongside the 3 pre-existing route.confirm-*.test.ts
     //     siblings to spy parsed.surface propagation through agentService.query (+1).
+    //   - agent-sidebar-module-hint C1: app/api/organizations/[orgSlug]/agent/__tests__/route.module-hint.test.ts
+    //     NEW — mocks requirePermission to spy parsed.module_hint -> moduleHint
+    //     propagation at the 9th positional arg of agentService.query (+1).
     // REQ-010 invariant preserved; drifts accounted explicit per [[invariant_collision_elevation]].
     const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
     const count = Number(stdout);
-    expect(count).toBe(91);
+    expect(count).toBe(92);
   });
 });
 
