@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { formatDateBO } from "@/lib/date-utils";
 import {
@@ -14,9 +15,11 @@ import {
   AccordionTrigger,
   AccordionContent,
 } from "@/components/ui/accordion";
-import { MapPin, ArrowLeft, Egg, DollarSign, Skull } from "lucide-react";
+import { MapPin, ArrowLeft, Egg, DollarSign, Skull, Pencil, Trash2 } from "lucide-react";
 import Link from "next/link";
 import CreateLotDialog from "@/components/lots/create-lot-dialog";
+import { EditLotDialog } from "@/components/lots/edit-lot-dialog";
+import { DeleteLotDialog } from "@/components/lots/delete-lot-dialog";
 import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
 import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
@@ -121,6 +124,11 @@ export default function FarmDetailClient({
   farmMetrics,
 }: FarmDetailClientProps) {
   const router = useRouter();
+  const [editingLotId, setEditingLotId] = useState<string | null>(null);
+  const [deletingLotId, setDeletingLotId] = useState<string | null>(null);
+
+  const editingLot = lots.find((l) => l.lot.id === editingLotId)?.lot;
+  const deletingLot = lots.find((l) => l.lot.id === deletingLotId)?.lot;
 
   return (
     <div className="space-y-6">
@@ -210,7 +218,7 @@ export default function FarmDetailClient({
           <h2 className="text-xl font-semibold">
             Lotes ({lots.length})
           </h2>
-          <Accordion type="single" collapsible className="w-full">
+          <Accordion type="single" collapsible className="w-full space-y-3">
             {lots.map(({ lot, summary, recentExpenses, recentMortality }) => {
               const status = STATUS_CONFIG[lot.status] ?? {
                 label: lot.status,
@@ -218,7 +226,11 @@ export default function FarmDetailClient({
                   "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
               };
               return (
-                <AccordionItem key={lot.id} value={lot.id}>
+                <AccordionItem
+                  key={lot.id}
+                  value={lot.id}
+                  className="border rounded-lg bg-card px-4 shadow-sm"
+                >
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex flex-col gap-3 flex-1 mr-3">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -257,6 +269,27 @@ export default function FarmDetailClient({
                   </AccordionTrigger>
                   <AccordionContent>
                     <div className="space-y-4 pt-2">
+                      {/* Lote actions — editar/eliminar sin entrar al detail page */}
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setEditingLotId(lot.id)}
+                        >
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Editar lote
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          onClick={() => setDeletingLotId(lot.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Eliminar lote
+                        </Button>
+                      </div>
+
                       {/* 3 botones cluster — AI + manual gasto + manual mortalidad scoped per-lot */}
                       <div className="flex flex-wrap gap-2">
                         <RegistrarConIABoton
@@ -389,6 +422,39 @@ export default function FarmDetailClient({
             })}
           </Accordion>
         </div>
+      )}
+
+      {/* Lot dialogs — mounted at root level; visibility driven by selection state. */}
+      {editingLot && (
+        <EditLotDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setEditingLotId(null);
+          }}
+          orgSlug={orgSlug}
+          lotId={editingLot.id}
+          initialName={editingLot.name}
+          initialBarnNumber={editingLot.barnNumber}
+          onUpdated={() => {
+            setEditingLotId(null);
+            router.refresh();
+          }}
+        />
+      )}
+      {deletingLot && (
+        <DeleteLotDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setDeletingLotId(null);
+          }}
+          orgSlug={orgSlug}
+          lotId={deletingLot.id}
+          lotName={deletingLot.name}
+          onDeleted={() => {
+            setDeletingLotId(null);
+            router.refresh();
+          }}
+        />
       )}
     </div>
   );
