@@ -1,6 +1,9 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { Lot } from "../lot.entity";
-import { CannotCloseInactiveLot } from "../errors/lot-errors";
+import {
+  CannotCloseInactiveLot,
+  LotCannotUpdateClosed,
+} from "../errors/lot-errors";
 import { LotSummary } from "../value-objects/lot-summary";
 
 describe("Lot entity behavioral", () => {
@@ -116,6 +119,64 @@ describe("Lot entity behavioral", () => {
     expect(lot1.id).not.toBe(lot2.id);
     expect(lot1.barnNumber).toBe(3);
     expect(lot2.barnNumber).toBe(3);
+  });
+
+  // α29 Lot.update — happy path immutable
+  it("Lot.update returns a new instance with updated name + barnNumber", () => {
+    const lot = Lot.create(baseInput);
+
+    const updated = lot.update({ name: "Galpón B", barnNumber: 2 });
+
+    expect(updated).not.toBe(lot);
+    expect(updated.name).toBe("Galpón B");
+    expect(updated.barnNumber).toBe(2);
+    expect(lot.name).toBe(baseInput.name); // original unchanged
+  });
+
+  // α30 Lot.update preserves immutable invariants
+  it("Lot.update preserves id, initialCount, status, farmId, organizationId, createdAt (INV-04)", () => {
+    const lot = Lot.create(baseInput);
+
+    const updated = lot.update({ name: "Galpón B" });
+
+    expect(updated.id).toBe(lot.id);
+    expect(updated.initialCount).toBe(lot.initialCount);
+    expect(updated.status).toBe(lot.status);
+    expect(updated.farmId).toBe(lot.farmId);
+    expect(updated.organizationId).toBe(lot.organizationId);
+    expect(updated.createdAt).toEqual(lot.createdAt);
+  });
+
+  // α31 Lot.update partial — barnNumber only
+  it("Lot.update partial keeps prior values when fields omitted", () => {
+    const lot = Lot.create(baseInput);
+
+    const updated = lot.update({ barnNumber: 9 });
+
+    expect(updated.barnNumber).toBe(9);
+    expect(updated.name).toBe(baseInput.name);
+  });
+
+  // α32 Lot.update bumps updatedAt
+  it("Lot.update advances updatedAt on every call", () => {
+    const lot = Lot.create(baseInput);
+    vi.setSystemTime(new Date("2026-05-10T13:00:00Z"));
+
+    const updated = lot.update({ name: "X" });
+
+    expect(updated.updatedAt).toEqual(new Date("2026-05-10T13:00:00Z"));
+    expect(updated.updatedAt.getTime()).toBeGreaterThan(
+      lot.updatedAt.getTime(),
+    );
+  });
+
+  // α33 Lot.update rejects CLOSED
+  it("Lot.update throws LotCannotUpdateClosed when status is CLOSED", () => {
+    const lot = Lot.create(baseInput).close(
+      new Date("2026-06-30T00:00:00Z"),
+    );
+
+    expect(() => lot.update({ name: "X" })).toThrow(LotCannotUpdateClosed);
   });
 
   // α28
