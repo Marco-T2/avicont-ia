@@ -481,6 +481,14 @@ async function handleReadCall(
           (args.limit as number | undefined) ?? 20,
         );
         break;
+      case "listPurchases":
+        data = await accountingQuery.listPurchases(
+          orgId,
+          args.dateFrom as string | undefined,
+          args.dateTo as string | undefined,
+          (args.limit as number | undefined) ?? 20,
+        );
+        break;
       default:
         return {
           outcome: "validation_failed",

@@ -170,6 +170,35 @@ export const listSalesTool = defineTool({
   action: "read",
 });
 
+export const listPurchasesTool = defineTool({
+  name: "listPurchases",
+  description:
+    "Listar las compras recientes de la organización, opcionalmente filtradas por estado y rango de fechas. Devuelve proveedor, fecha, total y estado.",
+  inputSchema: z.object({
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de compras (default 20)"),
+    status: z
+      .enum(["DRAFT", "POSTED", "LOCKED", "VOIDED"])
+      .optional()
+      .describe("Filtrar por estado (opcional)"),
+    dateFrom: z
+      .string()
+      .optional()
+      .describe("Fecha desde (ISO YYYY-MM-DD, opcional)"),
+    dateTo: z
+      .string()
+      .optional()
+      .describe("Fecha hasta (ISO YYYY-MM-DD, opcional)"),
+  }),
+  resource: "purchases",
+  action: "read",
+});
+
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
 
 export const parseAccountingOperationToSuggestionTool = defineTool({
@@ -224,6 +253,7 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [getAccountMovementsTool.name]: getAccountMovementsTool,
   [getAccountBalanceTool.name]: getAccountBalanceTool,
   [listSalesTool.name]: listSalesTool,
+  [listPurchasesTool.name]: listPurchasesTool,
 };
 
 /**
