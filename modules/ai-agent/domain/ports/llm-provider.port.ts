@@ -1,5 +1,6 @@
 import type { z } from "zod";
 import type { Action, Resource } from "@/modules/permissions/domain/permissions";
+import type { ConversationTurn } from "../types/conversation";
 
 /**
  * Provider-neutral tool descriptor. The schema is a Zod type; the wrapper
@@ -69,6 +70,15 @@ export type LLMQuery = {
   readonly systemPrompt: string;
   readonly userMessage: string;
   readonly tools: readonly Tool[];
+  /**
+   * Multi-turn conversation history for chat-mode tool loops (REQ-19, REQ-21).
+   * When omitted or empty, the adapter falls back to the single-shot path
+   * (backward compat — existing call sites unchanged). When present, the
+   * adapter ignores `userMessage` and treats the last `UserTurn` in the
+   * history as the new user message (locked adapter contract — see
+   * `infrastructure/llm/gemini-llm.adapter.ts`).
+   */
+  readonly conversationHistory?: readonly ConversationTurn[];
 };
 
 /**
