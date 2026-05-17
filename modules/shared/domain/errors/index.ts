@@ -56,6 +56,18 @@ export class UnauthorizedError extends AppError {
   }
 }
 
+/**
+ * 501 Not Implemented — stub for endpoints/branches deliberately staged-red
+ * (e.g. contact-ledger PDF/XLSX export in C4, completed in C7 per design D6).
+ * Distinct from ValidationError (422) to make the staged-red intent explicit
+ * in HTTP status; consumers should not depend on this surface long-term.
+ */
+export class NotImplementedError extends AppError {
+  constructor(message = "No implementado", code = "NOT_IMPLEMENTED") {
+    super(message, 501, code);
+  }
+}
+
 // --- Códigos de Error Contable ---
 
 // Períodos Fiscales

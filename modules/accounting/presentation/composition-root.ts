@@ -21,6 +21,9 @@ import { AccountBalancesService } from "@/modules/account-balances/application/a
 import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { PrismaReceivablesContactLedgerAdapter } from "../infrastructure/prisma-receivables-contact-ledger.adapter";
+import { PrismaPayablesContactLedgerAdapter } from "../infrastructure/prisma-payables-contact-ledger.adapter";
+import { PrismaPaymentsContactLedgerAdapter } from "../infrastructure/prisma-payments-contact-ledger.adapter";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -63,6 +66,17 @@ export function makeLedgerService(): LedgerService {
     new PrismaJournalLedgerQueryAdapter(),
     new PrismaAccountsRepo(),
     new AccountBalancesService(),
+    // contact-ledger-refactor C4: enrichment deps for
+    // getContactLedgerPaginated. 3 batched ports wrapping the Prisma findMany
+    // family (Receivables/Payables/Payments), wired here so the route handler
+    // gets a fully-functional service through this single factory.
+    // ContactsReadAdapter reused — already exists for the journals use case.
+    {
+      contacts: new ContactsReadAdapter(),
+      receivables: new PrismaReceivablesContactLedgerAdapter(),
+      payables: new PrismaPayablesContactLedgerAdapter(),
+      payments: new PrismaPaymentsContactLedgerAdapter(),
+    },
   );
 }
 
