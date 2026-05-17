@@ -98,6 +98,51 @@ export default function DocumentUploadDialog({
     );
   };
 
+  // F5/REQ-45 item 3 — inline tag creation. Empty name + "already exists"
+  // (matched case-insensitive against current list) short-circuit before
+  // hitting the network. POST is fire-and-forget for UI purposes — on
+  // success the returned tag is prepended + auto-selected; on 4xx we keep
+  // the local state untouched so the user can correct and retry.
+  const [newTagName, setNewTagName] = useState("");
+  const [isCreatingTag, setIsCreatingTag] = useState(false);
+
+  const handleCreateTag = async () => {
+    if (!organization?.slug) return;
+    const trimmed = newTagName.trim();
+    if (!trimmed) return;
+    const exists = orgTags.some(
+      (t) => t.name.toLowerCase() === trimmed.toLowerCase(),
+    );
+    if (exists) {
+      toast.error("Esa etiqueta ya existe");
+      return;
+    }
+    setIsCreatingTag(true);
+    try {
+      const res = await fetch(`/api/organizations/${organization.slug}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: trimmed }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        toast.error(body.error || "No se pudo crear la etiqueta");
+        return;
+      }
+      const body = (await res.json()) as { tag: OrgTag };
+      setOrgTags((prev) => [body.tag, ...prev]);
+      setSelectedTagIds((prev) =>
+        prev.includes(body.tag.id) ? prev : [...prev, body.tag.id],
+      );
+      setNewTagName("");
+    } catch (err) {
+      console.error("create tag failed", err);
+      toast.error("Error al crear la etiqueta");
+    } finally {
+      setIsCreatingTag(false);
+    }
+  };
+
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -185,6 +230,7 @@ export default function DocumentUploadDialog({
       setSelectedFile(null);
       setSelectedScope(allowedScopes?.[0] ?? "ORGANIZATION");
       setSelectedTagIds([]);
+      setNewTagName("");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
@@ -281,6 +327,26 @@ export default function DocumentUploadDialog({
             <p className="text-xs text-muted-foreground mt-1">
               Hacé clic para seleccionar las etiquetas que aplican al documento.
             </p>
+            <div className="flex gap-2 mt-2">
+              <Input
+                placeholder="Nueva etiqueta"
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                disabled={isUploading || isCreatingTag}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCreateTag}
+                disabled={isUploading || isCreatingTag || newTagName.trim().length === 0}
+              >
+                {isCreatingTag ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>Crear «{newTagName.trim() || "…"}»</>
+                )}
+              </Button>
+            </div>
           </div>
 
           <div>
