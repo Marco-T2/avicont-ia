@@ -130,6 +130,17 @@ export const getAccountMovementsTool = defineTool({
   action: "read",
 });
 
+export const getAccountBalanceTool = defineTool({
+  name: "getAccountBalance",
+  description:
+    "Obtener el saldo (running balance) de una cuenta contable a la fecha del último movimiento. Si la cuenta no tiene movimientos, retorna {balance:'0.00', asOf:null}.",
+  inputSchema: z.object({
+    accountId: z.string().describe("ID de la cuenta contable"),
+  }),
+  resource: "journal",
+  action: "read",
+});
+
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
 
 export const parseAccountingOperationToSuggestionTool = defineTool({
@@ -182,6 +193,7 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [parseAccountingOperationToSuggestionTool.name]: parseAccountingOperationToSuggestionTool,
   [listRecentJournalEntriesTool.name]: listRecentJournalEntriesTool,
   [getAccountMovementsTool.name]: getAccountMovementsTool,
+  [getAccountBalanceTool.name]: getAccountBalanceTool,
 };
 
 /**

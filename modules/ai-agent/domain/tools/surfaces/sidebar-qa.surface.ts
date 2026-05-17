@@ -1,4 +1,5 @@
 import {
+  getAccountBalanceTool,
   getAccountMovementsTool,
   listRecentJournalEntriesTool,
   searchDocumentsTool,
@@ -18,5 +19,6 @@ export const SIDEBAR_QA_SURFACE: SurfaceBundle = {
     searchDocumentsTool,
     listRecentJournalEntriesTool,
     getAccountMovementsTool,
+    getAccountBalanceTool,
   ],
 } as const;

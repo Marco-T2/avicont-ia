@@ -467,6 +467,12 @@ async function handleReadCall(
           args.dateTo as string | undefined,
         );
         break;
+      case "getAccountBalance":
+        data = await accountingQuery.getAccountBalance(
+          orgId,
+          args.accountId as string,
+        );
+        break;
       default:
         return {
           outcome: "validation_failed",
