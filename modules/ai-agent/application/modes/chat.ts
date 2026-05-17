@@ -416,6 +416,16 @@ function buildSystemPrompt(
     "- 16/05/2026 E2605-1 Bs500",
   ];
 
+  // REQ-31 — RAG citation format. Appears AFTER the REQ-29 FORMATO block
+  // and BEFORE the empty line that precedes `DATOS:`. EXACT Spanish text
+  // locked per [[textual_rule_verification]] + [[engram_textual_rule_verification]] —
+  // any change requires a new SDD with a RED test mirroring the new text.
+  // Coexists with REQ-26 + REQ-29 (no replacement) per [[named_rule_immutability]].
+  const citationLines = [
+    "",
+    "Cuando uses información de un documento (resultado de searchDocuments), citá la fuente así: Según *{documentName}*, sección {sectionPath ?? `chunk ${chunkIndex}`}: …",
+  ];
+
   return [
     "Asistente Avicont.",
     roleDescriptions[label],
@@ -423,6 +433,7 @@ function buildSystemPrompt(
     ...contextHintsLines,
     ...moduleHintLines,
     ...formatLines,
+    ...citationLines,
     "",
     "DATOS:",
     context,
