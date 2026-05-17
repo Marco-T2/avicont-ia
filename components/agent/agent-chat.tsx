@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { Bot, Loader2, RotateCcw, Send, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -134,13 +136,31 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
             <div
               key={i}
               className={cn(
-                "max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm",
+                "max-w-[85%] break-words rounded-lg px-3 py-2 text-sm",
                 msg.role === "user"
-                  ? "ml-auto bg-blue-600 text-white"
+                  ? "ml-auto whitespace-pre-wrap bg-blue-600 text-white"
                   : "mr-auto bg-muted"
               )}
             >
-              {msg.content}
+              {msg.role === "assistant" ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    p: ({ children }) => <p className="mb-2 last:mb-0">{children}</p>,
+                    ul: ({ children }) => <ul className="mb-2 list-disc pl-4 last:mb-0">{children}</ul>,
+                    ol: ({ children }) => <ol className="mb-2 list-decimal pl-4 last:mb-0">{children}</ol>,
+                    li: ({ children }) => <li className="mb-0.5">{children}</li>,
+                    strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+                    code: ({ children }) => (
+                      <code className="rounded bg-black/10 px-1 py-0.5 font-mono text-xs">{children}</code>
+                    ),
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              ) : (
+                msg.content
+              )}
             </div>
           ))}
           {isLoading && (
