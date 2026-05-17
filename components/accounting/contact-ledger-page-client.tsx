@@ -53,6 +53,12 @@ interface ContactLedgerEntry {
    *  con `sourceType="payment"`; paymentDirection es el discriminador
    *  fiable para que renderTipo elija "Cobranza" vs "Pago". */
   paymentDirection: string | null;
+  /** DT — código operacional físico (VG/RC/RE/RI/ND/BC/FL/PF/CG/SV).
+   *  El cobrador necesita leer este código en la columna Tipo para saber
+   *  qué documento físico ir a buscar. Null para asientos manuales sin
+   *  auxiliar (UI muestra "Ajuste") o payments sin operationalDocType
+   *  wired (UI cae al label genérico). */
+  documentTypeCode: string | null;
 }
 
 interface ContactLedgerPaginatedDto {
@@ -129,14 +135,38 @@ function humanPaymentMethod(
 }
 
 function renderTipo(entry: ContactLedgerEntry): string {
+  // DT — código operacional físico (Marco QA): el cobrador necesita ver el
+  // código del documento físico (VG, RC, ND, BC, FL, etc.) para saber qué
+  // documento ir a buscar. Tiene precedencia sobre el label genérico.
+  //
+  // Orden de prioridad:
+  //   1. withoutAuxiliary → "Ajuste" (sin code, asiento manual).
+  //   2. documentTypeCode + sourceType=payment → "${code} (${formaPago})".
+  //   3. documentTypeCode plano → ${code} (VG, ND, BC, FL, PF, CG, SV).
+  //   4. fallback legacy (documentTypeCode=null): payment → "Cobranza"/"Pago";
+  //      sale → voucherTypeHuman; purchase → voucherTypeHuman; null → "Ajuste".
+
+  if (entry.withoutAuxiliary) {
+    return "Ajuste";
+  }
+
   const src = entry.sourceType?.toLowerCase() ?? null;
-  // BF3 — producción usa `sourceType="payment"` para AMBAS direcciones
+  const code = entry.documentTypeCode;
+
+  if (code) {
+    if (src === "payment" || src === "receipt") {
+      const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
+      return pm ? `${code} (${pm})` : code;
+    }
+    return code;
+  }
+
+  // BF3 fallback — producción usa `sourceType="payment"` para AMBAS direcciones
   // (cobranza y pago). El discriminador real es `paymentDirection`:
   //   COBRO → "Cobranza ..."
   //   PAGO  → "Pago ..."
   //   null  → fallback a "Pago" (legacy fixtures + edge case).
-  // `sourceType="receipt"` se conserva por back-compat (datos legacy que
-  // hubieran usado el valor).
+  // `sourceType="receipt"` se conserva por back-compat.
   if (src === "payment" || src === "receipt") {
     const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
     const dir = entry.paymentDirection;
@@ -150,7 +180,7 @@ function renderTipo(entry: ContactLedgerEntry): string {
   if (src === "purchase") {
     return entry.voucherTypeHuman || "Compra";
   }
-  // null sourceType — manual / withoutAuxiliary fallback.
+  // null sourceType — manual fallback.
   return "Ajuste";
 }
 

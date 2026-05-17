@@ -151,11 +151,32 @@ function humanPaymentMethod(
 }
 
 function renderTipo(entry: ContactLedgerEntry): string {
+  // DT — código operacional físico (Marco QA): el cobrador necesita ver
+  // VG/RC/ND/BC/FL/PF/CG/SV en lugar del label genérico.
+  //
+  // Orden de prioridad mirror UI page-client per
+  // [[paired_sister_default_no_surface]]:
+  //   1. withoutAuxiliary → "Ajuste".
+  //   2. documentTypeCode + payment → "${code} (${formaPago})".
+  //   3. documentTypeCode plano → code.
+  //   4. Fallback legacy cuando documentTypeCode=null.
+
+  if (entry.withoutAuxiliary) {
+    return "Ajuste";
+  }
+
   const src = entry.sourceType?.toLowerCase() ?? null;
-  // BF3 — direction-aware: producción usa `sourceType="payment"` para AMBAS
-  // direcciones (cobranza/pago). `paymentDirection` ("COBRO"|"PAGO") es el
-  // discriminador real. paymentDirection=null cae a "Pago" para back-compat
-  // con fixtures legacy.
+  const code = entry.documentTypeCode;
+
+  if (code) {
+    if (src === "payment" || src === "receipt") {
+      const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
+      return pm ? `${code} (${pm})` : code;
+    }
+    return code;
+  }
+
+  // BF3 fallback — direction-aware cuando NO hay documentTypeCode.
   if (src === "payment" || src === "receipt") {
     const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
     const isCobranza = src === "receipt" || entry.paymentDirection === "COBRO";
