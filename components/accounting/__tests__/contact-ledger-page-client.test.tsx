@@ -608,3 +608,49 @@ describe("ContactLedgerPageClient — es-BO negative formatting", () => {
     expect(saldoCell.textContent).toMatch(/\(150[.,]50\)/);
   });
 });
+
+describe("ContactLedgerPageClient — descripción truncate (BF4)", () => {
+  it("BF4 — Descripción cell truncates wide text via max-w + truncate + tooltip", () => {
+    // BUG #5 cosmético: descripciones largas (ej. "3333333..." que Marco
+    // tipeó en QA) rompen el layout horizontal de la tabla. Fix: la cell
+    // Descripción debe tener max-w-[300px] + truncate (overflow-hidden +
+    // text-ellipsis + whitespace-nowrap) + title attribute con el texto
+    // completo para tooltip nativo del browser.
+    const longText =
+      "33333333333333333333333333333333333333333333333333333333333333";
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-long",
+              sourceType: "sale",
+              voucherTypeHuman: "Nota de Despacho",
+              description: longText,
+              debit: "100.00",
+              credit: "0.00",
+              balance: "100.00",
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    // Find any <td> whose title attribute carries the full long text. The
+    // truncate styling hides overflow visually but the title persists for
+    // browser-native tooltip.
+    const allCells = Array.from(document.querySelectorAll("td"));
+    const descCell = allCells.find(
+      (c) => c.getAttribute("title") === longText,
+    );
+    expect(descCell).toBeDefined();
+    // Classes assert: max-w bound + truncate utility.
+    expect(descCell!.className).toMatch(/max-w-\[300px\]/);
+    expect(descCell!.className).toMatch(/\btruncate\b/);
+  });
+});
