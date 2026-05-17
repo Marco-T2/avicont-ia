@@ -1,13 +1,16 @@
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/features/permissions";
 import type { TrialBalanceQueryPort } from "../domain/ports/trial-balance-query.port";
 import { buildTrialBalance } from "../domain/trial-balance.builder";
 import type { TrialBalanceFilters, TrialBalanceReport } from "../domain/trial-balance.types";
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 
-/** Roles autorizados para acceder al Balance de Sumas y Saldos. */
-const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
+/**
+ * Roles autorizados para acceder al Balance de Sumas y Saldos.
+ * Source of truth: PERMISSIONS_READ["financial-statements"] en el dominio.
+ */
+const ALLOWED_ROLES: readonly Role[] = PERMISSIONS_READ["financial-statements"];
 
 function assertTrialBalanceAccess(role: Role): void {
   if (!ALLOWED_ROLES.includes(role)) {

@@ -1,9 +1,14 @@
 /**
  * /[orgSlug]/accounting — dual-view hub page.
  *
- * Pro view (DashboardProClient) when canAccess('reports','read') is true;
+ * Pro view (DashboardProClient) when canAccess('financial-statements','read') is true;
  * Light view (DashboardLight) otherwise. Redirects to /sign-in on unauth
  * and /select-org on org-access failure.
+ *
+ * NOTE: The Pro gate uses `financial-statements` (not `reports`) because
+ * dashboard.load() invokes FinancialStatementsService.generateIncomeStatement,
+ * which is stricter (owner/admin/contador). `reports` would let cobrador in
+ * and crash with ForbiddenError from the inner service.
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ReactElement } from "react";
@@ -114,12 +119,12 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
     expect(mockDashboardLoad).not.toHaveBeenCalled();
   });
 
-  it("loads dashboard data and renders pro view when reports:read is granted", async () => {
+  it("loads dashboard data and renders pro view when financial-statements:read is granted", async () => {
     mockRequireAuth.mockResolvedValue({ userId: "user-1" });
     mockRequireOrgAccess.mockResolvedValue("org-1");
     mockGetMember.mockResolvedValue({ role: "contador" });
     mockCanAccess.mockImplementation(
-      async (_role: string, resource: string) => resource === "reports",
+      async (_role: string, resource: string) => resource === "financial-statements",
     );
     mockDashboardLoad.mockResolvedValue({
       kpi: {
@@ -137,20 +142,25 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
 
     const tree = (await AccountingPage({ params: makeParams() })) as ReactElement;
 
-    expect(mockCanAccess).toHaveBeenCalledWith("contador", "reports", "read", "org-1");
+    expect(mockCanAccess).toHaveBeenCalledWith(
+      "contador",
+      "financial-statements",
+      "read",
+      "org-1",
+    );
     expect(mockDashboardLoad).toHaveBeenCalledWith("org-1", "contador");
     expect(mockJournalsList).not.toHaveBeenCalled();
     expect(findElement(tree, mockDashboardProClient)).not.toBeNull();
     expect(findElement(tree, mockDashboardLight)).toBeNull();
   });
 
-  it("renders light view without invoking dashboard service when reports:read is denied", async () => {
+  it("renders light view without invoking dashboard service when financial-statements:read is denied", async () => {
     mockRequireAuth.mockResolvedValue({ userId: "user-1" });
     mockRequireOrgAccess.mockResolvedValue("org-1");
     mockGetMember.mockResolvedValue({ role: "viewer" });
-    // reports denied; everything else granted
+    // financial-statements denied; everything else granted (incl. reports for cobrador-like roles)
     mockCanAccess.mockImplementation(
-      async (_role: string, resource: string) => resource !== "reports",
+      async (_role: string, resource: string) => resource !== "financial-statements",
     );
     mockJournalsList.mockResolvedValue([
       { date: new Date("2026-05-10T00:00:00Z") },
@@ -168,7 +178,7 @@ describe("/[orgSlug]/accounting — dual-view gate", () => {
       orgSlug: ORG_SLUG,
       totalEntries: 1,
       lastEntryDate: "2026-05-10",
-      allowedResources: ["accounting-config", "journal"],
+      allowedResources: ["accounting-config", "journal", "reports"],
     });
   });
 });

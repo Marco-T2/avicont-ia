@@ -84,4 +84,19 @@ describe("PR1.5 — seedSystemRoles", () => {
       }
     }
   });
+
+  it("financial-statements:read is granted to owner/admin/contador and denied to cobrador/member", async () => {
+    await seedSystemRoles();
+
+    const { data } = mockCreateMany.mock.calls[0][0] as {
+      data: Array<{ slug: string; permissionsRead: string[] }>;
+    };
+    const bySlug = new Map(data.map((r) => [r.slug, r.permissionsRead]));
+
+    expect(bySlug.get("owner")).toContain("financial-statements");
+    expect(bySlug.get("admin")).toContain("financial-statements");
+    expect(bySlug.get("contador")).toContain("financial-statements");
+    expect(bySlug.get("cobrador")).not.toContain("financial-statements");
+    expect(bySlug.get("member")).not.toContain("financial-statements");
+  });
 });

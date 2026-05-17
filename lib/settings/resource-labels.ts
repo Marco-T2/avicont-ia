@@ -15,4 +15,5 @@ export const RESOURCE_LABELS: Record<Resource, string> = {
   agent: "Agente IA",
   period: "Período Fiscal",
   audit: "Auditoría",
+  "financial-statements": "Estados Financieros",
 };

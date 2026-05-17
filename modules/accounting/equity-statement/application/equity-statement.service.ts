@@ -1,5 +1,5 @@
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/features/permissions";
 import { addUTCDays } from "@/lib/date-utils";
 import type { EquityStatementQueryPort } from "../domain/ports/equity-statement-query.port";
 import type { EquityOrgMetadata } from "../domain/ports/equity-statement-query.port";
@@ -14,8 +14,11 @@ import { calculateRetainedEarnings } from "@/modules/accounting/financial-statem
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 
-/** Roles autorizados para acceder al EEPN. */
-const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
+/**
+ * Roles autorizados para acceder al EEPN.
+ * Source of truth: PERMISSIONS_READ["financial-statements"] en el dominio.
+ */
+const ALLOWED_ROLES: readonly Role[] = PERMISSIONS_READ["financial-statements"];
 
 type GenerateEquityStatementInput = { dateFrom: Date; dateTo: Date };
 

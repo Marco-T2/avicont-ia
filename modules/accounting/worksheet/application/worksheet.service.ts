@@ -1,13 +1,16 @@
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/features/permissions";
 import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";
 import { buildWorksheet } from "../domain/worksheet.builder";
 import type { WorksheetFilters, WorksheetReport } from "../domain/worksheet.types";
 
 // ── RBAC ──────────────────────────────────────────────────────────────────────
 
-/** Roles authorized to access the worksheet (same set as FS service). */
-const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
+/**
+ * Roles authorized to access the worksheet (same set as FS service).
+ * Source of truth: PERMISSIONS_READ["financial-statements"] en el dominio.
+ */
+const ALLOWED_ROLES: readonly Role[] = PERMISSIONS_READ["financial-statements"];
 
 function assertWorksheetAccess(role: Role): void {
   if (!ALLOWED_ROLES.includes(role)) {

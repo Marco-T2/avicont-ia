@@ -32,7 +32,8 @@ export type Resource =
   | "documents"
   | "agent"
   | "period"
-  | "audit";
+  | "audit"
+  | "financial-statements";
 
 export type Action = "read" | "write" | "close" | "reopen";
 
@@ -55,6 +56,9 @@ export const PERMISSIONS_READ: Record<Resource, Role[]> = {
   period: ["owner", "admin"],
   // audit: read-only module exposed to administrators (REQ-AUDIT.6).
   audit: ["owner", "admin"],
+  // financial-statements: estados financieros (balance, income, equity, worksheet, trial-balance).
+  // Stricter than `reports`: cobrador NO accede — solo roles contables.
+  "financial-statements": ["owner", "admin", "contador"],
 };
 
 export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
@@ -75,6 +79,8 @@ export const PERMISSIONS_WRITE: Record<Resource, Role[]> = {
   period: ["owner", "admin"],
   // audit: read-only module — no write surface today (design §5.1).
   audit: [],
+  // financial-statements: read-only generated artifacts — no write surface.
+  "financial-statements": [],
 };
 
 /**
@@ -96,6 +102,7 @@ export const PERMISSIONS_CLOSE: Record<Resource, Role[]> = {
   agent: [],
   period: ["owner", "admin"],
   audit: [],
+  "financial-statements": [],
 };
 
 /**
@@ -117,6 +124,7 @@ export const PERMISSIONS_REOPEN: Record<Resource, Role[]> = {
   agent: [],
   period: ["owner", "admin"],
   audit: [],
+  "financial-statements": [],
 };
 
 export type PostableResource = "sales" | "purchases" | "journal";

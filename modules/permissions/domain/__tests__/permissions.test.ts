@@ -73,6 +73,7 @@ const ALL_RESOURCES: Resource[] = [
   "agent",
   "period",
   "audit",
+  "financial-statements",
 ];
 
 const ALL_ACTIONS: Action[] = ["read", "write", "close", "reopen"];
@@ -93,6 +94,7 @@ const EXPECTED_READ: Record<Resource, Role[]> = {
   agent: ["owner", "admin", "contador", "cobrador", "member"],
   period: ["owner", "admin"],
   audit: ["owner", "admin"],
+  "financial-statements": ["owner", "admin", "contador"],
 };
 
 const EXPECTED_WRITE: Record<Resource, Role[]> = {
@@ -110,6 +112,7 @@ const EXPECTED_WRITE: Record<Resource, Role[]> = {
   agent: ["owner", "admin", "contador", "cobrador", "member"],
   period: ["owner", "admin"],
   audit: [],
+  "financial-statements": [],
 };
 
 const POST_RESOURCES = ["sales", "purchases", "journal"] as const;
@@ -121,8 +124,8 @@ const EXPECTED_POST: Record<(typeof POST_RESOURCES)[number], Role[]> = {
 };
 
 describe("REQ-P.1 — Resource catalog", () => {
-  it("exposes exactly 14 resources (12 original + period + audit)", () => {
-    expect(ALL_RESOURCES).toHaveLength(14);
+  it("exposes exactly 15 resources (12 original + period + audit + financial-statements)", () => {
+    expect(ALL_RESOURCES).toHaveLength(15);
   });
 
   it("does not include deprecated `accounting` literal", () => {
@@ -171,6 +174,7 @@ const EXPECTED_CLOSE: Record<Resource, Role[]> = {
   agent: [],
   period: ["owner", "admin"],
   audit: [],
+  "financial-statements": [],
 };
 
 const EXPECTED_REOPEN: Record<Resource, Role[]> = {
@@ -188,6 +192,7 @@ const EXPECTED_REOPEN: Record<Resource, Role[]> = {
   agent: [],
   period: ["owner", "admin"],
   audit: [],
+  "financial-statements": [],
 };
 
 describe("REQ-P.2 — PERMISSIONS_READ/WRITE/CLOSE/REOPEN matrix (static maps)", () => {

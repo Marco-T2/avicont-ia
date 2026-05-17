@@ -1,6 +1,6 @@
 import "server-only";
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
-import type { Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/features/permissions";
 import { logStructured } from "@/lib/logging/structured";
 import { buildBalanceSheet } from "../domain/balance-sheet.builder";
 import { buildIncomeStatement } from "../domain/income-statement.builder";
@@ -83,7 +83,8 @@ export interface FinancialStatementsServiceDeps {
 }
 
 // ── Roles autorizados a ver estados financieros (REQ-13) ──
-const ALLOWED_ROLES: Role[] = ["owner", "admin", "contador"];
+// Source of truth: PERMISSIONS_READ["financial-statements"] en el dominio.
+const ALLOWED_ROLES: readonly Role[] = PERMISSIONS_READ["financial-statements"];
 
 // ── Helpers de columnas — puros, sin Prisma (PR2) ──
 

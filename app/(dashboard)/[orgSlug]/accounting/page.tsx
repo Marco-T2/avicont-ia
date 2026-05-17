@@ -40,7 +40,16 @@ export default async function AccountingPage({ params }: AccountingPageProps) {
   );
   const role = member.role;
 
-  const canViewPro = await canAccess(role, "reports", "read", orgId);
+  // Pro view requires `financial-statements:read` because dashboard.load()
+  // invokes FinancialStatementsService.generateIncomeStatement, which is
+  // restricted to owner/admin/contador. Using `reports` here would let
+  // cobrador in and crash with ForbiddenError from the inner service.
+  const canViewPro = await canAccess(
+    role,
+    "financial-statements",
+    "read",
+    orgId,
+  );
 
   if (canViewPro) {
     const data = await makeAccountingDashboardService().load(orgId, role);
