@@ -67,9 +67,16 @@ export interface PaymentSummaryDto {
   method: string;
   /** `null` when the payment has no allocations to derive a direction from. */
   direction: "COBRO" | "PAGO" | null;
-  /** Falls back to `contactId` string when the payments service doesn't expose
-   *  a denormalized counterparty name (Marco lock — design §10). */
+  /** Raw counterparty id — kept for downstream consumers that need the link. */
   contactId: string;
+  /**
+   * Denormalized counterparty name (QA Fix #3 — resuelve drift detectado por
+   * Marco: el sidebar QA mostraba UUID raw en lugar del nombre). Adapter
+   * resolves via `ContactsService.getById`; cuando el lookup falla (contacto
+   * borrado / sin nombre), fallback al `contactId` string para no romper la
+   * query.
+   */
+  contactName: string;
   amount: string;
   description: string;
 }

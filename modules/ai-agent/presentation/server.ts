@@ -42,6 +42,7 @@ import {
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { makePaymentsService } from "@/modules/payment/presentation/server";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { AccountingQueryAdapter } from "../infrastructure/adapters/accounting-query.adapter";
 import { AgentService } from "../application/agent.service";
 import { AgentRateLimitService } from "../application/rate-limit.service";
@@ -82,6 +83,7 @@ export function makeAgentService(): AgentService {
     makePurchaseService(),
     makePaymentsService(),
     makeAccountsService(),
+    makeContactsService(),
   );
 
   return new AgentService({

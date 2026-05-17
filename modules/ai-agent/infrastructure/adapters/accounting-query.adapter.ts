@@ -17,6 +17,7 @@ import {
 import { SaleService } from "@/modules/sale/application/sale.service";
 import { PurchaseService } from "@/modules/purchase/application/purchase.service";
 import { PaymentsService } from "@/modules/payment/presentation/server";
+import { ContactsService } from "@/modules/contacts/application/contacts.service";
 import {
   roundHalfUp,
   sumDecimals,
@@ -58,6 +59,7 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
     private readonly purchases: PurchaseService,
     private readonly payments: PaymentsService,
     private readonly accounts: AccountsService,
+    private readonly contacts: ContactsService,
   ) {}
 
   async listRecentJournalEntries(
@@ -204,6 +206,14 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
     }));
   }
 
+  /**
+   * QA Fix #3 — propaga `contactName` denormalizado vía ContactsService.
+   *
+   * Bulk-resolves unique contactIds (set + Promise.all) — evita N+1 cuando
+   * la página tiene pagos repetidos al mismo contacto. Fallback al contactId
+   * raw cuando el lookup falla (contacto borrado/sin nombre) para que la
+   * query no crashee por casos huérfanos.
+   */
   async listPayments(
     orgId: string,
     dateFrom?: string,
@@ -221,6 +231,23 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
       page: 1,
       pageSize: limit ?? 20,
     });
+
+    const uniqueContactIds = Array.from(
+      new Set(result.items.map((p) => p.contactId)),
+    );
+    const nameByContactId = new Map<string, string>();
+    await Promise.all(
+      uniqueContactIds.map(async (cid) => {
+        try {
+          const contact = await this.contacts.getById(orgId, cid);
+          nameByContactId.set(cid, contact.name);
+        } catch {
+          // Contact lookup failure → fallback al contactId raw, no crashea.
+          nameByContactId.set(cid, cid);
+        }
+      }),
+    );
+
     return result.items.map((p) => ({
       id: p.id,
       date: toISODate(p.date),
@@ -228,6 +255,7 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
       method: p.method,
       direction: p.direction,
       contactId: p.contactId,
+      contactName: nameByContactId.get(p.contactId) ?? p.contactId,
       amount: toMoneyString(p.amount),
       description: p.description,
     }));
