@@ -17,7 +17,7 @@ import {
   exportLedgerPdf,
   MissingOrgNameError,
   type LedgerPdfOptions,
-} from "../infrastructure/exporters/ledger-pdf.exporter";
+} from "../infrastructure/exporters/ledger/ledger-pdf.exporter";
 import type { LedgerEntry } from "../presentation/dto/ledger.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

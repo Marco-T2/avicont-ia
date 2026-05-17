@@ -18,7 +18,7 @@ import ExcelJS from "exceljs";
 import {
   exportLedgerXlsx,
   type LedgerXlsxOptions,
-} from "../infrastructure/exporters/ledger-xlsx.exporter";
+} from "../infrastructure/exporters/ledger/ledger-xlsx.exporter";
 import type { LedgerEntry } from "../presentation/dto/ledger.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
