@@ -55,23 +55,51 @@ export class VectorRepository extends BaseRepository {
    * REQ-30 — JOINs `documents` to enrich each row with `documentName` and
    * pulls `chunkIndex` from the chunk row so citations can be rendered at
    * the application layer without a follow-up query.
+   *
+   * REQ-43 — When `tagIds` is non-empty applies AND-semantics tag filter:
+   * adds an INNER JOIN over `document_tags` restricted to the provided tag
+   * IDs, GROUP BY the unique-chunk columns, and HAVING COUNT(DISTINCT
+   * tagId) = N so only chunks whose parent Document carries ALL provided
+   * tags survive. Tag IDs travel as bound parameters (no string
+   * interpolation) — α-SQL-injection sentinel.
    */
   async searchSimilar(
     queryVector: number[],
     organizationId: string,
     scopes: DocumentScope[],
     topK = 5,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     tagIds?: string[],
   ): Promise<SearchResult[]> {
     const vectorStr = `[${queryVector.join(",")}]`;
-    const limitParamIndex = scopes.length + 3;
+    const hasTags = !!tagIds && tagIds.length > 0;
+    const tagCount = hasTags ? tagIds!.length : 0;
+    // Param layout:
+    //   $1                                vector
+    //   $2                                organizationId
+    //   $3 .. $(2 + scopes.length)        scopes
+    //   $(2 + scopes.length + 1) ..       tagIds (if hasTags)
+    //   $LAST                             topK
     const scopePlaceholders = scopes
       .map((_, i) => `$${i + 3}::"DocumentScope"`)
       .join(", ");
 
-    const results = await this.db.$queryRawUnsafe<SearchResult[]>(
-      `SELECT dc."content",
+    let tagJoin = "";
+    let tagWhere = "";
+    let tagGroupHaving = "";
+    if (hasTags) {
+      const firstTagIdx = scopes.length + 3;
+      const tagPlaceholders = tagIds!
+        .map((_, i) => `$${firstTagIdx + i}`)
+        .join(", ");
+      tagJoin = `JOIN "document_tags" dt ON dt."documentId" = d."id"`;
+      tagWhere = `AND dt."tagId" IN (${tagPlaceholders})`;
+      tagGroupHaving = `GROUP BY dc."id", dc."content", dc."documentId", dc."chunkIndex", dc."sectionPath", d."name", dc."embedding"
+        HAVING COUNT(DISTINCT dt."tagId") = ${tagCount}`;
+    }
+
+    const limitParamIndex = scopes.length + 3 + tagCount;
+
+    const sql = `SELECT dc."content",
               dc."documentId",
               dc."chunkIndex",
               dc."sectionPath",
@@ -79,15 +107,23 @@ export class VectorRepository extends BaseRepository {
               1 - (dc."embedding" <=> $1::vector) AS score
        FROM "document_chunks" dc
        JOIN "documents" d ON d."id" = dc."documentId"
+       ${tagJoin}
        WHERE dc."organizationId" = $2
          AND dc."scope" IN (${scopePlaceholders})
+         ${tagWhere}
+       ${tagGroupHaving}
        ORDER BY dc."embedding" <=> $1::vector
-       LIMIT $${limitParamIndex}`,
+       LIMIT $${limitParamIndex}`;
+
+    const params: unknown[] = [
       vectorStr,
       organizationId,
       ...scopes,
+      ...(hasTags ? tagIds! : []),
       topK,
-    );
+    ];
+
+    const results = await this.db.$queryRawUnsafe<SearchResult[]>(sql, ...params);
 
     return results;
   }
