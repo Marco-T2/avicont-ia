@@ -148,15 +148,15 @@ export default function DocumentUploadDialog({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error("El archivo debe pesar menos de 10MB");
+    // Backend MAX_FILE_SIZE = 50 MB (modules/documents/application/documents.service.ts).
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("El archivo debe pesar menos de 50MB");
       return;
     }
 
     if (!allowedTypes.includes(file.type)) {
       toast.error(
-        "Tipo de archivo no soportado. Por favor subí archivos .txt, .pdf, .doc, .docx o .md",
+        "Tipo de archivo no soportado. Solo se aceptan .pdf, .docx y .txt",
       );
       return;
     }
@@ -268,8 +268,12 @@ export default function DocumentUploadDialog({
             />
           </div>
 
-          {/* Scope Selector */}
-          {allowedScopes && allowedScopes.length > 0 && (
+          {/* C4 — Scope selector solo si el rol tiene más de 1 opción (owner/admin).
+              Roles con 1 sola opción (contador→ACCOUNTING, member→FARM) ven un label
+              informativo: el scope se asigna automáticamente. Roles sin upload
+              (cobrador) no llegan acá — el botón "Subir Documento" debería ocultarse
+              al menos como soft-guard (server enforce vía canUploadToScope). */}
+          {allowedScopes && allowedScopes.length > 1 && (
             <div>
               <label className="block text-sm font-medium mb-2">
                 Alcance del Documento *
@@ -294,6 +298,16 @@ export default function DocumentUploadDialog({
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
                 Define quién puede ver este documento en consultas al agente
+              </p>
+            </div>
+          )}
+          {allowedScopes && allowedScopes.length === 1 && (
+            <div className="rounded-md border bg-muted/50 p-3">
+              <p className="text-sm">
+                Este documento será visible para{" "}
+                <Badge variant="secondary">
+                  {SCOPE_LABELS[allowedScopes[0]]}
+                </Badge>
               </p>
             </div>
           )}
@@ -358,7 +372,7 @@ export default function DocumentUploadDialog({
                 type="file"
                 ref={fileInputRef}
                 onChange={handleFileSelect}
-                accept=".txt,.pdf,.doc,.docx,.md"
+                accept=".pdf,.docx,.txt"
                 className="hidden"
                 id="file-upload"
                 disabled={isUploading}
@@ -370,7 +384,7 @@ export default function DocumentUploadDialog({
                     {selectedFile ? selectedFile.name : "Hacé clic para seleccionar un archivo"}
                   </span>
                   <span className="text-sm text-gray-500">
-                    Soporta: .txt, .pdf, .doc, .docx, .md (Máx 10MB)
+                    Soporta: .pdf, .docx, .txt (Máx 50MB)
                   </span>
                   {selectedFile && (
                     <Button

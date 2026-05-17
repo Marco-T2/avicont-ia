@@ -113,14 +113,15 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
     expect(result.metadata.userRole).toBe("member");
   });
 
-  it("cobrador: passes [ORGANIZATION] only (FARM + ACCOUNTING excluded)", async () => {
+  it("cobrador: passes [ORGANIZATION, ACCOUNTING] (FARM excluded)", async () => {
+    // C2 2026-05-17 — cobrador es sub-rol contable; ve docs ACCOUNTING.
     const repo = buildRepo("cobrador");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
 
-    expect(repo.findAll).toHaveBeenCalledWith(ORG_ID, ["ORGANIZATION"]);
+    expect(repo.findAll).toHaveBeenCalledWith(ORG_ID, ["ORGANIZATION", "ACCOUNTING"]);
   });
 
   it("contador: passes [ORGANIZATION, ACCOUNTING] (FARM excluded)", async () => {
