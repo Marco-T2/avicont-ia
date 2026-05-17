@@ -229,7 +229,7 @@ export default function FarmDetailClient({
                 <AccordionItem
                   key={lot.id}
                   value={lot.id}
-                  className="border rounded-lg bg-card px-4 shadow-sm"
+                  className="border-2 rounded-lg bg-card px-4 shadow"
                 >
                   <AccordionTrigger className="hover:no-underline">
                     <div className="flex flex-col gap-3 flex-1 mr-3">
@@ -317,94 +317,94 @@ export default function FarmDetailClient({
                         )}
                       </div>
 
-                      {/* Gastos recientes — 10 max desc by date (server-sliced) */}
-                      <div>
-                        <h4 className="font-semibold mb-2 text-sm sm:text-base">
-                          Gastos recientes
-                        </h4>
-                        {recentExpenses.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Sin gastos registrados.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {recentExpenses.map((expense) => {
-                              const cat = CATEGORY_CONFIG[expense.category] ?? {
-                                label: expense.category,
-                                className:
-                                  "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
-                              };
-                              return (
-                                <Card key={expense.id}>
-                                  <CardContent className="py-3">
-                                    <div className="flex items-center justify-between gap-2">
-                                      <div className="flex items-center gap-2 min-w-0">
-                                        <Badge className={cat.className}>
-                                          {cat.label}
-                                        </Badge>
-                                        <div className="min-w-0">
-                                          <p className="font-medium text-sm">
-                                            {formatCurrency(Number(expense.amount))}
-                                          </p>
-                                          {expense.description && (
-                                            <p className="text-xs text-muted-foreground truncate">
-                                              {expense.description}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                      <p className="text-xs text-muted-foreground shrink-0">
-                                        {formatDateBO(expense.date)}
-                                      </p>
-                                    </div>
-                                  </CardContent>
-                                </Card>
-                              );
-                            })}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Mortalidad reciente — 5 max desc by date (server-sliced) */}
-                      <div>
-                        <h4 className="font-semibold mb-2 text-sm sm:text-base">
-                          Mortalidad reciente
-                        </h4>
-                        {recentMortality.length === 0 ? (
-                          <p className="text-sm text-muted-foreground">
-                            Sin mortalidad registrada.
-                          </p>
-                        ) : (
-                          <div className="space-y-2">
-                            {recentMortality.map((m) => (
-                              <Card key={m.id}>
-                                <CardContent className="py-3">
-                                  <div className="flex items-center justify-between gap-2">
+                      {/* Gastos + Mortalidad recientes — side-by-side en desktop, stack en mobile.
+                          Filas compactas con border-b (no Card por item) para densidad visual. */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <h4 className="font-semibold mb-2 text-sm sm:text-base">
+                            Gastos recientes
+                          </h4>
+                          {recentExpenses.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              Sin gastos registrados.
+                            </p>
+                          ) : (
+                            <ul className="divide-y rounded-md border bg-background">
+                              {recentExpenses.map((expense) => {
+                                const cat = CATEGORY_CONFIG[expense.category] ?? {
+                                  label: expense.category,
+                                  className:
+                                    "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
+                                };
+                                return (
+                                  <li
+                                    key={expense.id}
+                                    className="flex items-center justify-between gap-2 px-3 py-2"
+                                  >
                                     <div className="flex items-center gap-2 min-w-0">
-                                      <Badge variant="destructive">
-                                        -{m.count}
+                                      <Badge className={cat.className}>
+                                        {cat.label}
                                       </Badge>
                                       <div className="min-w-0">
-                                        {m.cause ? (
-                                          <p className="font-medium text-sm truncate">
-                                            {m.cause}
-                                          </p>
-                                        ) : (
-                                          <p className="text-xs text-muted-foreground italic">
-                                            Sin causa
+                                        <p className="font-medium text-sm">
+                                          {formatCurrency(Number(expense.amount))}
+                                        </p>
+                                        {expense.description && (
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {expense.description}
                                           </p>
                                         )}
                                       </div>
                                     </div>
                                     <p className="text-xs text-muted-foreground shrink-0">
-                                      {formatDateBO(m.date)}
+                                      {formatDateBO(expense.date)}
                                     </p>
+                                  </li>
+                                );
+                              })}
+                            </ul>
+                          )}
+                        </div>
+
+                        <div>
+                          <h4 className="font-semibold mb-2 text-sm sm:text-base">
+                            Mortalidad reciente
+                          </h4>
+                          {recentMortality.length === 0 ? (
+                            <p className="text-sm text-muted-foreground">
+                              Sin mortalidad registrada.
+                            </p>
+                          ) : (
+                            <ul className="divide-y rounded-md border bg-background">
+                              {recentMortality.map((m) => (
+                                <li
+                                  key={m.id}
+                                  className="flex items-center justify-between gap-2 px-3 py-2"
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Badge variant="destructive">
+                                      -{m.count}
+                                    </Badge>
+                                    <div className="min-w-0">
+                                      {m.cause ? (
+                                        <p className="font-medium text-sm truncate">
+                                          {m.cause}
+                                        </p>
+                                      ) : (
+                                        <p className="text-xs text-muted-foreground italic">
+                                          Sin causa
+                                        </p>
+                                      )}
+                                    </div>
                                   </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        )}
+                                  <p className="text-xs text-muted-foreground shrink-0">
+                                    {formatDateBO(m.date)}
+                                  </p>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                        </div>
                       </div>
 
                       {/* Ver más — preserved /lots/[lotId] route deep-link (D-POC-1-NEW-LOTS-ROUTE-PRESERVATION sinergia) */}
