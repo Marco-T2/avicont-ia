@@ -2,6 +2,7 @@ import {
   getAccountBalanceTool,
   getAccountMovementsTool,
   listRecentJournalEntriesTool,
+  listSalesTool,
   searchDocumentsTool,
 } from "../agent.tool-definitions.ts";
 import type { SurfaceBundle } from "./surface.types.ts";
@@ -20,5 +21,6 @@ export const SIDEBAR_QA_SURFACE: SurfaceBundle = {
     listRecentJournalEntriesTool,
     getAccountMovementsTool,
     getAccountBalanceTool,
+    listSalesTool,
   ],
 } as const;

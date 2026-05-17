@@ -141,6 +141,35 @@ export const getAccountBalanceTool = defineTool({
   action: "read",
 });
 
+export const listSalesTool = defineTool({
+  name: "listSales",
+  description:
+    "Listar las ventas recientes de la organización, opcionalmente filtradas por estado y rango de fechas. Devuelve cliente, fecha, total y estado.",
+  inputSchema: z.object({
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de ventas (default 20)"),
+    status: z
+      .enum(["DRAFT", "POSTED", "LOCKED", "VOIDED"])
+      .optional()
+      .describe("Filtrar por estado (opcional)"),
+    dateFrom: z
+      .string()
+      .optional()
+      .describe("Fecha desde (ISO YYYY-MM-DD, opcional)"),
+    dateTo: z
+      .string()
+      .optional()
+      .describe("Fecha hasta (ISO YYYY-MM-DD, opcional)"),
+  }),
+  resource: "sales",
+  action: "read",
+});
+
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
 
 export const parseAccountingOperationToSuggestionTool = defineTool({
@@ -194,6 +223,7 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [listRecentJournalEntriesTool.name]: listRecentJournalEntriesTool,
   [getAccountMovementsTool.name]: getAccountMovementsTool,
   [getAccountBalanceTool.name]: getAccountBalanceTool,
+  [listSalesTool.name]: listSalesTool,
 };
 
 /**
