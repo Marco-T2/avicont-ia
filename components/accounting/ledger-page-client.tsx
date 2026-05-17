@@ -20,7 +20,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination";
 import AccountSelector from "@/components/accounting/account-selector";
-import { Search, Calculator, Eye, Printer } from "lucide-react";
+import { Search, Calculator, Eye, Printer, FileSpreadsheet, Loader2 } from "lucide-react";
 import Link from "next/link";
 import type { Account } from "@/generated/prisma/client";
 import { formatDateBO } from "@/lib/date-utils";
@@ -163,6 +163,63 @@ export default function LedgerPageClient({
     router.push(`/${orgSlug}/accounting/ledger`);
   }
 
+  // ── Export handlers (PDF + XLSX) ──
+  // Paridad con trial-balance-page-client / worksheet-page-client (doc §6).
+  // PDF se abre con window.open (visor nativo del browser, respeta cookies).
+  // XLSX baja como blob (browser NO renderiza .xlsx inline).
+
+  const [loadingXlsx, setLoadingXlsx] = useState(false);
+
+  // Habilitar export sólo cuando hay filtros aplicados (en URL, no draft).
+  const canExport = Boolean(
+    filters.accountId && filters.dateFrom && filters.dateTo,
+  );
+
+  function buildExportUrl(format: "pdf" | "xlsx"): string | null {
+    if (!canExport) return null;
+    const params = new URLSearchParams({
+      accountId: filters.accountId!,
+      dateFrom: filters.dateFrom!,
+      dateTo: filters.dateTo!,
+      format,
+    });
+    if (filters.periodId) params.set("periodId", filters.periodId);
+    return `/api/organizations/${orgSlug}/ledger?${params.toString()}`;
+  }
+
+  function handleOpenPdf() {
+    const url = buildExportUrl("pdf");
+    if (!url) return;
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+
+  async function handleDownloadXlsx() {
+    const url = buildExportUrl("xlsx");
+    if (!url) return;
+    setLoadingXlsx(true);
+
+    try {
+      const res = await fetch(url);
+      if (!res.ok) {
+        console.error("Error al exportar Libro Mayor (xlsx):", res.status);
+        return;
+      }
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = `libro-mayor-${filters.dateFrom}_${filters.dateTo}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Error al descargar Libro Mayor:", err);
+    } finally {
+      setLoadingXlsx(false);
+    }
+  }
+
   return (
     <>
       {/* Filters */}
@@ -235,6 +292,38 @@ export default function LedgerPageClient({
         </Card>
       )}
 
+      {/* Export buttons — paridad trial-balance/worksheet (doc §6) */}
+      {ledger !== null && selectedAccount && (
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleOpenPdf}
+            disabled={!canExport}
+            aria-label="Abrir PDF en pestaña nueva"
+          >
+            <Printer className="h-4 w-4 mr-1.5" />
+            PDF
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleDownloadXlsx}
+            disabled={!canExport || loadingXlsx}
+            aria-label="Descargar como Excel"
+          >
+            {loadingXlsx ? (
+              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+            ) : (
+              <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+            )}
+            Excel
+          </Button>
+        </div>
+      )}
+
       {/* Results */}
       {ledger !== null && selectedAccount && (
         <Card>
@@ -250,6 +339,23 @@ export default function LedgerPageClient({
             </div>
           </CardHeader>
           <CardContent className="p-0">
+            {/* Sub-header del Card — título + cuenta + período + (Expresado en
+                Bolivianos). Paridad doc §6: text-center, título MAYÚS bold
+                text-xl, fecha text-sm muted mt-1, currency text-xs italic muted. */}
+            <div className="px-6 pt-2 pb-4 text-center">
+              <h2 className="text-xl font-bold tracking-wide">
+                LIBRO MAYOR — {selectedAccount.code} {selectedAccount.name}
+              </h2>
+              {filters.dateFrom && filters.dateTo && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  Del {formatDateBO(filters.dateFrom)} al{" "}
+                  {formatDateBO(filters.dateTo)}
+                </p>
+              )}
+              <p className="text-xs italic text-muted-foreground">
+                (Expresado en Bolivianos)
+              </p>
+            </div>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
