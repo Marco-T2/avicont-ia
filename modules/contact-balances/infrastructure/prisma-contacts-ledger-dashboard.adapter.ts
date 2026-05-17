@@ -1,6 +1,11 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { FINALIZED_JE_STATUSES } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
+import {
+  makeOrgSettingsService,
+  type OrgSettingsService,
+} from "@/modules/org-settings/presentation/server";
 import type {
   ContactsLedgerDashboardPort,
   ContactType,
@@ -9,49 +14,49 @@ import type {
   ContactDashboardRow,
 } from "../domain/ports/contacts-ledger-dashboard.port";
 
-type DbClient = Pick<
-  PrismaClient,
-  "contact" | "accountsReceivable" | "accountsPayable" | "journalLine"
->;
+type DbClient = Pick<PrismaClient, "contact" | "journalLine">;
 
 /**
  * PrismaContactsLedgerDashboardAdapter — implements
  * ContactsLedgerDashboardPort backed by Prisma (design D5).
  *
- * Strategy (3 queries, in parallel where independent):
+ * Strategy (3 queries):
  *   Q1 — contacts.findMany(orgId, type, isActive=true) → seed list.
- *   Q2 — accountsReceivable.groupBy({contactId}, _sum:{balance}, where:
- *        organizationId+contactId IN seed + status IN [PENDING, PARTIAL])
- *        OR accountsPayable.groupBy(...) depending on `type`.
+ *   Q2 — journalLine.groupBy({contactId}, _sum:{debit, credit}, where:
+ *        contactId IN seed + account.code = control account (CxC for
+ *        CLIENTE, CxP for PROVEEDOR) + journalEntry.organizationId +
+ *        journalEntry.status="POSTED"). openBalance = sum(debit) -
+ *        sum(credit) para CLIENTE (cuenta activo deudora); inverso para
+ *        PROVEEDOR (cuenta pasivo acreedora).
  *   Q3 — journalLine.findMany(orgId via journalEntry, contactId IN seed)
  *        select journalEntry.date — reduced client-side to MAX per
- *        contactId. Prisma `groupBy` on a related table column is not
- *        directly supported; we lift the rows and reduce (small N — bounded
- *        by total journal lines for these contacts, which is tractable for
- *        dashboard cardinality).
+ *        contactId.
+ *
+ * Q2 deriva del LIBRO MAYOR CONTABLE (no de los auxiliares CxC/CxP) para
+ * que el "Total Bs" del dashboard coincida con el running balance del
+ * libro mayor por contacto. Si solo sumamos AR/AP.balance, los asientos
+ * manuales sin auxiliar (sourceType=null) no se contarían y el dashboard
+ * diverge del detalle. Bug-fix post-QA: dashboard mostraba 2.500 cuando
+ * el libro mayor terminaba en 2.964 por una fila "Ajuste - Sin auxiliar".
  *
  * DEC-1 boundary: all monetary `Prisma.Decimal` are stringified at the
  * adapter boundary (no Decimal objects leak into the application layer).
  *
  * Sort/pagination: applied AFTER the join+reduce — necessary because the
  * sort key `openBalance` is computed (not a column on contacts), and
- * `lastMovementDate` derives from a related table. For dashboard
- * cardinalities (typically <500 contacts per org) the in-memory sort is
- * acceptable. If contact counts grow, push the join+sort into a raw SQL
- * CTE.
+ * `lastMovementDate` derives from a related table.
  *
  * TODO (perf): `JournalLine.contactId` lacks an explicit (organizationId,
  * contactId) index (organizationId lives on JournalEntry, not JournalLine).
- * The Q3 reduce path scans all journal lines for the seed contacts; for
- * large datasets consider adding a composite index on
- * (journalEntry.organizationId, journalLine.contactId) via a future
- * migration. AR/AP tables already have `@@index([organizationId,
- * contactId])` (schema.prisma L651, L679).
+ * Para large datasets considerar índice compuesto via futura migration.
  */
 export class PrismaContactsLedgerDashboardAdapter
   implements ContactsLedgerDashboardPort
 {
-  constructor(private readonly db: DbClient = prisma) {}
+  constructor(
+    private readonly db: DbClient = prisma,
+    private readonly orgSettings: OrgSettingsService = makeOrgSettingsService(),
+  ) {}
 
   async listContactsWithOpenBalance(
     organizationId: string,
@@ -82,36 +87,37 @@ export class PrismaContactsLedgerDashboardAdapter
 
     const contactIds = contacts.map((c) => c.id);
 
-    // Q2 — aggregate open balance per contact (CxC for CLIENTE, CxP for
-    // PROVEEDOR). Status filter mirrors sister `aggregateOpen` (PENDING +
-    // PARTIAL constitute "open").
+    // Q2 — aggregate open balance per contact desde el LIBRO MAYOR CONTABLE
+    // (no desde AR/AP). Lee el código de la cuenta de control (CxC para
+    // CLIENTE, CxP para PROVEEDOR) de OrgSettings y filtra journalLine por
+    // ese account.code + JE.status="POSTED" (mismo invariante que el libro
+    // mayor por contacto). openBalance es debit-credit para CLIENTE
+    // (activo, saldo deudor) e inverso para PROVEEDOR (pasivo, acreedor).
+    const settings = (
+      await this.orgSettings.getOrCreate(organizationId)
+    ).toSnapshot();
+    const controlAccountCode =
+      type === "CLIENTE" ? settings.cxcAccountCode : settings.cxpAccountCode;
+
     const openByContact = new Map<string, string>();
-    if (type === "CLIENTE") {
-      const rows = await this.db.accountsReceivable.groupBy({
-        by: ["contactId"],
-        where: {
+    const sums = await this.db.journalLine.groupBy({
+      by: ["contactId"],
+      where: {
+        contactId: { in: contactIds },
+        account: { code: controlAccountCode },
+        journalEntry: {
           organizationId,
-          contactId: { in: contactIds },
-          status: { in: ["PENDING", "PARTIAL"] },
+          status: { in: [...FINALIZED_JE_STATUSES] },
         },
-        _sum: { balance: true },
-      });
-      for (const r of rows) {
-        openByContact.set(r.contactId, r._sum.balance?.toString() ?? "0");
-      }
-    } else {
-      const rows = await this.db.accountsPayable.groupBy({
-        by: ["contactId"],
-        where: {
-          organizationId,
-          contactId: { in: contactIds },
-          status: { in: ["PENDING", "PARTIAL"] },
-        },
-        _sum: { balance: true },
-      });
-      for (const r of rows) {
-        openByContact.set(r.contactId, r._sum.balance?.toString() ?? "0");
-      }
+      },
+      _sum: { debit: true, credit: true },
+    });
+    for (const r of sums) {
+      if (!r.contactId) continue;
+      const debit = Number(r._sum.debit?.toString() ?? "0");
+      const credit = Number(r._sum.credit?.toString() ?? "0");
+      const balance = type === "CLIENTE" ? debit - credit : credit - debit;
+      openByContact.set(r.contactId, balance.toFixed(2));
     }
 
     // Q3 — latest journal entry date per contact. Reduce client-side
