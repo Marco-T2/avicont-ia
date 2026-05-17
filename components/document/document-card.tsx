@@ -1,7 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { toast } from "sonner";
 import {
   FileText,
   Brain,
@@ -11,6 +14,7 @@ import {
   Calendar,
   User,
   File,
+  RefreshCcw,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Document } from "@/types";
@@ -48,6 +52,45 @@ export default function DocumentCard({
   formatFileSize,
 }: DocumentCardProps) {
   const isExpanded = expandedSummaries.has(doc.id);
+
+  // F6 / REQ-49 — local reindex UI state. Server is authoritative for RBAC
+  // (per orchestrator brief: omit client-side gating, let server return 403);
+  // a 5xx/403 surfaces here as a generic error toast. The button itself is
+  // gated by `doc.aiSummary` as a proxy for "this document has indexable
+  // content" — mirrors the existing Re-analizar copy heuristic.
+  const [reindexOpen, setReindexOpen] = useState(false);
+  const [reindexing, setReindexing] = useState(false);
+
+  async function handleReindexConfirm() {
+    setReindexing(true);
+    try {
+      const res = await fetch(`/api/documents/${doc.id}/reindex`, {
+        method: "POST",
+      });
+      if (res.ok) {
+        const body = (await res.json().catch(() => ({}))) as {
+          chunkCount?: number;
+        };
+        toast.success(
+          body.chunkCount
+            ? `Documento re-indexado (${body.chunkCount} chunks)`
+            : "Documento re-indexado",
+        );
+        setReindexOpen(false);
+      } else if (res.status === 409) {
+        // REQ-48 — concurrency contention; tell the user to wait.
+        toast.error(
+          "Re-indexación en progreso, esperá unos segundos y volvé a intentar",
+        );
+      } else {
+        toast.error("Error en re-indexación");
+      }
+    } catch {
+      toast.error("Error en re-indexación");
+    } finally {
+      setReindexing(false);
+    }
+  }
 
   return (
     <div className="border rounded-lg p-6 hover:shadow-lg transition-all">
@@ -167,6 +210,22 @@ export default function DocumentCard({
             )}
           </Button>
 
+          {/* F6 / REQ-49 — Re-indexar gated by aiSummary presence (proxy
+              for "doc has indexable content"). Server enforces RBAC and the
+              409 contention contract; UI just surfaces the result via toast. */}
+          {doc.aiSummary && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setReindexOpen(true)}
+              className="justify-start"
+              title="Re-procesar y reembedding del documento"
+            >
+              <RefreshCcw className="h-4 w-4 mr-2" />
+              Re-indexar
+            </Button>
+          )}
+
           <Button
             variant="ghost"
             size="sm"
@@ -178,6 +237,17 @@ export default function DocumentCard({
           </Button>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={reindexOpen}
+        onOpenChange={setReindexOpen}
+        title="Re-indexar documento"
+        description="Esto reprocesará el documento (puede tomar ~10 segundos y volverá a generar embeddings para todos los chunks). ¿Continuar?"
+        confirmLabel="Sí, re-indexar"
+        cancelLabel="Cancelar"
+        loading={reindexing}
+        onConfirm={handleReindexConfirm}
+      />
     </div>
   );
 }
