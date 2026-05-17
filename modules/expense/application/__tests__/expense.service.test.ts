@@ -137,6 +137,39 @@ describe("ExpenseService", () => {
     });
   });
 
+  describe("update", () => {
+    // α22
+    it("persists the updated entity and returns it", async () => {
+      const created = await svc.create(ORG, baseInput({ amount: 100 }));
+
+      const updated = await svc.update(ORG, created.id, { amount: 250 });
+
+      expect(updated.amount).toBe(250);
+      const reloaded = await svc.getById(ORG, created.id);
+      expect(reloaded.amount).toBe(250);
+    });
+
+    // α23
+    it("partial update keeps prior values", async () => {
+      const created = await svc.create(
+        ORG,
+        baseInput({ amount: 100, description: "original" }),
+      );
+
+      const updated = await svc.update(ORG, created.id, { amount: 200 });
+
+      expect(updated.amount).toBe(200);
+      expect(updated.description).toBe("original");
+    });
+
+    // α24
+    it("throws ExpenseNotFoundError when id does not exist", async () => {
+      await expect(
+        svc.update(ORG, "missing-id", { amount: 1 }),
+      ).rejects.toThrow(ExpenseNotFoundError);
+    });
+  });
+
   describe("getTotalsByCategory", () => {
     // α20
     it("returns totals grouped by category for lot", async () => {
