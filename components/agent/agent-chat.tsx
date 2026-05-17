@@ -134,7 +134,7 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
             <div
               key={i}
               className={cn(
-                "max-w-[85%] rounded-lg px-3 py-2 text-sm",
+                "max-w-[85%] whitespace-pre-wrap break-words rounded-lg px-3 py-2 text-sm",
                 msg.role === "user"
                   ? "ml-auto bg-blue-600 text-white"
                   : "mr-auto bg-muted"
