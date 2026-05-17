@@ -2,12 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -273,6 +268,32 @@ export default function LedgerPageClient({
             <Button type="button" variant="outline" onClick={handleReset}>
               Limpiar
             </Button>
+            <div className="flex gap-2 ml-auto">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleOpenPdf}
+                disabled={!canExport}
+                aria-label="Abrir PDF en pestaña nueva"
+              >
+                <Printer className="h-4 w-4 mr-2" />
+                PDF
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleDownloadXlsx}
+                disabled={!canExport || loadingXlsx}
+                aria-label="Descargar como Excel"
+              >
+                {loadingXlsx ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                )}
+                Excel
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>
@@ -292,52 +313,9 @@ export default function LedgerPageClient({
         </Card>
       )}
 
-      {/* Export buttons — paridad trial-balance/worksheet (doc §6) */}
-      {ledger !== null && selectedAccount && (
-        <div className="flex gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleOpenPdf}
-            disabled={!canExport}
-            aria-label="Abrir PDF en pestaña nueva"
-          >
-            <Printer className="h-4 w-4 mr-1.5" />
-            PDF
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={handleDownloadXlsx}
-            disabled={!canExport || loadingXlsx}
-            aria-label="Descargar como Excel"
-          >
-            {loadingXlsx ? (
-              <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
-            ) : (
-              <FileSpreadsheet className="h-4 w-4 mr-1.5" />
-            )}
-            Excel
-          </Button>
-        </div>
-      )}
-
       {/* Results */}
       {ledger !== null && selectedAccount && (
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4">
-              <CardTitle>
-                {selectedAccount.code} - {selectedAccount.name}
-              </CardTitle>
-              <span className="text-sm text-muted-foreground">
-                {ledger.total}{" "}
-                {ledger.total === 1 ? "movimiento" : "movimientos"}
-              </span>
-            </div>
-          </CardHeader>
           <CardContent className="p-0">
             {/* Sub-header del Card — título + cuenta + período + (Expresado en
                 Bolivianos). Paridad doc §6: text-center, título MAYÚS bold
