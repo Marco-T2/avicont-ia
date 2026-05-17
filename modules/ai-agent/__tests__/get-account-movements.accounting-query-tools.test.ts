@@ -51,13 +51,30 @@ function makeAccountingQueryStub(
   };
 }
 
-function makeLLMProvider(toolName: string, input: unknown): LLMProviderPort {
+/** Multi-turn LLM mock (REQ-19) — see sister test get-account-balance for pattern. */
+function makeLLMProvider(
+  toolName: string,
+  input: unknown,
+  capture: { history?: readonly unknown[] } = {},
+): LLMProviderPort {
+  let turn = 0;
   return {
-    query: async () => ({
-      text: "ok",
-      toolCalls: [{ id: "t1", name: toolName, input }],
-      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-    }),
+    query: async ({ conversationHistory }) => {
+      turn += 1;
+      if (turn === 1) {
+        return {
+          text: "",
+          toolCalls: [{ id: "t1", name: toolName, input }],
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        };
+      }
+      capture.history = conversationHistory;
+      return {
+        text: "respuesta natural",
+        toolCalls: [],
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      };
+    },
   };
 }
 
@@ -107,12 +124,17 @@ describe("REQ-11 — handleReadCall dispatches getAccountMovements", () => {
       calls: [],
     };
     const accountingQuery = makeAccountingQueryStub(capture);
-    const llmProvider = makeLLMProvider("getAccountMovements", {
-      accountId: "acc-123",
-      dateFrom: "2026-01-01",
-      dateTo: "2026-05-01",
-    });
-    const result = await executeChatMode(
+    const llmCapture: { history?: readonly unknown[] } = {};
+    const llmProvider = makeLLMProvider(
+      "getAccountMovements",
+      {
+        accountId: "acc-123",
+        dateFrom: "2026-01-01",
+        dateTo: "2026-05-01",
+      },
+      llmCapture,
+    );
+    await executeChatMode(
       { llmProvider, ...makeBaseDeps(accountingQuery) },
       {
         orgId: "org-1",
@@ -129,7 +151,9 @@ describe("REQ-11 — handleReadCall dispatches getAccountMovements", () => {
       "2026-01-01",
       "2026-05-01",
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((result.suggestion as any).data).toEqual(SAMPLE);
+    const toolResult = (llmCapture.history ?? []).find(
+      (t) => (t as { kind: string }).kind === "tool_result",
+    ) as { result: unknown } | undefined;
+    expect(toolResult?.result).toEqual(SAMPLE);
   });
 });

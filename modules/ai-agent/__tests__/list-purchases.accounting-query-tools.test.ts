@@ -52,13 +52,30 @@ function makeAccountingQueryStub(
   };
 }
 
-function makeLLMProvider(toolName: string, input: unknown): LLMProviderPort {
+/** Multi-turn LLM mock (REQ-19) — see sister test get-account-balance for pattern. */
+function makeLLMProvider(
+  toolName: string,
+  input: unknown,
+  capture: { history?: readonly unknown[] } = {},
+): LLMProviderPort {
+  let turn = 0;
   return {
-    query: async () => ({
-      text: "ok",
-      toolCalls: [{ id: "t1", name: toolName, input }],
-      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-    }),
+    query: async ({ conversationHistory }) => {
+      turn += 1;
+      if (turn === 1) {
+        return {
+          text: "",
+          toolCalls: [{ id: "t1", name: toolName, input }],
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        };
+      }
+      capture.history = conversationHistory;
+      return {
+        text: "respuesta natural",
+        toolCalls: [],
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      };
+    },
   };
 }
 
@@ -108,8 +125,13 @@ describe("REQ-14 + REQ-18 — handleReadCall dispatches listPurchases", () => {
       calls: [],
     };
     const accountingQuery = makeAccountingQueryStub(capture);
-    const llmProvider = makeLLMProvider("listPurchases", { limit: 8 });
-    const result = await executeChatMode(
+    const llmCapture: { history?: readonly unknown[] } = {};
+    const llmProvider = makeLLMProvider(
+      "listPurchases",
+      { limit: 8 },
+      llmCapture,
+    );
+    await executeChatMode(
       { llmProvider, ...makeBaseDeps(accountingQuery) },
       {
         orgId: "org-1",
@@ -125,8 +147,10 @@ describe("REQ-14 + REQ-18 — handleReadCall dispatches listPurchases", () => {
       undefined,
       8,
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (result.suggestion as any).data as PurchaseSummaryDto[];
-    expect(data[0].totalAmount).toBe("777.77");
+    // Post-REQ-19: DTO surfaces via ToolResultTurn in conversationHistory.
+    const toolResult = (llmCapture.history ?? []).find(
+      (t) => (t as { kind: string }).kind === "tool_result",
+    ) as { result: PurchaseSummaryDto[] } | undefined;
+    expect(toolResult?.result?.[0]?.totalAmount).toBe("777.77");
   });
 });

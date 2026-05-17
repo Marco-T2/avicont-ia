@@ -1,6 +1,5 @@
 import type {
   ToolCall,
-  TokenUsage,
   LLMProviderPort,
 } from "../../domain/ports/llm-provider.port";
 import type { Role } from "@/modules/permissions/domain/permissions";
@@ -18,6 +17,11 @@ import type { PricingService } from "../pricing/pricing.service";
 import type { Surface } from "../../domain/tools/surfaces/surface.types";
 import type { ModuleHintValue } from "../../domain/types/module-hint.types";
 import type { AccountingQueryPort } from "../../domain/ports/accounting-query.port";
+import type { ConversationTurn } from "../../domain/types/conversation";
+import {
+  MAX_CHAT_TURNS,
+  MAX_TURN_FALLBACK_MESSAGE,
+} from "./chat.constants.ts";
 
 type AgentLabel = "socio" | "contador" | "admin";
 
@@ -113,8 +117,17 @@ export async function executeChatMode(
   const startedAt = performance.now();
 
   let outcome: InvocationOutcome = "ok";
-  let usage: TokenUsage | undefined;
-  let toolCalls: readonly ToolCall[] = [];
+  // Aggregated across all LLM calls in the multi-turn loop (REQ-24). Gemini
+  // reports per-call `usageMetadata`, NOT cumulative — summing here is the
+  // correct behavior for the `agent_invocation` event.
+  const aggregatedUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  };
+  let hasUsage = false;
+  const allToolCalls: ToolCall[] = [];
+  let turnCount = 0;
   let errorMessage: string | undefined;
   let errorStack: string | undefined;
 
@@ -165,71 +178,153 @@ export async function executeChatMode(
       });
     }
 
-    const result = await llmProvider.query({
-      systemPrompt,
-      userMessage: prompt,
-      tools,
-    });
+    // ── Multi-turn LLM loop (REQ-19) ─────────────────────────────────────
+    // Strategy:
+    //   1. Seed conversationHistory with the user turn.
+    //   2. Call LLM. If response is text-only → final answer, exit loop.
+    //   3. If response carries tool_calls:
+    //        - write tool (single, by surface gate) → handleWriteCall + exit.
+    //        - searchDocuments single-call at turn 1 → RAG bypass + exit
+    //          (REQ-25). Multi-turn does NOT apply to RAG (design D-25).
+    //        - read tools → execute ALL (S-03 fix per SCN-19.2), append
+    //          one ModelTurn + N ToolResultTurn entries, loop.
+    //   4. If the loop reaches MAX_CHAT_TURNS still with tool_calls → emit
+    //      `chat_max_turns_reached` warn + fallback message (REQ-23).
+    const conversation: ConversationTurn[] = [
+      { kind: "user", content: prompt },
+    ];
+    let finalResponse: AgentResponse | null = null;
 
-    usage = result.usage;
-    toolCalls = result.toolCalls;
+    for (turnCount = 1; turnCount <= MAX_CHAT_TURNS; turnCount++) {
+      const result = await llmProvider.query({
+        systemPrompt,
+        userMessage: prompt,
+        tools,
+        conversationHistory: conversation,
+      });
 
-    if (toolCalls.length > 0) {
-      if (toolCalls.length > 1) {
-        logStructured({
-          event: "multiple_tool_calls_dropped",
-          level: "warn",
-          count: toolCalls.length,
-          dropped: toolCalls.slice(1).map((c) => c.name),
-        });
+      if (result.usage) {
+        aggregatedUsage.inputTokens += result.usage.inputTokens;
+        aggregatedUsage.outputTokens += result.usage.outputTokens;
+        aggregatedUsage.totalTokens += result.usage.totalTokens;
+        hasUsage = true;
       }
 
-      const call = toolCalls[0];
+      const turnToolCalls = result.toolCalls;
 
-      if (isWriteAction(call.name)) {
-        const exec = await handleWriteCall(TOOL_REGISTRY, call, result.text, logStructured);
+      // Text-only response → final answer.
+      if (turnToolCalls.length === 0) {
+        const message = result.text || "No pude procesar tu solicitud.";
+        finalResponse = {
+          message,
+          suggestion: null,
+          requiresConfirmation: false,
+        };
+        break;
+      }
+
+      // Write tool short-circuit. Write surfaces never multi-call (gated by
+      // surface resolver); take the first one and exit the loop.
+      const writeCall = turnToolCalls.find((c) => isWriteAction(c.name));
+      if (writeCall) {
+        allToolCalls.push(writeCall);
+        const exec = await handleWriteCall(
+          TOOL_REGISTRY,
+          writeCall,
+          result.text,
+          logStructured,
+        );
         outcome = exec.outcome;
-        if (sessionId) {
-          await chatMemory.append(orgId, userId, sessionId, {
-            role: "model",
-            content: exec.response.message,
-          });
-        }
-        return exec.response;
+        finalResponse = exec.response;
+        break;
       }
 
-      const exec = await handleReadCall(
-        { farmInquiry, lotInquiry, pricingService, rag, accountingQuery },
-        TOOL_REGISTRY,
-        buildRagContext,
-        orgId,
-        role,
-        call,
-        result.text,
-        logStructured,
-      );
-      outcome = exec.outcome;
-      if (sessionId) {
-        await chatMemory.append(orgId, userId, sessionId, {
-          role: "model",
-          content: exec.response.message,
+      // REQ-25 searchDocuments bypass — fires ONLY at turn 1 AND when it is
+      // the sole tool_call (mixed-call case falls through to normal loop).
+      if (
+        turnCount === 1 &&
+        turnToolCalls.length === 1 &&
+        turnToolCalls[0].name === "searchDocuments"
+      ) {
+        const call = turnToolCalls[0];
+        allToolCalls.push(call);
+        const validation = validateToolInput(TOOL_REGISTRY, call, logStructured);
+        if (!validation.ok) {
+          outcome = "validation_failed";
+          finalResponse = validation.response;
+          break;
+        }
+        const ragText = await buildRagContext(
+          rag,
+          orgId,
+          (validation.input.query as string) ?? prompt,
+          role,
+        );
+        finalResponse = {
+          message:
+            result.text || ragText || "No se encontraron documentos relevantes.",
+          suggestion: null,
+          requiresConfirmation: false,
+        };
+        break;
+      }
+
+      // Append the model turn (text may be empty for pure-call responses).
+      conversation.push({
+        kind: "model",
+        content: result.text,
+        toolCalls: turnToolCalls,
+      });
+      allToolCalls.push(...turnToolCalls);
+
+      // Execute ALL read tool calls sequentially (S-03 fix). Each call's
+      // result (or error envelope) becomes a ToolResultTurn so the next
+      // LLM call can see the data.
+      for (const call of turnToolCalls) {
+        const exec = await executeReadTool(
+          { farmInquiry, lotInquiry, pricingService, accountingQuery },
+          TOOL_REGISTRY,
+          orgId,
+          call,
+          logStructured,
+        );
+        if (!exec.ok) {
+          // Track validation failures in outcome but keep looping so the LLM
+          // can react. Tool-execution errors are wrapped as `{ error: msg }`
+          // (REQ-27 + adapter object-wrap contract).
+          if (exec.outcome) outcome = exec.outcome;
+        }
+        conversation.push({
+          kind: "tool_result",
+          toolCallId: call.id,
+          name: call.name,
+          result: exec.ok ? exec.data : { error: exec.error },
         });
       }
-      return exec.response;
     }
 
-    const message = result.text || "No pude procesar tu solicitud.";
+    // Cap exhausted with no final text turn.
+    if (!finalResponse) {
+      logStructured({
+        event: "chat_max_turns_reached",
+        level: "warn",
+        turnCount: MAX_CHAT_TURNS,
+        toolNames: allToolCalls.map((c) => c.name),
+      });
+      finalResponse = {
+        message: MAX_TURN_FALLBACK_MESSAGE,
+        suggestion: null,
+        requiresConfirmation: false,
+      };
+    }
+
     if (sessionId) {
       await chatMemory.append(orgId, userId, sessionId, {
         role: "model",
-        content: message,
+        content: finalResponse.message,
       });
     }
-    return {
-      message,
-      suggestion: null,
-      requiresConfirmation: false,
-    };
+    return finalResponse;
   } catch (error) {
     outcome = "error";
     errorMessage = error instanceof Error ? error.message : String(error);
@@ -250,11 +345,12 @@ export async function executeChatMode(
       userId,
       role,
       durationMs: Math.round(performance.now() - startedAt),
-      inputTokens: usage?.inputTokens ?? null,
-      outputTokens: usage?.outputTokens ?? null,
-      totalTokens: usage?.totalTokens ?? null,
-      toolCallsCount: toolCalls.length,
-      toolNames: toolCalls.map((c) => c.name),
+      inputTokens: hasUsage ? aggregatedUsage.inputTokens : null,
+      outputTokens: hasUsage ? aggregatedUsage.outputTokens : null,
+      totalTokens: hasUsage ? aggregatedUsage.totalTokens : null,
+      turnCount,
+      toolCallsCount: allToolCalls.length,
+      toolNames: allToolCalls.map((c) => c.name),
       outcome,
       ...(errorMessage ? { errorMessage } : {}),
       ...(errorStack ? { errorStack } : {}),
@@ -403,139 +499,135 @@ interface ReadCallDeps {
   farmInquiry: FarmInquiryPort;
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
-  rag: RagPort;
   accountingQuery: AccountingQueryPort;
 }
 
-async function handleReadCall(
+type ReadToolResult =
+  | { ok: true; data: unknown }
+  | { ok: false; error: string; outcome?: InvocationOutcome };
+
+/**
+ * Execute a single read tool and return its raw data (or an error envelope).
+ *
+ * Replaces the pre-REQ-19 `handleReadCall` which packaged the result into an
+ * `AgentResponse` with the "Aquí están los datos solicitados." placeholder.
+ * The multi-turn loop in `executeChatMode` now feeds the raw data back into
+ * the LLM so the model writes a real natural-language answer (REQ-19).
+ *
+ * Note: `searchDocuments` is NOT routed here — its RAG bypass lives directly
+ * in the loop (REQ-25). Routing it through this helper would either return
+ * the RAG text as `data` (wrong for the bypass) or duplicate the bypass.
+ */
+async function executeReadTool(
   deps: ReadCallDeps,
   registry: ToolRegistry,
-  buildRagContextFn: (rag: RagPort, orgId: string, query: string, role: Role) => Promise<string>,
   orgId: string,
-  role: Role,
   call: ToolCall,
-  text: string,
   logStructured: LogFn,
-): Promise<{ response: AgentResponse; outcome: InvocationOutcome }> {
-  const { farmInquiry, lotInquiry, pricingService, rag, accountingQuery } = deps;
+): Promise<ReadToolResult> {
+  const { farmInquiry, lotInquiry, pricingService, accountingQuery } = deps;
   const validation = validateToolInput(registry, call, logStructured);
   if (!validation.ok) {
-    return { response: validation.response, outcome: "validation_failed" };
+    return {
+      ok: false,
+      error: `invalid arguments for ${call.name}`,
+      outcome: "validation_failed",
+    };
   }
   const args = validation.input;
 
   try {
-    let data: unknown;
-
     switch (call.name) {
       case "listFarms":
-        data = await farmInquiry.list(orgId);
-        break;
+        return { ok: true, data: await farmInquiry.list(orgId) };
       case "listLots":
-        data = await lotInquiry.list(orgId, {
-          farmId: args.farmId as string,
-        });
-        break;
-      case "getLotSummary":
-        data = await pricingService.calculateLotCost(
-          orgId,
-          args.lotId as string,
-        );
-        break;
-      case "searchDocuments": {
-        const ragContext = await buildRagContextFn(rag, orgId, args.query as string, role);
         return {
-          outcome: "ok",
-          response: {
-            message: text || ragContext || "No se encontraron documentos relevantes.",
-            suggestion: null,
-            requiresConfirmation: false,
-          },
+          ok: true,
+          data: await lotInquiry.list(orgId, {
+            farmId: args.farmId as string,
+          }),
         };
-      }
+      case "getLotSummary":
+        return {
+          ok: true,
+          data: await pricingService.calculateLotCost(
+            orgId,
+            args.lotId as string,
+          ),
+        };
       case "listRecentJournalEntries":
-        data = await accountingQuery.listRecentJournalEntries(
-          orgId,
-          (args.limit as number | undefined) ?? 10,
-        );
-        break;
+        return {
+          ok: true,
+          data: await accountingQuery.listRecentJournalEntries(
+            orgId,
+            (args.limit as number | undefined) ?? 10,
+          ),
+        };
       case "getAccountMovements":
-        data = await accountingQuery.getAccountMovements(
-          orgId,
-          args.accountId as string,
-          args.dateFrom as string | undefined,
-          args.dateTo as string | undefined,
-        );
-        break;
+        return {
+          ok: true,
+          data: await accountingQuery.getAccountMovements(
+            orgId,
+            args.accountId as string,
+            args.dateFrom as string | undefined,
+            args.dateTo as string | undefined,
+          ),
+        };
       case "getAccountBalance":
-        data = await accountingQuery.getAccountBalance(
-          orgId,
-          args.accountId as string,
-        );
-        break;
+        return {
+          ok: true,
+          data: await accountingQuery.getAccountBalance(
+            orgId,
+            args.accountId as string,
+          ),
+        };
       case "listSales":
-        data = await accountingQuery.listSales(
-          orgId,
-          args.dateFrom as string | undefined,
-          args.dateTo as string | undefined,
-          (args.limit as number | undefined) ?? 20,
-        );
-        break;
+        return {
+          ok: true,
+          data: await accountingQuery.listSales(
+            orgId,
+            args.dateFrom as string | undefined,
+            args.dateTo as string | undefined,
+            (args.limit as number | undefined) ?? 20,
+          ),
+        };
       case "listPurchases":
-        data = await accountingQuery.listPurchases(
-          orgId,
-          args.dateFrom as string | undefined,
-          args.dateTo as string | undefined,
-          (args.limit as number | undefined) ?? 20,
-        );
-        break;
+        return {
+          ok: true,
+          data: await accountingQuery.listPurchases(
+            orgId,
+            args.dateFrom as string | undefined,
+            args.dateTo as string | undefined,
+            (args.limit as number | undefined) ?? 20,
+          ),
+        };
       case "listPayments":
-        data = await accountingQuery.listPayments(
-          orgId,
-          args.dateFrom as string | undefined,
-          args.dateTo as string | undefined,
-          (args.limit as number | undefined) ?? 20,
-        );
-        break;
+        return {
+          ok: true,
+          data: await accountingQuery.listPayments(
+            orgId,
+            args.dateFrom as string | undefined,
+            args.dateTo as string | undefined,
+            (args.limit as number | undefined) ?? 20,
+          ),
+        };
       default:
         return {
-          outcome: "validation_failed",
-          response: {
-            message: `Acción no reconocida: ${call.name}`,
-            suggestion: null,
-            requiresConfirmation: false,
-          },
+          ok: false,
+          error: `unknown tool: ${call.name}`,
+          outcome: "unexpected_tool",
         };
     }
-
-    return {
-      outcome: "ok",
-      response: {
-        message: text || "Aquí están los datos solicitados.",
-        suggestion: {
-          action: call.name as AgentSuggestion["action"],
-          data: data as AgentSuggestion["data"],
-        } as AgentSuggestion,
-        requiresConfirmation: false,
-      },
-    };
   } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error);
     logStructured({
       event: "agent_read_action_error",
       level: "error",
       orgId,
-      role,
       action: call.name,
-      errorMessage: error instanceof Error ? error.message : String(error),
+      errorMessage: msg,
       errorStack: error instanceof Error ? error.stack : undefined,
     });
-    return {
-      outcome: "error",
-      response: {
-        message: `Error al consultar los datos: ${error instanceof Error ? error.message : "Error desconocido"}`,
-        suggestion: null,
-        requiresConfirmation: false,
-      },
-    };
+    return { ok: false, error: msg };
   }
 }

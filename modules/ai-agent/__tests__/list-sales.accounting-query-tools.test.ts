@@ -51,13 +51,30 @@ function makeAccountingQueryStub(
   };
 }
 
-function makeLLMProvider(toolName: string, input: unknown): LLMProviderPort {
+/** Multi-turn LLM mock (REQ-19) — see sister test get-account-balance for pattern. */
+function makeLLMProvider(
+  toolName: string,
+  input: unknown,
+  capture: { history?: readonly unknown[] } = {},
+): LLMProviderPort {
+  let turn = 0;
   return {
-    query: async () => ({
-      text: "ok",
-      toolCalls: [{ id: "t1", name: toolName, input }],
-      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-    }),
+    query: async ({ conversationHistory }) => {
+      turn += 1;
+      if (turn === 1) {
+        return {
+          text: "",
+          toolCalls: [{ id: "t1", name: toolName, input }],
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        };
+      }
+      capture.history = conversationHistory;
+      return {
+        text: "respuesta natural",
+        toolCalls: [],
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      };
+    },
   };
 }
 
@@ -107,11 +124,13 @@ describe("REQ-13 + REQ-18 — handleReadCall dispatches listSales", () => {
       calls: [],
     };
     const accountingQuery = makeAccountingQueryStub(capture);
-    const llmProvider = makeLLMProvider("listSales", {
-      limit: 5,
-      dateFrom: "2026-01-01",
-    });
-    const result = await executeChatMode(
+    const llmCapture: { history?: readonly unknown[] } = {};
+    const llmProvider = makeLLMProvider(
+      "listSales",
+      { limit: 5, dateFrom: "2026-01-01" },
+      llmCapture,
+    );
+    await executeChatMode(
       { llmProvider, ...makeBaseDeps(accountingQuery) },
       {
         orgId: "org-1",
@@ -127,10 +146,12 @@ describe("REQ-13 + REQ-18 — handleReadCall dispatches listSales", () => {
       undefined,
       5,
     ]);
-    // REQ-18: totalAmount is a roundHalfUp(...).toFixed(2) string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (result.suggestion as any).data as SaleSummaryDto[];
-    expect(data[0].totalAmount).toBe("1234.50");
+    // REQ-18: totalAmount is a roundHalfUp(...).toFixed(2) string. Post-REQ-19
+    // the DTO surfaces via ToolResultTurn in conversationHistory.
+    const toolResult = (llmCapture.history ?? []).find(
+      (t) => (t as { kind: string }).kind === "tool_result",
+    ) as { result: SaleSummaryDto[] } | undefined;
+    expect(toolResult?.result?.[0]?.totalAmount).toBe("1234.50");
   });
 
   it("uses default limit=20 when args.limit omitted", async () => {

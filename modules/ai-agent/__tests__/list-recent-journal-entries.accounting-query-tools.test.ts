@@ -55,13 +55,35 @@ function makeAccountingQueryStub(
   };
 }
 
-function makeLLMProvider(toolName: string, input: unknown): LLMProviderPort {
+/**
+ * Multi-turn LLM mock (REQ-19 contract). Turn 1 emits the tool_call; turn 2
+ * returns text-only so the loop exits. `capture.history` records the
+ * conversationHistory passed to the FINAL LLM call so tests can assert that
+ * the ToolResultTurn carries the expected DTO payload.
+ */
+function makeLLMProvider(
+  toolName: string,
+  input: unknown,
+  capture: { history?: readonly unknown[] } = {},
+): LLMProviderPort {
+  let turn = 0;
   return {
-    query: async () => ({
-      text: "ok",
-      toolCalls: [{ id: "t1", name: toolName, input }],
-      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-    }),
+    query: async ({ conversationHistory }) => {
+      turn += 1;
+      if (turn === 1) {
+        return {
+          text: "",
+          toolCalls: [{ id: "t1", name: toolName, input }],
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        };
+      }
+      capture.history = conversationHistory;
+      return {
+        text: "respuesta natural",
+        toolCalls: [],
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      };
+    },
   };
 }
 
@@ -107,16 +129,19 @@ describe("REQ-10 SCN-10.1 — listRecentJournalEntries tool definition", () => {
   });
 });
 
-describe("REQ-10 — handleReadCall dispatches listRecentJournalEntries", () => {
-  it("invokes deps.accountingQuery.listRecentJournalEntries(orgId, limit)", async () => {
+describe("REQ-10 — executeChatMode dispatches listRecentJournalEntries through multi-turn loop", () => {
+  it("invokes deps.accountingQuery.listRecentJournalEntries(orgId, limit) and feeds DTO to LLM turn 2", async () => {
     const capture: { calls: Array<{ method: string; args: unknown[] }> } = {
       calls: [],
     };
+    const llmCapture: { history?: readonly unknown[] } = {};
     const accountingQuery = makeAccountingQueryStub(capture);
-    const llmProvider = makeLLMProvider("listRecentJournalEntries", {
-      limit: 5,
-    });
-    const result = await executeChatMode(
+    const llmProvider = makeLLMProvider(
+      "listRecentJournalEntries",
+      { limit: 5 },
+      llmCapture,
+    );
+    await executeChatMode(
       { llmProvider, ...makeBaseDeps(accountingQuery) },
       {
         orgId: "org-1",
@@ -130,10 +155,11 @@ describe("REQ-10 — handleReadCall dispatches listRecentJournalEntries", () => 
     expect(capture.calls[0].method).toBe("listRecentJournalEntries");
     expect(capture.calls[0].args[0]).toBe("org-1");
     expect(capture.calls[0].args[1]).toBe(5);
-    // suggestion.data must surface the DTO array
-    expect(result.suggestion).not.toBeNull();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    expect((result.suggestion as any).data).toEqual(SAMPLE);
+    // Post-REQ-19: DTO surfaces via ToolResultTurn in conversationHistory.
+    const toolResult = (llmCapture.history ?? []).find(
+      (t) => (t as { kind: string }).kind === "tool_result",
+    ) as { result: unknown } | undefined;
+    expect(toolResult?.result).toEqual(SAMPLE);
   });
 
   it("uses default limit=10 when args.limit omitted", async () => {

@@ -55,13 +55,30 @@ function makeAccountingQueryStub(
   };
 }
 
-function makeLLMProvider(toolName: string, input: unknown): LLMProviderPort {
+/** Multi-turn LLM mock (REQ-19) — see sister test get-account-balance for pattern. */
+function makeLLMProvider(
+  toolName: string,
+  input: unknown,
+  capture: { history?: readonly unknown[] } = {},
+): LLMProviderPort {
+  let turn = 0;
   return {
-    query: async () => ({
-      text: "ok",
-      toolCalls: [{ id: "t1", name: toolName, input }],
-      usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
-    }),
+    query: async ({ conversationHistory }) => {
+      turn += 1;
+      if (turn === 1) {
+        return {
+          text: "",
+          toolCalls: [{ id: "t1", name: toolName, input }],
+          usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+        };
+      }
+      capture.history = conversationHistory;
+      return {
+        text: "respuesta natural",
+        toolCalls: [],
+        usage: { inputTokens: 1, outputTokens: 1, totalTokens: 2 },
+      };
+    },
   };
 }
 
@@ -111,8 +128,13 @@ describe("REQ-15 + REQ-18 — handleReadCall dispatches listPayments", () => {
       calls: [],
     };
     const accountingQuery = makeAccountingQueryStub(capture);
-    const llmProvider = makeLLMProvider("listPayments", { limit: 3 });
-    const result = await executeChatMode(
+    const llmCapture: { history?: readonly unknown[] } = {};
+    const llmProvider = makeLLMProvider(
+      "listPayments",
+      { limit: 3 },
+      llmCapture,
+    );
+    await executeChatMode(
       { llmProvider, ...makeBaseDeps(accountingQuery) },
       {
         orgId: "org-1",
@@ -128,12 +150,15 @@ describe("REQ-15 + REQ-18 — handleReadCall dispatches listPayments", () => {
       undefined,
       3,
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const data = (result.suggestion as any).data as PaymentSummaryDto[];
-    expect(data[0].amount).toBe("99.90");
-    expect(data[0].direction).toBe("COBRO");
+    // Post-REQ-19: DTO surfaces via ToolResultTurn in conversationHistory.
+    const toolResult = (llmCapture.history ?? []).find(
+      (t) => (t as { kind: string }).kind === "tool_result",
+    ) as { result: PaymentSummaryDto[] } | undefined;
+    const data = toolResult?.result;
+    expect(data?.[0]?.amount).toBe("99.90");
+    expect(data?.[0]?.direction).toBe("COBRO");
     // contactId fallback: present as a string when denormalized name unavailable
-    expect(typeof data[0].contactId).toBe("string");
-    expect(data[0].contactId).toBe("ctx-1");
+    expect(typeof data?.[0]?.contactId).toBe("string");
+    expect(data?.[0]?.contactId).toBe("ctx-1");
   });
 });
