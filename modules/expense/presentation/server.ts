@@ -7,12 +7,17 @@ export {
   LocalExpensesInquiryAdapter,
 } from "./composition-root";
 
-export { createExpenseSchema, expenseIdSchema } from "./validation";
+export {
+  createExpenseSchema,
+  expenseIdSchema,
+  updateExpenseSchema,
+} from "./validation";
 
 export { Expense } from "../domain/expense.entity";
 export type {
   ExpenseProps,
   CreateExpenseInput,
+  UpdateExpenseInput,
 } from "../domain/expense.entity";
 export type {
   ExpensesRepository,
@@ -23,6 +28,7 @@ export { EXPENSE_CATEGORIES } from "../domain/value-objects/expense-category";
 export {
   ExpenseService,
   type CreateExpenseServiceInput,
+  type UpdateExpenseServiceInput,
 } from "../application/expense.service";
 export type {
   ExpensesInquiryPort,
