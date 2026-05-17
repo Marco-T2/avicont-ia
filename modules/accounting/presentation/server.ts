@@ -17,6 +17,15 @@ export type { LedgerPdfOptions } from "../infrastructure/exporters/ledger/ledger
 export { exportLedgerXlsx } from "../infrastructure/exporters/ledger/ledger-xlsx.exporter";
 export type { LedgerXlsxOptions } from "../infrastructure/exporters/ledger/ledger-xlsx.exporter";
 
+// ── Contact-ledger exporters (PDF + XLSX) — C7 (SUBDIR per α17/D6) ──
+export {
+  exportContactLedgerPdf,
+  MissingOrgNameError as ContactLedgerMissingOrgNameError,
+} from "../infrastructure/exporters/contact-ledger/contact-ledger-pdf.exporter";
+export type { ContactLedgerPdfOptions } from "../infrastructure/exporters/contact-ledger/contact-ledger-pdf.exporter";
+export { exportContactLedgerXlsx } from "../infrastructure/exporters/contact-ledger/contact-ledger-xlsx.exporter";
+export type { ContactLedgerXlsxOptions } from "../infrastructure/exporters/contact-ledger/contact-ledger-xlsx.exporter";
+
 // ── Accounts hex service (POC #3c) ──
 export { AccountsService } from "../application/accounts.service";
 export type { AccountsServiceDeps } from "../application/accounts.service";

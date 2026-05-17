@@ -1,21 +1,21 @@
 /**
- * C4 — RED: API route tests for GET /api/organizations/[orgSlug]/contact-ledger
+ * C4/C7 — Route tests for GET /api/organizations/[orgSlug]/contact-ledger
  *
- * Covers spec REQ "API Contract — Contact Ledger":
+ * Covers spec REQ "API Contract — Contact Ledger" + "PDF Export" + "XLSX Export":
  *   T1 — format=json + valid params → 200 + ContactLedgerPaginatedDto shape
  *   T2 — format=json sin params → 200 (defaults aplicados)
  *   T3 — format=pdf sin contactId → ValidationError (422)
  *   T4 — format=xlsx sin dateFrom/dateTo → ValidationError (422)
  *   T5 — sin permission `reports:read` → 403 ForbiddenError
- *   T6 — format=pdf con contactId+rango → 501 NotImplementedError (stub C7)
- *   T7 — format=xlsx con contactId+rango → 501 NotImplementedError (stub C7)
+ *   T6 — format=pdf con contactId+rango → 200 + application/pdf + inline
+ *   T7 — format=xlsx con contactId+rango → 200 + xlsx mime + attachment
  *   T8 — Decimal serializados como string en json (NO Decimal objects)
  *
- * Expected RED failure mode per [[red_acceptance_failure_mode]]:
- *   Route file `app/api/organizations/[orgSlug]/contact-ledger/route.ts` does
- *   not exist yet — import resolution fails (ERR_MODULE_NOT_FOUND or
- *   vitest path-resolve error). PDF/XLSX stubs throw NotImplementedError
- *   (deliberate staged-red until C7 per design D6).
+ * C7 cutover (este commit): T6 + T7 flip de 501 NotImplementedError stubs a
+ * 200 con exporters cableados. Exporters viven en subdir
+ * `infrastructure/exporters/contact-ledger/` (design D6 + α17 preservation
+ * per [[named_rule_immutability]]). Mocks para exporters + contactsService +
+ * journalRepo + fetchLogoAsDataUrl bundled per [[mock_hygiene_commit_scope]].
  *
  * Sister precedent: `app/api/organizations/[orgSlug]/trial-balance/__tests__/route.test.ts`
  * (paired sister apply directly per [[paired_sister_default_no_surface]]).
@@ -29,9 +29,19 @@ import { ForbiddenError, ValidationError } from "@/features/shared/errors";
 const {
   mockRequirePermission,
   mockGetContactLedgerPaginated,
+  mockGetActiveById,
+  mockGetOrgMetadata,
+  mockFetchLogoAsDataUrl,
+  mockExportPdf,
+  mockExportXlsx,
 } = vi.hoisted(() => ({
   mockRequirePermission: vi.fn(),
   mockGetContactLedgerPaginated: vi.fn(),
+  mockGetActiveById: vi.fn(),
+  mockGetOrgMetadata: vi.fn(),
+  mockFetchLogoAsDataUrl: vi.fn(),
+  mockExportPdf: vi.fn(),
+  mockExportXlsx: vi.fn(),
 }));
 
 // ── Module mocks ─────────────────────────────────────────────────────────────
@@ -65,9 +75,8 @@ vi.mock("@/features/shared/middleware", () => ({
 }));
 
 // [[mock_hygiene_commit_scope]] + [[cross_module_boundary_mock_target_rewrite]]:
-// makeLedgerService factory mock — route.ts calls `makeLedgerService()` once at
-// module load and reuses the singleton across requests. Mock returns a service
-// stub exposing only `getContactLedgerPaginated` (the method this route exercises).
+// makeLedgerService factory mock + exporter functions stub (route.ts importa
+// `makeLedgerService` + `exportContactLedger{Pdf,Xlsx}` desde el mismo barrel).
 vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/modules/accounting/presentation/server")
@@ -75,6 +84,44 @@ vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
   makeLedgerService: vi.fn().mockReturnValue({
     getContactLedgerPaginated: mockGetContactLedgerPaginated,
   }),
+  exportContactLedgerPdf: mockExportPdf,
+  exportContactLedgerXlsx: mockExportXlsx,
+}));
+
+// contactsService factory — usado solo en PDF/XLSX branches (T6/T7) para
+// resolver contact.name. Json branch no llama contactsService directamente
+// (el service interno hace la resolution via contacts.getActiveById).
+vi.mock("@/modules/contacts/presentation/server", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/modules/contacts/presentation/server")>()),
+  makeContactsService: vi.fn().mockReturnValue({
+    getActiveById: mockGetActiveById,
+  }),
+}));
+
+// JournalRepository class — `new JournalRepository()` at module load del route,
+// pero también es construido por la composition-root (importada vía la barrel
+// que arriba mockeamos parcialmente). Stub debe ser constructable desde ambos
+// callsites — usar partial mock con importOriginal preservando otras exports +
+// substituyendo la class por una stub-class real.
+vi.mock(
+  "@/modules/accounting/infrastructure/prisma-journal-entries.repo",
+  async (importOriginal) => {
+    const mod =
+      await importOriginal<
+        typeof import("@/modules/accounting/infrastructure/prisma-journal-entries.repo")
+      >();
+    class JournalRepositoryStub {
+      getOrgMetadata = mockGetOrgMetadata;
+    }
+    return {
+      ...mod,
+      JournalRepository: JournalRepositoryStub,
+    };
+  },
+);
+
+vi.mock("@/modules/accounting/infrastructure/exporters/logo-fetcher", () => ({
+  fetchLogoAsDataUrl: mockFetchLogoAsDataUrl,
 }));
 
 // ── Minimal DTO fixture (Decimal fields as string per DEC-1 boundary) ────────
@@ -107,6 +154,19 @@ const minimalDto = {
   openingBalance: "0.00",
 };
 
+const fakeContact = {
+  id: "contact-1",
+  name: "Distribuidora ACME SRL",
+};
+
+const fakeOrgMeta = {
+  name: "Avicont SA",
+  taxId: "1001",
+  address: "Av. Principal 123",
+  city: "La Paz",
+  logoUrl: null,
+};
+
 // ── Import after mocks ───────────────────────────────────────────────────────
 
 import { GET, runtime } from "../route";
@@ -131,6 +191,14 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockRequirePermission.mockResolvedValue({ orgId: "org-1", role: "contador" });
   mockGetContactLedgerPaginated.mockResolvedValue(minimalDto);
+  mockGetActiveById.mockResolvedValue(fakeContact);
+  mockGetOrgMetadata.mockResolvedValue(fakeOrgMeta);
+  mockFetchLogoAsDataUrl.mockResolvedValue(undefined);
+  mockExportPdf.mockResolvedValue({
+    buffer: Buffer.from("%PDF-1.4 fake"),
+    docDef: {},
+  });
+  mockExportXlsx.mockResolvedValue(Buffer.from("PK\x03\x04 fake xlsx"));
 });
 
 describe("GET /api/.../contact-ledger — json branch (T1, T2, T8)", () => {
@@ -162,7 +230,6 @@ describe("GET /api/.../contact-ledger — json branch (T1, T2, T8)", () => {
       params: makeParams(),
     });
     expect(res.status).toBe(200);
-    // Service called even sin contactId (json branch tolerates filters opcionales).
     expect(mockGetContactLedgerPaginated).toHaveBeenCalled();
   });
 
@@ -222,8 +289,8 @@ describe("GET /api/.../contact-ledger — RBAC (T5)", () => {
   });
 });
 
-describe("GET /api/.../contact-ledger — PDF/XLSX stubs (T6, T7) — staged red until C7", () => {
-  it("T6 — format=pdf + contactId + rango → 501 NotImplementedError (stub)", async () => {
+describe("GET /api/.../contact-ledger — PDF/XLSX wiring (T6, T7) — C7 GREEN", () => {
+  it("T6 — format=pdf + contactId + rango → 200 + application/pdf inline", async () => {
     const res = await GET(
       makeRequest({
         format: "pdf",
@@ -233,10 +300,14 @@ describe("GET /api/.../contact-ledger — PDF/XLSX stubs (T6, T7) — staged red
       }),
       { params: makeParams() },
     );
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe("application/pdf");
+    expect(res.headers.get("content-disposition")).toContain("inline");
+    expect(res.headers.get("content-disposition")).toContain(".pdf");
+    expect(mockExportPdf).toHaveBeenCalled();
   });
 
-  it("T7 — format=xlsx + contactId + rango → 501 NotImplementedError (stub)", async () => {
+  it("T7 — format=xlsx + contactId + rango → 200 + xlsx mime attachment", async () => {
     const res = await GET(
       makeRequest({
         format: "xlsx",
@@ -246,7 +317,45 @@ describe("GET /api/.../contact-ledger — PDF/XLSX stubs (T6, T7) — staged red
       }),
       { params: makeParams() },
     );
-    expect(res.status).toBe(501);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("content-type")).toBe(
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    );
+    expect(res.headers.get("content-disposition")).toContain("attachment");
+    expect(res.headers.get("content-disposition")).toContain(".xlsx");
+    expect(mockExportXlsx).toHaveBeenCalled();
+  });
+
+  it("T6b — PDF branch fetches logo via fetchLogoAsDataUrl con orgMeta.logoUrl", async () => {
+    mockGetOrgMetadata.mockResolvedValue({
+      ...fakeOrgMeta,
+      logoUrl: "https://blob.example.com/logo.png",
+    });
+    await GET(
+      makeRequest({
+        format: "pdf",
+        contactId: "contact-1",
+        dateFrom: "2025-01-01",
+        dateTo: "2025-01-31",
+      }),
+      { params: makeParams() },
+    );
+    expect(mockFetchLogoAsDataUrl).toHaveBeenCalledWith(
+      "https://blob.example.com/logo.png",
+    );
+  });
+
+  it("T7b — XLSX branch NO fetchea logo (no embebido en xlsx)", async () => {
+    await GET(
+      makeRequest({
+        format: "xlsx",
+        contactId: "contact-1",
+        dateFrom: "2025-01-01",
+        dateTo: "2025-01-31",
+      }),
+      { params: makeParams() },
+    );
+    expect(mockFetchLogoAsDataUrl).not.toHaveBeenCalled();
   });
 });
 
@@ -256,6 +365,6 @@ describe("route module — runtime config", () => {
   });
 });
 
-// Surface unused import to keep tsc clean when ValidationError pattern check
-// isn't directly asserted (handleError mock maps statusCode → response status).
+// Surface unused import para tsc clean — ValidationError es importado pero
+// no asertado directamente (handleError mock mapea statusCode → response status).
 void ValidationError;
