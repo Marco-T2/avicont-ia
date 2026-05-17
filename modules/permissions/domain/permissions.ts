@@ -157,7 +157,10 @@ const RAG_SCOPES: Record<string, DocumentScope[]> = {
   owner: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   admin: ["ORGANIZATION", "ACCOUNTING", "FARM"],
   contador: ["ORGANIZATION", "ACCOUNTING"],
-  cobrador: ["ORGANIZATION"],
+  // Cobrador es sub-rol contable (cobranza es área operativa de Contabilidad)
+  // → ve docs ACCOUNTING (políticas de cobros, plan de cuentas, etc.).
+  // Cambio C2 2026-05-17 — coherencia con el bug fix C1 de visibilidad.
+  cobrador: ["ORGANIZATION", "ACCOUNTING"],
   member: ["ORGANIZATION", "FARM"],
 };
 
