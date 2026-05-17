@@ -49,7 +49,11 @@ export function AgentChat({ isOpen, onClose, orgSlug }: AgentChatProps) {
         const res = await fetch(`/api/organizations/${orgSlug}/agent`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt, session_id: sessionIdRef.current }),
+          body: JSON.stringify({
+            prompt,
+            session_id: sessionIdRef.current,
+            surface: "sidebar-qa",
+          }),
         });
 
         if (!res.ok) {

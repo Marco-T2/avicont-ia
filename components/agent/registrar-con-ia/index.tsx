@@ -73,6 +73,7 @@ export default function RegistrarConIAModal({
       const res = await query({
         prompt,
         mode: "chat",
+        surface: "modal-registrar",
         contextHints: {
           lotId: contextHints.lotId,
           farmId: contextHints.farmId,
@@ -135,6 +136,7 @@ export default function RegistrarConIAModal({
       const res = await query({
         prompt: lastPrompt,
         mode: "chat",
+        surface: "modal-registrar",
         contextHints: {
           lotId: contextHints.lotId,
           farmId: contextHints.farmId,

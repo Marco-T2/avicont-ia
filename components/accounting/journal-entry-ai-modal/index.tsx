@@ -88,6 +88,7 @@ export default function JournalEntryAiModal({
       const res = await query({
         prompt: prompt.trim(),
         mode: "journal-entry-ai",
+        surface: "modal-journal-ai",
         contextHints: hints,
       });
       if (res.suggestion?.action === "createJournalEntry") {
@@ -126,6 +127,7 @@ export default function JournalEntryAiModal({
       const res = await query({
         prompt: correction.trim(),
         mode: "journal-entry-ai",
+        surface: "modal-journal-ai",
         contextHints: hints,
       });
       if (res.suggestion?.action === "createJournalEntry") {

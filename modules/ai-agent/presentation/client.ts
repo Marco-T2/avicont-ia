@@ -6,6 +6,7 @@ import type {
   AgentSuggestion,
 } from "../domain/types/agent.types";
 import type { JournalEntryAiContextHints } from "../domain/prompts/journal-entry-ai.prompt";
+import type { Surface } from "../domain/tools/surfaces/surface.types";
 
 /**
  * Presentation/client barrel for modules/ai-agent (POC ai-agent-hex C3).
@@ -42,6 +43,12 @@ export interface ChatContextHints {
 export interface AgentQueryParams {
   prompt: string;
   mode?: "chat" | "journal-entry-ai";
+  /**
+   * REQUIRED — the UI entry point dispatching the query. Compile-time
+   * enforcement that new clients declare their surface explicitly.
+   * Server-side: agentQuerySchema also requires it (defense in depth).
+   */
+  surface: Surface;
   contextHints?: JournalEntryAiContextHints | ChatContextHints;
   /** session_id se omite en mode='journal-entry-ai' (stateless por diseño v1) */
   sessionId?: string;
@@ -73,6 +80,7 @@ export function useAgentQuery(orgSlug: string) {
           body: JSON.stringify({
             prompt: params.prompt,
             mode: params.mode ?? "chat",
+            surface: params.surface,
             ...(params.contextHints && { contextHints: params.contextHints }),
             ...(params.sessionId && { session_id: params.sessionId }),
           }),
