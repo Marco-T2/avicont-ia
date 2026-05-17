@@ -391,6 +391,103 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(result.items[0].balance).toBe("150.50");
   });
 
+  it("BF2-T1 forwards Payment.direction (COBRO|PAGO) to ContactLedgerEntry.paymentDirection (resolves bug #1 Pago vs Cobranza)", async () => {
+    // BUG #1: el adapter de Payment ya fetchea `direction` pero el service
+    // lo descarta — el DTO `ContactLedgerEntry` no expone el campo, asi que
+    // la UI no puede distinguir "Cobranza (efectivo)" vs "Pago (efectivo)"
+    // cuando ambos llevan `sourceType="payment"` (producción usa solo
+    // "payment", "receipt" no existe runtime).
+    // FIX: agregar `paymentDirection: "COBRO"|"PAGO"|null` al DTO,
+    // forwardeando desde el enrichment row.
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 0,
+        credit: 200,
+        date: "2099-05-16",
+        number: 5,
+        journalEntryId: "je-pay",
+        sourceType: "payment",
+        sourceId: "pay-1",
+        voucherCode: "CI",
+        voucherPrefix: "I",
+        voucherName: "Comprobante de Ingreso",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      payments: [
+        {
+          journalEntryId: "je-pay",
+          paymentMethod: "EFECTIVO",
+          bankAccountName: null,
+          direction: "COBRO",
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items).toHaveLength(1);
+    const entry = result.items[0] as typeof result.items[number] & {
+      paymentDirection: string | null;
+    };
+    expect(entry.paymentDirection).toBe("COBRO");
+  });
+
+  it("BF2-T2 paymentDirection=null cuando el row no tiene Payment asociado", async () => {
+    // Rows que no son `sourceType="payment"` (sale/purchase/manual) NO tienen
+    // payment row → `paymentDirection` debe ser null.
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 500,
+        credit: 0,
+        date: "2099-05-16",
+        number: 1,
+        journalEntryId: "je-sale",
+        sourceType: "sale",
+        sourceId: "sale-1",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const entry = result.items[0] as typeof result.items[number] & {
+      paymentDirection: string | null;
+    };
+    expect(entry.paymentDirection).toBeNull();
+  });
+
   it("BF1-T1 fetches CxC/CxP control account codes ONCE per call and forwards them to the query port (resolves bug #2 duplicate rows / #4 inconsistent status / #6 broken running balance)", async () => {
     // BUG #2/#4/#6 ROOT CAUSE: when a JE has both debit and credit lines
     // tagged with contactId (header surface + line surface dual D4), BOTH
