@@ -56,6 +56,16 @@ function makeRag(): RagPort {
 
 const noopInquiry = { list: async () => [] };
 const pricingFake = { calculateLotCost: async () => ({}) };
+// F2 — accountingQuery is a required ChatModeDeps field as of REQ-16. These
+// prompt-augmentation tests never trigger a tool call, so a noop stub is enough.
+const accountingQueryStub = {
+  listRecentJournalEntries: async () => [],
+  getAccountMovements: async () => [],
+  getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
+  listSales: async () => [],
+  listPurchases: async () => [],
+  listPayments: async () => [],
+};
 
 const logSpy = vi.fn();
 vi.mock("@/lib/logging/structured", () => ({
@@ -83,6 +93,7 @@ function deps() {
     lotInquiry: noopInquiry as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pricingService: pricingFake as any,
+    accountingQuery: accountingQueryStub,
   };
 }
 

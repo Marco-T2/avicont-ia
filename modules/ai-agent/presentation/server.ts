@@ -34,6 +34,14 @@ import {
   LocalLotInquiryAdapter,
   makeLotService,
 } from "@/modules/lot/presentation/server";
+import {
+  makeJournalsService,
+  makeLedgerService,
+} from "@/modules/accounting/presentation/server";
+import { makeSaleService } from "@/modules/sale/presentation/composition-root";
+import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
+import { makePaymentsService } from "@/modules/payment/presentation/server";
+import { AccountingQueryAdapter } from "../infrastructure/adapters/accounting-query.adapter";
 import { AgentService } from "../application/agent.service";
 import { AgentRateLimitService } from "../application/rate-limit.service";
 import { PricingService } from "../application/pricing/pricing.service";
@@ -60,6 +68,18 @@ export function makeAgentService(): AgentService {
   const pricingService = new PricingService();
   const rateLimit = new AgentRateLimitService(rateLimitRepo);
 
+  // F2 (agent-accounting-query-tools) — umbrella read port over 5 accounting
+  // services constructed once from their own composition roots. No shared
+  // singletons: each `make<X>Service()` owns its instance lifecycle (mirrors
+  // makeFarmService/makeLotService precedent above).
+  const accountingQuery = new AccountingQueryAdapter(
+    makeJournalsService(),
+    makeLedgerService(),
+    makeSaleService(),
+    makePurchaseService(),
+    makePaymentsService(),
+  );
+
   return new AgentService({
     llmProvider,
     chatMemory,
@@ -70,6 +90,7 @@ export function makeAgentService(): AgentService {
     farmInquiry,
     lotInquiry,
     pricingService,
+    accountingQuery,
   });
 }
 

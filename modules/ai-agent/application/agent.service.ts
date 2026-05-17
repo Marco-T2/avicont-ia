@@ -19,6 +19,7 @@ import type { AccountsLookupPort } from "../domain/ports/accounts-lookup.port";
 import type { RagPort } from "../domain/ports/rag.port";
 import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
 import type { LotInquiryPort } from "@/modules/lot/presentation/server";
+import type { AccountingQueryPort } from "../domain/ports/accounting-query.port";
 
 import type { AgentRateLimitService } from "./rate-limit.service";
 import type { PricingService } from "./pricing/pricing.service";
@@ -42,6 +43,7 @@ export interface AgentServiceDeps {
   readonly farmInquiry: FarmInquiryPort;
   readonly lotInquiry: LotInquiryPort;
   readonly pricingService: PricingService;
+  readonly accountingQuery: AccountingQueryPort;
 }
 
 /**
@@ -102,6 +104,7 @@ export class AgentService {
         farmInquiry: this.deps.farmInquiry,
         lotInquiry: this.deps.lotInquiry,
         pricingService: this.deps.pricingService,
+        accountingQuery: this.deps.accountingQuery,
       },
       {
         orgId,

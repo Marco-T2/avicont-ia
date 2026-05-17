@@ -61,6 +61,17 @@ const pricingFake = {
   calculateLotCost: async () => ({}),
 };
 
+// F2 — AccountingQueryPort stub. These surface/threading tests never trigger
+// tool-call dispatch (no toolCalls in fake LLM response), so a noop suffices.
+const accountingQueryStub = {
+  listRecentJournalEntries: async () => [],
+  getAccountMovements: async () => [],
+  getAccountBalance: async () => ({ accountId: "", balance: "0.00", asOf: null }),
+  listSales: async () => [],
+  listPurchases: async () => [],
+  listPayments: async () => [],
+};
+
 // Spy on logStructured by mocking the module.
 const logSpy = vi.fn();
 vi.mock("@/lib/logging/structured", () => ({
@@ -91,6 +102,7 @@ describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → only 
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
+      accountingQuery: accountingQueryStub,
     };
     await executeChatMode(deps, {
       orgId: "org",
@@ -117,6 +129,7 @@ describe("SCN-4.2: chat mode no_tools path triggered by surface×role with empty
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
+      accountingQuery: accountingQueryStub,
     };
     const result = await executeChatMode(deps, {
       orgId: "org",
@@ -146,6 +159,7 @@ describe("SCN-6.1: logStructured agent_invocation includes surface field", () =>
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
+      accountingQuery: accountingQueryStub,
     };
     await executeChatMode(deps, {
       orgId: "org",
@@ -181,6 +195,7 @@ describe("SCN-6.2: surface appears in telemetry on error path too", () => {
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
+      accountingQuery: accountingQueryStub,
     };
     await executeChatMode(deps, {
       orgId: "org",

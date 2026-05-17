@@ -53,6 +53,28 @@ vi.mock("@/modules/lot/presentation/server", () => ({
   LocalLotInquiryAdapter: class {},
   makeLotService: () => ({}),
 }));
+// F2 (agent-accounting-query-tools) — extend the same farm/lot rationale to
+// the 5 NEW composition-root imports in presentation/server.ts. Loading the
+// real accounting/sale/purchase/payment barrels triggers the entire
+// permissions/organizations/accounts module graph at import time (legacy
+// adapters call `makeAccountsService()` in their ctors), which races the
+// 5000ms shape-test budget. Mocks short-circuit to stubs — c3 NEVER invokes
+// `makeAgentService()` so factory bodies are dead at runtime. Mock target
+// rewrites bundled with new wiring per [[mock_hygiene_commit_scope]] +
+// [[cross_module_boundary_mock_target_rewrite]].
+vi.mock("@/modules/accounting/presentation/server", () => ({
+  makeJournalsService: () => ({}),
+  makeLedgerService: () => ({}),
+}));
+vi.mock("@/modules/sale/presentation/composition-root", () => ({
+  makeSaleService: () => ({}),
+}));
+vi.mock("@/modules/purchase/presentation/composition-root", () => ({
+  makePurchaseService: () => ({}),
+}));
+vi.mock("@/modules/payment/presentation/server", () => ({
+  makePaymentsService: () => ({}),
+}));
 import * as fs from "node:fs";
 import * as path from "node:path";
 

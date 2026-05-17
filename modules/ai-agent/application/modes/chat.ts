@@ -17,6 +17,7 @@ import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 import type { PricingService } from "../pricing/pricing.service";
 import type { Surface } from "../../domain/tools/surfaces/surface.types";
 import type { ModuleHintValue } from "../../domain/types/module-hint.types";
+import type { AccountingQueryPort } from "../../domain/ports/accounting-query.port";
 
 type AgentLabel = "socio" | "contador" | "admin";
 
@@ -36,6 +37,7 @@ export interface ChatModeDeps {
   farmInquiry: FarmInquiryPort;
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
+  accountingQuery: AccountingQueryPort;
 }
 
 export interface ChatModeArgs {
@@ -103,6 +105,7 @@ export async function executeChatMode(
     farmInquiry,
     lotInquiry,
     pricingService,
+    accountingQuery,
   } = deps;
   const { orgId, userId, role, prompt, surface, sessionId, contextHints } = args;
   const moduleHint: ModuleHintValue = args.moduleHint ?? null;
@@ -196,7 +199,7 @@ export async function executeChatMode(
       }
 
       const exec = await handleReadCall(
-        { farmInquiry, lotInquiry, pricingService, rag },
+        { farmInquiry, lotInquiry, pricingService, rag, accountingQuery },
         TOOL_REGISTRY,
         buildRagContext,
         orgId,
@@ -401,6 +404,7 @@ interface ReadCallDeps {
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
   rag: RagPort;
+  accountingQuery: AccountingQueryPort;
 }
 
 async function handleReadCall(
@@ -413,7 +417,7 @@ async function handleReadCall(
   text: string,
   logStructured: LogFn,
 ): Promise<{ response: AgentResponse; outcome: InvocationOutcome }> {
-  const { farmInquiry, lotInquiry, pricingService, rag } = deps;
+  const { farmInquiry, lotInquiry, pricingService, rag, accountingQuery } = deps;
   const validation = validateToolInput(registry, call, logStructured);
   if (!validation.ok) {
     return { response: validation.response, outcome: "validation_failed" };
