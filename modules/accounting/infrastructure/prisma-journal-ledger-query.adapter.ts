@@ -1,5 +1,6 @@
 import { JournalRepository } from "./prisma-journal-entries.repo";
 import type {
+  ContactLedgerPageResult,
   JournalLedgerQueryPort,
   LedgerAggregateRow,
   LedgerLineRow,
@@ -115,5 +116,42 @@ export class PrismaJournalLedgerQueryAdapter implements JournalLedgerQueryPort {
     periodId: string,
   ): Promise<LedgerAggregateRow> {
     return journalRepo.aggregateByAccount(organizationId, accountId, periodId);
+  }
+
+  // ── Contact-keyed reads — stubs (C2 wires Prisma impl) ──
+
+  /** Stub — C2 wires `journalRepo.findLinesByContactPaginated`. Throws so any
+   *  caller that lands on the adapter before C2 fails loudly instead of
+   *  silently returning an empty page. */
+  findLinesByContactPaginated(
+    _organizationId: string,
+    _contactId: string,
+    _filters?: Parameters<JournalLedgerQueryPort["findLinesByContactPaginated"]>[2],
+    _pagination?: Parameters<JournalLedgerQueryPort["findLinesByContactPaginated"]>[3],
+  ): Promise<ContactLedgerPageResult> {
+    throw new Error(
+      "PrismaJournalLedgerQueryAdapter.findLinesByContactPaginated: not implemented (C2 pending)",
+    );
+  }
+
+  /** Stub — C2 wires `journalRepo.findOpeningBalanceByContact`. */
+  findOpeningBalanceByContact(
+    _organizationId: string,
+    _contactId: string,
+    _dateFrom: Date,
+  ): Promise<unknown> {
+    throw new Error(
+      "PrismaJournalLedgerQueryAdapter.findOpeningBalanceByContact: not implemented (C2 pending)",
+    );
+  }
+
+  /** Stub — C2 wires `journalRepo.aggregateOpenBalanceByContact`. */
+  aggregateOpenBalanceByContact(
+    _organizationId: string,
+    _contactId: string,
+  ): Promise<LedgerAggregateRow> {
+    throw new Error(
+      "PrismaJournalLedgerQueryAdapter.aggregateOpenBalanceByContact: not implemented (C2 pending)",
+    );
   }
 }

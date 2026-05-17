@@ -68,6 +68,37 @@ export interface LedgerAggregateRow {
   };
 }
 
+/** A journal line projected for the CONTACT-keyed ledger view (CxC/CxP libro
+ *  por cliente / proveedor). Extends `LedgerLineRow` with the JournalEntry's
+ *  source-document discriminators so the application layer can hydrate
+ *  status / paymentMethod / bankAccount from the matching
+ *  Receivable / Payable / Payment / Receipt without N+1 (design D3).
+ *
+ *  `sourceType`/`sourceId` mirror the persistence columns on JournalEntry
+ *  (nullable for manual asientos sin auxiliar — D4 "withoutAuxiliary"
+ *  flagging). Service treats `sourceType=null AND no CxC/CxP match` as
+ *  a `withoutAuxiliary: true` row. */
+export interface ContactLedgerLineRow extends LedgerLineRow {
+  sourceType: string | null;
+  sourceId: string | null;
+}
+
+/** Page-window of contact-keyed journal lines + opening balance delta. Same
+ *  pagination + opening-balance contract as `LedgerPageResult` (account-keyed
+ *  sister), with `items` narrowed to `ContactLedgerLineRow[]` so the
+ *  application layer reads source discriminators without a re-cast. */
+export interface ContactLedgerPageResult {
+  items: ContactLedgerLineRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+  /** Decimal value (Prisma.Decimal at adapter) representing
+   *  sum(debit) - sum(credit) of ALL prior-page rows for this contact.
+   *  Page 1 → 0. Service coerces via `new Decimal(String(...))` (DEC-1). */
+  openingBalanceDelta: unknown;
+}
+
 /** Page-window of journal lines for one account, with opening balance delta
  *  to seed the running-balance accumulator. Split-port 3-touchpoint cascade
  *  (§13/split-port-three-touchpoint-find-paginated — 2nd evidence Journal 1st
@@ -167,5 +198,42 @@ export interface JournalLedgerQueryPort {
     organizationId: string,
     accountId: string,
     periodId: string,
+  ): Promise<LedgerAggregateRow>;
+
+  // ── Contact-keyed libro reads (3 — power LedgerService.getContactLedger*) ──
+
+  /** Paginated POSTED journal lines for one contact (CxC/CxP libro) +
+   *  opening balance delta. Mirror of `findLinesByAccountPaginated` keyed by
+   *  contact instead of account. Filter contract identical (date range +
+   *  optional period). Adapter resolves rows where
+   *  `journalEntry.contactId = X` OR `line.contactId = X` (design D4) so the
+   *  "asiento manual sin auxiliar" case surfaces; service flags
+   *  `withoutAuxiliary` post-hoc. */
+  findLinesByContactPaginated(
+    organizationId: string,
+    contactId: string,
+    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<ContactLedgerPageResult>;
+
+  /** Opening balance scalar for one contact at `dateFrom`. Returned as the
+   *  same opaque `unknown` shape as `openingBalanceDelta` — Prisma.Decimal
+   *  at the adapter, decimal.js Decimal at the service via
+   *  `new Decimal(String(...))` (DEC-1). Powers the "Saldo inicial" row that
+   *  precedes the first paginated rows in the contact-ledger UI. */
+  findOpeningBalanceByContact(
+    organizationId: string,
+    contactId: string,
+    dateFrom: Date,
+  ): Promise<unknown>;
+
+  /** All-time aggregated debit/credit totals for one contact (open-balance
+   *  dashboard query). Same `_sum` shape as `aggregateByAccount` so callers
+   *  reuse the existing extraction helpers without branching. NOT
+   *  period-scoped: open balance is cumulative since the contact's first
+   *  POSTED movement. */
+  aggregateOpenBalanceByContact(
+    organizationId: string,
+    contactId: string,
   ): Promise<LedgerAggregateRow>;
 }

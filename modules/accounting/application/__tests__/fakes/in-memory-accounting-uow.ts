@@ -8,6 +8,8 @@ import type { AccountBalancesRepository } from "../../../domain/ports/account-ba
 import type { JournalEntriesReadPort } from "../../../domain/ports/journal-entries-read.port";
 import type { JournalEntriesRepository } from "../../../domain/ports/journal-entries.repo";
 import type {
+  ContactLedgerLineRow,
+  ContactLedgerPageResult,
   JournalLedgerQueryPort,
   LedgerAggregateRow,
   LedgerLineRow,
@@ -245,6 +247,70 @@ export class InMemoryJournalLedgerQueryPort implements JournalLedgerQueryPort {
     _periodId: string,
   ): Promise<LedgerAggregateRow> {
     return this.aggregate;
+  }
+
+  // ── Contact-keyed reads (C1 GREEN — mirror account-keyed pattern) ──
+
+  /** Full collection priming source for `findLinesByContactPaginated`. Tests
+   *  prime this with the FULL contact-keyed row set; the fake slices by
+   *  (page-1)*pageSize parity with `findLinesByAccountPaginated`. Empty by
+   *  default — a test forgetting to prime gets an empty page, not phantom
+   *  rows. */
+  linesByContactPaginated: ContactLedgerLineRow[] = [];
+
+  /** Opening balance delta returned by `findLinesByContactPaginated`. Same
+   *  `unknown` opacity as `openingBalanceDeltaPrimed` (account-keyed sister)
+   *  — decimal.js Decimal at the adapter, opaque at port edge. */
+  openingBalanceDeltaByContactPrimed: unknown = 0;
+
+  /** Scalar returned by `findOpeningBalanceByContact`. Defaults to `0` so a
+   *  test forgetting to prime gets a Decimal-coercible zero (DEC-1
+   *  `new Decimal(String(0))` is `0`). */
+  openingBalanceByContactPrimed: unknown = 0;
+
+  /** Aggregate returned by `aggregateOpenBalanceByContact`. Mirrors the
+   *  account-keyed `aggregate` default — `_sum.debit = null`, `_sum.credit
+   *  = null` is the Prisma "no rows matched" shape; service must coerce to
+   *  Decimal(0). */
+  aggregateOpenBalanceByContact_: LedgerAggregateRow = {
+    _sum: { debit: null, credit: null },
+  };
+
+  async findLinesByContactPaginated(
+    _organizationId: string,
+    _contactId: string,
+    _filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<ContactLedgerPageResult> {
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const items = this.linesByContactPaginated.slice(skip, skip + pageSize);
+    const total = this.linesByContactPaginated.length;
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      openingBalanceDelta: this.openingBalanceDeltaByContactPrimed,
+    };
+  }
+
+  async findOpeningBalanceByContact(
+    _organizationId: string,
+    _contactId: string,
+    _dateFrom: Date,
+  ): Promise<unknown> {
+    return this.openingBalanceByContactPrimed;
+  }
+
+  async aggregateOpenBalanceByContact(
+    _organizationId: string,
+    _contactId: string,
+  ): Promise<LedgerAggregateRow> {
+    return this.aggregateOpenBalanceByContact_;
   }
 }
 
