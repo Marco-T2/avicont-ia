@@ -256,6 +256,10 @@ export async function executeChatMode(
           orgId,
           (validation.input.query as string) ?? prompt,
           role,
+          // REQ-42/43 — forward optional `tags` slugs from the validated
+          // searchDocuments input through to the RAG filter (LegacyRagAdapter
+          // resolves slugs -> tag IDs; VectorRepository applies AND-semantics).
+          validation.input.tags as string[] | undefined,
         );
         finalResponse = {
           message:

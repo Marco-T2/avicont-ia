@@ -38,6 +38,10 @@ export async function buildRagContext(
   orgId: string,
   query: string,
   role: Role,
+  // REQ-42/43 — optional tag slugs from the searchDocuments tool input. When
+  // present, RagPort.search filters with AND-semantics (resolved slug -> id
+  // in LegacyRagAdapter; JOIN+HAVING in VectorRepository).
+  tags?: string[],
 ): Promise<string> {
   const { getRagScopes } = await import("../../permissions/domain/permissions.ts");
   const { logStructured } = await import("../../../lib/logging/structured.ts");
@@ -46,7 +50,7 @@ export async function buildRagContext(
   if (!scopes) return "";
 
   try {
-    const raw = await rag.search(query, orgId, scopes as string[], 5);
+    const raw = await rag.search(query, orgId, scopes as string[], 5, tags);
     const results = raw.filter((r) => r.score >= 0.35);
 
     if (results.length === 0) return "";

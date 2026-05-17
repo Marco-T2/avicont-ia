@@ -80,12 +80,21 @@ export const listLotsTool = defineTool({
 export const searchDocumentsTool = defineTool({
   name: "searchDocuments",
   description:
-    "Buscar información en los documentos de la organización usando búsqueda semántica. Usar cuando el usuario pregunte sobre políticas, contratos, normas o cualquier documento subido.",
+    "Buscar información en los documentos de la organización usando búsqueda semántica. Usar cuando el usuario pregunte sobre políticas, contratos, normas o cualquier documento subido. Pasá `tags` (slugs) para acotar a documentos etiquetados con TODAS esas tags (AND).",
   inputSchema: z.object({
     query: z
       .string()
       .describe(
         "Consulta de búsqueda en lenguaje natural para encontrar documentos relevantes",
+      ),
+    // REQ-42 — optional tag slugs. AND-semantics applied downstream: results
+    // are restricted to documents tagged with ALL provided slugs (resolved to
+    // tag IDs in LegacyRagAdapter via TagsRepositoryPort.findBySlugs).
+    tags: z
+      .array(z.string())
+      .optional()
+      .describe(
+        "Lista opcional de slugs de tags. Si se pasa, sólo se retornan chunks de documentos etiquetados con TODAS las tags (AND).",
       ),
   }),
   resource: "documents",
