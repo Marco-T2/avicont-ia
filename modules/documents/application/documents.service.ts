@@ -34,6 +34,11 @@ GlobalWorkerOptions.workerSrc = path.resolve(
 );
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+// RESOLVED-3: DOCX/XLSX sync extractors (mammoth/exceljs) block the event
+// loop on large files; >5MB short-circuits to null content + warning log
+// instead of crashing or stalling the request. Document still uploads,
+// just absent from RAG search. Worker-thread offload out-of-scope this SDD.
+const MAX_SYNC_EXTRACT_SIZE = 5 * 1024 * 1024; // 5 MB
 const ALLOWED_TYPES = [
   "application/pdf",
   "image/png",
@@ -286,6 +291,12 @@ export class DocumentsService {
   }
 
   private async extractDocxText(file: File): Promise<string | null> {
+    if (file.size > MAX_SYNC_EXTRACT_SIZE) {
+      console.warn(
+        `[documents] DOCX extraction skipped (file > ${MAX_SYNC_EXTRACT_SIZE} bytes): ${file.name} (${file.size} bytes). Document persists without indexed content (RESOLVED-3).`,
+      );
+      return null;
+    }
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
       const result = await mammoth.extractRawText({ buffer });
@@ -300,6 +311,12 @@ export class DocumentsService {
   }
 
   private async extractXlsxText(file: File): Promise<string | null> {
+    if (file.size > MAX_SYNC_EXTRACT_SIZE) {
+      console.warn(
+        `[documents] XLSX extraction skipped (file > ${MAX_SYNC_EXTRACT_SIZE} bytes): ${file.name} (${file.size} bytes). Document persists without indexed content (RESOLVED-3).`,
+      );
+      return null;
+    }
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
       const workbook = new ExcelJS.Workbook();
