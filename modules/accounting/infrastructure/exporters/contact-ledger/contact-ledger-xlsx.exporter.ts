@@ -115,13 +115,15 @@ function humanPaymentMethod(
 
 function renderTipo(entry: ContactLedgerEntry): string {
   const src = entry.sourceType?.toLowerCase() ?? null;
-  if (src === "receipt") {
+  // BF3 — direction-aware: producción usa `sourceType="payment"` para AMBAS
+  // direcciones (cobranza/pago). `paymentDirection` ("COBRO"|"PAGO") es el
+  // discriminador real. paymentDirection=null cae a "Pago" para back-compat
+  // con fixtures legacy.
+  if (src === "payment" || src === "receipt") {
     const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
-    return pm ? `Cobranza (${pm})` : "Cobranza";
-  }
-  if (src === "payment") {
-    const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
-    return pm ? `Pago (${pm})` : "Pago";
+    const isCobranza = src === "receipt" || entry.paymentDirection === "COBRO";
+    const label = isCobranza ? "Cobranza" : "Pago";
+    return pm ? `${label} (${pm})` : label;
   }
   if (src === "sale") {
     return entry.voucherTypeHuman || "Venta";

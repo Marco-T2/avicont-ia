@@ -49,6 +49,10 @@ interface ContactLedgerEntry {
   paymentMethod: string | null;
   bankAccountName: string | null;
   withoutAuxiliary: boolean;
+  /** BF2 — "COBRO" | "PAGO" | null. Producción crea TODOS los payments
+   *  con `sourceType="payment"`; paymentDirection es el discriminador
+   *  fiable para que renderTipo elija "Cobranza" vs "Pago". */
+  paymentDirection: string | null;
 }
 
 interface ContactLedgerPaginatedDto {
@@ -126,13 +130,19 @@ function humanPaymentMethod(
 
 function renderTipo(entry: ContactLedgerEntry): string {
   const src = entry.sourceType?.toLowerCase() ?? null;
-  if (src === "receipt") {
+  // BF3 — producción usa `sourceType="payment"` para AMBAS direcciones
+  // (cobranza y pago). El discriminador real es `paymentDirection`:
+  //   COBRO → "Cobranza ..."
+  //   PAGO  → "Pago ..."
+  //   null  → fallback a "Pago" (legacy fixtures + edge case).
+  // `sourceType="receipt"` se conserva por back-compat (datos legacy que
+  // hubieran usado el valor).
+  if (src === "payment" || src === "receipt") {
     const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
-    return pm ? `Cobranza (${pm})` : "Cobranza";
-  }
-  if (src === "payment") {
-    const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
-    return pm ? `Pago (${pm})` : "Pago";
+    const dir = entry.paymentDirection;
+    const isCobranza = src === "receipt" || dir === "COBRO";
+    const label = isCobranza ? "Cobranza" : "Pago";
+    return pm ? `${label} (${pm})` : label;
   }
   if (src === "sale") {
     return entry.voucherTypeHuman || "Venta";
