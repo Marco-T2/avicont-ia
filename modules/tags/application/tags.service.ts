@@ -1,36 +1,43 @@
 import type { Tag } from "../domain/tag.types";
 import type { TagsRepositoryPort } from "../domain/ports/tags-repository.port";
+import { slugify } from "@/modules/organizations/presentation";
 
 /**
- * TagsService — F4-PRE skeleton. Methods land in F4-POST (per SDD tasks C4.4+).
+ * TagsService — design §4.
  *
- * Intent (design §4):
- *  - list(orgId): TagsRepositoryPort.listByOrg passthrough.
- *  - resolveBySlugs(orgId, slugs): findBySlugs passthrough for adapter slug->id resolution.
- *  - create(orgId, name, color?): slugify(name) server-side (REQ-44), reuse from
- *    `@/modules/organizations/presentation`, then repo.create.
- *  - attach(documentId, tagIds): repo.attachToDocument passthrough.
+ * Slug derivation is server-side per REQ-44 — reuses the org-profile
+ * `slugify` (paired-sister default: `@/modules/organizations/presentation`),
+ * NFKD + diacritic strip + lowercase + dashes + length cap. Any
+ * `slug` field a caller might pass alongside `name` is ignored at this
+ * layer because `create` only accepts `(orgId, name, color?)` — there
+ * is no positional or named `slug` parameter to thread through.
+ *
+ * The rest of the methods are intentionally thin passthroughs over
+ * `TagsRepositoryPort`; orchestration happens at the route / agent
+ * composition root, not here.
  */
 export class TagsService {
   constructor(private readonly repo: TagsRepositoryPort) {}
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   list(orgId: string): Promise<Tag[]> {
-    throw new Error("TODO F4-POST");
+    return this.repo.listByOrg(orgId);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   resolveBySlugs(orgId: string, slugs: string[]): Promise<Tag[]> {
-    throw new Error("TODO F4-POST");
+    return this.repo.findBySlugs(orgId, slugs);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   create(orgId: string, name: string, color?: string): Promise<Tag> {
-    throw new Error("TODO F4-POST");
+    const slug = slugify(name);
+    return this.repo.create({
+      organizationId: orgId,
+      name,
+      color,
+      slug,
+    });
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   attach(documentId: string, tagIds: string[]): Promise<void> {
-    throw new Error("TODO F4-POST");
+    return this.repo.attachToDocument(documentId, tagIds);
   }
 }
