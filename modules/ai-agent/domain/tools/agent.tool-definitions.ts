@@ -114,9 +114,16 @@ export const listRecentJournalEntriesTool = defineTool({
 export const getAccountMovementsTool = defineTool({
   name: "getAccountMovements",
   description:
-    "Obtener los movimientos (libro mayor) de una cuenta contable, opcionalmente filtrados por rango de fechas. Devuelve cada línea con débito, crédito y saldo acumulado.",
+    "Obtener los movimientos (libro mayor) de una cuenta contable, opcionalmente filtrados por rango de fechas. Devuelve los `limit` más recientes con débito, crédito y saldo acumulado por línea (default 10, max 50).",
   inputSchema: z.object({
     accountId: z.string().describe("ID de la cuenta contable"),
+    limit: z
+      .number()
+      .int()
+      .min(1)
+      .max(50)
+      .optional()
+      .describe("Cantidad máxima de movimientos a devolver (default 10, más recientes primero)"),
     dateFrom: z
       .string()
       .optional()

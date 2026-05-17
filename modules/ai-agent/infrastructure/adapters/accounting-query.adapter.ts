@@ -92,6 +92,7 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
     accountId: string,
     dateFrom?: string,
     dateTo?: string,
+    limit?: number,
   ): Promise<LedgerEntryDto[]> {
     const range =
       dateFrom || dateTo
@@ -105,7 +106,14 @@ export class AccountingQueryAdapter implements AccountingQueryPort {
       accountId,
       range,
     );
-    return entries.map((e) => ({
+    // `getAccountLedger` retorna cronológico ascendente. "Últimos N" = los más
+    // recientes preservando ese orden para que el saldo acumulado por fila
+    // siga teniendo sentido visual (slice -N en lugar de reverse + take N).
+    // Default 10 (más allá no aporta al uso real del agente — el sidebar QA
+    // muestra resumen, no análisis profundo).
+    const take = limit ?? 10;
+    const sliced = entries.length > take ? entries.slice(-take) : entries;
+    return sliced.map((e) => ({
       entryId: e.entryId,
       date: toISODate(e.date),
       displayNumber: e.displayNumber,

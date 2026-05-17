@@ -93,6 +93,7 @@ export interface AccountingQueryPort {
     accountId: string,
     dateFrom?: string,
     dateTo?: string,
+    limit?: number,
   ): Promise<LedgerEntryDto[]>;
 
   getAccountBalance(

@@ -150,6 +150,7 @@ describe("REQ-11 — handleReadCall dispatches getAccountMovements", () => {
       "acc-123",
       "2026-01-01",
       "2026-05-01",
+      undefined, // limit (default-10 aplicado en el adapter cuando undefined)
     ]);
     const toolResult = (llmCapture.history ?? []).find(
       (t) => (t as { kind: string }).kind === "tool_result",

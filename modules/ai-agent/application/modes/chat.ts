@@ -592,6 +592,7 @@ async function executeReadTool(
             args.accountId as string,
             args.dateFrom as string | undefined,
             args.dateTo as string | undefined,
+            args.limit as number | undefined,
           ),
         };
       case "getAccountBalance":
