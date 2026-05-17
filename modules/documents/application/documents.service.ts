@@ -31,8 +31,6 @@ import path from "path";
 import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
 // processing library accepted exception — no DocxPort (REQ-007, mirrors pdfjs)
 import mammoth from "mammoth";
-// processing library accepted exception — no XlsxPort (REQ-007, mirrors pdfjs)
-import ExcelJS from "exceljs";
 
 // Apuntar al archivo worker real para uso en el servidor
 GlobalWorkerOptions.workerSrc = path.resolve(
@@ -41,19 +39,18 @@ GlobalWorkerOptions.workerSrc = path.resolve(
 );
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
-// RESOLVED-3: DOCX/XLSX sync extractors (mammoth/exceljs) block the event
-// loop on large files; >5MB short-circuits to null content + warning log
-// instead of crashing or stalling the request. Document still uploads,
-// just absent from RAG search. Worker-thread offload out-of-scope this SDD.
+// RESOLVED-3: DOCX sync extractor (mammoth) blocks the event loop on large
+// files; >5MB short-circuits to null content + warning log. Document still
+// uploads, just absent from RAG search. Worker-thread offload deferred.
 const MAX_SYNC_EXTRACT_SIZE = 5 * 1024 * 1024; // 5 MB
+// Scope-locked 2026-05-17: PDF + DOCX + TXT only. XLSX retired (Excel
+// is for tabular/numeric data — RAG semantic search is the wrong tool;
+// REQ-37/38 RETIRED). Images retired (sin OCR no aportan al RAG; users
+// con escaneos deben convertir a PDF con OCR client-side, ej. Adobe Scan).
 const ALLOWED_TYPES = [
   "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
   "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
 /** Structural port for the documents repository (compile-shape only). */
@@ -168,13 +165,6 @@ export class DocumentsService {
           "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       ) {
         extractedContent = await this.extractDocxText(file);
-      } else if (
-        file &&
-        file.size > 0 &&
-        file.type ===
-          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-      ) {
-        extractedContent = await this.extractXlsxText(file);
       } else if (
         file &&
         file.size > 0 &&
@@ -333,72 +323,6 @@ export class DocumentsService {
       console.error("DOCX text extraction failed:", err);
       throw new ValidationError("No se pudo procesar el archivo");
     }
-  }
-
-  private async extractXlsxText(file: File): Promise<string | null> {
-    if (file.size > MAX_SYNC_EXTRACT_SIZE) {
-      console.warn(
-        `[documents] XLSX extraction skipped (file > ${MAX_SYNC_EXTRACT_SIZE} bytes): ${file.name} (${file.size} bytes). Document persists without indexed content (RESOLVED-3).`,
-      );
-      return null;
-    }
-    try {
-      // exceljs's `xlsx.load` types want the legacy `Buffer` shape; the
-      // ArrayBuffer-typed `Buffer.from(ArrayBuffer)` is binary-compatible
-      // at runtime but TS narrows it incompatibly. Cast via `never` at the
-      // boundary to bypass the structural-mismatch check.
-      const buffer = Buffer.from(await file.arrayBuffer());
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.load(buffer as unknown as never);
-
-      const sheetBlocks: string[] = [];
-      workbook.eachSheet((sheet) => {
-        const lines: string[] = [`=== ${sheet.name} ===`];
-        sheet.eachRow((row) => {
-          // row.values is 1-indexed: first element is undefined.
-          const raw = (row.values as unknown[]) ?? [];
-          const cells = raw
-            .slice(1)
-            .map((v) => this.flattenXlsxCell(v))
-            .join("\t");
-          lines.push(cells);
-        });
-        sheetBlocks.push(lines.join("\n"));
-      });
-
-      const text = sheetBlocks.join("\n\n").trim();
-      return text || null;
-    } catch (err) {
-      // Paired sister: extractPdfText / extractDocxText — falla explícito
-      // para que la saga del upload limpie blob + doc.
-      console.error("XLSX text extraction failed:", err);
-      throw new ValidationError("No se pudo procesar el archivo");
-    }
-  }
-
-  /** Flatten a single exceljs cell value to its string representation. */
-  private flattenXlsxCell(value: unknown): string {
-    if (value === null || value === undefined) return "";
-    if (value instanceof Date) return value.toISOString();
-    if (typeof value === "object") {
-      const obj = value as Record<string, unknown>;
-      // Rich text: { richText: [{ text: '...' }, ...] }
-      if (Array.isArray(obj.richText)) {
-        return (obj.richText as Array<{ text?: unknown }>)
-          .map((r) => (typeof r.text === "string" ? r.text : ""))
-          .join("");
-      }
-      // Formula cell: { formula, result } — prefer evaluated result
-      if ("result" in obj && obj.result !== undefined && obj.result !== null) {
-        return this.flattenXlsxCell(obj.result);
-      }
-      // Hyperlink: { text, hyperlink }
-      if (typeof obj.text === "string") return obj.text;
-      // Error cell: { error: '#REF!' }
-      if (typeof obj.error === "string") return obj.error;
-      return "";
-    }
-    return String(value);
   }
 
   private async resolveOrgAccess(clerkOrgId: string, clerkUserId: string) {

@@ -21,12 +21,8 @@ GlobalWorkerOptions.workerSrc = path.resolve(
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
 const ALLOWED_TYPES = [
   "application/pdf",
-  "image/png",
-  "image/jpeg",
-  "image/webp",
   "text/plain",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 ];
 
 export class DocumentsService {

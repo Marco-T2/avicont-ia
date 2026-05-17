@@ -880,7 +880,9 @@ Rationale: locked per `[[textual_rule_verification]]` — accounting plan codes 
 
 ---
 
-### Requirement: DocumentsService.upload extracts XLSX via exceljs flattened per sheet (REQ-38)
+### Requirement: DocumentsService.upload extracts XLSX via exceljs flattened per sheet (REQ-38) — RETIRED 2026-05-17
+
+**🚫 RETIRED** post-SDD product call (Marco): Excel se usa para datos numéricos/tabulares visuales — buscar semánticamente sobre planillas no aporta valor, y ya existen páginas dedicadas exactas (`/accounting/ledger`, dashboards CxC/CxP) para esos casos. XLSX MIME removido de `ALLOWED_TYPES`; método `extractXlsxText` + helper `flattenXlsxCell` + tests XLSX-specific eliminados. Dep `exceljs` queda porque otros módulos contables (trial-balance, contact-ledger, iva-books, worksheet, financial-statements, etc.) la usan para exporters. REQ texto preservado per [[named_rule_immutability]].
 
 `DocumentsService.upload` SHALL extract text from XLSX files (MIME `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`) using `exceljs` (already installed). Each sheet SHALL be flattened to `=== {sheetName} ===\n{rows joined by \t per row + \n between rows}` and all sheets concatenated by `\n\n` into `Document.extractedContent`.
 
@@ -897,7 +899,9 @@ Rationale: tab+newline format keeps the chunker happy AND preserves row structur
 
 ### Requirement: Extractor failure throws ValidationError + saga rollback (REQ-39)
 
-When DOCX or XLSX parsing fails, `DocumentsService.upload` SHALL throw `ValidationError("No se pudo procesar el archivo")` and trigger the existing saga rollback (same pattern as PDF parse failure today). The Document row, file blob, and any partial chunks SHALL be removed.
+**Scope note 2026-05-17**: XLSX path retired (see REQ-38); REQ-39 sigue activo solo para DOCX (PDF tiene su literal propio "No se pudo procesar el PDF").
+
+When DOCX parsing fails, `DocumentsService.upload` SHALL throw `ValidationError("No se pudo procesar el archivo")` and trigger the existing saga rollback (same pattern as PDF parse failure today). The Document row, file blob, and any partial chunks SHALL be removed.
 
 #### Scenario: SCN-39.1 — Corrupt DOCX triggers rollback
 

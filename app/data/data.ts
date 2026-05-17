@@ -1,9 +1,10 @@
+// Scope-locked 2026-05-17: PDF + DOCX + TXT only. XLSX + imágenes
+// retirados — Excel para tablas/números va por páginas dedicadas;
+// imágenes sin OCR no aportan al RAG.
 export const allowedTypes = [
   "text/plain",
   "application/pdf",
-  "application/msword",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "text/markdown",
 ];
 
 // Format file size
