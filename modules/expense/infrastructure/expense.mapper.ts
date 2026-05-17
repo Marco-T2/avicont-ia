@@ -16,6 +16,7 @@ export function toDomain(row: PrismaExpense): Expense {
     organizationId: row.organizationId,
     createdById: row.createdById,
     createdAt: row.createdAt,
+    updatedAt: row.updatedAt,
   });
 }
 
@@ -31,5 +32,6 @@ export function toPersistence(entity: Expense) {
     organizationId: s.organizationId,
     createdById: s.createdById,
     createdAt: s.createdAt,
+    updatedAt: s.updatedAt,
   };
 }

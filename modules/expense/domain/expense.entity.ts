@@ -10,6 +10,7 @@ export interface ExpenseProps {
   organizationId: string;
   createdById: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface CreateExpenseInput {
@@ -32,6 +33,7 @@ export interface ExpenseSnapshot {
   organizationId: string;
   createdById: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
 export class Expense {
@@ -49,6 +51,7 @@ export class Expense {
       organizationId: input.organizationId,
       createdById: input.createdById,
       createdAt: now,
+      updatedAt: now,
     });
   }
 
@@ -65,6 +68,7 @@ export class Expense {
   get organizationId(): string { return this.props.organizationId; }
   get createdById(): string { return this.props.createdById; }
   get createdAt(): Date { return this.props.createdAt; }
+  get updatedAt(): Date { return this.props.updatedAt; }
 
   toSnapshot(): ExpenseSnapshot {
     return {
@@ -77,6 +81,7 @@ export class Expense {
       organizationId: this.props.organizationId,
       createdById: this.props.createdById,
       createdAt: this.props.createdAt,
+      updatedAt: this.props.updatedAt,
     };
   }
 }

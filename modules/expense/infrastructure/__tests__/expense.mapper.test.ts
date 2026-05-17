@@ -16,6 +16,7 @@ const row = (override: Partial<PrismaExpense> = {}): PrismaExpense => ({
   lotId: "lot-1",
   createdById: "u-1",
   createdAt: new Date("2026-01-15"),
+  updatedAt: new Date("2026-01-15"),
   ...override,
 });
 
