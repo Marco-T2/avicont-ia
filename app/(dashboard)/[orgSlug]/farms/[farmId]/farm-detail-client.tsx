@@ -421,6 +421,9 @@ export default function FarmDetailClient({
                                     className="flex items-center justify-between gap-2 px-3 py-2"
                                   >
                                     <div className="flex items-center gap-2 min-w-0">
+                                      <p className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                                        {formatDateBO(expense.date)}
+                                      </p>
                                       <Badge className={cat.className}>
                                         {cat.label}
                                       </Badge>
@@ -435,10 +438,7 @@ export default function FarmDetailClient({
                                         )}
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0">
-                                      <p className="text-xs text-muted-foreground mr-1">
-                                        {formatDateBO(expense.date)}
-                                      </p>
+                                    <div className="flex items-center gap-0.5 shrink-0">
                                       <Button
                                         variant="ghost"
                                         size="icon-sm"
@@ -481,6 +481,9 @@ export default function FarmDetailClient({
                                   className="flex items-center justify-between gap-2 px-3 py-2"
                                 >
                                   <div className="flex items-center gap-2 min-w-0">
+                                    <p className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                                      {formatDateBO(m.date)}
+                                    </p>
                                     <Badge variant="destructive">
                                       -{m.count}
                                     </Badge>
@@ -496,10 +499,7 @@ export default function FarmDetailClient({
                                       )}
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1 shrink-0">
-                                    <p className="text-xs text-muted-foreground mr-1">
-                                      {formatDateBO(m.date)}
-                                    </p>
+                                  <div className="flex items-center gap-0.5 shrink-0">
                                     <Button
                                       variant="ghost"
                                       size="icon-sm"
