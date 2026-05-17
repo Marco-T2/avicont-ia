@@ -126,11 +126,11 @@ The `Tool<TSchema>` type in `modules/ai-agent/domain/ports/llm-provider.port.ts`
 - THEN `result.length === 6`
 - AND `result` contains `createExpense`, `logMortality`, `getLotSummary`, `listFarms`, `listLots`, `searchDocuments`
 
-#### Scenario: SCN-3.3 — sidebar-qa × cobrador returns [searchDocuments]
+#### Scenario: SCN-3.3 — sidebar-qa × cobrador returns [searchDocuments, listSales, listPayments]
 
 - GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "cobrador" })`
-- THEN `result.map(t => t.name) === ["searchDocuments"]`
-- (RBAC delta from `agent-surface-separation`: `PERMISSIONS_READ.documents` includes `cobrador`; the prior `getToolsForRole("cobrador") === []` was matrix-drift. Locked via engram `sdd/agent-surface-separation/rbac-deltas-lock`.)
+- THEN `result.map(t => t.name)` includes `"searchDocuments"`, `"listSales"`, `"listPayments"` (3 tools total)
+- (RBAC delta from `agent-surface-separation`: `PERMISSIONS_READ.documents` includes `cobrador`. F2 (`agent-accounting-query-tools`) adds `listSales` (PERMISSIONS_READ.sales) and `listPayments` (PERMISSIONS_READ.payments) which also include cobrador. The prior `getToolsForRole("cobrador") === []` was matrix-drift. Updated SCN supersedes the F1-locked version in test commit ed30fd36.)
 
 #### Scenario: SCN-3.4 — modal-registrar × cobrador returns [searchDocuments]
 
@@ -319,6 +319,203 @@ Canonicalized from change `agent-sidebar-module-hint` (archived 2026-05-17, base
 - AND `executeChatMode` is invoked with `moduleHint: "accounting"`
 - THEN at least one `logStructured` call with `event: "agent_invocation"` MUST include `moduleHint: "accounting"`
 - AND for `moduleHint: null` the call includes `moduleHint: null` (key present, value null — NOT undefined / missing key)
+
+---
+
+### Requirement: listRecentJournalEntries Tool (REQ-10)
+
+The system SHALL expose a `listRecentJournalEntries` tool to the chat agent on the `sidebar-qa` surface, callable by roles with `PERMISSIONS_READ["journal"] = true` (owner, admin, contador).
+
+**Input schema**: `{ limit?: z.number().int().min(1).max(50) }` (default 10)
+
+**Return DTO** (`JournalEntrySummaryDto[]`): `Array<{ id: string; date: string; displayNumber: string; description: string; status: "DRAFT"|"POSTED"|"LOCKED"|"VOIDED"; totalDebit: string; totalCredit: string }>` — `lines[]` MUST NOT be included (trimmed to bound LLM context cost).
+
+#### Scenario: SCN-10.1 — contador retrieves recent journal entries
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "contador" })` returns `listRecentJournalEntries`
+- WHEN the tool is called with `{ limit: 5 }`
+- THEN the handler returns an array of up to 5 entries, each with `id`, `date`, `displayNumber`, `description`, `status`, `totalDebit`, `totalCredit` as strings
+- AND the `lines` array is absent from every entry
+
+#### Scenario: SCN-10.2 — cobrador is denied listRecentJournalEntries
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "cobrador" })`
+- THEN `listRecentJournalEntries` MUST NOT appear in the result
+
+---
+
+### Requirement: getAccountMovements Tool (REQ-11)
+
+The system SHALL expose a `getAccountMovements` tool to the chat agent on the `sidebar-qa` surface, callable by roles with `PERMISSIONS_READ["journal"] = true` (owner, admin, contador).
+
+**Input schema**: `{ accountId: z.string(), dateFrom?: z.string(), dateTo?: z.string() }`
+
+**Return DTO** (`LedgerEntryDto[]`): `Array<{ entryId: string; date: string; displayNumber: string; description: string; debit: string; credit: string; balance: string }>` — `balance` is the running balance after each movement.
+
+#### Scenario: SCN-11.1 — contador retrieves account movements
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "contador" })` includes `getAccountMovements`
+- WHEN the tool is called with `{ accountId: "acc-123" }`
+- THEN the handler returns an array of ledger entries with `entryId`, `date`, `displayNumber`, `description`, `debit`, `credit`, `balance` as strings
+
+#### Scenario: SCN-11.2 — cobrador is denied getAccountMovements
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "cobrador" })`
+- THEN `getAccountMovements` MUST NOT appear in the result
+
+---
+
+### Requirement: getAccountBalance Tool (REQ-12)
+
+The system SHALL expose a `getAccountBalance` tool to the chat agent on the `sidebar-qa` surface, callable by roles with `PERMISSIONS_READ["journal"] = true` (owner, admin, contador). The balance SHALL be the running balance derived from the account's last ledger entry (no periodId required). An empty ledger returns `{ balance: "0.00", asOf: null }`.
+
+**Input schema**: `{ accountId: z.string() }`
+
+**Return DTO** (`AccountBalanceDto`): `{ accountId: string; balance: string; asOf: string | null }` — `asOf` is the ISO date of the last ledger entry, or `null` when the ledger is empty.
+
+#### Scenario: SCN-12.1 — contador retrieves account balance
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "contador" })` includes `getAccountBalance`
+- WHEN the tool is called with `{ accountId: "acc-123" }`
+- THEN the handler returns `{ accountId: "acc-123", balance: "<string>", asOf: "<ISO date or null>" }`
+- AND `balance` is a string formatted as `roundHalfUp(...).toFixed(2)`, or `"0.00"` when the ledger is empty
+
+#### Scenario: SCN-12.2 — cobrador is denied getAccountBalance
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "cobrador" })`
+- THEN `getAccountBalance` MUST NOT appear in the result
+
+---
+
+### Requirement: listSales Tool (REQ-13)
+
+The system SHALL expose a `listSales` tool to the chat agent on the `sidebar-qa` surface, callable by roles with `PERMISSIONS_READ["sales"] = true` (owner, admin, contador, cobrador).
+
+**Input schema**: `{ dateFrom?: z.string(), dateTo?: z.string(), limit?: z.number().int().min(1).max(50) }` (default 20)
+
+**Return DTO** (`SaleSummaryDto[]`): `Array<{ id: string; date: string; sequenceNumber: number | null; status: "DRAFT"|"POSTED"|"LOCKED"|"VOIDED"; contactId: string; description: string; totalAmount: string }>` — uses `contactId` (the raw contact UUID from the Sale aggregate, no denormalized customer name).
+
+#### Scenario: SCN-13.1 — contador retrieves recent sales
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "contador" })` includes `listSales`
+- WHEN the tool is called with `{ limit: 10 }`
+- THEN the handler returns an array where each entry contains `id`, `date`, `sequenceNumber`, `status`, `contactId`, `description`, `totalAmount`
+- AND `totalAmount` is a string formatted as `roundHalfUp(...).toFixed(2)`
+
+#### Scenario: SCN-13.2 — member is denied listSales
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "member" })`
+- THEN `listSales` MUST NOT appear in the result
+
+---
+
+### Requirement: listPurchases Tool (REQ-14)
+
+The system SHALL expose a `listPurchases` tool to the chat agent on the `sidebar-qa` surface, callable by roles with `PERMISSIONS_READ["purchases"] = true` (owner, admin, contador).
+
+**Input schema**: `{ dateFrom?: z.string(), dateTo?: z.string(), limit?: z.number().int().min(1).max(50) }` (default 20)
+
+**Return DTO** (`PurchaseSummaryDto[]`): `Array<{ id: string; date: string; sequenceNumber: number | null; status: "DRAFT"|"POSTED"|"LOCKED"|"VOIDED"; purchaseType: "FLETE"|"POLLO_FAENADO"|"COMPRA_GENERAL"|"SERVICIO"; contactId: string; description: string; totalAmount: string }>` — uses `contactId` (no denormalized supplier name).
+
+#### Scenario: SCN-14.1 — contador retrieves recent purchases
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "contador" })` includes `listPurchases`
+- WHEN the tool is called with `{ limit: 10 }`
+- THEN the handler returns an array where each entry contains `id`, `date`, `sequenceNumber`, `status`, `purchaseType`, `contactId`, `description`, `totalAmount`
+- AND `totalAmount` is a string formatted as `roundHalfUp(...).toFixed(2)`
+
+#### Scenario: SCN-14.2 — cobrador is denied listPurchases
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "cobrador" })`
+- THEN `listPurchases` MUST NOT appear in the result
+
+---
+
+### Requirement: listPayments Tool (REQ-15)
+
+The system SHALL expose a `listPayments` tool to the chat agent on the `sidebar-qa` surface, callable by roles with `PERMISSIONS_READ["payments"] = true` (owner, admin, contador, cobrador).
+
+**Input schema**: `{ dateFrom?: z.string(), dateTo?: z.string(), limit?: z.number().int().min(1).max(50) }` (default 20)
+
+**Return DTO** (`PaymentSummaryDto[]`): `Array<{ id: string; date: string; status: "DRAFT"|"POSTED"|"LOCKED"|"VOIDED"; method: string; direction: "COBRO" | "PAGO" | null; contactId: string; amount: string; description: string }>` — uses `contactId` (PaymentsService does not expose a denormalized counterparty name; Marco lock — design §10). `direction` is `null` when the payment has no allocations.
+
+#### Scenario: SCN-15.1 — cobrador retrieves recent payments
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "cobrador" })` includes `listPayments`
+- WHEN the tool is called with `{ limit: 10 }`
+- THEN the handler returns an array where each entry contains `id`, `date`, `status`, `method`, `direction`, `contactId`, `amount`, `description`
+- AND `direction` is one of `"COBRO"`, `"PAGO"`, or `null`
+- AND `amount` is a string formatted as `roundHalfUp(...).toFixed(2)`
+
+#### Scenario: SCN-15.2 — member is denied listPayments
+
+- GIVEN `getToolsForSurface({ surface: "sidebar-qa", role: "member" })`
+- THEN `listPayments` MUST NOT appear in the result
+
+---
+
+### Requirement: AccountingQueryPort Umbrella Contract (REQ-16)
+
+The `chat` mode SHALL receive accounting query capabilities via a single `AccountingQueryPort` injected through `ChatModeDeps`, NOT via per-service ports. The port SHALL declare exactly 6 methods:
+
+| Method | Signature |
+|--------|-----------|
+| `listRecentJournalEntries` | `(orgId: string, limit: number) => Promise<JournalEntrySummaryDto[]>` |
+| `getAccountMovements` | `(orgId: string, accountId: string, dateFrom?: string, dateTo?: string) => Promise<LedgerEntryDto[]>` |
+| `getAccountBalance` | `(orgId: string, accountId: string) => Promise<AccountBalanceDto>` |
+| `listSales` | `(orgId: string, dateFrom?: string, dateTo?: string, limit?: number) => Promise<SaleSummaryDto[]>` |
+| `listPurchases` | `(orgId: string, dateFrom?: string, dateTo?: string, limit?: number) => Promise<PurchaseSummaryDto[]>` |
+| `listPayments` | `(orgId: string, dateFrom?: string, dateTo?: string, limit?: number) => Promise<PaymentSummaryDto[]>` |
+
+#### Scenario: SCN-16.1 — composition root constructs a single adapter
+
+- GIVEN the composition root in `presentation/server.ts`
+- WHEN it wires `ChatModeDeps`
+- THEN exactly one `AccountingQueryAdapter` instance is constructed and assigned to `deps.accountingQuery`
+- AND no per-service port for journals, ledger, sales, purchases, or payments is individually injected into `ChatModeDeps`
+
+#### Scenario: SCN-16.2 — test doubles replace one port not six services
+
+- GIVEN a unit test for any of the 6 accounting tool handlers
+- WHEN the test sets up `ChatModeDeps`
+- THEN only `accountingQuery` is replaced with a test double (stub/spy)
+- AND no individual service mock (JournalsService, LedgerService, etc.) is required in the same test
+
+---
+
+### Requirement: TOOL_REGISTRY Surface-Coverage Sentinel (REQ-17)
+
+Every tool registered in `TOOL_REGISTRY` SHALL belong to at least one surface bundle. The 6 new accounting tools SHALL belong exclusively to `sidebar-qa`. The existing sentinel test at `surface-tool-coverage.sentinel.test.ts` SHALL pass GREEN after F2 apply with all 6 tools bundled.
+
+#### Scenario: SCN-17.1 — sentinel passes with all 6 new tools in sidebar-qa
+
+- GIVEN all 6 new tools are added to `TOOL_REGISTRY` AND to `SIDEBAR_QA_SURFACE.tools`
+- WHEN `surface-tool-coverage.sentinel.test.ts` runs
+- THEN the test passes (no orphan tools)
+
+#### Scenario: SCN-17.2 — sentinel fails RED if a new tool is registered but not bundled
+
+- GIVEN a new accounting tool is added to `TOOL_REGISTRY` but NOT to any `*.surface.ts`
+- WHEN the sentinel runs
+- THEN the test MUST fail with a message containing the orphan tool name and the phrase `not in any surface bundle`
+
+---
+
+### Requirement: MonetaryAmount Serialization Contract (REQ-18)
+
+Tool handlers SHALL serialize all monetary values to strings using `roundHalfUp(...).toFixed(2)` before returning to the LLM. Raw `MonetaryAmount` value objects MUST NOT be returned directly in any tool result DTO. The serialization helper `toMoneyString` is LOCAL to the adapter (not exported) — serialization is a transport concern of the agent layer; domain `MonetaryAmount` stays serialization-agnostic.
+
+#### Scenario: SCN-18.1 — sale totalAmount serialized as string
+
+- GIVEN a `Sale` aggregate with `totalAmount` as a `MonetaryAmount` VO equal to 1234.5
+- WHEN `listSales` tool handler maps the result to DTO
+- THEN `dto.totalAmount === "1234.50"`
+
+#### Scenario: SCN-18.2 — payment amount serialized as string
+
+- GIVEN a `Payment` aggregate with `amount` as a `MonetaryAmount` VO equal to 99.9
+- WHEN `listPayments` tool handler maps the result to DTO
+- THEN `dto.amount === "99.90"`
 
 ---
 
