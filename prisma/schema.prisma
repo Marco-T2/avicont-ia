@@ -244,6 +244,7 @@ model Expense {
   organizationId String
   createdById    String
   createdAt      DateTime        @db.Timestamptz(3) @default(now())
+  updatedAt      DateTime        @db.Timestamptz(3) @default(now()) @updatedAt
   lot            ChickenLot   @relation(fields: [lotId], references: [id])
   organization   Organization @relation(fields: [organizationId], references: [id])
   createdBy      User         @relation("ExpenseCreator", fields: [createdById], references: [id])
