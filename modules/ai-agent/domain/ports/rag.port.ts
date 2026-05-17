@@ -33,6 +33,12 @@ export interface RagResult {
 
 /**
  * RagPort — narrow search surface.
+ *
+ * `tags` (REQ-43, 5th positional) is an optional list of tag slugs. When
+ * non-empty the adapter resolves slugs -> tag IDs via TagsRepositoryPort
+ * and forwards the IDs to RagService.search; downstream the VectorRepository
+ * applies AND-semantics (every result chunk's parent Document must carry ALL
+ * provided tag IDs). When omitted or empty the search behaves as today.
  */
 export interface RagPort {
   search(
@@ -40,5 +46,6 @@ export interface RagPort {
     orgId: string,
     scopes: RagScope[],
     limit: number,
+    tags?: string[],
   ): Promise<RagResult[]>;
 }

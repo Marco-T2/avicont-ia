@@ -45,12 +45,18 @@ export class RagService {
    *
    * Return shape carries `documentName` + `chunkIndex` for citations (REQ-30),
    * populated by `VectorRepository.searchSimilar` via the documents JOIN.
+   *
+   * `tagIds` (REQ-43) — when non-empty the VectorRepository filters via a
+   * conditional JOIN over document_tags + HAVING COUNT(DISTINCT tagId) = N
+   * (AND-semantics). Slug -> ID resolution happens upstream in
+   * LegacyRagAdapter so this layer stays Tag-model-agnostic.
    */
   async search(
     query: string,
     organizationId: string,
     scopes: DocumentScope[],
     topK = 5,
+    tagIds?: string[],
   ): Promise<
     {
       content: string;
@@ -62,7 +68,13 @@ export class RagService {
     }[]
   > {
     const queryVector = await this.embeddingService.embed(query);
-    return this.vectorRepo.searchSimilar(queryVector, organizationId, scopes, topK);
+    return this.vectorRepo.searchSimilar(
+      queryVector,
+      organizationId,
+      scopes,
+      topK,
+      tagIds,
+    );
   }
 
   /** Delete all chunks for a document. */

@@ -61,6 +61,8 @@ export class VectorRepository extends BaseRepository {
     organizationId: string,
     scopes: DocumentScope[],
     topK = 5,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    tagIds?: string[],
   ): Promise<SearchResult[]> {
     const vectorStr = `[${queryVector.join(",")}]`;
     const limitParamIndex = scopes.length + 3;
