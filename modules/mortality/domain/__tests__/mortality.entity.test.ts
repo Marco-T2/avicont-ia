@@ -52,6 +52,69 @@ describe("Mortality.log", () => {
   });
 });
 
+describe("Mortality.update", () => {
+  const existing = () => Mortality.log(baseInput); // count=10
+
+  it("returns a new instance with updated count (immutable)", () => {
+    const m = existing();
+
+    const updated = m.update({ count: 7, aliveCountInLot: 90 });
+
+    expect(updated).not.toBe(m);
+    expect(updated.count.value).toBe(7);
+    expect(m.count.value).toBe(10); // original unchanged
+  });
+
+  it("preserves identity and lotId/organizationId (INV-02)", () => {
+    const m = existing();
+
+    const updated = m.update({ count: 7, aliveCountInLot: 90 });
+
+    expect(updated.id).toBe(m.id);
+    expect(updated.lotId).toBe(m.lotId);
+    expect(updated.organizationId).toBe(m.organizationId);
+  });
+
+  it("updates cause and date when provided; keeps prior when omitted", () => {
+    const m = existing();
+    const newDate = new Date("2026-05-15");
+
+    const updated = m.update({
+      cause: "enfermedad",
+      date: newDate,
+      aliveCountInLot: 100,
+    });
+
+    expect(updated.cause).toBe("enfermedad");
+    expect(updated.date).toEqual(newDate);
+    expect(updated.count.value).toBe(10); // count unchanged
+  });
+
+  it("treats explicit cause: null as a clear (different from undefined)", () => {
+    const m = Mortality.log({ ...baseInput, cause: "respiratoria" });
+
+    const updated = m.update({ cause: null, aliveCountInLot: 100 });
+
+    expect(updated.cause).toBeNull();
+  });
+
+  it("throws MortalityCountExceedsAlive when newCount > aliveCountInLot", () => {
+    const m = existing();
+
+    expect(() =>
+      m.update({ count: 11, aliveCountInLot: 10 }),
+    ).toThrow(MortalityCountExceedsAlive);
+  });
+
+  it("allows newCount exactly equal to aliveCountInLot (boundary)", () => {
+    const m = existing();
+
+    const updated = m.update({ count: 50, aliveCountInLot: 50 });
+
+    expect(updated.count.value).toBe(50);
+  });
+});
+
 describe("Mortality.toJSON", () => {
   it("serializes count as a primitive number, not a value object", () => {
     const m = Mortality.log(baseInput);
