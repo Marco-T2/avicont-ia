@@ -416,48 +416,43 @@ export default function FarmDetailClient({
                                     "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
                                 };
                                 return (
-                                  <li
-                                    key={expense.id}
-                                    className="flex items-center justify-between gap-2 px-3 py-2"
-                                  >
-                                    <div className="flex items-center gap-2 min-w-0">
+                                  <li key={expense.id} className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
                                       <p className="text-xs text-muted-foreground shrink-0 tabular-nums">
                                         {formatDateBO(expense.date)}
                                       </p>
                                       <Badge className={cat.className}>
                                         {cat.label}
                                       </Badge>
-                                      <div className="min-w-0">
-                                        <p className="font-medium text-sm">
-                                          {formatCurrency(Number(expense.amount))}
-                                        </p>
-                                        {expense.description && (
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {expense.description}
-                                          </p>
-                                        )}
+                                      <p className="font-medium text-sm shrink-0">
+                                        {formatCurrency(Number(expense.amount))}
+                                      </p>
+                                      <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                                        <Button
+                                          variant="ghost"
+                                          size="icon-sm"
+                                          aria-label="Editar gasto"
+                                          className="h-7 w-7"
+                                          onClick={() => setEditingExpenseId(expense.id)}
+                                        >
+                                          <Pencil className="h-3.5 w-3.5" />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="icon-sm"
+                                          aria-label="Borrar gasto"
+                                          className="h-7 w-7 text-red-600 hover:text-red-700"
+                                          onClick={() => setDeletingExpenseId(expense.id)}
+                                        >
+                                          <Trash2 className="h-3.5 w-3.5" />
+                                        </Button>
                                       </div>
                                     </div>
-                                    <div className="flex items-center gap-0.5 shrink-0">
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="Editar gasto"
-                                        className="h-7 w-7"
-                                        onClick={() => setEditingExpenseId(expense.id)}
-                                      >
-                                        <Pencil className="h-3.5 w-3.5" />
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="icon-sm"
-                                        aria-label="Borrar gasto"
-                                        className="h-7 w-7 text-red-600 hover:text-red-700"
-                                        onClick={() => setDeletingExpenseId(expense.id)}
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    </div>
+                                    {expense.description && (
+                                      <p className="text-xs text-muted-foreground truncate mt-0.5 pl-1">
+                                        {expense.description}
+                                      </p>
+                                    )}
                                   </li>
                                 );
                               })}
@@ -476,49 +471,44 @@ export default function FarmDetailClient({
                           ) : (
                             <ul className="divide-y rounded-md border bg-background">
                               {recentMortality.map((m) => (
-                                <li
-                                  key={m.id}
-                                  className="flex items-center justify-between gap-2 px-3 py-2"
-                                >
-                                  <div className="flex items-center gap-2 min-w-0">
+                                <li key={m.id} className="px-3 py-2">
+                                  <div className="flex items-center gap-2">
                                     <p className="text-xs text-muted-foreground shrink-0 tabular-nums">
                                       {formatDateBO(m.date)}
                                     </p>
                                     <Badge variant="destructive">
                                       -{m.count}
                                     </Badge>
-                                    <div className="min-w-0">
-                                      {m.cause ? (
-                                        <p className="font-medium text-sm truncate">
-                                          {m.cause}
-                                        </p>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground italic">
-                                          Sin causa
-                                        </p>
-                                      )}
+                                    <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="Editar registro de mortalidad"
+                                        className="h-7 w-7"
+                                        onClick={() => setEditingMortalityId(m.id)}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5" />
+                                      </Button>
+                                      <Button
+                                        variant="ghost"
+                                        size="icon-sm"
+                                        aria-label="Borrar registro de mortalidad"
+                                        className="h-7 w-7 text-red-600 hover:text-red-700"
+                                        onClick={() => setDeletingMortalityId(m.id)}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-0.5 shrink-0">
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-sm"
-                                      aria-label="Editar registro de mortalidad"
-                                      className="h-7 w-7"
-                                      onClick={() => setEditingMortalityId(m.id)}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5" />
-                                    </Button>
-                                    <Button
-                                      variant="ghost"
-                                      size="icon-sm"
-                                      aria-label="Borrar registro de mortalidad"
-                                      className="h-7 w-7 text-red-600 hover:text-red-700"
-                                      onClick={() => setDeletingMortalityId(m.id)}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5" />
-                                    </Button>
-                                  </div>
+                                  {m.cause ? (
+                                    <p className="text-xs text-muted-foreground truncate mt-0.5 pl-1">
+                                      {m.cause}
+                                    </p>
+                                  ) : (
+                                    <p className="text-xs text-muted-foreground italic mt-0.5 pl-1">
+                                      Sin causa
+                                    </p>
+                                  )}
                                 </li>
                               ))}
                             </ul>
