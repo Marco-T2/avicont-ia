@@ -118,40 +118,44 @@ export class PrismaJournalLedgerQueryAdapter implements JournalLedgerQueryPort {
     return journalRepo.aggregateByAccount(organizationId, accountId, periodId);
   }
 
-  // ── Contact-keyed reads — stubs (C2 wires Prisma impl) ──
+  // ── Contact-keyed reads (C2 GREEN — pass-through al hex repo) ──
 
-  /** Stub — C2 wires `journalRepo.findLinesByContactPaginated`. Throws so any
-   *  caller that lands on the adapter before C2 fails loudly instead of
-   *  silently returning an empty page. */
+  /** Pass-through. Mirror del sister `findLinesByAccountPaginated`. Adapter
+   *  SQL-puro; DEC-1 boundary aplica al repo (debit/credit/openingBalanceDelta
+   *  retornan strings). */
   findLinesByContactPaginated(
-    _organizationId: string,
-    _contactId: string,
-    _filters?: Parameters<JournalLedgerQueryPort["findLinesByContactPaginated"]>[2],
-    _pagination?: Parameters<JournalLedgerQueryPort["findLinesByContactPaginated"]>[3],
+    organizationId: string,
+    contactId: string,
+    filters?: Parameters<JournalLedgerQueryPort["findLinesByContactPaginated"]>[2],
+    pagination?: Parameters<JournalLedgerQueryPort["findLinesByContactPaginated"]>[3],
   ): Promise<ContactLedgerPageResult> {
-    throw new Error(
-      "PrismaJournalLedgerQueryAdapter.findLinesByContactPaginated: not implemented (C2 pending)",
+    return journalRepo.findLinesByContactPaginated(
+      organizationId,
+      contactId,
+      filters,
+      pagination,
     );
   }
 
-  /** Stub — C2 wires `journalRepo.findOpeningBalanceByContact`. */
+  /** Pass-through. Scalar string per DEC-1 boundary. */
   findOpeningBalanceByContact(
-    _organizationId: string,
-    _contactId: string,
-    _dateFrom: Date,
+    organizationId: string,
+    contactId: string,
+    dateFrom: Date,
   ): Promise<unknown> {
-    throw new Error(
-      "PrismaJournalLedgerQueryAdapter.findOpeningBalanceByContact: not implemented (C2 pending)",
+    return journalRepo.findOpeningBalanceByContact(
+      organizationId,
+      contactId,
+      dateFrom,
     );
   }
 
-  /** Stub — C2 wires `journalRepo.aggregateOpenBalanceByContact`. */
+  /** Pass-through. Mirror del sister `aggregateByAccount`. DEC-1 strings en
+   *  `_sum.{debit,credit}`. */
   aggregateOpenBalanceByContact(
-    _organizationId: string,
-    _contactId: string,
+    organizationId: string,
+    contactId: string,
   ): Promise<LedgerAggregateRow> {
-    throw new Error(
-      "PrismaJournalLedgerQueryAdapter.aggregateOpenBalanceByContact: not implemented (C2 pending)",
-    );
+    return journalRepo.aggregateOpenBalanceByContact(organizationId, contactId);
   }
 }

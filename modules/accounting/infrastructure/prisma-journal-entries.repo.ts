@@ -18,7 +18,13 @@ import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import { FINALIZED_JE_STATUSES } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
-import type { LedgerPageResult, LedgerLineRow } from "@/modules/accounting/domain/ports/journal-ledger-query.port";
+import type {
+  ContactLedgerLineRow,
+  ContactLedgerPageResult,
+  LedgerAggregateRow,
+  LedgerLineRow,
+  LedgerPageResult,
+} from "@/modules/accounting/domain/ports/journal-ledger-query.port";
 import type {
   PaginatedResult,
   PaginationOptions,
@@ -688,6 +694,197 @@ export class JournalRepository extends BaseRepository {
       },
     });
   }
+
+  // ── Libro mayor por contacto (CxC / CxP) ──
+  //
+  // Mirror del bloque por cuenta (`findLinesByAccountPaginated`,
+  // `aggregateByAccount`) keyed por contactId. D4 surface dual:
+  // `journal_entries.contactId = X` (asientos auto-generados desde CxC/CxP)
+  // OR `journal_lines.contactId = X` (asientos manuales con auxiliar de
+  // línea). El `buildLedgerLineWhereContact` builder reúne ambos paths
+  // bajo un único `where` con `OR` — el adapter es SQL-puro; la "asiento
+  // manual sin auxiliar" detection sucede en `LedgerService` post-hoc.
+
+  /**
+   * Paginated POSTED journal lines for one contact + opening balance delta.
+   * Mirror EXACT de `findLinesByAccountPaginated` (sister account variant),
+   * keyed por contactId via `buildLedgerLineWhereContact` (surface dual:
+   * header OR line). 4-query Promise.all preserva la misma semántica:
+   *
+   *   - page window (rows + count) — slice consistency con prior-rows query.
+   *   - within-range priors — sum (page-1)*pageSize rows inside filter range
+   *     para que el accumulator running-balance no desync entre páginas.
+   *   - historical aggregate — sum(debit-credit) BEFORE `dateFrom`, scoped a
+   *     `periodId` cuando viene; SKIP cuando no hay `dateFrom`.
+   *
+   * DEC-1 boundary: `openingBalanceDelta` se retorna como `Prisma.Decimal`
+   * (port `unknown` boundary; el service lo wrap con
+   * `new Decimal(String(...))` per DEC-1). `items[].debit/credit` también
+   * salen como `Prisma.Decimal` raw — el port los declara `unknown`,
+   * idéntico al sister account variant.
+   *
+   * Surface dual D4: el rows query incluye el JournalEntry con su
+   * `sourceType`/`sourceId` para que `ContactLedgerLineRow` cargue los
+   * discriminadores que el service usa para hidratar status/paymentMethod
+   * sin N+1 (parity diseño D3).
+   */
+  async findLinesByContactPaginated(
+    organizationId: string,
+    contactId: string,
+    filters?: { dateRange?: DateRangeFilter; periodId?: string },
+    pagination?: PaginationOptions,
+  ): Promise<ContactLedgerPageResult> {
+    const where = buildLedgerLineWhereContact(organizationId, contactId, filters);
+    const orderBy = { journalEntry: { date: "asc" as const } };
+    const page = pagination?.page ?? 1;
+    const pageSize = pagination?.pageSize ?? 25;
+    const skip = (page - 1) * pageSize;
+    const take = pageSize;
+    const dateFrom = filters?.dateRange?.dateFrom;
+
+    const historicalPromise = dateFrom
+      ? this.db.journalLine.aggregate({
+          where: buildLedgerLinePriorWhereContact(organizationId, contactId, {
+            dateFrom,
+            periodId: filters?.periodId,
+          }),
+          _sum: { debit: true, credit: true },
+        })
+      : Promise.resolve({ _sum: { debit: null, credit: null } });
+
+    const [rows, total, priorRows, historicalAgg] = await Promise.all([
+      this.db.journalLine.findMany({
+        where,
+        orderBy,
+        skip,
+        take,
+        include: {
+          journalEntry: {
+            select: {
+              id: true,
+              date: true,
+              number: true,
+              description: true,
+              sourceType: true,
+              sourceId: true,
+              voucherType: { select: { code: true, prefix: true } },
+            },
+          },
+        },
+      }),
+      this.db.journalLine.count({ where }),
+      this.db.journalLine.findMany({
+        where,
+        orderBy,
+        skip: 0,
+        take: skip,
+        select: { debit: true, credit: true },
+      }),
+      historicalPromise,
+    ]);
+
+    const historicalOpening = new Prisma.Decimal(
+      String(historicalAgg._sum.debit ?? 0),
+    ).minus(new Prisma.Decimal(String(historicalAgg._sum.credit ?? 0)));
+
+    const withinRangePriorsDelta = priorRows.reduce(
+      (acc, r) =>
+        acc
+          .plus(new Prisma.Decimal(String(r.debit)))
+          .minus(new Prisma.Decimal(String(r.credit))),
+      new Prisma.Decimal(0),
+    );
+
+    const openingBalanceDelta = historicalOpening.plus(withinRangePriorsDelta);
+
+    // DEC-1 boundary tightening — diverge from sister `findLinesByAccount
+    // Paginated` (raw Prisma.Decimal) per design D3 + task spec C2: adapter
+    // returns string primitives; service wraps with `new Decimal(String(...))`
+    // The port boundary remains `unknown` so both shapes type-check.
+    //
+    // Shape mapping per `ContactLedgerLineRow extends LedgerLineRow` (port):
+    // `sourceType` / `sourceId` LIFTED del JournalEntry al row root — el
+    // service los lee directo sin re-descender. `journalEntry` mantiene la
+    // proyección id/date/number/description/voucherType (sin sourceType
+    // duplicado — la lifted view es la canónica para el contact-ledger).
+    const items: ContactLedgerLineRow[] = rows.map((r) => {
+      const { sourceType, sourceId, ...je } = r.journalEntry;
+      return {
+        debit: String(r.debit),
+        credit: String(r.credit),
+        description: r.description,
+        sourceType: sourceType ?? null,
+        sourceId: sourceId ?? null,
+        journalEntry: je,
+      };
+    });
+
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    return {
+      items,
+      total,
+      page,
+      pageSize,
+      totalPages,
+      openingBalanceDelta: openingBalanceDelta.toString(),
+    };
+  }
+
+  /**
+   * Scalar opening balance for a contact at `dateFrom`. Returns a string
+   * primitive of `sum(debit - credit)` for POSTED lines reachable via the
+   * contact surface (header OR line) WHERE `date < dateFrom`.
+   * Service wraps via `new Decimal(String(...))` per DEC-1.
+   *
+   * `periodId` is NOT a parameter: the opening-balance scalar use case
+   * (UI "Saldo inicial" pre-filter row) ya pasa el `dateFrom` resuelto del
+   * período seleccionado. Si necesitamos period-scoped opening en un caller
+   * futuro, extender el filter parameter — por ahora paridad con la
+   * declaración del port.
+   */
+  async findOpeningBalanceByContact(
+    organizationId: string,
+    contactId: string,
+    dateFrom: Date,
+  ): Promise<unknown> {
+    const agg = await this.db.journalLine.aggregate({
+      where: buildLedgerLinePriorWhereContact(organizationId, contactId, {
+        dateFrom,
+      }),
+      _sum: { debit: true, credit: true },
+    });
+    const debit = new Prisma.Decimal(String(agg._sum.debit ?? 0));
+    const credit = new Prisma.Decimal(String(agg._sum.credit ?? 0));
+    return debit.minus(credit).toString();
+  }
+
+  /**
+   * All-time aggregated debit/credit totals for one contact. Mirror del
+   * sister `aggregateByAccount` keyed por contacto. NO period-scoped:
+   * "open balance" es cumulative desde el primer movimiento POSTED del
+   * contacto (diseño D5 dashboard).
+   */
+  async aggregateOpenBalanceByContact(
+    organizationId: string,
+    contactId: string,
+  ): Promise<LedgerAggregateRow> {
+    const agg = await this.db.journalLine.aggregate({
+      where: buildLedgerLineWhereContact(organizationId, contactId),
+      _sum: {
+        debit: true,
+        credit: true,
+      },
+    });
+    // DEC-1 boundary: convert Prisma.Decimal → string. The port boundary is
+    // `unknown` so this matches the contract; service wraps via
+    // `new Decimal(String(...))`.
+    return {
+      _sum: {
+        debit: agg._sum.debit === null ? null : String(agg._sum.debit),
+        credit: agg._sum.credit === null ? null : String(agg._sum.credit),
+      },
+    };
+  }
 }
 
 // Module-scope hex repository instance. State-less (extends `BaseRepository`,
@@ -872,6 +1069,75 @@ function buildLedgerLinePriorWhere(
 ): Record<string, unknown> {
   return {
     accountId,
+    journalEntry: {
+      organizationId,
+      status: { in: [...FINALIZED_JE_STATUSES] },
+      ...(options.periodId && { periodId: options.periodId }),
+      date: { lt: options.dateFrom },
+    },
+  };
+}
+
+/**
+ * Contact-keyed `where` builder shared por `findLinesByContactPaginated`
+ * (rows + count + within-range priors slice) y `aggregateOpenBalanceByContact`.
+ * Surface dual D4:
+ *   - `journalEntry.contactId = X` (header surface — asientos auto-CxC/CxP).
+ *   - `line.contactId = X`        (line surface — asientos manuales con
+ *                                  auxiliar de línea).
+ * Ambos paths via `OR` para que el "asiento manual sin auxiliar"
+ * (contactPlacement="none") quede correctamente excluido por NO matchear
+ * ninguno de los dos sub-where.
+ *
+ * Mirror EXACTO de `buildLedgerLineWhere` (sister account variant) keyed por
+ * contacto en lugar de cuenta. POSTED status filter baked in (idéntico al
+ * sister). Slice consistency invariant aplica: las tres queries de
+ * `findLinesByContactPaginated` (page + count + within-range priors) deben
+ * compartir where+orderBy o el running-balance accumulator desync.
+ */
+function buildLedgerLineWhereContact(
+  organizationId: string,
+  contactId: string,
+  filters?: { dateRange?: DateRangeFilter; periodId?: string },
+): Record<string, unknown> {
+  const dateFilter: Record<string, unknown> = {};
+  if (filters?.dateRange?.dateFrom || filters?.dateRange?.dateTo) {
+    dateFilter.date = {
+      ...(filters.dateRange.dateFrom && { gte: filters.dateRange.dateFrom }),
+      ...(filters.dateRange.dateTo && { lte: filters.dateRange.dateTo }),
+    };
+  }
+  return {
+    OR: [
+      { contactId },
+      { journalEntry: { contactId } },
+    ],
+    journalEntry: {
+      organizationId,
+      status: { in: [...FINALIZED_JE_STATUSES] },
+      ...(filters?.periodId && { periodId: filters.periodId }),
+      ...dateFilter,
+    },
+  };
+}
+
+/**
+ * Contact-keyed `where` builder para el HISTORICAL opening aggregate
+ * (query 4 de `findLinesByContactPaginated` + scalar
+ * `findOpeningBalanceByContact`). Mirror de `buildLedgerLinePriorWhere` con
+ * el mismo surface dual D4 (header OR line). POSTED lines BEFORE `dateFrom`,
+ * scoped a `periodId` cuando viene. `dateTo` irrelevante.
+ */
+function buildLedgerLinePriorWhereContact(
+  organizationId: string,
+  contactId: string,
+  options: { dateFrom: Date; periodId?: string },
+): Record<string, unknown> {
+  return {
+    OR: [
+      { contactId },
+      { journalEntry: { contactId } },
+    ],
     journalEntry: {
       organizationId,
       status: { in: [...FINALIZED_JE_STATUSES] },
