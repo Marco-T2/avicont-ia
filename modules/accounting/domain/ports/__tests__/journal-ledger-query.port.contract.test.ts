@@ -1,36 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import type {
-  JournalLedgerQueryPort,
-  LedgerAggregateRow,
-} from "../journal-ledger-query.port";
+import { InMemoryJournalLedgerQueryPort } from "@/modules/accounting/application/__tests__/fakes/in-memory-accounting-uow";
 
 /**
  * Contract test for the contact-keyed read surface of `JournalLedgerQueryPort`
- * (contact-ledger-refactor — C1 RED).
+ * (contact-ledger-refactor — C1).
  *
  * Mirrors the sister account-keyed contract (findLinesByAccountPaginated /
  * aggregateByAccount) one layer over: same port, same shape family, contact
  * as the keying axis instead of account.
  *
- * Expected failure mode for THIS commit (RED, per
- * [[red_acceptance_failure_mode]]): the in-test minimal mock implements ONLY
- * the methods that exist on the current port surface. The three new methods
- * (`findLinesByContactPaginated`, `findOpeningBalanceByContact`,
- * `aggregateOpenBalanceByContact`) are unimplemented, so each `await` should
- * throw `TypeError: ... is not a function`. NOT a value-mismatch failure —
- * if the failure mode is anything else, the GREEN step is wrong.
+ * RED expected failure mode per [[red_acceptance_failure_mode]]: the in-memory
+ * fake does not yet implement `findLinesByContactPaginated`,
+ * `findOpeningBalanceByContact`, or `aggregateOpenBalanceByContact` → each
+ * `await` throws `TypeError: ... is not a function`. NOT a value-mismatch
+ * failure.
  *
- * Method access goes through `(port as PortWithContactReads)` — the new method
- * names are declared in this test's narrow widening type ONLY so the file
- * compiles BEFORE GREEN extends the production port. After GREEN the runtime
- * methods exist on the in-memory fake (and on the Prisma adapter in C2), so
- * these three tests turn green without any change to the test file itself.
+ * The methods are accessed through a narrow widening type
+ * (`PortWithContactReads`) so the file COMPILES in the RED commit — runtime
+ * presence on the fake is the actual assertion target.
  *
- * GREEN (next commit) adds the 3 method signatures + `ContactLedgerLineRow`
- * + `ContactLedgerPageResult` to the port and extends the in-memory fake at
- * `application/__tests__/fakes/in-memory-accounting-uow.ts` so the suite
- * stays green outside this file.
+ * GREEN extends `JournalLedgerQueryPort` with the 3 method signatures
+ * + `ContactLedgerLineRow` / `ContactLedgerPageResult` and adds the matching
+ * no-op defaults to `InMemoryJournalLedgerQueryPort`. Adapter
+ * (`PrismaJournalLedgerQueryAdapter`) ships throwing stubs — Prisma SQL
+ * lands in C2.
  */
 
 const ORG_ID = "org-1";
@@ -38,10 +32,10 @@ const CONTACT_ID = "contact-1";
 
 /**
  * Narrow widening: declares the EXPECTED method names so this test file
- * compiles regardless of port surface evolution. Runtime presence is the
- * actual contract under test.
+ * compiles regardless of port surface evolution. Runtime presence on
+ * `InMemoryJournalLedgerQueryPort` is the actual contract under test.
  */
-type PortWithContactReads = JournalLedgerQueryPort & {
+type PortWithContactReads = InMemoryJournalLedgerQueryPort & {
   findLinesByContactPaginated: (
     organizationId: string,
     contactId: string,
@@ -63,21 +57,16 @@ type PortWithContactReads = JournalLedgerQueryPort & {
   aggregateOpenBalanceByContact: (
     organizationId: string,
     contactId: string,
-  ) => Promise<LedgerAggregateRow>;
+  ) => Promise<{ _sum: { debit: unknown; credit: unknown } }>;
 };
 
-/**
- * Minimal in-test mock that satisfies the CURRENT port surface only. The
- * three new methods are deliberately absent — calling them must throw
- * `TypeError: ... is not a function` (the RED assertion target).
- */
-function makeBareMock(): PortWithContactReads {
-  return {} as unknown as PortWithContactReads;
+function makePort(): PortWithContactReads {
+  return new InMemoryJournalLedgerQueryPort() as PortWithContactReads;
 }
 
-describe("JournalLedgerQueryPort — contact-keyed read surface (C1 RED)", () => {
+describe("JournalLedgerQueryPort — contact-keyed read surface (C1)", () => {
   it("findLinesByContactPaginated returns ContactLedgerPageResult shape", async () => {
-    const port = makeBareMock();
+    const port = makePort();
 
     const result = await port.findLinesByContactPaginated(ORG_ID, CONTACT_ID);
 
@@ -89,10 +78,14 @@ describe("JournalLedgerQueryPort — contact-keyed read surface (C1 RED)", () =>
       totalPages: expect.any(Number),
     });
     expect(result).toHaveProperty("openingBalanceDelta");
+    // Empty-by-default safety: a test forgetting to prime gets [] / 0,
+    // not phantom rows. Parity with account-keyed sister.
+    expect(result.items).toEqual([]);
+    expect(result.total).toBe(0);
   });
 
   it("findOpeningBalanceByContact returns a Decimal-coercible value", async () => {
-    const port = makeBareMock();
+    const port = makePort();
 
     const opening = await port.findOpeningBalanceByContact(
       ORG_ID,
@@ -106,7 +99,7 @@ describe("JournalLedgerQueryPort — contact-keyed read surface (C1 RED)", () =>
   });
 
   it("aggregateOpenBalanceByContact returns LedgerAggregateRow shape", async () => {
-    const port = makeBareMock();
+    const port = makePort();
 
     const aggregate = await port.aggregateOpenBalanceByContact(
       ORG_ID,
