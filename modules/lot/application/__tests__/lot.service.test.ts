@@ -2,77 +2,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { LotService } from "../lot.service";
 import { Lot } from "../../domain/lot.entity";
 import { LotSummary } from "../../domain/value-objects/lot-summary";
-import type {
-  LotRepository,
-  LotWithRelationsSnapshot,
-} from "../../domain/lot.repository";
+import { InMemoryLotRepository } from "../fakes/in-memory-lot.repository";
 import { CannotCloseInactiveLot } from "../../domain/errors/lot-errors";
 import { NotFoundError } from "@/features/shared/errors";
-
-class InMemoryLotRepository implements LotRepository {
-  private readonly store = new Map<string, Lot>();
-  private readonly relations = new Map<
-    string,
-    { expenses: { amount: number }[]; mortalityLogs: { count: number }[] }
-  >();
-
-  reset() {
-    this.store.clear();
-    this.relations.clear();
-  }
-
-  preloadRelations(
-    lotId: string,
-    relations: {
-      expenses: { amount: number }[];
-      mortalityLogs: { count: number }[];
-    },
-  ) {
-    this.relations.set(lotId, relations);
-  }
-
-  async findAll(orgId: string): Promise<Lot[]> {
-    return [...this.store.values()].filter(
-      (l) => l.organizationId === orgId,
-    );
-  }
-
-  async findById(orgId: string, id: string): Promise<Lot | null> {
-    const l = this.store.get(id);
-    return l && l.organizationId === orgId ? l : null;
-  }
-
-  async findByFarm(orgId: string, farmId: string): Promise<Lot[]> {
-    return [...this.store.values()].filter(
-      (l) => l.organizationId === orgId && l.farmId === farmId,
-    );
-  }
-
-  async findByIdWithRelations(
-    orgId: string,
-    id: string,
-  ): Promise<LotWithRelationsSnapshot | null> {
-    const l = this.store.get(id);
-    if (!l || l.organizationId !== orgId) return null;
-    const rels = this.relations.get(id) ?? {
-      expenses: [],
-      mortalityLogs: [],
-    };
-    return {
-      lot: l,
-      expenses: rels.expenses,
-      mortalityLogs: rels.mortalityLogs,
-    };
-  }
-
-  async save(l: Lot): Promise<void> {
-    this.store.set(l.id, l);
-  }
-
-  async update(l: Lot): Promise<void> {
-    this.store.set(l.id, l);
-  }
-}
 
 const ORG = "org-1";
 const FARM = "farm-1";
