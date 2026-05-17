@@ -60,11 +60,10 @@ interface ContactLedgerEntry {
    *  auxiliar (UI muestra "Ajuste") o payments sin operationalDocType
    *  wired (UI cae al label genérico). */
   documentTypeCode: string | null;
-  /** DT4 — número físico del documento fuente, formateado como
-   *  `"${documentTypeCode}-${sequence padded(4)}"` (p.ej. "VG-0001",
-   *  "RC-0042", "ND-0005"). Render en la columna Nº con fallback a
-   *  `displayNumber` cuando es null (asiento manual sin auxiliar o
-   *  Payment sin referenceNumber capturado). */
+  /** DT4 — sequence raw del documento fuente (sin prefijo ni padding):
+   *  "1", "42", etc. Render en la columna Nro con fallback a `displayNumber`
+   *  cuando es null (asiento manual sin auxiliar o Payment sin
+   *  referenceNumber capturado). */
   documentReferenceNumber: string | null;
 }
 
@@ -479,7 +478,7 @@ export default function ContactLedgerPageClient({
                       Tipo
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                      Nº
+                      Nro
                     </th>
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                       Estado

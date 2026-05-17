@@ -9,7 +9,6 @@ import {
 } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
 import { makeDispatchService } from "@/modules/dispatch/presentation/composition-root";
-import { getDisplayCode as getDispatchDisplayCode } from "@/modules/dispatch/infrastructure/dispatch-display-code";
 import TransactionsList from "@/components/sales/transactions-list";
 
 interface SalesPageProps {
@@ -145,7 +144,7 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
       source: "sale" as const,
       type: "VENTA_GENERAL" as const,
       id: s.id,
-      displayCode: s.displayCode,
+      displayCode: s.sequenceNumber !== null ? String(s.sequenceNumber) : "—",
       referenceNumber: s.referenceNumber,
       date: s.date,
       contactId: s.contactId,
@@ -159,7 +158,7 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
       source: "dispatch" as const,
       type: d.dispatchType,
       id: d.id,
-      displayCode: getDispatchDisplayCode(d.dispatchType, d.sequenceNumber),
+      displayCode: d.sequenceNumber !== null ? String(d.sequenceNumber) : "—",
       referenceNumber: d.referenceNumber,
       date: d.date,
       contactId: d.contactId,

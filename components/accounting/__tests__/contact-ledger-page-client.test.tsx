@@ -436,12 +436,12 @@ describe("ContactLedgerPageClient — Tipo column", () => {
 // ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
 //
 // El cobrador necesita leer en la columna "Nº" el número del documento físico
-// ("VG-0001", "RC-0042", "ND-0005") en vez del correlative voucher contable
+// ("1", "42", "ND-0005") en vez del correlative voucher contable
 // ("I2605-000001"). Fallback al displayNumber cuando documentReferenceNumber
 // es null (asiento manual sin auxiliar o Payment sin referenceNumber).
 
 describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)", () => {
-  it("DT4 — sale con documentReferenceNumber='VG-0001' → cell Nº muestra 'VG-0001' (no displayNumber)", () => {
+  it("DT4 — sale con documentReferenceNumber='1' → cell Nº muestra '1' (no displayNumber)", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -454,7 +454,7 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
               sourceType: "sale",
               voucherTypeHuman: "Nota de despacho",
               documentTypeCode: "VG",
-              documentReferenceNumber: "VG-0001",
+              documentReferenceNumber: "1",
               displayNumber: "D2506-000001",
               description: "Venta general 001",
               debit: "1000.00",
@@ -471,10 +471,10 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
     const row = screen.getByRole("row", { name: /Venta general 001/i });
     // Columns: Fecha | Tipo | Nº | Estado | Desc | Debe | Haber | Saldo. Nº = idx 2.
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2].textContent).toBe("VG-0001");
+    expect(cells[2].textContent).toBe("1");
   });
 
-  it("DT4 — payment con documentReferenceNumber='RC-0042' → cell Nº muestra 'RC-0042'", () => {
+  it("DT4 — payment con documentReferenceNumber='42' → cell Nº muestra '42'", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -489,7 +489,7 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
               paymentMethod: "EFECTIVO",
               voucherTypeHuman: "Comprobante de Ingreso",
               documentTypeCode: "RC",
-              documentReferenceNumber: "RC-0042",
+              documentReferenceNumber: "42",
               displayNumber: "I2605-000042",
               description: "Cobro Marco RC42",
               debit: "0.00",
@@ -505,7 +505,7 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
 
     const row = screen.getByRole("row", { name: /Cobro Marco RC42/i });
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2].textContent).toBe("RC-0042");
+    expect(cells[2].textContent).toBe("42");
   });
 
   it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al displayNumber (asiento manual)", () => {

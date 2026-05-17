@@ -8,7 +8,6 @@
 //  - Totales sumados exactos
 //  - Monto en letras vía amountToWordsEs
 //  - Mapeo de SignatureLabel → clave camelCase + label visual
-//  - Formato voucher.number = prefix-####
 
 import type { OrgProfile } from "@/generated/prisma/client";
 import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
@@ -23,7 +22,6 @@ import type {
   VoucherPdfFooter,
 } from "./voucher-pdf.types";
 import { amountToWordsEs } from "./amount-to-words";
-import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 
 type ComposeOpts = {
   exchangeRate?: number;
@@ -133,10 +131,7 @@ function buildVoucherMeta(
   totalDebitBs: string,
   opts: ComposeOpts,
 ): VoucherPdfMeta {
-  // Formato oficial del sistema: {prefix}{YY}{MM}-{000000}, e.g. "E2604-000001".
-  // Fallback al formato viejo (prefix-NNNN) si el prefix no cumple el contrato.
-  const formatted = formatCorrelativeNumber(entry.voucherType.prefix, entry.date, entry.number);
-  const number = formatted ?? `${entry.voucherType.prefix}-${String(entry.number).padStart(4, "0")}`;
+  const number = String(entry.number);
   const exchangeRate = opts.exchangeRate && opts.exchangeRate > 0 ? opts.exchangeRate.toString() : "";
 
   return {

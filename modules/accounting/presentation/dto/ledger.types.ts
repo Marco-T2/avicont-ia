@@ -97,9 +97,8 @@ export interface ContactLedgerEntry extends LedgerEntry {
    *  o cuando el Payment no tiene operationalDocType wired. El cobrador usa
    *  este código para identificar qué documento físico ir a buscar. */
   documentTypeCode: string | null;
-  /** DT4 — número físico del documento fuente formateado como
-   *  `${documentTypeCode}-${String(sequence).padStart(4, "0")}`
-   *  (p.ej. "VG-0001", "RC-0042", "ND-0005"). Source per sourceType:
+  /** DT4 — sequence raw del documento fuente (sin prefijo, sin padding):
+   *  p.ej. "1", "42", "5". Source per sourceType:
    *    - sale     → Sale.sequenceNumber
    *    - dispatch → Dispatch.sequenceNumber
    *    - purchase → Purchase.sequenceNumber
@@ -107,8 +106,9 @@ export interface ContactLedgerEntry extends LedgerEntry {
    *      capturado por el operador; si NO está, este campo es null y la
    *      UI cae al `displayNumber` correlative voucher contable).
    *  Null para asiento manual sin auxiliar (no hay documento físico). El
-   *  cobrador lee este número en la columna "Nº" para localizar el
-   *  documento físico en el archivero (QA Marco). */
+   *  prefijo operacional (VG/RC/ND/etc.) se surfacea en la columna "Tipo"
+   *  vía `documentTypeCode` — antes este campo combinaba ambos pero se
+   *  consideró ruido visual (QA Marco). */
   documentReferenceNumber: string | null;
 }
 

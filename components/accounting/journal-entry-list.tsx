@@ -39,7 +39,6 @@ import PeriodFilter from "./period-filter";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
-import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 import {
   sourceTypeLabel,
   sourceTypeBadgeClassName,
@@ -146,7 +145,6 @@ interface JournalEntryRowProps {
   orgSlug: string;
   entry: JournalEntry;
   voucherName: string;
-  voucherPrefix: string | undefined;
   periodStatus: string;
   isLoading: boolean;
   onPost: (entry: JournalEntry) => void;
@@ -157,7 +155,6 @@ function JournalEntryRow({
   orgSlug,
   entry,
   voucherName,
-  voucherPrefix,
   periodStatus,
   isLoading,
   isHighlighted,
@@ -183,10 +180,6 @@ function JournalEntryRow({
     0,
   );
 
-  const displayNumber = voucherPrefix
-    ? formatCorrelativeNumber(voucherPrefix, entry.date, entry.number)
-    : null;
-
   const viewPath = `/${orgSlug}/accounting/journal/${entry.id}`;
   const editPath = `/${orgSlug}/accounting/journal/${entry.id}/edit`;
   const pdfPath = `/api/organizations/${orgSlug}/journal/${entry.id}?format=pdf`;
@@ -210,8 +203,8 @@ function JournalEntryRow({
     >
       <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(entry.date)}</td>
       <td className="py-3 px-4">{voucherName}</td>
-      <td className="py-3 px-4 font-mono text-info font-medium">
-        {displayNumber ?? entry.number}
+      <td className="py-3 px-4 font-mono font-medium">
+        {entry.number}
       </td>
       <td className="py-3 px-4 font-mono text-muted-foreground">
         {entry.referenceNumber ?? "—"}
@@ -334,7 +327,6 @@ export default function JournalEntryList({
   // Build lookup maps
   const periodStatusMap = new Map(periods.map((p) => [p.id, p.status]));
   const voucherTypeMap = new Map(voucherTypes.map((vt) => [vt.id, vt.name]));
-  const voucherTypePrefixMap = new Map(voucherTypes.map((vt) => [vt.id, vt.prefix]));
 
   async function executeTransition(
     entry: JournalEntry,
@@ -510,7 +502,7 @@ export default function JournalEntryList({
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Tipo
                   </th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Comprobante</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Descripción
@@ -552,7 +544,6 @@ export default function JournalEntryList({
                       orgSlug={orgSlug}
                       entry={entry}
                       voucherName={voucherTypeMap.get(entry.voucherTypeId) ?? "—"}
-                      voucherPrefix={voucherTypePrefixMap.get(entry.voucherTypeId)}
                       periodStatus={periodStatusMap.get(entry.periodId) ?? "OPEN"}
                       isLoading={actioningId === entry.id}
                       isHighlighted={activeHighlightId === entry.id}

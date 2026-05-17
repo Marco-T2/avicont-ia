@@ -278,7 +278,7 @@ export default function SaleList({
                         <td className="py-3 px-4 whitespace-nowrap">
                           {formatDateBO(sale.date)}
                         </td>
-                        <td className="py-3 px-4 font-mono text-info font-medium">
+                        <td className="py-3 px-4 font-mono font-medium">
                           {sale.displayCode}
                         </td>
                         <td className="py-3 px-4 font-mono text-muted-foreground">

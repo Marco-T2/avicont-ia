@@ -363,8 +363,10 @@ export default function PurchaseList({
                           {formatDateBO(purchase.date)}
                         </td>
                         <td className="py-3 px-4">{typeName}</td>
-                        <td className="py-3 px-4 font-mono text-info font-medium">
-                          {purchase.displayCode}
+                        <td className="py-3 px-4 font-mono font-medium">
+                          {purchase.sequenceNumber != null
+                            ? String(purchase.sequenceNumber)
+                            : "—"}
                         </td>
                         <td className="py-3 px-4 font-mono text-muted-foreground">
                           {purchase.referenceNumber ?? "—"}

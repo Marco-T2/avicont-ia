@@ -144,10 +144,10 @@ describe("buildVoucherPdfInput", () => {
     expect(input.organization.address).toBe("");
   });
 
-  it("formatea el número de comprobante con prefix-padded-number", () => {
+  it("copia entry.number como voucher.number sin formato", () => {
     const input = buildVoucherPdfInput(makeEntry(), PROFILE, SIG_CONFIG, undefined, {});
 
-    expect(input.voucher.number).toBe("CE-0145");
+    expect(input.voucher.number).toBe("145");
   });
 
   it("formatea la fecha como DD/MM/YY", () => {

@@ -804,13 +804,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
   // ── DocumentReferenceNumber propagation (DT4 — QA Marco) ──
   //
   // El cobrador necesita leer en la columna "Nº" el número del documento
-  // físico ("VG-0001", "RC-0042", "ND-0005") en vez del correlative voucher
+  // físico ("1", "42", "ND-0005") en vez del correlative voucher
   // contable. El adapter formatea `${code}-${seq padded(4)}` y devuelve el
   // string en el enrichment row; el service sólo lo forwardea al DTO.
   // Fallback: null en el enrichment row → null en el DTO → UI cae al
   // displayNumber.
 
-  it("DT4-T1 propagates Payment documentReferenceNumber (p.ej. 'RC-0042') al ContactLedgerEntry", async () => {
+  it("DT4-T1 propagates Payment documentReferenceNumber (p.ej. '42') al ContactLedgerEntry", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -833,7 +833,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           bankAccountName: null,
           direction: "COBRO",
           documentTypeCode: "RC",
-          documentReferenceNumber: "RC-0042",
+          documentReferenceNumber: "42",
         },
       ],
     });
@@ -855,10 +855,10 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     const entry = result.items[0] as typeof result.items[number] & {
       documentReferenceNumber: string | null;
     };
-    expect(entry.documentReferenceNumber).toBe("RC-0042");
+    expect(entry.documentReferenceNumber).toBe("42");
   });
 
-  it("DT4-T2 propagates Receivable documentReferenceNumber='VG-0001' para sourceType=sale", async () => {
+  it("DT4-T2 propagates Receivable documentReferenceNumber='1' para sourceType=sale", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -880,7 +880,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
           documentTypeCode: "VG",
-          documentReferenceNumber: "VG-0001",
+          documentReferenceNumber: "1",
         },
       ],
     });
@@ -902,10 +902,10 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     const entry = result.items[0] as typeof result.items[number] & {
       documentReferenceNumber: string | null;
     };
-    expect(entry.documentReferenceNumber).toBe("VG-0001");
+    expect(entry.documentReferenceNumber).toBe("1");
   });
 
-  it("DT4-T3 propagates Payable documentReferenceNumber='FL-0005' para sourceType=purchase", async () => {
+  it("DT4-T3 propagates Payable documentReferenceNumber='5' para sourceType=purchase", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -927,7 +927,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
           documentTypeCode: "FL",
-          documentReferenceNumber: "FL-0005",
+          documentReferenceNumber: "5",
         },
       ],
     });
@@ -949,7 +949,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     const entry = result.items[0] as typeof result.items[number] & {
       documentReferenceNumber: string | null;
     };
-    expect(entry.documentReferenceNumber).toBe("FL-0005");
+    expect(entry.documentReferenceNumber).toBe("5");
   });
 
   it("DT4-T4 documentReferenceNumber=null para asiento manual sin auxiliar (UI cae al displayNumber)", async () => {

@@ -49,8 +49,8 @@ export class PrismaPayablesContactLedgerAdapter
     });
 
     // Batched purchase lookup: misma forma sister Receivable adapter.
-    // DT4 — adicionar `sequenceNumber` al select para formatear el número
-    // físico ("${code}-${seq padded(4)}", ej "FL-0005").
+    // DT4 — adicionar `sequenceNumber` al select para surface el número raw
+    // del documento físico (sin prefijo ni padding, ej "5").
     const purchaseIds = rows
       .filter((r) => r.sourceType === "purchase" && r.sourceId)
       .map((r) => r.sourceId!) as string[];

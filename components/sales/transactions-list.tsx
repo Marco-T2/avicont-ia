@@ -217,7 +217,7 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
         {formatDateBO(item.date)}
       </td>
       <td className="py-3 px-4">{typeName}</td>
-      <td className="py-3 px-4 font-mono text-info font-medium">
+      <td className="py-3 px-4 font-mono font-medium">
         {item.displayCode}
       </td>
       <td className="py-3 px-4 font-mono text-muted-foreground">
@@ -566,7 +566,7 @@ export default function TransactionsList({
                 <tr className="border-b bg-muted/50">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Código</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Cliente</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>

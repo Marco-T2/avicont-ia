@@ -34,10 +34,9 @@ import type { ContactsReadPort } from "./contacts-read.port";
  *  fuente (VG para Sale, ND/BC para Dispatch según DispatchType enum). Null
  *  cuando la receivable no tiene sourceId resoluble (sourceType="manual").
  *
- *  `documentReferenceNumber` es el número físico ya formateado
- *  (`"${code}-${seq padded(4)}"`, p.ej. `"VG-0001"`/`"ND-0005"`). Null cuando
- *  el sourceType no resuelve a un documento físico o el sequence no está
- *  disponible. */
+ *  `documentReferenceNumber` es el sequence raw del documento (p.ej. `"1"`,
+ *  `"5"`) — sin prefijo ni padding. Null cuando el sourceType no resuelve a
+ *  un documento físico o el sequence no está disponible. */
 export interface ReceivableLedgerEnrichmentRow {
   journalEntryId: string;
   status: string;
@@ -48,9 +47,9 @@ export interface ReceivableLedgerEnrichmentRow {
 
 /** Payable enrichment projection — sister de Receivable. `documentTypeCode`
  *  resuelve desde Purchase.purchaseType (FL/PF/CG/SV) cuando sourceType="purchase";
- *  null para sourceType="manual". `documentReferenceNumber` formateado
- *  `"${code}-${seq padded(4)}"` desde Purchase.sequenceNumber; null cuando
- *  no aplica. */
+ *  null para sourceType="manual". `documentReferenceNumber` es el sequence
+ *  raw de Purchase.sequenceNumber (sin prefijo ni padding); null cuando no
+ *  aplica. */
 export interface PayableLedgerEnrichmentRow {
   journalEntryId: string;
   status: string;
@@ -78,12 +77,12 @@ export interface PaymentLedgerEnrichmentRow {
    *  human label when sourceType doesn't disambiguate. */
   direction: string;
   documentTypeCode: string | null;
-  /** DT4 — número físico ya formateado `"${code}-${ref padded(4)}"`
-   *  (p.ej. `"RC-0042"`). Source: `Payment.referenceNumber` (nullable Int —
-   *  el dato físico capturado por el operador). Null cuando NO hay
-   *  documentTypeCode wired O NO hay referenceNumber capturado — en ese caso
-   *  el service no puede armar el string y el campo del DTO también es null;
-   *  la UI cae al `displayNumber` correlative voucher contable. */
+  /** DT4 — sequence raw del documento físico (p.ej. `"42"`), sin prefijo ni
+   *  padding. Source: `Payment.referenceNumber` (nullable Int — el dato
+   *  físico capturado por el operador). Null cuando NO hay documentTypeCode
+   *  wired O NO hay referenceNumber capturado — en ese caso el service no
+   *  puede armar el string y el campo del DTO también es null; la UI cae al
+   *  `displayNumber` correlative voucher contable. */
   documentReferenceNumber: string | null;
 }
 

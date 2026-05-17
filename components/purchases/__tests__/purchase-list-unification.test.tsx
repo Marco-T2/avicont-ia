@@ -102,9 +102,9 @@ describe("PurchaseList — unified entry button (T7.1/T7.2 REQ-C.1)", () => {
     expect(unifiedLink).toHaveAttribute("href", expect.stringContaining("type=COMPRA_GENERAL"));
   });
 
-  it("C.1.5 — historical SV-xxx (SERVICIO) rows still render in the list", () => {
+  it("C.1.5 — historical SERVICIO rows still render in the list", () => {
     render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any, SERVICIO_PURCHASE as any]} total={2} page={1} pageSize={25} totalPages={1} />);
-    const svRow = screen.getByText("SV-001");
+    const svRow = screen.getByText("Servicio contratado");
     expect(svRow).toBeInTheDocument();
   });
 });

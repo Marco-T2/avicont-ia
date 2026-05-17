@@ -499,13 +499,13 @@ describe("exportContactLedgerPdf — Tipo column", () => {
 // al displayNumber cuando es null. Mirror UI per [[paired_sister_default_no_surface]].
 
 describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", () => {
-  it("DT4 — sale con documentReferenceNumber='VG-0001' → cell Nº muestra 'VG-0001'", async () => {
+  it("DT4 — sale con documentReferenceNumber='1' → cell Nº muestra '1'", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
         makeEntry({
           sourceType: "sale",
           documentTypeCode: "VG",
-          documentReferenceNumber: "VG-0001",
+          documentReferenceNumber: "1",
           displayNumber: "D2506-000001",
         }),
       ],
@@ -515,10 +515,10 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
     const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
-    expect(dataRow[2].text).toBe("VG-0001");
+    expect(dataRow[2].text).toBe("1");
   });
 
-  it("DT4 — payment con documentReferenceNumber='RC-0042' → cell Nº muestra 'RC-0042'", async () => {
+  it("DT4 — payment con documentReferenceNumber='42' → cell Nº muestra '42'", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
         makeEntry({
@@ -527,7 +527,7 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           documentTypeCode: "RC",
-          documentReferenceNumber: "RC-0042",
+          documentReferenceNumber: "42",
           displayNumber: "I2605-000042",
         }),
       ],
@@ -537,7 +537,7 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
     const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
-    expect(dataRow[2].text).toBe("RC-0042");
+    expect(dataRow[2].text).toBe("42");
   });
 
   it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al displayNumber", async () => {

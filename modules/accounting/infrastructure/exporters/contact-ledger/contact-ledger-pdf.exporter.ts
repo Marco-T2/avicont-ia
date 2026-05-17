@@ -250,7 +250,7 @@ function buildDataRowCells(entry: ContactLedgerEntry): Content[] {
   return [
     labelCell(formatDateBO(entry.date as unknown as string), false),
     labelCell(renderTipo(entry), false),
-    // DT4 — render número físico del documento ("VG-0001", "RC-0042") con
+    // DT4 — render sequence raw del documento físico (ej "1", "42") con
     // fallback al displayNumber correlative voucher cuando el documento no
     // resuelve (asiento manual sin auxiliar / Payment sin referenceNumber).
     labelCell(entry.documentReferenceNumber ?? entry.displayNumber, false),
