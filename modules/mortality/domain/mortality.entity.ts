@@ -17,6 +17,14 @@ export interface MortalityProps {
   relations?: MortalityRelations;
 }
 
+export interface UpdateMortalityInput {
+  count?: number;
+  cause?: string | null;
+  date?: Date;
+  /** Alive count in the lot EXCLUDING this log's old count. Service computes. */
+  aliveCountInLot: number;
+}
+
 export class Mortality {
   private constructor(private readonly props: MortalityProps) {}
 
@@ -45,6 +53,28 @@ export class Mortality {
 
   static fromPersistence(props: MortalityProps): Mortality {
     return new Mortality(props);
+  }
+
+  /**
+   * Returns a new Mortality reflecting the updated fields. Caller MUST
+   * provide `aliveCountInLot` already excluding THIS log's old count
+   * (the service computes it). Throws MortalityCountExceedsAlive when
+   * the new count breaks INV-01 (aliveCountInLot >= 0).
+   *
+   * `cause === undefined` keeps the prior value; `cause === null` clears.
+   */
+  update(input: UpdateMortalityInput): Mortality {
+    const newCount = input.count ?? this.props.count.value;
+    if (newCount > input.aliveCountInLot) {
+      throw new MortalityCountExceedsAlive(input.aliveCountInLot);
+    }
+    return new Mortality({
+      ...this.props,
+      count: MortalityCount.of(newCount),
+      cause:
+        input.cause === undefined ? this.props.cause : input.cause,
+      date: input.date ?? this.props.date,
+    });
   }
 
   get id(): string { return this.props.id; }
