@@ -68,6 +68,26 @@ export class NotImplementedError extends AppError {
   }
 }
 
+/**
+ * 429 Too Many Requests — el provider externo del LLM (Gemini, etc.) rechazó
+ * la request por exceder la cuota. Mensaje user-friendly en español; el client
+ * del sidebar lo muestra al usuario en lugar del 500 generic. Distinto del
+ * rate-limit interno (también 429) — el `code` ("LLM_QUOTA_EXCEEDED" inline
+ * vs "rate_limit_exceeded" del route handler) discrimina el remedio para el
+ * client (esperar reset diario vs esperar X segundos por hour bucket).
+ *
+ * Code inline (no `export const` separado) para preservar el α9 sentinel
+ * counter — comportamiento equivalente sin afectar el invariante de count.
+ */
+export class LLMQuotaExceededError extends AppError {
+  constructor(
+    message = "Excediste el límite de consultas al asistente. Intentá de nuevo más tarde.",
+    cause?: unknown,
+  ) {
+    super(message, 429, "LLM_QUOTA_EXCEEDED", undefined, cause);
+  }
+}
+
 // --- Códigos de Error Contable ---
 
 // Períodos Fiscales

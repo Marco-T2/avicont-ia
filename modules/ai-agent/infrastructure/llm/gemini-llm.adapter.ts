@@ -8,6 +8,7 @@ import {
 } from "@google/generative-ai";
 import { z } from "zod";
 import { logStructured } from "@/lib/logging/structured";
+import { LLMQuotaExceededError } from "@/modules/shared/domain/errors";
 import type {
   LLMProviderPort,
   LLMQuery,
@@ -17,6 +18,23 @@ import type {
   ToolCall,
 } from "../../domain/ports/llm-provider.port";
 import type { ConversationTurn } from "../../domain/types/conversation";
+
+/**
+ * Detecta si un error del Google Gemini SDK es una respuesta 429 quota
+ * exceeded. El SDK no expone error types tipados — el mensaje contiene
+ * "429" o "quota" o "Too Many Requests" o el code "RESOURCE_EXHAUSTED".
+ * Detección defensiva: cualquiera de los markers triggea el rethrow tipado.
+ */
+function isQuotaExceededError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const msg = err.message.toLowerCase();
+  return (
+    msg.includes("429") ||
+    msg.includes("quota") ||
+    msg.includes("too many requests") ||
+    msg.includes("resource_exhausted")
+  );
+}
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -195,12 +213,29 @@ export class GeminiLLMAdapter implements LLMProviderPort {
     //   - history absent or empty → preserve the pre-REQ-21 single-shot path:
     //     pass the bare userMessage string. Backward compat for existing
     //     callers (analyzeDocument, journal-entry-ai, etc.).
-    const result =
-      conversationHistory && conversationHistory.length > 0
-        ? await model.generateContent({
-            contents: mapTurnsToGeminiContents(conversationHistory),
-          })
-        : await model.generateContent(userMessage);
+    let result;
+    try {
+      result =
+        conversationHistory && conversationHistory.length > 0
+          ? await model.generateContent({
+              contents: mapTurnsToGeminiContents(conversationHistory),
+            })
+          : await model.generateContent(userMessage);
+    } catch (err) {
+      // Detección de 429 quota exceeded de Gemini → re-throw tipado para que
+      // el route handler responda 429 con mensaje user-friendly en lugar del
+      // 500 generic. Otros errores (red, auth, content blocked) bubble-uppean
+      // sin transformar — handleError los traduce a 500.
+      if (isQuotaExceededError(err)) {
+        logStructured({
+          event: "gemini_quota_exceeded",
+          level: "warn",
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw new LLMQuotaExceededError(undefined, err);
+      }
+      throw err;
+    }
     const response = result.response;
 
     // response.text() throws ONLY when the candidate has bad finishReason
