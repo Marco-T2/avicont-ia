@@ -711,14 +711,29 @@ Write tool calls (`createExpense`, `logMortality`, `createJournalEntry`, etc.) S
 
 **Derived from:** REQ-26 (per `[[named_rule_immutability]]` — same intent: instruct LLM to format tool-result lists; this derivative supersedes REQ-26's literal Spanish text with a prescribed compact format so the sidebar stays readable when tool results contain long descriptions or unbroken strings).
 
-`buildSystemPrompt` SHALL include the following Spanish instruction appended after `moduleHintLines` and before the `DATOS:` block: `"Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros)."` This applies to ALL chat-mode invocations regardless of surface or role. EXACT Spanish text locked per `[[textual_rule_verification]]` — any change requires a new SDD with a RED test mirroring the new text.
+`buildSystemPrompt` SHALL include the following Spanish multi-line instruction (lines joined by `\n`) appended after `moduleHintLines` and before the `DATOS:` block:
 
-**Motivation**: smoke test post-`agent-chat-tool-result-rendering` (F3) revealed the LLM was rendering verbose multi-clause sentences per entry ("estado: PUBLICADO, por un total de $2000.00") which combined with `react-markdown` rendering still produced visually noisy output and amplified the long-string overflow issue in the sidebar. The compact format restricts presentation to essential fields and prescribes a short comprobante code (`CX-N`) that the LLM derives from the underlying `displayNumber`.
+```
+FORMATO OBLIGATORIO para listas de resultados: usá lista markdown con un guión por entrada.
+Una línea por entry, formato 'DD/MM/YYYY CÓDIGO BsMONTO'.
+Moneda SIEMPRE 'Bs' (nunca '$', nunca decimales).
+PROHIBIDO: descripciones, estado, etiquetas 'Nº' o 'total', oraciones largas.
+
+Ejemplos CORRECTOS:
+- 16/05/2026 I2605-2 Bs2000
+- 16/05/2026 E2605-1 Bs500
+```
+
+This applies to ALL chat-mode invocations regardless of surface or role. EXACT Spanish text locked per `[[textual_rule_verification]]` — any change requires a new SDD with a RED test mirroring the new text.
+
+**Motivation (v1)**: smoke test post-`agent-chat-tool-result-rendering` (F3) revealed the LLM rendering verbose multi-clause sentences per entry ("estado: PUBLICADO, por un total de $2000.00") which combined with `react-markdown` rendering produced visually noisy output and amplified the long-string overflow issue in the sidebar.
+
+**Motivation (v2 — current locked literal)**: v1's "sin markdown" clause caused Gemini to emit the compact entries as a single run-on line with spaces (no line breaks at all). v2 requires markdown bullet list — `react-markdown` renders `- ` as `<ul><li>` with one item per line + visible bullet. Few-shot examples (positive only in v2; negative example removed because Gemini was occasionally echoing the prohibited example into its output) plus imperative "OBLIGATORIO/PROHIBIDO" wording strengthen format compliance.
 
 #### Scenario: SCN-29.1 — Golden test on buildSystemPrompt output
 
 - GIVEN `buildSystemPrompt` is called with any valid args
-- THEN the result includes the literal string `"Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros)."`
+- THEN the result includes the literal block (8 lines joined by `\n`) shown in the Requirement statement above
 - AND the literal from REQ-26 is NOT present (the derivative supersedes it)
 
 ---

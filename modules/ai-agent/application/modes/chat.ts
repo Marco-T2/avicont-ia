@@ -399,15 +399,24 @@ function buildSystemPrompt(
     );
   }
 
-  // Tool-result formatting instruction (REQ-29, supersedes REQ-26 literal per
-  // [[named_rule_immutability]] — derivative rule with same intent but
-  // prescribed compact format). EXACT Spanish text locked per
+  // Tool-result formatting instruction (REQ-29 — iteration v2 in-place tune).
+  // v1 wording ("sin markdown") caused Gemini to emit results as a single
+  // run-on line with spaces between entries (no line breaks at all). v2
+  // requires markdown bullet list — react-markdown renders `- ` as `<ul><li>`
+  // with one item per line. EXACT Spanish text locked per
   // [[textual_rule_verification]] + [[engram_textual_rule_verification]] —
   // any change requires a new SDD with a RED test mirroring the new text.
   // Placed AFTER moduleHintLines and BEFORE the DATOS block.
   const formatLines = [
     "",
-    "Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros).",
+    "FORMATO OBLIGATORIO para listas de resultados: usá lista markdown con un guión por entrada.",
+    "Una línea por entry, formato 'DD/MM/YYYY CÓDIGO BsMONTO'.",
+    "Moneda SIEMPRE 'Bs' (nunca '$', nunca decimales).",
+    "PROHIBIDO: descripciones, estado, etiquetas 'Nº' o 'total', oraciones largas.",
+    "",
+    "Ejemplos CORRECTOS:",
+    "- 16/05/2026 I2605-2 Bs2000",
+    "- 16/05/2026 E2605-1 Bs500",
   ];
 
   return [

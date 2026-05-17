@@ -26,8 +26,16 @@ import type { RagPort } from "../../../domain/ports/rag.port";
  *     captured at the first LLM call.
  */
 
-const EXACT_FORMAT_INSTRUCTION =
-  "Cuando muestres listas de resultados, usá formato compacto: una línea por entrada con campos esenciales (fecha, identificador, monto). Sin descripciones extensas, sin status, sin markdown. Ejemplo para asientos: '16/05/2026 CI-2 Bs2000' (CI=Comprobante Ingreso, N sin ceros).";
+const EXACT_FORMAT_INSTRUCTION = [
+  "FORMATO OBLIGATORIO para listas de resultados: usá lista markdown con un guión por entrada.",
+  "Una línea por entry, formato 'DD/MM/YYYY CÓDIGO BsMONTO'.",
+  "Moneda SIEMPRE 'Bs' (nunca '$', nunca decimales).",
+  "PROHIBIDO: descripciones, estado, etiquetas 'Nº' o 'total', oraciones largas.",
+  "",
+  "Ejemplos CORRECTOS:",
+  "- 16/05/2026 I2605-2 Bs2000",
+  "- 16/05/2026 E2605-1 Bs500",
+].join("\n");
 
 const logSpy = vi.fn();
 vi.mock("@/lib/logging/structured", () => ({
