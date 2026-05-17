@@ -149,7 +149,6 @@ function PaymentRow({
       className="border-b hover:bg-accent/50 cursor-pointer"
       onClick={() => router.push(viewPath)}
     >
-      <td className="py-3 px-4 text-muted-foreground">{payment.period?.name ?? "—"}</td>
       <td className="py-3 px-4 whitespace-nowrap">{formatDateBO(payment.date)}</td>
       <td className="py-3 px-4">
         <Badge
@@ -515,9 +514,6 @@ export default function PaymentList({
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                    Período
-                  </th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">
                     Fecha
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">
@@ -552,7 +548,7 @@ export default function PaymentList({
               <tbody>
                 {items.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center">
+                    <td colSpan={10} className="py-12 text-center">
                       <FileText className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
                       <p className="text-muted-foreground">
                         No hay cobros ni pagos registrados
