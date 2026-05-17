@@ -8,6 +8,13 @@ interface ChunkInput {
   scope: DocumentScope;
   content: string;
   chunkIndex: number;
+  /**
+   * REQ-35 — hierarchical section context emitted by the chunker
+   * (markdown header chain / numbered code / all-caps). null when no
+   * detector fired in the parent context. Persisted into
+   * `document_chunks.sectionPath` (VARCHAR(512), nullable).
+   */
+  sectionPath: string | null;
   embedding: number[];
 }
 
@@ -19,6 +26,8 @@ interface SearchResult {
   documentName: string;
   /** REQ-30 — `document_chunks.chunkIndex` carried up for citations. */
   chunkIndex: number;
+  /** REQ-30 — `document_chunks.sectionPath` carried up for citations. */
+  sectionPath: string | null;
 }
 
 export class VectorRepository extends BaseRepository {
@@ -27,13 +36,14 @@ export class VectorRepository extends BaseRepository {
     for (const chunk of chunks) {
       const vectorStr = `[${chunk.embedding.join(",")}]`;
       await this.db.$queryRawUnsafe(
-        `INSERT INTO "document_chunks" ("id", "documentId", "organizationId", "scope", "content", "chunkIndex", "embedding")
-         VALUES (gen_random_uuid(), $1, $2, $3::"DocumentScope", $4, $5, $6::vector)`,
+        `INSERT INTO "document_chunks" ("id", "documentId", "organizationId", "scope", "content", "chunkIndex", "sectionPath", "embedding")
+         VALUES (gen_random_uuid(), $1, $2, $3::"DocumentScope", $4, $5, $6, $7::vector)`,
         chunk.documentId,
         chunk.organizationId,
         chunk.scope,
         chunk.content,
         chunk.chunkIndex,
+        chunk.sectionPath,
         vectorStr,
       );
     }
@@ -62,6 +72,7 @@ export class VectorRepository extends BaseRepository {
       `SELECT dc."content",
               dc."documentId",
               dc."chunkIndex",
+              dc."sectionPath",
               d."name" AS "documentName",
               1 - (dc."embedding" <=> $1::vector) AS score
        FROM "document_chunks" dc

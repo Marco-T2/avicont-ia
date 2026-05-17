@@ -25,8 +25,8 @@ export class RagService {
       chunks.map((c) => c.content),
     );
 
-    // F2-PRE: sectionPath emitted by chunker but NOT yet persisted —
-    // DB column lands in F2-POST after Marco runs the migration.
+    // REQ-35 — sectionPath emitted by the chunker is forwarded to
+    // storeChunks → DocumentChunk.sectionPath (nullable VARCHAR(512)).
     await this.vectorRepo.storeChunks(
       chunks.map((chunk, index) => ({
         documentId,
@@ -34,6 +34,7 @@ export class RagService {
         scope,
         content: chunk.content,
         chunkIndex: index,
+        sectionPath: chunk.sectionPath,
         embedding: embeddings[index],
       })),
     );
@@ -57,6 +58,7 @@ export class RagService {
       score: number;
       documentName: string;
       chunkIndex: number;
+      sectionPath: string | null;
     }[]
   > {
     const queryVector = await this.embeddingService.embed(query);

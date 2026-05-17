@@ -46,12 +46,12 @@ export class LegacyRagAdapter implements RagPort {
       score: r.score,
       metadata: {
         documentId: r.documentId,
-        // REQ-30 — documentName + chunkIndex flow from VectorRepository's
-        // Document JOIN. sectionPath stays null until F2 lands the column
-        // on DocumentChunk and the chunker emits section headers.
+        // REQ-30/35 — documentName + chunkIndex flow from VectorRepository's
+        // Document JOIN; sectionPath flows from the chunker via
+        // DocumentChunk.sectionPath (nullable when no detector fired).
         documentName: r.documentName,
         chunkIndex: r.chunkIndex,
-        sectionPath: null,
+        sectionPath: r.sectionPath,
       },
     }));
   }
