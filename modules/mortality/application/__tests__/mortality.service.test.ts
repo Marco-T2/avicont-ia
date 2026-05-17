@@ -130,6 +130,37 @@ describe("MortalityService.log", () => {
   });
 });
 
+describe("MortalityRepository.findById (port)", () => {
+  let repo: InMemoryMortalityRepository;
+
+  beforeEach(() => {
+    repo = new InMemoryMortalityRepository();
+  });
+
+  it("returns the entity when id exists within the org", async () => {
+    const seeded = Mortality.log({
+      lotId: "lot-1",
+      count: 5,
+      date: new Date("2026-04-01"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 100,
+    });
+    repo.preload(seeded);
+
+    const found = await repo.findById(ORG, seeded.id);
+
+    expect(found).not.toBeNull();
+    expect(found?.id).toBe(seeded.id);
+  });
+
+  it("returns null when id does not exist", async () => {
+    const found = await repo.findById(ORG, "missing-id");
+
+    expect(found).toBeNull();
+  });
+});
+
 describe("MortalityService.getTotalByLot", () => {
   let repo: InMemoryMortalityRepository;
   let lots: InMemoryLotInquiry;
