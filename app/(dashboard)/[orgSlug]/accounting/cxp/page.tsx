@@ -1,17 +1,35 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
-import {
-  makePayablesService,
-  attachContacts,
-} from "@/modules/payables/presentation/server";
-import PayableList from "@/components/accounting/payable-list";
+import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
+import CxpDashboardPageClient from "@/components/accounting/cxp-dashboard-page-client";
 
 interface CxPPageProps {
   params: Promise<{ orgSlug: string }>;
+  searchParams: Promise<{
+    includeZeroBalance?: string;
+    page?: string;
+    pageSize?: string;
+    sort?: string;
+    direction?: string;
+  }>;
 }
 
-export default async function CxPPage({ params }: CxPPageProps) {
+/**
+ * /accounting/cxp — Dashboard de proveedores con saldo abierto.
+ * Sister de cxc/page.tsx — design D5.
+ *
+ * Permission `purchases:read` heredado del legacy. Detail page
+ * /accounting/cxp/[contactId] requiere `reports:read`.
+ *
+ * NOTE: REEMPLAZA RSC legacy que cargaba `payablesService.list(orgId)` +
+ * `<PayableList />`. `PayableList` NO se elimina — reubicación a tab en C8.
+ */
+export default async function CxPPage({
+  params,
+  searchParams,
+}: CxPPageProps) {
   const { orgSlug } = await params;
+  const sp = await searchParams;
 
   let orgId: string;
   try {
@@ -21,23 +39,46 @@ export default async function CxPPage({ params }: CxPPageProps) {
     redirect(`/${orgSlug}`);
   }
 
-  const payablesService = makePayablesService();
+  const includeZeroBalance = sp.includeZeroBalance === "true";
+  const page = sp.page ? Math.max(1, parseInt(sp.page, 10) || 1) : 1;
+  const pageSize = sp.pageSize
+    ? Math.min(100, Math.max(1, parseInt(sp.pageSize, 10) || 20))
+    : 20;
+  const sort =
+    sp.sort === "name" || sp.sort === "lastMovementDate"
+      ? sp.sort
+      : "openBalance";
+  const direction = sp.direction === "asc" ? "asc" : "desc";
 
-  const items = await payablesService.list(orgId);
-  const payables = await attachContacts(orgId, items);
+  const service = makeContactBalancesService();
+  const dashboard = await service.listContactsWithOpenBalance(
+    orgId,
+    "PROVEEDOR",
+    { includeZeroBalance, page, pageSize, sort, direction },
+  );
+
+  const serialized = JSON.parse(JSON.stringify(dashboard));
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Cuentas por Pagar</h1>
         <p className="text-muted-foreground mt-1">
-          Gestión de cuentas pendientes de pago
+          Proveedores con saldo abierto — clic en Ver para el detalle por
+          contacto
         </p>
       </div>
 
-      <PayableList
+      <CxpDashboardPageClient
         orgSlug={orgSlug}
-        payables={JSON.parse(JSON.stringify(payables))}
+        dashboard={serialized}
+        filters={{
+          includeZeroBalance,
+          page,
+          pageSize,
+          sort,
+          direction,
+        }}
       />
     </div>
   );
