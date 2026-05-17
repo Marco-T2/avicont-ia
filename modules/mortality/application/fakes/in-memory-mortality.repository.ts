@@ -33,6 +33,14 @@ export class InMemoryMortalityRepository implements MortalityRepository {
     );
   }
 
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<Mortality | null> {
+    const m = this.store.get(id);
+    return m && m.organizationId === organizationId ? m : null;
+  }
+
   /** Returns SUM of counts (not record count) — matches Prisma adapter. */
   async countByLot(
     organizationId: string,

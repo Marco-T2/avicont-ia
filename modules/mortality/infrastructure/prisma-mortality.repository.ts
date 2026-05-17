@@ -22,6 +22,17 @@ export class PrismaMortalityRepository implements MortalityRepository {
     return rows.map(toDomain);
   }
 
+  async findById(
+    organizationId: string,
+    id: string,
+  ): Promise<Mortality | null> {
+    const row = await this.db.mortalityLog.findFirst({
+      where: { id, organizationId },
+      include: mortalityInclude,
+    });
+    return row ? toDomain(row) : null;
+  }
+
   async countByLot(organizationId: string, lotId: string): Promise<number> {
     const result = await this.db.mortalityLog.aggregate({
       where: { lotId, organizationId },
