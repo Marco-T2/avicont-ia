@@ -13,7 +13,16 @@ import {
   toLotWithRelationsSnapshot,
 } from "./lot.mapper";
 
-type DbClient = Pick<PrismaClient, "chickenLot">;
+/**
+ * Includes the tables touched by `delete` cascade tx (expense +
+ * mortalityLog) and `$transaction` itself. Kept as `Pick` to retain
+ * the narrow-by-default ethos — adapter only ever reaches into these
+ * three tables and the tx primitive.
+ */
+type DbClient = Pick<
+  PrismaClient,
+  "chickenLot" | "expense" | "mortalityLog" | "$transaction"
+>;
 
 const lotWithRelationsInclude = {
   expenses: true,
@@ -76,26 +85,40 @@ export class PrismaLotRepository implements LotRepository {
     });
   }
 
-  /**
-   * STUB — real impl lands in T29 GREEN (DbClient must expand to
-   * include `expense | mortalityLog | $transaction`). Kept as
-   * throw so tsc satisfies the LotRepository contract at T25, while
-   * service-layer T26 RED + T27 GREEN can build against the port
-   * via InMemory fake.
-   */
   async findChildCounts(
-    _organizationId: string,
-    _id: string,
+    organizationId: string,
+    id: string,
   ): Promise<LotChildCounts> {
-    throw new Error(
-      "PrismaLotRepository.findChildCounts not implemented yet (T29)",
-    );
+    const [expenses, mortality] = await Promise.all([
+      this.db.expense.count({
+        where: { organizationId, lotId: id },
+      }),
+      this.db.mortalityLog.count({
+        where: { organizationId, lotId: id },
+      }),
+    ]);
+    return { expenses, mortality };
   }
 
-  /** STUB — see findChildCounts JSDoc; real cascade tx lands in T29. */
-  async delete(_organizationId: string, _id: string): Promise<void> {
-    throw new Error(
-      "PrismaLotRepository.delete not implemented yet (T29)",
-    );
+  /**
+   * Cascade hard-delete: removes all child Expense + MortalityLog
+   * records first, then the Lot itself. Wrapped in a single Prisma
+   * `$transaction([...])` array form so the operations succeed or
+   * fail atomically (INV-06, spec REQ-101). Both `@@index([lotId])`
+   * indexes exist on Expense (schema L252) and MortalityLog (L271)
+   * → the `deleteMany` queries are index-backed.
+   */
+  async delete(organizationId: string, id: string): Promise<void> {
+    await this.db.$transaction([
+      this.db.expense.deleteMany({
+        where: { organizationId, lotId: id },
+      }),
+      this.db.mortalityLog.deleteMany({
+        where: { organizationId, lotId: id },
+      }),
+      this.db.chickenLot.delete({
+        where: { id, organizationId },
+      }),
+    ]);
   }
 }
