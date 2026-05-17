@@ -38,9 +38,8 @@ export class RagService {
   /**
    * Embed a query and search for similar document chunks.
    *
-   * Return shape carries optional `documentName` + `chunkIndex` for citations
-   * (REQ-30). C1.0 ships the optional contract; C1.1 populates them via a
-   * Document JOIN in `VectorRepository.searchSimilar`.
+   * Return shape carries `documentName` + `chunkIndex` for citations (REQ-30),
+   * populated by `VectorRepository.searchSimilar` via the documents JOIN.
    */
   async search(
     query: string,
@@ -52,8 +51,8 @@ export class RagService {
       content: string;
       documentId: string;
       score: number;
-      documentName?: string;
-      chunkIndex?: number;
+      documentName: string;
+      chunkIndex: number;
     }[]
   > {
     const queryVector = await this.embeddingService.embed(query);

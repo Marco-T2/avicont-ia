@@ -46,12 +46,11 @@ export class LegacyRagAdapter implements RagPort {
       score: r.score,
       metadata: {
         documentId: r.documentId,
-        // C1.1 enriches documentName + chunkIndex from a Document JOIN in
-        // VectorRepository.searchSimilar. C1.0 ships the typed metadata
-        // contract (REQ-30) with placeholder values so the build stays green
-        // between cycles. sectionPath remains null until F2 lands the column.
-        documentName: r.documentName ?? "",
-        chunkIndex: r.chunkIndex ?? 0,
+        // REQ-30 — documentName + chunkIndex flow from VectorRepository's
+        // Document JOIN. sectionPath stays null until F2 lands the column
+        // on DocumentChunk and the chunker emits section headers.
+        documentName: r.documentName,
+        chunkIndex: r.chunkIndex,
         sectionPath: null,
       },
     }));
