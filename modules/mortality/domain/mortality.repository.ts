@@ -8,4 +8,5 @@ export interface MortalityRepository {
   ): Promise<Mortality | null>;
   countByLot(organizationId: string, lotId: string): Promise<number>;
   save(mortality: Mortality): Promise<void>;
+  update(mortality: Mortality): Promise<void>;
 }

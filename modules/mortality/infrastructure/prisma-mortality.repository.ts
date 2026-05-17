@@ -46,4 +46,18 @@ export class PrismaMortalityRepository implements MortalityRepository {
       data: toPersistence(mortality),
     });
   }
+
+  async update(mortality: Mortality): Promise<void> {
+    await this.db.mortalityLog.update({
+      where: {
+        id: mortality.id,
+        organizationId: mortality.organizationId,
+      },
+      data: {
+        count: mortality.count.value,
+        cause: mortality.cause,
+        date: mortality.date,
+      },
+    });
+  }
 }

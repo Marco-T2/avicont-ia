@@ -56,4 +56,8 @@ export class InMemoryMortalityRepository implements MortalityRepository {
   async save(mortality: Mortality): Promise<void> {
     this.store.set(mortality.id, mortality);
   }
+
+  async update(mortality: Mortality): Promise<void> {
+    this.store.set(mortality.id, mortality);
+  }
 }
