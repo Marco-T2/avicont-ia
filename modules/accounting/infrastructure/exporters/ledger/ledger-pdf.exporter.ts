@@ -41,16 +41,23 @@ const STYLE = {
   textMuted: "#6b7280",
 } as const;
 
-// Column widths: [Fecha=55, Tipo=35, Nº=70, Descripción=*, Debe=70, Haber=70, Saldo=75]
-// Suman 375 + "*" → llena los 535pt de A4 portrait (printable: 595 − 60 margins).
-const COL_WIDTHS: (number | string)[] = [55, 35, 70, "*", 70, 70, 75];
+// Column widths: TODAS fijas en pt (NO usar "*") — paridad con
+// voucher-pdf.exporter.ts: "para que pdfmake NO expanda la descripción
+// cuando es larga, fuerza wrap estricto dentro del ancho".
+// A4 portrait = 595pt − margins (30 + 30) = 535pt disponibles.
+// [Fecha=50, Tipo=35, Nº=65, Descripción=195, Debe=60, Haber=60, Saldo=70] → 535.
+const COL_WIDTHS: (number | string)[] = [50, 35, 65, 195, 60, 60, 70];
 
-const BODY_SIZE = 10;       // portrait → 10pt per doc §2
+const BODY_SIZE = 9;        // paridad voucher — 10pt era muy apretado horizontal
 const TITLE_SIZE = 18;      // portrait — paridad con trial-balance
 const SUBTITLE_SIZE = 10;
 const ORG_INFO_SIZE = 8;
 
 // ── Cell helpers ──────────────────────────────────────────────────────────────
+//
+// Cell margin = [left, top, right, bottom]. Aire horizontal generoso (4pt) para
+// separar el texto del borde de columna; vertical apretado (0) porque el layout
+// aporta padding 2pt arriba/abajo, total 4pt vertical por celda.
 
 function numCell(text: string, bold: boolean): Content {
   return {
@@ -58,7 +65,7 @@ function numCell(text: string, bold: boolean): Content {
     fontSize: BODY_SIZE,
     bold,
     alignment: "right",
-    margin: [1, 1, 2, 1],
+    margin: [4, 0, 4, 0],
   } as Content;
 }
 
@@ -68,7 +75,7 @@ function labelCell(text: string, bold: boolean, alignment: "left" | "center" = "
     fontSize: BODY_SIZE,
     bold,
     alignment,
-    margin: [2, 1, 2, 1],
+    margin: [4, 0, 4, 0],
   } as Content;
 }
 
@@ -80,7 +87,7 @@ function italicLabelCell(text: string, bold: boolean): Content {
     italics: true,
     alignment: "left",
     color: STYLE.textMuted,
-    margin: [2, 1, 2, 1],
+    margin: [4, 0, 4, 0],
   } as Content;
 }
 
@@ -90,7 +97,7 @@ function headerCell(text: string): Content {
     fontSize: BODY_SIZE,
     bold: true,
     alignment: "center",
-    margin: [1, 2, 1, 2],
+    margin: [4, 2, 4, 2],
     fillColor: "#f3f4f6",
   } as Content;
 }
@@ -227,8 +234,8 @@ function buildDocDefinition(
         hLineColor: () => "#000000",
         paddingLeft: () => 0,
         paddingRight: () => 0,
-        paddingTop: () => 1,
-        paddingBottom: () => 1,
+        paddingTop: () => 2,
+        paddingBottom: () => 2,
       },
     } as Content,
   ];
