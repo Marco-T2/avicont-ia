@@ -249,6 +249,79 @@ The `surface` field is a request-shape contract only. No Prisma model gains a `s
 
 ---
 
+### Requirement: Module hint for sidebar surface
+
+`agentQuerySchema` (`modules/ai-agent/domain/validation/agent.validation.ts`) MUST declare `module_hint: z.enum(MODULE_HINTS).nullable().optional()` as an OPTIONAL field, where `MODULE_HINTS = ["accounting", "farm"] as const` is sourced from `modules/ai-agent/domain/types/module-hint.types.ts`. The field is OPTIONAL on the wire so modal clients (`modal-registrar`, `modal-journal-ai`) keep parsing without sending it, and NULLABLE so the sidebar can emit explicit `null` for non-mapped routes.
+
+The sidebar client (`components/agent/agent-chat.tsx`) MUST derive its value client-side from `usePathname()` via the pure helper `deriveModuleHint(pathname: string): ModuleHintValue` at `components/agent/derive-module-hint.ts`. The route handler MUST coerce `undefined` to `null` at the HTTP boundary (`parsed.module_hint ?? null`) before calling `AgentService.query(...)`. The validated value MUST propagate through `AgentService.query` → `executeChatMode` args → `buildSystemPrompt(role, context, contextHints, moduleHint)`.
+
+When `moduleHint !== null`, `buildSystemPrompt` MUST append the EXACT Spanish paragraph (substituting `Contabilidad` for `"accounting"` and `Granja` for `"farm"`):
+
+> `Contexto del usuario: el usuario está actualmente en la sección de {Contabilidad|Granja}. Cuando elijas herramientas, priorizá las que sean relevantes a este módulo. No fuerces el dominio si la pregunta es explícitamente de otra área.`
+
+The `agent_invocation` `logStructured` payload MUST include `moduleHint: ModuleHintValue` (the resolved value, explicit `null` when absent). The hint is a SOFT priority signal — it MUST NOT narrow the tool set (that is the surface's responsibility per Requirement: Surface Taxonomy).
+
+Canonicalized from change `agent-sidebar-module-hint` (archived 2026-05-17, baseline `fcdf8d4e` → final `a5d66f94`). Engram references: proposal `#2749`, design `#2750`, archive-report `sdd/agent-sidebar-module-hint/archive-report`.
+
+#### Scenario: SCN-9.1 — schema accepts valid enum, null, and absent
+
+- GIVEN `agentQuerySchema.safeParse({ prompt: "x", surface: "sidebar-qa", module_hint: <V> })` for each `V ∈ {"accounting", "farm", null}`
+- THEN `result.success === true`
+- AND `result.data.module_hint === V`
+- AND for the same body WITHOUT `module_hint`, `result.success === true` AND `result.data.module_hint === undefined`
+
+#### Scenario: SCN-9.2 — schema rejects unknown enum value
+
+- GIVEN `agentQuerySchema.safeParse({ prompt: "x", surface: "sidebar-qa", module_hint: "foo" })`
+- THEN `result.success === false`
+- AND `result.error.issues[0].code === "invalid_enum_value"`
+- AND `result.error.issues[0].path` includes `"module_hint"`
+
+#### Scenario: SCN-9.3 — deriveModuleHint maps pathnames per module table
+
+- GIVEN `deriveModuleHint(pathname)`
+- THEN the following table holds:
+
+| pathname | result |
+| --- | --- |
+| `/acme/accounting` | `"accounting"` |
+| `/acme/accounting/journals` | `"accounting"` |
+| `/acme/accounting/cxc/contact-123` | `"accounting"` |
+| `/acme/farms` | `"farm"` |
+| `/acme/farms/farm-123` | `"farm"` |
+| `/acme/lots` | `"farm"` |
+| `/acme/lots/lot-456` | `"farm"` |
+| `/acme/documents` | `null` |
+| `/acme/members` | `null` |
+| `/acme/settings` | `null` |
+| `/acme` | `null` |
+| `/` | `null` |
+| `""` | `null` |
+
+#### Scenario: SCN-9.4 — sidebar client emits module_hint in fetch body
+
+- GIVEN agent-chat renders with `usePathname()` returning `/test-org/accounting/journals`
+- WHEN the user submits a message
+- THEN the resulting fetch body JSON MUST contain `module_hint: "accounting"`
+- AND for `/test-org/documents` → `module_hint: null` (explicit null, not absent)
+
+#### Scenario: SCN-9.5 — system prompt augmentation when moduleHint is non-null
+
+- GIVEN `executeChatMode` is invoked with `moduleHint: "accounting"`
+- WHEN the system prompt is captured (via spy on `llmProvider.query`)
+- THEN it MUST contain the EXACT substring `Contexto del usuario: el usuario está actualmente en la sección de Contabilidad. Cuando elijas herramientas, priorizá las que sean relevantes a este módulo. No fuerces el dominio si la pregunta es explícitamente de otra área.`
+- AND for `moduleHint: "farm"` the substring contains `sección de Granja`
+- AND for `moduleHint: null` the prompt does NOT contain `Contexto del usuario: el usuario está actualmente en la sección de`
+
+#### Scenario: SCN-9.6 — telemetry includes moduleHint
+
+- GIVEN `logStructured` is spied
+- AND `executeChatMode` is invoked with `moduleHint: "accounting"`
+- THEN at least one `logStructured` call with `event: "agent_invocation"` MUST include `moduleHint: "accounting"`
+- AND for `moduleHint: null` the call includes `moduleHint: null` (key present, value null — NOT undefined / missing key)
+
+---
+
 ## Notes
 
 - **Runtime alias gotcha**: `modules/ai-agent/domain/tools/surfaces/index.ts` uses the RELATIVE path `../../../../permissions/domain/permissions.ts` instead of the `@/modules/permissions/...` alias. Reason: the `c1-application-shape.poc-ai-agent-hex` smoke test loads `agent.service.ts` via CommonJS `require()`, which bypasses the Vitest alias resolver in the dynamic-import chain. JSDoc at the import site (lines 1-6 of `surfaces/index.ts`) is the durable defense against well-meaning "fix the path back to alias" PRs. Type-only `@/` imports elsewhere are erased by the TS compiler and unaffected.
@@ -260,3 +333,7 @@ The `surface` field is a request-shape contract only. No Prisma model gains a `s
 - **Multi-tool-call execution limitation**: `chat.ts:164` drops all but the first tool call when the LLM returns multiple simultaneously (`multiple_tool_calls_dropped` warn log). This pre-existing limitation affects every surface and is out of scope for this capability; it is tracked as a separate follow-up.
 
 - **Source-of-truth permissions matrix**: `modules/permissions/domain/permissions.ts` defines `PERMISSIONS_READ` and `PERMISSIONS_WRITE` as `Record<Resource, Role[]>`. Any future tool's RBAC is determined by its `(resource, action)` tag combined with the matrix — no new entries in role-tool arrays are required.
+
+- **MODULE_HINTS location**: `MODULE_HINTS = ["accounting", "farm"] as const` lives at `modules/ai-agent/domain/types/module-hint.types.ts` along with `ModuleHint = (typeof MODULE_HINTS)[number]` and `ModuleHintValue = ModuleHint | null`. It is intentionally SEPARATE from `modules/ai-agent/domain/tools/surfaces/surface.types.ts` because module_hint does NOT narrow the tool set (surface's job) — it is a soft contextual signal for the chat-mode system prompt. Adding a new module hint requires editing only the const tuple and the Spanish mapping table in `modules/ai-agent/application/modes/chat.ts` `buildSystemPrompt`. See Requirement: Module hint for sidebar surface above.
+
+- **AgentService.query signature debt**: as of `agent-sidebar-module-hint` archive (`a5d66f94`), `AgentService.query(...)` carries 9 positional arguments (`orgId, userId, role, prompt, surface, mode, contextHints, sessionId, moduleHint`). The `moduleHint` parameter was inserted at the 9th position (NOT the 7th as originally designed) to preserve the F1 `agent-surface-separation` surface-validation test mocks — documented in apply-progress D-1 and verified per `[[invariant_collision_elevation]]`. A dedicated follow-up SDD is tracked to refactor this to a named-options object.
