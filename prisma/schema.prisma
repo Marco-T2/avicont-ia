@@ -44,6 +44,7 @@ model Organization {
   customRoles           CustomRole[]
   profile                  OrgProfile?
   documentSignatureConfigs DocumentSignatureConfig[]
+  tags                     Tag[]
 
   @@map("organizations")
 }
@@ -118,6 +119,7 @@ model Document {
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
   chunks         DocumentChunk[]
+  documentTags   DocumentTag[]
 
   createdAt      DateTime @db.Timestamptz(3) @default(now())
 
@@ -1145,4 +1147,30 @@ model DocumentSignatureConfig {
   @@unique([organizationId, documentType])
   @@index([organizationId])
   @@map("document_signature_config")
+}
+
+model Tag {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  slug           String
+  color          String?
+  createdAt      DateTime @db.Timestamptz(3) @default(now())
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documentTags   DocumentTag[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+  @@map("tags")
+}
+
+model DocumentTag {
+  documentId String
+  tagId      String
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  tag        Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([documentId, tagId])
+  @@index([tagId])
+  @@map("document_tags")
 }
