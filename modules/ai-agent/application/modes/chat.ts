@@ -459,6 +459,14 @@ async function handleReadCall(
           (args.limit as number | undefined) ?? 10,
         );
         break;
+      case "getAccountMovements":
+        data = await accountingQuery.getAccountMovements(
+          orgId,
+          args.accountId as string,
+          args.dateFrom as string | undefined,
+          args.dateTo as string | undefined,
+        );
+        break;
       default:
         return {
           outcome: "validation_failed",

@@ -1,4 +1,5 @@
 import {
+  getAccountMovementsTool,
   listRecentJournalEntriesTool,
   searchDocumentsTool,
 } from "../agent.tool-definitions.ts";
@@ -13,5 +14,9 @@ import type { SurfaceBundle } from "./surface.types.ts";
  */
 export const SIDEBAR_QA_SURFACE: SurfaceBundle = {
   name: "sidebar-qa",
-  tools: [searchDocumentsTool, listRecentJournalEntriesTool],
+  tools: [
+    searchDocumentsTool,
+    listRecentJournalEntriesTool,
+    getAccountMovementsTool,
+  ],
 } as const;

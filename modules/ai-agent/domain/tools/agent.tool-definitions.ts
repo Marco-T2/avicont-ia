@@ -111,6 +111,25 @@ export const listRecentJournalEntriesTool = defineTool({
   action: "read",
 });
 
+export const getAccountMovementsTool = defineTool({
+  name: "getAccountMovements",
+  description:
+    "Obtener los movimientos (libro mayor) de una cuenta contable, opcionalmente filtrados por rango de fechas. Devuelve cada línea con débito, crédito y saldo acumulado.",
+  inputSchema: z.object({
+    accountId: z.string().describe("ID de la cuenta contable"),
+    dateFrom: z
+      .string()
+      .optional()
+      .describe("Fecha desde (ISO YYYY-MM-DD, opcional)"),
+    dateTo: z
+      .string()
+      .optional()
+      .describe("Fecha hasta (ISO YYYY-MM-DD, opcional)"),
+  }),
+  resource: "journal",
+  action: "read",
+});
+
 // ── Tool para modo journal-entry-ai (captura asistida de asientos) ──
 
 export const parseAccountingOperationToSuggestionTool = defineTool({
@@ -162,6 +181,7 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [searchDocumentsTool.name]: searchDocumentsTool,
   [parseAccountingOperationToSuggestionTool.name]: parseAccountingOperationToSuggestionTool,
   [listRecentJournalEntriesTool.name]: listRecentJournalEntriesTool,
+  [getAccountMovementsTool.name]: getAccountMovementsTool,
 };
 
 /**
