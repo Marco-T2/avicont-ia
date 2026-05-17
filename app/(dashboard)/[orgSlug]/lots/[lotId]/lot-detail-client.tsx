@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { formatDateBO } from "@/lib/date-utils";
 import {
   Card,
@@ -9,20 +10,33 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   ArrowLeft,
   DollarSign,
   Skull,
   Egg,
   Calculator,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
+import { EditLotDialog } from "@/components/lots/edit-lot-dialog";
+import { DeleteLotDialog } from "@/components/lots/delete-lot-dialog";
+import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
+import { EditMortalityDialog } from "@/components/mortality/edit-mortality-dialog";
 import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
 import type { LotSnapshot, LotSummary, LotSummaryShape } from "@/modules/lot/presentation/server";
 import type { ExpenseSnapshot } from "@/modules/expense/presentation/server";
 import type { Mortality } from "@/modules/mortality/presentation/server";
+
+/** Slice de YYYY-MM-DD para inputs type="date" — date-utils ya usa ese formato. */
+function isoDate(d: Date | string): string {
+  const dt = typeof d === "string" ? new Date(d) : d;
+  return dt.toISOString().slice(0, 10);
+}
 
 type _LotSummaryClassPreserved = LotSummary;
 
@@ -120,6 +134,86 @@ export default function LotDetailClient({
     "expenses",
   );
 
+  // Lot edit/delete dialog state
+  const [editLotOpen, setEditLotOpen] = useState(false);
+  const [deleteLotOpen, setDeleteLotOpen] = useState(false);
+
+  // Per-row edit dialog state (by id; null === closed)
+  const [editingExpenseId, setEditingExpenseId] = useState<string | null>(
+    null,
+  );
+  const [deletingExpenseId, setDeletingExpenseId] = useState<string | null>(
+    null,
+  );
+  const [editingMortalityId, setEditingMortalityId] = useState<string | null>(
+    null,
+  );
+  const [deletingMortalityId, setDeletingMortalityId] = useState<string | null>(
+    null,
+  );
+  const [rowDeleting, setRowDeleting] = useState(false);
+
+  const editingExpense = editingExpenseId
+    ? expenses.find((e) => e.id === editingExpenseId) ?? null
+    : null;
+  const deletingExpense = deletingExpenseId
+    ? expenses.find((e) => e.id === deletingExpenseId) ?? null
+    : null;
+  const editingMortality = editingMortalityId
+    ? mortalityLogs.find((m) => m.id === editingMortalityId) ?? null
+    : null;
+  const deletingMortality = deletingMortalityId
+    ? mortalityLogs.find((m) => m.id === deletingMortalityId) ?? null
+    : null;
+
+  const handleDeleteExpense = async () => {
+    if (!deletingExpense) return;
+    setRowDeleting(true);
+    try {
+      const res = await fetch(
+        `/api/organizations/${orgSlug}/expenses/${deletingExpense.id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Error al borrar el gasto");
+        return;
+      }
+      toast.success("Gasto borrado");
+      setDeletingExpenseId(null);
+      router.refresh();
+    } catch (e) {
+      console.error("delete-expense:", e);
+      toast.error("Error al borrar el gasto");
+    } finally {
+      setRowDeleting(false);
+    }
+  };
+
+  const handleDeleteMortality = async () => {
+    if (!deletingMortality) return;
+    setRowDeleting(true);
+    try {
+      const res = await fetch(
+        `/api/organizations/${orgSlug}/mortality/${deletingMortality.id}`,
+        { method: "DELETE" },
+      );
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Error al borrar el registro");
+        return;
+      }
+      toast.success("Registro de mortalidad borrado");
+      setDeletingMortalityId(null);
+      router.refresh();
+    } catch (e) {
+      console.error("delete-mortality:", e);
+      toast.error("Error al borrar el registro");
+    } finally {
+      setRowDeleting(false);
+    }
+  };
+
   const { totalExpenses, totalMortality, aliveCount, costPerChicken } =
     summary;
 
@@ -156,14 +250,37 @@ export default function LotDetailClient({
               {lot.endDate && ` &middot; Cierre: ${formatDateBO(lot.endDate)}`}
             </p>
           </div>
-          <RegistrarConIABoton
-            orgSlug={orgSlug}
-            contextHints={{
-              lotId: lot.id,
-              lotName: lot.name,
-              farmId: lot.farmId,
-            }}
-          />
+          <div className="flex items-center gap-2">
+            {lot.status === "ACTIVE" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setEditLotOpen(true)}
+                aria-label="Editar lote"
+              >
+                <Pencil className="h-4 w-4 mr-1" />
+                Editar
+              </Button>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setDeleteLotOpen(true)}
+              aria-label="Borrar lote"
+              className="text-red-600 hover:text-red-700"
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Borrar
+            </Button>
+            <RegistrarConIABoton
+              orgSlug={orgSlug}
+              contextHints={{
+                lotId: lot.id,
+                lotName: lot.name,
+                farmId: lot.farmId,
+              }}
+            />
+          </div>
         </div>
       </div>
 
@@ -299,9 +416,28 @@ export default function LotDetailClient({
                               )}
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground">
-                            {formatDateBO(expense.date)}
-                          </p>
+                          <div className="flex items-center gap-3">
+                            <p className="text-sm text-muted-foreground">
+                              {formatDateBO(expense.date)}
+                            </p>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Editar gasto"
+                              onClick={() => setEditingExpenseId(expense.id)}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              aria-label="Borrar gasto"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => setDeletingExpenseId(expense.id)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
@@ -357,9 +493,28 @@ export default function LotDetailClient({
                             )}
                           </div>
                         </div>
-                        <p className="text-sm text-muted-foreground">
-                          {formatDateBO(log.date)}
-                        </p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-sm text-muted-foreground">
+                            {formatDateBO(log.date)}
+                          </p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Editar registro de mortalidad"
+                            onClick={() => setEditingMortalityId(log.id)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            aria-label="Borrar registro de mortalidad"
+                            className="text-red-600 hover:text-red-700"
+                            onClick={() => setDeletingMortalityId(log.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -369,6 +524,93 @@ export default function LotDetailClient({
           </div>
         )}
       </div>
+
+      {/* Dialogs (always mounted; visibility controlled by `open` prop) */}
+      <EditLotDialog
+        open={editLotOpen}
+        onOpenChange={setEditLotOpen}
+        orgSlug={orgSlug}
+        lotId={lot.id}
+        initialName={lot.name}
+        initialBarnNumber={lot.barnNumber}
+        onUpdated={() => router.refresh()}
+      />
+      <DeleteLotDialog
+        open={deleteLotOpen}
+        onOpenChange={setDeleteLotOpen}
+        orgSlug={orgSlug}
+        lotId={lot.id}
+        lotName={lot.name}
+        onDeleted={() => {
+          // Lot is gone — bounce back to the farm page.
+          if (lot.farmId) {
+            router.push(`/${orgSlug}/farms/${lot.farmId}`);
+          } else {
+            router.push(`/${orgSlug}/farms`);
+          }
+        }}
+      />
+      {editingExpense ? (
+        <EditExpenseDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setEditingExpenseId(null);
+          }}
+          orgSlug={orgSlug}
+          expenseId={editingExpense.id}
+          initialAmount={Number(editingExpense.amount)}
+          initialCategory={editingExpense.category}
+          initialDescription={editingExpense.description}
+          initialDate={isoDate(editingExpense.date)}
+          onUpdated={() => router.refresh()}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={deletingExpenseId !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeletingExpenseId(null);
+        }}
+        title="Borrar gasto"
+        description={
+          deletingExpense
+            ? `Se borrará el gasto de ${formatCurrency(Number(deletingExpense.amount))} del ${formatDateBO(deletingExpense.date)}. Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Borrar"
+        variant="destructive"
+        loading={rowDeleting}
+        onConfirm={handleDeleteExpense}
+      />
+      {editingMortality ? (
+        <EditMortalityDialog
+          open
+          onOpenChange={(o) => {
+            if (!o) setEditingMortalityId(null);
+          }}
+          orgSlug={orgSlug}
+          logId={editingMortality.id}
+          initialCount={editingMortality.count}
+          initialCause={editingMortality.cause}
+          initialDate={isoDate(editingMortality.date)}
+          onUpdated={() => router.refresh()}
+        />
+      ) : null}
+      <ConfirmDialog
+        open={deletingMortalityId !== null}
+        onOpenChange={(o) => {
+          if (!o) setDeletingMortalityId(null);
+        }}
+        title="Borrar registro de mortalidad"
+        description={
+          deletingMortality
+            ? `Se borrará el registro de -${deletingMortality.count} pollo(s) del ${formatDateBO(deletingMortality.date)}. La cantidad viva del lote se recupera automáticamente. Esta acción no se puede deshacer.`
+            : ""
+        }
+        confirmLabel="Borrar"
+        variant="destructive"
+        loading={rowDeleting}
+        onConfirm={handleDeleteMortality}
+      />
     </div>
   );
 }
