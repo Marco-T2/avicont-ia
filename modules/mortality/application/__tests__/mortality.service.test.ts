@@ -293,6 +293,44 @@ describe("MortalityService.update — exceeds alive guard", () => {
   });
 });
 
+describe("MortalityService.delete", () => {
+  let repo: InMemoryMortalityRepository;
+  let lots: InMemoryLotInquiry;
+  let service: MortalityService;
+
+  beforeEach(() => {
+    repo = new InMemoryMortalityRepository();
+    lots = new InMemoryLotInquiry();
+    lots.seed(lotSnapshot({ initialCount: 100 }));
+    service = new MortalityService(repo, lots);
+  });
+
+  it("removes the log from the repo", async () => {
+    const seed = Mortality.log({
+      lotId: "lot-1",
+      count: 7,
+      date: new Date("2026-04-01"),
+      createdById: "user-1",
+      organizationId: ORG,
+      aliveCountInLot: 100,
+    });
+    repo.preload(seed);
+
+    await service.delete(ORG, seed.id);
+
+    const persisted = await repo.findById(ORG, seed.id);
+    expect(persisted).toBeNull();
+    const remaining = await repo.findByLot(ORG, "lot-1");
+    expect(remaining).toEqual([]);
+  });
+
+  it("throws MortalityNotFound when id does not exist", async () => {
+    await expect(service.delete(ORG, "missing-id")).rejects.toThrow(
+      MortalityNotFound,
+    );
+  });
+});
+
 describe("MortalityService.getTotalByLot", () => {
   let repo: InMemoryMortalityRepository;
   let lots: InMemoryLotInquiry;
