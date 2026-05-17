@@ -6,6 +6,27 @@ import { Lot } from "../../domain/lot.entity";
 const dbWith = (overrides: Record<string, unknown>): PrismaClient =>
   ({ chickenLot: overrides }) as unknown as PrismaClient;
 
+/**
+ * Builds a PrismaClient mock that includes chickenLot + expense +
+ * mortalityLog tables plus a $transaction implementation. The
+ * $transaction here just executes the array of pre-built promises
+ * sequentially (mirrors Prisma's array-form contract).
+ */
+const dbWithCascade = (overrides: {
+  chickenLot?: Record<string, unknown>;
+  expense?: Record<string, unknown>;
+  mortalityLog?: Record<string, unknown>;
+  $transaction?: (operations: Promise<unknown>[]) => Promise<unknown[]>;
+}): PrismaClient =>
+  ({
+    chickenLot: overrides.chickenLot ?? {},
+    expense: overrides.expense ?? {},
+    mortalityLog: overrides.mortalityLog ?? {},
+    $transaction:
+      overrides.$transaction ??
+      ((ops: Promise<unknown>[]) => Promise.all(ops)),
+  }) as unknown as PrismaClient;
+
 const buildEntity = () =>
   Lot.create({
     organizationId: "org-1",
@@ -200,6 +221,82 @@ describe("PrismaLotRepository", () => {
       expect(callArg.data.name).toBe("Lote A");
       expect(callArg.data.barnNumber).toBe(1);
       expect(callArg.data.initialCount).toBe(1000);
+    });
+  });
+
+  describe("findChildCounts", () => {
+    it("returns counts via Promise.all of two count queries scoped by org+lot", async () => {
+      const expenseCount = vi.fn().mockResolvedValueOnce(4);
+      const mortalityCount = vi.fn().mockResolvedValueOnce(7);
+      const repo = new PrismaLotRepository(
+        dbWithCascade({
+          expense: { count: expenseCount },
+          mortalityLog: { count: mortalityCount },
+        }),
+      );
+
+      const counts = await repo.findChildCounts("org-1", "lot-1");
+
+      expect(counts).toEqual({ expenses: 4, mortality: 7 });
+      expect(expenseCount).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", lotId: "lot-1" },
+      });
+      expect(mortalityCount).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", lotId: "lot-1" },
+      });
+    });
+  });
+
+  describe("delete (cascade tx)", () => {
+    it("invokes $transaction with 3 operations: expense.deleteMany, mortalityLog.deleteMany, chickenLot.delete in that order", async () => {
+      const callOrder: string[] = [];
+      const expenseDeleteMany = vi.fn(() => {
+        callOrder.push("expense.deleteMany");
+        return Promise.resolve({ count: 0 });
+      });
+      const mortalityDeleteMany = vi.fn(() => {
+        callOrder.push("mortalityLog.deleteMany");
+        return Promise.resolve({ count: 0 });
+      });
+      const chickenLotDelete = vi.fn(() => {
+        callOrder.push("chickenLot.delete");
+        return Promise.resolve({});
+      });
+      const $transaction = vi.fn((ops: Promise<unknown>[]) =>
+        Promise.all(ops),
+      );
+
+      const repo = new PrismaLotRepository(
+        dbWithCascade({
+          chickenLot: { delete: chickenLotDelete },
+          expense: { deleteMany: expenseDeleteMany },
+          mortalityLog: { deleteMany: mortalityDeleteMany },
+          $transaction,
+        }),
+      );
+
+      await repo.delete("org-1", "lot-1");
+
+      // $transaction MUST receive an array of 3 promises.
+      expect($transaction).toHaveBeenCalledTimes(1);
+      const passedOps = $transaction.mock.calls[0]?.[0] as unknown[];
+      expect(passedOps).toHaveLength(3);
+
+      // Each table call MUST be scoped by org+lot, in the expected order.
+      expect(expenseDeleteMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", lotId: "lot-1" },
+      });
+      expect(mortalityDeleteMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", lotId: "lot-1" },
+      });
+      expect(chickenLotDelete).toHaveBeenCalledWith({
+        where: { id: "lot-1", organizationId: "org-1" },
+      });
+      expect(callOrder).toEqual([
+        "expense.deleteMany",
+        "mortalityLog.deleteMany",
+        "chickenLot.delete",
+      ]);
     });
   });
 
