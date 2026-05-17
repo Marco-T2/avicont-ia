@@ -738,6 +738,386 @@ This applies to ALL chat-mode invocations regardless of surface or role. EXACT S
 
 ---
 
+### Requirement: RagResult.metadata carries documentName + chunkIndex + sectionPath (REQ-30)
+
+`RagResult.metadata` SHALL carry three fields populated by the vector repository:
+- `documentName: string` (from `Document.name`)
+- `chunkIndex: number` (zero-based ordinal within the document)
+- `sectionPath: string | null` (from `DocumentChunk.sectionPath`; null when chunker emits no section header for that chunk)
+
+Rationale: F1 citations cannot be rendered without these fields traveling end-to-end.
+
+#### Scenario: SCN-30.1 — Vector repo populates all three fields
+
+- GIVEN a `DocumentChunk` row joined to its parent `Document`
+- WHEN `vectorRepository.search(query, scopes)` returns `RagResult[]`
+- THEN every result has `metadata.documentName === Document.name`, `metadata.chunkIndex === DocumentChunk.index`, `metadata.sectionPath === DocumentChunk.sectionPath || null`
+
+---
+
+### Requirement: Chat-mode system prompt instructs RAG citation format (REQ-31)
+
+`buildSystemPrompt` SHALL append (after the REQ-29 block and before `DATOS:`) the following Spanish line joined by `\n`:
+
+`"Cuando uses información de un documento (resultado de searchDocuments), citá la fuente así: Según *{documentName}*, sección {sectionPath ?? `chunk ${chunkIndex}`}: …"`
+
+This line coexists with REQ-26 and REQ-29 literals (both retained). EXACT Spanish text locked per `[[textual_rule_verification]]`.
+
+Rationale: F1 needs LLM to render verifiable citations.
+
+#### Scenario: SCN-31.1 — System prompt contains the citation instruction literal
+
+- GIVEN `buildSystemPrompt` called with any valid args
+- THEN result includes the literal string above
+- AND result still includes REQ-26 and REQ-29 literals
+
+---
+
+### Requirement: buildRagContext formatter emits citation prefix per snippet (REQ-32)
+
+`buildRagContext(results: RagResult[])` SHALL prefix each snippet with `[{documentName}#{sectionPath ?? `chunk ${chunkIndex}`}]` on its own line, then the snippet content. This ensures the REQ-25 bypass path (which returns `buildRagContext` text directly without LLM rewriting) still contains verifiable citation tokens.
+
+Rationale: α-sentinel coherence — both paths emit citations.
+
+#### Scenario: SCN-32.1 — Bypass path output contains citation token per result
+
+- GIVEN three RagResults with distinct documentNames
+- WHEN `buildRagContext(results)` is called
+- THEN output contains three lines matching regex `^\[[^#\n]+#[^\]\n]+\]` (one per result)
+
+#### Scenario: SCN-32.2 — α-sentinel: chat output regex passes on both paths
+
+- GIVEN an integration test renders both bypass-path output AND LLM-loop output
+- THEN both contain at least one citation token matching `/Según \*[^*]+\*, sección /` OR `/\[[^#]+#[^\]]+\]/`
+
+---
+
+### Requirement: Chunker applies detector cascade in fixed order (REQ-33)
+
+The chunker SHALL apply detectors in this order, first-match-wins per content line:
+1. Markdown headers: `^#+\s+(.+)$`
+2. Numbered codes: `^\d+(\.\d+)*\s+[A-ZÁÉÍÓÚÑ]` — captures full code+title as section leaf
+3. All-caps short lines: line length ≤60 AND `^[A-ZÁÉÍÓÚÑ0-9\s.\-]+$` AND ≥3 uppercase letters
+4. Fallback: word-based splitter (500 token chunks, 50 token overlap) — current behavior preserved
+
+Rationale: detector ordering resolves header-vs-numbered-code conflicts deterministically (proposal Risk: ordering).
+
+#### Scenario: SCN-33.1 — Markdown header wins over numbered code when both match
+
+- GIVEN a line `# 1.01 ACTIVO` (matches both #1 and #2)
+- WHEN the chunker processes it
+- THEN it is classified as a markdown header (detector 1), not numbered code
+
+#### Scenario: SCN-33.2 — Numbered code captured as sectionPath leaf
+
+- GIVEN a line `1.01.05 IVA Crédito Fiscal`
+- WHEN chunker emits the containing chunk
+- THEN `chunk.sectionPath` ends with `"1.01.05 IVA Crédito Fiscal"`
+
+#### Scenario: SCN-33.3 — All-caps detector fires on short uppercase lines
+
+- GIVEN a line `ACTIVO CIRCULANTE` (length ≤60, all caps)
+- WHEN no markdown/numbered match
+- THEN it is classified as a section title
+
+#### Scenario: SCN-33.4 — Fallback word-split on unstructured text
+
+- GIVEN a 2000-word paragraph with no detectable structure
+- WHEN chunker runs
+- THEN output uses word-based 500/50 split AND every chunk has `sectionPath === null`
+
+---
+
+### Requirement: Chunk emits { content, sectionPath? } shape (REQ-34)
+
+The chunker SHALL return an array of `{ content: string, sectionPath?: string }` (sectionPath omitted or null when no detector matched the parent context). The persistence layer SHALL write `sectionPath` (or NULL) into `DocumentChunk.sectionPath`.
+
+#### Scenario: SCN-34.1 — Shape contract
+
+- GIVEN any chunker output
+- THEN every element has `content: string` AND (`sectionPath: string` OR no sectionPath key OR `sectionPath: null`)
+
+---
+
+### Requirement: DocumentChunk schema adds nullable sectionPath column (REQ-35)
+
+The `DocumentChunk` Prisma model SHALL add `sectionPath String?` (nullable, max 512 chars). Existing rows MUST retain NULL — migration M1 is additive only (no backfill, no NOT NULL constraint).
+
+#### Scenario: SCN-35.1 — Migration is additive
+
+- GIVEN production DB with N existing DocumentChunk rows
+- WHEN M1 migration runs
+- THEN N rows still exist, all with `sectionPath = NULL`
+- AND no other column is modified
+
+---
+
+### Requirement: Numbered-code detector regex locked (REQ-36)
+
+The numbered-code detector SHALL use the regex `^\d+(\.\d+)*\s+[A-ZÁÉÍÓÚÑ]` (multiline mode). The capture group SHALL include the full code AND the rest of the line up to `\n` as the sectionPath leaf.
+
+Rationale: locked per `[[textual_rule_verification]]` — accounting plan codes (`1.01.05`, `2.1.3.07`) MUST be detected reliably.
+
+#### Scenario: SCN-36.1 — Regex matches accounting plan codes with Spanish accents
+
+- GIVEN inputs `1.01.05 IVA Crédito`, `2 PASIVO`, `3.1.2 Ñandúes`
+- THEN all three match the regex
+- AND `1.01.05foo` (no space) does NOT match
+- AND `1.01.05 lowercase` does NOT match (requires uppercase first letter)
+
+---
+
+### Requirement: DocumentsService.upload extracts DOCX via mammoth (REQ-37)
+
+`DocumentsService.upload` SHALL extract text from DOCX files (MIME `application/vnd.openxmlformats-officedocument.wordprocessingml.document`) using `mammoth` (markdown output) and populate `Document.extractedContent` before RAG indexing fires.
+
+#### Scenario: SCN-37.1 — DOCX upload populates extractedContent
+
+- GIVEN a valid `.docx` file uploaded
+- WHEN `upload` completes
+- THEN `Document.extractedContent` contains the mammoth markdown output
+- AND RAG indexing receives the markdown text
+
+---
+
+### Requirement: DocumentsService.upload extracts XLSX via exceljs flattened per sheet (REQ-38)
+
+`DocumentsService.upload` SHALL extract text from XLSX files (MIME `application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`) using `exceljs` (already installed). Each sheet SHALL be flattened to `=== {sheetName} ===\n{rows joined by \t per row + \n between rows}` and all sheets concatenated by `\n\n` into `Document.extractedContent`.
+
+Rationale: tab+newline format keeps the chunker happy AND preserves row structure for citations.
+
+#### Scenario: SCN-38.1 — Multi-sheet XLSX flattens with sheet headers
+
+- GIVEN an XLSX with sheets "Cuentas" and "Saldos"
+- WHEN `upload` completes
+- THEN `extractedContent` contains `=== Cuentas ===` AND `=== Saldos ===`
+- AND rows of each sheet appear between their headers
+
+---
+
+### Requirement: Extractor failure throws ValidationError + saga rollback (REQ-39)
+
+When DOCX or XLSX parsing fails, `DocumentsService.upload` SHALL throw `ValidationError("No se pudo procesar el archivo")` and trigger the existing saga rollback (same pattern as PDF parse failure today). The Document row, file blob, and any partial chunks SHALL be removed.
+
+#### Scenario: SCN-39.1 — Corrupt DOCX triggers rollback
+
+- GIVEN a corrupted `.docx` (mammoth throws)
+- WHEN `upload` runs
+- THEN ValidationError is thrown with the prescribed Spanish message
+- AND no Document row remains
+- AND no DocumentChunk rows remain
+- AND no file blob remains
+
+---
+
+### Requirement: Tag model + unique (organizationId, slug) (REQ-40)
+
+The Prisma schema SHALL add a `Tag` model:
+```
+Tag {
+  id String @id
+  organizationId String
+  name String
+  slug String
+  color String?
+  createdAt DateTime
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+```
+
+Rationale: org-canonical tags; slug uniqueness scoped per-org prevents cross-org collisions (proposal Risk mitigated).
+
+#### Scenario: SCN-40.1 — Duplicate slug within same org rejected
+
+- GIVEN Tag `{ organizationId: 'O1', slug: 'rrhh' }` exists
+- WHEN inserting `{ organizationId: 'O1', slug: 'rrhh', name: 'RRHH Bis' }`
+- THEN Prisma throws unique constraint violation
+
+#### Scenario: SCN-40.2 — Same slug allowed across different orgs
+
+- GIVEN Tag `{ organizationId: 'O1', slug: 'rrhh' }` exists
+- WHEN inserting `{ organizationId: 'O2', slug: 'rrhh' }`
+- THEN insert succeeds
+
+---
+
+### Requirement: DocumentTag M:N join with cascade delete (REQ-41)
+
+The Prisma schema SHALL add `DocumentTag { documentId, tagId, @@id([documentId, tagId]) }` with `onDelete: Cascade` on the Document FK (deleting a Document removes its DocumentTag rows). Cascade behavior on Tag deletion is OUT OF SCOPE for this delta (tag CRUD page deferred).
+
+#### Scenario: SCN-41.1 — Deleting Document cascades to DocumentTag
+
+- GIVEN Document D with 3 tags
+- WHEN D is deleted
+- THEN the 3 DocumentTag rows are removed
+- AND the 3 Tag rows still exist
+
+---
+
+### Requirement: searchDocumentsTool input schema accepts tags?: string[] (REQ-42)
+
+The `searchDocumentsTool` Zod input schema SHALL extend to `{ query: z.string(), tags?: z.array(z.string()).optional() }` where `tags` is an array of slugs.
+
+#### Scenario: SCN-42.1 — Tool accepts tags array
+
+- GIVEN `searchDocumentsTool.parse({ query: 'iva', tags: ['contable', 'fiscal'] })`
+- THEN parse succeeds
+- AND the parsed object has `tags: ['contable', 'fiscal']`
+
+#### Scenario: SCN-42.2 — Tool accepts query-only (tags optional)
+
+- GIVEN `searchDocumentsTool.parse({ query: 'iva' })`
+- THEN parse succeeds with `tags: undefined`
+
+---
+
+### Requirement: RagPort.search signature accepts optional tags with AND-semantics (REQ-43)
+
+`RagPort.search(query, scopes, tags?: string[])` SHALL extend the contract: when `tags` is non-empty, results SHALL include ONLY chunks whose parent Document has ALL provided tag slugs (AND-semantics, not OR — overrides the proposal's casual "OR" mention; AND is more useful for narrowing). Scope is the same organization that searchDocuments already filters by.
+
+Rationale: AND-semantics matches user mental model ("contratos contables" = both tags), surfaced explicitly per `[[invariant_collision_elevation]]` as a refinement of the proposal's "OR-semantics" wording.
+
+#### Scenario: SCN-43.1 — No tags = all org docs (back-compat)
+
+- GIVEN `tags` is undefined or empty
+- THEN search returns the same results as today (org-scoped)
+
+#### Scenario: SCN-43.2 — Single tag filters to docs with that tag
+
+- GIVEN docs D1 (tags: [a]), D2 (tags: [a,b]), D3 (tags: [b])
+- WHEN `search(q, scope, ['a'])`
+- THEN results include chunks from D1 AND D2; NOT D3
+
+#### Scenario: SCN-43.3 — Multiple tags require ALL (AND)
+
+- GIVEN D1 (tags: [a]), D2 (tags: [a,b]), D3 (tags: [a,b,c])
+- WHEN `search(q, scope, ['a','b'])`
+- THEN results include chunks from D2 AND D3; NOT D1
+
+---
+
+### Requirement: Tag slug derived server-side from name (REQ-44)
+
+The tag creation flow SHALL derive `slug` server-side from `name` using slugify (lowercase, dashes for whitespace, NFD diacritic strip). The client SHALL NOT send `slug` — if present in the request body, it SHALL be ignored.
+
+Rationale: prevents client drift / inconsistent slugs; locked policy.
+
+#### Scenario: SCN-44.1 — Name with accents produces clean slug
+
+- GIVEN name `"Contabilidad Avanzada"`
+- WHEN tag is created
+- THEN `slug === "contabilidad-avanzada"`
+
+#### Scenario: SCN-44.2 — Client-provided slug ignored
+
+- GIVEN request `{ name: "RRHH", slug: "evil-slug" }`
+- WHEN tag is created
+- THEN persisted `slug === "rrhh"` (NOT `"evil-slug"`)
+
+---
+
+### Requirement: DocumentUploadDialog renders tag MultiSelect with create-inline (REQ-45)
+
+`DocumentUploadDialog` SHALL render a tag MultiSelect that:
+1. Fetches existing org tags from `GET /api/organizations/[orgSlug]/tags`
+2. Allows selecting any number of existing tags
+3. Provides an inline "create new" affordance that calls `POST /api/organizations/[orgSlug]/tags` and then auto-selects the new tag
+4. Persists selected tag IDs alongside the document on upload submit
+
+#### Scenario: SCN-45.1 — Selected tags persist on upload
+
+- GIVEN user opens upload dialog, selects 2 existing tags + creates 1 new tag
+- WHEN user submits
+- THEN Document is created with 3 DocumentTag rows
+
+---
+
+### Requirement: Tag CRUD endpoints RBAC-gated to upload-capable roles (REQ-46)
+
+`GET /api/organizations/[orgSlug]/tags` SHALL be accessible to any org member. `POST /api/organizations/[orgSlug]/tags` SHALL be RBAC-gated to roles allowed to upload documents in any scope (currently admin + owner, mirroring document upload RBAC).
+
+#### Scenario: SCN-46.1 — Read-only role can list but not create
+
+- GIVEN user with `viewer` role
+- WHEN they call POST /tags
+- THEN response is 403
+
+#### Scenario: SCN-46.2 — Admin can create
+
+- GIVEN user with `admin` role
+- WHEN they call POST /tags with valid body
+- THEN response is 201 with the created tag
+
+---
+
+### Requirement: Reindex endpoint atomically replaces chunks (REQ-47)
+
+`POST /api/documents/[id]/reindex` SHALL: (a) re-extract content from the stored file blob if present (else use `Document.extractedContent`); (b) re-chunk via current chunker; (c) re-embed via current EmbeddingsPort; (d) replace existing chunks atomically via DB transaction (DELETE existing DocumentChunk rows for this Document, then INSERT new ones). On any failure the transaction SHALL rollback and the previous chunks SHALL remain intact.
+
+Rationale: full delete + re-embed is simpler than diff-by-hash (proposal anti-scope locked).
+
+#### Scenario: SCN-47.1 — Successful reindex replaces chunks atomically
+
+- GIVEN Document D with 10 existing chunks
+- WHEN reindex succeeds (new chunker emits 12 chunks)
+- THEN D has exactly 12 chunks AND none of the original 10 chunk IDs survive
+
+#### Scenario: SCN-47.2 — Failure mid-reindex rolls back
+
+- GIVEN Document D with 10 existing chunks
+- WHEN embedding step throws after DELETE phase
+- THEN transaction rolls back; D still has its original 10 chunks
+
+---
+
+### Requirement: Per-organization reindex concurrency lock + 409 on conflict (REQ-48)
+
+An in-memory `Map<organizationId, Promise<void>>` SHALL prevent concurrent reindex calls within the same org. When a reindex is in-flight for org O and another reindex request arrives for any document in O, the second request SHALL return `409 Conflict` with body `{ error: "Reindexación en curso para esta organización" }`. The lock SHALL release when the in-flight reindex resolves OR rejects.
+
+Rationale: prevents thrashing pgvector + embeddings rate limits; per-org scope (not per-doc) because embeddings cost is org-shared.
+
+#### Scenario: SCN-48.1 — Second concurrent reindex returns 409
+
+- GIVEN reindex of doc D1 (org O) is in flight
+- WHEN reindex of doc D2 (same org O) is requested
+- THEN response is 409 with the prescribed Spanish error
+- AND D2's existing chunks are untouched
+
+#### Scenario: SCN-48.2 — Different org allowed in parallel
+
+- GIVEN reindex of doc D1 (org O1) is in flight
+- WHEN reindex of doc D3 (org O2) is requested
+- THEN both proceed in parallel
+- AND both complete normally
+
+#### Scenario: SCN-48.3 — Lock releases on failure
+
+- GIVEN reindex of D1 (org O) fails mid-flight
+- WHEN a new reindex of D1 is requested
+- THEN it proceeds (not blocked by stale lock)
+
+---
+
+### Requirement: DocumentCard renders Re-indexar button RBAC-gated (REQ-49)
+
+`DocumentCard` SHALL render a "Re-indexar" button visible only to roles allowed to delete documents (mirrors RBAC for destructive ops). Clicking opens a `ConfirmDialog` showing: (a) current chunk count, (b) estimated ETA based on chunk count × avg embedding latency, (c) cost warning copy. Confirmation POSTs to the reindex endpoint.
+
+#### Scenario: SCN-49.1 — Viewer role does NOT see the button
+
+- GIVEN user with `viewer` role views DocumentCard
+- THEN no Re-indexar button is rendered
+
+#### Scenario: SCN-49.2 — Confirm dialog shows chunk count
+
+- GIVEN Document D has 42 chunks
+- WHEN admin clicks Re-indexar
+- THEN ConfirmDialog body contains "42" (the chunk count)
+
+Canonicalized from change `ai-agent-rag-polish` (archived 2026-05-17, baseline `4d10cf68` → final `7dd58751`). Engram references: proposal `#2789`, spec `#2790`, design `#2791`, tasks `#2792`, apply-progress `#2793`, verify-report `#2794`, archive-report `sdd/ai-agent-rag-polish/archive-report`.
+
+---
+
 ## Notes
 
 - **Runtime alias gotcha**: `modules/ai-agent/domain/tools/surfaces/index.ts` uses the RELATIVE path `../../../../permissions/domain/permissions.ts` instead of the `@/modules/permissions/...` alias. Reason: the `c1-application-shape.poc-ai-agent-hex` smoke test loads `agent.service.ts` via CommonJS `require()`, which bypasses the Vitest alias resolver in the dynamic-import chain. JSDoc at the import site (lines 1-6 of `surfaces/index.ts`) is the durable defense against well-meaning "fix the path back to alias" PRs. Type-only `@/` imports elsewhere are erased by the TS compiler and unaffected.
