@@ -146,6 +146,25 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
 
 /**
  * Obtiene las definiciones de herramientas disponibles para un rol dado.
+ *
+ * @deprecated Use `getToolsForSurface` from
+ *   `modules/ai-agent/domain/tools/surfaces` instead. After
+ *   `agent-surface-separation` (#2657–#2740), the canonical tool
+ *   resolver narrows a surface bundle by `PERMISSIONS_READ` /
+ *   `PERMISSIONS_WRITE` — the permissions matrix is the single source
+ *   of truth. `getToolsForRole`'s ad-hoc role→tool sets duplicated
+ *   that matrix and are no longer consulted by either chat or
+ *   journal-entry-ai modes.
+ *
+ * Retained because: (1) the application barrel `agent.tools.ts`
+ * re-exports it (removing without a barrel audit widens blast radius);
+ * (2) no internal caller remains after E2 (verified via grep at
+ * design time, D7.2). Scheduled removal: a follow-up cleanup SDD
+ * with its own RED ("no references remain") + GREEN (delete +
+ * un-export from barrel).
+ *
+ * Migration target:
+ *   getToolsForSurface({ surface, role })  // from "../surfaces"
  */
 export function getToolsForRole(role: Role): Tool[] {
   switch (role) {
