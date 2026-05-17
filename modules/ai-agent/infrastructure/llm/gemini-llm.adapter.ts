@@ -1,8 +1,10 @@
 import "server-only";
 import {
   GoogleGenerativeAI,
+  type Content,
   type FunctionCall,
   type FunctionDeclaration,
+  type Part,
 } from "@google/generative-ai";
 import { z } from "zod";
 import { logStructured } from "@/lib/logging/structured";
@@ -14,6 +16,7 @@ import type {
   Tool,
   ToolCall,
 } from "../../domain/ports/llm-provider.port";
+import type { ConversationTurn } from "../../domain/types/conversation";
 
 const apiKey = process.env.GEMINI_API_KEY;
 if (!apiKey) {
@@ -84,6 +87,65 @@ function fromGeminiCalls(calls: FunctionCall[] | undefined): ToolCall[] {
   }));
 }
 
+/**
+ * Translate a port-neutral `ConversationTurn[]` into the Gemini SDK's
+ * `Content[]` shape (REQ-22). Three quirks worth keeping in mind:
+ *
+ *  1. `tool_result` turns MUST be wrapped in a `Content` with `role: "user"`
+ *     (Gemini SDK contract — see
+ *     `node_modules/@google/generative-ai/dist/generative-ai.d.ts`
+ *     `FunctionResponsePart`).
+ *  2. `FunctionResponse.response` is typed `object` — primitives, `null`, and
+ *     non-object values are wrapped as `{ value: <raw> }` to satisfy the SDK
+ *     without losing the underlying value. Error envelopes from the loop
+ *     already arrive as `{ error: msg }` and pass through unchanged.
+ *  3. A `ModelTurn` may carry text, tool calls, or both. We emit parts in the
+ *     same order: text first (when non-empty), then one `functionCall` part
+ *     per `ToolCall`.
+ */
+function wrapForFunctionResponse(result: unknown): object {
+  if (result !== null && typeof result === "object" && !Array.isArray(result)) {
+    return result;
+  }
+  return { value: result };
+}
+
+function mapTurnsToGeminiContents(
+  history: readonly ConversationTurn[],
+): Content[] {
+  return history.map((turn): Content => {
+    switch (turn.kind) {
+      case "user":
+        return { role: "user", parts: [{ text: turn.content }] };
+      case "model": {
+        const parts: Part[] = [];
+        if (turn.content) parts.push({ text: turn.content });
+        for (const call of turn.toolCalls ?? []) {
+          parts.push({
+            functionCall: {
+              name: call.name,
+              args: (call.input ?? {}) as object,
+            },
+          });
+        }
+        return { role: "model", parts };
+      }
+      case "tool_result":
+        return {
+          role: "user",
+          parts: [
+            {
+              functionResponse: {
+                name: turn.name,
+                response: wrapForFunctionResponse(turn.result),
+              },
+            },
+          ],
+        };
+    }
+  });
+}
+
 type GeminiUsage = {
   promptTokenCount?: number;
   candidatesTokenCount?: number;
@@ -115,6 +177,7 @@ export class GeminiLLMAdapter implements LLMProviderPort {
     systemPrompt,
     userMessage,
     tools,
+    conversationHistory,
   }: LLMQuery): Promise<LLMResponse> {
     const model = genAI.getGenerativeModel({
       model: MODEL_ID,
@@ -125,7 +188,19 @@ export class GeminiLLMAdapter implements LLMProviderPort {
           : undefined,
     });
 
-    const result = await model.generateContent(userMessage);
+    // Dual-mode dispatch (REQ-22 + locked design contract):
+    //   - history present + non-empty → IGNORE userMessage and build Content[]
+    //     from the history (caller MUST push the new user msg as the trailing
+    //     UserTurn — invariant enforced in chat.ts loop).
+    //   - history absent or empty → preserve the pre-REQ-21 single-shot path:
+    //     pass the bare userMessage string. Backward compat for existing
+    //     callers (analyzeDocument, journal-entry-ai, etc.).
+    const result =
+      conversationHistory && conversationHistory.length > 0
+        ? await model.generateContent({
+            contents: mapTurnsToGeminiContents(conversationHistory),
+          })
+        : await model.generateContent(userMessage);
     const response = result.response;
 
     // response.text() throws ONLY when the candidate has bad finishReason
