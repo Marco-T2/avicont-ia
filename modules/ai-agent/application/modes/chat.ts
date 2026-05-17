@@ -399,12 +399,23 @@ function buildSystemPrompt(
     );
   }
 
+  // Tool-result formatting instruction (REQ-26). EXACT Spanish text locked
+  // in design D-26 per [[textual_rule_verification]] +
+  // [[engram_textual_rule_verification]] — change requires a new SDD with a
+  // RED test mirroring the new text. Placed AFTER moduleHintLines and BEFORE
+  // the DATOS block so all chat-mode invocations carry it.
+  const formatLines = [
+    "",
+    "Cuando recibas resultados de herramientas, presenta los datos al usuario en español natural y conciso.",
+  ];
+
   return [
     "Asistente Avicont.",
     roleDescriptions[label],
     `Hoy: ${todayISO}`,
     ...contextHintsLines,
     ...moduleHintLines,
+    ...formatLines,
     "",
     "DATOS:",
     context,
