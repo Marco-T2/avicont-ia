@@ -28,6 +28,9 @@ yarn.lock
 .DS_Store
 *.pem
 
+# Office (Word/Excel/PowerPoint) lock files
+~$*
+
 # debug
 npm-debug.log*
 yarn-debug.log*

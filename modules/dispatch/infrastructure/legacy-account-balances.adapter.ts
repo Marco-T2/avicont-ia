@@ -4,8 +4,9 @@ import { AccountBalancesService } from "@/modules/account-balances/application/a
 import type { DispatchAccountBalancesPort } from "../domain/ports/dispatch-account-balances.port";
 
 /**
- * Legacy adapter: wraps AccountBalancesService for dispatch balance operations.
- * TEMPORARY bridge until account-balances migrates to hex.
+ * Adapter: bridges DispatchAccountBalancesPort (journalEntryId) →
+ * AccountBalancesService (tx + entity). Opens a Prisma transaction,
+ * loads the journal entry with required relations, delegates to the service.
  */
 export class LegacyAccountBalancesAdapter
   implements DispatchAccountBalancesPort

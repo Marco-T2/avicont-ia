@@ -10,8 +10,9 @@ import type {
 } from "../domain/ports/dispatch-journal-entry-factory.port";
 
 /**
- * Legacy adapter: wraps AutoEntryGenerator for dispatch journal generation.
- * TEMPORARY bridge until accounting migrates to hex.
+ * Adapter: bridges DispatchJournalEntryFactoryPort (template) →
+ * AutoEntryGenerator (tx + repos). Wires accounts + voucher-type repos at
+ * construction; opens a Prisma transaction and delegates per call.
  */
 export class LegacyJournalEntryFactoryAdapter
   implements DispatchJournalEntryFactoryPort
