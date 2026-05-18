@@ -34,7 +34,8 @@ const buildEntity = () =>
     barnNumber: 1,
     initialCount: 1000,
     startDate: new Date("2026-04-01"),
-    farmId: "farm-1",
+    farmName: "Pocona",
+    memberId: "member-1",
   });
 
 const buildRow = (override: Record<string, unknown> = {}) => ({
@@ -46,7 +47,9 @@ const buildRow = (override: Record<string, unknown> = {}) => ({
   startDate: new Date("2026-04-01"),
   endDate: null,
   status: "ACTIVE",
-  farmId: "farm-1",
+  farmId: "legacy-farm-1",
+  farmName: "Pocona",
+  memberId: "member-1",
   createdAt: new Date("2026-04-01"),
   updatedAt: new Date("2026-04-15"),
   ...override,
@@ -83,7 +86,7 @@ const buildRowWithRelations = (override: Record<string, unknown> = {}) => ({
   ...override,
 });
 
-describe("PrismaLotRepository", () => {
+describe("PrismaLotRepository (post-collapse)", () => {
   describe("findAll", () => {
     it("scopes by organizationId and orders by createdAt desc", async () => {
       const findMany = vi.fn().mockResolvedValueOnce([buildRow()]);
@@ -124,15 +127,15 @@ describe("PrismaLotRepository", () => {
     });
   });
 
-  describe("findByFarm", () => {
-    it("scopes by farmId+organizationId and orders by createdAt desc", async () => {
+  describe("findByFarm (legacy D-1 bridge, dropped in C4)", () => {
+    it("scopes by legacy farmId+organizationId and orders by createdAt desc", async () => {
       const findMany = vi.fn().mockResolvedValueOnce([buildRow()]);
       const repo = new PrismaLotRepository(dbWith({ findMany }));
 
-      await repo.findByFarm("org-1", "farm-1");
+      await repo.findByFarm("org-1", "legacy-farm-1");
 
       expect(findMany).toHaveBeenCalledWith({
-        where: { organizationId: "org-1", farmId: "farm-1" },
+        where: { organizationId: "org-1", farmId: "legacy-farm-1" },
         orderBy: { createdAt: "desc" },
       });
     });
@@ -208,7 +211,7 @@ describe("PrismaLotRepository", () => {
   });
 
   describe("save", () => {
-    it("creates with the persistence payload of the entity", async () => {
+    it("creates with persistence payload (farmName + memberId + legacy farmId sentinel)", async () => {
       const create = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ create }));
 
@@ -221,6 +224,10 @@ describe("PrismaLotRepository", () => {
       expect(callArg.data.name).toBe("Lote A");
       expect(callArg.data.barnNumber).toBe(1);
       expect(callArg.data.initialCount).toBe(1000);
+      expect(callArg.data.farmName).toBe("Pocona");
+      expect(callArg.data.memberId).toBe("member-1");
+      // D-1 bridge: legacy farmId column is still written
+      expect(typeof callArg.data.farmId).toBe("string");
     });
   });
 
@@ -301,10 +308,10 @@ describe("PrismaLotRepository", () => {
   });
 
   describe("update", () => {
-    it("scopes update by id+organizationId with status transition ACTIVE→CLOSED+endDate (domain INACTIVE → Prisma CLOSED via mapper, D-1 bridge)", async () => {
+    it("scopes update by id+org with status transition + writes farmName; omits legacy farmId (immutable post-create)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ update }));
-      const entity = buildEntity().close(new Date("2026-05-01"));
+      const entity = buildEntity().deactivate(new Date("2026-05-01"));
 
       await repo.update(entity);
 
@@ -313,12 +320,15 @@ describe("PrismaLotRepository", () => {
       // domain status is "INACTIVE"; mapper translates to Prisma "CLOSED"
       expect(callArg.data.status).toBe("CLOSED");
       expect(callArg.data.endDate).toBeInstanceOf(Date);
+      expect(callArg.data.farmName).toBe("Pocona");
+      // legacy farmId NOT in update payload (immutable post-create)
+      expect("farmId" in callArg.data).toBe(false);
     });
 
     it("preserves other fields (name+barnNumber+initialCount unchanged)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ update }));
-      const entity = buildEntity().close(new Date("2026-05-01"));
+      const entity = buildEntity().deactivate(new Date("2026-05-01"));
 
       await repo.update(entity);
 

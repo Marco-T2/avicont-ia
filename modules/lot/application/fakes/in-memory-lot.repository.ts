@@ -52,8 +52,14 @@ export class InMemoryLotRepository implements LotRepository {
     organizationId: string,
     farmId: string,
   ): Promise<Lot[]> {
+    // D-1 bridge: keeps the legacy filter live until C4 drops the
+    // method from the LotRepository interface. Reads the entity's
+    // internal `_legacyFarmId` accessor (NOT part of the public
+    // domain surface) so the in-memory fake mirrors the Prisma
+    // adapter's row-level filter.
     return [...this.store.values()].filter(
-      (l) => l.organizationId === organizationId && l.farmId === farmId,
+      (l) =>
+        l.organizationId === organizationId && l._legacyFarmId === farmId,
     );
   }
 

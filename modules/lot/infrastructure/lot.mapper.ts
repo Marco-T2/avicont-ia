@@ -46,7 +46,17 @@ export function toDomain(row: ChickenLot): Lot {
     startDate: row.startDate,
     endDate: row.endDate,
     status: parseLotStatus(dbToDomainStatus(row.status)),
+    // D-1 bridge: domain treats farmId as legacy/internal. Carried
+    // through the round-trip so existing rows keep their column
+    // value; new rows get a sentinel from Lot.create.
     farmId: row.farmId,
+    // REQ-200: farmName is the canonical place label. Until the
+    // destructive backfill in F5, historical rows may have null —
+    // surface as empty string so downstream consumers never branch.
+    farmName: row.farmName ?? "",
+    // REQ-201: memberId is the canonical owner. Historical rows
+    // may have null until F5 backfill; sentinel to empty string.
+    memberId: row.memberId ?? "",
     organizationId: row.organizationId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -63,7 +73,11 @@ export function toPersistence(entity: Lot) {
     startDate: s.startDate,
     endDate: s.endDate,
     status: domainToDbStatus(s.status),
-    farmId: s.farmId,
+    // D-1 bridge: write the legacy column from the entity's internal
+    // sentinel (or the original DB value for round-tripped rows).
+    farmId: entity._legacyFarmId,
+    farmName: s.farmName,
+    memberId: s.memberId,
     organizationId: s.organizationId,
     createdAt: s.createdAt,
     updatedAt: s.updatedAt,

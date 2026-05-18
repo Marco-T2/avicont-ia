@@ -9,6 +9,7 @@ export {
 
 export {
   createLotSchema,
+  deactivateLotSchema,
   closeLotSchema,
   updateLotSchema,
 } from "./validation";
@@ -17,6 +18,7 @@ export { Lot } from "../domain/lot.entity";
 export type {
   LotProps,
   CreateLotInput,
+  DeactivateLotInput,
   CloseLotInput,
   UpdateLotInput,
 } from "../domain/lot.entity";
@@ -38,6 +40,8 @@ export {
   LotService,
   type CreateLotServiceInput,
   type UpdateLotServiceInput,
+  type DeactivateLotServiceInput,
+  type CloseLotServiceInput,
 } from "../application/lot.service";
 export type {
   LotInquiryPort,

@@ -10,7 +10,8 @@ import {
 import { NotFoundError } from "@/features/shared/errors";
 
 const ORG = "org-1";
-const FARM = "farm-1";
+const MEMBER = "member-1";
+const FARM_NAME = "Pocona";
 
 const baseInput = (
   override: Partial<{
@@ -18,17 +19,19 @@ const baseInput = (
     barnNumber: number;
     initialCount: number;
     startDate: Date;
-    farmId: string;
+    farmName: string;
+    memberId: string;
   }> = {},
 ) => ({
   name: override.name ?? "Lote 001",
   barnNumber: override.barnNumber ?? 1,
   initialCount: override.initialCount ?? 1000,
   startDate: override.startDate ?? new Date("2026-01-01"),
-  farmId: override.farmId ?? FARM,
+  farmName: override.farmName ?? FARM_NAME,
+  memberId: override.memberId ?? MEMBER,
 });
 
-describe("LotService", () => {
+describe("LotService (post-collapse REQ-200/201/203/204)", () => {
   let repo: InMemoryLotRepository;
   let svc: LotService;
 
@@ -53,26 +56,6 @@ describe("LotService", () => {
     });
   });
 
-  describe("listByFarm", () => {
-    // α30
-    it("returns lots for the given farm only", async () => {
-      const l = await svc.create(ORG, baseInput());
-      await svc.create(ORG, {
-        ...baseInput({ name: "Lote 002" }),
-        farmId: "farm-2",
-      });
-      const items = await svc.listByFarm(ORG, FARM);
-      expect(items).toHaveLength(1);
-      expect(items[0]?.id).toBe(l.id);
-    });
-
-    // α31
-    it("returns empty when no lots in farm", async () => {
-      const items = await svc.listByFarm(ORG, FARM);
-      expect(items).toEqual([]);
-    });
-  });
-
   describe("getById", () => {
     // α32
     it("returns the lot when found", async () => {
@@ -89,7 +72,7 @@ describe("LotService", () => {
 
   describe("create", () => {
     // α34
-    it("returns ACTIVE Lot with all fields", async () => {
+    it("returns ACTIVE Lot with farmName + memberId fields", async () => {
       const l = await svc.create(
         ORG,
         baseInput({ name: "Nuevo", initialCount: 500 }),
@@ -100,15 +83,16 @@ describe("LotService", () => {
       expect(l.initialCount).toBe(500);
       expect(l.endDate).toBeNull();
       expect(l.organizationId).toBe(ORG);
-      expect(l.farmId).toBe(FARM);
+      expect(l.farmName).toBe(FARM_NAME);
+      expect(l.memberId).toBe(MEMBER);
     });
   });
 
-  describe("close", () => {
+  describe("deactivate", () => {
     // α35
     it("throws NotFoundError when lot missing", async () => {
       await expect(
-        svc.close(ORG, "missing", { endDate: new Date() }),
+        svc.deactivate(ORG, "missing", { endDate: new Date() }),
       ).rejects.toThrow(NotFoundError);
     });
 
@@ -116,35 +100,38 @@ describe("LotService", () => {
     it("transitions ACTIVE → INACTIVE with endDate", async () => {
       const l = await svc.create(ORG, baseInput());
       const endDate = new Date("2026-06-30");
-      const closed = await svc.close(ORG, l.id, { endDate });
-      expect(closed.status).toBe("INACTIVE");
-      expect(closed.endDate).toEqual(endDate);
+      const inactive = await svc.deactivate(ORG, l.id, { endDate });
+      expect(inactive.status).toBe("INACTIVE");
+      expect(inactive.endDate).toEqual(endDate);
     });
 
     // α37
     it("propagates CannotDeactivateInactiveLot when lot already INACTIVE", async () => {
       const l = await svc.create(ORG, baseInput());
-      await svc.close(ORG, l.id, { endDate: new Date("2026-06-30") });
+      await svc.deactivate(ORG, l.id, { endDate: new Date("2026-06-30") });
       await expect(
-        svc.close(ORG, l.id, { endDate: new Date("2026-07-01") }),
+        svc.deactivate(ORG, l.id, { endDate: new Date("2026-07-01") }),
       ).rejects.toThrow(CannotDeactivateInactiveLot);
     });
   });
 
   describe("update", () => {
     // α41
-    it("persists updated name + barnNumber and returns the new entity", async () => {
+    it("persists updated name + barnNumber + farmName and returns the new entity", async () => {
       const created = await svc.create(ORG, baseInput({ name: "Lote A" }));
 
       const updated = await svc.update(ORG, created.id, {
         name: "Lote A modificado",
         barnNumber: 9,
+        farmName: "Pocona Nueva",
       });
 
       expect(updated.name).toBe("Lote A modificado");
       expect(updated.barnNumber).toBe(9);
+      expect(updated.farmName).toBe("Pocona Nueva");
       const reloaded = await svc.getById(ORG, created.id);
       expect(reloaded.name).toBe("Lote A modificado");
+      expect(reloaded.farmName).toBe("Pocona Nueva");
     });
 
     // α42

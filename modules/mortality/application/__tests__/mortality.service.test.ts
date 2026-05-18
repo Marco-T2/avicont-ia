@@ -25,12 +25,12 @@ class InMemoryLotInquiry implements LotInquiryPort {
 
   async list(
     organizationId: string,
-    filters?: { farmId?: string },
+    filters?: { farmName?: string },
   ): Promise<LotSnapshot[]> {
     return [...this.lots.values()].filter(
       (l) =>
         l.organizationId === organizationId &&
-        (!filters?.farmId || l.farmId === filters.farmId),
+        (!filters?.farmName || l.farmName === filters.farmName),
     );
   }
 
@@ -55,7 +55,8 @@ const lotSnapshot = (
   startDate: override.startDate ?? new Date("2026-01-01"),
   endDate: override.endDate ?? null,
   status: override.status ?? "ACTIVE",
-  farmId: override.farmId ?? "farm-1",
+  farmName: override.farmName ?? "Pocona",
+  memberId: override.memberId ?? "member-1",
   organizationId: override.organizationId ?? ORG,
   createdAt: override.createdAt ?? new Date("2026-01-01"),
   updatedAt: override.updatedAt ?? new Date("2026-01-01"),

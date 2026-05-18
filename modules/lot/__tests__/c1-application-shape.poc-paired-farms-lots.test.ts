@@ -21,13 +21,13 @@ describe("C1 application shape — Lot module (existence-only regex)", () => {
     expect(src).toMatch(/list\(\s*organizationId: string\s*\)/m);
   });
 
-  // α25
-  it("LotService methods listByFarm/getById/create/close/getSummary exist", () => {
+  // α25 — post-collapse REQ-203/D-4: close→deactivate (listByFarm retired in C4)
+  it("LotService methods listByFarm/getById/create/deactivate/getSummary exist", () => {
     const src = readLotFile("application/lot.service.ts");
-    expect(src).toMatch(/async listByFarm\(/m);
+    expect(src).toMatch(/async listByFarm\(/m); // dropped in C4
     expect(src).toMatch(/async getById\(/m);
     expect(src).toMatch(/async create\(/m);
-    expect(src).toMatch(/async close\(/m);
+    expect(src).toMatch(/async deactivate\(/m);
     expect(src).toMatch(/async getSummary\(/m);
   });
 

@@ -576,7 +576,12 @@ async function executeReadTool(
         return {
           ok: true,
           data: await lotInquiry.list(orgId, {
-            farmId: args.farmId as string,
+            // Post-collapse REQ-200: filter key is `farmName` (text)
+            // instead of the retired `farmId` FK. AI agent tool
+            // schema migrates to farmName in F5 T23 — until then we
+            // forward the arg under the new key (callers passing
+            // farmId are no-ops post-C3).
+            farmName: args.farmName as string | undefined,
           }),
         };
       case "getLotSummary":

@@ -28,23 +28,22 @@ describe("C3 presentation shape — Lot module (existence-only regex)", () => {
     expect(src).toMatch(/^export const createLotSchema\s*=\s*z\.object\(/m);
   });
 
-  // α12
-  it("validation.ts exports closeLotSchema (Zod)", () => {
+  // α12 — post-collapse REQ-203/D-4: deactivateLotSchema is the canonical
+  // export; closeLotSchema is a deprecated alias kept for transitional
+  // imports (deletion paired with F5 T29 retirement of these POC tests).
+  it("validation.ts exports deactivateLotSchema (Zod) + closeLotSchema alias", () => {
     const src = readLotFile("presentation/validation.ts");
-    expect(src).toMatch(/^export const closeLotSchema\s*=\s*z\.object\(/m);
+    expect(src).toMatch(/^export const deactivateLotSchema\s*=\s*z\.object\(/m);
+    expect(src).toMatch(/^export const closeLotSchema\s*=\s*deactivateLotSchema\b/m);
   });
 
-  // α13 — REVOKED per ZID-1 (sdd/poc-zod-id-validators-domain-alignment).
-  // Original D5 lock: farmId.cuid() EXACT legacy preservation. Revoked because
-  // domain entities generate UUIDs via crypto.randomUUID(), and .cuid() rejected
-  // those at the presentation boundary causing 400s for UI-created records.
-  // New EXACT lock per ZID-1: farmId.min(1, ...) — format-agnostic.
-  // Original assertion preserved here as historical reference (commented):
-  //   expect(src).toMatch(/farmId:\s*z\.string\(\)\.cuid\(/);  // ← REVOKED
-  it("validation.ts uses farmId.min(1) per ZID-1 (Derived from: D5 lock REVOKED)", () => {
+  // α13 — post-collapse REQ-200: farmId dropped; createLotSchema now
+  // exposes `farmName` (free-text label). Original ZID-1 farmId.min(1)
+  // assertion retired by the SDD retire-farm-collapse-to-lot proposal.
+  it("validation.ts uses farmName (post-collapse REQ-200, supersedes ZID-1 farmId.min)", () => {
     const src = readLotFile("presentation/validation.ts");
-    expect(src).toMatch(/farmId:\s*z\.string\(\)\.min\(1,/);
-    expect(src).not.toMatch(/farmId:\s*z\.string\(\)\.cuid\(/);
+    expect(src).toMatch(/farmName:\s*z\s*\n?\s*\.string\(\)\s*\n?\s*\.min\(1,/);
+    expect(src).not.toMatch(/farmId:\s*z\.string\(/);
   });
 
   // α14
@@ -53,10 +52,11 @@ describe("C3 presentation shape — Lot module (existence-only regex)", () => {
     expect(src).toMatch(/^export\s*\{\s*makeLotService\b[\s\S]*?\}\s*from\s*["']\.\/composition-root["']/m);
   });
 
-  // α15
-  it("server.ts barrel re-exports createLotSchema + closeLotSchema from validation", () => {
+  // α15 — barrel still re-exports closeLotSchema as deprecated alias
+  it("server.ts barrel re-exports createLotSchema + deactivateLotSchema + closeLotSchema from validation", () => {
     const src = readLotFile("presentation/server.ts");
-    expect(src).toMatch(/^export\s*\{\s*createLotSchema\b/m);
+    expect(src).toMatch(/^export\s*\{\s*\n?\s*createLotSchema\b/m);
+    expect(src).toMatch(/\bdeactivateLotSchema\b/);
     expect(src).toMatch(/\bcloseLotSchema\b[\s\S]*?\}\s*from\s*["']\.\/validation["']/m);
   });
 

@@ -1,11 +1,11 @@
 // RBAC-EXCEPTION: Auth-only via requireOrgAccess; farms/lots/expenses/mortality
 // NOT in frozen Resource union. Consistent with existing
-// /expenses/[expenseId] DELETE and prior /lots/[lotId] PATCH (close).
+// /expenses/[expenseId] DELETE and prior /lots/[lotId] PATCH (deactivate).
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
 import {
-  closeLotSchema,
+  deactivateLotSchema,
   updateLotSchema,
 } from "@/modules/lot/presentation/validation";
 
@@ -30,13 +30,14 @@ export async function GET(
 
 /**
  * PATCH dispatches on payload shape (discriminator: presence of
- * `endDate` ↔ close vs `name|barnNumber` ↔ update). Both share the
- * same route because the previous version (close-only) already lived
- * here; keeping a single endpoint avoids client URL churn.
+ * `endDate` ↔ deactivate vs `name|barnNumber|farmName` ↔ update).
+ * Both share the same route because the previous version
+ * (close-only) already lived here; keeping a single endpoint avoids
+ * client URL churn (REQ-203, D-4 step 3/3).
  *
  * Body must satisfy ONE of:
- *  - { endDate } → service.close
- *  - { name?, barnNumber? } (at least one) → service.update
+ *  - { endDate } → service.deactivate
+ *  - { name?, barnNumber?, farmName? } (at least one) → service.update
  */
 export async function PATCH(
   request: Request,
@@ -50,8 +51,8 @@ export async function PATCH(
     const body = await request.json();
 
     if (body && typeof body === "object" && "endDate" in body) {
-      const input = closeLotSchema.parse(body);
-      const lot = await service.close(organizationId, lotId, input);
+      const input = deactivateLotSchema.parse(body);
+      const lot = await service.deactivate(organizationId, lotId, input);
       return Response.json(lot);
     }
 

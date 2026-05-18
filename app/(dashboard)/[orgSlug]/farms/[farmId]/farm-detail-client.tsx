@@ -376,7 +376,9 @@ export default function FarmDetailClient({
                           contextHints={{
                             lotId: lot.id,
                             lotName: lot.name,
-                            farmId: lot.farmId ?? farm.id,
+                            // Post-collapse: lot.farmId dropped — fall back
+                            // to farm.id while /farms UI lives (retired in F4 T22).
+                            farmId: farm.id,
                           }}
                         />
                         {lot.status === "ACTIVE" && (

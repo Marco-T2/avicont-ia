@@ -2,7 +2,7 @@ import { NotFoundError } from "@/features/shared/errors";
 import {
   Lot,
   type CreateLotInput,
-  type CloseLotInput,
+  type DeactivateLotInput,
   type UpdateLotInput,
 } from "../domain/lot.entity";
 import type { LotRepository } from "../domain/lot.repository";
@@ -10,6 +10,9 @@ import { LotNameDuplicate } from "../domain/errors/lot-errors";
 import type { LotSummary } from "../domain/value-objects/lot-summary";
 
 export type CreateLotServiceInput = Omit<CreateLotInput, "organizationId">;
+export type DeactivateLotServiceInput = DeactivateLotInput;
+/** @deprecated Use DeactivateLotServiceInput post-collapse (REQ-203, D-4). */
+export type CloseLotServiceInput = DeactivateLotServiceInput;
 export type UpdateLotServiceInput = UpdateLotInput;
 
 export class LotService {
@@ -19,6 +22,11 @@ export class LotService {
     return this.repo.findAll(organizationId);
   }
 
+  /**
+   * @deprecated Removed in C4 (T7) — UI/AI client-side filter by
+   * `farmName` instead (REQ-205). Kept temporarily to preserve the
+   * paired-commit boundary while the API route still references it.
+   */
   async listByFarm(organizationId: string, farmId: string): Promise<Lot[]> {
     return this.repo.findByFarm(organizationId, farmId);
   }
@@ -38,20 +46,26 @@ export class LotService {
     return lot;
   }
 
-  async close(
+  /**
+   * Deactivates an ACTIVE lot (REQ-203, D-4 step 2/3). Replaces the
+   * legacy `close()` method; semantics identical (transition guard
+   * + persist). Throws NotFoundError if missing, propagates
+   * CannotDeactivateInactiveLot when the lot is already INACTIVE.
+   */
+  async deactivate(
     organizationId: string,
     id: string,
-    input: CloseLotInput,
+    input: DeactivateLotServiceInput,
   ): Promise<Lot> {
     const lot = await this.getById(organizationId, id);
-    const closed = lot.close(input.endDate);
-    await this.repo.update(closed);
-    return closed;
+    const deactivated = lot.deactivate(input.endDate);
+    await this.repo.update(deactivated);
+    return deactivated;
   }
 
   /**
-   * Updates `name` and/or `barnNumber` of a Lot. Other fields are
-   * immutable (INV-04). Throws NotFoundError if missing,
+   * Updates `name`, `barnNumber`, and/or `farmName` of a Lot. Other
+   * fields are immutable (INV-04). Throws NotFoundError if missing,
    * LotCannotUpdateInactive (from entity) if not ACTIVE,
    * LotNameDuplicate if the new name collides with another lot in
    * the same org. Idempotent when the new name equals the current

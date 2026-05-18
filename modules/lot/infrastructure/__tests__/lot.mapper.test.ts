@@ -16,22 +16,24 @@ const row = (override: Partial<ChickenLot> = {}): ChickenLot => ({
   startDate: new Date("2026-04-01"),
   endDate: null,
   status: "ACTIVE",
-  farmId: "farm-1",
-  farmName: null,
-  memberId: null,
+  farmId: "legacy-farm-1",
+  farmName: "Pocona",
+  memberId: "member-1",
   createdAt: new Date("2026-04-01"),
   updatedAt: new Date("2026-04-15"),
   ...override,
 });
 
-describe("lot mapper", () => {
+describe("lot mapper (post-collapse REQ-200/201)", () => {
   describe("toDomain()", () => {
-    it("hydrates a Lot from a ChickenLot Prisma row (name asymmetry mapper)", () => {
+    it("hydrates a Lot with farmName + memberId; legacy farmId preserved internally", () => {
       const l = toDomain(row());
       expect(l).toBeInstanceOf(Lot);
       expect(l.id).toBe("lot-1");
       expect(l.name).toBe("Lote A");
-      expect(l.farmId).toBe("farm-1");
+      expect(l.farmName).toBe("Pocona");
+      expect(l.memberId).toBe("member-1");
+      expect(l._legacyFarmId).toBe("legacy-farm-1");
     });
 
     it("translates Prisma CLOSED|SOLD enum → domain INACTIVE (additive D-1 bridge)", () => {
@@ -61,24 +63,35 @@ describe("lot mapper", () => {
       expect(l.barnNumber).toBe(7);
       expect(l.initialCount).toBe(5000);
     });
+
+    it("hydrates farmName/memberId from null (legacy rows) to empty string sentinel", () => {
+      const l = toDomain(row({ farmName: null, memberId: null }));
+      expect(l.farmName).toBe("");
+      expect(l.memberId).toBe("");
+    });
   });
 
   describe("toPersistence()", () => {
-    it("returns a ChickenLot Prisma payload", () => {
+    it("returns a ChickenLot Prisma payload with farmName + memberId + legacy farmId sentinel", () => {
       const entity = Lot.create({
         organizationId: "org-1",
         name: "Lote A",
         barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
-        farmId: "farm-1",
+        farmName: "Pocona",
+        memberId: "member-1",
       });
       const data = toPersistence(entity);
       expect(data.id).toBe(entity.id);
       expect(data.name).toBe("Lote A");
       expect(data.barnNumber).toBe(1);
       expect(data.initialCount).toBe(1000);
-      expect(data.farmId).toBe("farm-1");
+      expect(data.farmName).toBe("Pocona");
+      expect(data.memberId).toBe("member-1");
+      // D-1 bridge: legacy farmId sentinel for new rows
+      expect(typeof data.farmId).toBe("string");
+      expect(data.farmId.length).toBeGreaterThan(0);
     });
 
     it("translates domain INACTIVE → Prisma CLOSED (additive D-1 bridge); ACTIVE pass-through", () => {
@@ -88,13 +101,14 @@ describe("lot mapper", () => {
         barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
-        farmId: "farm-1",
+        farmName: "Pocona",
+        memberId: "member-1",
       });
       expect(toPersistence(entity).status).toBe("ACTIVE");
-      const closed = entity.close(new Date("2026-05-01"));
+      const inactive = entity.deactivate(new Date("2026-05-01"));
       // domain INACTIVE → Prisma CLOSED (Prisma enum still has CLOSED until F5
       // destructive migration — translation lossy but contract-preserving)
-      expect(toPersistence(closed).status).toBe("CLOSED");
+      expect(toPersistence(inactive).status).toBe("CLOSED");
     });
 
     it("preserves endDate null when ACTIVE", () => {
@@ -104,7 +118,8 @@ describe("lot mapper", () => {
         barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
-        farmId: "farm-1",
+        farmName: "Pocona",
+        memberId: "member-1",
       });
       const data = toPersistence(entity);
       expect(data.endDate).toBeNull();
@@ -117,7 +132,8 @@ describe("lot mapper", () => {
         barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
-        farmId: "farm-1",
+        farmName: "Pocona",
+        memberId: "member-1",
       });
       const data = toPersistence(entity);
       expect(data.createdAt).toBeInstanceOf(Date);
@@ -126,7 +142,7 @@ describe("lot mapper", () => {
   });
 
   describe("roundtrip", () => {
-    it("toPersistence(toDomain(row)) yields equivalent payload for ACTIVE", () => {
+    it("toPersistence(toDomain(row)) yields equivalent payload for ACTIVE (farmName + memberId + legacy farmId)", () => {
       const original = row();
       const entity = toDomain(original);
       const data = toPersistence(entity);
@@ -135,6 +151,9 @@ describe("lot mapper", () => {
       expect(data.barnNumber).toBe(original.barnNumber);
       expect(data.initialCount).toBe(original.initialCount);
       expect(data.status).toBe(original.status);
+      expect(data.farmName).toBe(original.farmName);
+      expect(data.memberId).toBe(original.memberId);
+      expect(data.farmId).toBe(original.farmId);
       expect(data.startDate.getTime()).toBe(original.startDate.getTime());
     });
 

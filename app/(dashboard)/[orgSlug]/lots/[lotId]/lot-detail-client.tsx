@@ -223,7 +223,11 @@ export default function LotDetailClient({
       "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
   };
 
-  const farmId = lot.farmId;
+  // Post-collapse (REQ-200): LotSnapshot no longer carries `farmId`.
+  // The /farms hierarchy is retired in F4 — this back link is
+  // disabled until lot-detail-client gets re-pointed at /lots in F4
+  // (task T20). Keeping the JSX structure stable to minimise diff.
+  const farmId: string | null = null;
 
   return (
     <div className="space-y-6">
@@ -277,7 +281,9 @@ export default function LotDetailClient({
               contextHints={{
                 lotId: lot.id,
                 lotName: lot.name,
-                farmId: lot.farmId,
+                // farmId dropped (REQ-200). farmName retained as the
+                // free-text grouping signal for the AI agent (REQ-205).
+                farmName: lot.farmName,
               }}
             />
           </div>
@@ -542,12 +548,9 @@ export default function LotDetailClient({
         lotId={lot.id}
         lotName={lot.name}
         onDeleted={() => {
-          // Lot is gone — bounce back to the farm page.
-          if (lot.farmId) {
-            router.push(`/${orgSlug}/farms/${lot.farmId}`);
-          } else {
-            router.push(`/${orgSlug}/farms`);
-          }
+          // Lot is gone — bounce back to the org root. The /farms
+          // hierarchy is retired in F4; T20 will retarget to /lots.
+          router.push(`/${orgSlug}/farms`);
         }}
       />
       {editingExpense ? (

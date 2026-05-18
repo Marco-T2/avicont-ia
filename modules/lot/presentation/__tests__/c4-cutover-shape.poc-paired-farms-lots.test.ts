@@ -103,8 +103,10 @@ const IMPORT_MAKE_LOT_SERVICE_HEX_RE =
   /^import\s*\{[^}]*\bmakeLotService\b[^}]*\}\s*from\s*["']@\/modules\/lot\/presentation\/server["']/m;
 const IMPORT_CREATE_LOT_SCHEMA_HEX_RE =
   /^import\s*\{[^}]*\bcreateLotSchema\b[^}]*\}\s*from\s*["']@\/modules\/lot\/presentation\/(server|validation)["']/m;
-const IMPORT_CLOSE_LOT_SCHEMA_HEX_RE =
-  /^import\s*\{[^}]*\bcloseLotSchema\b[^}]*\}\s*from\s*["']@\/modules\/lot\/presentation\/(server|validation)["']/m;
+// Post-collapse REQ-203/D-4: closeLotSchema → deactivateLotSchema
+// (alias kept in validation barrel for transitional imports).
+const IMPORT_DEACTIVATE_LOT_SCHEMA_HEX_RE =
+  /^import\s*\{[^}]*\bdeactivateLotSchema\b[^}]*\}\s*from\s*["']@\/modules\/lot\/presentation\/(server|validation)["']/m;
 const LEGACY_FEATURES_LOTS_IMPORT_RE =
   /from\s+["']@\/features\/lots(?:\/server)?["']/;
 
@@ -128,9 +130,9 @@ describe("POC paired farms+lots C4 — cutover routes API lots hex factory + sch
     expect(source).toMatch(IMPORT_CREATE_LOT_SCHEMA_HEX_RE);
   });
 
-  it("α10: app/api/organizations/[orgSlug]/lots/[lotId]/route.ts imports `closeLotSchema` from `@/modules/lot/presentation/{server|validation}` (PATCH close body parse)", () => {
+  it("α10: app/api/organizations/[orgSlug]/lots/[lotId]/route.ts imports `deactivateLotSchema` from `@/modules/lot/presentation/{server|validation}` (PATCH deactivate body parse, post-collapse REQ-203/D-4)", () => {
     const source = fs.readFileSync(LOTS_BY_ID_ROUTE, "utf8");
-    expect(source).toMatch(IMPORT_CLOSE_LOT_SCHEMA_HEX_RE);
+    expect(source).toMatch(IMPORT_DEACTIVATE_LOT_SCHEMA_HEX_RE);
   });
 
   // ── C: Legacy class+schema import ABSENT (α11, α12) ─────────────────────
