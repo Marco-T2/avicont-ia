@@ -57,7 +57,7 @@ type HubItemSale = {
   source: "sale";
   type: "VENTA_GENERAL";
   id: string;
-  displayCode: string;
+  sequenceLabel: string;
   referenceNumber: number | null;
   date: Date;
   contactId: string;
@@ -71,7 +71,7 @@ type HubItemDispatch = {
   source: "dispatch";
   type: "NOTA_DESPACHO" | "BOLETA_CERRADA";
   id: string;
-  displayCode: string;
+  sequenceLabel: string;
   referenceNumber: number | null;
   date: Date;
   contactId: string;
@@ -218,7 +218,7 @@ function HubItemRow({ orgSlug, item, isLoading, onPost, onVoid, onDelete }: HubI
       </td>
       <td className="py-3 px-4">{typeName}</td>
       <td className="py-3 px-4 font-mono font-medium">
-        {item.displayCode}
+        {item.sequenceLabel}
       </td>
       <td className="py-3 px-4 font-mono text-muted-foreground">
         {item.referenceNumber ?? "—"}

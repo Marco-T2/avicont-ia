@@ -21,7 +21,7 @@ type HubItem =
       source: "sale";
       type: "VENTA_GENERAL";
       id: string;
-      displayCode: string;
+      sequenceLabel: string;
       referenceNumber: number | null;
       date: Date;
       contactId: string;
@@ -35,7 +35,7 @@ type HubItem =
       source: "dispatch";
       type: "NOTA_DESPACHO" | "BOLETA_CERRADA";
       id: string;
-      displayCode: string;
+      sequenceLabel: string;
       referenceNumber: number | null;
       date: Date;
       contactId: string;
@@ -70,7 +70,7 @@ const DISPATCH_ITEM: HubItem = {
   source: "dispatch",
   type: "NOTA_DESPACHO",
   id: "dispatch-1",
-  displayCode: "ND-001",
+  sequenceLabel: "ND-001",
   referenceNumber: 1,
   date: new Date("2026-04-17T12:00:00.000Z"), // UTC-noon (new format)
   contactId: "contact-1",
