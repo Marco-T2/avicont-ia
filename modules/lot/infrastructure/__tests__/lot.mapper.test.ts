@@ -17,6 +17,8 @@ const row = (override: Partial<ChickenLot> = {}): ChickenLot => ({
   endDate: null,
   status: "ACTIVE",
   farmId: "farm-1",
+  farmName: null,
+  memberId: null,
   createdAt: new Date("2026-04-01"),
   updatedAt: new Date("2026-04-15"),
   ...override,

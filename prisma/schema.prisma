@@ -77,6 +77,7 @@ model OrganizationMember {
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
   farms          Farm[]
+  chickenLots    ChickenLot[]
 
   @@unique([organizationId, userId])
   @@index([organizationId, deactivatedAt])
@@ -221,16 +222,20 @@ model ChickenLot {
   endDate        DateTime? @db.Timestamptz(3)
   status         LotStatus @default(ACTIVE)
   farmId         String
+  farmName       String?
+  memberId       String?
   organizationId String
   createdAt      DateTime  @db.Timestamptz(3) @default(now())
   updatedAt      DateTime  @db.Timestamptz(3) @updatedAt
-  farm           Farm         @relation(fields: [farmId], references: [id])
-  organization   Organization @relation(fields: [organizationId], references: [id])
+  farm           Farm             @relation(fields: [farmId], references: [id])
+  member         OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  organization   Organization     @relation(fields: [organizationId], references: [id])
   expenses       Expense[]
   mortalityLogs  MortalityLog[]
 
   @@index([organizationId])
   @@index([farmId])
+  @@index([memberId])
   @@map("chicken_lots")
 }
 
