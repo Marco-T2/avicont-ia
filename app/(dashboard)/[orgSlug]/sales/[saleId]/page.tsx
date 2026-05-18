@@ -5,7 +5,6 @@ import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
-import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { toSaleWithDetails } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import SaleForm from "@/components/sales/sale-form";
@@ -37,7 +36,7 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
     redirect(`/${orgSlug}/sales`);
   }
 
-  const [contacts, periods, accounts, contact, receivable, ivaSalesBook] = await Promise.all([
+  const [contacts, periods, accounts, contact, receivable] = await Promise.all([
     contactsService.list(orgId, { type: "CLIENTE", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     accountsService.list(orgId, { type: "INGRESO", isDetail: true, isActive: true }),
@@ -75,7 +74,6 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
           },
         })
       : Promise.resolve(null),
-    prisma.ivaSalesBook.findUnique({ where: { saleId: sale.id } }),
   ]);
 
   const period = periods.find((p) => p.id === sale.periodId);
@@ -83,14 +81,10 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
     redirect(`/${orgSlug}/sales`);
   }
 
-  // Prisma IvaSalesBook record fechaFactura:Date vs IvaSalesBookDTO.fechaFactura:string
-  // (legacy DTO documents ISO 8601 string post-JSON-serialization). Cast preserva
-  // TS type contract; runtime JSON.parse(JSON.stringify(...)) below convierte Date→ISO.
   const saleWithDetails = toSaleWithDetails(sale, {
     contact,
     period,
     receivable,
-    ivaSalesBook: ivaSalesBook as unknown as IvaSalesBookDTO | null,
   });
 
   // Períodos abiertos; garantizar que el período actual de la venta esté incluido aunque esté cerrado

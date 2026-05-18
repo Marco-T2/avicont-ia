@@ -36,15 +36,8 @@ import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/modules/purchase/presentation/dto/purchase-with-details";
-import { IvaBookPurchaseModal } from "@/components/iva-books/iva-book-purchase-modal";
 import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
-import { LcvIndicator } from "@/components/common/lcv-indicator";
-import type { LcvState } from "@/components/common/lcv-indicator";
-import { UnlinkLcvConfirmDialogPurchase } from "@/components/purchases/unlink-lcv-confirm-dialog-purchase";
-import { useLcvUnlinkPurchase } from "@/components/purchases/use-lcv-unlink-purchase";
-import { ReactivateLcvConfirmDialogPurchase } from "@/components/purchases/reactivate-lcv-confirm-dialog-purchase";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { useLcvReactivatePurchase } from "@/components/purchases/use-lcv-reactivate-purchase";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
@@ -57,24 +50,6 @@ function formatKg(value: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
-}
-
-// ── Derivación del estado LCV ──
-
-/**
- * Deriva el estado del LcvIndicator a partir de la compra.
- * S1: borrador (sin id) o status DRAFT
- * S2: guardada, sin ivaPurchaseBook activo (null o VOIDED)
- * S3: guardada, con ivaPurchaseBook activo (status ACTIVE)
- */
-function deriveLcvStatePurchase(
-  purchase:
-    | { status: string; ivaPurchaseBook?: { id: string; status?: string } | null }
-    | undefined,
-): LcvState {
-  if (!purchase || purchase.status === "DRAFT") return "S1";
-  if (!purchase.ivaPurchaseBook || purchase.ivaPurchaseBook.status === "VOIDED") return "S2";
-  return "S3";
 }
 
 const PURCHASE_TYPE_LABEL: Record<string, string> = {
@@ -302,21 +277,6 @@ export default function PurchaseForm({
   const [confirmPost, setConfirmPost] = useState(false);
   const [confirmVoid, setConfirmVoid] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [ivaModalOpen, setIvaModalOpen] = useState(false);
-
-  // ── Estado y hook de desvinculación LCV (T4.5 REQ-A.3) ──
-  const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
-  const { handleUnlink, isPending: isUnlinking } = useLcvUnlinkPurchase(
-    orgSlug,
-    purchase?.ivaPurchaseBook?.id,
-  );
-
-  // ── Estado y hook de reactivación LCV (T5.6 REQ-A.4) ──
-  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
-  const { handleReactivate, isPending: isReactivating } = useLcvReactivatePurchase(
-    orgSlug,
-    purchase?.ivaPurchaseBook?.id,
-  );
 
   // ── Computed totals ──
   const shrinkagePctNum = parseFloat(shrinkagePct) || 0;
@@ -903,22 +863,6 @@ export default function PurchaseForm({
                   </div>
                 )}
 
-                <div className="space-y-2">
-                  <Label>Libro de Compras (LCV)</Label>
-                  <LcvIndicator
-                    state={deriveLcvStatePurchase(purchase)}
-                    periodOpen={purchase ? isFiscalPeriodOpen(purchase.period) : false}
-                    onRegister={() => {
-                      if (purchase?.ivaPurchaseBook?.status === "VOIDED") {
-                        setReactivateDialogOpen(true);
-                      } else {
-                        setIvaModalOpen(true);
-                      }
-                    }}
-                    onEdit={() => setIvaModalOpen(true)}
-                    onUnlink={() => setUnlinkDialogOpen(true)}
-                  />
-                </div>
               </div>
 
               {/* FLETE extra: Ruta */}
@@ -1560,7 +1504,6 @@ export default function PurchaseForm({
               Eliminar
             </Button>
           )}
-          {/* LCV button removed — now handled by LcvIndicator in header row 2 (REQ-A.1) */}
         </div>
 
         <div className="flex gap-3">
@@ -1667,62 +1610,6 @@ export default function PurchaseForm({
       </div>
     </form>
 
-    {/* Modal Libro de Compras IVA — pre-fill desde esta compra o edición de entrada existente */}
-    {purchase && (
-      <IvaBookPurchaseModal
-        open={ivaModalOpen}
-        onClose={() => setIvaModalOpen(false)}
-        onSuccess={() => {
-          setIvaModalOpen(false);
-          router.refresh();
-        }}
-        orgSlug={orgSlug}
-        periods={periods.map((p) => ({
-          id: p.id,
-          name: p.name,
-          startDate: new Date(p.startDate).toISOString().split("T")[0],
-          endDate: new Date(p.endDate).toISOString().split("T")[0],
-          status: p.status,
-        }))}
-        mode={purchase.ivaPurchaseBook && purchase.ivaPurchaseBook.status !== "VOIDED" ? "edit" : "create-from-source"}
-        entryId={
-          purchase.ivaPurchaseBook && purchase.ivaPurchaseBook.status !== "VOIDED"
-            ? purchase.ivaPurchaseBook.id
-            : undefined
-        }
-        sourcePurchase={{
-          id: purchase.id,
-          date: new Date(purchase.date).toISOString().split("T")[0],
-          totalAmount: purchase.totalAmount,
-          contact: {
-            name: purchase.contact.name,
-            nit: purchase.contact.nit ?? null,
-          },
-        }}
-      />
-    )}
-
-    {/* Dialog de desvinculación del LCV (REQ-A.3) */}
-    <UnlinkLcvConfirmDialogPurchase
-      open={unlinkDialogOpen}
-      onOpenChange={setUnlinkDialogOpen}
-      onConfirm={async () => {
-        await handleUnlink();
-        setUnlinkDialogOpen(false);
-      }}
-      isPending={isUnlinking}
-    />
-
-    {/* Dialog de reactivación del LCV (REQ-A.4) */}
-    <ReactivateLcvConfirmDialogPurchase
-      open={reactivateDialogOpen}
-      onOpenChange={setReactivateDialogOpen}
-      onConfirm={async () => {
-        await handleReactivate();
-        setReactivateDialogOpen(false);
-      }}
-      isPending={isReactivating}
-    />
 
     <ConfirmDialog
       open={confirmPost}

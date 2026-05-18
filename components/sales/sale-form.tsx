@@ -29,40 +29,14 @@ import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
-import { IvaBookSaleModal } from "@/components/iva-books/iva-book-sale-modal";
 import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { ConfirmTrimDialog } from "@/components/sales/confirm-trim-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { TrimPreviewItem } from "@/components/sales/confirm-trim-dialog";
-import { LcvIndicator } from "@/components/common/lcv-indicator";
-import type { LcvState } from "@/components/common/lcv-indicator";
-import { UnlinkLcvConfirmDialog } from "@/components/sales/unlink-lcv-confirm-dialog";
-import { useLcvUnlink } from "@/components/sales/use-lcv-unlink";
-import { ReactivateLcvConfirmDialog } from "@/components/sales/reactivate-lcv-confirm-dialog";
-import { useLcvReactivate } from "@/components/sales/use-lcv-reactivate";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
-
-// ── Derivación del estado LCV ──
-
-/**
- * Deriva el estado del LcvIndicator a partir de la venta.
- * S1: borrador (sin id) o status DRAFT
- * S2: guardada, sin ivaSalesBook activo (null o VOIDED)
- * S3: guardada, con ivaSalesBook activo (status !== VOIDED)
- */
-function deriveLcvState(
-  sale:
-    | { status: string; ivaSalesBook?: { id: string; status?: string } | null }
-    | undefined
-    | null,
-): LcvState {
-  if (!sale || sale.status === "DRAFT") return "S1";
-  if (!sale.ivaSalesBook || sale.ivaSalesBook.status === "VOIDED") return "S2";
-  return "S3";
-}
 
 // ── Interfaz para la línea de detalle ──
 
@@ -192,27 +166,12 @@ export default function SaleForm({
   const [confirmPost, setConfirmPost] = useState(false);
   const [confirmVoid, setConfirmVoid] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [ivaModalOpen, setIvaModalOpen] = useState(false);
 
   // ── Estado del diálogo de confirmación de trim (REQ-7) ──
   const [trimPreview, setTrimPreview] = useState<TrimPreviewItem[] | null>(null);
   const [showTrimDialog, setShowTrimDialog] = useState(false);
   // Snapshot del body listo para reenviar con confirmTrim: true
   const [pendingEditBody, setPendingEditBody] = useState<object | null>(null);
-
-  // ── Estado y hook de desvinculación LCV (T3.2 REQ-A.1) ──
-  const [unlinkDialogOpen, setUnlinkDialogOpen] = useState(false);
-  const { handleUnlink, isPending: isUnlinking } = useLcvUnlink(
-    orgSlug,
-    sale?.ivaSalesBook?.id,
-  );
-
-  // ── Estado y hook de reactivación LCV ──
-  const [reactivateDialogOpen, setReactivateDialogOpen] = useState(false);
-  const { handleReactivate, isPending: isReactivating } = useLcvReactivate(
-    orgSlug,
-    sale?.ivaSalesBook?.id,
-  );
 
   // ── Total calculado ──
   const subtotal = lines.reduce((sum, l) => {
@@ -713,24 +672,6 @@ export default function SaleForm({
                   </div>
                 )}
 
-                {/* LCV Indicator — siempre visible en fila 2 */}
-                <div className="space-y-2">
-                  <Label>Libro de Ventas (LCV)</Label>
-                  <LcvIndicator
-                    state={deriveLcvState(sale)}
-                    periodOpen={isFiscalPeriodOpen(sale?.period ?? { status: "CLOSED" })}
-                    onRegister={() => {
-                      // Si hay un registro VOIDED → reactivar; si no → crear nuevo
-                      if (sale?.ivaSalesBook?.status === "VOIDED") {
-                        setReactivateDialogOpen(true);
-                      } else {
-                        setIvaModalOpen(true);
-                      }
-                    }}
-                    onEdit={() => setIvaModalOpen(true)}
-                    onUnlink={() => setUnlinkDialogOpen(true)}
-                  />
-                </div>
               </div>
 
               {/* Descripción */}
@@ -950,7 +891,6 @@ export default function SaleForm({
               Eliminar
             </Button>
           )}
-          {/* LCV action moved to header row 2 LcvIndicator (T3.4 REQ-A.1) */}
         </div>
 
         <div className="flex gap-3">
@@ -1085,59 +1025,6 @@ export default function SaleForm({
         isLoading={isSubmitting}
       />
     )}
-
-    {/* Modal Libro de Ventas IVA — pre-fill desde esta venta o edición de entrada existente */}
-    {sale && (
-      <IvaBookSaleModal
-        open={ivaModalOpen}
-        onClose={() => setIvaModalOpen(false)}
-        onSuccess={() => {
-          setIvaModalOpen(false);
-          router.refresh();
-        }}
-        orgSlug={orgSlug}
-        periods={periods.map((p) => ({
-          id: p.id,
-          name: p.name,
-          startDate: new Date(p.startDate).toISOString().split("T")[0],
-          endDate: new Date(p.endDate).toISOString().split("T")[0],
-          status: p.status,
-        }))}
-        mode={sale.ivaSalesBook && sale.ivaSalesBook.status !== "VOIDED" ? "edit" : "create-from-source"}
-        entryId={sale.ivaSalesBook?.id}
-        sourceSale={{
-          id: sale.id,
-          date: new Date(sale.date).toISOString().split("T")[0],
-          totalAmount: sale.totalAmount,
-          contact: {
-            name: sale.contact.name,
-            nit: sale.contact.nit ?? null,
-          },
-        }}
-      />
-    )}
-
-    {/* Diálogo de confirmación de desvinculación LCV (T3.2 REQ-A.3) */}
-    <UnlinkLcvConfirmDialog
-      open={unlinkDialogOpen}
-      onOpenChange={setUnlinkDialogOpen}
-      onConfirm={async () => {
-        await handleUnlink();
-        setUnlinkDialogOpen(false);
-      }}
-      isPending={isUnlinking}
-    />
-
-    {/* Diálogo de confirmación de reactivación LCV */}
-    <ReactivateLcvConfirmDialog
-      open={reactivateDialogOpen}
-      onOpenChange={setReactivateDialogOpen}
-      onConfirm={async () => {
-        await handleReactivate();
-        setReactivateDialogOpen(false);
-      }}
-      isPending={isReactivating}
-    />
 
     <ConfirmDialog
       open={confirmPost}

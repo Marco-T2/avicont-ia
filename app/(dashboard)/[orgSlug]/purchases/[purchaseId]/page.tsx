@@ -6,7 +6,6 @@ import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/
 import { makeProductTypeService } from "@/modules/product-type/presentation/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
-import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { toPurchaseWithDetails } from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
 import PurchaseForm from "@/components/purchases/purchase-form";
@@ -42,7 +41,7 @@ export default async function PurchaseDetailPage({
     redirect(`/${orgSlug}/purchases`);
   }
 
-  const [contacts, periods, productTypes, expenseAccounts, contact, payable, ivaPurchaseBook] = await Promise.all([
+  const [contacts, periods, productTypes, expenseAccounts, contact, payable] = await Promise.all([
     contactsService.list(orgId, { type: "PROVEEDOR", isActive: true }).then((entities) => entities.map((c) => c.toSnapshot())),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }).then((entities) => entities.map((pt) => pt.toSnapshot())),
@@ -81,7 +80,6 @@ export default async function PurchaseDetailPage({
           },
         })
       : Promise.resolve(null),
-    prisma.ivaPurchaseBook.findUnique({ where: { purchaseId: purchase.id } }),
   ]);
 
   const period = periods.find((p) => p.id === purchase.periodId);
@@ -89,14 +87,10 @@ export default async function PurchaseDetailPage({
     redirect(`/${orgSlug}/purchases`);
   }
 
-  // Prisma IvaPurchaseBook record fechaFactura:Date vs IvaPurchaseBookDTO.fechaFactura:string
-  // (legacy DTO documents ISO 8601 string post-JSON-serialization). Cast preserva
-  // TS type contract; runtime JSON.parse(JSON.stringify(...)) below convierte Date→ISO.
   const purchaseWithDetails = toPurchaseWithDetails(purchase, {
     contact,
     period,
     payable,
-    ivaPurchaseBook: ivaPurchaseBook as unknown as IvaPurchaseBookDTO | null,
   });
 
   // Open periods for editing; ensure current purchase period is included even if closed
