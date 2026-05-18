@@ -19,12 +19,14 @@ import {
   Calculator,
   Pencil,
   Trash2,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import CreateExpenseForm from "@/components/expenses/create-expense-form";
 import LogMortalityForm from "@/components/mortality/log-mortality-form";
 import { EditLotDialog } from "@/components/lots/edit-lot-dialog";
 import { DeleteLotDialog } from "@/components/lots/delete-lot-dialog";
+import { DeactivateLotDialog } from "@/components/lots/deactivate-lot-dialog";
 import { EditExpenseDialog } from "@/components/expenses/edit-expense-dialog";
 import { EditMortalityDialog } from "@/components/mortality/edit-mortality-dialog";
 import RegistrarConIABoton from "@/components/agent/registrar-con-ia-boton";
@@ -40,21 +42,20 @@ function isoDate(d: Date | string): string {
 
 type _LotSummaryClassPreserved = LotSummary;
 
+// Post retire-farm-collapse-to-lot T31: LotStatus enum collapsed to 2-state
+// (ACTIVE/INACTIVE). The legacy CLOSED/SOLD entries are dead code — the
+// fallback `?? { label: lot.status }` below was masking the gap by rendering
+// the raw "INACTIVE" string. Mirrors lots-client.tsx STATUS_LABEL.
 const STATUS_CONFIG: Record<string, { label: string; className: string }> = {
   ACTIVE: {
     label: "Activo",
     className:
       "bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200",
   },
-  CLOSED: {
-    label: "Cerrado",
+  INACTIVE: {
+    label: "Inactivo",
     className:
       "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
-  },
-  SOLD: {
-    label: "Vendido",
-    className:
-      "bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200",
   },
 };
 
@@ -134,8 +135,9 @@ export default function LotDetailClient({
     "expenses",
   );
 
-  // Lot edit/delete dialog state
+  // Lot edit/deactivate/delete dialog state
   const [editLotOpen, setEditLotOpen] = useState(false);
+  const [deactivateLotOpen, setDeactivateLotOpen] = useState(false);
   const [deleteLotOpen, setDeleteLotOpen] = useState(false);
 
   // Per-row edit dialog state (by id; null === closed)
@@ -260,6 +262,17 @@ export default function LotDetailClient({
               >
                 <Pencil className="h-4 w-4 mr-1" />
                 Editar
+              </Button>
+            )}
+            {lot.status === "ACTIVE" && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeactivateLotOpen(true)}
+                aria-label="Cerrar lote"
+              >
+                <Lock className="h-4 w-4 mr-1" />
+                Cerrar
               </Button>
             )}
             <Button
@@ -535,6 +548,14 @@ export default function LotDetailClient({
         lotId={lot.id}
         initialFarmName={lot.farmName}
         onUpdated={() => router.refresh()}
+      />
+      <DeactivateLotDialog
+        open={deactivateLotOpen}
+        onOpenChange={setDeactivateLotOpen}
+        orgSlug={orgSlug}
+        lotId={lot.id}
+        lotName={lot.displayName}
+        onDeactivated={() => router.refresh()}
       />
       <DeleteLotDialog
         open={deleteLotOpen}
