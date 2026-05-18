@@ -58,30 +58,6 @@ describe("Block 2 — Validation schemas in domain (REQ-004)", () => {
 
 describe("Block 3 — P3.4 textual lock at new location (REQ-005, IVA-D2)", () => {
   /**
-   * α6 — REVOKED at oleada-money-decimal-hex-purity sub-POC 5 Cycle 1.
-   *
-   * Historical contract (POC #11.0c A4-c C2 GREEN P3.4): asserted the
-   * relocated TASA_IVA constant was wrapped in `Prisma.Decimal`. The wrapper
-   * shape was migrated away from `Prisma.Decimal` to direct
-   * `Decimal` (`decimal.js@10.6.0`) as part of the oleada to keep the
-   * presentation layer off the client bundle's `node:module` blast radius
-   * (sister to sub-POCs 2/3/4 swaps).
-   *
-   * Per [[named_rule_immutability]]: α-sentinels are immutable historical
-   * contracts — α6 is skipped + revocation-documented in place; the new
-   * shape is asserted by `α6-D` below ("Derived from: α6"), which preserves
-   * α6's SEMANTIC intent (textual P3.4 lock at canonical `"0.1300"`
-   * 4-decimal SIN literal) while migrating the wrapper. Final α6 retirement
-   * is owned by sub-POC 6 `revoke-EX-D3-R1-and-archive`.
-   */
-  it.skip("α6 [REVOKED — see α6-D]: TASA_IVA as Prisma.Decimal('0.1300') in presentation/legacy-bridge-constants.ts", () => {
-    // ENOENT pre-GREEN — file absent
-    expect(readPresFile("legacy-bridge-constants.ts")).toMatch(
-      /export\s+const\s+TASA_IVA\s*=\s*new\s+Prisma\.Decimal\("0\.1300"\)/m
-    );
-  });
-
-  /**
    * α6-D — Derived from: α6.
    *
    * Preserves α6's P3.4 textual lock SEMANTIC: TASA_IVA exported from

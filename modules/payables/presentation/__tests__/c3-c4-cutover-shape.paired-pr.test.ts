@@ -268,17 +268,6 @@ describe("POC paired payables↔receivables C3-C4 — cutover paired UI pages + 
     expect(source).toMatch(MAKE_PAYABLES_SERVICE_RE);
   });
 
-  // RETIRED by contact-ledger-refactor C6d (design D5): cxp/page.tsx no
-  // longer loads PayableList — it loads CxpDashboardPageClient backed by
-  // ContactBalancesService.listContactsWithOpenBalance. PayableList se
-  // reubica a un tab dentro del contact detail en C8. Per
-  // [[retirement_re_inventory_gate]] CONSUMER of retired invariant; per
-  // [[named_rule_immutability]] original assertion immutable.
-  it.skip("Test 4: app/(dashboard)/[orgSlug]/accounting/cxp/page.tsx contains `makePayablesService(` invocation (list RSC — 1 callsite) — RETIRED by C6d", () => {
-    const source = fs.readFileSync(CXP_PAGE, "utf8");
-    expect(source).toMatch(MAKE_PAYABLES_SERVICE_RE);
-  });
-
   // ── B: attachContact[s] bridge invocation POSITIVE (Tests 5-8) ──────────
   // §13.A5-γ Opción A bridge NEW pattern emergent — preserves PayableSnapshotWithContact
   // contract via mapper interno cementado C1b-α canonical R4 exception path.
@@ -296,13 +285,6 @@ describe("POC paired payables↔receivables C3-C4 — cutover paired UI pages + 
   it("Test 7: app/api/organizations/[orgSlug]/cxp/[payableId]/status/route.ts contains `attachContact` (covers updateStatus singular bridge invocation 1 callsite)", () => {
     const source = fs.readFileSync(CXP_STATUS_ROUTE, "utf8");
     expect(source).toMatch(ATTACH_CONTACT_RE);
-  });
-
-  // RETIRED by contact-ledger-refactor C6d (design D5): same rationale as
-  // Test 4 sister. Per [[retirement_re_inventory_gate]] + [[named_rule_immutability]].
-  it.skip("Test 8: app/(dashboard)/[orgSlug]/accounting/cxp/page.tsx contains `attachContacts` (plural specifically — list RSC method bridge invocation 1 callsite) — RETIRED by C6d", () => {
-    const source = fs.readFileSync(CXP_PAGE, "utf8");
-    expect(source).toMatch(ATTACH_CONTACTS_PLURAL_RE);
   });
 
   // ── C: Legacy class import ABSENT (Tests 9-12) ──────────────────────────
@@ -334,12 +316,4 @@ describe("POC paired payables↔receivables C3-C4 — cutover paired UI pages + 
   // post-GREEN (mock orphan = page imports unmocked hex barrel triggering Prisma
   // load chain). Paired sister precedent §13.A4-η cementada A4-D1 cumulative.
 
-  // RETIRED by contact-ledger-refactor C6d (design D5): cxp/__tests__/
-  // page.test.ts now mocks `@/modules/contact-balances/presentation/server`
-  // (new RSC surface). Per [[retirement_re_inventory_gate]] +
-  // [[named_rule_immutability]].
-  it.skip("Test 13: app/(dashboard)/[orgSlug]/accounting/cxp/__tests__/page.test.ts mocks `@/modules/payables/presentation/server` (NOT `@/features/payables/server`) — vi.mock §13.A4-η load-bearing render path coverage MANDATORY swap paired con cutover (Marco lock vi.mock confirmed pre-RED) — RETIRED by C6d", () => {
-    const source = fs.readFileSync(CXP_PAGE_TEST, "utf8");
-    expect(source).toMatch(VI_MOCK_HEX_BARREL_RE);
-  });
 });
