@@ -18,12 +18,6 @@ export interface LedgerEntry {
   entryNumber: number;
   /** Código del voucher type (CD, CV, CP, etc.) — para columna "Tipo". */
   voucherCode: string;
-  /**
-   * Transitional optional — service no longer enriches this field (T2.1
-   * GREEN); contact-ledger consumers + co-located test fixtures finish the
-   * chain in T2.2. Drop entirely once those land.
-   */
-  displayNumber?: string;
   description: string;
   debit: string;
   credit: string;
@@ -108,11 +102,12 @@ export interface ContactLedgerEntry extends LedgerEntry {
    *    - purchase → Purchase.sequenceNumber
    *    - payment  → Payment.referenceNumber (nullable — el dato físico
    *      capturado por el operador; si NO está, este campo es null y la
-   *      UI cae al `displayNumber` correlative voucher contable).
+   *      UI cae al raw `entryNumber` del JournalEntry contable).
    *  Null para asiento manual sin auxiliar (no hay documento físico). El
    *  prefijo operacional (VG/RC/ND/etc.) se surfacea en la columna "Tipo"
    *  vía `documentTypeCode` — antes este campo combinaba ambos pero se
-   *  consideró ruido visual (QA Marco). */
+   *  consideró ruido visual (QA Marco). Formato `${prefix}-${padded}`
+   *  retirado per REQ-DISPLAY-2. */
   documentReferenceNumber: string | null;
 }
 

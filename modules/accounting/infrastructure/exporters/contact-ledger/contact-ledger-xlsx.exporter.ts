@@ -350,10 +350,11 @@ export async function exportContactLedgerXlsx(
     excelRow.getCell(COL_TYPE).alignment = { horizontal: "left" };
 
     // DT4 — sequence raw del documento físico (ej "1", "42") con fallback
-    // al displayNumber correlative voucher cuando es null (asiento manual sin
-    // auxiliar / Payment sin referenceNumber). Mirror UI/PDF.
+    // al raw entryNumber del JournalEntry cuando es null (asiento manual sin
+    // auxiliar / Payment sin referenceNumber). Formato `${prefix}-${padded}`
+    // retirado per REQ-DISPLAY-2. Mirror UI/PDF.
     excelRow.getCell(COL_NUM).value =
-      entry.documentReferenceNumber ?? entry.displayNumber;
+      entry.documentReferenceNumber ?? entry.entryNumber;
     excelRow.getCell(COL_NUM).font = arial({ size: 9 });
 
     excelRow.getCell(COL_STATUS).value = renderEstado(entry);

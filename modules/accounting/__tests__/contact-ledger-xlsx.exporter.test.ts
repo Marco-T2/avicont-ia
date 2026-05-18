@@ -37,7 +37,6 @@ function makeEntry(overrides?: Partial<ContactLedgerEntry>): ContactLedgerEntry 
     date: new Date("2025-06-15"),
     entryNumber: 1,
     voucherCode: "CD",
-    displayNumber: "D2506-000001",
     description: "Venta a cliente",
     debit: "1234567.89",
     credit: "0.00",
@@ -202,7 +201,8 @@ describe("exportContactLedgerXlsx — opening balance row", () => {
     const wb = await parseWorkbook(buffer);
     const sheet = wb.getWorksheet(SHEET)!;
     expect(sheet.getRow(8).getCell(5).value).not.toBe("Saldo inicial acumulado");
-    expect(sheet.getRow(8).getCell(3).value).toBe("D2506-000001");
+    // Col 3 = Nº; raw entryNumber (REQ-DISPLAY-2 — displayNumber retired T2.2)
+    expect(sheet.getRow(8).getCell(3).value).toBe(1);
   });
 });
 
@@ -359,7 +359,8 @@ describe("exportContactLedgerXlsx — data row Estado/Tipo cells", () => {
 // ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
 //
 // Cell Nº (col C = idx 3 en 8-col layout) muestra documentReferenceNumber con
-// fallback al displayNumber cuando es null. Mirror UI/PDF.
+// fallback al raw entryNumber del JournalEntry cuando es null. Mirror UI/PDF.
+// Formato `${prefix}-${padded}` retirado per REQ-DISPLAY-2.
 
 describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)", () => {
   it("DT4 — sale con documentReferenceNumber='1' → cell C8 muestra '1'", async () => {
@@ -369,7 +370,6 @@ describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)",
           sourceType: "sale",
           documentTypeCode: "VG",
           documentReferenceNumber: "1",
-          displayNumber: "D2506-000001",
         }),
       ],
       makeOpts(),
@@ -390,7 +390,6 @@ describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)",
           bankAccountName: null,
           documentTypeCode: "RC",
           documentReferenceNumber: "42",
-          displayNumber: "I2605-000042",
           status: null,
         }),
       ],
@@ -402,16 +401,16 @@ describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)",
     expect(sheet.getRow(8).getCell(3).value).toBe("42");
   });
 
-  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell C8 cae al displayNumber", async () => {
+  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell C8 cae al raw entryNumber", async () => {
     const buffer = await exportContactLedgerXlsx(
       [
         makeEntry({
+          entryNumber: 11,
           sourceType: null,
           status: null,
           withoutAuxiliary: true,
           documentTypeCode: null,
           documentReferenceNumber: null,
-          displayNumber: "A2604-000001",
         }),
       ],
       makeOpts(),
@@ -419,20 +418,20 @@ describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)",
     );
     const wb = await parseWorkbook(buffer);
     const sheet = wb.getWorksheet(SHEET)!;
-    expect(sheet.getRow(8).getCell(3).value).toBe("A2604-000001");
+    expect(sheet.getRow(8).getCell(3).value).toBe(11);
   });
 
-  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell C8 cae al displayNumber", async () => {
+  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell C8 cae al raw entryNumber", async () => {
     const buffer = await exportContactLedgerXlsx(
       [
         makeEntry({
+          entryNumber: 50,
           sourceType: "payment",
           paymentDirection: "COBRO",
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           documentTypeCode: "RC",
           documentReferenceNumber: null,
-          displayNumber: "I2605-000050",
           status: null,
         }),
       ],
@@ -441,7 +440,7 @@ describe("exportContactLedgerXlsx — Nº column (DT4 documentReferenceNumber)",
     );
     const wb = await parseWorkbook(buffer);
     const sheet = wb.getWorksheet(SHEET)!;
-    expect(sheet.getRow(8).getCell(3).value).toBe("I2605-000050");
+    expect(sheet.getRow(8).getCell(3).value).toBe(50);
   });
 });
 

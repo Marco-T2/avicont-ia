@@ -133,7 +133,6 @@ const minimalDto = {
       date: new Date("2025-01-15"),
       entryNumber: 1,
       voucherCode: "CD",
-      displayNumber: "CD2501-000001",
       description: "Venta a cliente",
       debit: "150.50",
       credit: "0.00",

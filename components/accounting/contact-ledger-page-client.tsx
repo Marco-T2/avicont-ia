@@ -38,7 +38,6 @@ interface ContactLedgerEntry {
   date: string;
   entryNumber: number;
   voucherCode: string;
-  displayNumber: string;
   description: string;
   debit: string;
   credit: string;
@@ -61,9 +60,10 @@ interface ContactLedgerEntry {
    *  wired (UI cae al label genérico). */
   documentTypeCode: string | null;
   /** DT4 — sequence raw del documento fuente (sin prefijo ni padding):
-   *  "1", "42", etc. Render en la columna Nro con fallback a `displayNumber`
-   *  cuando es null (asiento manual sin auxiliar o Payment sin
-   *  referenceNumber capturado). */
+   *  "1", "42", etc. Render en la columna Nro con fallback al raw
+   *  `entryNumber` del JournalEntry cuando es null (asiento manual sin
+   *  auxiliar o Payment sin referenceNumber capturado). Formato
+   *  `${prefix}-${padded}` retirado per REQ-DISPLAY-2. */
   documentReferenceNumber: string | null;
 }
 
@@ -548,7 +548,7 @@ export default function ContactLedgerPageClient({
                           </td>
                           <td className="py-3 px-4">{tipo}</td>
                           <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
-                            {entry.documentReferenceNumber ?? entry.displayNumber}
+                            {entry.documentReferenceNumber ?? String(entry.entryNumber)}
                           </td>
                           <td className="py-3 px-4">
                             {estado.variant === "warning" ? (

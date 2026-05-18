@@ -41,7 +41,6 @@ function makeEntry(overrides?: Partial<ContactLedgerEntry>): ContactLedgerEntry 
     date: new Date("2025-06-15"),
     entryNumber: 1,
     voucherCode: "CD",
-    displayNumber: "D2506-000001",
     description: "Venta a cliente",
     debit: "1234567.89",
     credit: "0.00",
@@ -496,7 +495,9 @@ describe("exportContactLedgerPdf — Tipo column", () => {
 // ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
 //
 // Cell Nº (idx 2 en 8-col layout) muestra documentReferenceNumber con fallback
-// al displayNumber cuando es null. Mirror UI per [[paired_sister_default_no_surface]].
+// al raw entryNumber del JournalEntry cuando es null. Mirror UI per
+// [[paired_sister_default_no_surface]]. Formato `${prefix}-${padded}`
+// retirado per REQ-DISPLAY-2.
 
 describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", () => {
   it("DT4 — sale con documentReferenceNumber='1' → cell Nº muestra '1'", async () => {
@@ -506,7 +507,6 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
           sourceType: "sale",
           documentTypeCode: "VG",
           documentReferenceNumber: "1",
-          displayNumber: "D2506-000001",
         }),
       ],
       makeOpts(),
@@ -528,7 +528,6 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
           bankAccountName: null,
           documentTypeCode: "RC",
           documentReferenceNumber: "42",
-          displayNumber: "I2605-000042",
         }),
       ],
       makeOpts(),
@@ -540,16 +539,16 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
     expect(dataRow[2].text).toBe("42");
   });
 
-  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al displayNumber", async () => {
+  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al raw entryNumber", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
         makeEntry({
+          entryNumber: 11,
           sourceType: null,
           status: null,
           withoutAuxiliary: true,
           documentTypeCode: null,
           documentReferenceNumber: null,
-          displayNumber: "A2604-000001",
         }),
       ],
       makeOpts(),
@@ -558,20 +557,20 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
     const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
-    expect(dataRow[2].text).toBe("A2604-000001");
+    expect(dataRow[2].text).toBe("11");
   });
 
-  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell Nº cae al displayNumber", async () => {
+  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell Nº cae al raw entryNumber", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
         makeEntry({
+          entryNumber: 50,
           sourceType: "payment",
           paymentDirection: "COBRO",
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           documentTypeCode: "RC",
           documentReferenceNumber: null,
-          displayNumber: "I2605-000050",
         }),
       ],
       makeOpts(),
@@ -580,7 +579,7 @@ describe("exportContactLedgerPdf — Nº column (DT4 documentReferenceNumber)", 
     const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
-    expect(dataRow[2].text).toBe("I2605-000050");
+    expect(dataRow[2].text).toBe("50");
   });
 });
 

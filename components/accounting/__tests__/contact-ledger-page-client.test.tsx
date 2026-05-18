@@ -93,7 +93,6 @@ type LedgerEntry = {
   date: string;
   entryNumber: number;
   voucherCode: string;
-  displayNumber: string;
   description: string;
   debit: string;
   credit: string;
@@ -132,7 +131,6 @@ function makeEntry(overrides: Partial<LedgerEntry> = {}): LedgerEntry {
     date: overrides.date ?? "2025-06-01T00:00:00.000Z",
     entryNumber: overrides.entryNumber ?? 1,
     voucherCode: overrides.voucherCode ?? "D",
-    displayNumber: overrides.displayNumber ?? "D2506-000001",
     description: overrides.description ?? "Mov 1",
     debit: overrides.debit ?? "0.00",
     credit: overrides.credit ?? "0.00",
@@ -436,12 +434,13 @@ describe("ContactLedgerPageClient — Tipo column", () => {
 // ── DT4 — número físico del documento en la columna Nº (QA Marco) ──
 //
 // El cobrador necesita leer en la columna "Nº" el número del documento físico
-// ("1", "42", "ND-0005") en vez del correlative voucher contable
-// ("I2605-000001"). Fallback al displayNumber cuando documentReferenceNumber
-// es null (asiento manual sin auxiliar o Payment sin referenceNumber).
+// ("1", "42") en vez del correlative voucher contable. Fallback al raw
+// `entryNumber` del JournalEntry cuando documentReferenceNumber es null
+// (asiento manual sin auxiliar o Payment sin referenceNumber). Formato
+// `${prefix}-${padded}` retirado per REQ-DISPLAY-2.
 
 describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)", () => {
-  it("DT4 — sale con documentReferenceNumber='1' → cell Nº muestra '1' (no displayNumber)", () => {
+  it("DT4 — sale con documentReferenceNumber='1' → cell Nº muestra '1'", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -455,7 +454,6 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
               voucherTypeHuman: "Nota de despacho",
               documentTypeCode: "VG",
               documentReferenceNumber: "1",
-              displayNumber: "D2506-000001",
               description: "Venta general 001",
               debit: "1000.00",
               credit: "0.00",
@@ -490,7 +488,6 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
               voucherTypeHuman: "Comprobante de Ingreso",
               documentTypeCode: "RC",
               documentReferenceNumber: "42",
-              displayNumber: "I2605-000042",
               description: "Cobro Marco RC42",
               debit: "0.00",
               credit: "200.00",
@@ -508,7 +505,7 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
     expect(cells[2].textContent).toBe("42");
   });
 
-  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al displayNumber (asiento manual)", () => {
+  it("DT4 — withoutAuxiliary=true + documentReferenceNumber=null → cell Nº cae al raw entryNumber (asiento manual)", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -518,11 +515,11 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
           items: [
             makeEntry({
               entryId: "je-manual-1",
+              entryNumber: 11,
               sourceType: null,
               voucherTypeHuman: "Comprobante de Diario",
               documentTypeCode: null,
               documentReferenceNumber: null,
-              displayNumber: "A2604-000001",
               description: "Ajuste contable A1",
               debit: "10.00",
               credit: "0.00",
@@ -538,10 +535,10 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
 
     const row = screen.getByRole("row", { name: /Ajuste contable A1/i });
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2].textContent).toBe("A2604-000001");
+    expect(cells[2].textContent).toBe("11");
   });
 
-  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell Nº cae al displayNumber correlative voucher", () => {
+  it("DT4 — payment sin referenceNumber (documentReferenceNumber=null) → cell Nº cae al raw entryNumber", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -551,13 +548,13 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
           items: [
             makeEntry({
               entryId: "je-rc-noref",
+              entryNumber: 50,
               sourceType: "payment",
               paymentDirection: "COBRO",
               paymentMethod: "EFECTIVO",
               voucherTypeHuman: "Comprobante de Ingreso",
               documentTypeCode: "RC",
               documentReferenceNumber: null, // operador NO capturó referenceNumber
-              displayNumber: "I2605-000050",
               description: "Cobro sin referencia fisica",
               debit: "0.00",
               credit: "100.00",
@@ -572,7 +569,7 @@ describe("ContactLedgerPageClient — Nº column (DT4 documentReferenceNumber)",
 
     const row = screen.getByRole("row", { name: /Cobro sin referencia fisica/i });
     const cells = within(row).getAllByRole("cell");
-    expect(cells[2].textContent).toBe("I2605-000050");
+    expect(cells[2].textContent).toBe("50");
   });
 });
 
