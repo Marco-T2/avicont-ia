@@ -58,6 +58,13 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
       seedDefaultsForOrg: vi.fn().mockResolvedValue([]),
     } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["voucherTypeSeed"];
 
+    // journal-physical-document Phase 2: new dep `operationalDocTypeSeed`
+    // injected alongside voucher-type seed. Default mock is a no-op fulfilled
+    // promise (parity with the voucher-type mock shape).
+    const operationalDocTypesService = {
+      seedDefaultsForOrg: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["operationalDocTypeSeed"];
+
     const usersService = {
       findOrCreate: vi.fn().mockResolvedValue(CREATED_USER),
     } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["users"];
@@ -75,11 +82,13 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
         repo,
         users: usersService,
         voucherTypeSeed: voucherTypesService,
+        operationalDocTypeSeed: operationalDocTypesService,
         accountSeed: accountsService,
         systemRoleSeed,
       }),
       repo,
       voucherTypesService,
+      operationalDocTypesService,
       usersService,
       accountsService,
       txClient,
@@ -150,6 +159,17 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
     await service.syncOrganization(INPUT, CLERK_USER_ID);
 
     expect(accountsService.seedChartOfAccounts).toHaveBeenCalledWith(
+      CREATED_ORG.id,
+      txClient,
+    );
+  });
+
+  it("F-1-S7 — operationalDocTypesService.seedDefaultsForOrg receives the tx client from the transaction callback (journal-physical-document)", async () => {
+    const { service, operationalDocTypesService, txClient } = buildService();
+
+    await service.syncOrganization(INPUT, CLERK_USER_ID);
+
+    expect(operationalDocTypesService.seedDefaultsForOrg).toHaveBeenCalledWith(
       CREATED_ORG.id,
       txClient,
     );

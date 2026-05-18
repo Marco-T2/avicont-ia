@@ -10,6 +10,7 @@ import { LegacyClerkAuthAdapter } from "../infrastructure/adapters/legacy-clerk-
 import { LegacyUserResolutionAdapter } from "../infrastructure/adapters/legacy-user-resolution.adapter";
 import { LegacyAccountSeedAdapter } from "../infrastructure/adapters/legacy-account-seed.adapter";
 import { LegacyVoucherTypeSeedAdapter } from "../infrastructure/adapters/legacy-voucher-type-seed.adapter";
+import { LegacyOperationalDocTypeSeedAdapter } from "../infrastructure/adapters/legacy-operational-doc-type-seed.adapter";
 import { LegacySystemRoleSeedAdapter } from "../infrastructure/adapters/legacy-system-role-seed.adapter";
 import { LegacyPermissionCacheAdapter } from "../infrastructure/adapters/legacy-permission-cache.adapter";
 
@@ -23,6 +24,7 @@ export function makeOrganizationsService(): OrganizationsService {
     repo: new PrismaOrganizationsRepository(),
     users: new LegacyUserResolutionAdapter(),
     voucherTypeSeed: new LegacyVoucherTypeSeedAdapter(),
+    operationalDocTypeSeed: new LegacyOperationalDocTypeSeedAdapter(),
     accountSeed: new LegacyAccountSeedAdapter(),
     systemRoleSeed: new LegacySystemRoleSeedAdapter(),
   });

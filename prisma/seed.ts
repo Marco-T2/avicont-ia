@@ -1,5 +1,6 @@
 import { seedChartOfAccounts } from "./seeds/chart-of-accounts";
 import { seedVoucherTypes } from "./seeds/voucher-types";
+import { seedOperationalDocTypes } from "./seeds/operational-doc-types";
 
 async function main() {
   const organizationId = process.argv[2];
@@ -13,6 +14,7 @@ async function main() {
   console.log(`Seeding data for organization: ${organizationId}`);
   await seedChartOfAccounts(organizationId);
   await seedVoucherTypes(organizationId);
+  await seedOperationalDocTypes(organizationId);
   console.log("Seed complete.");
 }
 

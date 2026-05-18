@@ -6,6 +6,7 @@ import {
 import type { OrganizationsRepositoryPort } from "../domain/ports/organizations.repository.port";
 import type { UserResolutionPort } from "../domain/ports/user-resolution.port";
 import type { VoucherTypeSeedPort } from "../domain/ports/voucher-type-seed.port";
+import type { OperationalDocTypeSeedPort } from "../domain/ports/operational-doc-type-seed.port";
 import type { AccountSeedPort } from "../domain/ports/account-seed.port";
 import type { SystemRoleSeedPort } from "../domain/ports/system-role-seed.port";
 import type { Organization, OrganizationMember } from "@/generated/prisma/client";
@@ -20,6 +21,7 @@ export interface OrganizationsServiceDeps {
   repo: OrganizationsRepositoryPort;
   users: UserResolutionPort;
   voucherTypeSeed: VoucherTypeSeedPort;
+  operationalDocTypeSeed: OperationalDocTypeSeedPort;
   accountSeed: AccountSeedPort;
   systemRoleSeed: SystemRoleSeedPort;
 }
@@ -28,6 +30,7 @@ export class OrganizationsService {
   private readonly repo: OrganizationsRepositoryPort;
   private readonly users: UserResolutionPort;
   private readonly voucherTypeSeed: VoucherTypeSeedPort;
+  private readonly operationalDocTypeSeed: OperationalDocTypeSeedPort;
   private readonly accountSeed: AccountSeedPort;
   private readonly systemRoleSeed: SystemRoleSeedPort;
 
@@ -35,6 +38,7 @@ export class OrganizationsService {
     this.repo = deps.repo;
     this.users = deps.users;
     this.voucherTypeSeed = deps.voucherTypeSeed;
+    this.operationalDocTypeSeed = deps.operationalDocTypeSeed;
     this.accountSeed = deps.accountSeed;
     this.systemRoleSeed = deps.systemRoleSeed;
   }
@@ -79,6 +83,13 @@ export class OrganizationsService {
       );
 
       await this.voucherTypeSeed.seedDefaultsForOrg(org.id, tx);
+
+      // journal-physical-document Phase 2: seed the 10 canonical
+      // OperationalDocType rows alongside voucher types so new orgs come
+      // online with a populated catalog (VG/ND/BC/FL/PF/CG/SV/RC/RI/RE).
+      // Idempotent at the seed layer (findFirst + skip per I-4) so re-runs
+      // on existing rows are no-ops.
+      await this.operationalDocTypeSeed.seedDefaultsForOrg(org.id, tx);
 
       await this.accountSeed.seedChartOfAccounts(org.id, tx);
 
