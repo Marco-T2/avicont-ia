@@ -129,44 +129,6 @@ export interface ToPurchaseWithDetailsDeps {
   period: PeriodRaw;
   payable?: PayableRaw | null;
   ivaPurchaseBook?: IvaPurchaseBookDTO | null;
-  /**
-   * Transitional optional — list pages already stripped (T2.0); detail page
-   * (T2.5-page) + mapper helpers wholesale-delete (T4.3) finish the chain.
-   * Currently ignored by the compositor body (no longer mapped into the DTO).
-   */
-  displayCode?: string;
-}
-
-// ── Utility: TYPE_PREFIXES per purchaseType (mirror legacy purchase.utils.ts) ─
-
-/**
- * Purchase displayCode prefix lookup exportado para caller responsibility null
- * guard fallback (A3-C6a §13.AC-purchase variante 4): callers que invocan
- * `toPurchaseWithDetails` con DRAFT purchases (sequenceNumber=null) construyen
- * fallback `${TYPE_PREFIXES[purchaseType]}-DRAFT` polymorphic per purchaseType
- * discriminator (FL/PF/CG/SV asimetría purchase vs sale fixed prefix VG)
- * mirror A3-C4a.5 sale paired pattern. SubQ-d fail-fast invariant standalone
- * preservado en `computeDisplayCode` (sigue throwing on null).
- */
-export const TYPE_PREFIXES: Record<PurchaseType, string> = {
-  FLETE: "FL",
-  POLLO_FAENADO: "PF",
-  COMPRA_GENERAL: "CG",
-  SERVICIO: "SV",
-};
-
-// ── Utility: displayCode formula (DRY A3-C6 callers reuse mirror sale A3-C5) ──
-
-export function computeDisplayCode(
-  purchaseType: PurchaseType,
-  sequenceNumber: number | null,
-): string {
-  if (sequenceNumber === null) {
-    throw new Error(
-      "computeDisplayCode requires sequenceNumber — DRAFT purchases (null sequenceNumber) NO tienen displayCode (SubQ-d fail-fast lock mirror sale)",
-    );
-  }
-  return `${TYPE_PREFIXES[purchaseType]}-${String(sequenceNumber).padStart(3, "0")}`;
 }
 
 // ── Sub-mappers: passthrough EXTERNAL deps (Prisma raw shape) ─────────────────

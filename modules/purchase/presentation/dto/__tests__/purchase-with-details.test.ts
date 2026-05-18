@@ -18,16 +18,12 @@ import type {
  */
 
 describe("purchase-with-details DTO (smoke)", () => {
-  it("compiles PurchaseWithDetails partial literal with displayCode", () => {
-    const purchase: Pick<
-      PurchaseWithDetails,
-      "id" | "totalAmount" | "displayCode"
-    > = {
+  it("compiles PurchaseWithDetails partial literal core fields", () => {
+    const purchase: Pick<PurchaseWithDetails, "id" | "totalAmount"> = {
       id: "purchase-1",
       totalAmount: 100,
-      displayCode: "FL-001",
     };
-    expect(purchase.displayCode).toBe("FL-001");
+    expect(purchase.id).toBe("purchase-1");
     expect(purchase.totalAmount).toBe(100);
   });
 
