@@ -27,7 +27,7 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/features/account-balances/server", () => {
+vi.mock("@/modules/account-balances/application/account-balances.service", () => {
   class AccountBalancesService {
     getBalances = mockGetBalances;
   }

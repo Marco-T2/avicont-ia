@@ -1,4 +1,4 @@
-import type { ReportCategory, ReportEntry } from "@/features/reports";
+import type { ReportCategory, ReportEntry } from "@/modules/reports/application/catalog";
 import { ReportCard } from "./report-card";
 
 interface CategorySectionProps {

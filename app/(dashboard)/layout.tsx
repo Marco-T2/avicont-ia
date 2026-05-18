@@ -1,6 +1,6 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { syncUserToDatabase } from "@/features/auth/server";
+import { syncUserToDatabase } from "@/modules/auth/application/sync-user.service";
 
 export default async function DashboardLayout({
   children,

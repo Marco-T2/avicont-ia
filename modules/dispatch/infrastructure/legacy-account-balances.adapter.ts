@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { AccountBalancesService } from "@/features/account-balances/server";
+import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
 import type { DispatchAccountBalancesPort } from "../domain/ports/dispatch-account-balances.port";
 
 /**

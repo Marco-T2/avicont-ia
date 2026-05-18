@@ -21,7 +21,7 @@ vi.mock("next/link", () => ({
 }));
 
 import { CatalogPage } from "@/components/reports/catalog-page";
-import { reportCategories, reportRegistry } from "@/features/reports";
+import { reportCategories, reportRegistry } from "@/modules/reports/application/catalog";
 
 // ── helpers ────────────────────────────────────────────────────────────────
 const availableEntries = reportRegistry.filter((e) => e.status === "available");

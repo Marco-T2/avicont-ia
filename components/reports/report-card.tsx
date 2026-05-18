@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import type { ReportEntry } from "@/features/reports";
+import type { ReportEntry } from "@/modules/reports/application/catalog";
 
 interface ReportCardProps {
   entry: ReportEntry;
