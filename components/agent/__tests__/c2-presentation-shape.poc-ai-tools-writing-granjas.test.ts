@@ -1,6 +1,7 @@
 /**
- * C2 presentation shape — Botón "Registrar con IA" inject pages 2 contextos
- * (lot-detail-client + farm-detail-client) shape verification existence-only regex Opt A.
+ * C2 presentation shape — Botón "Registrar con IA" inject pages 1 contexto
+ * (lot-detail-client only post retire-farm-collapse-to-lot T22) shape
+ * verification existence-only regex Opt A.
  *
  * Paired sister precedent STRUCTURAL EXACT mirror:
  *   - c5-pages-cutover-shape.poc-paired-farms-lots.test.ts (REPO_ROOT pattern + ^import...m
@@ -8,26 +9,25 @@
  *   - c0/c1-presentation-shape.poc-ai-tools-writing-granjas.test.ts (existence-only regex
  *     Opt A convention + describe/it block structure)
  *
- * UX SHAPE axis: botón trigger reusable single source of truth 2 contextos (Q1 lock Opt A
- * APROBADO reusable vs inline copy-paste anti-pattern). Posición UI header right (Q2 lock
- * Opt A APROBADO). ContextHints scope minimal per-context (Q3 lock Opt A APROBADO):
- *   - /lots/[lotId] → contextHints={{ lotId, lotName, farmId }} skip farmName (modal NO usa)
- *   - /farms/[farmId] → contextHints={{ farmId, farmName }} NO lotId
+ * UX SHAPE axis: botón trigger reusable single source of truth (Q1 lock Opt A APROBADO
+ * reusable vs inline copy-paste anti-pattern). Posición UI header right (Q2 lock Opt A
+ * APROBADO). ContextHints scope minimal per-context (Q3 lock Opt A APROBADO):
+ *   - /lots/[lotId] → contextHints={{ lotId, lotName, farmName }} (post REQ-200 collapse)
  *
- * Verifica shape EDIT C2 archivos pages cementados post-C5 hex farms+lots:
+ * Verifica shape EDIT C2 archivo page cementado post-C5 hex + post retire-farm-collapse:
  *   - lot-detail-client.tsx imports RegistrarConIABoton + renders <RegistrarConIABoton
- *     contextHints={{ lotId, lotName, farmId }}>
- *   - farm-detail-client.tsx imports RegistrarConIABoton + renders <RegistrarConIABoton
- *     contextHints={{ farmId, farmName }}>
+ *     contextHints={{ lotId, lotName, farmName }}>
  *
- * RED-α C2: behavioral assertion mismatch combined mode — lot-detail-client.tsx +
- * farm-detail-client.tsx EXIST post-C5 cementado pero NO importan ni renderean
- * RegistrarConIABoton yet. Failure path REAL behavioral assertion mismatch (NOT ENOENT —
- * pages exist), regex import + JSX render line ausente pre-GREEN. Paired sister C5 pages
- * cutover shape precedent EXACT mirror (behavioral assertion mismatch sobre archivos
- * existing). evidence-supersedes-assumption-lock 42ma matures cumulative + feedback_red_
- * acceptance_failure_mode 12ma matures cumulative cross-POC recursive aplicación verified
- * textual filesystem pre-write MANDATORY heredado matures.
+ * RED-α C2: behavioral assertion mismatch combined mode — lot-detail-client.tsx EXISTS
+ * post-C5 cementado pero NO importa ni renderea RegistrarConIABoton yet. Failure path REAL
+ * behavioral assertion mismatch (NOT ENOENT — page exists), regex import + JSX render line
+ * ausente pre-GREEN. Paired sister C5 pages cutover shape precedent EXACT mirror.
+ *
+ * SHAPE-UPDATED (today): α28 assertion body migrated from single brittle multi-line regex
+ * (silently green via comment-matching on retired `farmId` doc-comments) to extract-block
+ * pattern + per-key assertions + NEGATIVE gate against farmId re-introduction. Rule scope
+ * preserved (named_rule_immutability), assertion shape inverted on the dropped field
+ * mirroring α27 INVERTED pattern from retire-farm-collapse-to-lot T22.
  */
 
 import { existsSync, readFileSync } from "node:fs";
@@ -53,13 +53,28 @@ const FARM_DETAIL_CLIENT = resolve(
 
 const IMPORT_BOTON_RE =
   /^import\s+(?:\{[^}]*\bRegistrarConIABoton\b[^}]*\}|RegistrarConIABoton)\s*from\s*["']@\/components\/agent\/registrar-con-ia-boton["']/m;
-const RENDER_BOTON_LOT_RE =
-  /<RegistrarConIABoton\b[\s\S]*?contextHints\s*=\s*\{\{[\s\S]*?\blotId\b[\s\S]*?\blotName\b[\s\S]*?\bfarmId\b/;
-// POST-C2h SPLIT: RENDER_BOTON_FARM_RE removed — farm-level scope superseded por per-lote
-// scope única single source of truth (POC #1 C2h hotfix retroactivo Marco UX intuition catches
-// button context ambiguity granjero mayor ≥2 lotes activos).
 
-describe("C2 presentation shape — Botón Registrar con IA inject pages 2 contextos (existence-only regex)", () => {
+// JSX block extractor: matches the <RegistrarConIABoton ... /> element body only.
+// Bound to JSX delimiters so per-key assertions cannot bleed into surrounding
+// comments or JSX siblings. Covers both self-closing (`/>`) and explicit close
+// (`</RegistrarConIABoton>`) — current usage is self-closing but the test must
+// not depend on that incidentally.
+const BOTON_JSX_RE = /<RegistrarConIABoton\b[\s\S]*?(?:\/>|<\/RegistrarConIABoton>)/;
+
+// Per-key assertions: match property assignments (key followed by `:`), NOT
+// bare mentions in comments. Each key is line-bound — `\b<key>\s*:` will match
+// `lotId:` or `lotId : ` but never `// farmId dropped (REQ-200)`.
+const KEY_LOT_ID_RE = /\blotId\s*:/;
+const KEY_LOT_NAME_RE = /\blotName\s*:/;
+const KEY_FARM_NAME_RE = /\bfarmName\s*:/;
+
+// NEGATIVE gate (regression guard): farmId must NOT reappear as a property key
+// post retire-farm-collapse-to-lot T27 (ContextHints dropped farmId, REQ-200).
+// Applied to the extracted JSX block only — doc-comments mentioning the
+// retirement are legitimate elsewhere in the file and must not poison this guard.
+const KEY_FARM_ID_RE = /\bfarmId\s*:/;
+
+describe("C2 presentation shape — Botón Registrar con IA inject lot-detail-client (existence-only regex)", () => {
   // α26
   it("lot-detail-client.tsx imports RegistrarConIABoton from @/components/agent/registrar-con-ia-boton", () => {
     const src = readFileSync(LOT_DETAIL_CLIENT, "utf-8");
@@ -71,10 +86,16 @@ describe("C2 presentation shape — Botón Registrar con IA inject pages 2 conte
     expect(existsSync(FARM_DETAIL_CLIENT)).toBe(false);
   });
 
-  // α28
-  it("lot-detail-client.tsx renders <RegistrarConIABoton> with contextHints {lotId, lotName, farmId}", () => {
+  // α28 SHAPE-UPDATED — body migrated to extract-block + per-key + negative gate.
+  it("α28: lot-detail-client.tsx renders <RegistrarConIABoton> with contextHints {lotId, lotName, farmName} and NO farmId (REQ-200 collapse)", () => {
     const src = readFileSync(LOT_DETAIL_CLIENT, "utf-8");
-    expect(src).toMatch(RENDER_BOTON_LOT_RE);
+    const jsxMatch = src.match(BOTON_JSX_RE);
+    expect(jsxMatch, "<RegistrarConIABoton> element not found in lot-detail-client.tsx").not.toBeNull();
+    const block = jsxMatch![0];
+    expect(block, "lotId key missing in contextHints").toMatch(KEY_LOT_ID_RE);
+    expect(block, "lotName key missing in contextHints").toMatch(KEY_LOT_NAME_RE);
+    expect(block, "farmName key missing in contextHints (REQ-205 grouping signal)").toMatch(KEY_FARM_NAME_RE);
+    expect(block, "farmId key MUST be absent (dropped REQ-200, retire-farm-collapse-to-lot T27)").not.toMatch(KEY_FARM_ID_RE);
   });
 
   // α29 DELETED — POST-C2h SPLIT: farm-level scope farm-detail-client superseded por per-lote
