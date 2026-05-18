@@ -57,13 +57,6 @@ import {
 } from "../domain/compute-bc-summary";
 import { roundTotal } from "../domain/round-total";
 
-// ── Display code helper (presentation concern kept thin) ───────────────────
-
-function getDisplayCode(type: DispatchType, seq: number): string {
-  const prefix = type === "NOTA_DESPACHO" ? "ND" : "BC";
-  return `${prefix}-${String(seq).padStart(3, "0")}`;
-}
-
 // ── Service deps ───────────────────────────────────────────────────────────
 
 export interface DispatchServiceDeps {
@@ -363,11 +356,11 @@ export class DispatchService {
     // Persist
     dispatch = await this.deps.repo.saveTx(dispatch);
 
-    // Generate journal entry
-    const displayCode = getDisplayCode(input.dispatchType, sequenceNumber);
+    // Generate journal entry — REQ-DISPLAY-3 FUTURE-only: NO ${displayCode}
+    // prefix in new entries. Notes-suffix `| ${notes}` pattern preserved.
     const journalDescription = input.notes
-      ? `${displayCode} - ${input.description} | ${input.notes}`
-      : `${displayCode} - ${input.description}`;
+      ? `${input.description} | ${input.notes}`
+      : input.description;
 
     const journalEntryId = await this.deps.journalEntryFactory.generateForDispatch({
       organizationId,
@@ -626,14 +619,14 @@ export class DispatchService {
       replaceDetails: false,
     });
 
-    // Journal
-    const displayCode = getDisplayCode(dispatch.dispatchType, sequenceNumber);
+    // Journal — REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix in new
+    // entries. Notes-suffix `| ${notes}` pattern preserved.
     const incomeAccountCode =
       dispatch.dispatchType === "NOTA_DESPACHO" ? "4.1.2" : "4.1.1";
 
     const journalDescription = dispatch.notes
-      ? `${displayCode} - ${dispatch.description} | ${dispatch.notes}`
-      : `${displayCode} - ${dispatch.description}`;
+      ? `${dispatch.description} | ${dispatch.notes}`
+      : dispatch.description;
 
     const journalEntryId = await this.deps.journalEntryFactory.generateForDispatch({
       organizationId,
