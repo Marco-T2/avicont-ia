@@ -6,8 +6,6 @@ import type { AccountBalancesRepository } from "@/modules/accounting/domain/port
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
 import type { ReceivableRepository } from "@/modules/receivables/domain/receivable.repository";
 import type { SaleRepository } from "../../../domain/ports/sale.repository";
-import type { IvaBookRegenNotifierPort } from "../../../domain/ports/iva-book-regen-notifier.port";
-import type { IvaBookVoidCascadePort } from "../../../domain/ports/iva-book-void-cascade.port";
 import type { JournalEntryFactoryPort } from "../../../domain/ports/journal-entry-factory.port";
 import type {
   SaleScope,
@@ -37,8 +35,6 @@ export interface InMemorySaleUnitOfWorkOptions {
   accountBalances?: AccountBalancesRepository;
   receivables?: ReceivableRepository;
   journalEntryFactory?: JournalEntryFactoryPort;
-  ivaBookRegenNotifier?: IvaBookRegenNotifierPort;
-  ivaBookVoidCascade?: IvaBookVoidCascadePort;
 }
 
 /**
@@ -46,6 +42,9 @@ export interface InMemorySaleUnitOfWorkOptions {
  * `AuditContext` of every `run` invocation so tests can assert audit semantics.
  * Generates a deterministic-but-unique `correlationId` per run — tests can
  * inject overrides via the `nextCorrelationId` field if needed.
+ *
+ * IVA cascade fields retired in lcv-feature-retirement (RND 102100000011
+ * Dec-2021).
  */
 export class InMemorySaleUnitOfWork implements SaleUnitOfWork {
   ranContexts: AuditContext[] = [];
@@ -74,10 +73,6 @@ export class InMemorySaleUnitOfWork implements SaleUnitOfWork {
       receivables: this.options.receivables ?? unused("receivables"),
       journalEntryFactory:
         this.options.journalEntryFactory ?? unused("journalEntryFactory"),
-      ivaBookRegenNotifier:
-        this.options.ivaBookRegenNotifier ?? unused("ivaBookRegenNotifier"),
-      ivaBookVoidCascade:
-        this.options.ivaBookVoidCascade ?? unused("ivaBookVoidCascade"),
     };
 
     const result = await fn(scope);

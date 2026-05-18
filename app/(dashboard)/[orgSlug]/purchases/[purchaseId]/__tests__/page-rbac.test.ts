@@ -24,7 +24,6 @@ const {
   mockToPurchaseWithDetails,
   mockContactFindUnique,
   mockPayableFindUnique,
-  mockIvaPurchaseBookFindUnique,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
@@ -37,7 +36,6 @@ const {
   mockToPurchaseWithDetails: vi.fn(),
   mockContactFindUnique: vi.fn(),
   mockPayableFindUnique: vi.fn(),
-  mockIvaPurchaseBookFindUnique: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -58,7 +56,6 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {
     contact: { findUnique: mockContactFindUnique },
     accountsPayable: { findUnique: mockPayableFindUnique },
-    ivaPurchaseBook: { findUnique: mockIvaPurchaseBookFindUnique },
   },
 }));
 
@@ -121,7 +118,6 @@ beforeEach(() => {
     paymentTermsDays: 30,
   });
   mockPayableFindUnique.mockResolvedValue(null);
-  mockIvaPurchaseBookFindUnique.mockResolvedValue(null);
   mockToPurchaseWithDetails.mockReturnValue({});
 });
 

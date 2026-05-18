@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { IvaBookReaderPort } from "../domain/ports/iva-book-reader.port";
-import type { IvaBookRegenNotifierPort } from "../domain/ports/iva-book-regen-notifier.port";
-import type { IvaBookVoidCascadePort } from "../domain/ports/iva-book-void-cascade.port";
 import type { OrgSettingsReaderPort } from "../domain/ports/org-settings-reader.port";
 import type {
   SalePermissionScope,
@@ -15,6 +12,9 @@ import type { SaleScope, SaleUnitOfWork } from "../application/sale-unit-of-work
  * Compile-time structural test: forces the type-checker to load every A2 seed
  * port + UoW interface so TS errors surface here instead of in Ciclo 2 when
  * fakes start implementing the contracts.
+ *
+ * IvaBookReaderPort / IvaBookRegenNotifierPort / IvaBookVoidCascadePort retired
+ * in lcv-feature-retirement (RND 102100000011 Dec-2021).
  */
 describe("POC #11.0a A2 Ciclo 1 — seed structure", () => {
   it("the sale 'sales' permission scope is the only allowed value", () => {
@@ -32,35 +32,29 @@ describe("POC #11.0a A2 Ciclo 1 — seed structure", () => {
       accountBalances: true,
       receivables: true,
       journalEntryFactory: true,
-      ivaBookRegenNotifier: true,
-      ivaBookVoidCascade: true,
     };
-    expect(Object.keys(wired)).toHaveLength(9);
+    expect(Object.keys(wired)).toHaveLength(7);
   });
 
   it("standalone read ports stay outside the SaleScope", () => {
-    type StandaloneSurface = "getOrCreate" | "canPost" | "getActiveBookForSale";
+    type StandaloneSurface = "getOrCreate" | "canPost";
     const _readers: Record<
       StandaloneSurface,
-      keyof OrgSettingsReaderPort | keyof SalePermissionsPort | keyof IvaBookReaderPort
+      keyof OrgSettingsReaderPort | keyof SalePermissionsPort
     > = {
       getOrCreate: "getOrCreate",
       canPost: "canPost",
-      getActiveBookForSale: "getActiveBookForSale",
     };
     expect(Object.values(_readers)).toEqual([
       "getOrCreate",
       "canPost",
-      "getActiveBookForSale",
     ]);
   });
 
   it("unused type imports keep the symbols live in the build graph", () => {
     type Wired =
       | SaleRepository
-      | SaleUnitOfWork
-      | IvaBookRegenNotifierPort
-      | IvaBookVoidCascadePort;
+      | SaleUnitOfWork;
     const _holder: Wired | null = null;
     expect(_holder).toBeNull();
   });

@@ -1,18 +1,10 @@
 /**
- * Sentinel: decimal.js import-shape — sub-POC 3 domain-cross-modules
- * Cycle 2 / purchase (sdd/oleada-money-decimal-hex-purity).
+ * Sentinel: import-shape — purchase/domain/build-purchase-entry-lines.
  *
- * Sister of sub-POC 3 Cycle 1 (sale) and sub-POC 2 Cycles 1-5. Asserts
- * `modules/purchase/domain/build-purchase-entry-lines.ts` no longer
- * value-imports `Prisma` from `@/generated/prisma/client` and instead
- * default-imports `Decimal` from `decimal.js@10.6.0`.
- *
- * Note on regex: matches VALUE-imports only. `import type { Prisma } from ...`
- * is erased at compile time and does NOT contribute to the runtime bundle.
- *
- * Declared failure mode (pre-GREEN): both assertions FAIL — build-purchase-entry-lines.ts
- * currently `import { Prisma } from "@/generated/prisma/client"` and does NOT
- * import from `decimal.js` yet.
+ * Post lcv-feature-retirement: IVA path removed. Decimal import no longer
+ * needed (pure number arithmetic). Guards that:
+ * 1. Prisma runtime value-import is absent (still enforced).
+ * 2. Decimal default-import is absent (IVA path retired — RND 102100000011).
  */
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
@@ -34,16 +26,16 @@ const TARGETS = [
   "modules/purchase/domain/build-purchase-entry-lines.ts",
 ] as const;
 
-describe("sentinel: decimal.js import-shape — purchase/domain/build-purchase-entry-lines (sub-POC 3 Cycle 2)", () => {
+describe("sentinel: import-shape — purchase/domain/build-purchase-entry-lines (post-lcv-retirement)", () => {
   for (const target of TARGETS) {
     it(`${target} does NOT value-import Prisma from @/generated/prisma/client`, () => {
       const src = readRepo(target);
       expect(src).not.toMatch(PRISMA_VALUE_IMPORT_RE);
     });
 
-    it(`${target} default-imports Decimal from decimal.js`, () => {
+    it(`${target} does NOT default-import Decimal from decimal.js (IVA path retired)`, () => {
       const src = readRepo(target);
-      expect(src).toMatch(DECIMAL_DEFAULT_IMPORT_RE);
+      expect(src).not.toMatch(DECIMAL_DEFAULT_IMPORT_RE);
     });
   }
 });

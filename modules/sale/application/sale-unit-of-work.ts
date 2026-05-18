@@ -6,8 +6,6 @@ import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports
 import type { AccountBalancesRepository } from "@/modules/accounting/domain/ports/account-balances.repo";
 import type { ReceivableRepository } from "@/modules/receivables/domain/receivable.repository";
 import type { SaleRepository } from "../domain/ports/sale.repository";
-import type { IvaBookRegenNotifierPort } from "../domain/ports/iva-book-regen-notifier.port";
-import type { IvaBookVoidCascadePort } from "../domain/ports/iva-book-void-cascade.port";
 import type { JournalEntryFactoryPort } from "../domain/ports/journal-entry-factory.port";
 
 /**
@@ -16,10 +14,8 @@ import type { JournalEntryFactoryPort } from "../domain/ports/journal-entry-fact
  * enter the scope as the use cases that need them land — strict TDD per-test,
  * no speculative scaffolding (parity with `AccountingScope` POC #10 C2-A/B).
  *
- * IVA cascade ports (`ivaBookRegenNotifier`, `ivaBookVoidCascade`) live inside
- * the scope because they MUST share the same Postgres tx as the sale write
- * (legacy parity: `editPosted`/`voidCascadeTx` — IVA mutations rollback if the
- * sale rollback). Temporal §5.5; retired in POC #11.0c.
+ * IVA cascade ports (`ivaBookRegenNotifier`, `ivaBookVoidCascade`) retired in
+ * lcv-feature-retirement (RND 102100000011 Dec-2021).
  *
  * `journalEntryFactory` lives inside the scope because the concrete
  * `PrismaJournalEntryFactoryAdapter` (Ciclo 4 c2 DI lockeada D-2) takes the
@@ -28,7 +24,7 @@ import type { JournalEntryFactoryPort } from "../domain/ports/journal-entry-fact
  * α resolution lockeada Marco.
  *
  * `IvaBookReaderPort` is read-only and lives OUTSIDE the scope (parity with
- * `FiscalPeriodsReadPort`).
+ * `FiscalPeriodsReadPort`). Retired alongside IVA cascade ports above.
  */
 export interface SaleScope extends BaseScope {
   readonly sales: SaleRepository;
@@ -36,8 +32,6 @@ export interface SaleScope extends BaseScope {
   readonly accountBalances: AccountBalancesRepository;
   readonly receivables: ReceivableRepository;
   readonly journalEntryFactory: JournalEntryFactoryPort;
-  readonly ivaBookRegenNotifier: IvaBookRegenNotifierPort;
-  readonly ivaBookVoidCascade: IvaBookVoidCascadePort;
 }
 
 export type SaleUnitOfWork = UnitOfWork<SaleScope>;

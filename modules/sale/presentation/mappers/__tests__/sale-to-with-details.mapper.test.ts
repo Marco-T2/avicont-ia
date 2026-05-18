@@ -179,6 +179,5 @@ describe("sale-to-with-details mappers (smoke)", () => {
     expect(result.details[0].lineAmount).toBe(100);
     expect(result.details[0].quantity).toBe(2);
     expect(result.receivable).toBeNull();
-    expect(result.ivaSalesBook).toBeNull();
   });
 });

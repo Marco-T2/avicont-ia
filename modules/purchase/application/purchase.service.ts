@@ -24,7 +24,6 @@ import type {
   PurchaseRepository,
 } from "../domain/ports/purchase.repository";
 import type { PurchasePermissionsPort } from "../domain/ports/purchase-permissions.port";
-import type { IvaBookReaderPort } from "../domain/ports/iva-book-reader.port";
 import type { PayableRepository } from "@/modules/payables/domain/payable.repository";
 import {
   computeTrimPlan,
@@ -33,7 +32,6 @@ import {
 import { computePfSummary } from "../domain/compute-pf-summary";
 import {
   buildPurchaseEntryLines,
-  type IvaBookForEntry,
   type PurchaseDetailForEntry,
 } from "../domain/build-purchase-entry-lines";
 import {
@@ -66,7 +64,6 @@ export interface PurchaseServiceDeps {
   accountLookup?: AccountLookupPort;
   orgSettings?: OrgSettingsReaderPort;
   fiscalPeriods?: FiscalPeriodsReadPort;
-  ivaBookReader?: IvaBookReaderPort;
   journalEntriesRead?: JournalEntriesReadPort;
 }
 
@@ -270,7 +267,6 @@ export class PurchaseService {
       accountLookup: this.deps.accountLookup,
       orgSettings: this.deps.orgSettings,
       fiscalPeriods: this.deps.fiscalPeriods,
-      ivaBookReader: this.deps.ivaBookReader,
     };
     for (const [name, dep] of Object.entries(required)) {
       if (!dep) throw new Error(`PurchaseService.post requires ${name}`);
@@ -312,19 +308,6 @@ export class PurchaseService {
     const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
     const settingsSnapshot = settings.toSnapshot();
 
-    const ivaSnapshot = await this.deps.ivaBookReader!.getActiveBookForPurchase(
-      organizationId,
-      purchaseId,
-    );
-    const ivaBook: IvaBookForEntry | undefined = ivaSnapshot
-      ? {
-          baseIvaSujetoCf: ivaSnapshot.netAmount,
-          dfCfIva: ivaSnapshot.ivaAmount,
-          importeTotal: posted.totalAmount.value,
-          exentos: ivaSnapshot.exentos,
-        }
-      : undefined;
-
     const detailsForEntry: PurchaseDetailForEntry[] = posted.details.map((d) => ({
       lineAmount: d.lineAmount.value,
       expenseAccountCode: d.expenseAccountId
@@ -343,7 +326,6 @@ export class PurchaseService {
         polloFaenadoCOGSAccountCode: settingsSnapshot.polloFaenadoCOGSAccountCode,
       },
       posted.contactId,
-      ivaBook,
     );
 
     const contact = await this.deps.contacts!.findById(
@@ -841,12 +823,6 @@ export class PurchaseService {
     const { result, correlationId } = await this.deps.uow!.run(
       { userId: context.userId, organizationId },
       async (scope) => {
-        const newIvaBook = await scope.ivaBookRegenNotifier.recomputeFromPurchase(
-          organizationId,
-          edited.id,
-          edited.totalAmount.value,
-        );
-
         const entryLines = buildPurchaseEntryLines(
           edited.purchaseType,
           edited.totalAmount.value,
@@ -858,7 +834,6 @@ export class PurchaseService {
               settingsSnapshot.polloFaenadoCOGSAccountCode,
           },
           edited.contactId,
-          newIvaBook ?? undefined,
         );
 
         // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
@@ -1046,11 +1021,6 @@ export class PurchaseService {
           replaceDetails: false,
         });
 
-        await scope.ivaBookVoidCascade.markVoidedFromPurchase(
-          organizationId,
-          purchaseId,
-        );
-
         if (purchase.journalEntryId) {
           const oldJournal = await this.deps.journalEntriesRead!.findById(
             organizationId,
@@ -1085,156 +1055,5 @@ export class PurchaseService {
     await this.deps.repo.deleteTx(organizationId, purchaseId);
   }
 
-  /**
-   * Regenerates the journal entry of a posted purchase when the IVA book
-   * changes. Mirrors legacy `purchase.service.ts:1157-1278` (fidelidad
-   * regla #1) WITHOUT `externalTx + correlationId` delegation (legacy
-   * complexity §5.5 retired in POC #11.0c — caller invoca su propia UoW
-   * si coordinated tx es needed). Espejo simétrico sale-hex
-   * `regenerateJournalForIvaChange`.
-   *
-   * Flow: load purchase + period OPEN check + accounts + IVA snapshot +
-   * entry lines OUTSIDE UoW; factory.regenerateForPurchaseEdit → applyVoid
-   * old + applyPost new INSIDE. Purchase aggregate unchanged — solo el
-   * journal mutates. Period check outside-UoW (paridad sale-hex; legacy
-   * `:1238-1240` lo replica in-tx por race protection — replicación
-   * estricta diferida POC #11.0c con IVA service real).
-   *
-   * **Period gate** — purchase-hex SÍ valida periodo inside (asimetría
-   * deliberada con sale-hex que NO valida). IVA-hex consumer replica el
-   * gate en su lado para uniformar ambos paths per D-A1#4 elevation lock —
-   * ver `modules/iva-books/domain/ports/fiscal-period-reader.port.ts:8-26`.
-   */
-  async regenerateJournalForIvaChange(
-    organizationId: string,
-    purchaseId: string,
-    userId: string,
-  ): Promise<UpdatePurchaseResult> {
-    const required = {
-      uow: this.deps.uow,
-      accountLookup: this.deps.accountLookup,
-      orgSettings: this.deps.orgSettings,
-      ivaBookReader: this.deps.ivaBookReader,
-      fiscalPeriods: this.deps.fiscalPeriods,
-    };
-    for (const [name, dep] of Object.entries(required)) {
-      if (!dep) {
-        throw new Error(
-          `PurchaseService.regenerateJournalForIvaChange requires ${name}`,
-        );
-      }
-    }
-
-    const purchase = await this.getById(organizationId, purchaseId);
-    if (!purchase.journalEntryId) {
-      throw new NotFoundError("Asiento contable");
-    }
-
-    const period = await this.deps.fiscalPeriods!.getById(
-      organizationId,
-      purchase.periodId,
-    );
-    if (period.status === "CLOSED") {
-      throw new PurchasePeriodClosed(purchase.periodId);
-    }
-    // I12 — date∈período antes de regenerar el journal entry asociado.
-    if (!isDateWithinPeriod(purchase.date, period)) {
-      throw new PurchaseDateOutsidePeriod(purchase.date, period.name);
-    }
-
-    const expenseAccountIds =
-      purchase.purchaseType === "COMPRA_GENERAL" ||
-      purchase.purchaseType === "SERVICIO"
-        ? purchase.details
-            .map((d) => d.expenseAccountId)
-            .filter((id): id is string => !!id)
-        : [];
-
-    const accounts = await this.deps.accountLookup!.findManyByIds(
-      organizationId,
-      expenseAccountIds,
-    );
-    const accountById = new Map(accounts.map((a) => [a.id, a]));
-    for (const id of expenseAccountIds) {
-      if (!accountById.has(id)) throw new PurchaseAccountNotFound(id);
-    }
-
-    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
-    const settingsSnapshot = settings.toSnapshot();
-
-    const ivaSnapshot = await this.deps.ivaBookReader!.getActiveBookForPurchase(
-      organizationId,
-      purchaseId,
-    );
-    const ivaBook: IvaBookForEntry | undefined = ivaSnapshot
-      ? {
-          baseIvaSujetoCf: ivaSnapshot.netAmount,
-          dfCfIva: ivaSnapshot.ivaAmount,
-          importeTotal: purchase.totalAmount.value,
-          exentos: ivaSnapshot.exentos,
-        }
-      : undefined;
-
-    const detailsForEntry: PurchaseDetailForEntry[] = purchase.details.map(
-      (d) => ({
-        lineAmount: d.lineAmount.value,
-        expenseAccountCode: d.expenseAccountId
-          ? accountById.get(d.expenseAccountId)?.code ?? null
-          : null,
-        description: d.description,
-      }),
-    );
-
-    const entryLines = buildPurchaseEntryLines(
-      purchase.purchaseType,
-      purchase.totalAmount.value,
-      detailsForEntry,
-      {
-        cxpAccountCode: settingsSnapshot.cxpAccountCode,
-        fleteExpenseAccountCode: settingsSnapshot.fleteExpenseAccountCode,
-        polloFaenadoCOGSAccountCode:
-          settingsSnapshot.polloFaenadoCOGSAccountCode,
-      },
-      purchase.contactId,
-      ivaBook,
-    );
-
-    // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
-    // `| ${notes}` suffix when notes present.
-    const journalDescription = purchase.notes
-      ? `${purchase.description} | ${purchase.notes}`
-      : purchase.description;
-
-    const { correlationId } = await this.deps.uow!.run(
-      { userId, organizationId },
-      async (scope) => {
-        const { old, new: newJournal } =
-          await scope.journalEntryFactory.regenerateForPurchaseEdit(
-            purchase.journalEntryId!,
-            {
-              organizationId,
-              contactId: purchase.contactId,
-              date: purchase.date,
-              periodId: purchase.periodId,
-              description: journalDescription,
-              sourceType: "purchase",
-              sourceId: purchase.id,
-              createdById: userId,
-              lines: entryLines.map((l) => ({
-                accountCode: l.accountCode,
-                side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
-                amount: l.debit > 0 ? l.debit : l.credit,
-                contactId: l.contactId,
-                description: l.description,
-              })),
-            },
-          );
-
-        await scope.accountBalances.applyVoid(old);
-        await scope.accountBalances.applyPost(newJournal);
-      },
-    );
-
-    return { purchase, correlationId };
-  }
 }
+

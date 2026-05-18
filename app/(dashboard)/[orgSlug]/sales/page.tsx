@@ -119,7 +119,6 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
       contact: contactMap.get(s.contactId)!,
       period: periodMap.get(s.periodId)!,
       receivable: null,
-      ivaSalesBook: null,
     }),
   );
 

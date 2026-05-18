@@ -1,7 +1,6 @@
 import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
-import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 
 import type { Sale } from "../../domain/sale.entity";
 import type { SaleDetail } from "../../domain/sale-detail.entity";
@@ -105,7 +104,6 @@ export interface ToSaleWithDetailsDeps {
   contact: ContactRaw;
   period: PeriodRaw;
   receivable?: ReceivableRaw | null;
-  ivaSalesBook?: IvaSalesBookDTO | null;
 }
 
 // ── Sub-mappers: passthrough EXTERNAL deps (Prisma raw shape) ─────────────────
@@ -207,6 +205,5 @@ export function toSaleWithDetails(
     contact: toContactSummary(deps.contact),
     period: toPeriodSummary(deps.period),
     receivable: deps.receivable ? toReceivableSummary(deps.receivable) : null,
-    ivaSalesBook: deps.ivaSalesBook ?? null,
   };
 }

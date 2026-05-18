@@ -86,7 +86,6 @@ export default async function PurchasesPage({ params, searchParams }: PurchasesP
       contact: contactMap.get(p.contactId)!,
       period: periodMap.get(p.periodId)!,
       payable: null,
-      ivaPurchaseBook: null,
     }),
   );
 

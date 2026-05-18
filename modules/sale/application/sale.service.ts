@@ -23,11 +23,9 @@ import {
 } from "../domain/compute-trim-plan";
 import {
   buildSaleEntryLines,
-  type IvaBookForEntry,
   type SaleEntryDetail,
 } from "../domain/build-sale-entry-lines";
 import type { OrgSettingsReaderPort } from "../domain/ports/org-settings-reader.port";
-import type { IvaBookReaderPort } from "../domain/ports/iva-book-reader.port";
 import type { SalePermissionsPort } from "../domain/ports/sale-permissions.port";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -89,7 +87,6 @@ export interface SaleServiceDeps {
   accountLookup?: AccountLookupPort;
   orgSettings?: OrgSettingsReaderPort;
   fiscalPeriods?: FiscalPeriodsReadPort;
-  ivaBookReader?: IvaBookReaderPort;
   salePermissions?: SalePermissionsPort;
   journalEntriesRead?: JournalEntriesReadPort;
 }
@@ -231,7 +228,6 @@ export class SaleService {
       accountLookup: this.deps.accountLookup,
       orgSettings: this.deps.orgSettings,
       fiscalPeriods: this.deps.fiscalPeriods,
-      ivaBookReader: this.deps.ivaBookReader,
     };
     for (const [name, dep] of Object.entries(required)) {
       if (!dep) throw new Error(`SaleService.post requires ${name}`);
@@ -267,19 +263,6 @@ export class SaleService {
     const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
     const settingsSnapshot = settings.toSnapshot();
 
-    const ivaSnapshot = await this.deps.ivaBookReader!.getActiveBookForSale(
-      organizationId,
-      saleId,
-    );
-    const ivaBook: IvaBookForEntry | undefined = ivaSnapshot
-      ? {
-          baseIvaSujetoCf: ivaSnapshot.netAmount,
-          dfCfIva: ivaSnapshot.ivaAmount,
-          importeTotal: posted.totalAmount.value,
-          exentos: ivaSnapshot.exentos,
-        }
-      : undefined;
-
     const detailsForEntry: SaleEntryDetail[] = posted.details.map((d) => ({
       lineAmount: d.lineAmount.value,
       incomeAccountCode: accountById.get(d.incomeAccountId)!.code,
@@ -295,7 +278,6 @@ export class SaleService {
         itPayableAccountCode: settingsSnapshot.itPayableAccountCode,
       },
       posted.contactId,
-      ivaBook,
     );
 
     const contact = await this.deps.contacts!.findById(
@@ -578,12 +560,6 @@ export class SaleService {
     const { result, correlationId } = await this.deps.uow!.run(
       { userId: context.userId, organizationId },
       async (scope) => {
-        const newIvaBook = await scope.ivaBookRegenNotifier.recomputeFromSale(
-          organizationId,
-          edited.id,
-          edited.totalAmount.value,
-        );
-
         const entryLines = buildSaleEntryLines(
           edited.totalAmount.value,
           detailsForEntry,
@@ -593,7 +569,6 @@ export class SaleService {
             itPayableAccountCode: settingsSnapshot.itPayableAccountCode,
           },
           edited.contactId,
-          newIvaBook ?? undefined,
         );
 
         // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
@@ -927,11 +902,6 @@ export class SaleService {
           replaceDetails: false,
         });
 
-        await scope.ivaBookVoidCascade.markVoidedFromSale(
-          organizationId,
-          saleId,
-        );
-
         if (sale.journalEntryId) {
           const oldJournal = await this.deps.journalEntriesRead!.findById(
             organizationId,
@@ -965,123 +935,5 @@ export class SaleService {
     await this.deps.repo.deleteTx(organizationId, saleId);
   }
 
-  /**
-   * Regenerates the journal entry of a posted sale when the IVA book changes.
-   * Mirrors legacy `sale.service.ts:1006-1145` (fidelidad regla #1) WITHOUT
-   * `externalTx + correlationId` delegation (legacy complexity §5.5 retired
-   * in POC #11.0c — caller invokes its own UoW if coordinated tx is needed).
-   *
-   * Flow: load sale + accounts + IVA snapshot + entry lines OUTSIDE UoW;
-   * factory.regenerateForSaleEdit → applyVoid old + applyPost new INSIDE.
-   * Sale aggregate unchanged — only the journal mutates.
-   *
-   * **Period gate** — sale-hex NO valida periodo aquí (asimetría deliberada
-   * con purchase-hex que SÍ valida inside). El gate vive en el consumer
-   * IVA-hex per D-A1#4 elevation lock — ver
-   * `modules/iva-books/domain/ports/fiscal-period-reader.port.ts:8-26`.
-   */
-  async regenerateJournalForIvaChange(
-    organizationId: string,
-    saleId: string,
-    userId: string,
-  ): Promise<UpdateSaleResult> {
-    const required = {
-      uow: this.deps.uow,
-      accountLookup: this.deps.accountLookup,
-      orgSettings: this.deps.orgSettings,
-      ivaBookReader: this.deps.ivaBookReader,
-    };
-    for (const [name, dep] of Object.entries(required)) {
-      if (!dep) {
-        throw new Error(`SaleService.regenerateJournalForIvaChange requires ${name}`);
-      }
-    }
-
-    const sale = await this.getById(organizationId, saleId);
-    if (!sale.journalEntryId) {
-      throw new NotFoundError("Asiento contable");
-    }
-
-    const incomeAccountIds = sale.details.map((d) => d.incomeAccountId);
-    const accounts = await this.deps.accountLookup!.findManyByIds(
-      organizationId,
-      incomeAccountIds,
-    );
-    const accountById = new Map(accounts.map((a) => [a.id, a]));
-    for (const id of incomeAccountIds) {
-      if (!accountById.has(id)) throw new SaleAccountNotFound(id);
-    }
-
-    const settings = await this.deps.orgSettings!.getOrCreate(organizationId);
-    const settingsSnapshot = settings.toSnapshot();
-
-    const ivaSnapshot = await this.deps.ivaBookReader!.getActiveBookForSale(
-      organizationId,
-      saleId,
-    );
-    const ivaBook: IvaBookForEntry | undefined = ivaSnapshot
-      ? {
-          baseIvaSujetoCf: ivaSnapshot.netAmount,
-          dfCfIva: ivaSnapshot.ivaAmount,
-          importeTotal: sale.totalAmount.value,
-          exentos: ivaSnapshot.exentos,
-        }
-      : undefined;
-
-    const detailsForEntry: SaleEntryDetail[] = sale.details.map((d) => ({
-      lineAmount: d.lineAmount.value,
-      incomeAccountCode: accountById.get(d.incomeAccountId)!.code,
-      description: d.description,
-    }));
-
-    const entryLines = buildSaleEntryLines(
-      sale.totalAmount.value,
-      detailsForEntry,
-      {
-        cxcAccountCode: settingsSnapshot.cxcAccountCode,
-        itExpenseAccountCode: settingsSnapshot.itExpenseAccountCode,
-        itPayableAccountCode: settingsSnapshot.itPayableAccountCode,
-      },
-      sale.contactId,
-      ivaBook,
-    );
-
-    // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
-    // `| ${notes}` suffix when notes present.
-    const journalDescription = sale.notes
-      ? `${sale.description} | ${sale.notes}`
-      : sale.description;
-
-    const { correlationId } = await this.deps.uow!.run(
-      { userId, organizationId },
-      async (scope) => {
-        const { old, new: newJournal } =
-          await scope.journalEntryFactory.regenerateForSaleEdit(
-            sale.journalEntryId!,
-            {
-              organizationId,
-              contactId: sale.contactId,
-              date: sale.date,
-              periodId: sale.periodId,
-              description: journalDescription,
-              sourceType: "sale",
-              sourceId: sale.id,
-              createdById: userId,
-              lines: entryLines.map((l) => ({
-                accountCode: l.accountCode,
-                side: l.debit > 0 ? ("DEBIT" as const) : ("CREDIT" as const),
-                amount: l.debit > 0 ? l.debit : l.credit,
-                contactId: l.contactId,
-                description: l.description,
-              })),
-            },
-          );
-
-        await scope.accountBalances.applyVoid(old);
-        await scope.accountBalances.applyPost(newJournal);
-      },
-    );
-
-    return { sale, correlationId };
-  }
 }
+

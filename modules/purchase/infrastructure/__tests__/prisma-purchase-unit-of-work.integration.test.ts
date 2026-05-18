@@ -2,7 +2,6 @@ import {
   afterAll,
   afterEach,
   beforeAll,
-  beforeEach,
   describe,
   expect,
   it,
@@ -11,14 +10,10 @@ import {
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
-import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
-import type { IvaBookService } from "@/modules/iva-books/application/iva-book.service";
-import type { IvaBookScope } from "@/modules/iva-books/application/iva-book-unit-of-work";
-import { __resetForTesting } from "@/modules/iva-books/presentation/composition-root";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import { Purchase } from "@/modules/purchase/domain/purchase.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -28,84 +23,22 @@ import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-
 import { PrismaPurchaseUnitOfWork } from "../prisma-purchase-unit-of-work";
 
 /**
- * Postgres-real integration test for PrismaPurchaseUnitOfWork (POC #11.0b A3
- * Ciclo 6b). Mirror sale C6 (`prisma-sale-unit-of-work.integration.test.ts`,
- * commit `31830b0`) byte-equivalent salvo asimetrías declaradas:
- *   - `payables` ↔ `receivables` (purchase scope tx-bound).
- *   - factory cross-module sale-side (`PrismaJournalEntryFactoryAdapter` con
- *     `generateForPurchase`/`regenerateForPurchaseEdit` heredado A3 Ciclo 4 sale).
- *   - contact `type: "PROVEEDOR"` ↔ `"CLIENTE"`.
- *   - 2 accounts (asset + liability) suficientes — `purchaseType: "FLETE"` no
- *     exige `expenseAccountId` en detail (vs sale `incomeAccountId` obligatorio
- *     que justificaba el 3er account en sale C6).
+ * Postgres-real integration test for PrismaPurchaseUnitOfWork.
  *
- * Capa POR ENCIMA del shared `prisma-unit-of-work.integration.test.ts` que ya
- * valida Postgres-real las 4 invariantes (correlationId pre-tx, SET LOCAL
- * inside, fn invoke, return shape). Aquí ejercemos el `PurchaseScope`
- * purchase-hex específico: 2 surfaces críticas cross-module deben compartir
- * la misma tx outer abierta por `withAuditTx`.
- *
- * 2 surfaces lockeadas Marco (D-Purch-UoW#3 (a), heredado D-Sale-UoW#3 (a)
- * sale C6):
- *   - `scope.purchases.saveTx` (purchase-hex own — Prisma directo Ciclo 3)
- *   - `scope.journalEntries.create` (cross-module — POC #10 C3-B)
- * Las otras 5 (accountBalances, payables, journalEntryFactory,
- * ivaBookRegenNotifier, ivaBookVoidCascade) tienen su propia integration
- * test C5 / POC #10 / shared — redundancia con setup pesado descartada.
- *
- * Fixtures `beforeAll`: User + Org + FiscalPeriod + VoucherType + Contact
- * (PROVEEDOR) + 2 Accounts (asset DEUDORA, liability ACREEDORA). Stamp
- * `ppuow-` para distinguir de psuow- (sale C6), pposra- (Ciclo 6a).
- *
- * Failure mode declarado (§8.6 + RED honesty preventivo): RED genuino al
- * import-time porque `PrismaPurchaseUnitOfWork` no existe aún. Step (3) GREEN
- * crea el adapter + composition root. Setup discriminante:
- *   - scope.purchases con tx wrong (ej. prisma global) → purchase sobrevive rollback test.
- *   - scope.journalEntries con tx wrong → idem journal.
- *
- * Cleanup `afterEach` aisla los 2 tests del describe + limpia audit por
- * correlationId capturado. `afterAll` paso 3 audit_logs orgId obligatorio
- * (captura audit_purchases + audit_purchase_details + audit_journal_entries +
- * audit_journal_lines triggers — D-Purch-UoW#3 lockeado).
+ * Validates that `scope.purchases.saveTx` and `scope.journalEntries.create`
+ * share the same tx outer opened by `withAuditTx`.
  */
 
 const repo: UnitOfWorkRepoLike = {
   transaction: (fn, options) => prisma.$transaction(fn, options),
 };
 
-// Cross-module deps reales (no stubs): instancias singletons-like con default
-// ctor — paridad legacy. Sólo `purchases` + `journalEntries` se ejercen en
-// estos 2 tests, pero el constructor del adapter exige las 5 deps por D-2
-// Ciclo 4 sale (heredado mirror) + ivaScopeFactory POC #11.0c A4-c C2 GREEN.
 const journalEntriesReadPort = new PrismaJournalEntriesReadAdapter();
 const accountLookupPort = new LegacyAccountLookupAdapter();
 const autoEntryGen = new AutoEntryGenerator(
   new PrismaAccountsRepo(),
   makeVoucherTypeRepository(),
 );
-
-/**
- * **POC #11.0c A4-c C3 GREEN cleanup helpers (mirror simétrico sale)**:
- * UoW commit + rollback tests NO disparan notifier cascade — mock hex
- * service trivial no-op satisface type contract sin delegación legacy.
- * `ivaScopeFactoryHelper` retorna scope minimal con `correlationId` real
- * + undefined-as-never (cumple BaseScope shape sin exercise real).
- */
-const mockHexService = {
-  recomputeFromSaleCascade: async (): Promise<void> => {},
-  recomputeFromPurchaseCascade: async (): Promise<void> => {},
-} as unknown as IvaBookService;
-
-const ivaScopeFactoryHelper = (
-  _tx: Prisma.TransactionClient,
-  correlationId: string,
-): IvaBookScope =>
-  ({
-    correlationId,
-    fiscalPeriods: undefined as never,
-    ivaSalesBooks: undefined as never,
-    ivaPurchaseBooks: undefined as never,
-  }) as unknown as IvaBookScope;
 
 describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
   let testOrgId: string;
@@ -116,12 +49,6 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
   let assetAccountId: string;
   let liabilityAccountId: string;
   const capturedCorrelationIds: string[] = [];
-
-  // POC #11.0c A4-c C3 GREEN cleanup integration mirror — `__resetForTesting()`
-  // invoca iva root memo reset entre tests (P4 (ii) lockeada Marco).
-  beforeEach(() => {
-    __resetForTesting();
-  });
 
   beforeAll(async () => {
     const stamp = Date.now();
@@ -298,8 +225,6 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      () => mockHexService,
-      ivaScopeFactoryHelper,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
@@ -348,8 +273,6 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      () => mockHexService,
-      ivaScopeFactoryHelper,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
@@ -390,60 +313,13 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
     expect(auditRows.length).toBe(0);
   });
 
-  it("E3 cleanup integration mirror: __resetForTesting() callable + UoW ctor 6-arg uniform hex shape with ivaScopeFactory dep (forward C3 GREEN cleanup target)", async () => {
-    // RED honesty C3 (feedback/red-acceptance-failure-mode):
-    // **Primary file-level RED**: 2 callsites legacy 5-arg en este archivo
-    // (commit + rollback tests L257, L306) — TS2554 transient pre-cleanup
-    // `Expected 6 arguments, but got 5`. C3 GREEN cleanup uniformly updates
-    // → 6-arg hex (+ivaScopeFactory dep). **Secondary runtime RED**: 2
-    // legacy callsites runtime-fail si vitest ejecuta sin TS check (esbuild
-    // strip), porque UoW.run construye adapter con 6-arg post-C2 GREEN —
-    // legacy 5-arg passes undefined a slot 6 (ivaScopeFactory) → adapter
-    // body invoca `this.ivaScopeFactory(...)` → TypeError "is not a function".
-    //
-    // **Tertiary E3 self**: usa NEW 6-arg shape POST-C2 GREEN (a515636) —
-    // E3 self pasa como SEED documenting cleanup target. RED honesty
-    // declarada via file-level transients pending GREEN.
-    //
-    // **`__resetForTesting()` integration**: validates iva root memo reset
-    // hook callable from this test context (P4 (ii) lockeada Marco). C3
-    // GREEN cleanup adds `beforeEach(() => __resetForTesting())` para test
-    // isolation cross-test.
-    //
-    // Mirror simétrico estricto sale UoW E3.
-    __resetForTesting();
-    expect(typeof __resetForTesting).toBe("function");
-
-    const mockHexService = {
-      recomputeFromPurchaseCascade: async (
-        _input: unknown,
-        _scope: IvaBookScope,
-      ): Promise<void> => {},
-    } as unknown as IvaBookService;
-
-    const mockScopeFactory = (
-      _tx: Prisma.TransactionClient,
-      correlationId: string,
-    ): IvaBookScope =>
-      ({
-        correlationId,
-        fiscalPeriods: undefined as never,
-        ivaSalesBooks: undefined as never,
-        ivaPurchaseBooks: undefined as never,
-      }) as unknown as IvaBookScope;
-
-    // Smoke cleanup target: 6-arg ctor hex shape uniform en file (post-C3
-    // GREEN cleanup). Pre-cleanup: 2 callsites legacy 5-arg coexisten con
-    // este E3 6-arg en mismo file → file inconsistency cleanup-pending.
+  it("smoke: UoW instantiates with 4-arg ctor (post-LCV-retirement)", () => {
     const uow = new PrismaPurchaseUnitOfWork(
       repo,
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
-      () => mockHexService,
-      mockScopeFactory,
     );
-
     expect(uow).toBeInstanceOf(PrismaPurchaseUnitOfWork);
   });
 });

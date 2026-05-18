@@ -4,7 +4,6 @@ import type {
   PurchaseType,
   PurchaseStatus,
 } from "@/generated/prisma/client";
-import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index";
 
 /**
  * Hydrates Purchase read-side responses for routes/components — migrado
@@ -15,12 +14,13 @@ import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index"
  * legacy.
  *
  * Asimetría legítima vs sale precedent: re-export `PurchaseType` +
- * `PurchaseStatus` + `IvaPurchaseBookDTO` (sale tiene 0 consumers root barrel;
- * purchase tiene 6 consumers app/{components,pages,routes} — A3-C2 cutover).
+ * `PurchaseStatus` (6 consumers app/{components,pages,routes} — A3-C2 cutover).
+ *
+ * ivaPurchaseBook field retired in lcv-feature-retirement (RND 102100000011
+ * Dec-2021).
  */
 
 export type { PurchaseType, PurchaseStatus };
-export type { IvaPurchaseBookDTO };
 
 export interface PaymentAllocationSummary {
   id: string;
@@ -101,5 +101,4 @@ export interface PurchaseWithDetails
   };
   details: PurchaseDetailRow[];
   payable?: PayableSummary | null;
-  ivaPurchaseBook?: IvaPurchaseBookDTO | null;
 }

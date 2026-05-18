@@ -7,8 +7,6 @@ import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports
 import type { PayableRepository } from "@/modules/payables/domain/payable.repository";
 import type { JournalEntryFactoryPort } from "@/modules/sale/domain/ports/journal-entry-factory.port";
 import type { PurchaseRepository } from "../../../domain/ports/purchase.repository";
-import type { IvaBookRegenNotifierPort } from "../../../domain/ports/iva-book-regen-notifier.port";
-import type { IvaBookVoidCascadePort } from "../../../domain/ports/iva-book-void-cascade.port";
 import type {
   PurchaseScope,
   PurchaseUnitOfWork,
@@ -37,8 +35,6 @@ export interface InMemoryPurchaseUnitOfWorkOptions {
   accountBalances?: AccountBalancesRepository;
   payables?: PayableRepository;
   journalEntryFactory?: JournalEntryFactoryPort;
-  ivaBookRegenNotifier?: IvaBookRegenNotifierPort;
-  ivaBookVoidCascade?: IvaBookVoidCascadePort;
 }
 
 /**
@@ -47,6 +43,9 @@ export interface InMemoryPurchaseUnitOfWorkOptions {
  * hacer assertions sobre semántica de auditoría. Genera un `correlationId`
  * deterministic-but-unique por run; tests pueden inyectar overrides via el
  * field `nextCorrelationId`. Espejo simétrico a `InMemorySaleUnitOfWork`.
+ *
+ * IVA cascade fields retired in lcv-feature-retirement (RND 102100000011
+ * Dec-2021).
  */
 export class InMemoryPurchaseUnitOfWork implements PurchaseUnitOfWork {
   ranContexts: AuditContext[] = [];
@@ -75,10 +74,6 @@ export class InMemoryPurchaseUnitOfWork implements PurchaseUnitOfWork {
       payables: this.options.payables ?? unused("payables"),
       journalEntryFactory:
         this.options.journalEntryFactory ?? unused("journalEntryFactory"),
-      ivaBookRegenNotifier:
-        this.options.ivaBookRegenNotifier ?? unused("ivaBookRegenNotifier"),
-      ivaBookVoidCascade:
-        this.options.ivaBookVoidCascade ?? unused("ivaBookVoidCascade"),
     };
 
     const result = await fn(scope);

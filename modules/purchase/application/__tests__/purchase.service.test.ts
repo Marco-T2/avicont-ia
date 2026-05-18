@@ -34,12 +34,9 @@ import { InMemoryPurchaseUnitOfWork } from "./fakes/in-memory-purchase-unit-of-w
 import { InMemoryAccountLookup } from "./fakes/in-memory-account-lookup";
 import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
 import { InMemoryFiscalPeriodsRead } from "./fakes/in-memory-fiscal-periods-read";
-import { InMemoryIvaBookReader } from "./fakes/in-memory-iva-book-reader";
 import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
 import { InMemoryAccountBalancesRepository } from "./fakes/in-memory-account-balances.repo";
 import { InMemoryPurchasePermissions } from "./fakes/in-memory-purchase-permissions";
-import { InMemoryIvaBookRegenNotifier } from "./fakes/in-memory-iva-book-regen-notifier";
-import { InMemoryIvaBookVoidCascade } from "./fakes/in-memory-iva-book-void-cascade";
 import { InMemoryJournalEntries } from "./fakes/in-memory-journal-entries.repo";
 import { InMemoryJournalEntriesRead } from "./fakes/in-memory-journal-entries-read";
 
@@ -458,7 +455,6 @@ describe("PurchaseService.post", () => {
   let accountLookup: InMemoryAccountLookup;
   let orgSettings: InMemoryOrgSettingsReader;
   let fiscalPeriods: InMemoryFiscalPeriodsRead;
-  let ivaBookReader: InMemoryIvaBookReader;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
   let uow: InMemoryPurchaseUnitOfWork;
@@ -547,7 +543,6 @@ describe("PurchaseService.post", () => {
     accountLookup = new InMemoryAccountLookup();
     orgSettings = new InMemoryOrgSettingsReader();
     fiscalPeriods = new InMemoryFiscalPeriodsRead();
-    ivaBookReader = new InMemoryIvaBookReader();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
 
@@ -581,7 +576,6 @@ describe("PurchaseService.post", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
     });
   });
 
@@ -706,26 +700,6 @@ describe("PurchaseService.post", () => {
     expect(accountLookup.callsByIds[0]!.ids).toEqual([]);
   });
 
-  it("emits IVA-aware entry lines when ivaBookReader returns a snapshot", async () => {
-    const draft = buildDraftPurchase();
-    purchaseRepo.preload(draft);
-    journalEntryFactory.enqueuePurchase(buildJournalStub());
-    ivaBookReader.preload(draft.id, {
-      id: "iva-1",
-      purchaseId: draft.id,
-      ivaRate: 0.13,
-      ivaAmount: 130,
-      netAmount: 1000,
-      exentos: 0,
-    });
-
-    await service.post(ORG, draft.id, "user-1");
-
-    const lines = journalEntryFactory.purchaseCalls[0]!.lines;
-    // IVA crédito fiscal account 1.1.8 (paridad legacy purchase)
-    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(true);
-  });
-
   /**
    * Audit-4 D-A3-1 RED — paridad legacy regla #1 invariante D-A3-1.
    *
@@ -768,7 +742,6 @@ describe("PurchaseService.createAndPost", () => {
   let accountLookup: InMemoryAccountLookup;
   let orgSettings: InMemoryOrgSettingsReader;
   let fiscalPeriods: InMemoryFiscalPeriodsRead;
-  let ivaBookReader: InMemoryIvaBookReader;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
   let purchasePermissions: InMemoryPurchasePermissions;
@@ -841,7 +814,6 @@ describe("PurchaseService.createAndPost", () => {
     accountLookup = new InMemoryAccountLookup();
     orgSettings = new InMemoryOrgSettingsReader();
     fiscalPeriods = new InMemoryFiscalPeriodsRead();
-    ivaBookReader = new InMemoryIvaBookReader();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
     purchasePermissions = new InMemoryPurchasePermissions();
@@ -884,7 +856,6 @@ describe("PurchaseService.createAndPost", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
       purchasePermissions,
     });
   });
@@ -1022,7 +993,6 @@ describe("PurchaseService.createAndPost", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
       purchasePermissions,
     });
 
@@ -1046,17 +1016,6 @@ describe("PurchaseService.createAndPost", () => {
     expect(uow.ranContexts).toEqual([
       { userId: "user-77", organizationId: ORG },
     ]);
-  });
-
-  it("does NOT consult ivaBookReader (createAndPost is non-IVA fast path)", async () => {
-    journalEntryFactory.enqueuePurchase(buildJournalStub());
-
-    await service.createAndPost(ORG, input, {
-      userId: "user-1",
-      role: ROLE_ADMIN,
-    });
-
-    expect(ivaBookReader.calls).toEqual([]);
   });
 
   it("uses paymentTermsDays from contact for payable dueDate", async () => {
@@ -1461,7 +1420,6 @@ describe("PurchaseService.update — POSTED branch", () => {
   let fiscalPeriods: InMemoryFiscalPeriodsRead;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
-  let ivaBookRegen: InMemoryIvaBookRegenNotifier;
   let uow: InMemoryPurchaseUnitOfWork;
   let service: PurchaseService;
 
@@ -1561,7 +1519,6 @@ describe("PurchaseService.update — POSTED branch", () => {
     fiscalPeriods = new InMemoryFiscalPeriodsRead();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
-    ivaBookRegen = new InMemoryIvaBookRegenNotifier();
 
     contactRepo.preload(
       Contact.fromPersistence({
@@ -1602,7 +1559,6 @@ describe("PurchaseService.update — POSTED branch", () => {
       accountBalances,
       payables: payableRepo,
       journalEntryFactory,
-      ivaBookRegenNotifier: ivaBookRegen,
     });
 
     service = new PurchaseService({
@@ -1704,31 +1660,6 @@ describe("PurchaseService.update — POSTED branch", () => {
     const trim = payableRepo.applyTrimPlanCalls[0]!;
     expect(trim.items.map((i) => i.allocationId)).toEqual(["a-newest"]);
     expect(trim.items[0]!.newAmount).toBeCloseTo(100, 2);
-  });
-
-  it("emits IVA-aware entry lines when ivaBookRegenNotifier returns a snapshot", async () => {
-    const purchase = buildPostedPurchase();
-    purchaseRepo.preload(purchase);
-    journalEntryFactory.enqueueRegenPurchase({
-      old: buildJournalStub("journal-1"),
-      new: buildJournalStub("journal-1"),
-    });
-    ivaBookRegen.respondWith(purchase.id, {
-      baseIvaSujetoCf: 1000,
-      dfCfIva: 130,
-      importeTotal: 1000,
-    });
-
-    await service.update(
-      ORG,
-      purchase.id,
-      { description: "Con IVA" },
-      { userId: "user-1" },
-    );
-
-    const lines = journalEntryFactory.regenPurchaseCalls[0]!.template.lines;
-    // IVA crédito fiscal account 1.1.8 (paridad legacy purchase)
-    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(true);
   });
 
   it("throws PurchasePeriodClosed when period is CLOSED", async () => {
@@ -1875,7 +1806,6 @@ describe("PurchaseService.void", () => {
   let journalEntriesRead: InMemoryJournalEntriesRead;
   let journalEntries: InMemoryJournalEntries;
   let accountBalances: InMemoryAccountBalancesRepository;
-  let ivaBookVoid: InMemoryIvaBookVoidCascade;
   let uow: InMemoryPurchaseUnitOfWork;
   let service: PurchaseService;
 
@@ -1975,7 +1905,6 @@ describe("PurchaseService.void", () => {
     journalEntriesRead = new InMemoryJournalEntriesRead();
     journalEntries = new InMemoryJournalEntries();
     accountBalances = new InMemoryAccountBalancesRepository();
-    ivaBookVoid = new InMemoryIvaBookVoidCascade();
 
     fiscalPeriods.preload("period-1", "OPEN");
     journalEntriesRead.preload(buildJournalStub());
@@ -1985,7 +1914,6 @@ describe("PurchaseService.void", () => {
       journalEntries,
       accountBalances,
       payables: payableRepo,
-      ivaBookVoidCascade: ivaBookVoid,
     });
 
     service = new PurchaseService({
@@ -1997,16 +1925,13 @@ describe("PurchaseService.void", () => {
     });
   });
 
-  it("voids a POSTED purchase with cascade journal+balances+IVA but no payable", async () => {
+  it("voids a POSTED purchase with cascade journal+balances but no payable", async () => {
     purchaseRepo.preload(buildPostedPurchase(null));
 
     const result = await service.void(ORG, "purchase-void", { userId: "user-1" });
 
     expect(result.purchase.status).toBe("VOIDED");
     expect(purchaseRepo.updateTxCalls).toHaveLength(1);
-    expect(ivaBookVoid.calls).toEqual([
-      { organizationId: ORG, purchaseId: "purchase-void" },
-    ]);
     expect(accountBalances.applyVoidCalls).toHaveLength(1);
   });
 
@@ -2203,232 +2128,3 @@ describe("PurchaseService.delete", () => {
   });
 });
 
-describe("PurchaseService.regenerateJournalForIvaChange", () => {
-  let purchaseRepo: InMemoryPurchaseRepository;
-  let accountLookup: InMemoryAccountLookup;
-  let orgSettings: InMemoryOrgSettingsReader;
-  let ivaBookReader: InMemoryIvaBookReader;
-  let journalEntryFactory: InMemoryJournalEntryFactory;
-  let accountBalances: InMemoryAccountBalancesRepository;
-  let fiscalPeriods: InMemoryFiscalPeriodsRead;
-  let uow: InMemoryPurchaseUnitOfWork;
-  let service: PurchaseService;
-
-  function buildPostedPurchase(): Purchase {
-    return Purchase.fromPersistence({
-      id: "purchase-iva",
-      organizationId: ORG,
-      purchaseType: "COMPRA_GENERAL",
-      status: "POSTED",
-      sequenceNumber: 5,
-      date: new Date("2025-01-15"),
-      contactId: "c-1",
-      periodId: "period-1",
-      description: "Purchase con IVA",
-      referenceNumber: null,
-      notes: null,
-      totalAmount: MonetaryAmount.of(1000),
-      ruta: null,
-      farmOrigin: null,
-      chickenCount: null,
-      shrinkagePct: null,
-      totalGrossKg: null,
-      totalNetKg: null,
-      totalShrinkKg: null,
-      totalShortageKg: null,
-      totalRealNetKg: null,
-      journalEntryId: "journal-iva",
-      payableId: "payable-1",
-      createdById: "user-1",
-      createdAt: new Date("2025-01-15"),
-      updatedAt: new Date("2025-01-15"),
-      details: [
-        PurchaseDetail.fromPersistence({
-          id: "det-1",
-          purchaseId: "purchase-iva",
-          description: "Item",
-          lineAmount: MonetaryAmount.of(1000),
-          order: 0,
-          expenseAccountId: "acc-expense-1",
-        }),
-      ],
-      payable: null,
-    });
-  }
-
-  function buildJournalStub(id: string): Journal {
-    return Journal.fromPersistence({
-      id,
-      organizationId: ORG,
-      status: "POSTED",
-      number: 5,
-      referenceNumber: null,
-      date: new Date("2025-01-15"),
-      description: "CG-005",
-      periodId: "period-1",
-      voucherTypeId: "voucher-CE",
-      contactId: "c-1",
-      sourceType: "purchase",
-      sourceId: "purchase-iva",
-      aiOriginalText: null,
-      createdById: "user-1",
-      updatedById: null,
-      createdAt: new Date("2025-01-15"),
-      updatedAt: new Date("2025-01-15"),
-      lines: [],
-    });
-  }
-
-  beforeEach(() => {
-    purchaseRepo = new InMemoryPurchaseRepository();
-    accountLookup = new InMemoryAccountLookup();
-    orgSettings = new InMemoryOrgSettingsReader();
-    ivaBookReader = new InMemoryIvaBookReader();
-    journalEntryFactory = new InMemoryJournalEntryFactory();
-    accountBalances = new InMemoryAccountBalancesRepository();
-    fiscalPeriods = new InMemoryFiscalPeriodsRead();
-    fiscalPeriods.preload("period-1", "OPEN");
-
-    accountLookup.preload({
-      id: "acc-expense-1",
-      code: "5.1.5",
-      isDetail: true,
-      isActive: true,
-    });
-    orgSettings.preload(
-      ORG,
-      OrgSettings.createDefault({
-        id: "settings-1",
-        organizationId: ORG,
-        createdAt: new Date("2025-01-01"),
-        updatedAt: new Date("2025-01-01"),
-      }),
-    );
-
-    uow = new InMemoryPurchaseUnitOfWork({
-      purchases: purchaseRepo,
-      accountBalances,
-      journalEntryFactory,
-    });
-
-    service = new PurchaseService({
-      repo: purchaseRepo,
-      uow,
-      accountLookup,
-      orgSettings,
-      ivaBookReader,
-      fiscalPeriods,
-    });
-  });
-
-  it("regenerates journal with IVA snapshot lines + applyVoid old + applyPost new", async () => {
-    const purchase = buildPostedPurchase();
-    purchaseRepo.preload(purchase);
-    ivaBookReader.preload(purchase.id, {
-      id: "iva-1",
-      purchaseId: purchase.id,
-      ivaRate: 0.13,
-      ivaAmount: 130,
-      netAmount: 1000,
-      exentos: 0,
-    });
-    journalEntryFactory.enqueueRegenPurchase({
-      old: buildJournalStub("journal-iva"),
-      new: buildJournalStub("journal-iva"),
-    });
-
-    const result = await service.regenerateJournalForIvaChange(
-      ORG,
-      purchase.id,
-      "user-1",
-    );
-
-    expect(result.purchase.id).toBe(purchase.id);
-    expect(journalEntryFactory.regenPurchaseCalls).toHaveLength(1);
-    const lines = journalEntryFactory.regenPurchaseCalls[0]!.template.lines;
-    // IVA crédito fiscal account 1.1.8 (paridad legacy purchase)
-    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(true);
-    expect(accountBalances.applyVoidCalls).toHaveLength(1);
-    expect(accountBalances.applyPostCalls).toHaveLength(1);
-  });
-
-  it("regenerates journal without IVA when no active IVA snapshot", async () => {
-    const purchase = buildPostedPurchase();
-    purchaseRepo.preload(purchase);
-    journalEntryFactory.enqueueRegenPurchase({
-      old: buildJournalStub("journal-iva"),
-      new: buildJournalStub("journal-iva"),
-    });
-
-    await service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1");
-
-    const lines = journalEntryFactory.regenPurchaseCalls[0]!.template.lines;
-    expect(lines.some((l) => l.accountCode === "1.1.8")).toBe(false);
-  });
-
-  it("throws NotFoundError when purchase has no journalEntryId", async () => {
-    const purchase = Purchase.fromPersistence({
-      id: "no-journal",
-      organizationId: ORG,
-      purchaseType: "COMPRA_GENERAL",
-      status: "POSTED",
-      sequenceNumber: 1,
-      date: new Date("2025-01-15"),
-      contactId: "c-1",
-      periodId: "period-1",
-      description: "Sin journal",
-      referenceNumber: null,
-      notes: null,
-      totalAmount: MonetaryAmount.of(100),
-      ruta: null,
-      farmOrigin: null,
-      chickenCount: null,
-      shrinkagePct: null,
-      totalGrossKg: null,
-      totalNetKg: null,
-      totalShrinkKg: null,
-      totalShortageKg: null,
-      totalRealNetKg: null,
-      journalEntryId: null,
-      payableId: null,
-      createdById: "user-1",
-      createdAt: new Date("2025-01-15"),
-      updatedAt: new Date("2025-01-15"),
-      details: [],
-      payable: null,
-    });
-    purchaseRepo.preload(purchase);
-
-    await expect(
-      service.regenerateJournalForIvaChange(ORG, "no-journal", "user-1"),
-    ).rejects.toThrow(NotFoundError);
-  });
-
-  it("throws PurchaseAccountNotFound when expense account not in lookup (CG)", async () => {
-    const purchase = buildPostedPurchase();
-    purchaseRepo.preload(purchase);
-    accountLookup = new InMemoryAccountLookup();
-    service = new PurchaseService({
-      repo: purchaseRepo,
-      uow,
-      accountLookup,
-      orgSettings,
-      ivaBookReader,
-      fiscalPeriods,
-    });
-
-    await expect(
-      service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1"),
-    ).rejects.toThrow(PurchaseAccountNotFound);
-  });
-
-  it("throws PurchasePeriodClosed when period is CLOSED (paridad legacy `:1238-1240` race protection)", async () => {
-    const purchase = buildPostedPurchase();
-    purchaseRepo.preload(purchase);
-    fiscalPeriods.preload("period-1", "CLOSED");
-
-    await expect(
-      service.regenerateJournalForIvaChange(ORG, purchase.id, "user-1"),
-    ).rejects.toThrow(PurchasePeriodClosed);
-  });
-});

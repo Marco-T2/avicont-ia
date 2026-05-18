@@ -2,11 +2,13 @@ import type {
   Sale,
   SaleDetail,
 } from "@/generated/prisma/client";
-import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 
 /**
  * Hydrates Sale read-side responses for routes/components — migrado bit-exact
  * (POC #11.0a A5 β + POC nuevo A3-C7 atomic delete commit ad36da2).
+ *
+ * ivaSalesBook field retired in lcv-feature-retirement (RND 102100000011
+ * Dec-2021).
  */
 
 export interface PaymentAllocationSummary {
@@ -53,5 +55,4 @@ export interface SaleWithDetails extends Omit<Sale, "totalAmount"> {
   };
   details: SaleDetailRow[];
   receivable?: ReceivableSummary | null;
-  ivaSalesBook?: IvaSalesBookDTO | null;
 }

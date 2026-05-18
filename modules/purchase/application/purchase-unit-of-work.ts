@@ -7,16 +7,15 @@ import type { AccountBalancesRepository } from "@/modules/accounting/domain/port
 import type { PayableRepository } from "@/modules/payables/domain/payable.repository";
 import type { PurchaseRepository } from "../domain/ports/purchase.repository";
 import type { JournalEntryFactoryPort } from "@/modules/sale/domain/ports/journal-entry-factory.port";
-import type { IvaBookRegenNotifierPort } from "../domain/ports/iva-book-regen-notifier.port";
-import type { IvaBookVoidCascadePort } from "../domain/ports/iva-book-void-cascade.port";
 
 /**
  * Purchase-specific UoW scope. Tx-bound repos owned by purchase-hex use
  * cases. Cross-module repos (`payables`, `journalEntries`, `accountBalances`,
  * `journalEntryFactory`) están dentro del scope (paridad con `SaleScope`
- * A2 sale-hex y `AccountingScope` POC #10 C2-A/B). Los IVA cascade ports
- * (`ivaBookRegenNotifier`, `ivaBookVoidCascade`) entrarán al scope en C5/C6
- * cuando los use cases los demanden.
+ * A2 sale-hex y `AccountingScope` POC #10 C2-A/B).
+ *
+ * IVA cascade ports (`ivaBookRegenNotifier`, `ivaBookVoidCascade`) retired in
+ * lcv-feature-retirement (RND 102100000011 Dec-2021).
  *
  * `payables` (PayableRepository) vive INSIDE — `post` / `update` requieren
  * `createTx`/`voidTx`/`applyTrimPlanTx` tx-aware. Mismo patrón sale-hex
@@ -27,8 +26,8 @@ import type { IvaBookVoidCascadePort } from "../domain/ports/iva-book-void-casca
  * INSIDE porque el `PrismaJournalEntryFactoryAdapter` toma la tx en su
  * constructor — singleton at composition-root no puede capturar per-run tx.
  *
- * `IvaBookReaderPort` es read-only y vive OUTSIDE (paridad sale-hex y
- * `FiscalPeriodsReadPort`).
+ * `IvaBookReaderPort` era read-only y vivía OUTSIDE. Retired along with
+ * IVA cascade ports above.
  */
 export interface PurchaseScope extends BaseScope {
   readonly purchases: PurchaseRepository;
@@ -36,8 +35,6 @@ export interface PurchaseScope extends BaseScope {
   readonly accountBalances: AccountBalancesRepository;
   readonly payables: PayableRepository;
   readonly journalEntryFactory: JournalEntryFactoryPort;
-  readonly ivaBookRegenNotifier: IvaBookRegenNotifierPort;
-  readonly ivaBookVoidCascade: IvaBookVoidCascadePort;
 }
 
 export type PurchaseUnitOfWork = UnitOfWork<PurchaseScope>;

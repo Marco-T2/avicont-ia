@@ -30,12 +30,9 @@ import { InMemoryReceivableRepository } from "./fakes/in-memory-receivable.repos
 import { InMemoryAccountLookup } from "./fakes/in-memory-account-lookup";
 import { InMemoryAccountBalancesRepository } from "./fakes/in-memory-account-balances.repo";
 import { InMemoryFiscalPeriodsRead } from "./fakes/in-memory-fiscal-periods-read";
-import { InMemoryIvaBookReader } from "./fakes/in-memory-iva-book-reader";
 import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
 import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
 import { InMemorySalePermissions } from "./fakes/in-memory-sale-permissions";
-import { InMemoryIvaBookRegenNotifier } from "./fakes/in-memory-iva-book-regen-notifier";
-import { InMemoryIvaBookVoidCascade } from "./fakes/in-memory-iva-book-void-cascade";
 import { InMemoryJournalEntriesRead } from "./fakes/in-memory-journal-entries-read";
 import { InMemoryJournalEntries } from "./fakes/in-memory-journal-entries.repo";
 
@@ -403,7 +400,6 @@ describe("SaleService.post", () => {
   let accountLookup: InMemoryAccountLookup;
   let orgSettings: InMemoryOrgSettingsReader;
   let fiscalPeriods: InMemoryFiscalPeriodsRead;
-  let ivaBookReader: InMemoryIvaBookReader;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
   let uow: InMemorySaleUnitOfWork;
@@ -484,7 +480,6 @@ describe("SaleService.post", () => {
     accountLookup = new InMemoryAccountLookup();
     orgSettings = new InMemoryOrgSettingsReader();
     fiscalPeriods = new InMemoryFiscalPeriodsRead();
-    ivaBookReader = new InMemoryIvaBookReader();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
 
@@ -518,7 +513,6 @@ describe("SaleService.post", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
     });
   });
 
@@ -603,7 +597,6 @@ describe("SaleService.post", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
     });
 
     await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
@@ -641,42 +634,6 @@ describe("SaleService.post", () => {
     expect(journalEntryFactory.calls[0]!.description).toBe("Venta test");
   });
 
-  it("emits IVA-aware entry lines when ivaBookReader returns a snapshot", async () => {
-    const draft = buildDraftSale();
-    saleRepo.preload(draft);
-    journalEntryFactory.enqueue(buildJournalStub());
-    ivaBookReader.preload(draft.id, {
-      id: "iva-1",
-      saleId: draft.id,
-      ivaRate: 0.13,
-      ivaAmount: 130,
-      netAmount: 1000,
-      exentos: 0,
-    });
-
-    await service.post(ORG, draft.id, "user-1");
-
-    const lines = journalEntryFactory.calls[0]!.lines;
-    expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
-  });
-
-  it("propagates ivaBookSnapshot.exentos to entry-line builder — throws balance invariant when explicit exentos contradicts importeTotal − baseIvaSujetoCf (legacy `extractIvaBookForEntry` parity)", async () => {
-    const draft = buildDraftSale();
-    saleRepo.preload(draft);
-    journalEntryFactory.enqueue(buildJournalStub());
-    ivaBookReader.preload(draft.id, {
-      id: "iva-1",
-      saleId: draft.id,
-      ivaRate: 0.13,
-      ivaAmount: 130,
-      netAmount: 1000,
-      exentos: 50,
-    });
-
-    await expect(service.post(ORG, draft.id, "user-1")).rejects.toThrow(
-      /Invariante de balance violado/,
-    );
-  });
 });
 
 describe("SaleService.createAndPost", () => {
@@ -686,7 +643,6 @@ describe("SaleService.createAndPost", () => {
   let accountLookup: InMemoryAccountLookup;
   let orgSettings: InMemoryOrgSettingsReader;
   let fiscalPeriods: InMemoryFiscalPeriodsRead;
-  let ivaBookReader: InMemoryIvaBookReader;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
   let salePermissions: InMemorySalePermissions;
@@ -758,7 +714,6 @@ describe("SaleService.createAndPost", () => {
     accountLookup = new InMemoryAccountLookup();
     orgSettings = new InMemoryOrgSettingsReader();
     fiscalPeriods = new InMemoryFiscalPeriodsRead();
-    ivaBookReader = new InMemoryIvaBookReader();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
     salePermissions = new InMemorySalePermissions();
@@ -801,7 +756,6 @@ describe("SaleService.createAndPost", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
       salePermissions,
     });
   });
@@ -939,7 +893,6 @@ describe("SaleService.createAndPost", () => {
       accountLookup,
       orgSettings,
       fiscalPeriods,
-      ivaBookReader,
       salePermissions,
     });
 
@@ -963,17 +916,6 @@ describe("SaleService.createAndPost", () => {
     expect(uow.ranContexts).toEqual([
       { userId: "user-77", organizationId: ORG },
     ]);
-  });
-
-  it("does NOT consult ivaBookReader (createAndPost is non-IVA fast path)", async () => {
-    journalEntryFactory.enqueue(buildJournalStub());
-
-    await service.createAndPost(ORG, input, {
-      userId: "user-1",
-      role: ROLE_ADMIN,
-    });
-
-    expect(ivaBookReader.calls).toEqual([]);
   });
 
   it("uses paymentTermsDays from contact for receivable dueDate", async () => {
@@ -1328,7 +1270,6 @@ describe("SaleService.update — POSTED branch", () => {
   let fiscalPeriods: InMemoryFiscalPeriodsRead;
   let journalEntryFactory: InMemoryJournalEntryFactory;
   let accountBalances: InMemoryAccountBalancesRepository;
-  let ivaBookRegen: InMemoryIvaBookRegenNotifier;
   let uow: InMemorySaleUnitOfWork;
   let service: SaleService;
 
@@ -1420,7 +1361,6 @@ describe("SaleService.update — POSTED branch", () => {
     fiscalPeriods = new InMemoryFiscalPeriodsRead();
     journalEntryFactory = new InMemoryJournalEntryFactory();
     accountBalances = new InMemoryAccountBalancesRepository();
-    ivaBookRegen = new InMemoryIvaBookRegenNotifier();
 
     contactRepo.preload(
       Contact.fromPersistence({
@@ -1461,7 +1401,6 @@ describe("SaleService.update — POSTED branch", () => {
       accountBalances,
       receivables: receivableRepo,
       journalEntryFactory,
-      ivaBookRegenNotifier: ivaBookRegen,
     });
 
     service = new SaleService({
@@ -1563,30 +1502,6 @@ describe("SaleService.update — POSTED branch", () => {
     const trim = receivableRepo.applyTrimPlanCalls[0]!;
     expect(trim.items.map((i) => i.allocationId)).toEqual(["a-newest"]);
     expect(trim.items[0]!.newAmount).toBeCloseTo(100, 2);
-  });
-
-  it("emits IVA-aware entry lines when ivaBookRegenNotifier returns a snapshot", async () => {
-    const sale = buildPostedSale();
-    saleRepo.preload(sale);
-    journalEntryFactory.enqueueRegen({
-      old: buildJournalStub("journal-1"),
-      new: buildJournalStub("journal-1"),
-    });
-    ivaBookRegen.respondWith(sale.id, {
-      baseIvaSujetoCf: 1000,
-      dfCfIva: 130,
-      importeTotal: 1000,
-    });
-
-    await service.update(
-      ORG,
-      sale.id,
-      { description: "Con IVA" },
-      { userId: "user-1" },
-    );
-
-    const lines = journalEntryFactory.regenCalls[0]!.template.lines;
-    expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
   });
 
   it("throws SalePeriodClosed when period is CLOSED", async () => {
@@ -1734,7 +1649,6 @@ describe("SaleService.void", () => {
   let journalEntriesRead: InMemoryJournalEntriesRead;
   let journalEntries: InMemoryJournalEntries;
   let accountBalances: InMemoryAccountBalancesRepository;
-  let ivaBookVoid: InMemoryIvaBookVoidCascade;
   let uow: InMemorySaleUnitOfWork;
   let service: SaleService;
 
@@ -1814,7 +1728,6 @@ describe("SaleService.void", () => {
     journalEntriesRead = new InMemoryJournalEntriesRead();
     journalEntries = new InMemoryJournalEntries();
     accountBalances = new InMemoryAccountBalancesRepository();
-    ivaBookVoid = new InMemoryIvaBookVoidCascade();
 
     fiscalPeriods.preload("period-1", "OPEN");
     journalEntriesRead.preload(buildJournalStub());
@@ -1824,7 +1737,6 @@ describe("SaleService.void", () => {
       journalEntries,
       accountBalances,
       receivables: receivableRepo,
-      ivaBookVoidCascade: ivaBookVoid,
     });
 
     service = new SaleService({
@@ -1836,16 +1748,13 @@ describe("SaleService.void", () => {
     });
   });
 
-  it("voids a POSTED sale with cascade journal+balances+IVA but no receivable", async () => {
+  it("voids a POSTED sale with cascade journal+balances but no receivable", async () => {
     saleRepo.preload(buildPostedSale(null));
 
     const result = await service.void(ORG, "sale-void", { userId: "user-1" });
 
     expect(result.sale.status).toBe("VOIDED");
     expect(saleRepo.updateTxCalls).toHaveLength(1);
-    expect(ivaBookVoid.calls).toEqual([
-      { organizationId: ORG, saleId: "sale-void" },
-    ]);
     expect(accountBalances.applyVoidCalls).toHaveLength(1);
   });
 
@@ -2018,217 +1927,3 @@ describe("SaleService.delete", () => {
   });
 });
 
-describe("SaleService.regenerateJournalForIvaChange", () => {
-  let saleRepo: InMemorySaleRepository;
-  let accountLookup: InMemoryAccountLookup;
-  let orgSettings: InMemoryOrgSettingsReader;
-  let ivaBookReader: InMemoryIvaBookReader;
-  let journalEntryFactory: InMemoryJournalEntryFactory;
-  let accountBalances: InMemoryAccountBalancesRepository;
-  let uow: InMemorySaleUnitOfWork;
-  let service: SaleService;
-
-  function buildPostedSale(): Sale {
-    return Sale.fromPersistence({
-      id: "sale-iva",
-      organizationId: ORG,
-      status: "POSTED",
-      sequenceNumber: 5,
-      date: new Date("2025-01-15"),
-      contactId: "c-1",
-      periodId: "period-1",
-      description: "Sale con IVA",
-      referenceNumber: null,
-      notes: null,
-      totalAmount: MonetaryAmount.of(1000),
-      journalEntryId: "journal-iva",
-      receivableId: "receivable-1",
-      createdById: "user-1",
-      createdAt: new Date("2025-01-15"),
-      updatedAt: new Date("2025-01-15"),
-      details: [
-        SaleDetail.fromPersistence({
-          id: "det-1",
-          saleId: "sale-iva",
-          description: "Item",
-          lineAmount: MonetaryAmount.of(1000),
-          order: 0,
-          incomeAccountId: "acc-income-1",
-        }),
-      ],
-      receivable: null,
-    });
-  }
-
-  function buildJournalStub(id: string): Journal {
-    return Journal.fromPersistence({
-      id,
-      organizationId: ORG,
-      status: "POSTED",
-      number: 5,
-      referenceNumber: null,
-      date: new Date("2025-01-15"),
-      description: "VG-005",
-      periodId: "period-1",
-      voucherTypeId: "voucher-CI",
-      contactId: "c-1",
-      sourceType: "sale",
-      sourceId: "sale-iva",
-      aiOriginalText: null,
-      createdById: "user-1",
-      updatedById: null,
-      createdAt: new Date("2025-01-15"),
-      updatedAt: new Date("2025-01-15"),
-      lines: [],
-    });
-  }
-
-  beforeEach(() => {
-    saleRepo = new InMemorySaleRepository();
-    accountLookup = new InMemoryAccountLookup();
-    orgSettings = new InMemoryOrgSettingsReader();
-    ivaBookReader = new InMemoryIvaBookReader();
-    journalEntryFactory = new InMemoryJournalEntryFactory();
-    accountBalances = new InMemoryAccountBalancesRepository();
-
-    accountLookup.preload({
-      id: "acc-income-1",
-      code: "4.1.1",
-      isDetail: true,
-      isActive: true,
-    });
-    orgSettings.preload(
-      ORG,
-      OrgSettings.createDefault({
-        id: "settings-1",
-        organizationId: ORG,
-        createdAt: new Date("2025-01-01"),
-        updatedAt: new Date("2025-01-01"),
-      }),
-    );
-
-    uow = new InMemorySaleUnitOfWork({
-      sales: saleRepo,
-      accountBalances,
-      journalEntryFactory,
-    });
-
-    service = new SaleService({
-      repo: saleRepo,
-      uow,
-      accountLookup,
-      orgSettings,
-      ivaBookReader,
-    });
-  });
-
-  it("regenerates journal with IVA snapshot lines + applyVoid old + applyPost new", async () => {
-    const sale = buildPostedSale();
-    saleRepo.preload(sale);
-    ivaBookReader.preload(sale.id, {
-      id: "iva-1",
-      saleId: sale.id,
-      ivaRate: 0.13,
-      ivaAmount: 130,
-      netAmount: 1000,
-      exentos: 0,
-    });
-    journalEntryFactory.enqueueRegen({
-      old: buildJournalStub("journal-iva"),
-      new: buildJournalStub("journal-iva"),
-    });
-
-    const result = await service.regenerateJournalForIvaChange(
-      ORG,
-      sale.id,
-      "user-1",
-    );
-
-    expect(result.sale.id).toBe(sale.id);
-    expect(journalEntryFactory.regenCalls).toHaveLength(1);
-    const lines = journalEntryFactory.regenCalls[0]!.template.lines;
-    expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(true);
-    expect(accountBalances.applyVoidCalls).toHaveLength(1);
-    expect(accountBalances.applyPostCalls).toHaveLength(1);
-  });
-
-  it("regenerates journal without IVA when no active IVA snapshot", async () => {
-    const sale = buildPostedSale();
-    saleRepo.preload(sale);
-    journalEntryFactory.enqueueRegen({
-      old: buildJournalStub("journal-iva"),
-      new: buildJournalStub("journal-iva"),
-    });
-
-    await service.regenerateJournalForIvaChange(ORG, sale.id, "user-1");
-
-    const lines = journalEntryFactory.regenCalls[0]!.template.lines;
-    expect(lines.some((l) => l.accountCode === "2.1.6")).toBe(false);
-  });
-
-  it("propagates ivaBookSnapshot.exentos to entry-line builder — throws balance invariant when explicit exentos contradicts importeTotal − baseIvaSujetoCf (legacy `extractIvaBookForEntry` parity)", async () => {
-    const sale = buildPostedSale();
-    saleRepo.preload(sale);
-    ivaBookReader.preload(sale.id, {
-      id: "iva-1",
-      saleId: sale.id,
-      ivaRate: 0.13,
-      ivaAmount: 130,
-      netAmount: 1000,
-      exentos: 50,
-    });
-    journalEntryFactory.enqueueRegen({
-      old: buildJournalStub("journal-iva"),
-      new: buildJournalStub("journal-iva"),
-    });
-
-    await expect(
-      service.regenerateJournalForIvaChange(ORG, sale.id, "user-1"),
-    ).rejects.toThrow(/Invariante de balance violado/);
-  });
-
-  it("throws NotFoundError when sale has no journalEntryId", async () => {
-    const sale = Sale.fromPersistence({
-      id: "no-journal",
-      organizationId: ORG,
-      status: "POSTED",
-      sequenceNumber: 1,
-      date: new Date("2025-01-15"),
-      contactId: "c-1",
-      periodId: "period-1",
-      description: "Sin journal",
-      referenceNumber: null,
-      notes: null,
-      totalAmount: MonetaryAmount.of(100),
-      journalEntryId: null,
-      receivableId: null,
-      createdById: "user-1",
-      createdAt: new Date("2025-01-15"),
-      updatedAt: new Date("2025-01-15"),
-      details: [],
-      receivable: null,
-    });
-    saleRepo.preload(sale);
-
-    await expect(
-      service.regenerateJournalForIvaChange(ORG, "no-journal", "user-1"),
-    ).rejects.toThrow(NotFoundError);
-  });
-
-  it("throws SaleAccountNotFound when income account is not in lookup", async () => {
-    const sale = buildPostedSale();
-    saleRepo.preload(sale);
-    accountLookup = new InMemoryAccountLookup();
-    service = new SaleService({
-      repo: saleRepo,
-      uow,
-      accountLookup,
-      orgSettings,
-      ivaBookReader,
-    });
-
-    await expect(
-      service.regenerateJournalForIvaChange(ORG, sale.id, "user-1"),
-    ).rejects.toThrow(SaleAccountNotFound);
-  });
-});
