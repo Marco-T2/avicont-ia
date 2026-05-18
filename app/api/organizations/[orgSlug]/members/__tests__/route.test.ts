@@ -13,6 +13,10 @@
  *   and the rolesService singleton used by the async refine. No DB.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import {
+  buildAddMemberSchema,
+  buildUpdateMemberRoleSchema,
+} from "@/modules/organizations/domain/members.validation";
 
 // ─── Module mocks (hoisted) ──────────────────────────────────────────────────
 
@@ -54,14 +58,23 @@ const mockMembersServiceInstance = {
   removeMember: vi.fn(),
 };
 
-vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/modules/organizations/presentation/server")>();
-  return {
-    ...actual,
-    makeMembersService: vi.fn().mockReturnValue(mockMembersServiceInstance),
-  };
-});
+// [[mock_hygiene_commit_scope]] — explicit factory (no importOriginal). The
+// presentation barrel pulls in heavy transitive deps that timed out under
+// full-suite concurrency. This test file dynamically imports BOTH route
+// files in the members route group, so the factory must surface every
+// symbol consumed by either handler (verified at apply-time per
+// [[invariant_collision_elevation]] — design D5 cited only the POST
+// validator; the PATCH route at [memberId]/route.ts consumes
+// buildUpdateMemberRoleSchema too):
+//   - members/route.ts:3              → makeMembersService, buildAddMemberSchema
+//   - members/[memberId]/route.ts:3   → makeMembersService, buildUpdateMemberRoleSchema
+// Both validators imported from their domain origin to keep the mock
+// barrel-free.
+vi.mock("@/modules/organizations/presentation/server", () => ({
+  makeMembersService: vi.fn().mockReturnValue(mockMembersServiceInstance),
+  buildAddMemberSchema,
+  buildUpdateMemberRoleSchema,
+}));
 
 // The async refine inside the factory calls rolesService.exists — mock that singleton.
 vi.mock("@/modules/organizations/presentation/roles.service.singleton", () => ({
