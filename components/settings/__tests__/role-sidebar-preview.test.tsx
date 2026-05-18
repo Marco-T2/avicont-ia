@@ -66,7 +66,7 @@ describe("<RoleSidebarPreview />", () => {
     // Nav items inside Contabilidad module (rendered in both desktop + mobile panes)
     expect(screen.getAllByText("Ventas").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Libro Diario").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mis Lotes").length).toBeGreaterThan(0);
 
     // Cross-module / Organización strip
     expect(screen.getAllByText("Agente IA").length).toBeGreaterThan(0);
@@ -99,7 +99,7 @@ describe("<RoleSidebarPreview />", () => {
 
     // Granjas visible (dual-mount → multiple)
     expect(screen.getAllByText("Granjas").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mis Lotes").length).toBeGreaterThan(0);
 
     // No Organización strip items (sales/farms are not agent/documents)
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
@@ -129,7 +129,7 @@ describe("<RoleSidebarPreview />", () => {
 
     // No module nav items
     expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
-    expect(screen.queryByText("Mis Granjas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mis Lotes")).not.toBeInTheDocument();
     expect(screen.queryByText("Agente IA")).not.toBeInTheDocument();
   });
 
@@ -165,7 +165,7 @@ describe("<RoleSidebarPreview />", () => {
 
     // Granjas present (dual-mount)
     expect(screen.getAllByText("Granjas").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mis Lotes").length).toBeGreaterThan(0);
 
     // Contabilidad module entirely absent (no readable resources in it)
     // We check for the Contabilidad MODULE section not rendering its nav items
@@ -191,7 +191,7 @@ describe("<RoleSidebarPreview />", () => {
     expect(screen.queryByText("Documentos")).not.toBeInTheDocument();
     // No module nav items (members is not in any module)
     expect(screen.queryByText("Ventas")).not.toBeInTheDocument();
-    expect(screen.queryByText("Mis Granjas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mis Lotes")).not.toBeInTheDocument();
   });
 
   // (g) Desktop layout: always-visible pane NOT inside <details> — the sm:block pane
@@ -348,12 +348,12 @@ describe("<RoleSidebarPreview /> — reactive updates (REQ-RM.10)", () => {
     );
 
     // Initially no modules (empty state)
-    expect(screen.queryByText("Mis Granjas")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mis Lotes")).not.toBeInTheDocument();
 
     // Re-render with farms in readSet
     rerender(<RoleSidebarPreview readSet={rs("farms")} writeSet={rs()} />);
 
     // Granjas module now visible (dual-mount)
-    expect(screen.getAllByText("Mis Granjas").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Mis Lotes").length).toBeGreaterThan(0);
   });
 });

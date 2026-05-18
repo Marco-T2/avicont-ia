@@ -25,7 +25,7 @@ const mockPush = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ orgSlug: "test-org" }),
-  usePathname: () => "/test-org/farms",
+  usePathname: () => "/test-org/lots",
   useRouter: () => ({ push: mockPush }),
 }));
 
@@ -251,7 +251,7 @@ describe("ModuleSwitcher — switcher override (REQ-MS.5)", () => {
 
     fireEvent.click(within(document.body).getByRole("menuitem", { name: /Granjas/i }));
 
-    expect(mockPush).toHaveBeenCalledWith("/test-org/farms");
+    expect(mockPush).toHaveBeenCalledWith("/test-org/lots");
   });
 
   it("sets localStorage to granjas when Granjas selected", () => {
@@ -275,7 +275,7 @@ describe("ModuleSwitcher — collapsed mode (REQ-MS.13)", () => {
 
   it("the button has an accessible label matching the active module when isCollapsed=true", () => {
     renderSwitcher(FARMS_ONLY, { isCollapsed: true });
-    // Pathname /test-org/farms → active module = Granjas
+    // Pathname /test-org/lots → active module = Granjas
     const btn = screen.getByRole("button");
     const ariaLabel = btn.getAttribute("aria-label") ?? "";
     expect(ariaLabel.length).toBeGreaterThan(0);
@@ -314,20 +314,20 @@ describe("ModuleSwitcher — collapsed mode (REQ-MS.13)", () => {
    * letting us assert that TooltipContent received the correct label text without
    * needing pointer-hover simulation.
    *
-   * Pathname → active module: /test-org/farms → Granjas (label = "Granjas")
+   * Pathname → active module: /test-org/lots → Granjas (label = "Granjas")
    */
   it("TooltipContent shows the active module label in collapsed mode (W-2)", () => {
     renderSwitcher(FARMS_ONLY, { isCollapsed: true });
     // The tooltip mock renders TooltipContent inline (data-testid="tooltip-content").
     // Assert its text content equals the active module label derived from the route.
-    // Pathname /test-org/farms → active module = Granjas
+    // Pathname /test-org/lots → active module = Granjas
     const tooltipEl = screen.getByTestId("tooltip-content");
     expect(tooltipEl.textContent?.trim()).toBe("Granjas");
   });
 
   it("TooltipContent label matches aria-label of the trigger button (W-2 consistency)", () => {
     renderSwitcher(ALL_RESOURCES, { isCollapsed: true });
-    // Pathname /test-org/farms → active module = Granjas
+    // Pathname /test-org/lots → active module = Granjas
     const btn = screen.getByRole("button");
     const ariaLabel = btn.getAttribute("aria-label") ?? "";
     expect(ariaLabel.length).toBeGreaterThan(0);
@@ -378,7 +378,7 @@ describe("ModuleSwitcher — mobile native select (REQ-MS.12)", () => {
     const select = screen.getByRole("combobox");
     fireEvent.change(select, { target: { value: "granjas" } });
 
-    expect(mockPush).toHaveBeenCalledWith("/test-org/farms");
+    expect(mockPush).toHaveBeenCalledWith("/test-org/lots");
     expect(localStorage.getItem("sidebar-active-module")).toBe("granjas");
   });
 });

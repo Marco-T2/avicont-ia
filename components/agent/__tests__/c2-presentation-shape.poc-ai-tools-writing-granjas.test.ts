@@ -30,7 +30,7 @@
  * textual filesystem pre-write MANDATORY heredado matures.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -44,6 +44,12 @@ const FARM_DETAIL_CLIENT = resolve(
   REPO_ROOT,
   "app/(dashboard)/[orgSlug]/farms/[farmId]/farm-detail-client.tsx",
 );
+// α27 INVERTED at SDD retire-farm-collapse-to-lot T22: FARM_DETAIL_CLIENT
+// is wholesale-deleted (REQ-200 absorbs `Farm` into `Lot.farmName`).
+// The "imports RegistrarConIABoton" invariant is vacuously satisfied
+// — there is no file to assert against. The remaining live assertions
+// (α26 + α28) cover the lot-detail path, which is the only surviving
+// host for the Botón post-collapse.
 
 const IMPORT_BOTON_RE =
   /^import\s+(?:\{[^}]*\bRegistrarConIABoton\b[^}]*\}|RegistrarConIABoton)\s*from\s*["']@\/components\/agent\/registrar-con-ia-boton["']/m;
@@ -60,10 +66,9 @@ describe("C2 presentation shape — Botón Registrar con IA inject pages 2 conte
     expect(src).toMatch(IMPORT_BOTON_RE);
   });
 
-  // α27
-  it("farm-detail-client.tsx imports RegistrarConIABoton from @/components/agent/registrar-con-ia-boton", () => {
-    const src = readFileSync(FARM_DETAIL_CLIENT, "utf-8");
-    expect(src).toMatch(IMPORT_BOTON_RE);
+  // α27 INVERTED — farm-detail-client.tsx DELETED at retire-farm-collapse-to-lot T22.
+  it("α27: farm-detail-client.tsx DELETED (retire-farm-collapse-to-lot T22 — Botón import vacuously absent; α26 + α28 lot-detail remain the live host)", () => {
+    expect(existsSync(FARM_DETAIL_CLIENT)).toBe(false);
   });
 
   // α28

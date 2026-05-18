@@ -110,17 +110,19 @@ describe("REQ-MS.1 — Granjas entry", () => {
     expect(entry.resources).toEqual(["farms"]);
   });
 
-  it("has at least one navItem for Mis Granjas", () => {
+  // T21 post-collapse (retire-farm-collapse-to-lot): navItem label
+  // "Mis Granjas" → "Mis Lotes" + homeRoute /farms → /lots.
+  it("has at least one navItem for Mis Lotes", () => {
     const entry = MODULES.find((m) => m.id === "granjas")!;
-    const miGranjas = entry.navItems.find(
-      (item) => !item.isSeparator && item.label === "Mis Granjas"
+    const misLotes = entry.navItems.find(
+      (item) => !item.isSeparator && item.label === "Mis Lotes"
     );
-    expect(miGranjas).toBeDefined();
+    expect(misLotes).toBeDefined();
   });
 
-  it("homeRoute returns /{orgSlug}/farms", () => {
+  it("homeRoute returns /{orgSlug}/lots (post-collapse T21)", () => {
     const entry = MODULES.find((m) => m.id === "granjas")!;
-    expect(entry.homeRoute("my-org")).toBe("/my-org/farms");
+    expect(entry.homeRoute("my-org")).toBe("/my-org/lots");
   });
 });
 

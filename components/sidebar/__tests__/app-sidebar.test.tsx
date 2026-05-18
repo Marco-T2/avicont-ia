@@ -27,7 +27,7 @@
  *     (now: assert Contabilidad absent from switcher + Miembros absent from
  *     cross-module nav when all accounting + members resources denied)
  *   - "shows only allowed top-level items when matrix restricts role" → REWRITTEN
- *     (now: granjas-only user sees Granjas in switcher and Mis Granjas link)
+ *     (now: granjas-only user sees Granjas in switcher and Mis Lotes link)
  *   - "renders nothing gated-by-role when snapshot is null (loading)" → REWRITTEN
  *     (now: switcher has no options, nav renders nothing; SidebarFooter ALWAYS
  *     renders Configuración — not gated, per design)
@@ -52,7 +52,7 @@ import type { ClientMatrixSnapshot } from "@/components/common/roles-matrix-prov
 // ---------------------------------------------------------------------------
 
 // Dynamic pathname holder — tests set `mockPathname` before render()
-let mockPathname = "/test-org/farms";
+let mockPathname = "/test-org/lots";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ orgSlug: "test-org" }),
@@ -154,7 +154,7 @@ function WithProvider({
 
 function renderSidebar(
   snapshot: ClientMatrixSnapshot | null = OWNER_FULL,
-  pathname = "/test-org/farms",
+  pathname = "/test-org/lots",
 ) {
   mockPathname = pathname;
   return render(
@@ -170,7 +170,7 @@ function renderSidebar(
 
 beforeEach(() => {
   localStorage.clear();
-  mockPathname = "/test-org/farms";
+  mockPathname = "/test-org/lots";
 });
 
 afterEach(cleanup);
@@ -237,21 +237,21 @@ describe("AppSidebar — Contabilidad nav wiring (migrated from PR5 tests)", () 
 describe("AppSidebar — RBAC gating (migrated from PR7.1)", () => {
   it("hides Miembros in the cross-module section when members access is denied", () => {
     // FARMS_ONLY has no members — cross-module nav must hide Miembros
-    renderSidebar(FARMS_ONLY, "/test-org/farms");
+    renderSidebar(FARMS_ONLY, "/test-org/lots");
     expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
   });
 
-  it("shows Mis Granjas link for a restricted user on the farms route (granjas is active)", () => {
-    // RESTRICTED has farms — pathname /farms routes to granjas → ActiveModuleNav
-    // renders granjas.navItems which includes Mis Granjas.
-    renderSidebar(RESTRICTED, "/test-org/farms");
-    expect(screen.getByRole("link", { name: /Mis Granjas/i })).toBeTruthy();
+  it("shows Mis Lotes link for a restricted user on the lots route (granjas is active)", () => {
+    // RESTRICTED has farms — pathname /lots routes to granjas → ActiveModuleNav
+    // renders granjas.navItems which includes Mis Lotes.
+    renderSidebar(RESTRICTED, "/test-org/lots");
+    expect(screen.getByRole("link", { name: /Mis Lotes/i })).toBeTruthy();
   });
 
   it("does NOT render Contabilidad navItems when user has no accounting access (module not in switcher + not the active module)", () => {
     // RESTRICTED has no accounting resources. Pathname /farms → active module
     // = granjas. Contabilidad navItems (e.g. Libro Diario) must NOT render.
-    renderSidebar(RESTRICTED, "/test-org/farms");
+    renderSidebar(RESTRICTED, "/test-org/lots");
     expect(screen.queryByRole("link", { name: /Libro Diario/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Plan de Cuentas/i })).toBeNull();
   });
@@ -267,15 +267,15 @@ describe("AppSidebar — RBAC gating (migrated from PR7.1)", () => {
     //     resource → deny-by-default means no links render, parent hides
     //     (PR4.4 empty-parent rule).
     // Only the ungated SidebarFooter (Configuración) stays visible.
-    renderSidebar(null, "/test-org/farms");
+    renderSidebar(null, "/test-org/lots");
 
     // Gated cross-module items — absent while matrix is loading
     expect(screen.queryByRole("button", { name: /Agente IA/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Documentos/i })).toBeNull();
 
-    // PR4 contract: per-child RBAC denies Mis Granjas under null matrix
-    expect(screen.queryByRole("link", { name: /Mis Granjas/i })).toBeNull();
+    // PR4 contract: per-child RBAC denies Mis Lotes under null matrix
+    expect(screen.queryByRole("link", { name: /Mis Lotes/i })).toBeNull();
 
     // Footer Configuración link is NOT gated and must still render
     expect(screen.getByRole("link", { name: /Configuración/i })).toBeTruthy();
@@ -331,7 +331,7 @@ describe("AppSidebar — no legacy parent-level filter (REQ-MS.8)", () => {
     // is NOT in visibleModules. The switcher trigger shows the active module
     // label — with no accounting + route=/farms → active is granjas. So the
     // switcher shows "Granjas", and NO button labelled "Contabilidad" exists.
-    renderSidebar(FARMS_ONLY, "/test-org/farms");
+    renderSidebar(FARMS_ONLY, "/test-org/lots");
     const buttons = screen.getAllByRole("button");
     const contabButtons = buttons.filter(
       (btn) => btn.textContent?.trim() === "Contabilidad",
@@ -351,14 +351,14 @@ describe("AppSidebar — PR3 composition (REQ-MS.16)", () => {
   });
 
   it("renders the Granjas switcher label when pathname is /farms (route-derived active module)", () => {
-    renderSidebar(OWNER_FULL, "/test-org/farms");
+    renderSidebar(OWNER_FULL, "/test-org/lots");
     const triggers = screen.getAllByRole("button");
     const switcherTrigger = triggers.find((btn) => btn.textContent?.trim() === "Granjas");
     expect(switcherTrigger).toBeTruthy();
   });
 
   it("renders the Configuración link (SidebarFooter)", () => {
-    renderSidebar(OWNER_FULL, "/test-org/farms");
+    renderSidebar(OWNER_FULL, "/test-org/lots");
     const link = screen.getByRole("link", { name: /Configuración/i });
     expect(link.getAttribute("href")).toBe("/test-org/settings");
   });
@@ -367,16 +367,16 @@ describe("AppSidebar — PR3 composition (REQ-MS.16)", () => {
     // C2 sidebar-reorg-settings-hub: cross-module nav trimmed to Agente IA
     // and Documentos. Miembros is a Settings card; Auditoría becomes a
     // Settings card in C3.
-    renderSidebar(OWNER_FULL, "/test-org/farms");
+    renderSidebar(OWNER_FULL, "/test-org/lots");
     expect(screen.getByRole("button", { name: /Agente IA/i })).toBeTruthy();
     expect(screen.getByRole("link", { name: /Documentos/i })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Miembros/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /Auditoría/i })).toBeNull();
   });
 
-  it("renders Mis Granjas (ActiveModuleNav) when pathname is /farms", () => {
-    renderSidebar(OWNER_FULL, "/test-org/farms");
-    expect(screen.getByRole("link", { name: /Mis Granjas/i })).toBeTruthy();
+  it("renders Mis Lotes (ActiveModuleNav) when pathname is /farms", () => {
+    renderSidebar(OWNER_FULL, "/test-org/lots");
+    expect(screen.getByRole("link", { name: /Mis Lotes/i })).toBeTruthy();
   });
 
   it("does NOT render Contabilidad as an accordion button (flat navItems gone)", () => {

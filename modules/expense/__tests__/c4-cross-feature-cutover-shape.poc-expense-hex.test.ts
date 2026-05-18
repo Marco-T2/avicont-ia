@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
@@ -41,25 +41,35 @@ describe("POC expense hex C4 — cross-feature cutover shape (paired sister farm
     expect(src).not.toMatch(LEGACY_FEATURES_EXPENSES_IMPORT_RE);
   });
 
-  // ── B: farms/[farmId]/page.tsx cutover (POC #1 cementado preserved) ──
-  // α48
-  it("α48: farms/[farmId]/page.tsx imports makeExpenseService hex + NO legacy + .toSnapshot() + NO new ExpensesService(", () => {
-    const src = readRepoFile(
-      "app/(dashboard)/[orgSlug]/farms/[farmId]/page.tsx",
-    );
-    expect(src).toMatch(IMPORT_MAKE_EXPENSE_SERVICE_HEX_RE);
-    expect(src).not.toMatch(LEGACY_FEATURES_EXPENSES_IMPORT_RE);
-    expect(src).toMatch(TO_SNAPSHOT_RE);
-    expect(src).not.toMatch(NEW_EXPENSES_SERVICE_CTOR_RE);
+  // ── B: farms/[farmId]/* RETIRED at retire-farm-collapse-to-lot T22 ──
+  // α48 + α49 INVERTED at SDD retire-farm-collapse-to-lot F4 T22
+  // (same shape as α42 in poc-org-profile-hex C4): the original
+  // assertions cemented "farms/[farmId]/page.tsx + farm-detail-client.tsx
+  // consume the expense hex". Both files are wholesale-deleted in T22
+  // when the /farms surface is retired (REQ-200 absorbs `Farm` into
+  // `Lot.farmName`). `readRepoFile` throws ENOENT on deleted files,
+  // so the legitimate forward-only assertion is the deletion itself:
+  // with the files gone, "NO legacy expense import" is vacuously and
+  // permanently satisfied. Honest invariant collision elevation per
+  // [[invariant_collision_elevation]], inverted in the GREEN that
+  // causes it per [[mock_hygiene_commit_scope]].
+  it("α48: farms/[farmId]/page.tsx DELETED (retire-farm-collapse-to-lot T22 — legacy expense import vacuously absent)", () => {
+    expect(
+      existsSync(
+        resolve(REPO_ROOT, "app/(dashboard)/[orgSlug]/farms/[farmId]/page.tsx"),
+      ),
+    ).toBe(false);
   });
 
-  // α49
-  it("α49: farm-detail-client.tsx imports ExpenseSnapshot hex + NO legacy ExpenseWithRelations features/expenses", () => {
-    const src = readRepoFile(
-      "app/(dashboard)/[orgSlug]/farms/[farmId]/farm-detail-client.tsx",
-    );
-    expect(src).toMatch(IMPORT_EXPENSE_SNAPSHOT_HEX_RE);
-    expect(src).not.toMatch(LEGACY_FEATURES_EXPENSES_IMPORT_RE);
+  it("α49: farms/[farmId]/farm-detail-client.tsx DELETED (retire-farm-collapse-to-lot T22 — legacy expense import vacuously absent)", () => {
+    expect(
+      existsSync(
+        resolve(
+          REPO_ROOT,
+          "app/(dashboard)/[orgSlug]/farms/[farmId]/farm-detail-client.tsx",
+        ),
+      ),
+    ).toBe(false);
   });
 
   // ── C: API routes cutover ──
