@@ -22,7 +22,6 @@ import { Plus, Loader2, ArrowLeft, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import JournalLineRow, { type JournalLineData } from "./journal-line-row";
-import { formatCorrelativeNumber } from "@/features/accounting/correlative.utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import type { Account, FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
 import Decimal from "decimal.js";
@@ -339,21 +338,6 @@ export default function JournalEntryForm({
     }
   }
 
-  const selectedVoucherType = voucherTypes.find((vt) => vt.id === voucherTypeId) ?? null;
-  const previewDisplayNumber = (() => {
-    if (isEditing && editEntry && selectedVoucherType) {
-      return formatCorrelativeNumber(
-        selectedVoucherType.prefix,
-        new Date(editEntry.date),
-        editEntry.number,
-      );
-    }
-    if (!isEditing && selectedVoucherType && nextNumber && date) {
-      return formatCorrelativeNumber(selectedVoucherType.prefix, new Date(date), nextNumber);
-    }
-    return null;
-  })();
-
   const backHref = isEditing
     ? `/${orgSlug}/accounting/journal/${editEntry.id}`
     : `/${orgSlug}/accounting/journal`;
@@ -372,11 +356,6 @@ export default function JournalEntryForm({
         <CardHeader>
           <CardTitle>
             {isEditing ? "Editar Asiento Contable" : "Nuevo Asiento Contable"}
-            {previewDisplayNumber && (
-              <span className="ml-2 font-bold text-primary">
-                — {previewDisplayNumber}
-              </span>
-            )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
