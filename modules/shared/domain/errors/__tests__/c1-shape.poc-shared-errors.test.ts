@@ -75,15 +75,24 @@ describe("α2–α8 hex file contains 7 error classes", () => {
   });
 });
 
-// ── α9: grep-count 78 const codes ────────────────────────────────────────────
+// ── α9: grep-count 83 const codes ────────────────────────────────────────────
+// ── α9 driver enumeration (sentinel hygiene per α18 precedent) ──────────────
+// Base: 78 (baseline-test-cleanup pre-SDD).
+// +5 by *_DATE_OUTSIDE_PERIOD constants (modules/shared/domain/errors/index.ts:129-133):
+//   - JOURNAL_DATE_OUTSIDE_PERIOD
+//   - SALE_DATE_OUTSIDE_PERIOD
+//   - PURCHASE_DATE_OUTSIDE_PERIOD
+//   - PAYMENT_DATE_OUTSIDE_PERIOD
+//   - DISPATCH_DATE_OUTSIDE_PERIOD
+// Net: 78 + 5 = 83. [[invariant_collision_elevation]] applied — additive only.
 
-describe("α9 hex file contains 78 const error codes", () => {
-  it("α9: grep-count of ^export const [A-Z_]+ = \" in hex file === 78", () => {
+describe("α9 hex file contains 83 const error codes", () => {
+  it("α9: grep-count of ^export const [A-Z_]+ = \" in hex file === 83", () => {
     const result = execSync(
       `grep -cE '^export const [A-Z_]+ = "' "${HEX_FILE}"`,
       { encoding: "utf-8" },
     ).trim();
-    expect(Number(result)).toBe(78);
+    expect(Number(result)).toBe(83);
   });
 });
 
