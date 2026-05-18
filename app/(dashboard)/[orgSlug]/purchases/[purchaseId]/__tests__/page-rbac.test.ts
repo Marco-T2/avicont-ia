@@ -52,18 +52,6 @@ vi.mock("@/modules/purchase/presentation/composition-root", () => ({
 
 vi.mock("@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper", () => ({
   toPurchaseWithDetails: mockToPurchaseWithDetails,
-  // A3-C6b §13.AC-purchase variante 5: page imports TYPE_PREFIXES + computeDisplayCode
-  // post A3-C6a mapper refactor — mock factory debe exponer ambos o crash runtime.
-  // Stubs simples (test NO assertea displayCode value). Asimetría purchase vs sale:
-  // TYPE_PREFIXES Record polymorphic FL/PF/CG/SV vs SALE_PREFIX fixed string VG.
-  TYPE_PREFIXES: {
-    FLETE: "FL",
-    POLLO_FAENADO: "PF",
-    COMPRA_GENERAL: "CG",
-    SERVICIO: "SV",
-  },
-  computeDisplayCode: (purchaseType: string, n: number) =>
-    `${purchaseType.slice(0, 2)}-${String(n).padStart(3, "0")}`,
 }));
 
 vi.mock("@/lib/prisma", () => ({

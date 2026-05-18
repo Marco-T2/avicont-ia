@@ -8,11 +8,7 @@ import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
 import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
-import {
-  toPurchaseWithDetails,
-  computeDisplayCode,
-  TYPE_PREFIXES,
-} from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
+import { toPurchaseWithDetails } from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
 import PurchaseForm from "@/components/purchases/purchase-form";
 import type { PurchaseType } from "@/modules/purchase/presentation/dto/purchase-with-details";
 
@@ -101,14 +97,6 @@ export default async function PurchaseDetailPage({
     period,
     payable,
     ivaPurchaseBook: ivaPurchaseBook as unknown as IvaPurchaseBookDTO | null,
-    // §13.AC-purchase caller responsibility null guard (A3-C6b PROACTIVE):
-    // DRAFT purchases (sequenceNumber=null) usan fallback polymorphic
-    // `${TYPE_PREFIXES[purchaseType]}-DRAFT` per purchaseType discriminator
-    // mirror §13.AC HubService A3-C5 SubQ-β + A3-C6a list precedent.
-    displayCode:
-      purchase.sequenceNumber !== null
-        ? computeDisplayCode(purchase.purchaseType, purchase.sequenceNumber)
-        : `${TYPE_PREFIXES[purchase.purchaseType]}-DRAFT`,
   });
 
   // Open periods for editing; ensure current purchase period is included even if closed
