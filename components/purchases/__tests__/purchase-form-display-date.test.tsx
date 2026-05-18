@@ -29,10 +29,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/iva-books/iva-book-purchase-modal", () => ({
-  IvaBookPurchaseModal: () => null,
-}));
-
 // ── Fixtures ──
 
 const BASE_PERIOD = {
@@ -90,7 +86,6 @@ const BASE_PURCHASE_FIELDS = {
   createdAt: new Date(),
   updatedAt: new Date(),
   journalEntryId: null,
-  ivaPurchaseBook: null,
   contact: { id: "contact-1", name: "Proveedor SA", type: "PROVEEDOR", nit: "12345", paymentTermsDays: 30 },
   period: { id: "period-1", name: "Abril 2026", status: "OPEN" },
   createdBy: { id: "user-1", name: "Admin", email: "admin@test.com" },

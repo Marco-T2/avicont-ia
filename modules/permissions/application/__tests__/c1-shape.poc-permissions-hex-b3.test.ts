@@ -172,7 +172,7 @@ describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggr
 // ── α18: DUAL-SENTINEL — baseline 92 vi.mock count invariant ─────────────────
 
 describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5, +1 by equity-statement route test, +1 by contact-ledger route test, +1 by contact-balances dashboard route test, +1 by another untracked post-86 driver, +1 by agent-surface-separation route.surface-validation test, +1 by agent-sidebar-module-hint route.module-hint test, +1 by baseline-test-cleanup C1 journal route.json test, +1 by baseline-test-cleanup C1 tags route.post test, +1 by baseline-test-cleanup C1 tags route test)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 95 (baseline preserved; net +11 from original 84)", () => {
+  it("α18: vi.mock count for @/features/permissions/server equals 93 (actual count; sentinel was stale at 95 — corrected by lcv-feature-retirement L3 recount)", () => {
     // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
     // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
     // Original baseline: 84. Adjusted by:
@@ -214,7 +214,7 @@ describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, d
     const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
     const count = Number(stdout);
-    expect(count).toBe(95);
+    expect(count).toBe(93);
   });
 });
 

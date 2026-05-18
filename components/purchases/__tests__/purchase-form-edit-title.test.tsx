@@ -29,10 +29,6 @@ vi.mock("@/components/common/use-org-role", () => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
-vi.mock("@/components/iva-books/iva-book-purchase-modal", () => ({
-  IvaBookPurchaseModal: () => null,
-}));
-
 const BASE_PERIOD = {
   id: "period-1",
   name: "Enero 2026",
@@ -95,7 +91,6 @@ function makePurchase() {
     createdAt: new Date(),
     updatedAt: new Date(),
     journalEntryId: null,
-    ivaPurchaseBook: null,
     contact: BASE_CONTACT,
     period: { id: "period-1", name: "Enero 2026", status: "OPEN" as string },
     details: [

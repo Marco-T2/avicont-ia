@@ -121,9 +121,8 @@ describe("A3-C6b RED purchase detail cutover + null guard shape — combined axe
     expect(pageSource).toMatch(/prisma\.accountsPayable\.findUnique/);
   });
 
-  it("Test 6: page contains prisma.ivaPurchaseBook.findUnique (Prisma direct ivaPurchaseBook lookup)", () => {
-    expect(pageSource).toMatch(/prisma\.ivaPurchaseBook\.findUnique/);
-  });
+  // Test 6 RETIRED (lcv-feature-retirement L3): ivaPurchaseBook.findUnique removed
+  // from [purchaseId]/page.tsx as part of LCV retirement — call no longer exists.
 
   it("Test 7: page invokes toPurchaseWithDetails(purchase, deps) caller-passes-deps invocation", () => {
     expect(pageSource).toMatch(/toPurchaseWithDetails\s*\(\s*purchase\s*,/);

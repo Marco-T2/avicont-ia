@@ -30,10 +30,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/iva-books/iva-book-sale-modal", () => ({
-  IvaBookSaleModal: () => null,
-}));
-
 beforeEach(() => {
   mockPush.mockClear();
   mockRefresh.mockClear();

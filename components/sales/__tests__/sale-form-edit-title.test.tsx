@@ -28,10 +28,6 @@ vi.mock("@/components/common/use-org-role", () => ({
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
-vi.mock("@/components/iva-books/iva-book-sale-modal", () => ({
-  IvaBookSaleModal: () => null,
-}));
-
 const BASE_CONTACT = {
   id: "contact-1",
   name: "Cliente SA",
@@ -86,7 +82,6 @@ function makeSale(overrides: Record<string, unknown> = {}) {
     createdAt: new Date(),
     updatedAt: new Date(),
     journalEntryId: null,
-    ivaSalesBook: null,
     contact: BASE_CONTACT,
     period: { id: "period-1", name: "Enero 2026", status: "OPEN" as string },
     details: [

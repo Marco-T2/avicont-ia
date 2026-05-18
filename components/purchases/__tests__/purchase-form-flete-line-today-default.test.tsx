@@ -32,10 +32,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/iva-books/iva-book-purchase-modal", () => ({
-  IvaBookPurchaseModal: () => null,
-}));
-
 // ── Fixtures ──
 
 const BASE_PERIOD = {
