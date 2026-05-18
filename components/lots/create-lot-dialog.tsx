@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { todayLocal } from "@/lib/date-utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,13 +18,42 @@ import { toast } from "sonner";
 
 interface CreateLotDialogProps {
   orgSlug: string;
-  farmId: string;
   onCreated?: () => void;
+}
+
+/**
+ * REQ-200 / REQ-205 dialog (T19, post-collapse). `farmId` prop
+ * removed — Lot now carries free-text `farmName`. `memberId` is
+ * resolved server-side from the session in the POST route (D-2,
+ * landed in T15), so the body does NOT include it.
+ *
+ * Autocomplete suggestions are derived client-side from the same
+ * GET /api/organizations/{slug}/lots used by /lots page (REQ-205 —
+ * no new endpoint, scale max ~4 lots/org per Marco). Unique +
+ * alphabetical, capped to 4 suggestions to match the realistic
+ * cardinality ceiling.
+ */
+const MAX_SUGGESTIONS = 4;
+const DATALIST_ID = "create-lot-dialog-farm-suggestions";
+
+interface LotSuggestionRow {
+  farmName?: string;
+}
+
+function pickSuggestions(rows: LotSuggestionRow[]): string[] {
+  const unique = new Set<string>();
+  for (const row of rows) {
+    if (typeof row.farmName === "string" && row.farmName.trim().length > 0) {
+      unique.add(row.farmName.trim());
+    }
+  }
+  return Array.from(unique)
+    .sort((a, b) => a.localeCompare(b))
+    .slice(0, MAX_SUGGESTIONS);
 }
 
 export default function CreateLotDialog({
   orgSlug,
-  farmId,
   onCreated,
 }: CreateLotDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -32,9 +61,35 @@ export default function CreateLotDialog({
   const [name, setName] = useState("");
   const [barnNumber, setBarnNumber] = useState("");
   const [initialCount, setInitialCount] = useState("");
-  const [startDate, setStartDate] = useState(
-    todayLocal(),
-  );
+  const [farmName, setFarmName] = useState("");
+  const [startDate, setStartDate] = useState(todayLocal());
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+
+  // REQ-205: derive suggestions client-side from same GET /lots
+  // endpoint used by /lots page. Fires once on dialog open so the
+  // datalist is ready before the user focuses the input.
+  useEffect(() => {
+    if (!isOpen) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/organizations/${orgSlug}/lots`,
+          { method: "GET" },
+        );
+        if (!res.ok) return;
+        const rows = (await res.json()) as LotSuggestionRow[];
+        if (cancelled) return;
+        setSuggestions(pickSuggestions(rows));
+      } catch {
+        // Soft-fail: autocomplete is a convenience, not a hard
+        // requirement. Free-text input keeps working.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, orgSlug]);
 
   const handleSubmit = async () => {
     if (!name.trim()) {
@@ -47,6 +102,10 @@ export default function CreateLotDialog({
     }
     if (!initialCount || Number(initialCount) < 1) {
       toast.error("La cantidad inicial debe ser al menos 1");
+      return;
+    }
+    if (!farmName.trim()) {
+      toast.error("El nombre de la granja es requerido");
       return;
     }
 
@@ -62,7 +121,7 @@ export default function CreateLotDialog({
             barnNumber: Number(barnNumber),
             initialCount: Number(initialCount),
             startDate,
-            farmId,
+            farmName: farmName.trim(),
           }),
         },
       );
@@ -72,6 +131,7 @@ export default function CreateLotDialog({
         setName("");
         setBarnNumber("");
         setInitialCount("");
+        setFarmName("");
         setStartDate(todayLocal());
         setIsOpen(false);
         onCreated?.();
@@ -93,6 +153,7 @@ export default function CreateLotDialog({
       setName("");
       setBarnNumber("");
       setInitialCount("");
+      setFarmName("");
       setStartDate(todayLocal());
     }
   };
@@ -124,6 +185,24 @@ export default function CreateLotDialog({
               onChange={(e) => setName(e.target.value)}
               disabled={isLoading}
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium mb-2">
+              Granja *
+            </label>
+            <Input
+              list={DATALIST_ID}
+              placeholder="Ej: Capinota"
+              value={farmName}
+              onChange={(e) => setFarmName(e.target.value)}
+              disabled={isLoading}
+            />
+            <datalist id={DATALIST_ID}>
+              {suggestions.map((s) => (
+                <option key={s} value={s} />
+              ))}
+            </datalist>
           </div>
 
           <div>
@@ -178,7 +257,13 @@ export default function CreateLotDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isLoading || !name.trim() || !barnNumber || !initialCount}
+            disabled={
+              isLoading ||
+              !name.trim() ||
+              !barnNumber ||
+              !initialCount ||
+              !farmName.trim()
+            }
           >
             {isLoading ? (
               <>

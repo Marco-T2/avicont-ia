@@ -26,7 +26,7 @@ vi.mock("sonner", () => ({
 // ── Helpers ──
 
 function openDialog() {
-  render(<CreateLotDialog orgSlug="test-org" farmId="farm-1" />);
+  render(<CreateLotDialog orgSlug="test-org" />);
   fireEvent.click(screen.getByRole("button", { name: /nuevo lote/i }));
   return document.querySelectorAll<HTMLInputElement>('input[type="date"]');
 }

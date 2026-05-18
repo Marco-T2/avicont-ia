@@ -233,7 +233,6 @@ export default function FarmDetailClient({
           <div className="flex flex-col sm:flex-row gap-2 shrink-0">
             <CreateLotDialog
               orgSlug={orgSlug}
-              farmId={farm.id}
               onCreated={() => router.refresh()}
             />
           </div>
