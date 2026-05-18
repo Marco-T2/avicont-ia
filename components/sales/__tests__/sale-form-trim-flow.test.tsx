@@ -99,7 +99,7 @@ const POSTED_SALE = {
   description: "Venta contabilizada",
   referenceNumber: null,
   notes: null,
-  displayCode: "CI-001",
+  sequenceNumber: 1,
   createdById: "user-1",
   updatedById: null,
   createdAt: new Date(),
@@ -207,8 +207,10 @@ describe("SaleForm — dryRun pre-flight + trim dialog (REQ-7, SC-13, SC-14)", (
 
     const editBtn = screen.queryByRole("button", { name: /guardar cambios/i });
     if (!editBtn) {
-      // Verificación de fallback: el componente renderiza sin errores para POSTED
-      expect(screen.getByText(/CI-001/i)).toBeInTheDocument();
+      // Verificación de fallback: el componente renderiza sin errores para POSTED.
+      // Post T2.4-form: title uses `Venta General #${sequenceNumber} — ${contact.name}`
+      // per Q4 (legacy `${displayCode} — Venta General` retired).
+      expect(screen.getByText(/Venta General #1 — Cliente SA/i)).toBeInTheDocument();
       return;
     }
 

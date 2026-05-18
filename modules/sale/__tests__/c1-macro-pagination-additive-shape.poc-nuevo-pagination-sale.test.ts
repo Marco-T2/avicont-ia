@@ -302,10 +302,10 @@ describe("POC nuevo pagination-sale C1-MACRO — cross-layer additive shape (por
       expect(source).toMatch(PAGE_ITEMS_ACCESS_RE);
     });
 
-    it("Test 10: sale-list.tsx references `PaginatedResult` (import or prop type — consume paginated payload shape downstream of page.tsx)", () => {
-      const source = fs.readFileSync(SALE_LIST_FILE, "utf8");
-      expect(source).toMatch(SALE_LIST_PAGINATED_RE);
-    });
+    // Test 10 (sale-list.tsx references PaginatedResult) RETIRED per
+    // REQ-DISPLAY-2 derivative (T4.5 SHAPE-LOCK Group F): orphan sale-list.tsx
+    // wholesale-deleted in T1.2 (verified zero production imports). The
+    // shape-lock invariant became vacuous when the source file was removed.
 
     it("Test 11: components/ui/pagination.tsx file exists (shadcn pagination component installed via `npx shadcn add pagination` per Marco lock F #1782)", () => {
       expect(fs.existsSync(PAGINATION_UI_FILE)).toBe(true);

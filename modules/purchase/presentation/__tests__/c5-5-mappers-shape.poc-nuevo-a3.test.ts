@@ -117,11 +117,10 @@ describe("POC nuevo A3-C5.5 — atomic build purchase mappers + drop createdBy p
   });
 
   // ── Export shape × 6 (Tests 2-7) — caller-passes-deps mapper symbols ─────────
-
-  it("Test 2: mapper exports computeDisplayCode (utility TYPE_PREFIXES per purchaseType, throws null SubQ-d invariant mirror sale)", () => {
-    const source = fs.readFileSync(PURCHASE_MAPPER_PATH, "utf8");
-    expect(source).toMatch(/export\s+(?:function|const)\s+computeDisplayCode\b/);
-  });
+  //
+  // Test 2 (computeDisplayCode export) retired per REQ-DISPLAY-2 derivative
+  // (T4.5 SHAPE-LOCK Group C). Helper wholesale-deleted in T4.3. Other 5
+  // tests remain VALID.
 
   it("Test 3: mapper exports toContactSummary (sub-mapper passthrough)", () => {
     const source = fs.readFileSync(PURCHASE_MAPPER_PATH, "utf8");

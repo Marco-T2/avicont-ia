@@ -74,48 +74,21 @@ import { describe, it, expect } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
-const MAPPER_PATH = resolve(
-  __dirname,
-  "../mappers/purchase-to-with-details.mapper.ts",
-);
+// MAPPER_PATH + mapperSource removed (T4.5 SHAPE-LOCK Group C): Tests 1-4
+// referencing mapper internals retired with the helper deletion.
 const PAGE_PATH = resolve(
   __dirname,
   "../../../../app/(dashboard)/[orgSlug]/purchases/page.tsx",
 );
 
-const mapperSource = readFileSync(MAPPER_PATH, "utf-8");
 const pageSource = readFileSync(PAGE_PATH, "utf-8");
 
-describe("A3-C6a RED purchase list cutover + null guard shape — combined axes", () => {
-  // ── Mapper changes (positive — 3 assertions mirror A3-C4a.5 b3 refactor) ──
-
-  it("Test 1: mapper exports TYPE_PREFIXES const (post b3 refactor caller responsibility)", () => {
-    expect(mapperSource).toMatch(
-      /export const TYPE_PREFIXES\s*:\s*Record<PurchaseType,\s*string>/,
-    );
-  });
-
-  it("Test 2: ToPurchaseWithDetailsDeps interface declares displayCode: string field", () => {
-    const interfaceMatch = mapperSource.match(
-      /export interface ToPurchaseWithDetailsDeps\s*\{[\s\S]*?\n\}/,
-    );
-    expect(interfaceMatch).not.toBeNull();
-    expect(interfaceMatch![0]).toMatch(/displayCode\s*:\s*string/);
-  });
-
-  it("Test 3: mapper toPurchaseWithDetails body assigns displayCode from deps.displayCode", () => {
-    expect(mapperSource).toMatch(/displayCode\s*:\s*deps\.displayCode/);
-  });
-
-  // ── Mapper internal compute removed (negative — 1 assertion) ────────────────
-
-  it("Test 4: mapper toPurchaseWithDetails body does NOT call internal computeDisplayCode (caller responsibility now)", () => {
-    const fnMatch = mapperSource.match(
-      /export function toPurchaseWithDetails\([\s\S]*?\n\}/,
-    );
-    expect(fnMatch).not.toBeNull();
-    expect(fnMatch![0]).not.toMatch(/computeDisplayCode\s*\(/);
-  });
+describe("A3-C6a purchase list cutover + null guard shape — post-retirement subset", () => {
+  // Tests 1-4 (mapper TYPE_PREFIXES export + ToPurchaseWithDetailsDeps.displayCode
+  // + body deps.displayCode + body no computeDisplayCode call) RETIRED per
+  // REQ-DISPLAY-2 derivative (T4.5 SHAPE-LOCK Group C). Helpers + DTO field
+  // wholesale-deleted in T4.3. Surviving tests below (5-7 + 11-12) lock the
+  // cutover invariants that REMAIN VALID.
 
   // ── Page cutover positive (3 assertions mirror A3-C4a) ──────────────────────
 
@@ -137,23 +110,10 @@ describe("A3-C6a RED purchase list cutover + null guard shape — combined axes"
     );
   });
 
-  // ── Page null guard positive (3 assertions mirror A3-C4a.5) ─────────────────
-
-  it("Test 8: page imports TYPE_PREFIXES + computeDisplayCode from mapper (null guard caller responsibility)", () => {
-    expect(pageSource).toMatch(/TYPE_PREFIXES/);
-    expect(pageSource).toMatch(/computeDisplayCode/);
-    expect(pageSource).toMatch(
-      /from\s+["']@\/modules\/purchase\/presentation\/mappers\/purchase-to-with-details\.mapper["']/,
-    );
-  });
-
-  it("Test 9: page contains null guard ternary pattern sequenceNumber !== null o === null", () => {
-    expect(pageSource).toMatch(/sequenceNumber\s*(!==|===)\s*null/);
-  });
-
-  it("Test 10: page contains template literal `${TYPE_PREFIXES[...]}-DRAFT` polymorphic fallback", () => {
-    expect(pageSource).toMatch(/\$\{TYPE_PREFIXES\[[^\]]+\]\}-DRAFT/);
-  });
+  // Tests 8-10 (page imports TYPE_PREFIXES + computeDisplayCode + null guard
+  // ternary + ${TYPE_PREFIXES[...]}-DRAFT polymorphic fallback) RETIRED per
+  // REQ-DISPLAY-2 derivative (T4.5 SHAPE-LOCK Group C). Page-side helpers
+  // wholesale-deleted in T2.0/T4.3.
 
   // ── Page legacy ABSENT (2 negative assertions future-proof) ────────────────
 

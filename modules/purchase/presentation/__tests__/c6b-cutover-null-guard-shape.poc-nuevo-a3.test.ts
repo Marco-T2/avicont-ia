@@ -105,13 +105,9 @@ describe("A3-C6b RED purchase detail cutover + null guard shape — combined axe
     );
   });
 
-  it("Test 3: page imports TYPE_PREFIXES + computeDisplayCode from mapper (null guard caller responsibility)", () => {
-    expect(pageSource).toMatch(/TYPE_PREFIXES/);
-    expect(pageSource).toMatch(/computeDisplayCode/);
-    expect(pageSource).toMatch(
-      /from\s+["']@\/modules\/purchase\/presentation\/mappers\/purchase-to-with-details\.mapper["']/,
-    );
-  });
+  // Test 3 (page imports TYPE_PREFIXES + computeDisplayCode) RETIRED per
+  // REQ-DISPLAY-2 derivative (T4.5 SHAPE-LOCK Group C). Page-side helpers
+  // wholesale-deleted in T2.5-page/T4.3.
 
   it("Test 4: page imports prisma from @/lib/prisma (Prisma direct lookups)", () => {
     expect(pageSource).toMatch(
@@ -133,15 +129,9 @@ describe("A3-C6b RED purchase detail cutover + null guard shape — combined axe
     expect(pageSource).toMatch(/toPurchaseWithDetails\s*\(\s*purchase\s*,/);
   });
 
-  // ── Page null guard pattern positive (2 mirror A3-C6a + lección #12) ────────
-
-  it("Test 8: page contains null guard ternary pattern sequenceNumber !== null o === null", () => {
-    expect(pageSource).toMatch(/sequenceNumber\s*(!==|===)\s*null/);
-  });
-
-  it("Test 9: page contains template literal `${TYPE_PREFIXES[...]}-DRAFT` polymorphic fallback", () => {
-    expect(pageSource).toMatch(/\$\{TYPE_PREFIXES\[[^\]]+\]\}-DRAFT/);
-  });
+  // Tests 8-9 (page null guard ternary + TYPE_PREFIXES polymorphic fallback)
+  // RETIRED per REQ-DISPLAY-2 derivative (T4.5 SHAPE-LOCK Group C). Page-side
+  // helpers wholesale-deleted in T2.5-page/T4.3.
 
   // ── Page legacy ABSENT (3 negative assertions future-proof + form prop) ─────
 

@@ -97,11 +97,10 @@ describe("POC nuevo A3-C3 — sale presentation mappers shape", () => {
   });
 
   // ── Export shape × 7 (Tests 2-8) — caller-passes-deps mapper symbols ────────
-
-  it("Test 2: mapper exports computeDisplayCode (utility VG-NNN, DRY A3-C5 HubService inline)", () => {
-    const source = fs.readFileSync(SALE_MAPPER_PATH, "utf8");
-    expect(source).toMatch(/export\s+(?:function|const)\s+computeDisplayCode\b/);
-  });
+  //
+  // Test 2 (computeDisplayCode export) retired per REQ-DISPLAY-2 derivative
+  // (T4.5 SHAPE-LOCK Group C). Helper wholesale-deleted in T4.2. Other 6
+  // tests remain VALID.
 
   it("Test 3: mapper exports toContactSummary (sub-mapper passthrough)", () => {
     const source = fs.readFileSync(SALE_MAPPER_PATH, "utf8");
