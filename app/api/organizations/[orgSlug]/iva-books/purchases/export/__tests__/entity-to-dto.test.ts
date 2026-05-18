@@ -2,7 +2,6 @@ import Decimal from "decimal.js";
 import { describe, expect, it } from "vitest";
 
 import { TASA_IVA } from "@/modules/iva-books/presentation/server";
-import { Prisma } from "@/generated/prisma/client";
 import { computeIvaTotals } from "@/modules/iva-books/domain/compute-iva-totals";
 import { IvaPurchaseBookEntry } from "@/modules/iva-books/domain/iva-purchase-book-entry.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -88,23 +87,23 @@ describe("entity-to-dto purchases mapper — POC #11.0c A4-c C2 GREEN P3 lockead
     expect(dto.fechaFactura).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("MonetaryAmount → Prisma.Decimal conversion preserves value (10 inputs + 4 calcResult derivados)", () => {
+  it("MonetaryAmount → Decimal (decimal.js) conversion preserves value (10 inputs + 4 calcResult derivados)", () => {
     const entry = makeFixture({ importeTotal: 113, exentos: 15.5 });
     const dto = entityToDto(entry);
 
-    // 10 inputs MonetaryAmount.value → Prisma.Decimal
-    expect(dto.importeTotal).toBeInstanceOf(Prisma.Decimal);
+    // 10 inputs MonetaryAmount.value → Decimal (decimal.js@10.6.0 per DEC-1)
+    expect(dto.importeTotal).toBeInstanceOf(Decimal);
     expect(dto.importeTotal.toNumber()).toBe(113);
-    expect(dto.exentos).toBeInstanceOf(Prisma.Decimal);
+    expect(dto.exentos).toBeInstanceOf(Decimal);
     expect(dto.exentos.toNumber()).toBe(15.5);
     expect(dto.importeIce.toNumber()).toBe(0);
     expect(dto.tasaCero.toNumber()).toBe(0);
 
     // 4 calcResult derivados — subtotal/baseIvaSujetoCf/dfCfIva/dfIva
-    expect(dto.subtotal).toBeInstanceOf(Prisma.Decimal);
-    expect(dto.baseIvaSujetoCf).toBeInstanceOf(Prisma.Decimal);
-    expect(dto.dfCfIva).toBeInstanceOf(Prisma.Decimal);
-    expect(dto.dfIva).toBeInstanceOf(Prisma.Decimal);
+    expect(dto.subtotal).toBeInstanceOf(Decimal);
+    expect(dto.baseIvaSujetoCf).toBeInstanceOf(Decimal);
+    expect(dto.dfCfIva).toBeInstanceOf(Decimal);
+    expect(dto.dfIva).toBeInstanceOf(Decimal);
 
     // Renames lockeada P3: baseImponible→baseIvaSujetoCf,
     // ivaAmount→{dfCfIva, dfIva}. Verificación dfIva === dfCfIva
@@ -116,10 +115,9 @@ describe("entity-to-dto purchases mapper — POC #11.0c A4-c C2 GREEN P3 lockead
     const entry = makeFixture();
     const dto = entityToDto(entry);
 
-    // TASA_IVA es top-level Decimal post sub-POC 5 (legacy-bridge-constants.ts:28
-    // migró Prisma.Decimal → decimal.js). Otras assertions (subtotal/baseIvaSujetoCf/
-    // dfCfIva/dfIva) siguen Prisma.Decimal porque el bridge entity-to-dto.ts
-    // todavía construye con `new Prisma.Decimal(...)` (P2 deferred bookmark #2614).
+    // TASA_IVA es top-level Decimal (decimal.js). Post-B2 migration (DEC-1 P2
+    // complete, bookmark #2614 closed), ALL monetary DTO fields son decimal.js
+    // Decimal — unifica con tasaIva y elimina la asimetría Prisma.Decimal/decimal.js.
     expect(dto.tasaIva).toBeInstanceOf(Decimal);
     expect(dto.tasaIva.equals(TASA_IVA)).toBe(true);
     expect(dto.tasaIva.toNumber()).toBe(0.13);

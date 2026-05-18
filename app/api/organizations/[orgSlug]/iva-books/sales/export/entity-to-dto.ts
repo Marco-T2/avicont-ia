@@ -2,7 +2,7 @@ import "server-only";
 
 import { TASA_IVA } from "@/modules/iva-books/presentation/server";
 import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/server";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { IvaSalesBookEntry } from "@/modules/iva-books/domain/iva-sales-book-entry.entity";
 
 /**
@@ -15,7 +15,8 @@ import type { IvaSalesBookEntry } from "@/modules/iva-books/domain/iva-sales-boo
  *
  *   1. `Date → string` (ISO YYYY-MM-DD via `.toISOString().split('T')[0]`)
  *   2. `string | null → string?` (`?? undefined` para saleId/notes)
- *   3. `MonetaryAmount → Prisma.Decimal` (10 inputs + 4 calcResult derivados)
+ *   3. `MonetaryAmount → Decimal` (decimal.js@10.6.0 — 10 inputs + 4 calcResult derivados)
+ *      DEC-1 invariant 1: app-layer bridges MUST use decimal.js direct.
  *   4. `IvaCalcResult flatten + renames`: `baseImponible → baseIvaSujetoCf`,
  *      `ivaAmount → {dfCfIva, dfIva}` (DTO duplica ivaAmount en 2 campos),
  *      `tasaIva` constante INJECTADA — NO existe en `IvaCalcResult` VO,
@@ -31,7 +32,7 @@ import type { IvaSalesBookEntry } from "@/modules/iva-books/domain/iva-sales-boo
  * Location archivo dedicado app/api per route (P3.3 lock A4-c #2 preserved).
  */
 
-const D = (n: number): Prisma.Decimal => new Prisma.Decimal(n);
+const D = (n: number): Decimal => new Decimal(n);
 
 export function entityToDto(entry: IvaSalesBookEntry): IvaSalesBookDTO {
   return {

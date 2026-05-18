@@ -2,7 +2,7 @@ import "server-only";
 
 import { TASA_IVA } from "@/modules/iva-books/presentation/server";
 import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/server";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import type { IvaPurchaseBookEntry } from "@/modules/iva-books/domain/iva-purchase-book-entry.entity";
 
 /**
@@ -15,7 +15,8 @@ import type { IvaPurchaseBookEntry } from "@/modules/iva-books/domain/iva-purcha
  * salvo asimetrías declaradas: `purchaseId` (vs saleId), `nitProveedor`
  * (vs nitCliente), `tipoCompra: number` (vs estadoSIN sale-only). Bridge
  * transforma 4 conversion types (Date→string, null→undefined, MonetaryAmount→
- * Prisma.Decimal, IvaCalcResult flatten + renames + tasaIva injection).
+ * Decimal (decimal.js@10.6.0), IvaCalcResult flatten + renames + tasaIva injection).
+ * DEC-1 invariant 1: app-layer bridges MUST use decimal.js direct.
  *
  * Per-row + batch wrapper (P3.1 lock). Separate file per kind (P3.2 lock):
  * sale tiene estadoSIN sale-only; purchase tiene tipoCompra purchase-only —
@@ -27,7 +28,7 @@ import type { IvaPurchaseBookEntry } from "@/modules/iva-books/domain/iva-purcha
  * of truth hasta retirement final del legacy class).
  */
 
-const D = (n: number): Prisma.Decimal => new Prisma.Decimal(n);
+const D = (n: number): Decimal => new Decimal(n);
 
 export function entityToDto(entry: IvaPurchaseBookEntry): IvaPurchaseBookDTO {
   return {
