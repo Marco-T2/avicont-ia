@@ -130,13 +130,11 @@ export interface ToPurchaseWithDetailsDeps {
   payable?: PayableRaw | null;
   ivaPurchaseBook?: IvaPurchaseBookDTO | null;
   /**
-   * Caller-computed displayCode (A3-C6a §13.AC-purchase resolution variante 4):
-   * non-DRAFT path = `computeDisplayCode(purchase.purchaseType, purchase.sequenceNumber)`,
-   * DRAFT path = `${TYPE_PREFIXES[purchase.purchaseType]}-DRAFT` polymorphic
-   * fallback per purchaseType discriminator. Caller responsibility null guard
-   * mirror §13.AC HubService A3-C5 SubQ-β + A3-C4a.5 sale paired pattern.
+   * Transitional optional — list pages already stripped (T2.0); detail page
+   * (T2.5-page) + mapper helpers wholesale-delete (T4.3) finish the chain.
+   * Currently ignored by the compositor body (no longer mapped into the DTO).
    */
-  displayCode: string;
+  displayCode?: string;
 }
 
 // ── Utility: TYPE_PREFIXES per purchaseType (mirror legacy purchase.utils.ts) ─
@@ -261,9 +259,6 @@ export function toPurchaseWithDetails(
   purchase: Purchase,
   deps: ToPurchaseWithDetailsDeps,
 ): PurchaseWithDetails {
-  // displayCode caller responsibility (A3-C6a §13.AC-purchase variante 4):
-  // caller computa con null guard ternary + ${TYPE_PREFIXES[purchaseType]}-DRAFT
-  // polymorphic fallback DRAFT path mirror A3-C4a.5 sale paired pattern.
   return {
     id: purchase.id,
     organizationId: purchase.organizationId,
@@ -295,7 +290,6 @@ export function toPurchaseWithDetails(
     contact: toContactSummary(deps.contact),
     period: toPeriodSummary(deps.period),
     payable: deps.payable ? toPayableSummary(deps.payable) : null,
-    displayCode: deps.displayCode,
     ivaPurchaseBook: deps.ivaPurchaseBook ?? null,
   };
 }

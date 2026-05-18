@@ -2,11 +2,7 @@ import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { prisma } from "@/lib/prisma";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
-import {
-  toPurchaseWithDetails,
-  computeDisplayCode,
-  TYPE_PREFIXES,
-} from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
+import { toPurchaseWithDetails } from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
 import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
 import type { PurchaseFilters } from "@/modules/purchase/domain/ports/purchase.repository";
 import type { PurchaseType } from "@/modules/purchase/domain/purchase.entity";
@@ -91,14 +87,6 @@ export default async function PurchasesPage({ params, searchParams }: PurchasesP
       period: periodMap.get(p.periodId)!,
       payable: null,
       ivaPurchaseBook: null,
-      // §13.AC-purchase caller responsibility null guard (A3-C6a desde inicio):
-      // DRAFT purchases (sequenceNumber=null) usan fallback polymorphic
-      // `${TYPE_PREFIXES[purchaseType]}-DRAFT` per purchaseType discriminator
-      // mirror §13.AC HubService A3-C5 SubQ-β + A3-C4a.5 sale paired pattern.
-      displayCode:
-        p.sequenceNumber !== null
-          ? computeDisplayCode(p.purchaseType, p.sequenceNumber)
-          : `${TYPE_PREFIXES[p.purchaseType]}-DRAFT`,
     }),
   );
 

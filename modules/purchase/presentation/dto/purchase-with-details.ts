@@ -103,6 +103,11 @@ export interface PurchaseWithDetails
   };
   details: PurchaseDetailRow[];
   payable?: PayableSummary | null;
-  displayCode: string;
+  /**
+   * Transitional field — retired wholesale in T4.3 (REQ-DISPLAY-2). Optional
+   * here so T2.0 list-page strip can ship without TS errors while T2.5-page
+   * / T4.3 finish the chain.
+   */
+  displayCode?: string;
   ivaPurchaseBook?: IvaPurchaseBookDTO | null;
 }

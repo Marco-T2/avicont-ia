@@ -108,12 +108,11 @@ export interface ToSaleWithDetailsDeps {
   receivable?: ReceivableRaw | null;
   ivaSalesBook?: IvaSalesBookDTO | null;
   /**
-   * Caller-computed displayCode (A3-C4a.5 §13.AC-sale-paged resolution):
-   * non-DRAFT path = `computeDisplayCode(sale.sequenceNumber)`, DRAFT path =
-   * `${SALE_PREFIX}-DRAFT` fallback. Caller responsibility null guard mirror
-   * §13.AC HubService A3-C5 SubQ-β precedent.
+   * Transitional optional — list pages already stripped (T2.0); detail page
+   * (T2.4-page) + mapper helpers wholesale-delete (T4.2) finish the chain.
+   * Currently ignored by the compositor body (no longer mapped into the DTO).
    */
-  displayCode: string;
+  displayCode?: string;
 }
 
 // ── Utility: displayCode formula `VG-NNN` (DRY A3-C5 HubService inline) ────────
@@ -215,9 +214,6 @@ export function toSaleWithDetails(
   sale: Sale,
   deps: ToSaleWithDetailsDeps,
 ): SaleWithDetails {
-  // displayCode caller responsibility (A3-C4a.5 §13.AC-sale-paged): caller
-  // computa con null guard ternary + ${SALE_PREFIX}-DRAFT fallback DRAFT path
-  // mirror §13.AC HubService A3-C5 SubQ-β precedent.
   return {
     id: sale.id,
     organizationId: sale.organizationId,
@@ -239,7 +235,6 @@ export function toSaleWithDetails(
     contact: toContactSummary(deps.contact),
     period: toPeriodSummary(deps.period),
     receivable: deps.receivable ? toReceivableSummary(deps.receivable) : null,
-    displayCode: deps.displayCode,
     ivaSalesBook: deps.ivaSalesBook ?? null,
   };
 }
