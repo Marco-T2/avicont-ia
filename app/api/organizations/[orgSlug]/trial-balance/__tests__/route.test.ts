@@ -236,6 +236,7 @@ describe("GET /api/.../trial-balance — org metadata passed to exporters (C8)",
       "Avicont SA",       // real name, NOT the slug "avicont-sa"
       "12345",
       "La Paz",
+      undefined,          // city (5th arg added at route.ts:76); orgMeta has no city → undefined
     );
   });
 
@@ -249,6 +250,7 @@ describe("GET /api/.../trial-balance — org metadata passed to exporters (C8)",
       "avicont-sa",       // slug fallback
       undefined,
       undefined,
+      undefined,          // city (5th arg added at route.ts:76); null orgMeta → undefined
     );
   });
 
