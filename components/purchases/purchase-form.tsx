@@ -688,8 +688,12 @@ export default function PurchaseForm({
   }
 
   const backHref = `/${orgSlug}/purchases`;
+  // Q4 (REQ-DISPLAY-1): `${PURCHASE_TYPE_LABEL[purchaseType]} #${sequenceNumber} — ${contact.name}`
+  // — humano, ya disponible. PURCHASE_TYPE_LABEL acts as the voucherTypeName
+  // mapping for the 4 fixed types (FLETE/POLLO_FAENADO/COMPRA_GENERAL/SERVICIO).
+  // Defensive fallback `#?` cubre DRAFT (sequenceNumber=null).
   const headerTitle = isEditMode
-    ? `${purchase!.displayCode} — ${PURCHASE_TYPE_LABEL[purchaseType]}`
+    ? `${PURCHASE_TYPE_LABEL[purchaseType]} #${purchase!.sequenceNumber ?? "?"} — ${purchase!.contact.name}`
     : `Nueva ${PURCHASE_TYPE_LABEL[purchaseType]}`;
 
   // ── Render ──
