@@ -52,7 +52,7 @@ export class LotService {
   /**
    * Updates `name` and/or `barnNumber` of a Lot. Other fields are
    * immutable (INV-04). Throws NotFoundError if missing,
-   * LotCannotUpdateClosed (from entity) if not ACTIVE,
+   * LotCannotUpdateInactive (from entity) if not ACTIVE,
    * LotNameDuplicate if the new name collides with another lot in
    * the same org. Idempotent when the new name equals the current
    * name (self-collision excluded). Spec REQ-100.
@@ -76,7 +76,7 @@ export class LotService {
       if (conflict) throw new LotNameDuplicate(input.name);
     }
 
-    const updated = lot.update(input); // throws LotCannotUpdateClosed if CLOSED
+    const updated = lot.update(input); // throws LotCannotUpdateInactive if not ACTIVE
     await this.repo.update(updated);
     return updated;
   }

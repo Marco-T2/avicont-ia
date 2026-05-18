@@ -12,10 +12,17 @@ export class InvalidLotStatusTransition extends Error {
   }
 }
 
-export class CannotCloseInactiveLot extends Error {
+/**
+ * Thrown by `Lot.deactivate(endDate)` when invoked on a lot that is
+ * already INACTIVE. Replaces the legacy `CannotCloseInactiveLot`
+ * name; the semantics are identical (transition guard) — the rename
+ * just aligns with the user-language verb "desactivar". Spec
+ * REQ-203, design D-4.
+ */
+export class CannotDeactivateInactiveLot extends Error {
   constructor() {
-    super("Solo se pueden cerrar lotes activos");
-    this.name = "CannotCloseInactiveLot";
+    super("Solo se pueden desactivar lotes activos");
+    this.name = "CannotDeactivateInactiveLot";
   }
 }
 
@@ -33,14 +40,16 @@ export class LotNameDuplicate extends Error {
 }
 
 /**
- * Thrown by Lot.update when the lot's status is not ACTIVE. Closed
+ * Thrown by Lot.update when the lot's status is not ACTIVE. INACTIVE
  * lots are historical snapshots; only ACTIVE lots can be edited
- * (spec REQ-100, scenario "Update rejected — Lot is CLOSED").
+ * (spec REQ-100, scenario "Update rejected — Lot is INACTIVE").
+ * Replaces the legacy `LotCannotUpdateClosed` name post-collapse
+ * (REQ-202 binary lifecycle, design D-4).
  */
-export class LotCannotUpdateClosed extends Error {
-  readonly code = "LOT_CLOSED";
+export class LotCannotUpdateInactive extends Error {
+  readonly code = "LOT_INACTIVE";
   constructor(id: string) {
-    super(`No se puede actualizar un lote cerrado: ${id}`);
-    this.name = "LotCannotUpdateClosed";
+    super(`No se puede actualizar un lote inactivo: ${id}`);
+    this.name = "LotCannotUpdateInactive";
   }
 }

@@ -43,10 +43,10 @@ describe("C0 domain shape — Lot module (existence-only regex)", () => {
     expect(src).toMatch(/^export (interface|type) LotSnapshot\b/m);
   });
 
-  // α17
-  it("CannotCloseInactiveLot + InvalidLotStatusTransition + InvalidLotStatus errors are exported from domain/errors/lot-errors.ts", () => {
+  // α17 — post-collapse REQ-203/D-4: CannotCloseInactiveLot → CannotDeactivateInactiveLot
+  it("CannotDeactivateInactiveLot + InvalidLotStatusTransition + InvalidLotStatus errors are exported from domain/errors/lot-errors.ts", () => {
     const src = readLotFile("domain/errors/lot-errors.ts");
-    expect(src).toMatch(/^export class CannotCloseInactiveLot\b/m);
+    expect(src).toMatch(/^export class CannotDeactivateInactiveLot\b/m);
     expect(src).toMatch(/^export class InvalidLotStatusTransition\b/m);
     expect(src).toMatch(/^export class InvalidLotStatus\b/m);
   });

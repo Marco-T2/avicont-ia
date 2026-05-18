@@ -1,8 +1,8 @@
 import { describe, expect, it, beforeEach, vi } from "vitest";
 import { Lot } from "../lot.entity";
 import {
-  CannotCloseInactiveLot,
-  LotCannotUpdateClosed,
+  CannotDeactivateInactiveLot,
+  LotCannotUpdateInactive,
 } from "../errors/lot-errors";
 import { LotSummary } from "../value-objects/lot-summary";
 
@@ -87,10 +87,10 @@ describe("Lot entity behavioral", () => {
   });
 
   // α25
-  it("Lot.close on already INACTIVE throws CannotCloseInactiveLot", () => {
+  it("Lot.close on already INACTIVE throws CannotDeactivateInactiveLot", () => {
     const lot = Lot.create(baseInput);
     const closed = lot.close(new Date("2026-08-01T00:00:00Z"));
-    expect(() => closed.close(new Date("2026-09-01T00:00:00Z"))).toThrow(CannotCloseInactiveLot);
+    expect(() => closed.close(new Date("2026-09-01T00:00:00Z"))).toThrow(CannotDeactivateInactiveLot);
   });
 
   // α26
@@ -171,12 +171,12 @@ describe("Lot entity behavioral", () => {
   });
 
   // α33 Lot.update rejects INACTIVE
-  it("Lot.update throws LotCannotUpdateClosed when status is INACTIVE", () => {
+  it("Lot.update throws LotCannotUpdateInactive when status is INACTIVE", () => {
     const lot = Lot.create(baseInput).close(
       new Date("2026-06-30T00:00:00Z"),
     );
 
-    expect(() => lot.update({ name: "X" })).toThrow(LotCannotUpdateClosed);
+    expect(() => lot.update({ name: "X" })).toThrow(LotCannotUpdateInactive);
   });
 
   // α28

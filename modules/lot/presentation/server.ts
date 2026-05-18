@@ -46,7 +46,7 @@ export type {
 export {
   InvalidLotStatus,
   InvalidLotStatusTransition,
-  CannotCloseInactiveLot,
+  CannotDeactivateInactiveLot,
   LotNameDuplicate,
-  LotCannotUpdateClosed,
+  LotCannotUpdateInactive,
 } from "../domain/errors/lot-errors";

@@ -4,7 +4,7 @@ import { Lot } from "../../domain/lot.entity";
 import { LotSummary } from "../../domain/value-objects/lot-summary";
 import { InMemoryLotRepository } from "../fakes/in-memory-lot.repository";
 import {
-  CannotCloseInactiveLot,
+  CannotDeactivateInactiveLot,
   LotNameDuplicate,
 } from "../../domain/errors/lot-errors";
 import { NotFoundError } from "@/features/shared/errors";
@@ -122,12 +122,12 @@ describe("LotService", () => {
     });
 
     // α37
-    it("propagates CannotCloseInactiveLot when lot already INACTIVE", async () => {
+    it("propagates CannotDeactivateInactiveLot when lot already INACTIVE", async () => {
       const l = await svc.create(ORG, baseInput());
       await svc.close(ORG, l.id, { endDate: new Date("2026-06-30") });
       await expect(
         svc.close(ORG, l.id, { endDate: new Date("2026-07-01") }),
-      ).rejects.toThrow(CannotCloseInactiveLot);
+      ).rejects.toThrow(CannotDeactivateInactiveLot);
     });
   });
 
