@@ -54,7 +54,7 @@ describe("Lot entity behavioral", () => {
   });
 
   // α23
-  it("Lot.fromPersistence reconstructs entity preserving id + status=CLOSED + endDate", () => {
+  it("Lot.fromPersistence reconstructs entity preserving id + status=INACTIVE + endDate", () => {
     const props = {
       id: "fixed-lot-id-1",
       name: "Lote Pre",
@@ -62,7 +62,7 @@ describe("Lot entity behavioral", () => {
       initialCount: 500,
       startDate: new Date("2026-01-01T00:00:00Z"),
       endDate: new Date("2026-04-01T00:00:00Z"),
-      status: "CLOSED" as const,
+      status: "INACTIVE" as const,
       farmId: "farm-cuid-1",
       organizationId: "org-cuid-1",
       createdAt: new Date("2026-01-01T00:00:00Z"),
@@ -70,24 +70,24 @@ describe("Lot entity behavioral", () => {
     };
     const lot = Lot.fromPersistence(props);
     expect(lot.id).toBe("fixed-lot-id-1");
-    expect(lot.status).toBe("CLOSED");
+    expect(lot.status).toBe("INACTIVE");
     expect(lot.endDate).toEqual(new Date("2026-04-01T00:00:00Z"));
   });
 
   // α24
-  it("Lot.close(endDate) on ACTIVE returns NEW entity status=CLOSED + endDate=given + refreshes updatedAt", () => {
+  it("Lot.close(endDate) on ACTIVE returns NEW entity status=INACTIVE + endDate=given + refreshes updatedAt", () => {
     const lot = Lot.create(baseInput);
     vi.setSystemTime(new Date("2026-08-01T12:00:00Z"));
     const closeDate = new Date("2026-08-01T00:00:00Z");
     const closed = lot.close(closeDate);
     expect(closed).not.toBe(lot);
-    expect(closed.status).toBe("CLOSED");
+    expect(closed.status).toBe("INACTIVE");
     expect(closed.endDate).toEqual(closeDate);
     expect(closed.updatedAt).toEqual(new Date("2026-08-01T12:00:00Z"));
   });
 
   // α25
-  it("Lot.close on already CLOSED throws CannotCloseInactiveLot", () => {
+  it("Lot.close on already INACTIVE throws CannotCloseInactiveLot", () => {
     const lot = Lot.create(baseInput);
     const closed = lot.close(new Date("2026-08-01T00:00:00Z"));
     expect(() => closed.close(new Date("2026-09-01T00:00:00Z"))).toThrow(CannotCloseInactiveLot);
@@ -170,8 +170,8 @@ describe("Lot entity behavioral", () => {
     );
   });
 
-  // α33 Lot.update rejects CLOSED
-  it("Lot.update throws LotCannotUpdateClosed when status is CLOSED", () => {
+  // α33 Lot.update rejects INACTIVE
+  it("Lot.update throws LotCannotUpdateClosed when status is INACTIVE", () => {
     const lot = Lot.create(baseInput).close(
       new Date("2026-06-30T00:00:00Z"),
     );

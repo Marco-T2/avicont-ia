@@ -34,13 +34,17 @@ describe("lot mapper", () => {
       expect(l.farmId).toBe("farm-1");
     });
 
-    it("preserves status enum (ACTIVE/CLOSED)", () => {
+    it("translates Prisma CLOSED|SOLD enum → domain INACTIVE (additive D-1 bridge)", () => {
       const active = toDomain(row({ status: "ACTIVE" }));
       const closed = toDomain(
         row({ status: "CLOSED", endDate: new Date("2026-05-01") }),
       );
+      const sold = toDomain(
+        row({ status: "SOLD", endDate: new Date("2026-05-02") }),
+      );
       expect(active.status).toBe("ACTIVE");
-      expect(closed.status).toBe("CLOSED");
+      expect(closed.status).toBe("INACTIVE");
+      expect(sold.status).toBe("INACTIVE");
     });
 
     it("preserves endDate null vs Date", () => {
@@ -77,7 +81,7 @@ describe("lot mapper", () => {
       expect(data.farmId).toBe("farm-1");
     });
 
-    it("preserves status enum (ACTIVE on create, CLOSED after close)", () => {
+    it("translates domain INACTIVE → Prisma CLOSED (additive D-1 bridge); ACTIVE pass-through", () => {
       const entity = Lot.create({
         organizationId: "org-1",
         name: "Lote A",
@@ -88,6 +92,8 @@ describe("lot mapper", () => {
       });
       expect(toPersistence(entity).status).toBe("ACTIVE");
       const closed = entity.close(new Date("2026-05-01"));
+      // domain INACTIVE → Prisma CLOSED (Prisma enum still has CLOSED until F5
+      // destructive migration — translation lossy but contract-preserving)
       expect(toPersistence(closed).status).toBe("CLOSED");
     });
 
@@ -120,7 +126,7 @@ describe("lot mapper", () => {
   });
 
   describe("roundtrip", () => {
-    it("toPersistence(toDomain(row)) yields equivalent payload", () => {
+    it("toPersistence(toDomain(row)) yields equivalent payload for ACTIVE", () => {
       const original = row();
       const entity = toDomain(original);
       const data = toPersistence(entity);
@@ -130,6 +136,14 @@ describe("lot mapper", () => {
       expect(data.initialCount).toBe(original.initialCount);
       expect(data.status).toBe(original.status);
       expect(data.startDate.getTime()).toBe(original.startDate.getTime());
+    });
+
+    it("CLOSED roundtrip stays CLOSED (lossless for CLOSED-origin rows; SOLD→CLOSED is lossy by design)", () => {
+      const original = row({ status: "CLOSED" });
+      const entity = toDomain(original);
+      const data = toPersistence(entity);
+      // domain narrowed CLOSED → INACTIVE → CLOSED; round-trip preserved for CLOSED-origin
+      expect(data.status).toBe("CLOSED");
     });
   });
 

@@ -71,16 +71,21 @@ export class PrismaLotRepository implements LotRepository {
   }
 
   async update(entity: Lot): Promise<void> {
+    // Route through toPersistence so the D-1 bridge translation
+    // (domain INACTIVE → Prisma CLOSED) is applied consistently;
+    // direct `entity.status` would leak the domain-only INACTIVE
+    // literal into the DB enum (which still has CLOSED|SOLD).
+    const data = toPersistence(entity);
     await this.db.chickenLot.update({
       where: { id: entity.id, organizationId: entity.organizationId },
       data: {
-        name: entity.name,
-        barnNumber: entity.barnNumber,
-        initialCount: entity.initialCount,
-        startDate: entity.startDate,
-        endDate: entity.endDate,
-        status: entity.status,
-        farmId: entity.farmId,
+        name: data.name,
+        barnNumber: data.barnNumber,
+        initialCount: data.initialCount,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        status: data.status,
+        farmId: data.farmId,
       },
     });
   }

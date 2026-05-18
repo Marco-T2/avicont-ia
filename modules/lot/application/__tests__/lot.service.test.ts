@@ -113,16 +113,16 @@ describe("LotService", () => {
     });
 
     // α36
-    it("transitions ACTIVE → CLOSED with endDate", async () => {
+    it("transitions ACTIVE → INACTIVE with endDate", async () => {
       const l = await svc.create(ORG, baseInput());
       const endDate = new Date("2026-06-30");
       const closed = await svc.close(ORG, l.id, { endDate });
-      expect(closed.status).toBe("CLOSED");
+      expect(closed.status).toBe("INACTIVE");
       expect(closed.endDate).toEqual(endDate);
     });
 
     // α37
-    it("propagates CannotCloseInactiveLot when lot already CLOSED", async () => {
+    it("propagates CannotCloseInactiveLot when lot already INACTIVE", async () => {
       const l = await svc.create(ORG, baseInput());
       await svc.close(ORG, l.id, { endDate: new Date("2026-06-30") });
       await expect(

@@ -88,12 +88,12 @@ export class Lot {
   get updatedAt(): Date { return this.props.updatedAt; }
 
   close(endDate: Date): Lot {
-    if (!canTransitionLot(this.props.status, "CLOSED")) {
+    if (!canTransitionLot(this.props.status, "INACTIVE")) {
       throw new CannotCloseInactiveLot();
     }
     return new Lot({
       ...this.props,
-      status: "CLOSED",
+      status: "INACTIVE",
       endDate,
       updatedAt: new Date(),
     });

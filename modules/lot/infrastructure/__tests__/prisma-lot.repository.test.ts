@@ -301,7 +301,7 @@ describe("PrismaLotRepository", () => {
   });
 
   describe("update", () => {
-    it("scopes update by id+organizationId with status transition ACTIVE→CLOSED+endDate", async () => {
+    it("scopes update by id+organizationId with status transition ACTIVE→CLOSED+endDate (domain INACTIVE → Prisma CLOSED via mapper, D-1 bridge)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ update }));
       const entity = buildEntity().close(new Date("2026-05-01"));
@@ -310,6 +310,7 @@ describe("PrismaLotRepository", () => {
 
       const callArg = update.mock.calls[0]?.[0];
       expect(callArg.where).toEqual({ id: entity.id, organizationId: "org-1" });
+      // domain status is "INACTIVE"; mapper translates to Prisma "CLOSED"
       expect(callArg.data.status).toBe("CLOSED");
       expect(callArg.data.endDate).toBeInstanceOf(Date);
     });
