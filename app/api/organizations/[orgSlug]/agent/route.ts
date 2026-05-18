@@ -21,7 +21,6 @@ import { requirePermission } from "@/features/permissions/server";
 import {
   makeJournalsService,
   parseEntryDate,
-  formatCorrelativeNumber,
 } from "@/modules/accounting/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
@@ -291,18 +290,14 @@ async function handleCreateJournalEntryConfirm(
     { userId },
   );
 
-  // El hex `createEntry` devuelve el aggregate `Journal`, cuyo getter
-  // `number` es `number | null` (un DRAFT recién creado puede no tener
-  // correlativo asignado todavía). El shim legacy devolvía el DTO
-  // `JournalEntryWithLines` re-hidratado vía `getById`, cuyo `number` ya
-  // era `number` no-nullable — de ahí que esto tipara antes. Guardamos el
-  // null igual que `formatCorrelativeNumber` hace con un prefix inválido:
-  // sin número, `displayNumber` es null.
-  const displayNumber =
-    entry.number !== null
-      ? formatCorrelativeNumber(voucherType.prefix, entry.date, entry.number)
-      : null;
-
+  // Q3 (REQ-DISPLAY-1): message usa formato humano
+  // `Borrador creado: ${voucherType.name} #${entry.number}` (e.g. "Borrador
+  // creado: Comprobante de Egreso #1"). El correlativo formateado
+  // (`E2604-000001`) fue retirado per REQ-DISPLAY-2 — chat consumers
+  // (agent-chat.tsx, registrar-con-ia/index.tsx) son pure-render verified.
+  // Defensive fallback `#?` cubre DRAFT (entry.number=null, no debería
+  // pasar pero mirror sister-default UX).
+  //
   // `journalService.createEntry()` (hex) devuelve el AGGREGATE `Journal`, no el
   // DTO plano que devolvía el shim legacy. El aggregate expone sus campos solo
   // vía getters no-enumerables sobre un `props` privado — spreadear la instancia
@@ -314,8 +309,8 @@ async function handleCreateJournalEntryConfirm(
   // escalares + lines que el snapshot ya carga.
   return Response.json(
     {
-      message: `Borrador creado: ${displayNumber}`,
-      data: { ...entry.toSnapshot(), displayNumber },
+      message: `Borrador creado: ${voucherType.name} #${entry.number ?? "?"}`,
+      data: entry.toSnapshot(),
     },
     { status: 201 },
   );

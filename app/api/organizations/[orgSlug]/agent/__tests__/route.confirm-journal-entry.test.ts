@@ -90,12 +90,13 @@ vi.mock("@/modules/ai-agent/presentation/server", async (importOriginal) => {
 });
 
 // C2 mock-target rewrite (sub-POC 8): agent/route.ts now instantiates the hex
-// `makeJournalsService()` and imports `parseEntryDate` / `formatCorrelativeNumber`
-// from the hex barrel. The mock target rewrites to the hex path atomically with
-// the route repoint (Vitest treats the old features-barrel path and the hex
-// path as distinct module-graph entries — per cross-module-boundary
-// mock-target-rewrite invariant). `importOriginal` spread keeps the real
-// `parseEntryDate` / `formatCorrelativeNumber` utils; only the factory is faked.
+// `makeJournalsService()` and imports `parseEntryDate` from the hex barrel.
+// `formatCorrelativeNumber` import retired T3.1 (REQ-DISPLAY-2). The mock
+// target rewrites to the hex path atomically with the route repoint (Vitest
+// treats the old features-barrel path and the hex path as distinct
+// module-graph entries — per cross-module-boundary mock-target-rewrite
+// invariant). `importOriginal` spread keeps the real `parseEntryDate` util;
+// only the factory is faked.
 vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/modules/accounting/presentation/server")>();
   return {
@@ -287,8 +288,13 @@ describe("POST /api/organizations/[orgSlug]/agent?action=confirm — createJourn
 
     expect(res.status).toBe(201);
     const body = await res.json();
-    expect(body.message).toContain("Borrador creado");
-    expect(body.data.displayNumber).toMatch(/^E\d{4}-\d{6}$/);
+    // T3.1 — REQ-DISPLAY-1 (Q3): message uses humano format
+    // `Borrador creado: ${voucherType.name} #${entry.number}` (not the legacy
+    // `${prefix}${YYMM}-${padded}` correlative). REQ-DISPLAY-2: `displayNumber`
+    // removed from `data` payload.
+    expect(body.message).toBe("Borrador creado: Comprobante de Egreso #1");
+    expect(body.data.displayNumber).toBeUndefined();
+    expect(body.message).not.toMatch(/D\d{4}-\d{6}|[A-Z]{1,3}-\d{3,4}/);
 
     // ── C2 aggregate-shape parity ──────────────────────────────────────────
     // The hex `createEntry()` returns a `Journal` aggregate; the route MUST
