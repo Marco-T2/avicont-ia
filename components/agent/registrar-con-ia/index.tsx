@@ -76,7 +76,7 @@ export default function RegistrarConIAModal({
         surface: "modal-registrar",
         contextHints: {
           lotId: contextHints.lotId,
-          farmId: contextHints.farmId,
+          farmName: contextHints.farmName,
         },
       });
       if (res.suggestion && res.requiresConfirmation) {
@@ -139,7 +139,7 @@ export default function RegistrarConIAModal({
         surface: "modal-registrar",
         contextHints: {
           lotId: contextHints.lotId,
-          farmId: contextHints.farmId,
+          farmName: contextHints.farmName,
         },
       });
       if (res.suggestion && res.requiresConfirmation) {

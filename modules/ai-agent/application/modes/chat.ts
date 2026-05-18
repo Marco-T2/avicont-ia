@@ -57,7 +57,6 @@ export interface ChatModeArgs {
 
 interface ChatContextHintsResolved {
   lotId?: string;
-  farmId?: string;
   lotName?: string;
   farmName?: string;
 }
@@ -69,7 +68,6 @@ function coerceChatContextHints(
   const obj = input as Record<string, unknown>;
   const result: ChatContextHintsResolved = {};
   if (typeof obj.lotId === "string") result.lotId = obj.lotId;
-  if (typeof obj.farmId === "string") result.farmId = obj.farmId;
   if (typeof obj.lotName === "string") result.lotName = obj.lotName;
   if (typeof obj.farmName === "string") result.farmName = obj.farmName;
   return Object.keys(result).length > 0 ? result : undefined;
@@ -379,10 +377,10 @@ function buildSystemPrompt(
     contextHintsLines.push(
       `Lote actual: ${contextHints.lotName} [id: ${contextHints.lotId}]`,
     );
-  } else if (contextHints?.farmId && contextHints.farmName) {
-    contextHintsLines.push(
-      `Granja actual: ${contextHints.farmName} [id: ${contextHints.farmId}]`,
-    );
+  } else if (contextHints?.farmName) {
+    // Post retire-farm-collapse-to-lot T27: farmId retirado; farmName es
+    // free-text label, no hay ID hex que mostrar.
+    contextHintsLines.push(`Granja actual: ${contextHints.farmName}`);
   }
 
   // Module-hint paragraph. EXACT Spanish text locked in design D4.2 per

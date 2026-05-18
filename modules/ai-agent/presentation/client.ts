@@ -30,12 +30,14 @@ import type { Surface } from "../domain/tools/surfaces/surface.types";
 // ── Types del payload del cliente ─────────────────────────────────────────
 
 /**
- * Chat-mode contextHints — granjos lot/farm awareness page → modal → backend.
+ * Chat-mode contextHints — lot/farm awareness page → modal → backend.
  * Discriminated union per-mode (chat vs journal-entry-ai) — shape distinct axis.
+ *
+ * Post retire-farm-collapse-to-lot T27: `farmId` retirado (REQ-200 — Farm
+ * desaparece como concepto, farmName queda como texto libre en Lot).
  */
 export interface ChatContextHints {
   lotId?: string;
-  farmId?: string;
   lotName?: string;
   farmName?: string;
 }

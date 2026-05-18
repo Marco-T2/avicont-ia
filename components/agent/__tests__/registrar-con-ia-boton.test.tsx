@@ -53,7 +53,7 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
     render(
       <RegistrarConIABoton
         orgSlug="acme"
-        contextHints={{ lotId: "lot-1", lotName: "Lote 1", farmId: "farm-1" }}
+        contextHints={{ lotId: "lot-1", lotName: "Lote 1" }}
       />,
     );
     expect(
@@ -66,7 +66,7 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
     render(
       <RegistrarConIABoton
         orgSlug="acme"
-        contextHints={{ lotId: "lot-1", lotName: "Lote 1", farmId: "farm-1" }}
+        contextHints={{ lotId: "lot-1", lotName: "Lote 1" }}
       />,
     );
     expect(screen.queryByTestId("modal-stub")).toBeNull();
@@ -77,7 +77,7 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
     render(
       <RegistrarConIABoton
         orgSlug="acme"
-        contextHints={{ lotId: "lot-1", lotName: "Lote 1", farmId: "farm-1" }}
+        contextHints={{ lotId: "lot-1", lotName: "Lote 1" }}
       />,
     );
     fireEvent.click(
@@ -91,7 +91,7 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
     render(
       <RegistrarConIABoton
         orgSlug="acme"
-        contextHints={{ lotId: "lot-1", lotName: "Lote 1", farmId: "farm-1" }}
+        contextHints={{ lotId: "lot-1", lotName: "Lote 1" }}
       />,
     );
     fireEvent.click(
@@ -102,15 +102,15 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
     );
   });
 
-  // α34
-  it("contextHints lot variant {lotId, lotName, farmId} passed through to Modal verified", () => {
+  // α34 — post retire-farm-collapse-to-lot T27: farmId retirado de ContextHints
+  it("contextHints lot variant {lotId, lotName, farmName} passed through to Modal verified", () => {
     render(
       <RegistrarConIABoton
         orgSlug="acme"
         contextHints={{
           lotId: "lot-xyz",
           lotName: "Lote XYZ - Galpón 5",
-          farmId: "farm-abc",
+          farmName: "Granja ABC",
         }}
       />,
     );
@@ -123,17 +123,17 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
       expect.objectContaining({
         lotId: "lot-xyz",
         lotName: "Lote XYZ - Galpón 5",
-        farmId: "farm-abc",
+        farmName: "Granja ABC",
       }),
     );
   });
 
-  // α35
-  it("contextHints farm variant {farmId, farmName} passed through to Modal verified", () => {
+  // α35 — post retire-farm-collapse-to-lot T27: farm variant solo farmName
+  it("contextHints farm variant {farmName} passed through to Modal verified", () => {
     render(
       <RegistrarConIABoton
         orgSlug="acme"
-        contextHints={{ farmId: "farm-xyz", farmName: "Granja XYZ" }}
+        contextHints={{ farmName: "Granja XYZ" }}
       />,
     );
     fireEvent.click(
@@ -143,7 +143,6 @@ describe("RegistrarConIABoton — C2 trigger modal mount behavioral", () => {
     const hints = JSON.parse(stub.getAttribute("data-context-hints") ?? "{}");
     expect(hints).toEqual(
       expect.objectContaining({
-        farmId: "farm-xyz",
         farmName: "Granja XYZ",
       }),
     );

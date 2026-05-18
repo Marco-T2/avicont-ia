@@ -7,7 +7,6 @@ export type Message =
 
 export type ContextHints = {
   lotId?: string;
-  farmId?: string;
   lotName?: string;
   farmName?: string;
 };
