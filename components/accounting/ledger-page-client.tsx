@@ -29,7 +29,6 @@ interface LedgerEntry {
   date: string;
   entryNumber: number;
   voucherCode: string;
-  displayNumber: string;
   description: string;
   debit: string;
   credit: string;
@@ -410,7 +409,7 @@ export default function LedgerPageClient({
                           {entry.voucherCode}
                         </td>
                         <td className="py-3 px-4 font-mono text-xs whitespace-nowrap">
-                          {entry.displayNumber}
+                          {String(entry.entryNumber)}
                         </td>
                         <td className="py-3 px-4">{entry.description}</td>
                         <td className="py-3 px-4 text-right font-mono">
@@ -436,7 +435,7 @@ export default function LedgerPageClient({
                           <div className="flex items-center justify-center gap-1">
                             <Link
                               href={`/${orgSlug}/accounting/journal/${entry.entryId}`}
-                              aria-label={`Ver asiento ${entry.displayNumber}`}
+                              aria-label={`Ver asiento ${entry.entryNumber}`}
                               title="Ver asiento"
                             >
                               <Button variant="ghost" size="icon" className="h-7 w-7">
@@ -447,7 +446,7 @@ export default function LedgerPageClient({
                               href={`/api/organizations/${orgSlug}/journal/${entry.entryId}?format=pdf`}
                               target="_blank"
                               rel="noopener noreferrer"
-                              aria-label={`Abrir PDF del comprobante ${entry.displayNumber}`}
+                              aria-label={`Abrir PDF del comprobante ${entry.entryNumber}`}
                               title="Abrir PDF en pestaña nueva"
                             >
                               <Button variant="ghost" size="icon" className="h-7 w-7">

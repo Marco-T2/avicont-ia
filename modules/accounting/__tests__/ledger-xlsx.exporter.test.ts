@@ -29,7 +29,6 @@ function makeEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     date: new Date("2025-06-15"),
     entryNumber: 1,
     voucherCode: "CI",
-    displayNumber: "D2506-000001",
     description: "Ingreso por venta",
     debit: "1234567.89",
     credit: "0.00",
@@ -174,8 +173,8 @@ describe("exportLedgerXlsx — opening balance row", () => {
     const sheet = wb.getWorksheet("Libro Mayor")!;
     // row 8 debe ser la primera entry, NO 'Saldo inicial acumulado'
     expect(sheet.getRow(8).getCell(4).value).not.toBe("Saldo inicial acumulado");
-    // El displayNumber debe estar en col C
-    expect(sheet.getRow(8).getCell(3).value).toBe("D2506-000001");
+    // Col C: raw entryNumber (REQ-DISPLAY-2 — displayNumber retired T2.1)
+    expect(sheet.getRow(8).getCell(3).value).toBe(1);
   });
 });
 

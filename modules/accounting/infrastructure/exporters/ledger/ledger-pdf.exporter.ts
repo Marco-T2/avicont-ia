@@ -129,7 +129,7 @@ function buildDataRowCells(entry: LedgerEntry): Content[] {
   return [
     labelCell(formatDateBO(entry.date), false),
     labelCell(entry.voucherCode, false, "center"),
-    labelCell(entry.displayNumber, false),
+    labelCell(String(entry.entryNumber), false),
     labelCell(entry.description, false),
     numCell(fmtDecimal(toDecimal(entry.debit), false), false),
     numCell(fmtDecimal(toDecimal(entry.credit), false), false),

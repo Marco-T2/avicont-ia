@@ -28,7 +28,6 @@ function makeEntry(overrides?: Partial<LedgerEntry>): LedgerEntry {
     date: new Date("2025-06-15"),
     entryNumber: 1,
     voucherCode: "CI",
-    displayNumber: "D2506-000001",
     description: "Ingreso por venta",
     debit: "1234567.89",
     credit: "0.00",

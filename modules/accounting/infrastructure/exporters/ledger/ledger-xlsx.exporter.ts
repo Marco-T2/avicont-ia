@@ -248,7 +248,7 @@ export async function exportLedgerXlsx(
     excelRow.getCell(COL_TYPE).font = arial({ size: 9 });
     excelRow.getCell(COL_TYPE).alignment = { horizontal: "center" };
 
-    excelRow.getCell(COL_NUM).value = entry.displayNumber;
+    excelRow.getCell(COL_NUM).value = entry.entryNumber;
     excelRow.getCell(COL_NUM).font = arial({ size: 9 });
 
     excelRow.getCell(COL_DESC).value = entry.description;

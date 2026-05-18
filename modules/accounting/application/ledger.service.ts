@@ -15,7 +15,6 @@ import {
   roundHalfUp,
   sumDecimals,
 } from "@/modules/accounting/shared/domain/money.utils";
-import { formatCorrelativeNumber } from "@/modules/accounting/domain/correlative.utils";
 import type { PaginationOptions } from "@/modules/shared/domain/value-objects/pagination";
 import type { AccountType } from "@/generated/prisma/client";
 import Decimal from "decimal.js";
@@ -92,12 +91,6 @@ export class LedgerService {
         date: line.journalEntry.date,
         entryNumber: line.journalEntry.number,
         voucherCode: line.journalEntry.voucherType.code,
-        displayNumber:
-          formatCorrelativeNumber(
-            line.journalEntry.voucherType.prefix,
-            line.journalEntry.date,
-            line.journalEntry.number,
-          ) ?? String(line.journalEntry.number),
         description: line.description ?? line.journalEntry.description,
         debit: roundHalfUp(debit).toFixed(2),
         credit: roundHalfUp(credit).toFixed(2),
@@ -157,12 +150,6 @@ export class LedgerService {
         date: line.journalEntry.date,
         entryNumber: line.journalEntry.number,
         voucherCode: line.journalEntry.voucherType.code,
-        displayNumber:
-          formatCorrelativeNumber(
-            line.journalEntry.voucherType.prefix,
-            line.journalEntry.date,
-            line.journalEntry.number,
-          ) ?? String(line.journalEntry.number),
         description: line.description ?? line.journalEntry.description,
         debit: roundHalfUp(debit).toFixed(2),
         credit: roundHalfUp(credit).toFixed(2),
@@ -315,12 +302,6 @@ export class LedgerService {
         date: row.journalEntry.date,
         entryNumber: row.journalEntry.number,
         voucherCode: row.journalEntry.voucherType.code,
-        displayNumber:
-          formatCorrelativeNumber(
-            row.journalEntry.voucherType.prefix,
-            row.journalEntry.date,
-            row.journalEntry.number,
-          ) ?? String(row.journalEntry.number),
         description: row.description ?? row.journalEntry.description,
         debit: roundHalfUp(debit).toFixed(2),
         credit: roundHalfUp(credit).toFixed(2),

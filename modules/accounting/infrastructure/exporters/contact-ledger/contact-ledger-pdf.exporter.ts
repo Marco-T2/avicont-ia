@@ -251,9 +251,13 @@ function buildDataRowCells(entry: ContactLedgerEntry): Content[] {
     labelCell(formatDateBO(entry.date as unknown as string), false),
     labelCell(renderTipo(entry), false),
     // DT4 — render sequence raw del documento físico (ej "1", "42") con
-    // fallback al displayNumber correlative voucher cuando el documento no
+    // fallback al raw entryNumber del JournalEntry cuando el documento no
     // resuelve (asiento manual sin auxiliar / Payment sin referenceNumber).
-    labelCell(entry.documentReferenceNumber ?? entry.displayNumber, false),
+    // Formato `${prefix}-${padded}` retirado per REQ-DISPLAY-2.
+    labelCell(
+      entry.documentReferenceNumber ?? String(entry.entryNumber),
+      false,
+    ),
     labelCell(renderEstado(entry), false, "center"),
     labelCell(entry.description, false),
     numCell(fmtDecimal(toDecimal(entry.debit), false), false),

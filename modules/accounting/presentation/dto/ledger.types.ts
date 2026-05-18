@@ -18,8 +18,12 @@ export interface LedgerEntry {
   entryNumber: number;
   /** Código del voucher type (CD, CV, CP, etc.) — para columna "Tipo". */
   voucherCode: string;
-  /** Correlativo formateado tipo "P-001" (prefix + año + número). */
-  displayNumber: string;
+  /**
+   * Transitional optional — service no longer enriches this field (T2.1
+   * GREEN); contact-ledger consumers + co-located test fixtures finish the
+   * chain in T2.2. Drop entirely once those land.
+   */
+  displayNumber?: string;
   description: string;
   debit: string;
   credit: string;
