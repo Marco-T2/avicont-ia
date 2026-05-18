@@ -129,8 +129,10 @@ describe("PR1.3 — REQ-MS.3: ROUTE_MODULE_MAP segment resolution", () => {
     expect(ROUTE_MODULE_MAP["settings"]).toBe("contabilidad");
   });
 
-  it("maps 'farms' → 'granjas'", () => {
-    expect(ROUTE_MODULE_MAP["farms"]).toBe("granjas");
+  it("does NOT map 'farms' (retired post-collapse, T22 wholesale-delete)", () => {
+    // Sibling of derive-module-hint.ts cleanup landed in T21 (commit 71611a7f):
+    // /farms paths 404 post-T22 — the map entry would orbit dead routes.
+    expect(ROUTE_MODULE_MAP["farms"]).toBeUndefined();
   });
 
   it("maps 'lots' → 'granjas'", () => {

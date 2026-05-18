@@ -60,7 +60,6 @@ export const ROUTE_MODULE_MAP: Record<string, ModuleId> = {
   payments: "contabilidad",
   informes: "contabilidad",
   settings: "contabilidad",
-  farms: "granjas",
   lots: "granjas",
 };
 
