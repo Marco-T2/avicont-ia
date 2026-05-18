@@ -191,18 +191,17 @@ describe("validators de invariantes con fixtures no vacíos", () => {
 // Estos tests verifican que el catálogo tiene los datos reales poblados.
 
 describe("reportCategories — datos curados (PR3)", () => {
-  it("tiene exactamente 6 categorías", () => {
-    expect(reportCategories).toHaveLength(6);
+  it("tiene exactamente 5 categorías", () => {
+    expect(reportCategories).toHaveLength(5);
   });
 
-  it("contiene las 6 categorías esperadas por id", () => {
+  it("contiene las 5 categorías esperadas por id", () => {
     const expectedIds = [
       "estados-financieros",
       "para-mi-contador",
       "quien-te-debe",
       "lo-que-debes",
       "empresa",
-      "impuestos",
     ];
     const actualIds = reportCategories.map((c) => c.id);
     for (const id of expectedIds) {
@@ -217,7 +216,7 @@ describe("reportRegistry — datos curados (PR3)", () => {
     expect(available.length).toBeGreaterThanOrEqual(7);
   });
 
-  it("las 7 entradas available conocidas existen con routes correctos", () => {
+  it("las 5 entradas available conocidas existen con routes correctos", () => {
     const availableMap = new Map(
       reportRegistry
         .filter((e) => e.status === "available")
@@ -228,8 +227,6 @@ describe("reportRegistry — datos curados (PR3)", () => {
       { id: "balance-sheet", route: "/accounting/financial-statements/balance-sheet" },
       { id: "income-statement", route: "/accounting/financial-statements/income-statement" },
       { id: "correlation-audit", route: "/accounting/correlation-audit" },
-      { id: "iva-book-purchases", route: "/informes/impuestos/libro-compras" },
-      { id: "iva-book-sales", route: "/informes/impuestos/libro-ventas" },
       { id: "worksheet", route: "/accounting/worksheet" },
       { id: "initial-balance", route: "/accounting/initial-balance" },
     ];

@@ -54,7 +54,6 @@ export const reportCategories: readonly ReportCategory[] = [
   { id: "quien-te-debe",       label: "Quién te debe",            order: 3 },
   { id: "lo-que-debes",        label: "Lo que debes",             order: 4 },
   { id: "empresa",             label: "Empresa y actividad",      order: 5 },
-  { id: "impuestos",           label: "Impuestos",                order: 6 },
 ];
 
 // ── Registro de reportes ─────────────────────────────────────────────────────
@@ -153,23 +152,4 @@ export const reportRegistry: readonly ReportEntry[] = [
     icon: "ShieldCheck",
   },
 
-  // ── Impuestos ──────────────────────────────────────────────────────────────
-  {
-    id: "iva-book-sales",
-    title: "Libro de Ventas IVA",
-    description: "Registro oficial de ventas gravadas y débito fiscal.",
-    category: "impuestos",
-    status: "available",
-    route: "/informes/impuestos/libro-ventas",
-    icon: "BookMarked",
-  },
-  {
-    id: "iva-book-purchases",
-    title: "Libro de Compras IVA",
-    description: "Registro oficial de compras gravadas y crédito fiscal.",
-    category: "impuestos",
-    status: "available",
-    route: "/informes/impuestos/libro-compras",
-    icon: "BookMarked",
-  },
 ];
