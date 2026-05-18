@@ -311,10 +311,11 @@ export class SaleService {
         const seq = await scope.sales.getNextSequenceNumberTx(organizationId);
         const numbered = posted.assignSequenceNumber(seq);
 
-        const displayCode = `VG-${String(seq).padStart(3, "0")}`;
+        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+        // `| ${notes}` suffix when notes present.
         const journalDescription = numbered.notes
-          ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
-          : `${displayCode} - ${numbered.description}`;
+          ? `${numbered.description} | ${numbered.notes}`
+          : numbered.description;
 
         const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,
@@ -595,10 +596,11 @@ export class SaleService {
           newIvaBook ?? undefined,
         );
 
-        const displayCode = `VG-${String(edited.sequenceNumber).padStart(3, "0")}`;
+        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+        // `| ${notes}` suffix when notes present.
         const journalDescription = edited.notes
-          ? `${displayCode} - ${edited.description} | ${edited.notes}`
-          : `${displayCode} - ${edited.description}`;
+          ? `${edited.description} | ${edited.notes}`
+          : edited.description;
 
         const { old, new: newJournal } =
           await scope.journalEntryFactory.regenerateForSaleEdit(
@@ -768,10 +770,11 @@ export class SaleService {
         const seq = await scope.sales.getNextSequenceNumberTx(organizationId);
         const numbered = posted.assignSequenceNumber(seq);
 
-        const displayCode = `VG-${String(seq).padStart(3, "0")}`;
+        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+        // `| ${notes}` suffix when notes present.
         const journalDescription = numbered.notes
-          ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
-          : `${displayCode} - ${numbered.description}`;
+          ? `${numbered.description} | ${numbered.notes}`
+          : numbered.description;
 
         const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,
@@ -1043,10 +1046,11 @@ export class SaleService {
       ivaBook,
     );
 
-    const displayCode = `VG-${String(sale.sequenceNumber).padStart(3, "0")}`;
+    // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+    // `| ${notes}` suffix when notes present.
     const journalDescription = sale.notes
-      ? `${displayCode} - ${sale.description} | ${sale.notes}`
-      : `${displayCode} - ${sale.description}`;
+      ? `${sale.description} | ${sale.notes}`
+      : sale.description;
 
     const { correlationId } = await this.deps.uow!.run(
       { userId, organizationId },

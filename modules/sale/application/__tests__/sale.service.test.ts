@@ -631,14 +631,14 @@ describe("SaleService.post", () => {
     expect(capturedDueDate?.getTime()).toBe(expected);
   });
 
-  it("invokes the journal factory with display code 'VG-001' in description", async () => {
+  it("invokes the journal factory with raw description (REQ-DISPLAY-3 FUTURE-only — no displayCode prefix)", async () => {
     const draft = buildDraftSale();
     saleRepo.preload(draft);
     journalEntryFactory.enqueue(buildJournalStub());
 
     await service.post(ORG, draft.id, "user-1");
 
-    expect(journalEntryFactory.calls[0]!.description).toBe("VG-001 - Venta test");
+    expect(journalEntryFactory.calls[0]!.description).toBe("Venta test");
   });
 
   it("emits IVA-aware entry lines when ivaBookReader returns a snapshot", async () => {
