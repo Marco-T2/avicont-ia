@@ -783,9 +783,12 @@ export default function DispatchForm({
 
   const backHref = `/${orgSlug}/dispatches`;
 
-  // ── Title ──
+  // ── Title — Q4 (REQ-DISPLAY-1) ──
+  // `${DISPATCH_TYPE_LABEL[dispatchType]} #${sequenceNumber} — ${contact.name}`
+  // Mirror sister T2.4-form / T2.5-form pattern. DISPATCH_TYPE_LABEL acts as
+  // the voucherTypeName mapping for NOTA_DESPACHO / BOLETA_CERRADA.
   const headerTitle = isEditMode
-    ? `${existingDispatch.displayCode} — ${DISPATCH_TYPE_LABEL[dispatchType]}`
+    ? `${DISPATCH_TYPE_LABEL[dispatchType]} #${existingDispatch.sequenceNumber} — ${existingDispatch.contact.name}`
     : `Nuevo ${DISPATCH_TYPE_LABEL[dispatchType]}`;
 
   return (
