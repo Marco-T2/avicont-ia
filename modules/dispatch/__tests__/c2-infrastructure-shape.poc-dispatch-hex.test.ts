@@ -33,9 +33,9 @@ import {
   LegacyReceivablesAdapter,
 } from "../infrastructure/legacy-receivables.adapter";
 
-import {
-  getDisplayCode,
-} from "../infrastructure/dispatch-display-code";
+// getDisplayCode import retired (REQ-DISPLAY-2 derivative T4.4a): infra
+// helper file deleted wholesale per [[retirement_reinventory_gate]]
+// SHAPE-LOCK classification.
 
 describe("POC dispatch-hex C2 — infrastructure layer shape", () => {
   it("PrismaDispatchRepository class exists", () => {
@@ -73,10 +73,8 @@ describe("POC dispatch-hex C2 — infrastructure layer shape", () => {
     expect(typeof LegacyReceivablesAdapter).toBe("function");
   });
 
-  it("getDisplayCode generates ND/BC prefix codes", () => {
-    expect(getDisplayCode("NOTA_DESPACHO", 1)).toBe("ND-001");
-    expect(getDisplayCode("NOTA_DESPACHO", 42)).toBe("ND-042");
-    expect(getDisplayCode("BOLETA_CERRADA", 7)).toBe("BC-007");
-    expect(getDisplayCode("BOLETA_CERRADA", 123)).toBe("BC-123");
-  });
+  // getDisplayCode SHAPE-LOCK assertion retired (REQ-DISPLAY-2 derivative
+  // T4.4a): infra helper file `dispatch-display-code.ts` deleted wholesale.
+  // Other 7 SHAPE-LOCK assertions above remain VALID (legacy adapters +
+  // Prisma repo).
 });
