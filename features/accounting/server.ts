@@ -22,5 +22,3 @@ export type {
   DocumentStatus,
   TrimPreviewItem,
 } from "@/modules/accounting/domain/document-lifecycle";
-
-export * from "./correlative.utils";

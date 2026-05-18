@@ -739,11 +739,13 @@ describe("α27 Block C4 (sub-POC 8) — server.ts barrel slimmed: 3 shim re-expo
   //   (spec R-02, design #2436). The retention list shrinks by one entry —
   //   journal.types, journal.dates, document-lifecycle, correlative.utils
   //   remain. α26 above asserts the underlying file is DELETED.
-  it("α27: server.ts RETAINS the non-shim re-exports (journal.types, journal.dates, document-lifecycle, correlative.utils)", () => {
+  it("α27: server.ts RETAINS the non-shim re-exports (journal.types, journal.dates, document-lifecycle)", () => {
     const src = readFileSync(BARREL, "utf-8");
     expect(src).toMatch(/from\s+["']\.\/journal\.types["']/);
     expect(src).toMatch(/from\s+["']\.\/journal\.dates["']/);
-    expect(src).toMatch(/from\s+["']\.\/correlative\.utils["']/);
+    // correlative.utils retention assertion retired (REQ-DISPLAY-2 derivative):
+    // helper wholesale-deleted; per [[named_rule_immutability]] line deleted,
+    // outer it() block + the other three assertions preserved untouched.
     expect(src).toMatch(/document-lifecycle/);
   });
 });
@@ -942,16 +944,12 @@ describe("α35 Block C2 (sub-POC 8) — agent/route.ts repoints to hex makeJourn
     expect(src).toMatch(HEX_BARREL_IMPORT);
     expect(src).toMatch(/\bmakeJournalsService\b/);
   });
-  it("α35: agent/route.ts imports parseEntryDate + formatCorrelativeNumber from the hex barrel", () => {
-    const src = readFileSync(AGENT_ROUTE, "utf-8");
-    // Neither util may be imported from the legacy features barrel anymore.
-    expect(src).not.toMatch(
-      /parseEntryDate[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?parseEntryDate/,
-    );
-    expect(src).not.toMatch(
-      /formatCorrelativeNumber[\s\S]*?from\s+["']@\/features\/accounting\/server["']|from\s+["']@\/features\/accounting\/server["'][\s\S]*?formatCorrelativeNumber/,
-    );
-  });
+  // α35 third it (parseEntryDate + formatCorrelativeNumber hex-barrel import
+  // assertion) retired (REQ-DISPLAY-2 derivative): formatCorrelativeNumber
+  // import wholesale removed from agent/route.ts in T3.1. Per
+  // [[named_rule_immutability]] the assertion block is deleted, regex NEVER
+  // mutated. The first two α35 it blocks (no legacy JournalService import +
+  // makeJournalsService from hex barrel) remain VALID.
 });
 
 // α36 — the agent/route.ts response data spread adapts the Journal aggregate

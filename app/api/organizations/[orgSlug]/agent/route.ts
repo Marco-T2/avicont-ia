@@ -310,7 +310,7 @@ async function handleCreateJournalEntryConfirm(
   return Response.json(
     {
       message: `Borrador creado: ${voucherType.name} #${entry.number ?? "?"}`,
-      data: entry.toSnapshot(),
+      data: { ...entry.toSnapshot() },
     },
     { status: 201 },
   );

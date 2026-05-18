@@ -27,11 +27,10 @@ describe("α01–α04 domain files exist", () => {
     ).toBe(true);
   });
 
-  it("α02: modules/accounting/domain/correlative.utils.ts exists", () => {
-    expect(
-      existsSync(resolve(DOMAIN_DIR, "correlative.utils.ts")),
-    ).toBe(true);
-  });
+  // α02 retired (REQ-DISPLAY-2 derivative): correlative.utils.ts deleted
+  // wholesale. Per [[named_rule_immutability]], the rule's invariant
+  // (file must exist) is superseded — assertion block deleted, regex
+  // NEVER mutated.
 
   it("α03: modules/accounting/domain/accounting-helpers.ts exists", () => {
     expect(
@@ -57,13 +56,9 @@ describe("α05–α09 domain files contain expected function exports", () => {
     expect(content).toMatch(/getNextCode/);
   });
 
-  it("α06: correlative.utils.ts contains formatCorrelativeNumber", () => {
-    const content = readFileSync(
-      resolve(DOMAIN_DIR, "correlative.utils.ts"),
-      "utf-8",
-    );
-    expect(content).toMatch(/formatCorrelativeNumber/);
-  });
+  // α06 retired (REQ-DISPLAY-2 derivative): formatCorrelativeNumber
+  // wholesale deleted with its host file. Per [[named_rule_immutability]]
+  // assertion block deleted, regex NEVER mutated.
 
   it("α07: accounting-helpers.ts contains computeReceivableStatus", () => {
     const content = readFileSync(
@@ -103,15 +98,9 @@ describe("α10–α13 features files are export * SHIMs", () => {
     );
   });
 
-  it("α11: features/accounting/correlative.utils.ts is SHIM re-export", () => {
-    const content = readFileSync(
-      resolve(FEATURES_DIR, "correlative.utils.ts"),
-      "utf-8",
-    );
-    expect(content).toMatch(
-      /export \* from "@\/modules\/accounting\/domain\/correlative\.utils"/,
-    );
-  });
+  // α11 retired (REQ-DISPLAY-2 derivative): SHIM re-export deleted with
+  // the features-side file. Per [[named_rule_immutability]] assertion
+  // block deleted, regex NEVER mutated.
 
   it("α12: features/accounting/accounting-helpers.ts is SHIM re-export", () => {
     const content = readFileSync(
@@ -137,9 +126,11 @@ describe("α10–α13 features files are export * SHIMs", () => {
 // ── α14: Features SHIMs contain no inline function definitions ───────────────
 
 describe("α14 features SHIMs have no inline function definitions", () => {
+  // α14-correlative.utils retired (REQ-DISPLAY-2 derivative): file deleted
+  // wholesale. Per [[named_rule_immutability]] iteration entry deleted, the
+  // outer `it.each` block + regex preserved untouched.
   const shimFiles = [
     "account-code.utils.ts",
-    "correlative.utils.ts",
     "accounting-helpers.ts",
     "journal.dates.ts",
   ];
@@ -177,12 +168,9 @@ describe("α16–α19 barrel exports all 4 domain utils", () => {
     );
   });
 
-  it("α17: barrel exports correlative.utils", () => {
-    const content = readFileSync(BARREL, "utf-8");
-    expect(content).toMatch(
-      /export \* from "\.\.\/domain\/correlative\.utils"/,
-    );
-  });
+  // α17 retired (REQ-DISPLAY-2 derivative): hex barrel re-export of
+  // correlative.utils dropped with the helper deletion. Per
+  // [[named_rule_immutability]] assertion block deleted, regex NEVER mutated.
 
   it("α18: barrel exports accounting-helpers", () => {
     const content = readFileSync(BARREL, "utf-8");
@@ -214,9 +202,10 @@ describe("α20 journal.dates hex copy preserves ValidationError import", () => {
 // ── α21: NO import "server-only" in any NEW domain file (CRITICAL gate) ──────
 
 describe("α21 CRITICAL: no server-only in new domain files", () => {
+  // α21-correlative.utils retired (REQ-DISPLAY-2 derivative): file deleted
+  // wholesale. Per [[named_rule_immutability]] iteration entry deleted.
   const domainFiles = [
     "account-code.utils.ts",
-    "correlative.utils.ts",
     "accounting-helpers.ts",
     "journal.dates.ts",
   ];
