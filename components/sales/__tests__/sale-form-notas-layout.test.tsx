@@ -96,7 +96,6 @@ const BASE_SALE = {
   description: "Venta de prueba",
   referenceNumber: null,
   notes: "Notas de prueba",
-  displayCode: "CI-001",
   createdById: "user-1",
   updatedById: null,
   createdAt: new Date(),

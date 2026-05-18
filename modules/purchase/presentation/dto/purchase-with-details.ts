@@ -12,9 +12,7 @@ import type { IvaPurchaseBookDTO } from "@/modules/iva-books/presentation/index"
  *
  * Mirror sale precedent `modules/sale/presentation/dto/sale-with-details.ts`
  * (POC #11.0a A5 β Ciclo 3) — paridad arquitectónica + paridad bit-exact con
- * legacy. `displayCode` queda como property del DTO presentation (separación
- * domain/presentation lockeada A2 audit D-A5#5 α: aggregate hex `Purchase` NO
- * expone displayCode — presentation concern).
+ * legacy.
  *
  * Asimetría legítima vs sale precedent: re-export `PurchaseType` +
  * `PurchaseStatus` + `IvaPurchaseBookDTO` (sale tiene 0 consumers root barrel;

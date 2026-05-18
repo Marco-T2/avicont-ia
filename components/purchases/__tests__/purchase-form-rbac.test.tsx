@@ -63,7 +63,6 @@ const BASE_PURCHASE = {
   description: "Compra de prueba",
   referenceNumber: "F-001",
   notes: null,
-  displayCode: "CE-001",
   createdById: "user-1",
   updatedById: null,
   createdAt: new Date(),

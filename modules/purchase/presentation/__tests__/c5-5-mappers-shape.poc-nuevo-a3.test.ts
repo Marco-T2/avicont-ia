@@ -84,7 +84,6 @@
  * - engram bookmark `poc-nuevo/a3/c3/closed` (#1525) A3-C3 build sale mappers precedent
  * - components/purchases/purchase-list.tsx (production NO consume createdBy verified pre-recon)
  * - components/purchases/purchase-form.tsx (production NO consume createdBy verified pre-recon)
- * - features/purchase/purchase.utils.ts:47-49 (legacy getDisplayCode formula reference)
  * - modules/purchase/application/purchase.service.ts:46-51 (TYPE_PREFIXES FL/PF/CG/SV)
  * - modules/purchase/presentation/dto/purchase-with-details.ts (target shape destination)
  * - modules/purchase/infrastructure/prisma-purchase.repository.ts:31-39 (hex include = details only, payable null doc explicit)

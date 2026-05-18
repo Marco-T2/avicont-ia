@@ -106,7 +106,6 @@ const VOIDED_PURCHASE = {
   date: new Date("2026-04-17T00:00:00.000Z"),
   status: "VOIDED",
   totalAmount: 500,
-  displayCode: "CG-001",
 };
 
 // POSTED purchase with payable for payment date (line 1465)
@@ -117,7 +116,6 @@ const POSTED_PURCHASE_WITH_PAYABLE = {
   date: new Date("2026-04-17T12:00:00.000Z"),
   status: "POSTED",
   totalAmount: 1000,
-  displayCode: "CG-002",
   payable: {
     id: "payable-1",
     amount: 1000,

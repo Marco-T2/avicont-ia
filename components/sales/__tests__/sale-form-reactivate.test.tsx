@@ -111,7 +111,6 @@ const BASE_SALE_VOIDED_IVA = {
   description: "Venta de prueba",
   referenceNumber: null,
   notes: null,
-  displayCode: "CI-001",
   createdById: "user-1",
   updatedById: null,
   createdAt: new Date(),

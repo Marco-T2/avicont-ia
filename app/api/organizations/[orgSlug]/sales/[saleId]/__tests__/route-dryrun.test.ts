@@ -85,7 +85,6 @@ const UPDATED_SALE = {
   organizationId: ORG_ID,
   status: "POSTED",
   totalAmount: 80,
-  displayCode: "VG-003",
 };
 
 // ── Setup ─────────────────────────────────────────────────────────────────────

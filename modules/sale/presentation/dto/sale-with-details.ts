@@ -7,10 +7,6 @@ import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 /**
  * Hydrates Sale read-side responses for routes/components — migrado bit-exact
  * (POC #11.0a A5 β + POC nuevo A3-C7 atomic delete commit ad36da2).
- *
- * `displayCode` queda como property del DTO presentation — separación
- * domain/presentation lockeada A2 audit (D-A5#5 α): aggregate hex `Sale`
- * NO expone displayCode (presentation concern).
  */
 
 export interface PaymentAllocationSummary {

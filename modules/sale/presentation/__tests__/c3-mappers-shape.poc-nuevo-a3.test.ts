@@ -73,7 +73,6 @@
  * - engram bookmark `poc-nuevo/a3/c1/closed` (#1520) A3-C1 build hex precedent simétrico
  * - features/sale/sale.repository.ts:30-58 (legacy saleInclude shape source completo)
  * - features/sale/sale.service.ts:124-130 (legacy withDisplayCode pattern reference)
- * - features/sale/sale.utils.ts:getDisplayCode (computeDisplayCode formula `VG-NNN`)
  * - modules/sale/presentation/dto/sale-with-details.ts (target shape destination)
  * - modules/sale/infrastructure/prisma-sale.repository.ts:50-72 (hex include asimetría confirmada)
  * - modules/sale/application/sale.service.ts:94-105 (hex .list/.getById return Sale entity)

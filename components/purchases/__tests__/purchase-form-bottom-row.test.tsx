@@ -102,7 +102,6 @@ const BASE_PURCHASE: Record<string, unknown> = {
   totalShrinkKg: null,
   totalShortageKg: null,
   totalRealNetKg: null,
-  displayCode: "CG-001",
   createdById: "user-1",
   updatedById: null,
   createdAt: new Date(),

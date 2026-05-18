@@ -51,7 +51,6 @@ const BASE_PURCHASE = {
   totalShrinkKg: null,
   totalShortageKg: null,
   totalRealNetKg: null,
-  displayCode: "CG-001",
   createdById: "user-1",
   updatedById: null,
   createdAt: new Date(),
@@ -69,7 +68,6 @@ const SERVICIO_PURCHASE = {
   ...BASE_PURCHASE,
   id: "purchase-2",
   purchaseType: "SERVICIO",
-  displayCode: "SV-001",
   description: "Servicio contratado",
 };
 
