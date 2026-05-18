@@ -38,8 +38,6 @@ model Organization {
   productTypes          ProductType[]
   operationalDocTypes   OperationalDocType[]
   auditLogs             AuditLog[]
-  ivaPurchaseBooks      IvaPurchaseBook[]
-  ivaSalesBooks         IvaSalesBook[]
   customRoles           CustomRole[]
   profile                  OrgProfile?
   documentSignatureConfigs DocumentSignatureConfig[]
@@ -438,9 +436,6 @@ model FiscalPeriod {
   payments         Payment[]
   purchases        Purchase[]
   sales            Sale[]
-  ivaPurchaseBooks IvaPurchaseBook[]
-  ivaSalesBooks    IvaSalesBook[]
-
   @@unique([organizationId, year, month])
   @@index([organizationId, status])
   @@map("fiscal_periods")
@@ -567,18 +562,6 @@ enum PaymentMethod {
   TRANSFERENCIA
   CHEQUE
   DEPOSITO
-}
-
-enum IvaBookStatus {
-  ACTIVE
-  VOIDED
-}
-
-enum IvaSalesEstadoSIN {
-  A
-  V
-  C
-  L
 }
 
 enum PaymentStatus {
@@ -873,7 +856,6 @@ model Purchase {
   payable         AccountsPayable?     @relation(fields: [payableId], references: [id])
   createdBy       User                 @relation("PurchaseCreator", fields: [createdById], references: [id])
   details         PurchaseDetail[]
-  ivaPurchaseBook IvaPurchaseBook?
 
   @@unique([organizationId, purchaseType, sequenceNumber])
   @@index([organizationId, status])
@@ -956,7 +938,6 @@ model Sale {
   receivable      AccountsReceivable?  @relation(fields: [receivableId], references: [id])
   createdBy       User                 @relation("SaleCreator", fields: [createdById], references: [id])
   details         SaleDetail[]
-  ivaSalesBook    IvaSalesBook?
 
   @@unique([organizationId, sequenceNumber])
   @@index([organizationId, status])
@@ -1001,88 +982,6 @@ model AuditLog {
   @@index([organizationId, entityType, createdAt])
   @@index([organizationId, changedById, createdAt])
   @@map("audit_logs")
-}
-
-// ── IVA Books ─────────────────────────────────────────────────────────────────
-
-model IvaPurchaseBook {
-  id                       String         @id @default(cuid())
-  organizationId           String
-  fiscalPeriodId           String
-  purchaseId               String?        @unique
-  fechaFactura             DateTime       @db.Timestamptz(3)
-  nitProveedor             String
-  razonSocial              String
-  numeroFactura            String
-  codigoAutorizacion       String
-  codigoControl            String         @default("")
-  importeTotal             Decimal        @default(0) @db.Decimal(14, 2)
-  importeIce               Decimal        @default(0) @db.Decimal(14, 2)
-  importeIehd              Decimal        @default(0) @db.Decimal(14, 2)
-  importeIpj               Decimal        @default(0) @db.Decimal(14, 2)
-  tasas                    Decimal        @default(0) @db.Decimal(14, 2)
-  otrosNoSujetos           Decimal        @default(0) @db.Decimal(14, 2)
-  exentos                  Decimal        @default(0) @db.Decimal(14, 2)
-  tasaCero                 Decimal        @default(0) @db.Decimal(14, 2)
-  subtotal                 Decimal        @default(0) @db.Decimal(14, 2)
-  dfIva                    Decimal        @default(0) @db.Decimal(14, 2)
-  codigoDescuentoAdicional Decimal        @default(0) @db.Decimal(14, 2)
-  importeGiftCard          Decimal        @default(0) @db.Decimal(14, 2)
-  baseIvaSujetoCf          Decimal        @default(0) @db.Decimal(14, 2)
-  dfCfIva                  Decimal        @default(0) @db.Decimal(14, 2)
-  tasaIva                  Decimal        @default(0) @db.Decimal(5, 4)
-  tipoCompra               Int            @default(1)
-  status                   IvaBookStatus  @default(ACTIVE)
-  notes                    String?
-  createdAt                DateTime       @db.Timestamptz(3) @default(now())
-  updatedAt                DateTime       @db.Timestamptz(3) @updatedAt
-  organization             Organization   @relation(fields: [organizationId], references: [id])
-  fiscalPeriod             FiscalPeriod   @relation(fields: [fiscalPeriodId], references: [id])
-  purchase                 Purchase?      @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
-
-  @@unique([organizationId, nitProveedor, numeroFactura, codigoAutorizacion])
-  @@index([organizationId, fiscalPeriodId])
-  @@map("iva_purchase_books")
-}
-
-model IvaSalesBook {
-  id                       String              @id @default(cuid())
-  organizationId           String
-  fiscalPeriodId           String
-  saleId                   String?             @unique
-  fechaFactura             DateTime            @db.Timestamptz(3)
-  nitCliente               String
-  razonSocial              String
-  numeroFactura            String
-  codigoAutorizacion       String
-  codigoControl            String              @default("")
-  importeTotal             Decimal             @default(0) @db.Decimal(14, 2)
-  importeIce               Decimal             @default(0) @db.Decimal(14, 2)
-  importeIehd              Decimal             @default(0) @db.Decimal(14, 2)
-  importeIpj               Decimal             @default(0) @db.Decimal(14, 2)
-  tasas                    Decimal             @default(0) @db.Decimal(14, 2)
-  otrosNoSujetos           Decimal             @default(0) @db.Decimal(14, 2)
-  exentos                  Decimal             @default(0) @db.Decimal(14, 2)
-  tasaCero                 Decimal             @default(0) @db.Decimal(14, 2)
-  subtotal                 Decimal             @default(0) @db.Decimal(14, 2)
-  dfIva                    Decimal             @default(0) @db.Decimal(14, 2)
-  codigoDescuentoAdicional Decimal             @default(0) @db.Decimal(14, 2)
-  importeGiftCard          Decimal             @default(0) @db.Decimal(14, 2)
-  baseIvaSujetoCf          Decimal             @default(0) @db.Decimal(14, 2)
-  dfCfIva                  Decimal             @default(0) @db.Decimal(14, 2)
-  tasaIva                  Decimal             @default(0) @db.Decimal(5, 4)
-  estadoSIN                IvaSalesEstadoSIN
-  status                   IvaBookStatus       @default(ACTIVE)
-  notes                    String?
-  createdAt                DateTime            @db.Timestamptz(3) @default(now())
-  updatedAt                DateTime            @db.Timestamptz(3) @updatedAt
-  organization             Organization        @relation(fields: [organizationId], references: [id])
-  fiscalPeriod             FiscalPeriod        @relation(fields: [fiscalPeriodId], references: [id])
-  sale                     Sale?               @relation(fields: [saleId], references: [id], onDelete: SetNull)
-
-  @@unique([organizationId, numeroFactura, codigoAutorizacion])
-  @@index([organizationId, fiscalPeriodId])
-  @@map("iva_sales_books")
 }
 
 // ── Organization Profile & Document Signature Configs ────────────────────────
