@@ -5,7 +5,6 @@ import {
   makeJournalsService,
   updateJournalEntrySchema,
   exportVoucherQuerySchema,
-  formatCorrelativeNumber,
 } from "@/modules/accounting/presentation/server";
 
 // PDF exporter usa pdfmake (Buffer/streams nativos) — requiere runtime Node.js.
@@ -45,13 +44,7 @@ export async function GET(
 
     const entry = await service.getById(orgId, entryId);
 
-    const displayNumber = formatCorrelativeNumber(
-      entry.voucherType.prefix,
-      entry.date,
-      entry.number,
-    );
-
-    return Response.json({ ...entry, displayNumber });
+    return Response.json(entry);
   } catch (error) {
     return handleError(error);
   }
