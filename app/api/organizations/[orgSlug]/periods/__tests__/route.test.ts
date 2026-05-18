@@ -38,7 +38,7 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   })),
 }));
 
-vi.mock("@/features/users/server", () => ({
+vi.mock("@/modules/users/application/users.service", () => ({
   UsersService: vi.fn().mockImplementation(function () {
     return {
       resolveByClerkId: mockResolveByClerkId,

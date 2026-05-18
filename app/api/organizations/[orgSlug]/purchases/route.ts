@@ -5,7 +5,7 @@ import {
   purchaseFiltersSchema,
 } from "@/modules/purchase/presentation/schemas/purchase.schemas";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 

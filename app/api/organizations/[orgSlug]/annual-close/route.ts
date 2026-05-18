@@ -4,7 +4,7 @@ import {
   makeAnnualCloseService,
   annualCloseRequestSchema,
 } from "@/modules/annual-close/presentation/server";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 
 /**
  * POST /api/organizations/[orgSlug]/annual-close (Phase 5.4 GREEN).

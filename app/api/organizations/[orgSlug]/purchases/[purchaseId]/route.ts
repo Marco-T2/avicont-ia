@@ -3,7 +3,7 @@ import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 

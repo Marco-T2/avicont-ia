@@ -30,7 +30,7 @@ const {
   mockCurrentUser: vi.fn(),
 }));
 
-vi.mock("@/features/users/server", () => ({
+vi.mock("@/modules/users/application/users.service", () => ({
   UsersService: class {
     resolveByClerkId = mockResolveByClerkId;
     findOrCreate = mockFindOrCreate;
@@ -39,7 +39,7 @@ vi.mock("@/features/users/server", () => ({
 }));
 
 // Canonical path mock — service now imports UsersService direct post-REQ-004 bypass.
-// @/features/users/server declaration above preserved for α12 shape sentinel.
+// @/modules/users/application/users.service declaration above preserved for α12 shape sentinel.
 vi.mock("@/modules/users/application/users.service", () => ({
   UsersService: class {
     resolveByClerkId = mockResolveByClerkId;

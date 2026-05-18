@@ -6,7 +6,7 @@ import {
   paymentFiltersSchema,
 } from "@/modules/payment/presentation/validation";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 
 const paymentService = new PaymentService();
 const usersService = new UsersService();

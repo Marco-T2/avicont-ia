@@ -1,5 +1,5 @@
 import "server-only";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 import type { UserResolutionPort, ResolvedUser } from "../../domain/ports/user-resolution.port";
 
 /**

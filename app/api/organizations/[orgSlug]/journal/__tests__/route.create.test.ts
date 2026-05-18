@@ -45,7 +45,7 @@ vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
 }));
 
-vi.mock("@/features/users/server", () => ({
+vi.mock("@/modules/users/application/users.service", () => ({
   UsersService: vi.fn().mockImplementation(function () {
     return {
       resolveByClerkId: vi.fn().mockResolvedValue({ id: "user-db-id" }),

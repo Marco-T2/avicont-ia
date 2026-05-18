@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 
 const usersService = new UsersService();

@@ -5,7 +5,7 @@ import {
   closeRequestSchema,
 } from "@/modules/monthly-close/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 
 const service = makeMonthlyCloseService();
 const periodsService = makeFiscalPeriodsService();

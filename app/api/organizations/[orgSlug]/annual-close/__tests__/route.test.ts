@@ -78,7 +78,7 @@ vi.mock("@/modules/annual-close/presentation/server", async (importOriginal) => 
     .mockImplementation(() => ({ close: mockClose })),
 }));
 
-vi.mock("@/features/users/server", () => ({
+vi.mock("@/modules/users/application/users.service", () => ({
   UsersService: vi.fn().mockImplementation(function () {
     return { resolveByClerkId: mockResolveByClerkId };
   }),

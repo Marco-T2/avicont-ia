@@ -2,7 +2,7 @@ import Decimal from "decimal.js";
 import { handleError } from "@/features/shared/middleware";
 import { requirePermission } from "@/features/permissions/server";
 import { updateSaleSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";

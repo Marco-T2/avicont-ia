@@ -1,6 +1,6 @@
 import { requireAuth, handleError } from "@/features/shared/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 import {
   makeExpenseService,
   createExpenseSchema,

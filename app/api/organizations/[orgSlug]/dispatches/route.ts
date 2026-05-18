@@ -5,7 +5,7 @@ import {
   createDispatchSchema,
   dispatchFiltersSchema,
 } from "@/modules/dispatch/presentation";
-import { UsersService } from "@/features/users/server";
+import { UsersService } from "@/modules/users/application/users.service";
 
 const dispatchService = makeDispatchService();
 const usersService = new UsersService();
