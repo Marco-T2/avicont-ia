@@ -130,14 +130,14 @@ describe("CerebrasLLMAdapter — LLMProviderPort contract", () => {
         kind: "model",
         content: "",
         toolCalls: [
-          { id: "call_abc123", name: "listFarms", input: { limit: 5 } },
+          { id: "call_abc123", name: "listLots", input: { limit: 5 } },
         ],
       },
       {
         kind: "tool_result",
         toolCallId: "call_abc123",
-        name: "listFarms",
-        result: { farms: [{ id: "f1", name: "Granja A" }] },
+        name: "listLots",
+        result: { lots: [{ id: "l1", name: "Lote A", farmName: "Granja A" }] },
       },
     ];
 
@@ -182,7 +182,7 @@ describe("CerebrasLLMAdapter — LLMProviderPort contract", () => {
       {
         id: "call_abc123",
         type: "function",
-        function: { name: "listFarms", arguments: JSON.stringify({ limit: 5 }) },
+        function: { name: "listLots", arguments: JSON.stringify({ limit: 5 }) },
       },
     ]);
 
@@ -191,7 +191,7 @@ describe("CerebrasLLMAdapter — LLMProviderPort contract", () => {
     expect(arg.messages[3]).toEqual({
       role: "tool",
       tool_call_id: "call_abc123",
-      content: JSON.stringify({ farms: [{ id: "f1", name: "Granja A" }] }),
+      content: JSON.stringify({ lots: [{ id: "l1", name: "Lote A", farmName: "Granja A" }] }),
     });
 
     // Per LLMQuery contract (locked at gemini adapter): when history is

@@ -125,7 +125,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         rateLimit: { check: async () => ({ allowed: true }), record: async () => {} },
         accountsLookup: makeInMemoryAccountsLookup(),
         rag: makeInMemoryRag(),
-        farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
       };
@@ -142,7 +141,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         rateLimit: { check: async () => ({ allowed: true }), record: async () => {} },
         accountsLookup: makeInMemoryAccountsLookup(),
         rag: makeInMemoryRag(),
-        farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
       };
@@ -159,7 +157,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         rateLimit: { check: async () => ({ allowed: true }), record: async () => {} },
         accountsLookup: makeInMemoryAccountsLookup(),
         rag: makeInMemoryRag(),
-        farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
       };
@@ -176,7 +173,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         rateLimit: { check: async () => ({ allowed: true }), record: async () => {} },
         accountsLookup: makeInMemoryAccountsLookup(),
         rag: makeInMemoryRag(),
-        farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
       };
@@ -399,7 +395,6 @@ describe("POC ai-agent-hex C1 — application layer shape", () => {
         rateLimit: { check: async () => ({ allowed: true }), record: async () => {} },
         accountsLookup: makeInMemoryAccountsLookup(),
         rag: makeInMemoryRag(),
-        farmInquiry: { findById: async () => null, findAllWithActiveLots: async () => [] },
         lotInquiry: { findById: async () => null },
         pricingService: { calculateLotCost: async () => ({}) },
       };

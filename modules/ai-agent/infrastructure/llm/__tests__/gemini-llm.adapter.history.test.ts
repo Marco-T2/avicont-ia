@@ -119,13 +119,13 @@ describe("REQ-22 — Gemini adapter dual-mode (history vs single-shot)", () => {
       {
         kind: "model",
         content: "",
-        toolCalls: [{ id: "gem_1_0", name: "listFarms", input: {} }],
+        toolCalls: [{ id: "gem_1_0", name: "listLots", input: {} }],
       },
       {
         kind: "tool_result",
         toolCallId: "gem_1_0",
-        name: "listFarms",
-        result: { farms: [{ id: "f1", name: "Granja A" }] },
+        name: "listLots",
+        result: { lots: [{ id: "l1", name: "Lote A", farmName: "Granja A" }] },
       },
     ];
 
@@ -155,8 +155,8 @@ describe("REQ-22 — Gemini adapter dual-mode (history vs single-shot)", () => {
     expect(toolResultContent.role).toBe("user");
     expect(toolResultContent.parts).toHaveLength(1);
     expect(toolResultContent.parts[0].functionResponse).toEqual({
-      name: "listFarms",
-      response: { farms: [{ id: "f1", name: "Granja A" }] },
+      name: "listLots",
+      response: { lots: [{ id: "l1", name: "Lote A", farmName: "Granja A" }] },
     });
   });
 
