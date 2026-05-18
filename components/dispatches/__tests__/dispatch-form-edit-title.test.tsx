@@ -76,7 +76,6 @@ function makeDispatch() {
     status: "POSTED" as const,
     sequenceNumber: 7,
     referenceNumber: null,
-    displayCode: "ND-007",
     date: "2026-04-17T00:00:00.000Z",
     contactId: "contact-1",
     periodId: "period-1",

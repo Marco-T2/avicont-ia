@@ -54,7 +54,6 @@ import type {
  * - engram bookmark `poc-nuevo/a3/c3/locked` Marco locks Q1-Q6 + SubQ-a–h
  * - legacy saleInclude shape source completo (post-A3-C7 atomic delete commit ad36da2)
  * - legacy withDisplayCode pattern reference (post-A3-C7 atomic delete)
- * - legacy getDisplayCode formula `VG-NNN` (post-A3-C7 atomic delete)
  * - modules/sale/presentation/dto/sale-with-details.ts (target shape destination)
  * - modules/sale/application/sale.service.ts:94-105 (hex .list/.getById return Sale entity)
  */

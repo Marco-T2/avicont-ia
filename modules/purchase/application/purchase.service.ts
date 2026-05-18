@@ -253,7 +253,6 @@ export class PurchaseService {
    *
    * Asimetrías documentadas vs sale-hex:
    * - `voucherTypeCode: "CE"` (paridad legacy purchase.service.ts:460).
-   * - `displayCode` con prefix por purchaseType (FL/PF/CG/SV).
    * - `accountLookup.findManyByIds` solo para CG/SV (FLETE/POLLO_FAENADO
    *   usan codes de OrgSettings, no IDs).
    * - `IvaBookReaderPort.getActiveBookForPurchase` (port propio purchase).

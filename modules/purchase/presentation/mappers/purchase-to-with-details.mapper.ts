@@ -59,8 +59,7 @@ import type {
  *   - sale `toReceivableSummary` ↔ purchase `toPayableSummary` (cuentas por
  *     cobrar vs pagar — Prisma raw → DTO Decimal→number + nested allocations)
  *   - sale fixed prefix `VG` ↔ purchase TYPE_PREFIXES `FL/PF/CG/SV` per
- *     `PurchaseType` (4 polymorphic discriminators, mirror legacy
- *     getDisplayCode formula — post-A3-C8 atomic delete commit 4aa8480)
+ *     `PurchaseType` (4 polymorphic discriminators)
  *   - sale `toSaleDetailRow` 5 fields ↔ purchase `toPurchaseDetailRow` 12+
  *     optional fields (asimetría discriminator polymorphism)
  *
@@ -69,9 +68,7 @@ import type {
  * - architecture.md §13.X (sale resolution Prisma direct — purchase analogue C6b/c)
  * - architecture.md §13.V allowTypeImports presentation carve-out (A3-C1.5)
  * - engram bookmark `poc-nuevo/a3/c5-5/locked` Marco Q-final 1-5
- * - engram bookmark `poc-nuevo/a3/c5/closed` (#1534) atomic precedent + computeDisplayCode reuse
  * - engram bookmark `poc-nuevo/a3/c3/locked` (sale precedent Marco locks Q1-Q6 SubQ-a–h)
- * - legacy getDisplayCode formula reference (post-A3-C8 atomic delete commit 4aa8480)
  * - modules/purchase/application/purchase.service.ts:46-51 (TYPE_PREFIXES FL/PF/CG/SV)
  * - modules/purchase/application/purchase.service.ts:109-119 (hex .list/.getById return Purchase)
  * - modules/purchase/presentation/dto/purchase-with-details.ts (target shape destination)

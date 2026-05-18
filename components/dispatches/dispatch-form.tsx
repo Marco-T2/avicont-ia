@@ -182,7 +182,6 @@ interface ExistingDispatch {
   status: "DRAFT" | "POSTED" | "VOIDED" | "LOCKED";
   sequenceNumber: number;
   referenceNumber: number | null;
-  displayCode: string;
   date: string;
   contactId: string;
   periodId: string;
