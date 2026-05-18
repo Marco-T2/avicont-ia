@@ -16,7 +16,6 @@ import {
   type ApplyPurchaseEditInput,
   type CreatePurchaseDraftDetailInput,
   type CreatePurchaseDraftInput,
-  type PurchaseType,
 } from "../domain/purchase.entity";
 import { PurchaseDetail } from "../domain/purchase-detail.entity";
 import { PurchaseVoidedImmutable } from "../domain/errors/purchase-errors";
@@ -49,12 +48,8 @@ import {
 } from "./errors/purchase-orchestration-errors";
 import type { PurchaseUnitOfWork } from "./purchase-unit-of-work";
 
-const TYPE_PREFIXES: Record<PurchaseType, string> = {
-  FLETE: "FL",
-  POLLO_FAENADO: "PF",
-  COMPRA_GENERAL: "CG",
-  SERVICIO: "SV",
-};
+// TYPE_PREFIXES local helper retired per REQ-DISPLAY-2 (T5.2) — was only
+// used by journalDescription templates that no longer prepend the prefix.
 
 /**
  * `PurchaseServiceDeps` — object DI patrón consolidado durante POC #11.0a
@@ -365,10 +360,11 @@ export class PurchaseService {
         const seq = await scope.purchases.getNextSequenceNumberTx(organizationId, posted.purchaseType);
         const numbered = posted.assignSequenceNumber(seq);
 
-        const displayCode = `${TYPE_PREFIXES[numbered.purchaseType]}-${String(seq).padStart(3, "0")}`;
+        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+        // `| ${notes}` suffix when notes present.
         const journalDescription = numbered.notes
-          ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
-          : `${displayCode} - ${numbered.description}`;
+          ? `${numbered.description} | ${numbered.notes}`
+          : numbered.description;
 
         const journal = await scope.journalEntryFactory.generateForPurchase({
           organizationId,
@@ -535,10 +531,11 @@ export class PurchaseService {
         const seq = await scope.purchases.getNextSequenceNumberTx(organizationId, posted.purchaseType);
         const numbered = posted.assignSequenceNumber(seq);
 
-        const displayCode = `${TYPE_PREFIXES[numbered.purchaseType]}-${String(seq).padStart(3, "0")}`;
+        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+        // `| ${notes}` suffix when notes present.
         const journalDescription = numbered.notes
-          ? `${displayCode} - ${numbered.description} | ${numbered.notes}`
-          : `${displayCode} - ${numbered.description}`;
+          ? `${numbered.description} | ${numbered.notes}`
+          : numbered.description;
 
         const journal = await scope.journalEntryFactory.generateForPurchase({
           organizationId,
@@ -865,10 +862,11 @@ export class PurchaseService {
           newIvaBook ?? undefined,
         );
 
-        const displayCode = `${TYPE_PREFIXES[edited.purchaseType]}-${String(edited.sequenceNumber).padStart(3, "0")}`;
+        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+        // `| ${notes}` suffix when notes present.
         const journalDescription = edited.notes
-          ? `${displayCode} - ${edited.description} | ${edited.notes}`
-          : `${displayCode} - ${edited.description}`;
+          ? `${edited.description} | ${edited.notes}`
+          : edited.description;
 
         const { old, new: newJournal } =
           await scope.journalEntryFactory.regenerateForPurchaseEdit(
@@ -1202,10 +1200,11 @@ export class PurchaseService {
       ivaBook,
     );
 
-    const displayCode = `${TYPE_PREFIXES[purchase.purchaseType]}-${String(purchase.sequenceNumber).padStart(3, "0")}`;
+    // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
+    // `| ${notes}` suffix when notes present.
     const journalDescription = purchase.notes
-      ? `${displayCode} - ${purchase.description} | ${purchase.notes}`
-      : `${displayCode} - ${purchase.description}`;
+      ? `${purchase.description} | ${purchase.notes}`
+      : purchase.description;
 
     const { correlationId } = await this.deps.uow!.run(
       { userId, organizationId },

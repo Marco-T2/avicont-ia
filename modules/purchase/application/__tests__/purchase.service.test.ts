@@ -681,7 +681,7 @@ describe("PurchaseService.post", () => {
     expect(capturedDueDate?.getTime()).toBe(expected);
   });
 
-  it("invokes the journal factory with displayCode 'CG-001' for COMPRA_GENERAL", async () => {
+  it("invokes the journal factory with raw description for COMPRA_GENERAL (REQ-DISPLAY-3 FUTURE-only — no displayCode prefix)", async () => {
     const draft = buildDraftPurchase({ purchaseType: "COMPRA_GENERAL" });
     purchaseRepo.preload(draft);
     journalEntryFactory.enqueuePurchase(buildJournalStub());
@@ -689,11 +689,11 @@ describe("PurchaseService.post", () => {
     await service.post(ORG, draft.id, "user-1");
 
     expect(journalEntryFactory.purchaseCalls[0]!.description).toBe(
-      "CG-001 - Compra test",
+      "Compra test",
     );
   });
 
-  it("uses displayCode prefix 'FL' for FLETE and skips expense account lookup", async () => {
+  it("invokes the journal factory with raw description for FLETE + skips expense account lookup (REQ-DISPLAY-3 FUTURE-only)", async () => {
     const draft = buildDraftPurchase({ purchaseType: "FLETE" });
     purchaseRepo.preload(draft);
     journalEntryFactory.enqueuePurchase(buildJournalStub());
@@ -701,7 +701,7 @@ describe("PurchaseService.post", () => {
     await service.post(ORG, draft.id, "user-1");
 
     expect(journalEntryFactory.purchaseCalls[0]!.description).toBe(
-      "FL-001 - Compra test",
+      "Compra test",
     );
     expect(accountLookup.callsByIds[0]!.ids).toEqual([]);
   });
