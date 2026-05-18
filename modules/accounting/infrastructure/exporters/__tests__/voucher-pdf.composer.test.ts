@@ -79,6 +79,7 @@ function makeEntry(overrides: Partial<JournalEntry> = {}): JournalEntryWithLines
     status: "DRAFT",
     periodId: "period-1",
     voucherTypeId: "vt-CE",
+    operationalDocTypeId: null,
     contactId: null,
     sourceType: null,
     sourceId: null,

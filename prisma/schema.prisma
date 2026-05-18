@@ -322,6 +322,9 @@ enum OperationalDocDirection {
   COBRO
   PAGO
   BOTH
+  VENTA
+  COMPRA
+  DESPACHO
 }
 
 model Account {
@@ -354,40 +357,49 @@ model Account {
 }
 
 model JournalEntry {
-  id              String             @id @default(cuid())
-  number          Int
-  referenceNumber Int?               // optional physical document number
-  date            DateTime           @db.Timestamptz(3)
-  description     String
-  status          JournalEntryStatus @default(DRAFT)
-  periodId        String
-  voucherTypeId   String
-  contactId       String?
-  sourceType      String?
-  sourceId        String?
-  aiOriginalText  String?            // texto crudo del usuario cuando sourceType="ai" — inmutable post-creación
-  organizationId  String
-  createdById     String
-  updatedById     String?
-  createdAt       DateTime           @db.Timestamptz(3) @default(now())
-  updatedAt       DateTime           @db.Timestamptz(3) @updatedAt
-  organization    Organization       @relation(fields: [organizationId], references: [id])
-  period          FiscalPeriod       @relation(fields: [periodId], references: [id])
-  voucherType     VoucherTypeCfg     @relation(fields: [voucherTypeId], references: [id])
-  createdBy       User               @relation("JournalCreator", fields: [createdById], references: [id])
-  contact         Contact?           @relation(fields: [contactId], references: [id])
-  lines           JournalLine[]
-  receivables     AccountsReceivable[]
-  payables        AccountsPayable[]
-  dispatch        Dispatch?
-  payment         Payment?
-  purchase        Purchase?
-  sale            Sale?
+  id                   String             @id @default(cuid())
+  number               Int
+  referenceNumber      Int?               // optional physical document number
+  date                 DateTime           @db.Timestamptz(3)
+  description          String
+  status               JournalEntryStatus @default(DRAFT)
+  periodId             String
+  voucherTypeId        String
+  contactId            String?
+  // Physical document type (VG/ND/BC/RC/RE/...). Denormalized from
+  // OperationalDocType per journal-physical-document change: lets contact-ledger
+  // read documentTypeCode + referenceNumber directly from the JE join (drops
+  // 3-way enrichment precedence). Sister of Payment.operationalDocTypeId.
+  // Unique constraint moved from voucherTypeId to operationalDocTypeId — two
+  // VGs can never share refNumber within an org; null does not collide
+  // (Postgres NULL≠NULL in unique constraints).
+  operationalDocTypeId String?
+  sourceType           String?
+  sourceId             String?
+  aiOriginalText       String?            // texto crudo del usuario cuando sourceType="ai" — inmutable post-creación
+  organizationId       String
+  createdById          String
+  updatedById          String?
+  createdAt            DateTime           @db.Timestamptz(3) @default(now())
+  updatedAt            DateTime           @db.Timestamptz(3) @updatedAt
+  organization         Organization       @relation(fields: [organizationId], references: [id])
+  period               FiscalPeriod       @relation(fields: [periodId], references: [id])
+  voucherType          VoucherTypeCfg     @relation(fields: [voucherTypeId], references: [id])
+  operationalDocType   OperationalDocType? @relation(fields: [operationalDocTypeId], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  createdBy            User               @relation("JournalCreator", fields: [createdById], references: [id])
+  contact              Contact?           @relation(fields: [contactId], references: [id])
+  lines                JournalLine[]
+  receivables          AccountsReceivable[]
+  payables             AccountsPayable[]
+  dispatch             Dispatch?
+  payment              Payment?
+  purchase             Purchase?
+  sale                 Sale?
   @@unique([organizationId, voucherTypeId, periodId, number])
-  @@unique([organizationId, voucherTypeId, referenceNumber])
+  @@unique([organizationId, operationalDocTypeId, referenceNumber])
   @@index([organizationId, periodId])
   @@index([organizationId, status])
-  @@index([organizationId, voucherTypeId, referenceNumber])
+  @@index([organizationId, operationalDocTypeId, referenceNumber])
   @@index([createdById])
   @@map("journal_entries")
 }
@@ -814,6 +826,7 @@ model OperationalDocType {
 
   organization   Organization            @relation(fields: [organizationId], references: [id])
   payments       Payment[]
+  journalEntries JournalEntry[]
 
   @@unique([organizationId, code])
   @@index([organizationId, isActive])

@@ -23,7 +23,13 @@ import { toast } from "sonner";
 
 // ── Local types (no Prisma client in client components) ──
 
-type DocDirection = "COBRO" | "PAGO" | "BOTH";
+type DocDirection =
+  | "COBRO"
+  | "PAGO"
+  | "BOTH"
+  | "VENTA"
+  | "COMPRA"
+  | "DESPACHO";
 
 interface DocTypeItem {
   id: string;
@@ -66,6 +72,18 @@ function directionBadge(direction: DocDirection) {
     case "BOTH":
       return (
         <Badge className="bg-primary/10 text-primary">Ambos</Badge>
+      );
+    case "VENTA":
+      return (
+        <Badge className="bg-info/10 text-info">Venta</Badge>
+      );
+    case "COMPRA":
+      return (
+        <Badge className="bg-success/10 text-success">Compra</Badge>
+      );
+    case "DESPACHO":
+      return (
+        <Badge className="bg-warning/10 text-warning">Despacho</Badge>
       );
   }
 }
@@ -322,6 +340,9 @@ export default function OperationalDocTypesManager({
                         <SelectItem value="COBRO">Cobro</SelectItem>
                         <SelectItem value="PAGO">Pago</SelectItem>
                         <SelectItem value="BOTH">Ambos</SelectItem>
+                        <SelectItem value="VENTA">Venta</SelectItem>
+                        <SelectItem value="COMPRA">Compra</SelectItem>
+                        <SelectItem value="DESPACHO">Despacho</SelectItem>
                       </SelectContent>
                     </Select>
                   </td>
@@ -409,6 +430,9 @@ export default function OperationalDocTypesManager({
                             <SelectItem value="COBRO">Cobro</SelectItem>
                             <SelectItem value="PAGO">Pago</SelectItem>
                             <SelectItem value="BOTH">Ambos</SelectItem>
+                            <SelectItem value="VENTA">Venta</SelectItem>
+                            <SelectItem value="COMPRA">Compra</SelectItem>
+                            <SelectItem value="DESPACHO">Despacho</SelectItem>
                           </SelectContent>
                         </Select>
                       </td>
