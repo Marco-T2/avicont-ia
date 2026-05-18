@@ -6,15 +6,13 @@
 -- (organizationId, year) to (organizationId, year, month). Every FK that
 -- references fiscal_periods(id) is dropped by CASCADE and recreated below.
 --
--- FK blast list (8 total):
+-- FK blast list (6 total):
 --   journal_entries.periodId
 --   account_balances.periodId
 --   dispatches.periodId
 --   payments.periodId
 --   purchases.periodId
 --   sales.periodId
---   iva_purchase_books.fiscalPeriodId
---   iva_sales_books.fiscalPeriodId
 --
 -- Changes to audit infrastructure:
 --   - audit_logs.correlationId TEXT NULL (+ index)
@@ -41,10 +39,6 @@ DELETE FROM "dispatch_details";
 -- Accounting receivables/payables bookkeeping
 DELETE FROM "accounts_receivable";
 DELETE FROM "accounts_payable";
-
--- IVA books are periodId-scoped
-DELETE FROM "iva_purchase_books";
-DELETE FROM "iva_sales_books";
 
 -- Documents that reference periods
 DELETE FROM "dispatches";
@@ -105,7 +99,7 @@ ALTER TABLE "fiscal_periods"
   ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- ────────────────────────────────────────────────────────────────────────────
--- 3) Recreate the 8 FKs dropped by CASCADE
+-- 3) Recreate the 6 FKs dropped by CASCADE
 -- ────────────────────────────────────────────────────────────────────────────
 ALTER TABLE "journal_entries"
   ADD CONSTRAINT "journal_entries_periodId_fkey"
@@ -135,16 +129,6 @@ ALTER TABLE "purchases"
 ALTER TABLE "sales"
   ADD CONSTRAINT "sales_periodId_fkey"
   FOREIGN KEY ("periodId") REFERENCES "fiscal_periods"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
-
-ALTER TABLE "iva_purchase_books"
-  ADD CONSTRAINT "iva_purchase_books_fiscalPeriodId_fkey"
-  FOREIGN KEY ("fiscalPeriodId") REFERENCES "fiscal_periods"("id")
-  ON DELETE RESTRICT ON UPDATE CASCADE;
-
-ALTER TABLE "iva_sales_books"
-  ADD CONSTRAINT "iva_sales_books_fiscalPeriodId_fkey"
-  FOREIGN KEY ("fiscalPeriodId") REFERENCES "fiscal_periods"("id")
   ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- ────────────────────────────────────────────────────────────────────────────

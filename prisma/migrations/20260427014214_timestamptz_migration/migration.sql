@@ -1,6 +1,6 @@
 -- ============================================================
 -- TIMESTAMP-AFFECTED: datos naive BO-local → USING 'America/La_Paz'
--- (49 columnas — representan instantes reales en el tiempo)
+-- (45 columnas — representan instantes reales en el tiempo)
 -- ============================================================
 
 -- accounts_payable
@@ -106,22 +106,6 @@ ALTER TABLE "fiscal_periods"
   ALTER COLUMN "updatedAt" TYPE TIMESTAMPTZ(3)
   USING "updatedAt" AT TIME ZONE 'America/La_Paz';
 
--- iva_purchase_books
-ALTER TABLE "iva_purchase_books"
-  ALTER COLUMN "createdAt" TYPE TIMESTAMPTZ(3)
-  USING "createdAt" AT TIME ZONE 'America/La_Paz';
-ALTER TABLE "iva_purchase_books"
-  ALTER COLUMN "updatedAt" TYPE TIMESTAMPTZ(3)
-  USING "updatedAt" AT TIME ZONE 'America/La_Paz';
-
--- iva_sales_books
-ALTER TABLE "iva_sales_books"
-  ALTER COLUMN "createdAt" TYPE TIMESTAMPTZ(3)
-  USING "createdAt" AT TIME ZONE 'America/La_Paz';
-ALTER TABLE "iva_sales_books"
-  ALTER COLUMN "updatedAt" TYPE TIMESTAMPTZ(3)
-  USING "updatedAt" AT TIME ZONE 'America/La_Paz';
-
 -- journal_entries
 ALTER TABLE "journal_entries"
   ALTER COLUMN "createdAt" TYPE TIMESTAMPTZ(3)
@@ -208,7 +192,7 @@ ALTER TABLE "users"
 
 -- ============================================================
 -- UTC-NOON: datos ya en UTC vía toNoonUtc() → USING 'UTC'
--- (16 columnas — representan fechas calendario como TIMESTAMPTZ)
+-- (14 columnas — representan fechas calendario como TIMESTAMPTZ)
 -- ============================================================
 
 -- accounts_payable
@@ -246,16 +230,6 @@ ALTER TABLE "fiscal_periods"
 ALTER TABLE "fiscal_periods"
   ALTER COLUMN "endDate" TYPE TIMESTAMPTZ(3)
   USING "endDate" AT TIME ZONE 'UTC';
-
--- iva_purchase_books
-ALTER TABLE "iva_purchase_books"
-  ALTER COLUMN "fechaFactura" TYPE TIMESTAMPTZ(3)
-  USING "fechaFactura" AT TIME ZONE 'UTC';
-
--- iva_sales_books
-ALTER TABLE "iva_sales_books"
-  ALTER COLUMN "fechaFactura" TYPE TIMESTAMPTZ(3)
-  USING "fechaFactura" AT TIME ZONE 'UTC';
 
 -- journal_entries
 ALTER TABLE "journal_entries"
