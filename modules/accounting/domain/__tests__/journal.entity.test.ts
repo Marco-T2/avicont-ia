@@ -187,6 +187,7 @@ describe("Journal aggregate root — construction & snapshot (B6)", () => {
         status: "POSTED",
         number: 7,
         referenceNumber: null,
+      operationalDocTypeId: null,
         date: new Date("2026-04-15"),
         description: "x",
         periodId: "period-1",
@@ -319,6 +320,7 @@ describe("Journal aggregate root — construction & snapshot (B6)", () => {
         status: "VOIDED",
         number: 1,
         referenceNumber: null,
+      operationalDocTypeId: null,
         date: new Date(),
         description: "x",
         periodId: "period-1",
@@ -344,6 +346,7 @@ describe("Journal aggregate root — construction & snapshot (B6)", () => {
         status: "LOCKED",
         number: 1,
         referenceNumber: null,
+      operationalDocTypeId: null,
         date: new Date(),
         description: "x",
         periodId: "period-1",
@@ -794,6 +797,45 @@ describe("Journal aggregate root — construction & snapshot (B6)", () => {
       const snap = j.toSnapshot();
       expect(snap.sourceType).toBe("ai");
       expect(snap.aiOriginalText).toBe("compra de 5 bolsas");
+    });
+
+    // journal-physical-document Phase 4 — operationalDocTypeId end-to-end.
+    // Sister of referenceNumber: opcional, default null en create(), preserved
+    // through toSnapshot(). I-9 invariant.
+    it("propaga operationalDocTypeId al snapshot cuando se provee en create", () => {
+      const j = Journal.create({
+        ...baseInput,
+        operationalDocTypeId: "odt-vg-1",
+      });
+      const snap = j.toSnapshot();
+      expect(snap.operationalDocTypeId).toBe("odt-vg-1");
+    });
+
+    it("default operationalDocTypeId = null cuando se omite en create", () => {
+      const j = Journal.create(baseInput);
+      const snap = j.toSnapshot();
+      expect(snap.operationalDocTypeId).toBeNull();
+    });
+
+    it("update({ operationalDocTypeId }) lo persiste en el nuevo snapshot", () => {
+      const j = Journal.create(baseInput);
+      const updated = j.update({
+        operationalDocTypeId: "odt-rc-1",
+        updatedById: "user-2",
+      });
+      expect(updated.toSnapshot().operationalDocTypeId).toBe("odt-rc-1");
+    });
+
+    it("update permite clear con operationalDocTypeId: null", () => {
+      const j = Journal.create({
+        ...baseInput,
+        operationalDocTypeId: "odt-vg-1",
+      });
+      const cleared = j.update({
+        operationalDocTypeId: null,
+        updatedById: "user-2",
+      });
+      expect(cleared.toSnapshot().operationalDocTypeId).toBeNull();
     });
   });
 });

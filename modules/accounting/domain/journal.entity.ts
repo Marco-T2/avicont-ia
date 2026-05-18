@@ -25,6 +25,13 @@ export interface JournalProps {
   // pre-persistence the field is null. This is analogous to Payment.journalEntryId.
   number: number | null;
   referenceNumber: number | null;
+  // Physical document type FK (journal-physical-document). Optional; resolved
+  // in composition roots for auto-generated JEs via lookup-by-code from
+  // OperationalDocTypesRepository.findByCode, set directly by the manual JE
+  // form for user-entered entries, and pass-through from Payment for the
+  // Payment-driven branch. Null when omitted or when backfill could not
+  // resolve a code (I-5: orphan tolerance).
+  operationalDocTypeId: string | null;
   date: Date;
   description: string;
   periodId: string;
@@ -53,6 +60,7 @@ export interface UpdateJournalInput {
   description?: string;
   date?: Date;
   referenceNumber?: number | null;
+  operationalDocTypeId?: string | null;
   contactId?: string | null;
   updatedById?: string;
   // `voucherTypeId`, `periodId`, `number` son inmutables post-creación. El
@@ -71,6 +79,7 @@ export interface CreateJournalInput {
   createdById: string;
   contactId?: string | null;
   referenceNumber?: number | null;
+  operationalDocTypeId?: string | null;
   sourceType?: string | null;
   sourceId?: string | null;
   aiOriginalText?: string | null;
@@ -83,6 +92,7 @@ export interface JournalSnapshot {
   status: JournalEntryStatus;
   number: number | null;
   referenceNumber: number | null;
+  operationalDocTypeId: string | null;
   date: Date;
   description: string;
   periodId: string;
@@ -142,6 +152,7 @@ export class Journal {
       status: "DRAFT",
       number: null,
       referenceNumber: input.referenceNumber ?? null,
+      operationalDocTypeId: input.operationalDocTypeId ?? null,
       date: input.date,
       description: input.description,
       periodId: input.periodId,
@@ -178,6 +189,9 @@ export class Journal {
   }
   get referenceNumber(): number | null {
     return this.props.referenceNumber;
+  }
+  get operationalDocTypeId(): string | null {
+    return this.props.operationalDocTypeId;
   }
   get date(): Date {
     return this.props.date;
@@ -242,6 +256,9 @@ export class Journal {
     if (input.date !== undefined) next.date = input.date;
     if ("referenceNumber" in input) {
       next.referenceNumber = input.referenceNumber ?? null;
+    }
+    if ("operationalDocTypeId" in input) {
+      next.operationalDocTypeId = input.operationalDocTypeId ?? null;
     }
     if ("contactId" in input) next.contactId = input.contactId ?? null;
     if (input.updatedById !== undefined) next.updatedById = input.updatedById;
@@ -313,6 +330,9 @@ export class Journal {
     if (input.date !== undefined) next.date = input.date;
     if ("referenceNumber" in input) {
       next.referenceNumber = input.referenceNumber ?? null;
+    }
+    if ("operationalDocTypeId" in input) {
+      next.operationalDocTypeId = input.operationalDocTypeId ?? null;
     }
     if ("contactId" in input) next.contactId = input.contactId ?? null;
     if (input.updatedById !== undefined) next.updatedById = input.updatedById;
@@ -412,6 +432,7 @@ export class Journal {
       status: this.props.status,
       number: this.props.number,
       referenceNumber: this.props.referenceNumber,
+      operationalDocTypeId: this.props.operationalDocTypeId,
       date: this.props.date,
       description: this.props.description,
       periodId: this.props.periodId,

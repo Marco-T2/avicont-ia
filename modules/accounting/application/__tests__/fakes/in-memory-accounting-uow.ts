@@ -76,6 +76,7 @@ export class InMemoryJournalEntriesRepository
       status: snapshot.status,
       number: this.nextNumber++,
       referenceNumber: snapshot.referenceNumber,
+      operationalDocTypeId: snapshot.operationalDocTypeId,
       date: snapshot.date,
       description: snapshot.description,
       periodId: snapshot.periodId,

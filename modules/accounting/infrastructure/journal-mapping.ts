@@ -36,6 +36,7 @@ export function hydrateJournalFromRow(row: JournalEntryWithLines): Journal {
     status: row.status,
     number: row.number,
     referenceNumber: row.referenceNumber,
+    operationalDocTypeId: row.operationalDocTypeId,
     date: row.date,
     description: row.description,
     periodId: row.periodId,

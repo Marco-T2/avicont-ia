@@ -32,6 +32,9 @@ export interface CreateJournalEntryInput {
   sourceType?: string;
   sourceId?: string;
   referenceNumber?: number;
+  // Physical document type FK (journal-physical-document) — optional at the
+  // repo layer too so legacy callers continue working unchanged.
+  operationalDocTypeId?: string | null;
   createdById: string;
   // Texto crudo del usuario cuando el asiento se origina vía agente IA. Se persiste
   // junto al entry e inmutable post-creación (no se expone en updateEntry). Lo usa
@@ -46,6 +49,7 @@ export interface UpdateJournalEntryInput {
   description?: string;
   contactId?: string | null;
   referenceNumber?: number | null;
+  operationalDocTypeId?: string | null;
   updatedById: string;
   lines?: JournalLineInput[];
 }

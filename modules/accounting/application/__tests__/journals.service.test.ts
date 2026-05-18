@@ -325,6 +325,75 @@ describe("JournalsService.createEntry", () => {
     expect(uow.journalEntries.created[0].aiOriginalText).toBeNull();
   });
 
+  // journal-physical-document Phase 4 — createEntry propagates
+  // operationalDocTypeId from input → Journal aggregate → uow.create.
+  // Failure mode pre-GREEN: `Journal.create` (and the service input) lack
+  // the field, so the aggregate snapshot is missing it; assertion fails on
+  // `expected undefined to be "odt-vg-1"`.
+  it("propaga operationalDocTypeId desde el input al aggregate persistido", async () => {
+    const { service, uow, accounts, periods, voucherTypes } = setup();
+    accounts.accountsById.set("acc-1", {
+      id: "acc-1", name: "Caja", isActive: true, isDetail: true, requiresContact: false,
+    });
+    accounts.accountsById.set("acc-2", {
+      id: "acc-2", name: "Banco", isActive: true, isDetail: true, requiresContact: false,
+    });
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+    voucherTypes.voucherTypesById.set("voucher-1", { id: "voucher-1" });
+
+    const journal = await service.createEntry(
+      "org-1",
+      {
+        date: new Date("2026-04-28"),
+        description: "JE con doc físico VG",
+        periodId: "period-1",
+        voucherTypeId: "voucher-1",
+        createdById: "user-1",
+        operationalDocTypeId: "odt-vg-1",
+        lines: [
+          { accountId: "acc-1", debit: 100, credit: 0 },
+          { accountId: "acc-2", debit: 0, credit: 100 },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(journal.operationalDocTypeId).toBe("odt-vg-1");
+    expect(uow.journalEntries.created[0].operationalDocTypeId).toBe("odt-vg-1");
+  });
+
+  // Triangulation: omitted field defaults to null (parity con sourceType test).
+  it("default operationalDocTypeId = null cuando el input lo omite", async () => {
+    const { service, uow, accounts, periods, voucherTypes } = setup();
+    accounts.accountsById.set("acc-1", {
+      id: "acc-1", name: "Caja", isActive: true, isDetail: true, requiresContact: false,
+    });
+    accounts.accountsById.set("acc-2", {
+      id: "acc-2", name: "Banco", isActive: true, isDetail: true, requiresContact: false,
+    });
+    periods.periodsById.set("period-1", { id: "period-1", status: "OPEN" });
+    voucherTypes.voucherTypesById.set("voucher-1", { id: "voucher-1" });
+
+    const journal = await service.createEntry(
+      "org-1",
+      {
+        date: new Date("2026-04-28"),
+        description: "JE sin doc físico",
+        periodId: "period-1",
+        voucherTypeId: "voucher-1",
+        createdById: "user-1",
+        lines: [
+          { accountId: "acc-1", debit: 100, credit: 0 },
+          { accountId: "acc-2", debit: 0, credit: 100 },
+        ],
+      },
+      { userId: "user-1" },
+    );
+
+    expect(journal.operationalDocTypeId).toBeNull();
+    expect(uow.journalEntries.created[0].operationalDocTypeId).toBeNull();
+  });
+
   // Failure mode declarado: current GREEN does NOT read accounts. With a line
   // pointing to an account that exists but `isDetail: false`, the use case
   // builds `Journal.create` and persists without validating I3. RED surfaces

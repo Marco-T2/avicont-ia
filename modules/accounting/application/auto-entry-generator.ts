@@ -35,6 +35,10 @@ interface EntryTemplate {
   periodId: string;
   description: string;
   referenceNumber?: number;
+  // Physical document type FK (journal-physical-document). Resolved by
+  // composition roots via lookup-by-code (Sale/Purchase/Dispatch) or
+  // pass-through (Payment). Null when the source doesn't carry one.
+  operationalDocTypeId?: string | null;
   sourceType: string;
   sourceId: string;
   lines: EntryLineTemplate[];
@@ -150,6 +154,7 @@ export class AutoEntryGenerator {
         sourceType: template.sourceType,
         sourceId: template.sourceId,
         referenceNumber: template.referenceNumber,
+        operationalDocTypeId: template.operationalDocTypeId,
         createdById: template.createdById,
       },
       resolvedLines.map((l) => ({

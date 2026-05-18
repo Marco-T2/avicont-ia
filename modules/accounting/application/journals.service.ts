@@ -57,6 +57,10 @@ export interface CreateJournalEntryInput {
   createdById: string;
   contactId?: string | null;
   referenceNumber?: number | null;
+  // Physical document type FK (journal-physical-document). Optional — manual
+  // form passes the user selection, factory adapters resolve via lookup-by-
+  // code in composition root, Payment branch passes the Payment FK through.
+  operationalDocTypeId?: string | null;
   // AI-origin marking. Threaded straight through to the `Journal` aggregate
   // (immutable post-creation, I9). `sourceType` drives the "Generado por IA"
   // Origen column; `aiOriginalText` keeps the user's raw prompt. The normal
@@ -74,6 +78,9 @@ export interface UpdateJournalEntryInput {
   description?: string;
   contactId?: string | null;
   referenceNumber?: number | null;
+  // Manual edit of the physical document type — undefined leaves the current
+  // value alone, null clears it (sister of contactId/referenceNumber).
+  operationalDocTypeId?: string | null;
   updatedById: string;
   lines?: CreateJournalEntryLineInput[];
   // `voucherTypeId` y `periodId` son inmutables post-creación: el correlativo
@@ -542,6 +549,7 @@ export class JournalsService {
       createdById: input.createdById,
       contactId: input.contactId ?? null,
       referenceNumber: input.referenceNumber ?? null,
+      operationalDocTypeId: input.operationalDocTypeId ?? null,
       sourceType: input.sourceType ?? null,
       aiOriginalText: input.aiOriginalText ?? null,
       lines: mapLinesToDrafts(input.lines),
