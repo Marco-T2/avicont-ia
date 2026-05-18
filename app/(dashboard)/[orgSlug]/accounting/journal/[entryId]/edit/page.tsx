@@ -6,6 +6,7 @@ import {
 } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
+import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
 import JournalEntryForm from "@/components/accounting/journal-entry-form";
 
 interface EditJournalEntryPageProps {
@@ -29,6 +30,7 @@ export default async function EditJournalEntryPage({
   const accountsService = makeAccountsService();
   const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
+  const operationalDocTypeService = makeOperationalDocTypeService();
 
   let entry;
   try {
@@ -47,12 +49,20 @@ export default async function EditJournalEntryPage({
     redirect(`/${orgSlug}/accounting/journal/${entryId}`);
   }
 
-  const [accounts, periods, voucherTypes] = await Promise.all([
+  const [accounts, periods, voucherTypes, operationalDocTypes] = await Promise.all([
     accountsService.list(orgId),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     voucherTypesService
       .list(orgId)
       .then((entities) => entities.map((vt) => vt.toSnapshot())),
+    operationalDocTypeService
+      .list(orgId, { isActive: true })
+      .then((entities) =>
+        entities.map((e) => {
+          const s = e.toSnapshot();
+          return { id: s.id, code: s.code, name: s.name };
+        }),
+      ),
   ]);
 
   // Period-gate: closed periods make entries immutable (same rule as sales/purchases).
@@ -70,6 +80,7 @@ export default async function EditJournalEntryPage({
         accounts={JSON.parse(JSON.stringify(accounts))}
         periods={JSON.parse(JSON.stringify(periods))}
         voucherTypes={JSON.parse(JSON.stringify(voucherTypes))}
+        operationalDocTypes={operationalDocTypes}
         editEntry={{
           id: serializedEntry.id,
           number: serializedEntry.number,
@@ -78,6 +89,7 @@ export default async function EditJournalEntryPage({
           periodId: serializedEntry.periodId,
           voucherTypeId: serializedEntry.voucherTypeId,
           referenceNumber: serializedEntry.referenceNumber,
+          operationalDocTypeId: serializedEntry.operationalDocTypeId,
           lines: serializedEntry.lines,
         }}
       />

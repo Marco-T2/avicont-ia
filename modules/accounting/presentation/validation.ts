@@ -85,6 +85,9 @@ export const createJournalEntrySchema = z.object({
     .int("El número de referencia debe ser entero")
     .min(1, "El número de referencia debe ser mayor a 0")
     .optional(),
+  // journal-physical-document Phase 7 — optional FK to OperationalDocType.
+  // nullish() accepts string | null | undefined; service maps to null.
+  operationalDocTypeId: z.string().min(1, "ID inválido").nullish(),
   lines: z
     .array(journalLineSchema)
     .min(2, "Se requieren al menos 2 líneas de asiento"),
@@ -102,6 +105,13 @@ export const updateJournalEntrySchema = z
       .number()
       .int("El número de referencia debe ser entero")
       .min(1, "El número de referencia debe ser mayor a 0")
+      .nullable()
+      .optional(),
+    // journal-physical-document Phase 7 — same shape as referenceNumber:
+    // nullable + optional so the form can clear it OR omit it.
+    operationalDocTypeId: z
+      .string()
+      .min(1, "ID inválido")
       .nullable()
       .optional(),
     lines: z

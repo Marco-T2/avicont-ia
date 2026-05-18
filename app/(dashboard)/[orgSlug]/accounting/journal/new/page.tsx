@@ -6,6 +6,7 @@ import {
 } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
+import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
 import JournalEntryForm from "@/components/accounting/journal-entry-form";
 
 interface NewJournalEntryPageProps {
@@ -32,13 +33,24 @@ export default async function NewJournalEntryPage({
   const periodsService = makeFiscalPeriodsService();
   const voucherTypesService = makeVoucherTypesService();
   const journalsService = makeJournalsService();
+  // journal-physical-document Phase 7 — load only active rows. Q3 lock: no
+  // direction filter; the dropdown shows all 10 codes regardless of direction.
+  const operationalDocTypeService = makeOperationalDocTypeService();
 
-  const [accounts, periods, voucherTypes] = await Promise.all([
+  const [accounts, periods, voucherTypes, operationalDocTypes] = await Promise.all([
     accountsService.list(orgId),
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     voucherTypesService
       .list(orgId)
       .then((entities) => entities.map((vt) => vt.toSnapshot())),
+    operationalDocTypeService
+      .list(orgId, { isActive: true })
+      .then((entities) =>
+        entities.map((e) => {
+          const s = e.toSnapshot();
+          return { id: s.id, code: s.code, name: s.name };
+        }),
+      ),
   ]);
 
   // Si llega `?duplicateFrom={entryId}`, traemos el entry para pre-llenar el form
@@ -101,6 +113,7 @@ export default async function NewJournalEntryPage({
         accounts={JSON.parse(JSON.stringify(accounts))}
         periods={JSON.parse(JSON.stringify(periods))}
         voucherTypes={JSON.parse(JSON.stringify(voucherTypes))}
+        operationalDocTypes={operationalDocTypes}
         templateEntry={templateEntry}
       />
     </div>

@@ -67,6 +67,12 @@ interface JournalEntryDetailProps {
     sourceType?: string | null;
     createdAt?: string;
     contact?: { name: string } | null;
+    /** journal-physical-document Phase 7 — eager-loaded via journalIncludeLines
+     *  in the Prisma adapter. Renders as `CODE — Name` row when present. */
+    operationalDocType?: { code: string; name: string } | null;
+    /** Surface the raw reference number alongside the doc-type for the
+     *  rendered "Documento físico" row. */
+    referenceNumber?: number | null;
     lines: JournalLine[];
   };
   periodName: string;
@@ -251,6 +257,22 @@ export default function JournalEntryDetail({
               <div>
                 <dt className="text-muted-foreground">Contacto</dt>
                 <dd className="font-medium mt-0.5">{entry.contact.name}</dd>
+              </div>
+            )}
+            {entry.operationalDocType && (
+              <div>
+                <dt className="text-muted-foreground">Documento físico</dt>
+                <dd className="font-medium mt-0.5">
+                  <span className="font-mono mr-1">
+                    {entry.operationalDocType.code}
+                  </span>
+                  — {entry.operationalDocType.name}
+                  {entry.referenceNumber != null && (
+                    <span className="text-muted-foreground ml-1">
+                      Nº {entry.referenceNumber}
+                    </span>
+                  )}
+                </dd>
               </div>
             )}
             {entry.createdAt && (

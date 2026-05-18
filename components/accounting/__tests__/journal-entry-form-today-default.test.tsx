@@ -83,6 +83,7 @@ function renderNewJournalEntryForm() {
       accounts={[BASE_ACCOUNT]}
       periods={[BASE_PERIOD]}
       voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
       editEntry={undefined}
     />,
   );

@@ -45,6 +45,16 @@ function emptyLine(): JournalLineData {
   return { id: nextRowId(), accountId: "", debit: "", credit: "", description: "", contactId: "" };
 }
 
+/** journal-physical-document Phase 7 — operational doc type for the dropdown
+ *  prop. Light shape: only the fields the dropdown needs (id + code + name).
+ *  Loaded via makeOperationalDocTypeService().findAll(orgId, {isActive: true})
+ *  in the new/edit pages. */
+export interface OperationalDocTypeOption {
+  id: string;
+  code: string;
+  name: string;
+}
+
 /** Shape compartido para edit/template — un asiento que pre-llena el form. */
 interface JournalEntryTemplate {
   id?: string;
@@ -54,6 +64,8 @@ interface JournalEntryTemplate {
   periodId: string;
   voucherTypeId: string;
   referenceNumber?: number | null;
+  /** journal-physical-document Phase 7 — pre-fill when editing. */
+  operationalDocTypeId?: string | null;
   lines: Array<{
     accountId: string;
     debit: number | string;
@@ -76,6 +88,10 @@ interface JournalEntryFormProps {
   accounts: Account[];
   periods: FiscalPeriod[];
   voucherTypes: VoucherTypeCfg[];
+  /** Operational doc types active for this org (10 canonical codes + any
+   *  admin-added). Q3 lock: NO direction filter — manual JEs can carry any
+   *  physical doc type. */
+  operationalDocTypes: OperationalDocTypeOption[];
   /** Cuando está seteado, el form está en modo edición (PATCH) y bloquea el voucher type. */
   editEntry?: JournalEntryTemplate & { id: string; number: number };
   /**
@@ -93,6 +109,7 @@ export default function JournalEntryForm({
   accounts,
   periods,
   voucherTypes,
+  operationalDocTypes,
   editEntry,
   templateEntry,
 }: JournalEntryFormProps) {
@@ -120,6 +137,12 @@ export default function JournalEntryForm({
   // El reference number NO se copia en modo template — se asigna uno nuevo.
   const [referenceNumber, setReferenceNumber] = useState<string>(
     editEntry?.referenceNumber?.toString() ?? "",
+  );
+  // journal-physical-document Phase 7 — optional physical doc type FK.
+  // Pre-fills from edit OR template; empty string sentinel for "(ninguno)"
+  // so the Select component renders cleanly without an undefined warning.
+  const [operationalDocTypeId, setOperationalDocTypeId] = useState<string>(
+    initial?.operationalDocTypeId ?? "",
   );
   const [lastReference, setLastReference] = useState<number | null>(null);
   const [nextNumber, setNextNumber] = useState<number | null>(null);
@@ -233,6 +256,7 @@ export default function JournalEntryForm({
         periodId,
         voucherTypeId,
         referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        operationalDocTypeId: operationalDocTypeId || null,
         lines: lines.map((l, idx) => ({
           accountId: l.accountId,
           debit: parseFloat(l.debit) || 0,
@@ -298,6 +322,7 @@ export default function JournalEntryForm({
         periodId,
         voucherTypeId,
         referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
+        operationalDocTypeId: operationalDocTypeId || null,
         lines: lines.map((l, idx) => ({
           accountId: l.accountId,
           debit: parseFloat(l.debit) || 0,
@@ -406,6 +431,35 @@ export default function JournalEntryForm({
                         )}
                       </SelectItem>
                     ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="operational-doc-type">
+                Tipo de documento físico (opcional)
+              </Label>
+              <Select
+                value={operationalDocTypeId || "__none__"}
+                onValueChange={(v) =>
+                  setOperationalDocTypeId(v === "__none__" ? "" : v)
+                }
+              >
+                <SelectTrigger id="operational-doc-type">
+                  <SelectValue placeholder="Sin documento físico" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">
+                    <span className="text-muted-foreground">
+                      (Sin documento físico)
+                    </span>
+                  </SelectItem>
+                  {operationalDocTypes.map((odt) => (
+                    <SelectItem key={odt.id} value={odt.id}>
+                      <span className="font-mono mr-2">{odt.code}</span>
+                      {odt.name}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

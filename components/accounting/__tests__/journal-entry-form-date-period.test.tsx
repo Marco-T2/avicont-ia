@@ -141,6 +141,7 @@ describe("JF-T01 — Auto-derive on mount: new entry with date inside OPEN perio
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -161,6 +162,7 @@ describe("JF-T02 — Date change re-derives period", () => {
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD, MAY_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -184,6 +186,7 @@ describe("JF-T04 — Uncovered date shows warning banner and disables submit", (
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -205,6 +208,7 @@ describe("JF-T04 — Uncovered date shows warning banner and disables submit", (
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -234,6 +238,7 @@ describe("JF-T05 — Covered date after uncovered: warning hidden, hint re-deriv
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -276,6 +281,7 @@ describe("JF-T06 — Edit mode: hint reflects the entry's period on mount", () =
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={editEntry}
       />,
     );
@@ -310,6 +316,7 @@ describe("JF-T07 — Edit mode: date change re-derives period", () => {
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD, MAY_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={editEntry}
       />,
     );
@@ -333,6 +340,7 @@ describe("JF-T08 — Inclusive startDate boundary (REQ-4)", () => {
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -357,6 +365,7 @@ describe("JF-T09 — Inclusive endDate boundary (REQ-4)", () => {
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_PERIOD]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
@@ -383,6 +392,7 @@ describe("JF-T10 — CLOSED period covering the date: red hint + submit disabled
         accounts={[BASE_ACCOUNT]}
         periods={[APRIL_CLOSED]}
         voucherTypes={[BASE_VOUCHER_TYPE]}
+            operationalDocTypes={[]}
         editEntry={undefined}
       />,
     );
