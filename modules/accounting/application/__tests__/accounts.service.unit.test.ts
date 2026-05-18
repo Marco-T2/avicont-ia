@@ -270,6 +270,50 @@ describe("AccountsService", () => {
         service.update("org-1", "root-1", { subtype: "ACTIVO_CORRIENTE" as never }),
       ).rejects.toThrow(ValidationError);
     });
+
+    // ── isContraAccount flip guard (debt #3, ex-TODO(v2)) ────────────────────
+
+    it("happy: flip isContraAccount false→true sin movements → auto-derive nature ACTIVO→ACREEDORA, pass nature al repo", async () => {
+      const account = makeAccount({ id: "acc-3", level: 3, type: "ACTIVO", nature: "DEUDORA", isContraAccount: false });
+      const updated = makeAccount({ id: "acc-3", isContraAccount: true, nature: "ACREEDORA" });
+      vi.mocked(repo.findById).mockResolvedValueOnce(account);
+      vi.mocked(repo.countJournalLines).mockResolvedValueOnce(0);
+      vi.mocked(repo.update).mockResolvedValueOnce(updated);
+      const result = await service.update("org-1", "acc-3", { isContraAccount: true });
+      expect(result).toBe(updated);
+      expect(repo.countJournalLines).toHaveBeenCalledWith("org-1", "acc-3");
+      expect(repo.update).toHaveBeenCalledWith("org-1", "acc-3", { isContraAccount: true, nature: "ACREEDORA" });
+    });
+
+    it("error: flip isContraAccount con movimientos > 0 → ValidationError (no flip permitido si hay historial)", async () => {
+      const account = makeAccount({ id: "acc-3", level: 3, type: "ACTIVO", isContraAccount: false });
+      vi.mocked(repo.findById).mockResolvedValueOnce(account);
+      vi.mocked(repo.countJournalLines).mockResolvedValueOnce(5);
+      await expect(
+        service.update("org-1", "acc-3", { isContraAccount: true }),
+      ).rejects.toThrow(ValidationError);
+      expect(repo.update).not.toHaveBeenCalled();
+    });
+
+    it("regression: update sin isContraAccount → no llama countJournalLines, no pasa nature al repo", async () => {
+      const account = makeAccount({ id: "acc-3", level: 3 });
+      const updated = makeAccount({ id: "acc-3", description: "Nueva desc" });
+      vi.mocked(repo.findById).mockResolvedValueOnce(account);
+      vi.mocked(repo.update).mockResolvedValueOnce(updated);
+      await service.update("org-1", "acc-3", { description: "Nueva desc" });
+      expect(repo.countJournalLines).not.toHaveBeenCalled();
+      expect(repo.update).toHaveBeenCalledWith("org-1", "acc-3", { description: "Nueva desc" });
+    });
+
+    it("regression: isContraAccount no-op (mismo valor que actual) → no llama countJournalLines, no pasa nature al repo", async () => {
+      const account = makeAccount({ id: "acc-3", level: 3, isContraAccount: true, nature: "ACREEDORA" });
+      const updated = makeAccount({ id: "acc-3", isContraAccount: true });
+      vi.mocked(repo.findById).mockResolvedValueOnce(account);
+      vi.mocked(repo.update).mockResolvedValueOnce(updated);
+      await service.update("org-1", "acc-3", { isContraAccount: true });
+      expect(repo.countJournalLines).not.toHaveBeenCalled();
+      expect(repo.update).toHaveBeenCalledWith("org-1", "acc-3", { isContraAccount: true });
+    });
   });
 
   // ── deactivate ────────────────────────────────────────────────────────────
