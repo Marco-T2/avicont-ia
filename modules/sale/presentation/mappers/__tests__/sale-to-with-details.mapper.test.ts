@@ -7,7 +7,6 @@ import { SaleDetail } from "@/modules/sale/domain/sale-detail.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 import {
-  computeDisplayCode,
   toContactSummary,
   toPeriodSummary,
   toReceivableSummary,
@@ -39,20 +38,8 @@ const fakeDecimal = (n: number): Prisma.Decimal =>
   ({ toNumber: () => n }) as unknown as Prisma.Decimal;
 
 describe("sale-to-with-details mappers (smoke)", () => {
-  // ── Test 1: computeDisplayCode happy path ─────────────────────────────────────
-
-  it("computeDisplayCode formats VG-NNN with padStart 3 (mirror legacy getDisplayCode)", () => {
-    expect(computeDisplayCode(1)).toBe("VG-001");
-    expect(computeDisplayCode(42)).toBe("VG-042");
-    expect(computeDisplayCode(999)).toBe("VG-999");
-    expect(computeDisplayCode(1000)).toBe("VG-1000");
-  });
-
-  // ── Test 2: computeDisplayCode null edge (SubQ-d fail-fast) ───────────────────
-
-  it("computeDisplayCode throws when sequenceNumber is null (DRAFT sales SubQ-d fail-fast)", () => {
-    expect(() => computeDisplayCode(null)).toThrow(/sequenceNumber/);
-  });
+  // Tests 1 + 2 (computeDisplayCode happy path + null edge) RETIRED per
+  // REQ-DISPLAY-2 (T4.2): helper wholesale-deleted.
 
   // ── Test 3: toContactSummary passthrough ──────────────────────────────────────
 
@@ -178,9 +165,6 @@ describe("sale-to-with-details mappers (smoke)", () => {
         paymentTermsDays: null,
       },
       period: { id: "p-1", name: "Marzo 2026", status: "OPEN" },
-      // A3-C4a.5 §13.AC-sale-paged: caller-passes-displayCode signature.
-      // Non-DRAFT path = `computeDisplayCode(sale.sequenceNumber)` → "VG-007".
-      displayCode: "VG-007",
     };
     const result = toSaleWithDetails(sale, deps);
     expect(result.id).toBe("s-1");
@@ -188,7 +172,6 @@ describe("sale-to-with-details mappers (smoke)", () => {
     expect(result.status).toBe("POSTED");
     expect(result.sequenceNumber).toBe(7);
     expect(result.totalAmount).toBe(100);
-    expect(result.displayCode).toBe("VG-007");
     expect(result.contact.name).toBe("Cliente Uno");
     expect(result.period.name).toBe("Marzo 2026");
     expect(result.createdById).toBe("u-1");

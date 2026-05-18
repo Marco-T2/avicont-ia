@@ -11,20 +11,16 @@ import type {
  * Smoke type-check para DTO presentation Sale — migrado bit-exact
  * (POC #11.0a A5 β + POC nuevo A3-C7 atomic delete commit ad36da2).
  * Cobertura: import resolution + shape literal compile-time. Paridad shape
- * lockeada (D-A5#5 α displayCode = DTO presentation property, no aggregate hex).
+ * lockeada (D-A5#5 α). `displayCode` retirado per REQ-DISPLAY-2 (T4.2).
  */
 
 describe("sale-with-details DTO (smoke)", () => {
-  it("compiles SaleWithDetails partial literal with displayCode", () => {
-    const sale: Pick<
-      SaleWithDetails,
-      "id" | "totalAmount" | "displayCode"
-    > = {
+  it("compiles SaleWithDetails partial literal core fields", () => {
+    const sale: Pick<SaleWithDetails, "id" | "totalAmount"> = {
       id: "sale-1",
       totalAmount: 100,
-      displayCode: "S-001",
     };
-    expect(sale.displayCode).toBe("S-001");
+    expect(sale.id).toBe("sale-1");
     expect(sale.totalAmount).toBe(100);
   });
 

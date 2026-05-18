@@ -57,11 +57,5 @@ export interface SaleWithDetails extends Omit<Sale, "totalAmount"> {
   };
   details: SaleDetailRow[];
   receivable?: ReceivableSummary | null;
-  /**
-   * Transitional field — retired wholesale in T4.2 (REQ-DISPLAY-2). Optional
-   * here so T2.0 list-page strip can ship without TS errors while T2.4-page
-   * / T4.2 finish the chain.
-   */
-  displayCode?: string;
   ivaSalesBook?: IvaSalesBookDTO | null;
 }
