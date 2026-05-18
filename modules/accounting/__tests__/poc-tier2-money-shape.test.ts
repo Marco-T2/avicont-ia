@@ -27,49 +27,15 @@ import { resolve } from "node:path";
 
 const ROOT = resolve(__dirname, "../../..");
 
-// Block C1 — Sale builder Decimal convergence (S1 L59 exentos, S2 L75
-// ingresoNeto, S3 L76 itAmount). Mirror α13c shape: import + call + absence.
-describe("α-tier2-sale-01 — modules/sale/domain/build-sale-entry-lines.ts Decimal-converged (R-money-tier2)", () => {
-  const SALE_BUILDER = resolve(
-    ROOT,
-    "modules/sale/domain/build-sale-entry-lines.ts",
-  );
+// Block C1 — RETIRED in lcv-feature-retirement (RND 102100000011 — Bolivia
+// SIN replaced LCV with RCV starting December 2021).
+// build-sale-entry-lines.ts no longer performs Decimal arithmetic — the IVA
+// path (exentos/ingresoNeto/itAmount) was the sole roundHalfUp consumer.
+// Post-retirement: pure number pass-through, R-money-tier2 scope moot at C1.
 
-  it("α-tier2-sale-01: imports roundHalfUp from shared/domain/money.utils and calls it (R-money-tier2 DISCHARGED at S1/S2/S3)", () => {
-    const src = readFileSync(SALE_BUILDER, "utf-8");
-    expect(src).toMatch(
-      /^import[^;]+roundHalfUp[^;]+["'][^"']*shared\/domain\/money\.utils["']/m,
-    );
-    expect(src).toMatch(/\broundHalfUp\s*\(/);
-  });
-
-  it("α-tier2-sale-01: NO float Math.round(*100) cents-arithmetic (R-money-tier2 scope)", () => {
-    const src = readFileSync(SALE_BUILDER, "utf-8");
-    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
-  });
-});
-
-// Block C2 — Purchase builder Decimal convergence (P1 L82 exentos, P2 L96
-// gastoNeto). Symmetric to α-tier2-sale-01.
-describe("α-tier2-purchase-01 — modules/purchase/domain/build-purchase-entry-lines.ts Decimal-converged (R-money-tier2)", () => {
-  const PURCHASE_BUILDER = resolve(
-    ROOT,
-    "modules/purchase/domain/build-purchase-entry-lines.ts",
-  );
-
-  it("α-tier2-purchase-01: imports roundHalfUp from shared/domain/money.utils and calls it (R-money-tier2 DISCHARGED at P1/P2)", () => {
-    const src = readFileSync(PURCHASE_BUILDER, "utf-8");
-    expect(src).toMatch(
-      /^import[^;]+roundHalfUp[^;]+["'][^"']*shared\/domain\/money\.utils["']/m,
-    );
-    expect(src).toMatch(/\broundHalfUp\s*\(/);
-  });
-
-  it("α-tier2-purchase-01: NO float Math.round(*100) cents-arithmetic (R-money-tier2 scope)", () => {
-    const src = readFileSync(PURCHASE_BUILDER, "utf-8");
-    expect(src).not.toMatch(/Math\.round\([^\n]*\*\s*100\)/);
-  });
-});
+// Block C2 — RETIRED in lcv-feature-retirement (same rationale as C1).
+// build-purchase-entry-lines.ts IVA path (exentos/gastoNeto) removed.
+// Post-retirement: pure number pass-through, R-money-tier2 scope moot at C2.
 
 // Block C3 — Dispatch domain Decimal convergence (D1 L59 BC lineAmount,
 // D2 L78 ND lineAmount). `roundTotal` (round-total.ts) EXCLUDED per

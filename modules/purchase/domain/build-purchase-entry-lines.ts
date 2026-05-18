@@ -12,12 +12,10 @@
  * IVA path retired in lcv-feature-retirement (RND 102100000011 — Bolivia SIN
  * replaced LCV with RCV starting December 2021).
  *
- * **Money math**: Decimal-internal arithmetic via `decimal.js` `Decimal` +
- * `roundHalfUp` from `modules/accounting/shared/domain/money.utils`.
- * `.toNumber()` at the `EntryLineTemplate.debit/credit: number` boundary
- * (SHAPE-A — number DTO preserved). R-money-tier2 discharged at
- * poc-tier2-money-decimal-convergence C2 GREEN (OLEADA 8 POC #1) — derivative
- * from R-money (OLEADA 7 archive #2452) per [[named_rule_immutability]].
+ * **Money math**: pure number arithmetic at the
+ * `EntryLineTemplate.debit/credit: number` boundary (SHAPE-A — number DTO
+ * preserved). IVA path with Decimal-internal arithmetic (roundHalfUp,
+ * exentos/gastoNeto) retired in lcv-feature-retirement.
  */
 
 import type { PurchaseType } from "./purchase.entity";
