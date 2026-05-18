@@ -159,14 +159,14 @@ describe("journal-entry-form — operational doc type dropdown (Phase 7)", () =>
           number: 1,
           date: "2026-05-15",
           description: "edit me",
-          periodId: PERIOD.id,
-          voucherTypeId: VOUCHER.id,
+          periodId: "period-1",
+          voucherTypeId: "vt-1",
           referenceNumber: 42,
           operationalDocTypeId: "odt-vg",
           lines: [
             { accountId: "acc-1", debit: 100, credit: 0 },
             { accountId: "acc-1", debit: 0, credit: 100 },
-          ],
+          ] as never,
         }}
       />,
     );
@@ -212,13 +212,13 @@ describe("journal-entry-form — operational doc type dropdown (Phase 7)", () =>
           number: 1,
           date: "2026-05-15",
           description: "ok",
-          periodId: PERIOD.id,
-          voucherTypeId: VOUCHER.id,
+          periodId: "period-1",
+          voucherTypeId: "vt-1",
           referenceNumber: null,
           operationalDocTypeId: null,
           lines: [
-            { accountId: ACCOUNT.id, debit: 100, credit: 0 },
-            { accountId: ACCOUNT.id, debit: 0, credit: 100 },
+            { accountId: "acc-1", debit: 100, credit: 0 },
+            { accountId: "acc-1", debit: 0, credit: 100 },
           ],
         }}
       />,

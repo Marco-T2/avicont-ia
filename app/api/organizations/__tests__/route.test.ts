@@ -64,6 +64,15 @@ vi.mock("@/lib/prisma", () => {
       findMany: vi.fn().mockResolvedValue([]),
       upsert: vi.fn().mockResolvedValue({ id: "acc-1", code: "1" }),
     },
+    // journal-physical-document Phase 2 (Audit F mock hygiene per
+    // [[mock_hygiene_commit_scope]]): syncOrganization now seeds the 10
+    // OperationalDocType rows via OperationalDocTypeSeedPort, which calls
+    // operationalDocType.{findFirst,create}. Without this mock the route
+    // handler hits a 500 on the new seed step.
+    operationalDocType: {
+      findFirst: vi.fn().mockResolvedValue(null),
+      create: vi.fn().mockResolvedValue({ id: "odt-1" }),
+    },
   };
   // $transaction invokes the callback with the same client so mocked methods
   // work identically whether called on `prisma` or on the tx client.
