@@ -84,7 +84,6 @@ export interface DispatchSnapshot {
   dispatchType: DispatchType;
   status: DispatchStatus;
   sequenceNumber: number;
-  displayCode: string;
   date: Date;
   contactId: string;
   periodId: string;
@@ -383,15 +382,12 @@ export class Dispatch {
   }
 
   toSnapshot(): DispatchSnapshot {
-    const prefix = this.props.dispatchType === "NOTA_DESPACHO" ? "ND" : "BC";
-    const displayCode = `${prefix}-${String(this.props.sequenceNumber).padStart(3, "0")}`;
     return {
       id: this.props.id,
       organizationId: this.props.organizationId,
       dispatchType: this.props.dispatchType,
       status: this.props.status,
       sequenceNumber: this.props.sequenceNumber,
-      displayCode,
       date: this.props.date,
       contactId: this.props.contactId,
       periodId: this.props.periodId,
