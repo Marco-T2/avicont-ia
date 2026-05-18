@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Home } from "lucide-react";
+import CreateLotDialog from "@/components/lots/create-lot-dialog";
 import type { LotSnapshot } from "@/modules/lot/presentation/server";
 
 interface LotsPageClientProps {
@@ -36,15 +38,27 @@ export default function LotsPageClient({
   orgSlug,
   lots,
 }: LotsPageClientProps) {
+  const router = useRouter();
+
+  const header = (
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <h1 className="text-3xl font-bold">Mis Lotes</h1>
+        <p className="text-muted-foreground">
+          Lotes de pollos de la organizacion
+        </p>
+      </div>
+      <CreateLotDialog
+        orgSlug={orgSlug}
+        onCreated={() => router.refresh()}
+      />
+    </div>
+  );
+
   if (lots.length === 0) {
     return (
       <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Mis Lotes</h1>
-          <p className="text-muted-foreground">
-            Lotes de pollos de la organizacion
-          </p>
-        </div>
+        {header}
         <Card>
           <CardContent className="py-12">
             <div className="text-center">
@@ -68,12 +82,7 @@ export default function LotsPageClient({
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">Mis Lotes</h1>
-        <p className="text-muted-foreground">
-          Lotes de pollos de la organizacion
-        </p>
-      </div>
+      {header}
 
       <Card>
         <CardContent className="p-0">
