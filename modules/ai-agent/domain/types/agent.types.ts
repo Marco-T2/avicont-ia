@@ -53,14 +53,9 @@ export interface GetLotSummarySuggestion {
   data: { lotId: string };
 }
 
-export interface ListFarmsSuggestion {
-  action: "listFarms";
-  data: Record<string, never>;
-}
-
 export interface ListLotsSuggestion {
   action: "listLots";
-  data: { farmId: string };
+  data: { farmName?: string };
 }
 
 export interface GetTrialBalanceSuggestion {
@@ -122,7 +117,6 @@ export type AgentSuggestion =
   | CreateExpenseSuggestion
   | LogMortalitySuggestion
   | GetLotSummarySuggestion
-  | ListFarmsSuggestion
   | ListLotsSuggestion
   | GetTrialBalanceSuggestion
   | GetAccountLedgerSuggestion

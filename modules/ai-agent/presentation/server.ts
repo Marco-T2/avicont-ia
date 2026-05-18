@@ -29,10 +29,6 @@ import { LegacyRagAdapter } from "../infrastructure/legacy-rag.adapter";
 import { PrismaTagsRepository } from "@/modules/tags/infrastructure/prisma/prisma-tags.repository";
 import { RagService } from "@/features/documents/rag/server";
 import {
-  LocalFarmInquiryAdapter,
-  makeFarmService,
-} from "@/modules/farm/presentation/server";
-import {
   LocalLotInquiryAdapter,
   makeLotService,
 } from "@/modules/lot/presentation/server";
@@ -67,7 +63,6 @@ export function makeAgentService(): AgentService {
   // REQ-43 — LegacyRagAdapter accepts an optional TagsRepositoryPort so
   // searchDocuments tag filters can resolve slugs to tag IDs server-side.
   const rag = new LegacyRagAdapter(new RagService(), new PrismaTagsRepository());
-  const farmInquiry = new LocalFarmInquiryAdapter(makeFarmService());
   const lotInquiry = new LocalLotInquiryAdapter(makeLotService());
   const pricingService = new PricingService();
   const rateLimit = new AgentRateLimitService(rateLimitRepo);
@@ -79,7 +74,6 @@ export function makeAgentService(): AgentService {
     rateLimit,
     accountsLookup,
     rag,
-    farmInquiry,
     lotInquiry,
     pricingService,
   });

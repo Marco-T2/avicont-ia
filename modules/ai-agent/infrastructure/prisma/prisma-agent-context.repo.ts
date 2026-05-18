@@ -1,19 +1,23 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type {
+  ActiveLot,
   AgentContextReaderPort,
-  FarmWithLots,
   RecentExpense,
 } from "../../domain/ports/agent-context-reader.port";
 
 /**
  * PrismaAgentContextRepository — implements AgentContextReaderPort.
- * Renamed from features/ai-agent/agent-context.repository.ts.
+ *
+ * Post retire-farm-collapse-to-lot (D-3, REQ-201): Farm desaparece. Queries
+ * directas a `chickenLot` con `farmName` como texto libre (REQ-200). El
+ * privacy boundary del agente respeta `memberId` directamente sobre el lot
+ * (REQ-201) — sin Farm JOIN.
  *
  * Privacy boundary: `memberId` parameter scopes a `member` socio's view to
- * their own farms / lots / expenses. `admin` and `owner` pass `undefined`
- * and see everything. Without this, leaking other members' data would be
- * trivial via the agent context channel.
+ * their own lots / expenses. `admin` and `owner` pass `undefined` and see
+ * everything. Without this, leaking other members' data would be trivial
+ * via the agent context channel.
  */
 export class PrismaAgentContextRepository
   extends BaseRepository
@@ -30,43 +34,45 @@ export class PrismaAgentContextRepository
     return member?.id ?? null;
   }
 
-  async findFarmsWithActiveLots(
+  async findActiveLotsByMember(
     orgId: string,
     memberId?: string,
-  ): Promise<FarmWithLots[]> {
+  ): Promise<ActiveLot[]> {
     const scope = this.requireOrg(orgId);
 
-    const rows = await this.db.farm.findMany({
-      where: { ...scope, ...(memberId ? { memberId } : {}) },
-      include: {
-        lots: {
-          where: { status: "ACTIVE" },
-          select: {
-            id: true,
-            name: true,
-            barnNumber: true,
-            initialCount: true,
-            startDate: true,
-            status: true,
-          },
-        },
+    const rows = await this.db.chickenLot.findMany({
+      where: {
+        ...scope,
+        status: "ACTIVE",
+        ...(memberId ? { memberId } : {}),
       },
+      select: {
+        id: true,
+        name: true,
+        barnNumber: true,
+        initialCount: true,
+        startDate: true,
+        status: true,
+        farmName: true,
+        memberId: true,
+      },
+      orderBy: { createdAt: "desc" },
     });
 
-    return rows.map((farm) => ({
-      id: farm.id,
-      name: farm.name,
-      lots: farm.lots.map((l) => ({
-        id: l.id,
-        name: l.name,
-        isActive: l.status === "ACTIVE",
-        // Legacy-shaped extras retained on the runtime object via cast —
-        // agent.context.ts (application) reads barnNumber/initialCount.
-        barnNumber: l.barnNumber,
-        initialCount: l.initialCount,
-        startDate: l.startDate,
-        status: l.status,
-      })) as unknown as FarmWithLots["lots"],
+    return rows.map((l) => ({
+      id: l.id,
+      name: l.name,
+      isActive: l.status === "ACTIVE",
+      // farmName / memberId son NULLABLE en Prisma hasta F5-final (additive
+      // migration F1 hizo las columnas nullable; F5-final las hace NOT NULL +
+      // dropea el legacy `farmId`). En la práctica los lots creados post-F2
+      // siempre traen valor — coerción defensiva, removible en F5-final.
+      farmName: l.farmName ?? "",
+      memberId: l.memberId ?? "",
+      barnNumber: l.barnNumber,
+      initialCount: l.initialCount,
+      startDate: l.startDate,
+      status: l.status,
     }));
   }
 
@@ -80,7 +86,9 @@ export class PrismaAgentContextRepository
     const rows = await this.db.expense.findMany({
       where: {
         ...scope,
-        ...(memberId ? { lot: { farm: { memberId } } } : {}),
+        // REQ-201 privacy boundary: filter por `lot.memberId` directo
+        // — Farm JOIN retirado en retire-farm-collapse-to-lot T25.
+        ...(memberId ? { lot: { memberId } } : {}),
       },
       orderBy: { date: "desc" },
       take: limit,

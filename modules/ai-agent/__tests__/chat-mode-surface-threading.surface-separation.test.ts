@@ -42,7 +42,7 @@ function makeChatMemory(): ChatMemoryPort {
 function makeContextReader(): AgentContextReaderPort {
   return {
     findMemberIdByUserId: async () => null,
-    findFarmsWithActiveLots: async () => [],
+    findActiveLotsByMember: async () => [],
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
   };
@@ -86,8 +86,6 @@ describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → 3 too
       contextReader: makeContextReader(),
       rag: makeRag(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      farmInquiry: noopInquiry as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
@@ -113,8 +111,6 @@ describe("SCN-4.2: chat mode no_tools path triggered by surface×role with empty
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      farmInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -142,8 +138,6 @@ describe("SCN-6.1: logStructured agent_invocation includes surface field", () =>
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      farmInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -177,8 +171,6 @@ describe("SCN-6.2: surface appears in telemetry on error path too", () => {
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      farmInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any

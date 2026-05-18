@@ -55,7 +55,7 @@ function makeDeps(captured: { systemPrompt?: string }) {
   };
   const contextReader: AgentContextReaderPort = {
     findMemberIdByUserId: async () => null,
-    findFarmsWithActiveLots: async () => [],
+    findActiveLotsByMember: async () => [],
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
   };
@@ -69,7 +69,6 @@ function makeDeps(captured: { systemPrompt?: string }) {
     chatMemory,
     contextReader,
     rag,
-    farmInquiry: noopInquiry,
     lotInquiry: noopInquiry,
     pricingService: pricingFake,
   };

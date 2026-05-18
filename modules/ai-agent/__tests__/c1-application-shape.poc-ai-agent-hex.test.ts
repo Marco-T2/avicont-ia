@@ -77,7 +77,7 @@ function makeInMemoryChatMemory(): ChatMemoryPort {
 function makeInMemoryAgentContextReader(): AgentContextReaderPort {
   return {
     findMemberIdByUserId: async () => null,
-    findFarmsWithActiveLots: async () => [],
+    findActiveLotsByMember: async () => [],
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
   };

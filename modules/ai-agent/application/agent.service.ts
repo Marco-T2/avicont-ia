@@ -17,7 +17,6 @@ import type { ChatMemoryPort } from "../domain/ports/chat-memory.port";
 import type { AgentContextReaderPort } from "../domain/ports/agent-context-reader.port";
 import type { AccountsLookupPort } from "../domain/ports/accounts-lookup.port";
 import type { RagPort } from "../domain/ports/rag.port";
-import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
 import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 
 import type { AgentRateLimitService } from "./rate-limit.service";
@@ -39,7 +38,6 @@ export interface AgentServiceDeps {
   readonly rateLimit: AgentRateLimitService;
   readonly accountsLookup: AccountsLookupPort;
   readonly rag: RagPort;
-  readonly farmInquiry: FarmInquiryPort;
   readonly lotInquiry: LotInquiryPort;
   readonly pricingService: PricingService;
 }
@@ -99,7 +97,6 @@ export class AgentService {
         chatMemory: this.deps.chatMemory,
         contextReader: this.deps.contextReader,
         rag: this.deps.rag,
-        farmInquiry: this.deps.farmInquiry,
         lotInquiry: this.deps.lotInquiry,
         pricingService: this.deps.pricingService,
       },

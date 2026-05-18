@@ -44,7 +44,7 @@ function makeDeps() {
   };
   const contextReader: AgentContextReaderPort = {
     findMemberIdByUserId: async () => null,
-    findFarmsWithActiveLots: async () => [],
+    findActiveLotsByMember: async () => [],
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
   };
@@ -66,8 +66,6 @@ function makeDeps() {
     rateLimit,
     accountsLookup,
     rag,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    farmInquiry: noopInquiry as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     lotInquiry: noopInquiry as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

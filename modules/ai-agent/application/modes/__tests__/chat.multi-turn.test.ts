@@ -39,7 +39,7 @@ function makeChatMemory(): ChatMemoryPort {
 function makeContextReader(): AgentContextReaderPort {
   return {
     findMemberIdByUserId: async () => null,
-    findFarmsWithActiveLots: async () => [],
+    findActiveLotsByMember: async () => [],
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
   };
@@ -59,8 +59,6 @@ function makeDeps(llmQuery: (args: LLMQuery) => Promise<LLMResponse>) {
     chatMemory: makeChatMemory(),
     contextReader: makeContextReader(),
     rag: makeRag(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    farmInquiry: noopInquiry as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     lotInquiry: noopInquiry as any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

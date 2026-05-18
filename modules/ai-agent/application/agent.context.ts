@@ -89,7 +89,7 @@ export async function buildRagContext(
   }
 }
 
-// ── Socio context: farms, lots, recent expenses ──
+// ── Socio context: lots, recent expenses ──
 
 async function buildSocioContext(
   contextReader: AgentContextReaderPort,
@@ -103,27 +103,32 @@ async function buildSocioContext(
     memberId = id ?? "__no_member__";
   }
 
-  const farms = await contextReader.findFarmsWithActiveLots(orgId, memberId);
+  // Post retire-farm-collapse-to-lot (D-3): port returns flat `ActiveLot[]`
+  // con `farmName` como texto libre. Agrupamos client-side acá para preservar
+  // el rendering "## Granja: X" cuando hay ≥1 farmName distinta.
+  const activeLots = await contextReader.findActiveLotsByMember(orgId, memberId);
   const recentExpenses = await contextReader.findRecentExpenses(orgId, 5, memberId);
 
-  const activeLotCount = farms.reduce((sum, f) => sum + f.lots.length, 0);
+  const groupedByFarm = new Map<string, typeof activeLots>();
+  for (const lot of activeLots) {
+    const key = lot.farmName;
+    const bucket = groupedByFarm.get(key) ?? [];
+    bucket.push(lot);
+    groupedByFarm.set(key, bucket);
+  }
 
   const lines: string[] = [
     "## Datos del Socio",
     "",
-    `Granjas registradas: ${farms.length}`,
-    `Lotes activos: ${activeLotCount}`,
+    `Granjas registradas: ${groupedByFarm.size}`,
+    `Lotes activos: ${activeLots.length}`,
     "",
   ];
 
-  for (const farm of farms) {
-    lines.push(`### Granja: ${farm.name} (ID: ${farm.id})`);
-    if (farm.lots.length === 0) {
-      lines.push("  Sin lotes activos");
-    } else {
-      for (const lot of farm.lots) {
-        lines.push(`  - Lote: ${lot.name} (ID: ${lot.id})`);
-      }
+  for (const [farmName, lots] of groupedByFarm) {
+    lines.push(`### Granja: ${farmName}`);
+    for (const lot of lots) {
+      lines.push(`  - Lote: ${lot.name} (ID: ${lot.id})`);
     }
   }
 

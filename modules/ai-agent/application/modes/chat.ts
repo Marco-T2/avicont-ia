@@ -11,7 +11,6 @@ import type { InvocationOutcome } from "../../domain/agent-utils";
 import type { ChatMemoryPort } from "../../domain/ports/chat-memory.port";
 import type { AgentContextReaderPort } from "../../domain/ports/agent-context-reader.port";
 import type { RagPort } from "../../domain/ports/rag.port";
-import type { FarmInquiryPort } from "@/modules/farm/presentation/server";
 import type { LotInquiryPort } from "@/modules/lot/presentation/server";
 import type { PricingService } from "../pricing/pricing.service";
 import type { Surface } from "../../domain/tools/surfaces/surface.types";
@@ -37,7 +36,6 @@ export interface ChatModeDeps {
   chatMemory: ChatMemoryPort;
   contextReader: AgentContextReaderPort;
   rag: RagPort;
-  farmInquiry: FarmInquiryPort;
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
 }
@@ -104,7 +102,6 @@ export async function executeChatMode(
     chatMemory,
     contextReader,
     rag,
-    farmInquiry,
     lotInquiry,
     pricingService,
   } = deps;
@@ -283,7 +280,7 @@ export async function executeChatMode(
       // LLM call can see the data.
       for (const call of turnToolCalls) {
         const exec = await executeReadTool(
-          { farmInquiry, lotInquiry, pricingService },
+          { lotInquiry, pricingService },
           TOOL_REGISTRY,
           orgId,
           call,
@@ -529,7 +526,6 @@ async function handleWriteCall(
 }
 
 interface ReadCallDeps {
-  farmInquiry: FarmInquiryPort;
   lotInquiry: LotInquiryPort;
   pricingService: PricingService;
 }
@@ -557,7 +553,7 @@ async function executeReadTool(
   call: ToolCall,
   logStructured: LogFn,
 ): Promise<ReadToolResult> {
-  const { farmInquiry, lotInquiry, pricingService } = deps;
+  const { lotInquiry, pricingService } = deps;
   const validation = validateToolInput(registry, call, logStructured);
   if (!validation.ok) {
     return {
