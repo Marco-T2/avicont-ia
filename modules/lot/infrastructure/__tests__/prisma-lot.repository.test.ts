@@ -47,7 +47,6 @@ const buildRow = (override: Record<string, unknown> = {}) => ({
   startDate: new Date("2026-04-01"),
   endDate: null,
   status: "ACTIVE",
-  farmId: "legacy-farm-1",
   farmName: "Pocona",
   memberId: "member-1",
   createdAt: new Date("2026-04-01"),
@@ -197,7 +196,7 @@ describe("PrismaLotRepository (post-collapse)", () => {
   });
 
   describe("save", () => {
-    it("creates with persistence payload (farmName + memberId + legacy farmId sentinel)", async () => {
+    it("creates with persistence payload (farmName + memberId; no legacy farmId post-F5)", async () => {
       const create = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ create }));
 
@@ -212,8 +211,8 @@ describe("PrismaLotRepository (post-collapse)", () => {
       expect(callArg.data.initialCount).toBe(1000);
       expect(callArg.data.farmName).toBe("Pocona");
       expect(callArg.data.memberId).toBe("member-1");
-      // D-1 bridge: legacy farmId column is still written
-      expect(typeof callArg.data.farmId).toBe("string");
+      // Post F5-final: legacy farmId column dropped — payload no lo incluye.
+      expect("farmId" in callArg.data).toBe(false);
     });
   });
 
@@ -294,7 +293,7 @@ describe("PrismaLotRepository (post-collapse)", () => {
   });
 
   describe("update", () => {
-    it("scopes update by id+org with status transition + writes farmName; omits legacy farmId (immutable post-create)", async () => {
+    it("scopes update by id+org with status transition + writes farmName; no legacy farmId (post-F5)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ update }));
       const entity = buildEntity().deactivate(new Date("2026-05-01"));
@@ -303,11 +302,11 @@ describe("PrismaLotRepository (post-collapse)", () => {
 
       const callArg = update.mock.calls[0]?.[0];
       expect(callArg.where).toEqual({ id: entity.id, organizationId: "org-1" });
-      // domain status is "INACTIVE"; mapper translates to Prisma "CLOSED"
-      expect(callArg.data.status).toBe("CLOSED");
+      // Post F5-final: status pass-through 1:1 (no bridge translation).
+      expect(callArg.data.status).toBe("INACTIVE");
       expect(callArg.data.endDate).toBeInstanceOf(Date);
       expect(callArg.data.farmName).toBe("Pocona");
-      // legacy farmId NOT in update payload (immutable post-create)
+      // Post F5-final: farmId column dropped — payload no lo incluye.
       expect("farmId" in callArg.data).toBe(false);
     });
 

@@ -58,8 +58,9 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     expect((lot as unknown as { farmId?: unknown }).farmId).toBeUndefined();
   });
 
-  // α23
-  it("Lot.fromPersistence reconstructs entity preserving id + status=INACTIVE + endDate + farmName + memberId + internal farmId", () => {
+  // α23 — post retire-farm-collapse-to-lot F5-final: legacy farmId column
+  // + _legacyFarmId accessor retirados; LotProps es shape final.
+  it("Lot.fromPersistence reconstructs entity preserving id + status=INACTIVE + endDate + farmName + memberId", () => {
     const props = {
       id: "fixed-lot-id-1",
       name: "Lote Pre",
@@ -68,7 +69,6 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
       startDate: new Date("2026-01-01T00:00:00Z"),
       endDate: new Date("2026-04-01T00:00:00Z"),
       status: "INACTIVE" as const,
-      farmId: "legacy-farm-1",
       farmName: "Pocona",
       memberId: "member-cuid-1",
       organizationId: "org-cuid-1",
@@ -81,7 +81,10 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     expect(lot.endDate).toEqual(new Date("2026-04-01T00:00:00Z"));
     expect(lot.farmName).toBe("Pocona");
     expect(lot.memberId).toBe("member-cuid-1");
-    expect(lot._legacyFarmId).toBe("legacy-farm-1");
+    // Public surface NO `_legacyFarmId` accessor post-F5-final.
+    expect(
+      (lot as unknown as { _legacyFarmId?: unknown })._legacyFarmId,
+    ).toBeUndefined();
   });
 
   // α24

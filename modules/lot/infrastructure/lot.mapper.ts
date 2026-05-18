@@ -4,10 +4,7 @@ import type {
   MortalityLog,
 } from "@/generated/prisma/client";
 import { Lot } from "../domain/lot.entity";
-import {
-  parseLotStatus,
-  type LotStatus,
-} from "../domain/value-objects/lot-status";
+import { parseLotStatus } from "../domain/value-objects/lot-status";
 import type { LotWithRelationsSnapshot } from "../domain/lot.repository";
 
 type ChickenLotWithRelationsRow = ChickenLot & {
@@ -16,27 +13,11 @@ type ChickenLotWithRelationsRow = ChickenLot & {
 };
 
 /**
- * D-1 bridge translation: Prisma `LotStatus` enum still holds the
- * legacy 3-state `ACTIVE | CLOSED | SOLD` until the F5-final
- * destructive migration drops CLOSED + SOLD. The domain VO is
- * already narrowed to binary `ACTIVE | INACTIVE` (REQ-202), so the
- * mapper translates at the boundary:
- *   - read:  CLOSED | SOLD → INACTIVE   (lossy; both collapse)
- *   - write: INACTIVE      → CLOSED     (chosen by convention)
- * The domain VO never sees CLOSED|SOLD; the DB never sees INACTIVE.
+ * Post retire-farm-collapse-to-lot F5-final: el enum Prisma `LotStatus`
+ * está alineado 1:1 con el VO domain (ACTIVE | INACTIVE). La traducción
+ * intermedia y el sentinel `_legacyFarmId` fueron retirados — el mapper
+ * es ahora un pass-through directo.
  */
-function dbToDomainStatus(raw: ChickenLot["status"]): LotStatus {
-  if (raw === "ACTIVE") return "ACTIVE";
-  // CLOSED + SOLD both collapse to INACTIVE per REQ-202 (binary lifecycle)
-  return "INACTIVE";
-}
-
-function domainToDbStatus(s: LotStatus): ChickenLot["status"] {
-  if (s === "ACTIVE") return "ACTIVE";
-  // INACTIVE → CLOSED until F5 drops the legacy SOLD enum value
-  return "CLOSED";
-}
-
 export function toDomain(row: ChickenLot): Lot {
   return Lot.fromPersistence({
     id: row.id,
@@ -45,18 +26,9 @@ export function toDomain(row: ChickenLot): Lot {
     initialCount: row.initialCount,
     startDate: row.startDate,
     endDate: row.endDate,
-    status: parseLotStatus(dbToDomainStatus(row.status)),
-    // D-1 bridge: domain treats farmId as legacy/internal. Carried
-    // through the round-trip so existing rows keep their column
-    // value; new rows get a sentinel from Lot.create.
-    farmId: row.farmId,
-    // REQ-200: farmName is the canonical place label. Until the
-    // destructive backfill in F5, historical rows may have null —
-    // surface as empty string so downstream consumers never branch.
-    farmName: row.farmName ?? "",
-    // REQ-201: memberId is the canonical owner. Historical rows
-    // may have null until F5 backfill; sentinel to empty string.
-    memberId: row.memberId ?? "",
+    status: parseLotStatus(row.status),
+    farmName: row.farmName,
+    memberId: row.memberId,
     organizationId: row.organizationId,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
@@ -72,10 +44,7 @@ export function toPersistence(entity: Lot) {
     initialCount: s.initialCount,
     startDate: s.startDate,
     endDate: s.endDate,
-    status: domainToDbStatus(s.status),
-    // D-1 bridge: write the legacy column from the entity's internal
-    // sentinel (or the original DB value for round-tripped rows).
-    farmId: entity._legacyFarmId,
+    status: s.status,
     farmName: s.farmName,
     memberId: s.memberId,
     organizationId: s.organizationId,

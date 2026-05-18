@@ -50,13 +50,14 @@ const FORBIDDEN_CUID_RE = /\.\s*cuid\s*\([^\n]*\)/;
 const FORBIDDEN_UUID_RE = /\.\s*uuid\s*\([^\n]*\)/;
 
 const TARGETS = [
-  // 7 files migrated in the ZID-1 SDD (were using .cuid()):
+  // 6 files migrated in the ZID-1 SDD (were using .cuid()):
+  // `modules/farm/presentation/validation.ts` dropped in retire-farm-collapse-to-lot
+  // T31 wholesale-delete (modules/farm retired). Sentinel scope shrinks 7→6.
   "modules/accounting/presentation/validation.ts",
   "modules/ai-agent/domain/validation/agent.validation.ts",
   "modules/payment/presentation/validation.ts",
   "modules/expense/presentation/validation.ts",
   "modules/mortality/presentation/mortality.validation.ts",
-  "modules/farm/presentation/validation.ts",
   "modules/lot/presentation/validation.ts",
   // 2 paired-sister precedent files (already aligned pre-SDD — included
   // here so the sentinel guards against REGRESSION, not just migration):

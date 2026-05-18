@@ -5,19 +5,6 @@ import {
   LotCannotUpdateInactive,
 } from "./errors/lot-errors";
 
-/**
- * Sentinel value persisted into the legacy `chicken_lots.farmId`
- * column for rows created post-collapse. The Prisma schema still
- * carries `farmId String` (NOT NULL FK) until the F5-final
- * destructive migration drops the column entirely. New domain code
- * does not reason about farmId — the mapper writes this sentinel
- * for compatibility only. Existing rows keep their historical
- * farmId; new rows would fail the FK constraint at runtime, which
- * is fine because the UI/API write paths land after F5 wholesale
- * delete drops the column.
- */
-const LEGACY_FARM_ID_SENTINEL = "__retired_farm__" as const;
-
 export interface LotProps {
   id: string;
   name: string;
@@ -26,12 +13,6 @@ export interface LotProps {
   startDate: Date;
   endDate: Date | null;
   status: LotStatus;
-  /**
-   * D-1 bridge: legacy FK to retired Farm table. Internal-only;
-   * mapper-visible; NOT exposed via getter or LotSnapshot. Removed
-   * entirely in F5-final destructive migration.
-   */
-  farmId: string;
   farmName: string;
   memberId: string;
   organizationId: string;
@@ -90,7 +71,6 @@ export class Lot {
       startDate: input.startDate,
       endDate: null,
       status: "ACTIVE",
-      farmId: LEGACY_FARM_ID_SENTINEL,
       farmName: input.farmName,
       memberId: input.memberId,
       organizationId: input.organizationId,
@@ -117,14 +97,6 @@ export class Lot {
   get updatedAt(): Date { return this.props.updatedAt; }
 
   /**
-   * Internal accessor for the legacy Prisma `farmId` column. Used
-   * only by the lot.mapper to write the persistence payload (the
-   * Prisma schema still requires the column until F5). NOT part of
-   * the public domain surface — UI/API/AI agent must not read it.
-   */
-  get _legacyFarmId(): string { return this.props.farmId; }
-
-  /**
    * Transitions an ACTIVE lot to INACTIVE with the given endDate.
    * Replaces the legacy `close(endDate)` API; the rename aligns with
    * the user-language verb "desactivar" (REQ-203, D-4 step 2/3).
@@ -144,11 +116,10 @@ export class Lot {
   /**
    * Returns a new Lot with updated `name`, `barnNumber`, and/or
    * `farmName`. Other fields (id, initialCount, status, memberId,
-   * organizationId, createdAt, plus the internal _legacyFarmId) are
-   * immutable post-creation (INV-04). `updatedAt` advances on every
-   * call. Throws LotCannotUpdateInactive when the lot is not ACTIVE
-   * (INACTIVE lots are historical snapshots). Spec REQ-100, INV-04
-   * (farmName mutable).
+   * organizationId, createdAt) are immutable post-creation (INV-04).
+   * `updatedAt` advances on every call. Throws LotCannotUpdateInactive
+   * when the lot is not ACTIVE (INACTIVE lots are historical snapshots).
+   * Spec REQ-100, INV-04 (farmName mutable).
    */
   update(input: UpdateLotInput): Lot {
     if (this.props.status !== "ACTIVE") {

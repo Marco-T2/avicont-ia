@@ -18,7 +18,6 @@ model Organization {
   createdAt   DateTime @db.Timestamptz(3) @default(now())
   members        OrganizationMember[]
   documents      Document[]
-  farms          Farm[]
   chickenLots    ChickenLot[]
   expenses       Expense[]
   mortalityLogs  MortalityLog[]
@@ -76,7 +75,6 @@ model OrganizationMember {
   deactivatedAt  DateTime? @db.Timestamptz(3)
   organization   Organization @relation(fields: [organizationId], references: [id])
   user           User         @relation(fields: [userId], references: [id])
-  farms          Farm[]
   chickenLots    ChickenLot[]
 
   @@unique([organizationId, userId])
@@ -180,8 +178,7 @@ model AgentRateLimit {
 
 enum LotStatus {
   ACTIVE
-  CLOSED
-  SOLD
+  INACTIVE
 }
 
 enum ExpenseCategory {
@@ -196,22 +193,10 @@ enum ExpenseCategory {
   OTROS
 }
 
-model Farm {
-  id             String   @id @default(cuid())
-  name           String
-  location       String?
-  organizationId String
-  memberId       String
-  createdAt      DateTime @db.Timestamptz(3) @default(now())
-  updatedAt      DateTime @db.Timestamptz(3) @updatedAt
-  organization   Organization       @relation(fields: [organizationId], references: [id])
-  member         OrganizationMember @relation(fields: [memberId], references: [id])
-  lots           ChickenLot[]
-
-  @@index([organizationId])
-  @@index([memberId])
-  @@map("farms")
-}
+// Farm model retired in SDD retire-farm-collapse-to-lot F5-final (T31).
+// Capabilities absorbed into ChickenLot: name → farmName (text, REQ-200);
+// member ownership → memberId (FK, REQ-201). DocumentScope.FARM + permission
+// resource "farms" preserved as symbolic-historic per D-10.
 
 model ChickenLot {
   id             String    @id @default(cuid())
@@ -221,20 +206,20 @@ model ChickenLot {
   startDate      DateTime @db.Timestamptz(3)
   endDate        DateTime? @db.Timestamptz(3)
   status         LotStatus @default(ACTIVE)
-  farmId         String
-  farmName       String?
-  memberId       String?
+  // Post retire-farm-collapse-to-lot F5-final: farmName + memberId are
+  // NOT NULL (REQ-200, REQ-201). Legacy `farmId` FK column dropped along
+  // with the Farm model.
+  farmName       String
+  memberId       String
   organizationId String
   createdAt      DateTime  @db.Timestamptz(3) @default(now())
   updatedAt      DateTime  @db.Timestamptz(3) @updatedAt
-  farm           Farm             @relation(fields: [farmId], references: [id])
-  member         OrganizationMember? @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  member         OrganizationMember @relation(fields: [memberId], references: [id], onDelete: Restrict)
   organization   Organization     @relation(fields: [organizationId], references: [id])
   expenses       Expense[]
   mortalityLogs  MortalityLog[]
 
   @@index([organizationId])
-  @@index([farmId])
   @@index([memberId])
   @@map("chicken_lots")
 }

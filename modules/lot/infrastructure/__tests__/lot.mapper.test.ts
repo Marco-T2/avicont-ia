@@ -16,7 +16,6 @@ const row = (override: Partial<ChickenLot> = {}): ChickenLot => ({
   startDate: new Date("2026-04-01"),
   endDate: null,
   status: "ACTIVE",
-  farmId: "legacy-farm-1",
   farmName: "Pocona",
   memberId: "member-1",
   createdAt: new Date("2026-04-01"),
@@ -24,38 +23,37 @@ const row = (override: Partial<ChickenLot> = {}): ChickenLot => ({
   ...override,
 });
 
-describe("lot mapper (post-collapse REQ-200/201)", () => {
+describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
   describe("toDomain()", () => {
-    it("hydrates a Lot with farmName + memberId; legacy farmId preserved internally", () => {
+    it("hydrates a Lot with farmName + memberId; no legacy farmId surface", () => {
       const l = toDomain(row());
       expect(l).toBeInstanceOf(Lot);
       expect(l.id).toBe("lot-1");
       expect(l.name).toBe("Lote A");
       expect(l.farmName).toBe("Pocona");
       expect(l.memberId).toBe("member-1");
-      expect(l._legacyFarmId).toBe("legacy-farm-1");
+      // Post-F5-final: legacy `_legacyFarmId` accessor + `farmId` column dropped.
+      expect(
+        (l as unknown as { _legacyFarmId?: unknown })._legacyFarmId,
+      ).toBeUndefined();
     });
 
-    it("translates Prisma CLOSED|SOLD enum → domain INACTIVE (additive D-1 bridge)", () => {
+    it("preserves Prisma status enum 1:1 (ACTIVE | INACTIVE)", () => {
       const active = toDomain(row({ status: "ACTIVE" }));
-      const closed = toDomain(
-        row({ status: "CLOSED", endDate: new Date("2026-05-01") }),
-      );
-      const sold = toDomain(
-        row({ status: "SOLD", endDate: new Date("2026-05-02") }),
+      const inactive = toDomain(
+        row({ status: "INACTIVE", endDate: new Date("2026-05-01") }),
       );
       expect(active.status).toBe("ACTIVE");
-      expect(closed.status).toBe("INACTIVE");
-      expect(sold.status).toBe("INACTIVE");
+      expect(inactive.status).toBe("INACTIVE");
     });
 
     it("preserves endDate null vs Date", () => {
       const active = toDomain(row({ endDate: null }));
-      const closed = toDomain(
-        row({ status: "CLOSED", endDate: new Date("2026-05-01") }),
+      const inactive = toDomain(
+        row({ status: "INACTIVE", endDate: new Date("2026-05-01") }),
       );
       expect(active.endDate).toBeNull();
-      expect(closed.endDate).toBeInstanceOf(Date);
+      expect(inactive.endDate).toBeInstanceOf(Date);
     });
 
     it("preserves barnNumber+initialCount integer values", () => {
@@ -63,16 +61,10 @@ describe("lot mapper (post-collapse REQ-200/201)", () => {
       expect(l.barnNumber).toBe(7);
       expect(l.initialCount).toBe(5000);
     });
-
-    it("hydrates farmName/memberId from null (legacy rows) to empty string sentinel", () => {
-      const l = toDomain(row({ farmName: null, memberId: null }));
-      expect(l.farmName).toBe("");
-      expect(l.memberId).toBe("");
-    });
   });
 
   describe("toPersistence()", () => {
-    it("returns a ChickenLot Prisma payload with farmName + memberId + legacy farmId sentinel", () => {
+    it("returns a ChickenLot Prisma payload with farmName + memberId; no legacy farmId field", () => {
       const entity = Lot.create({
         organizationId: "org-1",
         name: "Lote A",
@@ -89,12 +81,11 @@ describe("lot mapper (post-collapse REQ-200/201)", () => {
       expect(data.initialCount).toBe(1000);
       expect(data.farmName).toBe("Pocona");
       expect(data.memberId).toBe("member-1");
-      // D-1 bridge: legacy farmId sentinel for new rows
-      expect(typeof data.farmId).toBe("string");
-      expect(data.farmId.length).toBeGreaterThan(0);
+      // Post-F5-final: legacy `farmId` column dropped — payload no lo incluye.
+      expect("farmId" in data).toBe(false);
     });
 
-    it("translates domain INACTIVE → Prisma CLOSED (additive D-1 bridge); ACTIVE pass-through", () => {
+    it("status pass-through 1:1 (ACTIVE | INACTIVE)", () => {
       const entity = Lot.create({
         organizationId: "org-1",
         name: "Lote A",
@@ -106,9 +97,7 @@ describe("lot mapper (post-collapse REQ-200/201)", () => {
       });
       expect(toPersistence(entity).status).toBe("ACTIVE");
       const inactive = entity.deactivate(new Date("2026-05-01"));
-      // domain INACTIVE → Prisma CLOSED (Prisma enum still has CLOSED until F5
-      // destructive migration — translation lossy but contract-preserving)
-      expect(toPersistence(inactive).status).toBe("CLOSED");
+      expect(toPersistence(inactive).status).toBe("INACTIVE");
     });
 
     it("preserves endDate null when ACTIVE", () => {
@@ -142,7 +131,7 @@ describe("lot mapper (post-collapse REQ-200/201)", () => {
   });
 
   describe("roundtrip", () => {
-    it("toPersistence(toDomain(row)) yields equivalent payload for ACTIVE (farmName + memberId + legacy farmId)", () => {
+    it("toPersistence(toDomain(row)) yields equivalent payload for ACTIVE (farmName + memberId)", () => {
       const original = row();
       const entity = toDomain(original);
       const data = toPersistence(entity);
@@ -153,16 +142,14 @@ describe("lot mapper (post-collapse REQ-200/201)", () => {
       expect(data.status).toBe(original.status);
       expect(data.farmName).toBe(original.farmName);
       expect(data.memberId).toBe(original.memberId);
-      expect(data.farmId).toBe(original.farmId);
       expect(data.startDate.getTime()).toBe(original.startDate.getTime());
     });
 
-    it("CLOSED roundtrip stays CLOSED (lossless for CLOSED-origin rows; SOLD→CLOSED is lossy by design)", () => {
-      const original = row({ status: "CLOSED" });
+    it("INACTIVE roundtrip stays INACTIVE (1:1 enum mapping)", () => {
+      const original = row({ status: "INACTIVE" });
       const entity = toDomain(original);
       const data = toPersistence(entity);
-      // domain narrowed CLOSED → INACTIVE → CLOSED; round-trip preserved for CLOSED-origin
-      expect(data.status).toBe("CLOSED");
+      expect(data.status).toBe("INACTIVE");
     });
   });
 

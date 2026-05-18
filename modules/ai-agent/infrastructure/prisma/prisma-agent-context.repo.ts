@@ -63,12 +63,8 @@ export class PrismaAgentContextRepository
       id: l.id,
       name: l.name,
       isActive: l.status === "ACTIVE",
-      // farmName / memberId son NULLABLE en Prisma hasta F5-final (additive
-      // migration F1 hizo las columnas nullable; F5-final las hace NOT NULL +
-      // dropea el legacy `farmId`). En la práctica los lots creados post-F2
-      // siempre traen valor — coerción defensiva, removible en F5-final.
-      farmName: l.farmName ?? "",
-      memberId: l.memberId ?? "",
+      farmName: l.farmName,
+      memberId: l.memberId,
       barnNumber: l.barnNumber,
       initialCount: l.initialCount,
       startDate: l.startDate,

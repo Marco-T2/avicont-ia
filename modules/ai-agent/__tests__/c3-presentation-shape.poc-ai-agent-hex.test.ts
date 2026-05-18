@@ -50,7 +50,7 @@ vi.mock("@/lib/prisma", () => ({
   prisma: {} as unknown,
 }));
 
-// Mock @/modules/farm/presentation/server + lot equivalent. Empirical addition:
+// Mock @/modules/lot/presentation/server. Empirical addition:
 // SDD plan (#2630/#2631) chose F2 alone (@/lib/prisma only), based on the
 // assumption that farm/lot composition roots' lazy Prisma init was sufficient.
 // EMPIRICAL FAILURE: even with @/lib/prisma mocked, full-suite c3 timed out at
@@ -63,11 +63,9 @@ vi.mock("@/lib/prisma", () => ({
 // boundary mock (regression sentinel for F2 component).
 // Shape-only test (c3 NEVER invokes makeAgentService) → empty class stubs
 // suffice. Minimum surface: only the 2 symbols ai-agent's presentation/server
-// imports (`LocalFarmInquiryAdapter`, `makeFarmService` + lot equivalents).
-vi.mock("@/modules/farm/presentation/server", () => ({
-  LocalFarmInquiryAdapter: class {},
-  makeFarmService: () => ({}),
-}));
+// imports (`LocalLotInquiryAdapter`, `makeLotService`). Post retire-farm-
+// collapse-to-lot T26+T31: `@/modules/farm/presentation/server` mock dropped
+// (presentation/server no longer imports anything from modules/farm).
 vi.mock("@/modules/lot/presentation/server", () => ({
   LocalLotInquiryAdapter: class {},
   makeLotService: () => ({}),
