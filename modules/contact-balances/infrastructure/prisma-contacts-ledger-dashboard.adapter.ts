@@ -46,9 +46,10 @@ type DbClient = Pick<PrismaClient, "contact" | "journalLine">;
  * sort key `openBalance` is computed (not a column on contacts), and
  * `lastMovementDate` derives from a related table.
  *
- * TODO (perf): `JournalLine.contactId` lacks an explicit (organizationId,
- * contactId) index (organizationId lives on JournalEntry, not JournalLine).
- * Para large datasets considerar índice compuesto via futura migration.
+ * PERF: `JournalLine.contactId` has a single-column index. A compound
+ * (organizationId, contactId) index would require denormalizing
+ * organizationId onto JournalLine first (it lives on JournalEntry) —
+ * deferred until multi-tenant scale demands it.
  */
 export class PrismaContactsLedgerDashboardAdapter
   implements ContactsLedgerDashboardPort

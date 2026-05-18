@@ -409,6 +409,7 @@ model JournalLine {
 
   @@index([journalEntryId])
   @@index([accountId])
+  @@index([contactId])
   @@map("journal_lines")
 }
 
