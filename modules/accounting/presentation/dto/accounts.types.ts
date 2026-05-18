@@ -60,12 +60,14 @@ export interface UpdateAccountInput {
   description?: string;
   /** Subtipo de cuenta. Permite corregir el subtipo de una cuenta existente. */
   subtype?: AccountSubtype;
-  /**
-   * Forward compatibility field for isContraAccount on update.
-   * TODO(v2): reject isContraAccount flip without simultaneous nature update.
-   * In v1 this field is accepted by the repo but no guard is enforced here.
-   */
   isContraAccount?: boolean;
+  /**
+   * INTERNAL — populated by `AccountsService.update` when `isContraAccount`
+   * flips, so the repo persists the derived nature atomically in the same
+   * UPDATE. NOT accepted from the HTTP layer (Zod `updateAccountSchema`
+   * strips it). External callers MUST NOT set this field.
+   */
+  nature?: AccountNature;
 }
 
 // ── Composite types ──

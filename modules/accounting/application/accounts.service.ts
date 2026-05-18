@@ -237,6 +237,26 @@ export class AccountsService {
       });
     }
 
+    // isContraAccount flip guard: cambia el signo contable de la cuenta — si
+    // ya tiene movimientos, flippearla retroactivamente distorsiona el
+    // histórico (mismo razonamiento que `deactivate`). Sin movimientos, el
+    // service deriva `nature` y la persiste atomic en el mismo UPDATE para
+    // preservar el invariant `nature ↔ isContraAccount` (deriveNature SSoT).
+    if (
+      input.isContraAccount !== undefined &&
+      input.isContraAccount !== account.isContraAccount
+    ) {
+      const movementCount = await this.repo.countJournalLines(organizationId, id);
+      if (movementCount > 0) {
+        throw new ValidationError(
+          `No se puede cambiar el flag de contra-cuenta: la cuenta tiene ${movementCount} movimiento(s) registrado(s)`,
+          INVALID_ACCOUNT_NATURE,
+        );
+      }
+      const nature = deriveNature(account.type, input.isContraAccount);
+      return this.repo.update(organizationId, id, { ...input, nature });
+    }
+
     return this.repo.update(organizationId, id, input);
   }
 

@@ -221,8 +221,8 @@ export class PrismaAccountsRepo implements AccountsCrudPort {
         ...(data.requiresContact !== undefined && { requiresContact: data.requiresContact }),
         ...(data.description !== undefined && { description: data.description }),
         ...(data.subtype !== undefined && { subtype: data.subtype }),
-        // TODO(v2): reject isContraAccount flip without simultaneous nature update
         ...(data.isContraAccount !== undefined && { isContraAccount: data.isContraAccount }),
+        ...(data.nature !== undefined && { nature: data.nature }),
       },
     });
   }
