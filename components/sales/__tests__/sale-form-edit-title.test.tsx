@@ -1,0 +1,130 @@
+/**
+ * T2.4-form — REQ-DISPLAY-1: SaleForm edit-mode title renders
+ *   `Venta General #${sequenceNumber} — ${contact.name}` (Q4 format).
+ *
+ * RED expected failure mode (declared per [[red_acceptance_failure_mode]]):
+ *   - title text MUST NOT match `/[A-Z]{1,3}-\d{3,4}/`; today header at
+ *     L541 uses `${sale!.displayCode} — Venta General` (e.g. "VG-001 —
+ *     Venta General").
+ *   - title text MUST contain literal `Venta General #5 — Cliente SA`
+ *     for the fixture with sequenceNumber=5 + contact "Cliente SA".
+ *
+ * GREEN: in sale-form.tsx:540-542 replace template with
+ *   `Venta General #${sale.sequenceNumber} — ${sale.contact.name}`.
+ */
+import { render, screen, cleanup } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import SaleForm from "../sale-form";
+
+afterEach(() => cleanup());
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
+vi.mock("@/components/common/use-org-role", () => ({
+  useOrgRole: () => ({ role: "admin" }),
+}));
+vi.mock("sonner", () => ({
+  toast: { success: vi.fn(), error: vi.fn() },
+}));
+vi.mock("@/components/iva-books/iva-book-sale-modal", () => ({
+  IvaBookSaleModal: () => null,
+}));
+
+const BASE_CONTACT = {
+  id: "contact-1",
+  name: "Cliente SA",
+  type: "CLIENTE" as const,
+  nit: "12345",
+  paymentTermsDays: 30,
+  organizationId: "org-1",
+  createdAt: new Date(),
+  updatedAt: new Date(),
+  email: null,
+  phone: null,
+  address: null,
+  creditLimit: null,
+  isActive: true,
+};
+
+const BASE_PERIOD = {
+  id: "period-1",
+  name: "Enero 2026",
+  startDate: new Date("2026-01-01"),
+  endDate: new Date("2026-01-31"),
+  status: "OPEN" as const,
+  organizationId: "org-1",
+  year: 2026,
+  createdById: "user-1",
+  month: 4,
+  closedAt: null,
+  closedBy: null,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};
+
+const INCOME_ACCOUNT = { id: "acc-1", code: "4.1.1", name: "Ventas" };
+
+const PROHIBITED = /[A-Z]{1,3}-\d{3,4}/;
+
+function makeSale(overrides: Record<string, unknown> = {}) {
+  return {
+    id: "sale-1",
+    organizationId: "org-1",
+    periodId: "period-1",
+    contactId: "contact-1",
+    sequenceNumber: 5,
+    date: new Date("2026-01-15"),
+    status: "POSTED" as string,
+    totalAmount: 100,
+    description: "Test",
+    referenceNumber: null,
+    notes: null,
+    createdById: "user-1",
+    updatedById: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    journalEntryId: null,
+    ivaSalesBook: null,
+    contact: BASE_CONTACT,
+    period: { id: "period-1", name: "Enero 2026", status: "OPEN" as string },
+    details: [
+      {
+        id: "det-1",
+        saleId: "sale-1",
+        description: "Servicio",
+        incomeAccountId: "acc-1",
+        lineAmount: 100,
+        quantity: 1,
+        unitPrice: 100,
+        order: 0,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ],
+    receivable: null,
+    ...overrides,
+  };
+}
+
+describe("T2.4-form — SaleForm edit title (REQ-DISPLAY-1)", () => {
+  it("renders 'Venta General #${sequenceNumber} — ${contact.name}' (Q4)", () => {
+    render(
+      <SaleForm
+        orgSlug="test-org"
+        contacts={[BASE_CONTACT]}
+        periods={[BASE_PERIOD]}
+        incomeAccounts={[INCOME_ACCOUNT]}
+        sale={makeSale() as never}
+        mode="edit"
+      />,
+    );
+    // Locate the card title — sale-form wraps it in <CardTitle> (data-slot)
+    // not <hN>. Match by literal substring across the body, then assert no
+    // legacy prefix-pattern leaks.
+    expect(screen.getByText(/Venta General #5 — Cliente SA/)).toBeInTheDocument();
+    const body = document.body.textContent ?? "";
+    expect(body).not.toMatch(PROHIBITED);
+  });
+});

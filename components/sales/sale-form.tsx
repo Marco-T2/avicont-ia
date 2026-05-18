@@ -537,8 +537,12 @@ export default function SaleForm({
   }
 
   const backHref = `/${orgSlug}/dispatches`;
+  // Q4 (REQ-DISPLAY-1): "Venta General #${sequenceNumber} — ${contact.name}"
+  // — humano, ya disponible. Sales son fixed-type ("Venta General") así que
+  // no se necesita voucherTypeName prop. Defensive fallback `#?` cubre el
+  // edge case sequenceNumber=null (DRAFT no debería entrar en edit mode).
   const headerTitle = isEditMode
-    ? `${sale!.displayCode} — Venta General`
+    ? `Venta General #${sale!.sequenceNumber ?? "?"} — ${sale!.contact.name}`
     : "Nueva Venta General";
 
   // ── Render ──
