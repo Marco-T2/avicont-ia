@@ -43,7 +43,13 @@ export default async function FarmDetailPage({ params }: FarmDetailPageProps) {
   const expensesService = makeExpenseService();
   const mortalityService = makeMortalityService();
 
-  const lotEntities = await lotsService.listByFarm(orgId, farmId);
+  // Post-collapse REQ-200: the farmId FK is retired; UI filtering by
+  // farm is purely client-side via `farmName` (REQ-205). This page
+  // is itself retired in F4 T22 — until then we list all org lots
+  // and filter to the legacy `farmId` column at the row level via
+  // the entity's internal `_legacyFarmId` accessor.
+  const allLotEntities = await lotsService.list(orgId);
+  const lotEntities = allLotEntities.filter((l) => l._legacyFarmId === farmId);
   const lotSnapshots = lotEntities.map((l) => l.toSnapshot());
 
   const [lotsWithSummaryRaw, allExpenses, allMortality] = await Promise.all([

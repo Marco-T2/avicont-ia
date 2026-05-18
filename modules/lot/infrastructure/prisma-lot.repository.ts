@@ -47,14 +47,6 @@ export class PrismaLotRepository implements LotRepository {
     return row ? toDomain(row) : null;
   }
 
-  async findByFarm(organizationId: string, farmId: string): Promise<Lot[]> {
-    const rows = await this.db.chickenLot.findMany({
-      where: { organizationId, farmId },
-      orderBy: { createdAt: "desc" },
-    });
-    return rows.map(toDomain);
-  }
-
   async findByIdWithRelations(
     organizationId: string,
     id: string,

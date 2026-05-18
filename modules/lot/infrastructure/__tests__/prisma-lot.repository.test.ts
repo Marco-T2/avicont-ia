@@ -127,20 +127,6 @@ describe("PrismaLotRepository (post-collapse)", () => {
     });
   });
 
-  describe("findByFarm (legacy D-1 bridge, dropped in C4)", () => {
-    it("scopes by legacy farmId+organizationId and orders by createdAt desc", async () => {
-      const findMany = vi.fn().mockResolvedValueOnce([buildRow()]);
-      const repo = new PrismaLotRepository(dbWith({ findMany }));
-
-      await repo.findByFarm("org-1", "legacy-farm-1");
-
-      expect(findMany).toHaveBeenCalledWith({
-        where: { organizationId: "org-1", farmId: "legacy-farm-1" },
-        orderBy: { createdAt: "desc" },
-      });
-    });
-  });
-
   describe("findByIdWithRelations", () => {
     it("returns null when no row found", async () => {
       const findFirst = vi.fn().mockResolvedValueOnce(null);

@@ -22,14 +22,10 @@ export class LotService {
     return this.repo.findAll(organizationId);
   }
 
-  /**
-   * @deprecated Removed in C4 (T7) — UI/AI client-side filter by
-   * `farmName` instead (REQ-205). Kept temporarily to preserve the
-   * paired-commit boundary while the API route still references it.
-   */
-  async listByFarm(organizationId: string, farmId: string): Promise<Lot[]> {
-    return this.repo.findByFarm(organizationId, farmId);
-  }
+  // listByFarm dropped post-collapse (T7) — UI/AI agent filter
+  // client-side by `farmName` per REQ-205. Callers retargeted to
+  // `list(orgId)` + array filter or, for the AI agent, to the
+  // LotInquiryPort `list(orgId, { farmName? })` projection.
 
   async getById(organizationId: string, id: string): Promise<Lot> {
     const found = await this.repo.findById(organizationId, id);

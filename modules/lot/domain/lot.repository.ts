@@ -14,7 +14,9 @@ export interface LotChildCounts {
 export interface LotRepository {
   findAll(organizationId: string): Promise<Lot[]>;
   findById(organizationId: string, id: string): Promise<Lot | null>;
-  findByFarm(organizationId: string, farmId: string): Promise<Lot[]>;
+  // findByFarm dropped post-collapse (T7) — UI/AI agent filter
+  // client-side by `farmName` per REQ-205. Legacy callers were
+  // retargeted in C4 (lots fetched via list() then filtered).
   findByIdWithRelations(
     organizationId: string,
     id: string,
