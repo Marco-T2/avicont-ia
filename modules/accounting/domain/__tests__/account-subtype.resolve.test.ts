@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { resolveAccountSubtype } from "@/features/accounting/account-subtype.resolve";
+import { resolveAccountSubtype } from "@/modules/accounting/domain/account-subtype.resolve";
 import { AccountType, AccountSubtype } from "@/generated/prisma/client";
 import { INVALID_ACCOUNT_SUBTYPE, ACCOUNT_SUBTYPE_MISMATCH } from "@/features/shared/errors";
 

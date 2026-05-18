@@ -1,7 +1,7 @@
 import Decimal from "decimal.js";
 import { AccountSubtype } from "@/generated/prisma/enums";
 import { sumDecimals } from "./money.utils";
-import { formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
+import { formatSubtypeLabel } from "@/modules/accounting/domain/account-subtype.utils";
 import type {
   BuildInitialBalanceInput,
   InitialBalanceGroup,
@@ -34,7 +34,7 @@ import type {
  * dep on FS presentation broken. Consolidation MANDATORY at sub-POC 6.
  * Cite D4 Option A, proposal #2329.
  *
- * **formatSubtypeLabel**: imported from `@/features/accounting/account-subtype.utils`
+ * **formatSubtypeLabel**: imported from `@/modules/accounting/domain/account-subtype.utils`
  * (shared utility NOT under features/accounting/initial-balance/). This is a shared
  * formatting helper — NOT a domain→presentation cross-import. Tolerated per design §10.
  *

@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import {
   sourceTypeLabel,
   sourceTypeBadgeClassName,
-} from "@/features/accounting/journal.ui";
+} from "@/modules/accounting/domain/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
 import Decimal from "decimal.js";
 import { eq, sumDecimals } from "@/modules/accounting/presentation";

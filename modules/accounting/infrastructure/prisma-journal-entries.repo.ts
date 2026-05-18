@@ -12,8 +12,8 @@ import type {
   JournalFilters,
   JournalLineInput,
   ReferenceNumberEntry,
-} from "@/features/accounting/journal.types";
-import type { DateRangeFilter } from "@/features/accounting/ledger.types";
+} from "@/modules/accounting/presentation/dto/journal.types";
+import type { DateRangeFilter } from "@/modules/accounting/presentation/dto/ledger.types";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import { FINALIZED_JE_STATUSES } from "@/modules/accounting/shared/infrastructure/journal-status.sql";

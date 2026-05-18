@@ -18,7 +18,6 @@ const PORTS_DIR = resolve(
   "../../../../modules/accounting/domain/ports",
 );
 const PORT_FILE = resolve(PORTS_DIR, "accounts-crud.port.ts");
-const TESTS_DIR = resolve(__dirname, ".");
 
 // ── Helper: read port file or return "" (for vacuous-PASS assertions) ────────
 
@@ -140,24 +139,11 @@ describe("α25 REQ-006 countJournalLines TODO comment present", () => {
   });
 });
 
-// ── α26–α30: REQ-007 POC sentinels ×5 ───────────────────────────────────────
-
-const SENTINEL_PATHS = [
-  "poc-hex-public-barrels-shape.test.ts",
-  "poc-types-to-hex-shape.test.ts",
-  "poc-utils-to-hex-shape.test.ts",
-  "poc-journal-ui-to-hex-shape.test.ts",
-  "poc-account-subtype-to-hex-shape.test.ts",
-];
-
-describe("α26–α30 REQ-007 POC sentinels #1/#2a/#2b/#2c/#2d preserved", () => {
-  it.each(SENTINEL_PATHS)(
-    "sentinel %s exists",
-    (filename) => {
-      expect(existsSync(resolve(TESTS_DIR, filename))).toBe(true);
-    },
-  );
-});
+// α26–α30 retired (POC SHIM-SHAPE / POC #1, #2a–#2d derivative): the
+// asserted POC files were wholesale-deleted as their migration contract
+// was consumed by the features/accounting shim retirement (debt #14a).
+// Per [[named_rule_immutability]], assertion block deleted, regex NEVER
+// mutated.
 
 // ── α31: REQ-008 no server-only import (vacuous PASS pre-GREEN) ──────────────
 

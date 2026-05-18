@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isValidSubtypeForType,
   inferSubtype,
-} from "@/features/accounting/account-subtype.utils";
+} from "@/modules/accounting/domain/account-subtype.utils";
 import { AccountType, AccountSubtype } from "@/generated/prisma/client";
 
 // ── Tests de isValidSubtypeForType ──

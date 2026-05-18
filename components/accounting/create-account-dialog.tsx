@@ -20,8 +20,8 @@ import {
 } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { getNextCode } from "@/features/accounting/account-code.utils";
-import { SUBTYPES_BY_TYPE, formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
+import { getNextCode } from "@/modules/accounting/domain/account-code.utils";
+import { SUBTYPES_BY_TYPE, formatSubtypeLabel } from "@/modules/accounting/domain/account-subtype.utils";
 import type { Account, AccountSubtype } from "@/generated/prisma/client";
 
 const ACCOUNT_TYPES = [

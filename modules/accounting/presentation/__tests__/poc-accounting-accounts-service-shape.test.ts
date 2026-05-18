@@ -60,19 +60,6 @@ const IMPORT_SENTINELS = [
   },
 ] as const;
 
-// Sentinel filenames relative to the same __tests__ directory (mirror #3b pattern).
-const TESTS_DIR = resolve(__dirname, ".");
-
-const POC_SENTINELS = [
-  { label: "POC #1 poc-hex-public-barrels-shape", filename: "poc-hex-public-barrels-shape.test.ts" },
-  { label: "POC #2a poc-types-to-hex-shape", filename: "poc-types-to-hex-shape.test.ts" },
-  { label: "POC #2b poc-utils-to-hex-shape", filename: "poc-utils-to-hex-shape.test.ts" },
-  { label: "POC #2c poc-account-subtype-to-hex-shape", filename: "poc-account-subtype-to-hex-shape.test.ts" },
-  { label: "POC #2d poc-journal-ui-to-hex-shape", filename: "poc-journal-ui-to-hex-shape.test.ts" },
-  { label: "POC #3a poc-accounts-crud-port-shape", filename: "poc-accounts-crud-port-shape.test.ts" },
-  { label: "POC #3b poc-prisma-accounts-repo-shape", filename: "poc-prisma-accounts-repo-shape.test.ts" },
-] as const;
-
 // ── α01: file exists ──────────────────────────────────────────────────────────
 
 describe("α01 REQ-001 service file exists", () => {
@@ -175,13 +162,8 @@ describe("α22–α24 REQ-007 composition-root exports makeAccountsService and w
   });
 });
 
-// ── α25–α31: REQ-008 POC sentinels ×7 ───────────────────────────────────────
-
-describe("α25–α31 REQ-008 POC sentinels #1/#2a/#2b/#2c/#2d/#3a/#3b preserved", () => {
-  it.each(POC_SENTINELS.map((s) => [s.label, s.filename] as [string, string]))(
-    "sentinel %s exists",
-    (_label, filename) => {
-      expect(existsSync(resolve(TESTS_DIR, filename))).toBe(true);
-    },
-  );
-});
+// α25–α31 retired (POC SHIM-SHAPE / POC #1, #2a–#2d, #3a, #3b derivative):
+// the asserted POC files were wholesale-deleted as their migration contract
+// was consumed by the features/accounting shim retirement (debt #14a).
+// Per [[named_rule_immutability]], assertion block deleted, regex NEVER
+// mutated.

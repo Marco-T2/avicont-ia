@@ -1,6 +1,6 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { AutoEntryGenerator } from "@/features/accounting/server";
+import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import type {

@@ -6,7 +6,7 @@
  * RED: fallará hasta que T1.4 cree journal.ui.ts.
  */
 import { describe, it, expect } from "vitest";
-import { sourceTypeLabel } from "@/features/accounting/journal.ui";
+import { sourceTypeLabel } from "@/modules/accounting/domain/journal.ui";
 
 describe("sourceTypeLabel", () => {
   it("null → 'Manual'", () => {

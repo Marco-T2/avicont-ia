@@ -11,7 +11,7 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../../../generated/prisma/client";
-import { inferSubtype } from "../../../features/accounting/account-subtype.utils";
+import { inferSubtype } from "../../../modules/accounting/domain/account-subtype.utils";
 
 // Tamaño del lote para las actualizaciones en batch
 const BATCH_SIZE = 100;

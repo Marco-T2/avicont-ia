@@ -2,7 +2,7 @@ import "server-only";
 import { withAuditTx } from "@/features/shared/audit-tx";
 // Reuse the shared LOCKED-edit helper (REQ-A6) — single source of truth for
 // role + period + justification length validation.
-import { validateLockedEdit } from "@/features/accounting/server";
+import { validateLockedEdit } from "@/modules/accounting/domain/document-lifecycle";
 
 /**
  * Tx-bound write use cases return the resulting Payment aggregate plus the

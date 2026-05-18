@@ -10,7 +10,7 @@
 //  - Mapeo de SignatureLabel → clave camelCase + label visual
 
 import type { OrgProfile } from "@/generated/prisma/client";
-import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
+import type { JournalEntryWithLines } from "@/modules/accounting/presentation/dto/journal.types";
 import type { DocumentSignatureConfigView, SignatureLabel } from "@/modules/document-signature-config/presentation/server";
 import type {
   VoucherPdfInput,

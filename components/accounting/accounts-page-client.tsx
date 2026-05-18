@@ -27,7 +27,7 @@ import {
 import CreateAccountDialog from "./create-account-dialog";
 import EditAccountDialog from "./edit-account-dialog";
 import DeactivateAccountDialog from "./deactivate-account-dialog";
-import { formatSubtypeLabel } from "@/features/accounting/account-subtype.utils";
+import { formatSubtypeLabel } from "@/modules/accounting/domain/account-subtype.utils";
 import type { Account, AccountSubtype } from "@/generated/prisma/client";
 
 const ACCOUNT_TYPE_CONFIG: Record<

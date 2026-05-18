@@ -1,2 +1,0 @@
-/** Re-exports moved to hex DTO — canonical home modules/accounting/presentation/dto/. */
-export type * from "@/modules/accounting/presentation/dto/journal.types";

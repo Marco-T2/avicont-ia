@@ -10,7 +10,7 @@ import type {
 } from "@/generated/prisma/client";
 import { buildVoucherPdfInput } from "@/modules/accounting/infrastructure/exporters/voucher-pdf.composer";
 import type { DocumentSignatureConfigView } from "@/modules/document-signature-config/presentation/server";
-import type { JournalEntryWithLines } from "@/features/accounting/journal.types";
+import type { JournalEntryWithLines } from "@/modules/accounting/presentation/dto/journal.types";
 
 const D = (v: string | number) => new Prisma.Decimal(v);
 

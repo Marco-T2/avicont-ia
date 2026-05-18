@@ -42,7 +42,7 @@ import type { FiscalPeriod, VoucherTypeCfg } from "@/generated/prisma/client";
 import {
   sourceTypeLabel,
   sourceTypeBadgeClassName,
-} from "@/features/accounting/journal.ui";
+} from "@/modules/accounting/domain/journal.ui";
 import { formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
 import {
