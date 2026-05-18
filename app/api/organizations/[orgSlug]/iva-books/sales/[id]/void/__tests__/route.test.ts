@@ -16,7 +16,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 
 vi.mock("@/features/shared/middleware", () => ({
   requireAuth: vi.fn(),
@@ -60,7 +60,7 @@ import { requirePermission } from "@/features/permissions/server";
 import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
 import { IvaBookNotFound } from "@/modules/iva-books/domain/errors/iva-book-errors";
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+const D = (v: string | number) => new Decimal(String(v));
 const ZERO = D("0");
 
 const ORG_SLUG = "test-org";

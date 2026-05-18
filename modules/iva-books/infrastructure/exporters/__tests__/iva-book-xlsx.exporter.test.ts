@@ -14,7 +14,7 @@
 import { describe, it, expect } from "vitest";
 import path from "path";
 import ExcelJS from "exceljs";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 import { exportIvaBookExcel } from "../iva-book-xlsx.exporter";
 import { PURCHASES_COLUMNS, SALES_COLUMNS } from "../iva-book-xlsx.sheet-builder";
 import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../../../domain/iva-books.types";
@@ -31,7 +31,7 @@ const VENTAS_FIXTURE = path.join(FIXTURES_DIR, "PlantillaRegistro_ventas estanda
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+const D = (v: string | number) => new Decimal(String(v));
 const ZERO = D("0");
 const TASA_IVA = D("0.1300");
 

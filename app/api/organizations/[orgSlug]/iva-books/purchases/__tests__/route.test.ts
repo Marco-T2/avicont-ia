@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { Prisma } from "@/generated/prisma/client";
+import Decimal from "decimal.js";
 
 vi.mock("@/features/shared/middleware", () => ({
   requireAuth: vi.fn(),
@@ -73,7 +73,7 @@ import { requirePermission } from "@/features/permissions/server";
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-const D = (v: string | number) => new Prisma.Decimal(String(v));
+const D = (v: string | number) => new Decimal(String(v));
 const ZERO = D("0");
 const TASA_IVA = D("0.1300");
 
