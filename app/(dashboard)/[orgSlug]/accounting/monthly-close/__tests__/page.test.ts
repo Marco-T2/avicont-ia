@@ -1,12 +1,26 @@
 /**
- * /accounting/monthly-close page — rbac gate tests + REQ-2 pre-selection tests.
+ * /accounting/monthly-close page — rbac gate tests + REQ-2b redirect-on-no-period tests.
  *
- * Page requires period:read. On failure, redirect to /${orgSlug}.
+ * Page requires period:read. On RBAC failure → redirect to /${orgSlug}.
  * PR2 migration: replaces requireAuth+requireOrgAccess+requireRole triple chain.
  *
- * REQ-2 additions:
- * (a) searchParams.periodId matching an OPEN period → panel called with preselectedPeriodId
- * (b) searchParams.periodId not matching any period → panel called with preselectedPeriodId: undefined
+ * REQ-2b transition (annual-close atomicity per page.tsx:15-25):
+ *   The page used to render a combobox letting the user pick any period; that
+ *   risked manually closing December and breaking annual-close atomicity
+ *   (annual-close.service.ts:491-559 — Dec must lock inside the same tx as
+ *   CC + auto-periods + CA). Page now redirects to /${orgSlug}/settings/periods
+ *   when no valid OPEN periodId is provided.
+ *
+ * (a) RBAC ok + valid OPEN periodId → panel called with selectedPeriod snapshot
+ * (b) RBAC ok + unknown/missing periodId → redirect to /${orgSlug}/settings/periods
+ *     (panel NOT called)
+ *
+ * Note on `mockRedirect`: real Next.js `redirect()` throws an internal
+ * NEXT_REDIRECT error to abort the render. `beforeEach` installs that throw
+ * globally so every test mirrors production semantics — the SUT redirect at
+ * page.tsx:45 (no valid OPEN period) is OUTSIDE a try/catch and relies on
+ * the throw to short-circuit before touching `period.id`. Tests exercising
+ * either redirect branch wrap the call in `await expect(...).rejects`.
  */
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
@@ -65,13 +79,22 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockList.mockResolvedValue([]);
   mockMonthlyClosePanel.mockReturnValue(null);
+  // Mirror real Next.js redirect() semantics: throws NEXT_REDIRECT to abort
+  // render. SUT relies on this to short-circuit before touching `period.id`.
+  mockRedirect.mockImplementation(() => {
+    throw new Error("NEXT_REDIRECT");
+  });
 });
 
 describe("/accounting/monthly-close — rbac gate", () => {
-  it("renders when requirePermission resolves", async () => {
+  it("renders when requirePermission resolves AND a valid OPEN period is provided", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
+    mockList.mockResolvedValue([OPEN_PERIOD]);
 
-    await MonthlyClosePage({ params: makeParams(), searchParams: makeSearchParams() });
+    await MonthlyClosePage({
+      params: makeParams(),
+      searchParams: makeSearchParams({ periodId: "p-01" }),
+    });
 
     expect(mockRequirePermission).toHaveBeenCalledWith(
       "period",
@@ -84,16 +107,16 @@ describe("/accounting/monthly-close — rbac gate", () => {
   it("redirects to org root when requirePermission throws", async () => {
     mockRequirePermission.mockRejectedValue(new Error("forbidden"));
 
-    await MonthlyClosePage({ params: makeParams(), searchParams: makeSearchParams() });
+    await expect(
+      MonthlyClosePage({ params: makeParams(), searchParams: makeSearchParams() }),
+    ).rejects.toThrow("NEXT_REDIRECT");
 
     expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}`);
   });
 });
 
 describe("/accounting/monthly-close — REQ-2 ?periodId pre-selection", () => {
-  it("REQ-2a — valid OPEN periodId passed → JSX includes preselectedPeriodId: 'p-01'", async () => {
-    // RED: page.tsx does not yet read searchParams, so panel JSX won't have preselectedPeriodId
-    // Expected RED failure: jsx.props.children's MonthlyClosePanel element has no preselectedPeriodId
+  it("REQ-2a — valid OPEN periodId → panel receives selectedPeriod snapshot", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
     mockList.mockResolvedValue([OPEN_PERIOD]);
 
@@ -102,36 +125,46 @@ describe("/accounting/monthly-close — REQ-2 ?periodId pre-selection", () => {
       searchParams: makeSearchParams({ periodId: "p-01" }),
     });
 
-    // Find the MonthlyClosePanel element in the returned JSX tree
-    // The page returns <div className="space-y-6">...<MonthlyClosePanel ...></div>
-    // We inspect JSX props directly without rendering (Server Component test pattern)
     const children = (jsx as React.ReactElement<{ children: React.ReactNode[] }>).props.children;
     const childrenArray = (Array.isArray(children) ? children : [children]) as React.ReactNode[];
     const panelElement = childrenArray.find(
       (child) => React.isValidElement(child) && (child as React.ReactElement).type === mockMonthlyClosePanel,
-    ) as React.ReactElement<{ preselectedPeriodId?: string }> | undefined;
+    ) as React.ReactElement<{ selectedPeriod?: { id: string; status: string } }> | undefined;
 
     expect(panelElement).toBeDefined();
-    expect(panelElement?.props?.preselectedPeriodId).toBe("p-01");
+    expect(panelElement?.props?.selectedPeriod).toMatchObject({
+      id: "p-01",
+      status: "OPEN",
+    });
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
-  it("REQ-2b — unknown periodId → JSX has preselectedPeriodId: undefined", async () => {
-    // RED: page.tsx does not yet validate the id — passes undefined or raw value
+  it("REQ-2b — unknown periodId → redirects to /${orgSlug}/settings/periods (panel NOT rendered)", async () => {
     mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
     mockList.mockResolvedValue([OPEN_PERIOD]);
 
-    const jsx = await MonthlyClosePage({
-      params: makeParams(),
-      searchParams: makeSearchParams({ periodId: "unknown" }),
-    });
+    await expect(
+      MonthlyClosePage({
+        params: makeParams(),
+        searchParams: makeSearchParams({ periodId: "unknown" }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
 
-    const children = (jsx as React.ReactElement<{ children: React.ReactNode[] }>).props.children;
-    const childrenArray = (Array.isArray(children) ? children : [children]) as React.ReactNode[];
-    const panelElement = childrenArray.find(
-      (child) => React.isValidElement(child) && (child as React.ReactElement).type === mockMonthlyClosePanel,
-    ) as React.ReactElement<{ preselectedPeriodId?: string }> | undefined;
+    expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}/settings/periods`);
+    expect(mockMonthlyClosePanel).not.toHaveBeenCalled();
+  });
 
-    expect(panelElement).toBeDefined();
-    expect(panelElement?.props?.preselectedPeriodId).toBeUndefined();
+  it("REQ-2c — no periodId → redirects to /${orgSlug}/settings/periods", async () => {
+    mockRequirePermission.mockResolvedValue({ orgId: "org-1" });
+    mockList.mockResolvedValue([OPEN_PERIOD]);
+
+    await expect(
+      MonthlyClosePage({
+        params: makeParams(),
+        searchParams: makeSearchParams({}),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}/settings/periods`);
   });
 });
