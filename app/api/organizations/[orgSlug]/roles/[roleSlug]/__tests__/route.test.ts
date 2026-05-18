@@ -52,14 +52,14 @@ const mockRolesServiceInstance = {
   exists: vi.fn(),
 };
 
-vi.mock("@/modules/organizations/presentation/server", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/modules/organizations/presentation/server")>();
-  return {
-    ...actual,
-    makeRolesService: vi.fn().mockReturnValue(mockRolesServiceInstance),
-  };
-});
+// [[mock_hygiene_commit_scope]] — explicit factory (no importOriginal). Same
+// root cause as members test sibling: presentation barrel transitive load
+// timed out under full-suite concurrency. Route only consumes
+// `makeRolesService` (roles/[roleSlug]/route.ts:33) — no validation symbol
+// required.
+vi.mock("@/modules/organizations/presentation/server", () => ({
+  makeRolesService: vi.fn().mockReturnValue(mockRolesServiceInstance),
+}));
 
 // Single combined mock — antes había dos vi.mock declarations para esta misma
 // ruta, lo que dejaba el comportamiento dependiente del orden de hoisting de
