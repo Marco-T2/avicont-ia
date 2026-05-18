@@ -64,6 +64,7 @@ export class LegacyAccountingAdapter implements AccountingPort {
         periodId: params.periodId,
         description: params.description,
         referenceNumber: params.referenceNumber,
+        operationalDocTypeId: params.operationalDocTypeId,
         sourceType: params.sourceType,
         sourceId: params.sourceId,
         createdById: params.createdById,

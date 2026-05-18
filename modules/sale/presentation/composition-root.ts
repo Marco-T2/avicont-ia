@@ -9,6 +9,7 @@ import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastruc
 import { PrismaContactRepository } from "@/modules/contacts/infrastructure/prisma-contact.repository";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/composition-root";
+import { PrismaOperationalDocTypesRepository } from "@/modules/operational-doc-type/presentation/server";
 import { makeReceivablesRepository } from "@/modules/receivables/presentation/server";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 
@@ -49,6 +50,10 @@ const voucherTypesRepo = makeVoucherTypeRepository();
 const autoEntryGen = new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
 const journalEntriesReadAdapter = new PrismaJournalEntriesReadAdapter();
 const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
+// journal-physical-document Phase 6 — OperationalDocType lookup repo,
+// injected into the sale UoW so the per-tx PrismaJournalEntryFactoryAdapter
+// resolves VG / FL / PF / CG / SV via findByCode at JE creation.
+const operationalDocTypesRepo = new PrismaOperationalDocTypesRepository();
 
 export function makeSaleService(): SaleService {
   return new SaleService({
@@ -60,6 +65,7 @@ export function makeSaleService(): SaleService {
       journalEntriesReadAdapter,
       accountLookupAdapter,
       autoEntryGen,
+      operationalDocTypesRepo,
     ),
     accountLookup: accountLookupAdapter,
     orgSettings: new PrismaOrgSettingsReaderAdapter(makeOrgSettingsService()),

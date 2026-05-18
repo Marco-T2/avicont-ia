@@ -10,6 +10,11 @@ import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/j
 import type { JournalEntriesRepository } from "@/modules/accounting/domain/ports/journal-entries.repo";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { hydrateJournalFromRow } from "@/modules/accounting/infrastructure/journal-mapping";
+import {
+  SALE_DOCUMENT_TYPE_CODE,
+  purchaseTypeToCode,
+} from "@/modules/accounting/shared/infrastructure/document-type-codes";
+import type { OperationalDocTypesRepository } from "@/modules/operational-doc-type/domain/operational-doc-type.repository";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 
@@ -59,9 +64,19 @@ export class PrismaJournalEntryFactoryAdapter
     private readonly lookupPort: AccountLookupPort,
     private readonly writeRepo: JournalEntriesRepository,
     private readonly autoEntryGen: AutoEntryGenerator,
+    /** journal-physical-document Phase 6 — resolves the OperationalDocType
+     *  FK (`VG` for sales, FL|PF|CG|SV for purchases per purchaseTypeToCode)
+     *  before delegating to AutoEntryGenerator so the JE row carries the
+     *  denormalized doc-type id. Lookup returning null is tolerated — JE
+     *  persists with null doc type, sister of dispatch's I-5 pattern. */
+    private readonly docTypesRepo: OperationalDocTypesRepository,
   ) {}
 
   async generateForSale(template: SaleJournalTemplate): Promise<Journal> {
+    const docType = await this.docTypesRepo.findByCode(
+      template.organizationId,
+      SALE_DOCUMENT_TYPE_CODE,
+    );
     const row = await this.autoEntryGen.generate(this.tx, {
       organizationId: template.organizationId,
       voucherTypeCode: "CI",
@@ -71,6 +86,7 @@ export class PrismaJournalEntryFactoryAdapter
       description: template.description,
       sourceType: template.sourceType,
       sourceId: template.sourceId,
+      operationalDocTypeId: docType?.id ?? null,
       lines: template.lines.map((l) => ({
         accountCode: l.accountCode,
         side: l.side,
@@ -86,6 +102,11 @@ export class PrismaJournalEntryFactoryAdapter
   async generateForPurchase(
     template: PurchaseJournalTemplate,
   ): Promise<Journal> {
+    const code = purchaseTypeToCode(template.purchaseType);
+    const docType = await this.docTypesRepo.findByCode(
+      template.organizationId,
+      code,
+    );
     const row = await this.autoEntryGen.generate(this.tx, {
       organizationId: template.organizationId,
       voucherTypeCode: "CE",
@@ -95,6 +116,7 @@ export class PrismaJournalEntryFactoryAdapter
       description: template.description,
       sourceType: template.sourceType,
       sourceId: template.sourceId,
+      operationalDocTypeId: docType?.id ?? null,
       lines: template.lines.map((l) => ({
         accountCode: l.accountCode,
         side: l.side,

@@ -38,6 +38,10 @@ export interface PurchaseJournalTemplate {
   sourceType: "purchase";
   sourceId: string;
   createdById: string;
+  /** journal-physical-document Phase 6 — purchase type so the factory adapter
+   *  resolves the OperationalDocType code (FL|PF|CG|SV) via
+   *  purchaseTypeToCode + findByCode at JE creation. */
+  purchaseType: "FLETE" | "POLLO_FAENADO" | "COMPRA_GENERAL" | "SERVICIO";
   lines: PurchaseJournalLineTemplate[];
 }
 

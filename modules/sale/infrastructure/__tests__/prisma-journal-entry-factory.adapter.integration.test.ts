@@ -14,6 +14,7 @@ import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/
 import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
+import { PrismaOperationalDocTypesRepository } from "@/modules/operational-doc-type/presentation/server";
 import type { SaleJournalTemplate } from "@/modules/sale/domain/ports/journal-entry-factory.port";
 
 import { PrismaJournalEntryFactoryAdapter } from "../prisma-journal-entry-factory.adapter";
@@ -233,12 +234,16 @@ describe("PrismaJournalEntryFactoryAdapter — Postgres integration", () => {
       new PrismaAccountsRepo(),
       makeVoucherTypeRepository(),
     );
+    // journal-physical-document Phase 6 — docTypesRepo ctor dep so the
+    // adapter resolves VG/FL/PF/CG/SV via findByCode at JE creation.
+    const docTypesRepo = new PrismaOperationalDocTypesRepository();
     return new PrismaJournalEntryFactoryAdapter(
       tx,
       readPort,
       lookupPort,
       writeRepo,
       autoEntryGen,
+      docTypesRepo,
     );
   }
 

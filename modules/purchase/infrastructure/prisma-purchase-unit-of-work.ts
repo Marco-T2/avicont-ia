@@ -5,6 +5,7 @@ import { withAuditTx } from "@/features/shared/audit-tx";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import { PrismaAccountBalancesRepo } from "@/modules/accounting/infrastructure/prisma-account-balances.repo";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import type { OperationalDocTypesRepository } from "@/modules/operational-doc-type/domain/operational-doc-type.repository";
 import type { AccountLookupPort } from "@/modules/org-settings/domain/ports/account-lookup.port";
 import { PrismaPayablesRepository } from "@/modules/payables/presentation/server";
 import { PrismaJournalEntryFactoryAdapter } from "@/modules/sale/infrastructure/prisma-journal-entry-factory.adapter";
@@ -50,6 +51,10 @@ export class PrismaPurchaseUnitOfWork implements PurchaseUnitOfWork {
     private readonly journalEntriesReadPort: JournalEntriesReadPort,
     private readonly accountLookupPort: AccountLookupPort,
     private readonly autoEntryGen: AutoEntryGenerator,
+    /** journal-physical-document Phase 6 — passed through to the per-tx
+     *  PrismaJournalEntryFactoryAdapter so generateForPurchase resolves the
+     *  OperationalDocType FK (FL|PF|CG|SV) via findByCode. */
+    private readonly docTypesRepo: OperationalDocTypesRepository,
   ) {}
 
   async run<T>(
@@ -71,6 +76,7 @@ export class PrismaPurchaseUnitOfWork implements PurchaseUnitOfWork {
           this.accountLookupPort,
           journalEntriesRepo,
           this.autoEntryGen,
+          this.docTypesRepo,
         ),
       };
       return fn(scope);

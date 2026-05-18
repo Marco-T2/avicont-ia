@@ -1215,6 +1215,52 @@ describe("PaymentsService", () => {
       expect(generateSpy.mock.calls[0]?.[0]).toBe(bench.repo.txToken);
     });
   });
+
+  // journal-physical-document Phase 6 — Payment forwards its own
+  // operationalDocTypeId (no findByCode lookup, sister of Sale/Purchase/
+  // Dispatch which DO lookup via composition root).
+  describe("operationalDocTypeId propagation (Phase 6)", () => {
+    it("post forwards Payment.operationalDocTypeId to accounting.generateEntryTx params", async () => {
+      const p = await bench.svc.create(
+        ORG,
+        USER,
+        baseCreate({
+          amount: 100,
+          operationalDocTypeId: "odt-rc-1",
+          allocations: [{ receivableId: "rec-1", amount: 100 }],
+        }),
+      );
+      bench.receivables.status.set("rec-1", "PENDING");
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-with-odt" });
+      const generateSpy = vi.spyOn(bench.accounting, "generateEntryTx");
+
+      await bench.svc.post(ORG, USER, p.id);
+
+      const params = generateSpy.mock.calls[0]?.[1];
+      expect(params).toBeDefined();
+      expect(params!.operationalDocTypeId).toBe("odt-rc-1");
+    });
+
+    it("post forwards null operationalDocTypeId when Payment.operationalDocTypeId is null", async () => {
+      const p = await bench.svc.create(
+        ORG,
+        USER,
+        baseCreate({
+          amount: 100,
+          operationalDocTypeId: null,
+          allocations: [{ receivableId: "rec-2", amount: 100 }],
+        }),
+      );
+      bench.receivables.status.set("rec-2", "PENDING");
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-no-odt" });
+      const generateSpy = vi.spyOn(bench.accounting, "generateEntryTx");
+
+      await bench.svc.post(ORG, USER, p.id);
+
+      const params = generateSpy.mock.calls[0]?.[1];
+      expect(params!.operationalDocTypeId).toBeNull();
+    });
+  });
 });
 
 // ─────────────────────────── Helpers ────────────────────────────────────────

@@ -700,6 +700,10 @@ export class PaymentsService {
         periodId: payment.periodId,
         description: payment.description,
         referenceNumber: payment.referenceNumber ?? undefined,
+        // journal-physical-document Phase 6 — Payment already carries the
+        // operationalDocTypeId selected via admin UI; forward it directly
+        // (no findByCode lookup needed, sister of Sale/Purchase/Dispatch).
+        operationalDocTypeId: payment.operationalDocTypeId ?? null,
         sourceType: "payment",
         sourceId: payment.id,
         createdById: userId,
@@ -844,6 +848,10 @@ export class PaymentsService {
             periodId: payment.periodId,
             description: updated.description,
             referenceNumber: updated.referenceNumber ?? undefined,
+            // journal-physical-document Phase 6 — same as create path; the
+            // updated aggregate's operationalDocTypeId reflects any changes
+            // the user made on the edit form.
+            operationalDocTypeId: updated.operationalDocTypeId ?? null,
             sourceType: "payment",
             sourceId: payment.id,
             createdById: userId,

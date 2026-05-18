@@ -370,6 +370,10 @@ export class DispatchService {
       description: journalDescription,
       sourceType: "dispatch",
       sourceId: dispatch.id,
+      // journal-physical-document Phase 6 — forwards the dispatchType so the
+      // factory adapter resolves operationalDocTypeId via dispatchTypeToCode
+      // + findByCode (ND|BC).
+      dispatchType: input.dispatchType,
       createdById: userId,
       lines: [
         {
@@ -636,6 +640,7 @@ export class DispatchService {
       description: journalDescription,
       sourceType: "dispatch",
       sourceId: dispatch.id,
+      dispatchType: dispatch.dispatchType,
       createdById: userId,
       lines: [
         {

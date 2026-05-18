@@ -15,6 +15,7 @@ import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
+import { PrismaOperationalDocTypesRepository } from "@/modules/operational-doc-type/presentation/server";
 import { Purchase } from "@/modules/purchase/domain/purchase.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Money } from "@/modules/shared/domain/value-objects/money";
@@ -39,6 +40,9 @@ const autoEntryGen = new AutoEntryGenerator(
   new PrismaAccountsRepo(),
   makeVoucherTypeRepository(),
 );
+// journal-physical-document Phase 6 — Purchase UoW requires the
+// OperationalDocType lookup repo for FL/PF/CG/SV FK resolution.
+const operationalDocTypesRepo = new PrismaOperationalDocTypesRepository();
 
 describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
   let testOrgId: string;
@@ -225,6 +229,7 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
+      operationalDocTypesRepo,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
@@ -273,6 +278,7 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
+      operationalDocTypesRepo,
     );
     const draftPurchase = buildDraftPurchase();
     const draftJournal = buildDraftJournal();
@@ -319,6 +325,7 @@ describe("PrismaPurchaseUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
+      operationalDocTypesRepo,
     );
     expect(uow).toBeInstanceOf(PrismaPurchaseUnitOfWork);
   });

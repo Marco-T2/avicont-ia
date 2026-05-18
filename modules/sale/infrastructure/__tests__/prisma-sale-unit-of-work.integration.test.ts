@@ -14,6 +14,7 @@ import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { LineSide } from "@/modules/accounting/domain/value-objects/line-side";
 import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
+import { PrismaOperationalDocTypesRepository } from "@/modules/operational-doc-type/presentation/server";
 import { LegacyAccountLookupAdapter } from "@/modules/org-settings/infrastructure/legacy-account-lookup.adapter";
 import { Sale } from "@/modules/sale/domain/sale.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -39,6 +40,9 @@ const autoEntryGen = new AutoEntryGenerator(
   new PrismaAccountsRepo(),
   makeVoucherTypeRepository(),
 );
+// journal-physical-document Phase 6 — Sale UoW now requires the
+// OperationalDocType lookup repo for VG/FL/PF/CG/SV FK resolution.
+const operationalDocTypesRepo = new PrismaOperationalDocTypesRepository();
 
 describe("PrismaSaleUnitOfWork — Postgres integration", () => {
   let testOrgId: string;
@@ -237,6 +241,7 @@ describe("PrismaSaleUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
+      operationalDocTypesRepo,
     );
     const draftSale = buildDraftSale();
     const draftJournal = buildDraftJournal();
@@ -282,6 +287,7 @@ describe("PrismaSaleUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
+      operationalDocTypesRepo,
     );
     const draftSale = buildDraftSale();
     const draftJournal = buildDraftJournal();
@@ -328,6 +334,7 @@ describe("PrismaSaleUnitOfWork — Postgres integration", () => {
       journalEntriesReadPort,
       accountLookupPort,
       autoEntryGen,
+      operationalDocTypesRepo,
     );
     expect(uow).toBeInstanceOf(PrismaSaleUnitOfWork);
   });

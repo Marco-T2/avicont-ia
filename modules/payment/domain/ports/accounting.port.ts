@@ -48,6 +48,10 @@ export interface GenerateEntryParams {
   periodId: string;
   description: string;
   referenceNumber?: number;
+  // journal-physical-document Phase 6 — Payment passes through its own
+  // operationalDocTypeId (already resolved at Payment creation via the admin
+  // UI dropdown). No findByCode here; the FK travels directly into the JE.
+  operationalDocTypeId?: string | null;
   sourceType: string;
   sourceId: string;
   createdById: string;

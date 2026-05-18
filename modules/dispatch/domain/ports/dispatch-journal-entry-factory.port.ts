@@ -26,6 +26,12 @@ export interface DispatchJournalTemplate {
   sourceType: "dispatch";
   sourceId: string;
   createdById: string;
+  /** journal-physical-document Phase 6 — the dispatch type so the factory
+   *  adapter can resolve the OperationalDocType code (ND|BC) via
+   *  dispatchTypeToCode + OperationalDocTypesRepository.findByCode at JE
+   *  creation. Domain stays Prisma-free; the type is a string union here
+   *  and resolved against the Prisma enum at the adapter layer. */
+  dispatchType: "NOTA_DESPACHO" | "BOLETA_CERRADA";
   lines: DispatchJournalLineTemplate[];
 }
 
