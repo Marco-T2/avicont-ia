@@ -7,11 +7,7 @@ import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { prisma } from "@/lib/prisma";
 import type { IvaSalesBookDTO } from "@/modules/iva-books/presentation/index";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
-import {
-  toSaleWithDetails,
-  computeDisplayCode,
-  SALE_PREFIX,
-} from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
+import { toSaleWithDetails } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import SaleForm from "@/components/sales/sale-form";
 
 interface SaleDetailPageProps {
@@ -95,13 +91,6 @@ export default async function SaleDetailPage({ params }: SaleDetailPageProps) {
     period,
     receivable,
     ivaSalesBook: ivaSalesBook as unknown as IvaSalesBookDTO | null,
-    // §13.AC-sale-paged caller responsibility null guard (A3-C4b.5 paired):
-    // DRAFT sales (sequenceNumber=null) usan fallback `${SALE_PREFIX}-DRAFT`
-    // mirror §13.AC HubService A3-C5 SubQ-β + A3-C4a.5 sale list precedent.
-    displayCode:
-      sale.sequenceNumber !== null
-        ? computeDisplayCode(sale.sequenceNumber)
-        : `${SALE_PREFIX}-DRAFT`,
   });
 
   // Períodos abiertos; garantizar que el período actual de la venta esté incluido aunque esté cerrado
