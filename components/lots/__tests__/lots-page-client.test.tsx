@@ -1,19 +1,8 @@
 /**
- * T18 [RED → GREEN] — LotsPageClient flat table (REQ-204, D-8).
- *
- * Tabla plana cols: `Granja | Lote | Galpon | Pollos | Estado`.
- * Sort: `createdAt DESC`. Filas linkean a `/[orgSlug]/lots/[lotId]`.
- *
- * Subject lives at `app/(dashboard)/[orgSlug]/lots/lots-client.tsx`
- * (Next.js page co-location), but this RTL test lives under
- * `components/lots/__tests__/` because vitest.config restricts
- * `.test.tsx` to the `components` project (jsdom env). Aliased
- * import keeps the link explicit.
- *
- * Expected failure mode (RED): module under test does NOT exist
- * yet — vitest fails with `Failed to load url
- * @/app/(dashboard)/[orgSlug]/lots/lots-client`. After T18 GREEN
- * landing the client, all 4 cases pass.
+ * Post simplify-lot-identifier: 3-col flat table with the derived
+ * `displayName` ("Granja - DD/MM/YYYY") as the linked identifier.
+ * Galpón column dropped; raw `name` field dropped. Sort: createdAt
+ * DESC. Replaces the 5-col version from REQ-204 / D-8.
  */
 import { render, screen, cleanup, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
@@ -29,21 +18,29 @@ vi.mock("next/link", () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
+// /lots client mounts CreateLotDialog which calls useRouter().refresh()
+// after a successful create (T19 wiring). Stub the navigation surface so
+// the App Router invariant doesn't fire when the table renders in jsdom.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: vi.fn(), push: vi.fn() }),
+}));
+
 import LotsPageClient from "@/app/(dashboard)/[orgSlug]/lots/lots-client";
 import type { LotSnapshot } from "@/modules/lot/presentation/server";
 
 afterEach(() => cleanup());
 
 function makeLot(overrides: Partial<LotSnapshot> = {}): LotSnapshot {
+  const farmName = overrides.farmName ?? "Capinota";
+  const startDate = overrides.startDate ?? new Date("2026-05-01");
   return {
     id: "l-1",
-    name: "Lote Mayo",
-    barnNumber: 1,
     initialCount: 5000,
-    startDate: new Date("2026-05-01"),
+    startDate,
     endDate: null,
     status: "ACTIVE",
-    farmName: "Capinota",
+    farmName,
+    displayName: overrides.displayName ?? `${farmName} - 01/05/2026`,
     memberId: "m-1",
     organizationId: "org-1",
     createdAt: new Date("2026-05-01"),
@@ -52,50 +49,49 @@ function makeLot(overrides: Partial<LotSnapshot> = {}): LotSnapshot {
   };
 }
 
-describe("LotsPageClient — flat table (REQ-204, D-8)", () => {
-  it("renders the 5 column headers in the exact spec order", () => {
+describe("LotsPageClient — 3-col flat table (post simplify-lot-identifier)", () => {
+  it("renders the 3 column headers in the exact spec order", () => {
     render(<LotsPageClient orgSlug="acme" lots={[makeLot()]} />);
 
     const headers = screen
       .getAllByRole("columnheader")
       .map((h) => h.textContent?.trim());
-    expect(headers).toEqual([
-      "Granja",
-      "Lote",
-      "Galpon",
-      "Pollos",
-      "Estado",
-    ]);
+    expect(headers).toEqual(["Lote", "Pollos", "Estado"]);
   });
 
-  it("renders each lot as a row with link to /[orgSlug]/lots/[lotId]", () => {
+  it("renders each lot as a row with the displayName-linked identifier", () => {
     const lots = [
-      makeLot({ id: "l-1", name: "Lote A", farmName: "Capinota" }),
+      makeLot({ id: "l-1", farmName: "Capinota" }),
       makeLot({
         id: "l-2",
-        name: "Lote B",
         farmName: "Pocona",
+        startDate: new Date("2026-04-01"),
+        displayName: "Pocona - 01/04/2026",
         createdAt: new Date("2026-04-01"),
       }),
     ];
     render(<LotsPageClient orgSlug="acme" lots={lots} />);
 
-    const link1 = screen.getByRole("link", { name: /Lote A/i });
+    const link1 = screen.getByRole("link", { name: /Capinota - 01\/05\/2026/ });
     expect(link1).toHaveAttribute("href", "/acme/lots/l-1");
 
-    const link2 = screen.getByRole("link", { name: /Lote B/i });
+    const link2 = screen.getByRole("link", { name: /Pocona - 01\/04\/2026/ });
     expect(link2).toHaveAttribute("href", "/acme/lots/l-2");
   });
 
   it("sorts rows by createdAt DESC (newest first)", () => {
     const older = makeLot({
       id: "l-old",
-      name: "Lote Viejo",
+      farmName: "Vieja",
+      startDate: new Date("2026-01-01"),
+      displayName: "Vieja - 01/01/2026",
       createdAt: new Date("2026-01-01"),
     });
     const newer = makeLot({
       id: "l-new",
-      name: "Lote Nuevo",
+      farmName: "Nueva",
+      startDate: new Date("2026-05-01"),
+      displayName: "Nueva - 01/05/2026",
       createdAt: new Date("2026-05-01"),
     });
     render(
@@ -106,8 +102,8 @@ describe("LotsPageClient — flat table (REQ-204, D-8)", () => {
     const rows = screen
       .getAllByRole("row")
       .slice(1) // drop header row
-      .map((r) => within(r).getAllByRole("cell")[1]?.textContent?.trim());
-    expect(rows).toEqual(["Lote Nuevo", "Lote Viejo"]);
+      .map((r) => within(r).getAllByRole("cell")[0]?.textContent?.trim());
+    expect(rows).toEqual(["Nueva - 01/05/2026", "Vieja - 01/01/2026"]);
   });
 
   it("renders empty state when lots list is empty", () => {
@@ -116,7 +112,6 @@ describe("LotsPageClient — flat table (REQ-204, D-8)", () => {
     expect(
       screen.getByText(/No tenes lotes todavia/i),
     ).toBeInTheDocument();
-    // No table rendered when empty
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
   });
 });

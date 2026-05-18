@@ -1,9 +1,18 @@
 import type { MortalityLog } from "@/generated/prisma/client";
+import { formatDateBO } from "@/lib/date-utils";
 import { Mortality } from "../domain/mortality.entity";
 import { MortalityCount } from "../domain/value-objects/mortality-count";
 
+/**
+ * Post simplify-lot-identifier the lot relation no longer carries the
+ * dropped `name` + `barnNumber` columns. The mortality include selects
+ * `farmName + startDate` and this mapper derives `displayName` inline —
+ * same shape Lot.entity#displayName exposes (kept in lockstep manually
+ * because crossing module boundaries with a shared formatter beats
+ * leaking the Lot entity into mortality's hex).
+ */
 type MortalityRow = MortalityLog & {
-  lot?: { name: string; barnNumber: number };
+  lot?: { farmName: string; startDate: Date };
   createdBy?: { name: string | null; email: string };
 };
 
@@ -18,7 +27,12 @@ export function toDomain(row: MortalityRow): Mortality {
     organizationId: row.organizationId,
     relations:
       row.lot && row.createdBy
-        ? { lot: row.lot, createdBy: row.createdBy }
+        ? {
+            lot: {
+              displayName: `${row.lot.farmName} - ${formatDateBO(row.lot.startDate)}`,
+            },
+            createdBy: row.createdBy,
+          }
         : undefined,
   });
 }

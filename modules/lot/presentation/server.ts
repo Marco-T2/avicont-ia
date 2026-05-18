@@ -51,6 +51,6 @@ export {
   InvalidLotStatus,
   InvalidLotStatusTransition,
   CannotDeactivateInactiveLot,
-  LotNameDuplicate,
+  LotForFarmAtDateExists,
   LotCannotUpdateInactive,
 } from "../domain/errors/lot-errors";

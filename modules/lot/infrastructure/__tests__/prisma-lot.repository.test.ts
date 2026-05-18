@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { type PrismaClient } from "@/generated/prisma/client";
 import { PrismaLotRepository } from "../prisma-lot.repository";
 import { Lot } from "../../domain/lot.entity";
+import { LotForFarmAtDateExists } from "../../domain/errors/lot-errors";
 
 const dbWith = (overrides: Record<string, unknown>): PrismaClient =>
   ({ chickenLot: overrides }) as unknown as PrismaClient;
@@ -30,8 +31,6 @@ const dbWithCascade = (overrides: {
 const buildEntity = () =>
   Lot.create({
     organizationId: "org-1",
-    name: "Lote A",
-    barnNumber: 1,
     initialCount: 1000,
     startDate: new Date("2026-04-01"),
     farmName: "Pocona",
@@ -41,8 +40,6 @@ const buildEntity = () =>
 const buildRow = (override: Record<string, unknown> = {}) => ({
   id: "lot-1",
   organizationId: "org-1",
-  name: "Lote A",
-  barnNumber: 1,
   initialCount: 1000,
   startDate: new Date("2026-04-01"),
   endDate: null,
@@ -85,7 +82,7 @@ const buildRowWithRelations = (override: Record<string, unknown> = {}) => ({
   ...override,
 });
 
-describe("PrismaLotRepository (post-collapse)", () => {
+describe("PrismaLotRepository (post simplify-lot-identifier)", () => {
   describe("findAll", () => {
     it("scopes by organizationId and orders by createdAt desc", async () => {
       const findMany = vi.fn().mockResolvedValueOnce([buildRow()]);
@@ -122,7 +119,8 @@ describe("PrismaLotRepository (post-collapse)", () => {
       const result = await repo.findById("org-1", "lot-1");
 
       expect(result?.id).toBe("lot-1");
-      expect(result?.name).toBe("Lote A");
+      expect(result?.farmName).toBe("Pocona");
+      expect(result?.displayName).toBe("Pocona - 01/04/2026");
     });
   });
 
@@ -196,7 +194,7 @@ describe("PrismaLotRepository (post-collapse)", () => {
   });
 
   describe("save", () => {
-    it("creates with persistence payload (farmName + memberId; no legacy farmId post-F5)", async () => {
+    it("creates with persistence payload (farmName + memberId; no legacy name/barnNumber/farmId post-simplify)", async () => {
       const create = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ create }));
 
@@ -206,13 +204,49 @@ describe("PrismaLotRepository (post-collapse)", () => {
       expect(create).toHaveBeenCalledTimes(1);
       const callArg = create.mock.calls[0]?.[0];
       expect(callArg.data.id).toBe(entity.id);
-      expect(callArg.data.name).toBe("Lote A");
-      expect(callArg.data.barnNumber).toBe(1);
       expect(callArg.data.initialCount).toBe(1000);
       expect(callArg.data.farmName).toBe("Pocona");
       expect(callArg.data.memberId).toBe("member-1");
-      // Post F5-final: legacy farmId column dropped — payload no lo incluye.
+      expect("name" in callArg.data).toBe(false);
+      expect("barnNumber" in callArg.data).toBe(false);
       expect("farmId" in callArg.data).toBe(false);
+    });
+
+    // P2002 mapping on the (orgId, farmName, startDate) unique index
+    it("maps Prisma P2002 on chicken_lots_organizationId_farmName_startDate_key → LotForFarmAtDateExists", async () => {
+      const p2002 = Object.assign(new Error("Unique constraint"), {
+        code: "P2002",
+        meta: {
+          target: "chicken_lots_organizationId_farmName_startDate_key",
+        },
+      });
+      const create = vi.fn().mockRejectedValueOnce(p2002);
+      const repo = new PrismaLotRepository(dbWith({ create }));
+
+      await expect(repo.save(buildEntity())).rejects.toThrow(
+        LotForFarmAtDateExists,
+      );
+    });
+
+    it("maps P2002 with field-name target array → LotForFarmAtDateExists (newer Prisma shape)", async () => {
+      const p2002 = Object.assign(new Error("Unique constraint"), {
+        code: "P2002",
+        meta: { target: ["organizationId", "farmName", "startDate"] },
+      });
+      const create = vi.fn().mockRejectedValueOnce(p2002);
+      const repo = new PrismaLotRepository(dbWith({ create }));
+
+      await expect(repo.save(buildEntity())).rejects.toThrow(
+        LotForFarmAtDateExists,
+      );
+    });
+
+    it("rethrows non-P2002 errors unchanged", async () => {
+      const boom = new Error("oops");
+      const create = vi.fn().mockRejectedValueOnce(boom);
+      const repo = new PrismaLotRepository(dbWith({ create }));
+
+      await expect(repo.save(buildEntity())).rejects.toBe(boom);
     });
   });
 
@@ -293,7 +327,7 @@ describe("PrismaLotRepository (post-collapse)", () => {
   });
 
   describe("update", () => {
-    it("scopes update by id+org with status transition + writes farmName; no legacy farmId (post-F5)", async () => {
+    it("scopes update by id+org with status transition + writes farmName; no legacy name/barnNumber/farmId (post-simplify)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ update }));
       const entity = buildEntity().deactivate(new Date("2026-05-01"));
@@ -302,15 +336,18 @@ describe("PrismaLotRepository (post-collapse)", () => {
 
       const callArg = update.mock.calls[0]?.[0];
       expect(callArg.where).toEqual({ id: entity.id, organizationId: "org-1" });
-      // Post F5-final: status pass-through 1:1 (no bridge translation).
       expect(callArg.data.status).toBe("INACTIVE");
       expect(callArg.data.endDate).toBeInstanceOf(Date);
       expect(callArg.data.farmName).toBe("Pocona");
-      // Post F5-final: farmId column dropped — payload no lo incluye.
+      expect("name" in callArg.data).toBe(false);
+      expect("barnNumber" in callArg.data).toBe(false);
       expect("farmId" in callArg.data).toBe(false);
+      // startDate stays out of the update payload (it's part of the
+      // identity tuple post-simplify).
+      expect("startDate" in callArg.data).toBe(false);
     });
 
-    it("preserves other fields (name+barnNumber+initialCount unchanged)", async () => {
+    it("preserves initialCount (still in payload, but immutable from service)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const repo = new PrismaLotRepository(dbWith({ update }));
       const entity = buildEntity().deactivate(new Date("2026-05-01"));
@@ -318,9 +355,22 @@ describe("PrismaLotRepository (post-collapse)", () => {
       await repo.update(entity);
 
       const callArg = update.mock.calls[0]?.[0];
-      expect(callArg.data.name).toBe("Lote A");
-      expect(callArg.data.barnNumber).toBe(1);
       expect(callArg.data.initialCount).toBe(1000);
+    });
+
+    it("maps Prisma P2002 on update → LotForFarmAtDateExists", async () => {
+      const p2002 = Object.assign(new Error("Unique constraint"), {
+        code: "P2002",
+        meta: {
+          target: "chicken_lots_organizationId_farmName_startDate_key",
+        },
+      });
+      const update = vi.fn().mockRejectedValueOnce(p2002);
+      const repo = new PrismaLotRepository(dbWith({ update }));
+
+      await expect(repo.update(buildEntity())).rejects.toThrow(
+        LotForFarmAtDateExists,
+      );
     });
   });
 });

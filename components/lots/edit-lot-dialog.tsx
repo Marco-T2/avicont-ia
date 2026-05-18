@@ -19,58 +19,50 @@ interface EditLotDialogProps {
   onOpenChange: (open: boolean) => void;
   orgSlug: string;
   lotId: string;
-  initialName: string;
-  initialBarnNumber: number;
+  initialFarmName: string;
   onUpdated?: () => void;
 }
 
 /**
- * Edits `name` and/or `barnNumber` of an existing Lot. Spec REQ-100.
- * Other fields (initialCount, status, farmId, organizationId) are
- * immutable (INV-04). PATCH discriminator on the route: this payload
- * has no `endDate` → service.update path.
+ * Post simplify-lot-identifier: only `farmName` is editable. The
+ * legacy `name` + `barnNumber` inputs are gone (columns dropped),
+ * and `startDate` is now part of the lot's identity tuple
+ * `(orgId, farmName, startDate)` enforced by a DB unique index, so
+ * it's immutable post-creation. The PATCH discriminator stays the
+ * same: this payload has no `endDate` → service.update path.
  */
 export function EditLotDialog({
   open,
   onOpenChange,
   orgSlug,
   lotId,
-  initialName,
-  initialBarnNumber,
+  initialFarmName,
   onUpdated,
 }: EditLotDialogProps) {
-  const [name, setName] = useState(initialName);
-  const [barnNumber, setBarnNumber] = useState(String(initialBarnNumber));
+  const [farmName, setFarmName] = useState(initialFarmName);
   const [saving, setSaving] = useState(false);
 
   // Reset form state every time the dialog opens (fresh values).
   useEffect(() => {
     if (open) {
-      setName(initialName);
-      setBarnNumber(String(initialBarnNumber));
+      setFarmName(initialFarmName);
     }
-  }, [open, initialName, initialBarnNumber]);
+  }, [open, initialFarmName]);
 
-  const dirty =
-    name.trim() !== initialName ||
-    Number(barnNumber) !== initialBarnNumber;
+  const dirty = farmName.trim() !== initialFarmName;
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      toast.error("El nombre es requerido");
-      return;
-    }
-    const barn = Number(barnNumber);
-    if (!Number.isInteger(barn) || barn < 1 || barn > 10) {
-      toast.error("El número de galpón debe ser entero entre 1 y 10");
+    if (!farmName.trim()) {
+      toast.error("El nombre de la granja es requerido");
       return;
     }
 
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {};
-      if (name.trim() !== initialName) payload.name = name.trim();
-      if (barn !== initialBarnNumber) payload.barnNumber = barn;
+      if (farmName.trim() !== initialFarmName) {
+        payload.farmName = farmName.trim();
+      }
 
       const res = await fetch(
         `/api/organizations/${orgSlug}/lots/${lotId}`,
@@ -103,33 +95,20 @@ export function EditLotDialog({
         <DialogHeader>
           <DialogTitle>Editar lote</DialogTitle>
           <DialogDescription>
-            Modifica el nombre y/o número de galpón. La cantidad inicial
-            y el estado del lote no se pueden cambiar.
+            Solo el nombre de la granja puede modificarse. La fecha de
+            inicio es parte de la identidad del lote y la cantidad
+            inicial no se puede cambiar.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">
-              Nombre del Lote *
+              Granja *
             </label>
             <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={saving}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Número de Galpón *
-            </label>
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              value={barnNumber}
-              onChange={(e) => setBarnNumber(e.target.value)}
+              value={farmName}
+              onChange={(e) => setFarmName(e.target.value)}
               disabled={saving}
             />
           </div>
@@ -145,7 +124,7 @@ export function EditLotDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={saving || !dirty || !name.trim()}
+            disabled={saving || !dirty || !farmName.trim()}
           >
             {saving ? (
               <>

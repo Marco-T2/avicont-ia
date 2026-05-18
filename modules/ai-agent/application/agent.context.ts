@@ -128,7 +128,10 @@ async function buildSocioContext(
   for (const [farmName, lots] of groupedByFarm) {
     lines.push(`### Granja: ${farmName}`);
     for (const lot of lots) {
-      lines.push(`  - Lote: ${lot.name} (ID: ${lot.id})`);
+      // Post simplify-lot-identifier: surface the derived identifier
+      // ("{farmName} - DD/MM/YYYY") so the LLM picks the same handle
+      // the user sees in the UI.
+      lines.push(`  - Lote: ${lot.displayName} (ID: ${lot.id})`);
     }
   }
 

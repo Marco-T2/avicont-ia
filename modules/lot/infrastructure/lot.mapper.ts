@@ -21,8 +21,6 @@ type ChickenLotWithRelationsRow = ChickenLot & {
 export function toDomain(row: ChickenLot): Lot {
   return Lot.fromPersistence({
     id: row.id,
-    name: row.name,
-    barnNumber: row.barnNumber,
     initialCount: row.initialCount,
     startDate: row.startDate,
     endDate: row.endDate,
@@ -39,8 +37,6 @@ export function toPersistence(entity: Lot) {
   const s = entity.toSnapshot();
   return {
     id: s.id,
-    name: s.name,
-    barnNumber: s.barnNumber,
     initialCount: s.initialCount,
     startDate: s.startDate,
     endDate: s.endDate,

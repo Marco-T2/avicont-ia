@@ -10,8 +10,6 @@ import { Lot } from "../../domain/lot.entity";
 const row = (override: Partial<ChickenLot> = {}): ChickenLot => ({
   id: "lot-1",
   organizationId: "org-1",
-  name: "Lote A",
-  barnNumber: 1,
   initialCount: 1000,
   startDate: new Date("2026-04-01"),
   endDate: null,
@@ -23,18 +21,18 @@ const row = (override: Partial<ChickenLot> = {}): ChickenLot => ({
   ...override,
 });
 
-describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
+describe("lot mapper (post simplify-lot-identifier)", () => {
   describe("toDomain()", () => {
-    it("hydrates a Lot with farmName + memberId; no legacy farmId surface", () => {
+    it("hydrates a Lot with farmName + memberId; displayName derived; no legacy name/barnNumber/farmId surface", () => {
       const l = toDomain(row());
       expect(l).toBeInstanceOf(Lot);
       expect(l.id).toBe("lot-1");
-      expect(l.name).toBe("Lote A");
       expect(l.farmName).toBe("Pocona");
       expect(l.memberId).toBe("member-1");
-      // Post-F5-final: legacy `_legacyFarmId` accessor + `farmId` column dropped.
+      expect(l.displayName).toBe("Pocona - 01/04/2026");
+      expect((l as unknown as { name?: unknown }).name).toBeUndefined();
       expect(
-        (l as unknown as { _legacyFarmId?: unknown })._legacyFarmId,
+        (l as unknown as { barnNumber?: unknown }).barnNumber,
       ).toBeUndefined();
     });
 
@@ -56,19 +54,16 @@ describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
       expect(inactive.endDate).toBeInstanceOf(Date);
     });
 
-    it("preserves barnNumber+initialCount integer values", () => {
-      const l = toDomain(row({ barnNumber: 7, initialCount: 5000 }));
-      expect(l.barnNumber).toBe(7);
+    it("preserves initialCount integer value", () => {
+      const l = toDomain(row({ initialCount: 5000 }));
       expect(l.initialCount).toBe(5000);
     });
   });
 
   describe("toPersistence()", () => {
-    it("returns a ChickenLot Prisma payload with farmName + memberId; no legacy farmId field", () => {
+    it("returns a ChickenLot Prisma payload with farmName + memberId; no legacy name/barnNumber/farmId field", () => {
       const entity = Lot.create({
         organizationId: "org-1",
-        name: "Lote A",
-        barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
         farmName: "Pocona",
@@ -76,20 +71,19 @@ describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
       });
       const data = toPersistence(entity);
       expect(data.id).toBe(entity.id);
-      expect(data.name).toBe("Lote A");
-      expect(data.barnNumber).toBe(1);
       expect(data.initialCount).toBe(1000);
       expect(data.farmName).toBe("Pocona");
       expect(data.memberId).toBe("member-1");
-      // Post-F5-final: legacy `farmId` column dropped — payload no lo incluye.
+      // Post simplify-lot-identifier: legacy columns dropped — payload
+      // does NOT include them.
+      expect("name" in data).toBe(false);
+      expect("barnNumber" in data).toBe(false);
       expect("farmId" in data).toBe(false);
     });
 
     it("status pass-through 1:1 (ACTIVE | INACTIVE)", () => {
       const entity = Lot.create({
         organizationId: "org-1",
-        name: "Lote A",
-        barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
         farmName: "Pocona",
@@ -103,8 +97,6 @@ describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
     it("preserves endDate null when ACTIVE", () => {
       const entity = Lot.create({
         organizationId: "org-1",
-        name: "Lote A",
-        barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
         farmName: "Pocona",
@@ -117,8 +109,6 @@ describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
     it("preserves all timestamps (createdAt+updatedAt)", () => {
       const entity = Lot.create({
         organizationId: "org-1",
-        name: "Lote A",
-        barnNumber: 1,
         initialCount: 1000,
         startDate: new Date("2026-04-01"),
         farmName: "Pocona",
@@ -136,8 +126,6 @@ describe("lot mapper (post retire-farm-collapse-to-lot F5-final)", () => {
       const entity = toDomain(original);
       const data = toPersistence(entity);
       expect(data.id).toBe(original.id);
-      expect(data.name).toBe(original.name);
-      expect(data.barnNumber).toBe(original.barnNumber);
       expect(data.initialCount).toBe(original.initialCount);
       expect(data.status).toBe(original.status);
       expect(data.farmName).toBe(original.farmName);

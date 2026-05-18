@@ -7,11 +7,41 @@ import type {
   LotWithRelationsSnapshot,
 } from "../domain/lot.repository";
 import { Lot } from "../domain/lot.entity";
+import { LotForFarmAtDateExists } from "../domain/errors/lot-errors";
 import {
   toDomain,
   toPersistence,
   toLotWithRelationsSnapshot,
 } from "./lot.mapper";
+
+/**
+ * Maps Prisma's P2002 uniqueness violation on the
+ * `chicken_lots_organizationId_farmName_startDate_key` index into our
+ * typed domain error. Any other P2002 (or non-P2002) error is
+ * re-thrown unchanged so unrelated failures keep their original shape.
+ */
+const UNIQUE_INDEX = "chicken_lots_organizationId_farmName_startDate_key";
+
+function isLotUniqueViolation(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const e = err as { code?: unknown; meta?: { target?: unknown } };
+  if (e.code !== "P2002") return false;
+  const target = e.meta?.target;
+  if (typeof target === "string") return target === UNIQUE_INDEX;
+  if (Array.isArray(target)) {
+    // Newer Prisma reports field names instead of the index name; accept
+    // either form so we don't silently miss the mapping when Prisma's
+    // shape changes underneath us.
+    const fields = target.map((t) => String(t));
+    return (
+      target.includes(UNIQUE_INDEX) ||
+      (fields.includes("organizationId") &&
+        fields.includes("farmName") &&
+        fields.includes("startDate"))
+    );
+  }
+  return false;
+}
 
 /**
  * Includes the tables touched by `delete` cascade tx (expense +
@@ -59,26 +89,39 @@ export class PrismaLotRepository implements LotRepository {
   }
 
   async save(entity: Lot): Promise<void> {
-    await this.db.chickenLot.create({ data: toPersistence(entity) });
+    try {
+      await this.db.chickenLot.create({ data: toPersistence(entity) });
+    } catch (err) {
+      if (isLotUniqueViolation(err)) {
+        throw new LotForFarmAtDateExists(entity.farmName, entity.startDate);
+      }
+      throw err;
+    }
   }
 
   async update(entity: Lot): Promise<void> {
-    // Post retire-farm-collapse-to-lot F5-final: el mapper es 1:1, sin
-    // bridge translation. memberId + organizationId siguen siendo
-    // immutables (INV-04) — no se incluyen en el update payload.
+    // Post simplify-lot-identifier: only farmName + status/endDate are
+    // mutable. startDate stays out of the update payload — it is the
+    // backbone of displayName + the (orgId, farmName, startDate) unique
+    // index, so mutating it would silently rename the lot and reshuffle
+    // identity (Marco-locked invariant).
     const data = toPersistence(entity);
-    await this.db.chickenLot.update({
-      where: { id: entity.id, organizationId: entity.organizationId },
-      data: {
-        name: data.name,
-        barnNumber: data.barnNumber,
-        initialCount: data.initialCount,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        status: data.status,
-        farmName: data.farmName,
-      },
-    });
+    try {
+      await this.db.chickenLot.update({
+        where: { id: entity.id, organizationId: entity.organizationId },
+        data: {
+          initialCount: data.initialCount,
+          endDate: data.endDate,
+          status: data.status,
+          farmName: data.farmName,
+        },
+      });
+    } catch (err) {
+      if (isLotUniqueViolation(err)) {
+        throw new LotForFarmAtDateExists(entity.farmName, entity.startDate);
+      }
+      throw err;
+    }
   }
 
   async findChildCounts(

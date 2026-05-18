@@ -5,8 +5,11 @@ import type { MortalityRepository } from "../domain/mortality.repository";
 import { Mortality } from "../domain/mortality.entity";
 import { toDomain, toPersistence } from "./mortality.mapper";
 
+// Post simplify-lot-identifier: `name` + `barnNumber` lot columns are
+// gone. We select `farmName + startDate` and the mapper composes the
+// `displayName` for downstream consumers (mortality.entity#relations).
 const mortalityInclude = {
-  lot: { select: { name: true, barnNumber: true } },
+  lot: { select: { farmName: true, startDate: true } },
   createdBy: { select: { name: true, email: true } },
 } as const;
 

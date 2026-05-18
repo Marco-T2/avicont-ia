@@ -1,22 +1,22 @@
 import type { LotStatus } from "../value-objects/lot-status";
 
 /**
- * Read-side projection of a Lot. Post-collapse (REQ-200, REQ-201)
- * the entity no longer carries `farmId` — it has `farmName` (free
- * text label of the farm/place) and `memberId` (FK to the owning
- * OrganizationMember). The legacy Prisma `farmId` column is still
- * present until the F5-final destructive migration but is NOT part
- * of the domain projection.
+ * Read-side projection of a Lot. Post simplify-lot-identifier the
+ * bare `name` + `barnNumber` columns are gone — consumers identify a
+ * lot via `displayName = "{farmName} - DD/MM/YYYY"` derived from
+ * `farmName + startDate`. `memberId` is the owning member FK
+ * (REQ-201). Mirrors the canonical snapshot exposed by
+ * `Lot.entity.ts#LotSnapshot` so the two interfaces stay in lockstep.
  */
 export type LotSnapshot = {
   id: string;
-  name: string;
-  barnNumber: number;
   initialCount: number;
   startDate: Date;
   endDate: Date | null;
   status: LotStatus;
   farmName: string;
+  /** Pre-computed identifier — see Lot.entity.ts#displayName. */
+  displayName: string;
   memberId: string;
   organizationId: string;
   createdAt: Date;

@@ -86,16 +86,17 @@ export default function LotsPageClient({
 
       <Card>
         <CardContent className="p-0">
+          {/*
+            Post simplify-lot-identifier: the table collapses to 3 cols
+            — the `displayName` ("Granja - DD/MM/YYYY") is the only
+            identifier the user sees, and it's the linked cell that
+            opens detail. Galpón is gone (column dropped); raw `name`
+            is gone (column dropped).
+          */}
           <table className="w-full">
             <thead>
               <tr className="border-b">
-                <th className="text-left p-3 text-sm font-medium">
-                  Granja
-                </th>
                 <th className="text-left p-3 text-sm font-medium">Lote</th>
-                <th className="text-left p-3 text-sm font-medium">
-                  Galpon
-                </th>
                 <th className="text-left p-3 text-sm font-medium">
                   Pollos
                 </th>
@@ -110,16 +111,14 @@ export default function LotsPageClient({
                   key={lot.id}
                   className="border-b hover:bg-muted/40 transition-colors"
                 >
-                  <td className="p-3 text-sm">{lot.farmName}</td>
                   <td className="p-3 text-sm">
                     <Link
                       href={`/${orgSlug}/lots/${lot.id}`}
                       className="text-primary hover:underline"
                     >
-                      {lot.name}
+                      {lot.displayName}
                     </Link>
                   </td>
-                  <td className="p-3 text-sm">{lot.barnNumber}</td>
                   <td className="p-3 text-sm">
                     {lot.initialCount.toLocaleString("es-BO")}
                   </td>

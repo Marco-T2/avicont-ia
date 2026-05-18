@@ -1,20 +1,8 @@
 /**
- * T19 [RED → GREEN] — create-lot-dialog farmName + datalist autocomplete
- * (REQ-200, REQ-205).
- *
- * Dialog drops `farmId` prop, adds `farmName` text input with
- * `<datalist>` suggestions. Suggestions are derived client-side
- * from the same GET /api/organizations/{slug}/lots used by the lots
- * page (REQ-205 — no new endpoint, scale max ~4 lots/org). Body
- * sends `farmName` (NO memberId — server-resolved per D-2 already
- * landed in T15). NO farmId in body.
- *
- * Expected failure mode (RED): current dialog signature still
- * requires `farmId`. The new test (a) renders dialog WITHOUT
- * farmId — production code errors `Property 'farmId' is required`
- * at runtime when handleSubmit reads it; (b) submitted body has
- * `farmId` instead of `farmName`. Both assertions fail until T19
- * GREEN lands the new prop surface + autocomplete + payload shape.
+ * Post simplify-lot-identifier: dialog is a 3-field form (Granja
+ * autocomplete + initialCount + startDate). POST body excludes the
+ * dropped `name` + `barnNumber` fields (Marco-locked). Autocomplete
+ * datalist behavior (REQ-205) preserved.
  */
 import { render, screen, fireEvent, cleanup, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
@@ -35,9 +23,8 @@ function openDialog() {
   fireEvent.click(screen.getByRole("button", { name: /nuevo lote/i }));
 }
 
-describe("CreateLotDialog — farmName + datalist autocomplete (REQ-200, REQ-205)", () => {
+describe("CreateLotDialog — farmName + datalist autocomplete (REQ-205, post simplify-lot-identifier)", () => {
   beforeEach(() => {
-    // Mock GET /lots for autocomplete suggestion source.
     vi.spyOn(global, "fetch").mockImplementation(
       async (input: RequestInfo | URL, init?: RequestInit) => {
         const url = typeof input === "string" ? input : input.toString();
@@ -74,7 +61,7 @@ describe("CreateLotDialog — farmName + datalist autocomplete (REQ-200, REQ-205
     });
   });
 
-  it("submits body with farmName (NO farmId, NO memberId — D-2 server-resolved)", async () => {
+  it("submits body with { farmName, initialCount, startDate } — NO name/barnNumber/farmId/memberId", async () => {
     render(<CreateLotDialog orgSlug="test-org" />);
     openDialog();
 
@@ -83,17 +70,14 @@ describe("CreateLotDialog — farmName + datalist autocomplete (REQ-200, REQ-205
       expect(document.querySelector("datalist")).not.toBeNull(),
     );
 
-    fireEvent.change(screen.getByPlaceholderText(/Ej: Lote Enero/i), {
-      target: { value: "Lote Junio" },
-    });
-    const inputs = document.querySelectorAll<HTMLInputElement>(
-      'input[type="number"]',
-    );
-    fireEvent.change(inputs[0], { target: { value: "1" } }); // barnNumber
-    fireEvent.change(inputs[1], { target: { value: "5000" } }); // initialCount
+    // Fill the 3 inputs: farmName, initialCount (number), startDate (date)
     fireEvent.change(screen.getByPlaceholderText(/Ej: Capinota/i), {
       target: { value: "Mi Granja Nueva" },
     });
+    const numberInputs = document.querySelectorAll<HTMLInputElement>(
+      'input[type="number"]',
+    );
+    fireEvent.change(numberInputs[0], { target: { value: "5000" } });
 
     fireEvent.click(screen.getByRole("button", { name: /crear lote/i }));
 
@@ -107,13 +91,13 @@ describe("CreateLotDialog — farmName + datalist autocomplete (REQ-200, REQ-205
         ((postCall![1] as RequestInit).body as string) ?? "{}",
       );
       expect(body).toEqual({
-        name: "Lote Junio",
-        barnNumber: 1,
         initialCount: 5000,
         startDate: expect.any(String),
         farmName: "Mi Granja Nueva",
       });
-      // explicit absence assertions — INV-04 / D-2
+      // Explicit absence assertions — post simplify-lot-identifier
+      expect("name" in body).toBe(false);
+      expect("barnNumber" in body).toBe(false);
       expect("farmId" in body).toBe(false);
       expect("memberId" in body).toBe(false);
     });

@@ -80,7 +80,9 @@ export class PricingService {
 
     return {
       lotId: lot.id,
-      lotName: lot.name,
+      // Post simplify-lot-identifier: pricing surface uses the derived
+      // identifier so the LLM-presented cost report matches the UI label.
+      lotName: lot.displayName,
       initialCount: lot.initialCount,
       totalExpenses,
       totalMortality,

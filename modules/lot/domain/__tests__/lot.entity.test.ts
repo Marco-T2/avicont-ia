@@ -6,10 +6,8 @@ import {
 } from "../errors/lot-errors";
 import { LotSummary } from "../value-objects/lot-summary";
 
-describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
+describe("Lot entity behavioral (post simplify-lot-identifier — REQ-200/201/203/INV-04)", () => {
   const baseInput = {
-    name: "Lote 01",
-    barnNumber: 1,
     initialCount: 1000,
     startDate: new Date("2026-05-01T00:00:00Z"),
     farmName: "Capinota Arriba",
@@ -26,8 +24,6 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
   it("Lot.create produces entity with id + status=ACTIVE default + endDate=null + farmName + memberId + timestamps", () => {
     const lot = Lot.create(baseInput);
     expect(lot.id).toMatch(/^[0-9a-f-]{36}$/);
-    expect(lot.name).toBe(baseInput.name);
-    expect(lot.barnNumber).toBe(1);
     expect(lot.initialCount).toBe(1000);
     expect(lot.startDate).toEqual(baseInput.startDate);
     expect(lot.endDate).toBeNull();
@@ -39,12 +35,10 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     expect(lot.updatedAt).toEqual(new Date("2026-05-10T12:00:00Z"));
   });
 
-  // α22
-  it("Lot getters expose all post-collapse props (no farmId getter)", () => {
+  // α22 — getter surface post simplify-lot-identifier (no name, no barnNumber)
+  it("Lot getters expose all post-simplify props (no name, no barnNumber, no farmId; displayName derived)", () => {
     const lot = Lot.create(baseInput);
     expect(typeof lot.id).toBe("string");
-    expect(lot.name).toBe(baseInput.name);
-    expect(typeof lot.barnNumber).toBe("number");
     expect(typeof lot.initialCount).toBe("number");
     expect(lot.startDate).toBeInstanceOf(Date);
     expect(lot.endDate).toBeNull();
@@ -54,17 +48,24 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     expect(lot.organizationId).toBe(baseInput.organizationId);
     expect(lot.createdAt).toBeInstanceOf(Date);
     expect(lot.updatedAt).toBeInstanceOf(Date);
-    // public surface NO `farmId` getter (REQ-200 dropped FK)
+    // dropped surfaces: name + barnNumber + farmId all gone post-simplify
+    expect((lot as unknown as { name?: unknown }).name).toBeUndefined();
+    expect(
+      (lot as unknown as { barnNumber?: unknown }).barnNumber,
+    ).toBeUndefined();
     expect((lot as unknown as { farmId?: unknown }).farmId).toBeUndefined();
   });
 
-  // α23 — post retire-farm-collapse-to-lot F5-final: legacy farmId column
-  // + _legacyFarmId accessor retirados; LotProps es shape final.
+  // NEW — displayName format invariant: "{farmName} - DD/MM/YYYY"
+  it("Lot.displayName derives '{farmName} - DD/MM/YYYY' from farmName + startDate (formatDateBO)", () => {
+    const lot = Lot.create(baseInput);
+    expect(lot.displayName).toBe("Capinota Arriba - 01/05/2026");
+  });
+
+  // α23 — post-simplify: LotProps no name/barnNumber.
   it("Lot.fromPersistence reconstructs entity preserving id + status=INACTIVE + endDate + farmName + memberId", () => {
     const props = {
       id: "fixed-lot-id-1",
-      name: "Lote Pre",
-      barnNumber: 5,
       initialCount: 500,
       startDate: new Date("2026-01-01T00:00:00Z"),
       endDate: new Date("2026-04-01T00:00:00Z"),
@@ -81,10 +82,7 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     expect(lot.endDate).toEqual(new Date("2026-04-01T00:00:00Z"));
     expect(lot.farmName).toBe("Pocona");
     expect(lot.memberId).toBe("member-cuid-1");
-    // Public surface NO `_legacyFarmId` accessor post-F5-final.
-    expect(
-      (lot as unknown as { _legacyFarmId?: unknown })._legacyFarmId,
-    ).toBeUndefined();
+    expect(lot.displayName).toBe("Pocona - 01/01/2026");
   });
 
   // α24
@@ -108,76 +106,64 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     );
   });
 
-  // α26
-  it("Lot.toSnapshot serializes all post-collapse fields (no farmId in snapshot)", () => {
+  // α26 — snapshot surface post simplify-lot-identifier
+  it("Lot.toSnapshot serializes farmName + displayName; no name/barnNumber/farmId", () => {
     const lot = Lot.create(baseInput);
     const snap = lot.toSnapshot();
     expect(snap).toMatchObject({
       id: lot.id,
-      name: baseInput.name,
-      barnNumber: 1,
       initialCount: 1000,
       startDate: baseInput.startDate,
       endDate: null,
       status: "ACTIVE",
       farmName: baseInput.farmName,
+      displayName: "Capinota Arriba - 01/05/2026",
       memberId: baseInput.memberId,
       organizationId: baseInput.organizationId,
       createdAt: lot.createdAt,
       updatedAt: lot.updatedAt,
     });
-    // INV-04: farmId is NOT part of the public projection
+    // Dropped projections: name + barnNumber + farmId are gone
+    expect((snap as unknown as { name?: unknown }).name).toBeUndefined();
+    expect(
+      (snap as unknown as { barnNumber?: unknown }).barnNumber,
+    ).toBeUndefined();
     expect((snap as unknown as { farmId?: unknown }).farmId).toBeUndefined();
   });
 
-  // α27
-  it("Lot.create with same barnNumber+farmName allowed twice (NO uniqueness check — preserves legacy EXACT)", () => {
-    const lot1 = Lot.create({ ...baseInput, barnNumber: 3 });
-    const lot2 = Lot.create({ ...baseInput, barnNumber: 3 });
-    expect(lot1.id).not.toBe(lot2.id);
-    expect(lot1.barnNumber).toBe(3);
-    expect(lot2.barnNumber).toBe(3);
-  });
-
-  // α29 Lot.update — happy path immutable
-  it("Lot.update returns a new instance with updated name + barnNumber + farmName", () => {
+  // α29 Lot.update — only farmName editable post simplify-lot-identifier
+  it("Lot.update returns a new instance with updated farmName (displayName recomputed)", () => {
     const lot = Lot.create(baseInput);
 
-    const updated = lot.update({
-      name: "Galpón B",
-      barnNumber: 2,
-      farmName: "Pocona Nueva",
-    });
+    const updated = lot.update({ farmName: "Pocona Nueva" });
 
     expect(updated).not.toBe(lot);
-    expect(updated.name).toBe("Galpón B");
-    expect(updated.barnNumber).toBe(2);
     expect(updated.farmName).toBe("Pocona Nueva");
-    expect(lot.name).toBe(baseInput.name); // original unchanged
+    expect(updated.displayName).toBe("Pocona Nueva - 01/05/2026");
+    expect(lot.farmName).toBe(baseInput.farmName); // original unchanged
   });
 
-  // α30 Lot.update preserves immutable invariants (INV-04 post-collapse)
-  it("Lot.update preserves id, initialCount, status, memberId, organizationId, createdAt (INV-04)", () => {
+  // α30 Lot.update preserves immutable invariants (INV-04 + startDate immutable post-simplify)
+  it("Lot.update preserves id, initialCount, startDate, status, memberId, organizationId, createdAt", () => {
     const lot = Lot.create(baseInput);
 
-    const updated = lot.update({ name: "Galpón B" });
+    const updated = lot.update({ farmName: "X" });
 
     expect(updated.id).toBe(lot.id);
     expect(updated.initialCount).toBe(lot.initialCount);
+    expect(updated.startDate).toEqual(lot.startDate);
     expect(updated.status).toBe(lot.status);
     expect(updated.memberId).toBe(lot.memberId);
     expect(updated.organizationId).toBe(lot.organizationId);
     expect(updated.createdAt).toEqual(lot.createdAt);
   });
 
-  // α31 Lot.update partial — barnNumber only
-  it("Lot.update partial keeps prior values when fields omitted", () => {
+  // α31 Lot.update partial — farmName omitted keeps prior value
+  it("Lot.update partial keeps prior farmName when omitted", () => {
     const lot = Lot.create(baseInput);
 
-    const updated = lot.update({ barnNumber: 9 });
+    const updated = lot.update({});
 
-    expect(updated.barnNumber).toBe(9);
-    expect(updated.name).toBe(baseInput.name);
     expect(updated.farmName).toBe(baseInput.farmName);
   });
 
@@ -186,7 +172,7 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     const lot = Lot.create(baseInput);
     vi.setSystemTime(new Date("2026-05-10T13:00:00Z"));
 
-    const updated = lot.update({ name: "X" });
+    const updated = lot.update({ farmName: "X" });
 
     expect(updated.updatedAt).toEqual(new Date("2026-05-10T13:00:00Z"));
     expect(updated.updatedAt.getTime()).toBeGreaterThan(
@@ -200,7 +186,9 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
       new Date("2026-06-30T00:00:00Z"),
     );
 
-    expect(() => lot.update({ name: "X" })).toThrow(LotCannotUpdateInactive);
+    expect(() => lot.update({ farmName: "X" })).toThrow(
+      LotCannotUpdateInactive,
+    );
   });
 
   // INV-04.2 — farmName mutable via update
@@ -208,7 +196,6 @@ describe("Lot entity behavioral (post-collapse REQ-200/201/203/INV-04)", () => {
     const lot = Lot.create(baseInput);
     const updated = lot.update({ farmName: "Pocona Nueva" });
     expect(updated.farmName).toBe("Pocona Nueva");
-    expect(updated.name).toBe(baseInput.name);
   });
 
   // α28

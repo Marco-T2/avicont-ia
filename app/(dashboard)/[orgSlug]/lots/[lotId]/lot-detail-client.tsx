@@ -241,12 +241,12 @@ export default function LotDetailClient({
         <div className="flex justify-between items-start">
           <div>
             <div className="flex items-center gap-3">
-              <h1 className="text-3xl font-bold">{lot.name}</h1>
+              <h1 className="text-3xl font-bold">{lot.displayName}</h1>
               <Badge className={status.className}>{status.label}</Badge>
             </div>
             <p className="text-muted-foreground mt-1">
-              Granja: {lot.farmName} &middot; Galpon #{lot.barnNumber}{" "}
-              &middot; Inicio: {formatDateBO(lot.startDate)}
+              Granja: {lot.farmName} &middot; Inicio:{" "}
+              {formatDateBO(lot.startDate)}
               {lot.endDate && ` · Cierre: ${formatDateBO(lot.endDate)}`}
             </p>
           </div>
@@ -276,7 +276,7 @@ export default function LotDetailClient({
               orgSlug={orgSlug}
               contextHints={{
                 lotId: lot.id,
-                lotName: lot.name,
+                lotName: lot.displayName,
                 // farmId dropped (REQ-200). farmName retained as the
                 // free-text grouping signal for the AI agent (REQ-205).
                 farmName: lot.farmName,
@@ -533,8 +533,7 @@ export default function LotDetailClient({
         onOpenChange={setEditLotOpen}
         orgSlug={orgSlug}
         lotId={lot.id}
-        initialName={lot.name}
-        initialBarnNumber={lot.barnNumber}
+        initialFarmName={lot.farmName}
         onUpdated={() => router.refresh()}
       />
       <DeleteLotDialog
@@ -542,7 +541,7 @@ export default function LotDetailClient({
         onOpenChange={setDeleteLotOpen}
         orgSlug={orgSlug}
         lotId={lot.id}
-        lotName={lot.name}
+        lotName={lot.displayName}
         onDeleted={() => {
           // Lot is gone — bounce back to the flat /lots list
           // (post-collapse REQ-200, T20).

@@ -11,12 +11,15 @@
 
 export interface ActiveLot {
   id: string;
-  name: string;
+  /**
+   * Pre-derived "{farmName} - DD/MM/YYYY" identifier shown to the LLM
+   * (post simplify-lot-identifier). The agent never sees the raw
+   * `name`/`barnNumber` columns — both were dropped wholesale.
+   */
+  displayName: string;
   isActive: boolean;
   farmName: string;
   memberId: string;
-  // Legacy-shaped extras consumidos por application/agent.context.ts.
-  barnNumber: number;
   initialCount: number;
   startDate: Date;
   status: string;
@@ -29,6 +32,11 @@ export interface RecentExpense {
   description: string | null;
   lotId: string;
   date: Date;
+  /**
+   * Pre-derived lot identifier surfaced to the LLM in the expense line
+   * (post simplify-lot-identifier — replaces the legacy `lot.name`).
+   */
+  lot: { displayName: string };
 }
 
 /**

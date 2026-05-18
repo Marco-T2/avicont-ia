@@ -1,8 +1,16 @@
 import { MortalityCount } from "./value-objects/mortality-count";
 import { MortalityCountExceedsAlive } from "./errors/mortality-errors";
 
+/**
+ * Hydrated relations shape for read views. Post simplify-lot-identifier
+ * the bare `lot.name` + `lot.barnNumber` columns are gone — the relation
+ * now exposes the pre-derived `lot.displayName` so consumers don't have
+ * to re-format. Producer responsibility: the mortality mapper composes
+ * displayName from `farmName + startDate` via `formatDateBO`, mirroring
+ * Lot.entity#displayName so the two stay in lockstep.
+ */
 export interface MortalityRelations {
-  lot: { name: string; barnNumber: number };
+  lot: { displayName: string };
   createdBy: { name: string | null; email: string };
 }
 

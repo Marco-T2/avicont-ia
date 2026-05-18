@@ -3,10 +3,7 @@ import { LotService } from "../lot.service";
 import { Lot } from "../../domain/lot.entity";
 import { LotSummary } from "../../domain/value-objects/lot-summary";
 import { InMemoryLotRepository } from "../fakes/in-memory-lot.repository";
-import {
-  CannotDeactivateInactiveLot,
-  LotNameDuplicate,
-} from "../../domain/errors/lot-errors";
+import { CannotDeactivateInactiveLot } from "../../domain/errors/lot-errors";
 import { NotFoundError } from "@/features/shared/errors";
 
 const ORG = "org-1";
@@ -15,23 +12,19 @@ const FARM_NAME = "Pocona";
 
 const baseInput = (
   override: Partial<{
-    name: string;
-    barnNumber: number;
     initialCount: number;
     startDate: Date;
     farmName: string;
     memberId: string;
   }> = {},
 ) => ({
-  name: override.name ?? "Lote 001",
-  barnNumber: override.barnNumber ?? 1,
   initialCount: override.initialCount ?? 1000,
   startDate: override.startDate ?? new Date("2026-01-01"),
   farmName: override.farmName ?? FARM_NAME,
   memberId: override.memberId ?? MEMBER,
 });
 
-describe("LotService (post-collapse REQ-200/201/203/204)", () => {
+describe("LotService (post simplify-lot-identifier — REQ-200/201/203/204)", () => {
   let repo: InMemoryLotRepository;
   let svc: LotService;
 
@@ -75,16 +68,16 @@ describe("LotService (post-collapse REQ-200/201/203/204)", () => {
     it("returns ACTIVE Lot with farmName + memberId fields", async () => {
       const l = await svc.create(
         ORG,
-        baseInput({ name: "Nuevo", initialCount: 500 }),
+        baseInput({ initialCount: 500 }),
       );
       expect(l).toBeInstanceOf(Lot);
       expect(l.status).toBe("ACTIVE");
-      expect(l.name).toBe("Nuevo");
       expect(l.initialCount).toBe(500);
       expect(l.endDate).toBeNull();
       expect(l.organizationId).toBe(ORG);
       expect(l.farmName).toBe(FARM_NAME);
       expect(l.memberId).toBe(MEMBER);
+      expect(l.displayName).toBe(`${FARM_NAME} - 01/01/2026`);
     });
   });
 
@@ -116,52 +109,39 @@ describe("LotService (post-collapse REQ-200/201/203/204)", () => {
   });
 
   describe("update", () => {
-    // α41
-    it("persists updated name + barnNumber + farmName and returns the new entity", async () => {
-      const created = await svc.create(ORG, baseInput({ name: "Lote A" }));
+    // α41 — only farmName editable post simplify-lot-identifier; the
+    // old (farmName, startDate) uniqueness collision is enforced by
+    // the DB unique index and surfaced as LotForFarmAtDateExists by
+    // the repo adapter (covered in prisma-lot.repository.test.ts), so
+    // the in-memory service test no longer asserts the collision path.
+    it("persists updated farmName and returns the new entity", async () => {
+      const created = await svc.create(ORG, baseInput());
 
       const updated = await svc.update(ORG, created.id, {
-        name: "Lote A modificado",
-        barnNumber: 9,
         farmName: "Pocona Nueva",
       });
 
-      expect(updated.name).toBe("Lote A modificado");
-      expect(updated.barnNumber).toBe(9);
       expect(updated.farmName).toBe("Pocona Nueva");
       const reloaded = await svc.getById(ORG, created.id);
-      expect(reloaded.name).toBe("Lote A modificado");
       expect(reloaded.farmName).toBe("Pocona Nueva");
     });
 
     // α42
     it("throws NotFoundError when lot does not exist", async () => {
       await expect(
-        svc.update(ORG, "missing-id", { name: "X" }),
+        svc.update(ORG, "missing-id", { farmName: "X" }),
       ).rejects.toThrow(NotFoundError);
     });
 
-    // α43
-    it("throws LotNameDuplicate when another lot in the same org already uses the name", async () => {
-      const a = await svc.create(ORG, baseInput({ name: "Galpón A" }));
-      await svc.create(ORG, baseInput({ name: "Galpón B", barnNumber: 2 }));
-
-      await expect(
-        svc.update(ORG, a.id, { name: "Galpón B" }),
-      ).rejects.toThrow(LotNameDuplicate);
-    });
-
-    // α44
-    it("allows update where the new name equals the lot's own current name (idempotent)", async () => {
-      const created = await svc.create(ORG, baseInput({ name: "Lote único" }));
+    // α44 idempotent: same farmName is a no-op semantically
+    it("allows update where the new farmName equals the current one (idempotent)", async () => {
+      const created = await svc.create(ORG, baseInput());
 
       const updated = await svc.update(ORG, created.id, {
-        name: "Lote único",
-        barnNumber: 7,
+        farmName: created.farmName,
       });
 
-      expect(updated.name).toBe("Lote único");
-      expect(updated.barnNumber).toBe(7);
+      expect(updated.farmName).toBe(created.farmName);
     });
   });
 

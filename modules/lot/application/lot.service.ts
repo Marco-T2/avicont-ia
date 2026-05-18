@@ -6,7 +6,6 @@ import {
   type UpdateLotInput,
 } from "../domain/lot.entity";
 import type { LotRepository } from "../domain/lot.repository";
-import { LotNameDuplicate } from "../domain/errors/lot-errors";
 import type { LotSummary } from "../domain/value-objects/lot-summary";
 
 export type CreateLotServiceInput = Omit<CreateLotInput, "organizationId">;
@@ -60,16 +59,15 @@ export class LotService {
   }
 
   /**
-   * Updates `name`, `barnNumber`, and/or `farmName` of a Lot. Other
-   * fields are immutable (INV-04). Throws NotFoundError if missing,
-   * LotCannotUpdateInactive (from entity) if not ACTIVE,
-   * LotNameDuplicate if the new name collides with another lot in
-   * the same org. Idempotent when the new name equals the current
-   * name (self-collision excluded). Spec REQ-100.
-   *
-   * Marco decision: uniqueness check application-side via findAll
-   * + filter (no Prisma @@unique constraint — escala granjero OK,
-   * evita migration extra).
+   * Updates `farmName` of a Lot. Other fields are immutable
+   * (INV-04 + simplify-lot-identifier — startDate also immutable
+   * post-simplification because changing it would mutate displayName
+   * silently and break the (farmName, startDate) unique invariant).
+   * Throws NotFoundError if missing, LotCannotUpdateInactive (from
+   * entity) if not ACTIVE. Uniqueness on (orgId, farmName, startDate)
+   * is enforced by the DB unique index and surfaced as
+   * LotForFarmAtDateExists by the repo adapter (P2002 mapping).
+   * Spec REQ-100 (post simplify-lot-identifier).
    */
   async update(
     organizationId: string,
@@ -77,15 +75,6 @@ export class LotService {
     input: UpdateLotServiceInput,
   ): Promise<Lot> {
     const lot = await this.getById(organizationId, id);
-
-    if (input.name !== undefined && input.name !== lot.name) {
-      const siblings = await this.repo.findAll(organizationId);
-      const conflict = siblings.find(
-        (l) => l.id !== id && l.name === input.name,
-      );
-      if (conflict) throw new LotNameDuplicate(input.name);
-    }
-
     const updated = lot.update(input); // throws LotCannotUpdateInactive if not ACTIVE
     await this.repo.update(updated);
     return updated;

@@ -30,14 +30,15 @@ export async function GET(
 
 /**
  * PATCH dispatches on payload shape (discriminator: presence of
- * `endDate` ↔ deactivate vs `name|barnNumber|farmName` ↔ update).
- * Both share the same route because the previous version
- * (close-only) already lived here; keeping a single endpoint avoids
- * client URL churn (REQ-203, D-4 step 3/3).
+ * `endDate` ↔ deactivate vs `farmName` ↔ update). Both share the same
+ * route because the previous version (close-only) already lived here;
+ * keeping a single endpoint avoids client URL churn (REQ-203, D-4
+ * step 3/3).
  *
  * Body must satisfy ONE of:
  *  - { endDate } → service.deactivate
- *  - { name?, barnNumber?, farmName? } (at least one) → service.update
+ *  - { farmName } → service.update  (post simplify-lot-identifier;
+ *    `name` + `barnNumber` are gone, startDate is immutable)
  */
 export async function PATCH(
   request: Request,

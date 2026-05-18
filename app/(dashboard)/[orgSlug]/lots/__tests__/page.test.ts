@@ -103,13 +103,12 @@ describe("/[orgSlug]/lots — RBAC chain + server fetch (REQ-204, D-8)", () => {
     mockRequireOrgAccess.mockResolvedValue("org-1");
     const snapshot = {
       id: "l-1",
-      name: "Lote Mayo",
-      barnNumber: 1,
       initialCount: 5000,
       startDate: new Date("2026-05-01"),
       endDate: null,
       status: "ACTIVE" as const,
       farmName: "Capinota",
+      displayName: "Capinota - 01/05/2026",
       memberId: "m-1",
       organizationId: "org-1",
       createdAt: new Date("2026-05-01"),

@@ -1,3 +1,4 @@
+import { formatDateBO } from "@/lib/date-utils";
 import { LotSummary } from "./value-objects/lot-summary";
 import { type LotStatus, canTransitionLot } from "./value-objects/lot-status";
 import {
@@ -7,8 +8,6 @@ import {
 
 export interface LotProps {
   id: string;
-  name: string;
-  barnNumber: number;
   initialCount: number;
   startDate: Date;
   endDate: Date | null;
@@ -21,8 +20,6 @@ export interface LotProps {
 }
 
 export interface CreateLotInput {
-  name: string;
-  barnNumber: number;
   initialCount: number;
   startDate: Date;
   farmName: string;
@@ -38,20 +35,24 @@ export interface DeactivateLotInput {
 export type CloseLotInput = DeactivateLotInput;
 
 export interface UpdateLotInput {
-  name?: string;
-  barnNumber?: number;
   farmName?: string;
 }
 
 export interface LotSnapshot {
   id: string;
-  name: string;
-  barnNumber: number;
   initialCount: number;
   startDate: Date;
   endDate: Date | null;
   status: LotStatus;
   farmName: string;
+  /**
+   * Pre-computed identifier used by every consumer (UI/AI agent/PDF).
+   * Format: "{farmName} - DD/MM/YYYY" derived from `farmName + startDate`
+   * via `formatDateBO`. Marco-locked simplification (apply-directo
+   * simplify-lot-identifier): the bare `name` column is gone, the lot
+   * is uniquely identified by farmName + startDate (DB-level @@unique).
+   */
+  displayName: string;
   memberId: string;
   organizationId: string;
   createdAt: Date;
@@ -65,8 +66,6 @@ export class Lot {
     const now = new Date();
     return new Lot({
       id: crypto.randomUUID(),
-      name: input.name,
-      barnNumber: input.barnNumber,
       initialCount: input.initialCount,
       startDate: input.startDate,
       endDate: null,
@@ -84,13 +83,23 @@ export class Lot {
   }
 
   get id(): string { return this.props.id; }
-  get name(): string { return this.props.name; }
-  get barnNumber(): number { return this.props.barnNumber; }
   get initialCount(): number { return this.props.initialCount; }
   get startDate(): Date { return this.props.startDate; }
   get endDate(): Date | null { return this.props.endDate; }
   get status(): LotStatus { return this.props.status; }
   get farmName(): string { return this.props.farmName; }
+  /**
+   * Computed identifier: "{farmName} - DD/MM/YYYY" (formatDateBO).
+   * Replaces the dropped `name` column. Format is stable across
+   * server/client because formatDateBO uses the ISO-prefix slice
+   * (no Intl runtime), so it never depends on TZ/locale at format
+   * time. Marco's verbatim simplification rule: "se puede crear el
+   * nombre 'Granja Vinto - 17/05/2026' jalando la fecha de inicio
+   * así nunca se tendrá 2 del mismo".
+   */
+  get displayName(): string {
+    return `${this.props.farmName} - ${formatDateBO(this.props.startDate)}`;
+  }
   get memberId(): string { return this.props.memberId; }
   get organizationId(): string { return this.props.organizationId; }
   get createdAt(): Date { return this.props.createdAt; }
@@ -114,11 +123,13 @@ export class Lot {
   }
 
   /**
-   * Returns a new Lot with updated `name`, `barnNumber`, and/or
-   * `farmName`. Other fields (id, initialCount, status, memberId,
-   * organizationId, createdAt) are immutable post-creation (INV-04).
-   * `updatedAt` advances on every call. Throws LotCannotUpdateInactive
-   * when the lot is not ACTIVE (INACTIVE lots are historical snapshots).
+   * Returns a new Lot with updated `farmName`. Other fields (id,
+   * initialCount, startDate, status, memberId, organizationId,
+   * createdAt) are immutable post-creation (INV-04). Note: startDate
+   * is immutable post simplify-lot-identifier — changing it would
+   * mutate displayName silently, breaking the (farmName, startDate)
+   * DB unique invariant Marco locked. `updatedAt` advances on every
+   * call. Throws LotCannotUpdateInactive when the lot is not ACTIVE.
    * Spec REQ-100, INV-04 (farmName mutable).
    */
   update(input: UpdateLotInput): Lot {
@@ -127,8 +138,6 @@ export class Lot {
     }
     return new Lot({
       ...this.props,
-      name: input.name ?? this.props.name,
-      barnNumber: input.barnNumber ?? this.props.barnNumber,
       farmName: input.farmName ?? this.props.farmName,
       updatedAt: new Date(),
     });
@@ -137,13 +146,12 @@ export class Lot {
   toSnapshot(): LotSnapshot {
     return {
       id: this.props.id,
-      name: this.props.name,
-      barnNumber: this.props.barnNumber,
       initialCount: this.props.initialCount,
       startDate: this.props.startDate,
       endDate: this.props.endDate,
       status: this.props.status,
       farmName: this.props.farmName,
+      displayName: this.displayName,
       memberId: this.props.memberId,
       organizationId: this.props.organizationId,
       createdAt: this.props.createdAt,

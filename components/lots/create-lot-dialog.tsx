@@ -22,16 +22,16 @@ interface CreateLotDialogProps {
 }
 
 /**
- * REQ-200 / REQ-205 dialog (T19, post-collapse). `farmId` prop
- * removed — Lot now carries free-text `farmName`. `memberId` is
- * resolved server-side from the session in the POST route (D-2,
- * landed in T15), so the body does NOT include it.
- *
- * Autocomplete suggestions are derived client-side from the same
- * GET /api/organizations/{slug}/lots used by /lots page (REQ-205 —
- * no new endpoint, scale max ~4 lots/org per Marco). Unique +
- * alphabetical, capped to 4 suggestions to match the realistic
- * cardinality ceiling.
+ * Post simplify-lot-identifier (apply-directo): the dialog is now a
+ * 3-field form — Granja (farmName autocomplete from REQ-205),
+ * Cantidad Inicial (initialCount), Fecha de Inicio (startDate). The
+ * legacy `Nombre del Lote` + `Numero de Galpon` inputs are gone:
+ * Marco-locked simplification: "para qué poner nombre a un lote si
+ * simplemente sería 'Granja Vinto'" + "para qué quiero barnNumber si
+ * todo se puede consultar por el id directamente". The lot identifier
+ * is now `"{farmName} - DD/MM/YYYY"` derived server-side from
+ * `farmName + startDate` (DB-level @@unique enforces "nunca 2 del
+ * mismo" — surfaced via LotForFarmAtDateExists on collision).
  */
 const MAX_SUGGESTIONS = 4;
 const DATALIST_ID = "create-lot-dialog-farm-suggestions";
@@ -58,8 +58,6 @@ export default function CreateLotDialog({
 }: CreateLotDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [name, setName] = useState("");
-  const [barnNumber, setBarnNumber] = useState("");
   const [initialCount, setInitialCount] = useState("");
   const [farmName, setFarmName] = useState("");
   const [startDate, setStartDate] = useState(todayLocal());
@@ -92,20 +90,12 @@ export default function CreateLotDialog({
   }, [isOpen, orgSlug]);
 
   const handleSubmit = async () => {
-    if (!name.trim()) {
-      toast.error("El nombre del lote es requerido");
-      return;
-    }
-    if (!barnNumber || Number(barnNumber) < 1) {
-      toast.error("El numero de galpon debe ser al menos 1");
+    if (!farmName.trim()) {
+      toast.error("El nombre de la granja es requerido");
       return;
     }
     if (!initialCount || Number(initialCount) < 1) {
       toast.error("La cantidad inicial debe ser al menos 1");
-      return;
-    }
-    if (!farmName.trim()) {
-      toast.error("El nombre de la granja es requerido");
       return;
     }
 
@@ -117,8 +107,6 @@ export default function CreateLotDialog({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            name: name.trim(),
-            barnNumber: Number(barnNumber),
             initialCount: Number(initialCount),
             startDate,
             farmName: farmName.trim(),
@@ -128,8 +116,6 @@ export default function CreateLotDialog({
 
       if (response.ok) {
         toast.success("Lote creado exitosamente");
-        setName("");
-        setBarnNumber("");
         setInitialCount("");
         setFarmName("");
         setStartDate(todayLocal());
@@ -150,8 +136,6 @@ export default function CreateLotDialog({
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      setName("");
-      setBarnNumber("");
       setInitialCount("");
       setFarmName("");
       setStartDate(todayLocal());
@@ -170,23 +154,11 @@ export default function CreateLotDialog({
         <DialogHeader>
           <DialogTitle>Crear Nuevo Lote</DialogTitle>
           <DialogDescription>
-            Ingresa los datos del lote de pollos
+            El lote se identifica como &quot;Granja - Fecha&quot;.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Nombre del Lote *
-            </label>
-            <Input
-              placeholder="Ej: Lote Enero 2026"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              disabled={isLoading}
-            />
-          </div>
-
           <div>
             <label className="block text-sm font-medium mb-2">
               Granja *
@@ -203,21 +175,6 @@ export default function CreateLotDialog({
                 <option key={s} value={s} />
               ))}
             </datalist>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium mb-2">
-              Numero de Galpon *
-            </label>
-            <Input
-              type="number"
-              min={1}
-              max={10}
-              placeholder="1-10"
-              value={barnNumber}
-              onChange={(e) => setBarnNumber(e.target.value)}
-              disabled={isLoading}
-            />
           </div>
 
           <div>
@@ -259,10 +216,8 @@ export default function CreateLotDialog({
             onClick={handleSubmit}
             disabled={
               isLoading ||
-              !name.trim() ||
-              !barnNumber ||
-              !initialCount ||
-              !farmName.trim()
+              !farmName.trim() ||
+              !initialCount
             }
           >
             {isLoading ? (

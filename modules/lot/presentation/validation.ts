@@ -1,18 +1,15 @@
 import { z } from "zod";
 
 /**
- * REQ-200 / REQ-201: post-collapse Lot create payload. The legacy
- * `farmId` FK is gone — clients send `farmName` (free text label).
+ * Post simplify-lot-identifier Lot create payload. Marco-locked
+ * simplification: the bare `name` + `barnNumber` fields are gone —
+ * a lot is uniquely identified by `farmName + startDate` (DB-level
+ * @@unique), and consumers render `displayName =
+ * "{farmName} - DD/MM/YYYY"` derived from those two columns.
  * `memberId` is NOT in the schema by design (D-2 defense-in-depth):
  * the API route resolves it server-side from the Clerk session.
  */
 export const createLotSchema = z.object({
-  name: z.string().min(1, "El nombre es requerido"),
-  barnNumber: z
-    .number()
-    .int("El número de galpón debe ser entero")
-    .min(1, "El número de galpón debe ser al menos 1")
-    .max(10, "El número de galpón no puede superar 10"),
   initialCount: z
     .number()
     .int("La cantidad inicial debe ser un número entero")
@@ -37,33 +34,20 @@ export const deactivateLotSchema = z.object({
 export const closeLotSchema = deactivateLotSchema;
 
 /**
- * Update fields for an existing Lot. `name`, `barnNumber`, and
- * `farmName` are optional, but at least one MUST be present
- * (otherwise the call is meaningless). `initialCount`, `status`,
- * `memberId`, `organizationId` are NOT editable post-creation
- * (INV-04 — farmName is mutable per the post-collapse spec).
+ * Update payload for an existing Lot. Post simplify-lot-identifier
+ * only `farmName` is mutable (`initialCount`, `startDate`, `status`,
+ * `memberId`, `organizationId` are NOT editable post-creation —
+ * startDate is now part of the identity tuple). The single optional
+ * field is still required to be present so the request is meaningful.
  */
 export const updateLotSchema = z
   .object({
-    name: z.string().min(1, "El nombre es requerido").optional(),
-    barnNumber: z
-      .number()
-      .int("El número de galpón debe ser entero")
-      .min(1, "El número de galpón debe ser al menos 1")
-      .max(10, "El número de galpón no puede superar 10")
-      .optional(),
     farmName: z
       .string()
       .min(1, "El nombre de la granja es requerido")
       .max(200, "El nombre de la granja no puede superar 200 caracteres")
       .optional(),
   })
-  .refine(
-    (d) =>
-      d.name !== undefined ||
-      d.barnNumber !== undefined ||
-      d.farmName !== undefined,
-    {
-      message: "Debe enviar al menos un campo a actualizar",
-    },
-  );
+  .refine((d) => d.farmName !== undefined, {
+    message: "Debe enviar al menos un campo a actualizar",
+  });

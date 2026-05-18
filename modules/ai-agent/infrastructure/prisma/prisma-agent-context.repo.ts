@@ -1,10 +1,15 @@
 import "server-only";
+import { formatDateBO } from "@/lib/date-utils";
 import { BaseRepository } from "@/features/shared/base.repository";
 import type {
   ActiveLot,
   AgentContextReaderPort,
   RecentExpense,
 } from "../../domain/ports/agent-context-reader.port";
+
+function deriveDisplayName(farmName: string, startDate: Date): string {
+  return `${farmName} - ${formatDateBO(startDate)}`;
+}
 
 /**
  * PrismaAgentContextRepository — implements AgentContextReaderPort.
@@ -48,8 +53,6 @@ export class PrismaAgentContextRepository
       },
       select: {
         id: true,
-        name: true,
-        barnNumber: true,
         initialCount: true,
         startDate: true,
         status: true,
@@ -61,11 +64,12 @@ export class PrismaAgentContextRepository
 
     return rows.map((l) => ({
       id: l.id,
-      name: l.name,
+      // Post simplify-lot-identifier: agent sees the derived identifier
+      // (matches Lot.entity#displayName + Mortality#relations.lot shape).
+      displayName: deriveDisplayName(l.farmName, l.startDate),
       isActive: l.status === "ACTIVE",
       farmName: l.farmName,
       memberId: l.memberId,
-      barnNumber: l.barnNumber,
       initialCount: l.initialCount,
       startDate: l.startDate,
       status: l.status,
@@ -95,7 +99,10 @@ export class PrismaAgentContextRepository
         description: true,
         lotId: true,
         date: true,
-        lot: { select: { name: true } },
+        // Post simplify-lot-identifier: pick the two columns needed to
+        // derive `displayName` in the mapper below (the bare `name`
+        // column is gone).
+        lot: { select: { farmName: true, startDate: true } },
       },
     });
 
@@ -106,9 +113,8 @@ export class PrismaAgentContextRepository
       description: r.description ?? null,
       lotId: r.lotId,
       date: r.date,
-      // legacy-shaped extra: agent.context.ts reads `.lot.name`
-      lot: { name: r.lot.name },
-    })) as unknown as RecentExpense[];
+      lot: { displayName: deriveDisplayName(r.lot.farmName, r.lot.startDate) },
+    })) satisfies RecentExpense[];
   }
 
   async countJournalEntries(orgId: string): Promise<number> {

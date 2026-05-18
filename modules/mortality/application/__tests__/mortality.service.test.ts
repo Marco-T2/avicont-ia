@@ -47,20 +47,23 @@ const ORG = "org-1";
 
 const lotSnapshot = (
   override: Partial<LotSnapshot> = {},
-): LotSnapshot => ({
-  id: override.id ?? "lot-1",
-  name: override.name ?? "Lote 001",
-  barnNumber: override.barnNumber ?? 1,
-  initialCount: override.initialCount ?? 100,
-  startDate: override.startDate ?? new Date("2026-01-01"),
-  endDate: override.endDate ?? null,
-  status: override.status ?? "ACTIVE",
-  farmName: override.farmName ?? "Pocona",
-  memberId: override.memberId ?? "member-1",
-  organizationId: override.organizationId ?? ORG,
-  createdAt: override.createdAt ?? new Date("2026-01-01"),
-  updatedAt: override.updatedAt ?? new Date("2026-01-01"),
-});
+): LotSnapshot => {
+  const farmName = override.farmName ?? "Pocona";
+  const startDate = override.startDate ?? new Date("2026-01-01");
+  return {
+    id: override.id ?? "lot-1",
+    initialCount: override.initialCount ?? 100,
+    startDate,
+    endDate: override.endDate ?? null,
+    status: override.status ?? "ACTIVE",
+    farmName,
+    displayName: override.displayName ?? `${farmName} - 01/01/2026`,
+    memberId: override.memberId ?? "member-1",
+    organizationId: override.organizationId ?? ORG,
+    createdAt: override.createdAt ?? new Date("2026-01-01"),
+    updatedAt: override.updatedAt ?? new Date("2026-01-01"),
+  };
+};
 
 const baseInput = {
   lotId: "lot-1",

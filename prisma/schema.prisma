@@ -200,15 +200,14 @@ enum ExpenseCategory {
 
 model ChickenLot {
   id             String    @id @default(cuid())
-  name           String
-  barnNumber     Int
   initialCount   Int
   startDate      DateTime @db.Timestamptz(3)
   endDate        DateTime? @db.Timestamptz(3)
   status         LotStatus @default(ACTIVE)
-  // Post retire-farm-collapse-to-lot F5-final: farmName + memberId are
-  // NOT NULL (REQ-200, REQ-201). Legacy `farmId` FK column dropped along
-  // with the Farm model.
+  // Post simplify-lot-identifier: legacy `name` + `barnNumber` columns
+  // dropped. UI/domain derive `displayName = "{farmName} - DD/MM/YYYY"`
+  // from `farmName + startDate`. The DB unique index enforces the
+  // "nunca 2 del mismo" invariant Marco locked.
   farmName       String
   memberId       String
   organizationId String
@@ -219,6 +218,7 @@ model ChickenLot {
   expenses       Expense[]
   mortalityLogs  MortalityLog[]
 
+  @@unique([organizationId, farmName, startDate])
   @@index([organizationId])
   @@index([memberId])
   @@map("chicken_lots")

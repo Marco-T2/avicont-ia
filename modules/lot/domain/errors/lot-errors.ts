@@ -27,15 +27,24 @@ export class CannotDeactivateInactiveLot extends Error {
 }
 
 /**
- * Thrown by LotService.update when the requested new name collides
- * with another existing Lot's name in the same organization (spec
- * REQ-100, scenario "Update rejected — name already taken in org").
+ * Thrown by the Lot repo adapter when a create/update collides with
+ * the DB-level unique index on (organizationId, farmName, startDate).
+ * Replaces the legacy `LotNameDuplicate` application-side guard —
+ * post simplify-lot-identifier, uniqueness is enforced by Postgres
+ * and surfaced as a Prisma P2002 we map to this typed error.
+ *
+ * Marco's verbatim rule: "se puede crear el nombre 'Granja Vinto -
+ * 17/05/2026' jalando la fecha de inicio así nunca se tendrá 2 del
+ * mismo" — the index is the enforcement, this error is the surface.
  */
-export class LotNameDuplicate extends Error {
-  readonly code = "LOT_NAME_DUPLICATE";
-  constructor(name: string) {
-    super(`Ya existe un lote con el nombre "${name}" en la organización`);
-    this.name = "LotNameDuplicate";
+export class LotForFarmAtDateExists extends Error {
+  readonly code = "LOT_FOR_FARM_AT_DATE_EXISTS";
+  constructor(farmName: string, startDate: Date) {
+    const iso = startDate.toISOString().slice(0, 10);
+    super(
+      `Ya existe un lote para la granja "${farmName}" en la fecha ${iso}`,
+    );
+    this.name = "LotForFarmAtDateExists";
   }
 }
 
