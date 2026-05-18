@@ -13,6 +13,7 @@
  */
 
 import ExcelJS from "exceljs";
+import type Decimal from "decimal.js";
 import type { Prisma } from "@/generated/prisma/client";
 import type { IvaPurchaseBookDTO, IvaSalesBookDTO } from "../../domain/iva-books.types";
 import { getColumns } from "./iva-book-xlsx.sheet-builder";
@@ -37,10 +38,13 @@ function arialFont(opts: {
 }
 
 /**
- * Convierte Prisma.Decimal | number | string | null | undefined a number.
+ * Convierte Decimal (decimal.js) | Prisma.Decimal | number | string | null | undefined a number.
  * Retorna 0 si el valor es nulo/inválido.
+ *
+ * DEC-1 invariant 2: infra MAY accept Prisma.Decimal. Post-migration, DTOs arrive
+ * as decimal.js Decimal — union widened to accept both during/after transition.
  */
-function toNumber(v: Prisma.Decimal | number | string | null | undefined): number {
+function toNumber(v: Decimal | Prisma.Decimal | number | string | null | undefined): number {
   if (v === null || v === undefined) return 0;
   const n = typeof v === "number" ? v : parseFloat(String(v));
   return isNaN(n) ? 0 : n;
@@ -159,7 +163,7 @@ export async function exportIvaBookExcel(
     const rowValues = columns.map((col) => {
       const raw = getFieldValue(record, col.field, rowNum);
       if (col.type === "number" && col.field !== "__rowNum") {
-        return toNumber(raw as Prisma.Decimal | number | string | null | undefined);
+        return toNumber(raw as Decimal | Prisma.Decimal | number | string | null | undefined);
       }
       return raw;
     });

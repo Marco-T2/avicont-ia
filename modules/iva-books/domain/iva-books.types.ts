@@ -1,5 +1,5 @@
 /** Domain types for IVA Books — relocated from features/ (OLEADA 6 POC 5/8) */
-import type { Prisma } from "@/generated/prisma/client";
+import type DecimalJs from "decimal.js";
 import type {
   IvaBookStatus,
   IvaSalesEstadoSIN,
@@ -8,8 +8,8 @@ import type {
 // ── Re-exports públicos de los enums Prisma ───────────────────────────────────
 export type { IvaBookStatus, IvaSalesEstadoSIN };
 
-// Alias local para Decimal (igual que financial-statements)
-export type Decimal = Prisma.Decimal;
+// Alias local para Decimal (decimal.js@10.6.0 — DEC-1 invariant 1: domain layer)
+export type Decimal = DecimalJs;
 
 // ── Campos monetarios compartidos entre compras y ventas ──────────────────────
 
