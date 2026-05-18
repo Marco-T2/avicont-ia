@@ -28,6 +28,13 @@ export type Resource =
   | "dispatches"
   | "reports"
   | "contacts"
+  // `"farms"` Resource preserved as symbolic-historic post retire-farm-
+  // collapse-to-lot (SDD D-10): Farm agregado fue retirado y absorbido
+  // en Lot (REQ-200/201), pero el nombre "farms" sigue siendo el
+  // identificador conceptual del dominio granjero-avícola del usuario
+  // (gastos, mortalidad, lots — todo permission-scoped vía esta key).
+  // Renombrar a "lots" tocaría ~30 archivos cosméticamente y rompe
+  // backward-compat con permisos persistidos. Lock Marco I.2.
   | "farms"
   | "documents"
   | "agent"
@@ -37,6 +44,10 @@ export type Resource =
 
 export type Action = "read" | "write" | "close" | "reopen";
 
+// `DocumentScope.FARM` preserved as symbolic-historic post retire-farm-
+// collapse-to-lot (SDD D-10): mismo razonamiento que Resource "farms" —
+// representa el dominio granjero (documentos scoped a operaciones de
+// campo) más que la entidad Farm retirada. Lock Marco I.3.
 export type DocumentScope = "ORGANIZATION" | "ACCOUNTING" | "FARM";
 
 export const PERMISSIONS_READ: Record<Resource, Role[]> = {
