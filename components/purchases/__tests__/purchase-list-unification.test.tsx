@@ -100,10 +100,12 @@ describe("PurchaseList — unified entry button (T7.1/T7.2 REQ-C.1)", () => {
     expect(unifiedLink).toHaveAttribute("href", expect.stringContaining("type=COMPRA_GENERAL"));
   });
 
-  it("C.1.5 — historical SERVICIO rows still render in the list", () => {
+  it("C.1.5 — historical SERVICIO rows still render alongside COMPRA_GENERAL", () => {
     render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any, SERVICIO_PURCHASE as any]} total={2} page={1} pageSize={25} totalPages={1} />);
-    const svRow = screen.getByText("Servicio contratado");
-    expect(svRow).toBeInTheDocument();
+    // Both legacy SERVICIO and current COMPRA_GENERAL render as separate rows
+    // (header + 2 data rows). Structural check, complementary to C.2.5 which validates the label mapping.
+    const rows = screen.getAllByRole("row");
+    expect(rows).toHaveLength(3);
   });
 });
 
