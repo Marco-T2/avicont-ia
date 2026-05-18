@@ -1,9 +1,8 @@
 /**
  * Sentinel: decimal.js import-shape — purchases/[purchaseId]/route (DEC-1 residual P1).
  *
- * Mirror exact of modules/iva-books/__tests__/decimal-import.sentinel.test.ts
- * (sub-POC 5 Cycle 1) and sister `app/api/.../sales/[saleId]/__tests__/` (commit
- * 2d8df1c2). Asserts route.ts no longer value-imports `Prisma` from
+ * Sister of `app/api/.../sales/[saleId]/__tests__/` (commit 2d8df1c2).
+ * Asserts route.ts no longer value-imports `Prisma` from
  * `@/generated/prisma/client` and instead default-imports `Decimal` from
  * `decimal.js@10.6.0`.
  *

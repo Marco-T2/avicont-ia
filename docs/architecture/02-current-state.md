@@ -19,7 +19,7 @@
 | `modules/expense` | HEX ✅ | 45 | 11 | POC expense hex closed |
 | `modules/farm` | HEX ✅ | 11 | 18 | POC farms+lots |
 | `modules/fiscal-periods` | HEX ✅ | 9 | 7 | ⚠️ usa `features/shared` |
-| `modules/iva-books` | HEX ✅ | 16 | 22 | POC #11 closed; public barrel (server.ts) POC poc-hex-public-barrels |
+| `modules/iva-books` | RETIRED ❌ | — | — | Deleted in lcv-feature-retirement (RND 102100000011 — Bolivia SIN replaced LCV with RCV Dec 2021). POC #11 was closed; module tree deleted 2026-05-18. |
 | `modules/lot` | HEX ✅ | 13 | 14 | POC farms+lots |
 | `modules/monthly-close` | HEX ✅ | 12 | 5 | - |
 | `modules/mortality` | HEX ✅ | 4 | 6 | ⚠️ usa `features/shared` — primer POC histórico |
@@ -78,7 +78,7 @@
 ✅ **modules/accounting/presentation/server.ts** — JournalsService + types + 7 domain exports in 2 blocks: `// ── Domain utils ──` (6 exports: 4 utils-pure + 2 account-subtype) + `// ── Domain UI helpers ──` (1 export: journal.ui) (POC #2a dto/ + POC #2b + POC #2c + POC #2d). **POC #3c** added: `AccountsService` class export + `AccountsServiceDeps` type export + `makeAccountsService` factory export in `// ── Accounts hex service (POC #3c) ──` block.  
 ✅ **modules/accounting/presentation/validation.ts** (POC #3d; +8 journal/ledger schemas POC poc-accounting-journal-ledger-core-hex C4) — Zod schemas hex layer: `createAccountSchema` (superRefined root-account type) + `updateAccountSchema` + inferred DTOs (CreateAccountInputDto, UpdateAccountInputDto). Paired-sister payment precedent: NO `server-only`, NO JSDoc header. Legacy `features/accounting/accounting.validation.ts` SHIM account re-export block REMOVED in POC #3f (L4–L9 deleted). **OLEADA 6 sub-POC 7/8 C4** (`1428969e`): the 8 journal/ledger zod schemas merged INTO this hex file; legacy `accounting.validation.ts` is now a thin `export *` re-export shim (barrel-facing, retires with sub-POC 8).  
 ✅ **modules/accounting/domain/ports/accounts-crud.port.ts** (~133 LOC) — AccountsCrudPort interface, 15 methods verbatim 1:1 legacy AccountsRepository. First port-creation POC (#3a). No impl — adapter in #3b. tx?: unknown opaque on create/update/seedChartOfAccounts. countJournalLines TODO comment for AccountUsagePort future split. Port count in domain/ports/: 9 total (RED 45568edf · GREEN 01656b96 · D1 863b6665)  
-✅ **modules/iva-books/presentation/server.ts** — IvaBookService + factories  
+❌ **modules/iva-books/** — RETIRED (lcv-feature-retirement 2026-05-18; module tree deleted)  
 ⚠️ **NOTE**: Non-hex outliers `features/{purchase, sale, shared}` ALSO lack server.ts (surface honest — outside POC poc-hex-public-barrels scope, defer to future consolidation).
 
 ## R-money-tier2 + R-money-vo DISCHARGED — TIER 2 + VO Decimal convergence status (OLEADA 8 POC #1+#2 — added 2026-05-15)

@@ -108,7 +108,8 @@ function parseExports(indexPath: string, featureDir: string): ParseResult {
  * Collect all "server features": features that have at least one
  * *.repository.ts or *.service.ts at their root (direct children only).
  * Also recurses one level into accounting sub-barrels
- * (iva-books, financial-statements) which each have their own index.ts.
+ * (financial-statements) which each have their own index.ts.
+ * Note: iva-books sub-barrel deleted in lcv-feature-retirement (RND 102100000011).
  */
 function getServerFeatures(): Array<{ name: string; indexPath: string }> {
   const features: Array<{ name: string; indexPath: string }> = [];

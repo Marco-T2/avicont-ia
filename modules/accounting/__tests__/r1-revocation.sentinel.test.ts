@@ -16,9 +16,8 @@
  *   Pre-GREEN every file FAILS both assertions (no `Revoked-by: DEC-1`,
  *   no `[HISTORICAL` marker). Post-GREEN every file PASSES both.
  *
- * Sister precedent:
- *   modules/iva-books/__tests__/c0-domain-presentation-relocation-shape.poc-accounting-iva-books-hex.test.ts
- *   — α6 SKIP + α6-D derivative shape (sub-POC 5 Cycle 1).
+ * Sister precedent: α6 SKIP + α6-D derivative shape (sub-POC 5 Cycle 1).
+ * modules/iva-books/ DELETED in lcv-feature-retirement (RND 102100000011).
  */
 import { describe, it, expect } from "vitest";
 import { readFileSync } from "fs";

@@ -202,8 +202,9 @@ const NOT_FOUND_ERROR_IMPORT_RE =
   /^import\s+\{[^}]*\bNotFoundError\b[^}]*\}\s+from\s+["']@\/features\/shared\/errors["']/m;
 
 // Test 7 — Reader port interface shape (Path C resolution Collision #1 — Snapshot
-// LOCAL inline definition mirror iva-books sale-reader.port.ts:17-28 precedent
-// EXACT cumulative cross-module). R1 banDomainCrossLayer honored estricto —
+// LOCAL inline definition mirrored iva-books sale-reader.port.ts:17-28 precedent
+// [iva-books module DELETED in lcv-feature-retirement 2026-05-18]).
+// R1 banDomainCrossLayer honored estricto —
 // port file MUST NOT cross-layer import presentation/dto/PaymentWithRelations.
 const READER_PORT_INTERFACE_RE =
   /^export\s+interface\s+PaymentWithRelationsReaderPort\b/m;
