@@ -570,17 +570,13 @@ async function executeReadTool(
 
   try {
     switch (call.name) {
-      case "listFarms":
-        return { ok: true, data: await farmInquiry.list(orgId) };
       case "listLots":
+        // REQ-200: post-collapse filter key is `farmName` (text label),
+        // matching the listLotsTool input schema. `listFarms` was retired
+        // in T23 — Farm desaparece como concepto.
         return {
           ok: true,
           data: await lotInquiry.list(orgId, {
-            // Post-collapse REQ-200: filter key is `farmName` (text)
-            // instead of the retired `farmId` FK. AI agent tool
-            // schema migrates to farmName in F5 T23 — until then we
-            // forward the arg under the new key (callers passing
-            // farmId are no-ops post-C3).
             farmName: args.farmName as string | undefined,
           }),
         };

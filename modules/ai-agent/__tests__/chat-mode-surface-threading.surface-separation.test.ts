@@ -77,8 +77,8 @@ afterEach(() => {
 
 // ── Tests ───────────────────────────────────────────────────────────────────
 
-describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → 4 tools)", () => {
-  it("LLM receives [searchDocuments, getLotSummary, listFarms, listLots] for sidebar-qa × member (post-cleanup #2026-05-17)", async () => {
+describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → 3 tools post-collapse)", () => {
+  it("LLM receives [searchDocuments, getLotSummary, listLots] for sidebar-qa × member (post retire-farm-collapse-to-lot T23)", async () => {
     const captured: { tools?: readonly Tool[] } = {};
     const deps = {
       llmProvider: makeLLMProviderCapturingTools(captured),
@@ -101,7 +101,7 @@ describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → 4 too
     });
     const names = (captured.tools ?? []).map((t) => t.name);
     expect(names.sort()).toEqual(
-      ["searchDocuments", "getLotSummary", "listFarms", "listLots"].sort(),
+      ["searchDocuments", "getLotSummary", "listLots"].sort(),
     );
   });
 });

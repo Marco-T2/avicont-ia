@@ -10,33 +10,32 @@ import { getToolsForSurface } from "../index.ts";
 //   - cobrador × sidebar-qa AND modal-registrar → [searchDocuments]
 //     (matrix-canonical; PERMISSIONS_READ.documents includes cobrador).
 
-describe("SCN-3.1: sidebar-qa × member (post-cleanup #2026-05-17 — searchDocuments + granja reads)", () => {
-  it("returns [searchDocuments, getLotSummary, listFarms, listLots]", () => {
-    // member tiene documents:read + farms:read → ve las 4 tools del bundle.
+describe("SCN-3.1: sidebar-qa × member (post-collapse — searchDocuments + granja reads)", () => {
+  it("returns [searchDocuments, getLotSummary, listLots]", () => {
+    // member tiene documents:read + farms:read → ve las 3 tools del bundle.
     const tools = getToolsForSurface({ surface: "sidebar-qa", role: "member" });
     expect(tools.map((t) => t.name).sort()).toEqual(
-      ["searchDocuments", "getLotSummary", "listFarms", "listLots"].sort(),
+      ["searchDocuments", "getLotSummary", "listLots"].sort(),
     );
   });
 });
 
 describe("SCN-3.2: modal-registrar × member", () => {
-  it("returns all 6 chat tools", () => {
+  it("returns all 5 chat tools (post-collapse)", () => {
     const tools = getToolsForSurface({
       surface: "modal-registrar",
       role: "member",
     });
-    expect(tools).toHaveLength(6);
+    expect(tools).toHaveLength(5);
   });
 });
 
-describe("SCN-3.3: sidebar-qa × cobrador (post-cleanup #2026-05-17 — solo searchDocuments)", () => {
+describe("SCN-3.3: sidebar-qa × cobrador (post-collapse — solo searchDocuments)", () => {
   it("returns [searchDocuments] — cobrador no tiene farms:read", () => {
-    // Cleanup #2026-05-17 retiró las 8 tools contables del sidebar-qa
-    // (Marco: duplicaban las páginas dedicadas, riesgo de imprecisión vs UI
-    // exacta). El bundle quedó en [searchDocuments, getLotSummary, listFarms,
-    // listLots]; cobrador solo gana documents:read (NO farms:read), por lo
-    // tanto el resultado es [searchDocuments].
+    // Post retire-farm-collapse-to-lot T23: el bundle quedó en
+    // [searchDocuments, getLotSummary, listLots]; cobrador solo gana
+    // documents:read (NO farms:read), por lo tanto el resultado es
+    // [searchDocuments].
     const tools = getToolsForSurface({
       surface: "sidebar-qa",
       role: "cobrador",
@@ -59,13 +58,13 @@ describe("SCN-3.4: modal-registrar × cobrador (RBAC delta — gains searchDocum
   });
 });
 
-describe("SCN-3.5: modal-registrar × contador (RBAC delta — gains ALL 6)", () => {
-  it("returns all 6 tools — PERMISSIONS_WRITE.farms includes contador", () => {
+describe("SCN-3.5: modal-registrar × contador (RBAC delta — gains ALL 5)", () => {
+  it("returns all 5 tools — PERMISSIONS_WRITE.farms includes contador", () => {
     const tools = getToolsForSurface({
       surface: "modal-registrar",
       role: "contador",
     });
-    expect(tools).toHaveLength(6);
+    expect(tools).toHaveLength(5);
   });
 });
 

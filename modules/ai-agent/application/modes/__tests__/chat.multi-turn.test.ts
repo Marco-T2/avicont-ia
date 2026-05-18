@@ -18,9 +18,10 @@ import type { RagPort } from "../../../domain/ports/rag.port";
  * `vi.fn` driven by `mockResolvedValueOnce(...)` chains so each test scripts
  * the exact multi-turn LLM behavior.
  *
- * Tools utilizadas para script multi-turn: listFarms, listLots, getLotSummary.
- * Post-cleanup #2026-05-17 las 8 tools contables se retiraron del sidebar-qa
- * bundle — los tests usan las 3 tools de granja read-only que quedan.
+ * Tools utilizadas para script multi-turn: listLots, getLotSummary.
+ * Post retire-farm-collapse-to-lot T23 el bundle sidebar-qa quedó en
+ * [searchDocuments, getLotSummary, listLots] — `listFarms` retirado.
+ * Cleanup #2026-05-17 había retirado previamente 8 tools contables.
  */
 
 const logSpy = vi.fn();
@@ -84,7 +85,7 @@ describe("SCN-19.1 — single-tool happy path (turn 1 tool_call, turn 2 text)", 
       .mockResolvedValueOnce({
         text: "",
         toolCalls: [
-          { id: "call-1", name: "listFarms", input: {} },
+          { id: "call-1", name: "listLots", input: {} },
         ],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       })
@@ -115,7 +116,7 @@ describe("SCN-19.1 — single-tool happy path (turn 1 tool_call, turn 2 text)", 
       .mockImplementationOnce(async () => ({
         text: "",
         toolCalls: [
-          { id: "call-1", name: "listFarms", input: {} },
+          { id: "call-1", name: "listLots", input: {} },
         ],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       }))
@@ -147,7 +148,7 @@ describe("SCN-19.1 — single-tool happy path (turn 1 tool_call, turn 2 text)", 
       (typeof history)[number],
       { kind: "tool_result" }
     >;
-    expect(toolResult.name).toBe("listFarms");
+    expect(toolResult.name).toBe("listLots");
   });
 });
 
@@ -161,15 +162,15 @@ describe("SCN-19.2 — multi-tool single turn (S-03 fix: both tools execute)", (
       .mockImplementationOnce(async () => ({
         text: "",
         toolCalls: [
-          { id: "c1", name: "listFarms", input: {} },
-          { id: "c2", name: "listLots", input: { farmId: "farm-1" } },
+          { id: "c1", name: "listLots", input: {} },
+          { id: "c2", name: "getLotSummary", input: { lotId: "lot-1" } },
         ],
         usage: { inputTokens: 100, outputTokens: 20, totalTokens: 120 },
       }))
       .mockImplementationOnce(async (args) => {
         secondCallArgs = args;
         return {
-          text: "Granjas: 1. Lotes: 1.",
+          text: "Lotes: 1. Resumen: 1.",
           toolCalls: [],
           usage: { inputTokens: 250, outputTokens: 20, totalTokens: 270 },
         };
@@ -179,20 +180,20 @@ describe("SCN-19.2 — multi-tool single turn (S-03 fix: both tools execute)", (
       orgId: "org",
       userId: "u",
       role: "owner",
-      prompt: "granjas y lotes",
+      prompt: "lotes y resumen",
       surface: "sidebar-qa",
     });
 
     expect(queryFn).toHaveBeenCalledTimes(2);
-    expect(res.message).toBe("Granjas: 1. Lotes: 1.");
+    expect(res.message).toBe("Lotes: 1. Resumen: 1.");
 
     // Turn-2 history MUST carry BOTH tool_result turns — S-03 fix.
     const history = secondCallArgs!.conversationHistory!;
     const toolResults = history.filter((t) => t.kind === "tool_result");
     expect(toolResults).toHaveLength(2);
     expect(toolResults.map((t) => (t as { name: string }).name)).toEqual([
-      "listFarms",
       "listLots",
+      "getLotSummary",
     ]);
 
     // Legacy `multiple_tool_calls_dropped` warning is GONE — the loop handles
@@ -212,12 +213,12 @@ describe("SCN-19.3 — multi-turn sequential (3 LLM calls)", () => {
       .fn<(args: LLMQuery) => Promise<LLMResponse>>()
       .mockResolvedValueOnce({
         text: "",
-        toolCalls: [{ id: "c1", name: "listFarms", input: {} }],
+        toolCalls: [{ id: "c1", name: "listLots", input: {} }],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       })
       .mockResolvedValueOnce({
         text: "",
-        toolCalls: [{ id: "c2", name: "listLots", input: { farmId: "farm-1" } }],
+        toolCalls: [{ id: "c2", name: "listLots", input: { farmName: "Capinota" } }],
         usage: { inputTokens: 200, outputTokens: 10, totalTokens: 210 },
       })
       .mockResolvedValueOnce({
@@ -247,7 +248,7 @@ describe("SCN-23.1 — max-turn cap fires when LLM never stops calling tools", (
       .fn<(args: LLMQuery) => Promise<LLMResponse>>()
       .mockResolvedValue({
         text: "",
-        toolCalls: [{ id: "loop", name: "listFarms", input: {} }],
+        toolCalls: [{ id: "loop", name: "listLots", input: {} }],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       });
 
@@ -280,8 +281,9 @@ describe("SCN-27.1 — tool error mid-loop surfaces gracefully via LLM", () => {
   it("tool throws → error appended as { error: msg } → loop continues → LLM phrases final message", async () => {
     let secondCallArgs: LLMQuery | undefined;
 
-    // Override farmInquiry.list to throw on this test.
-    const failingFarmInquiry = {
+    // Override lotInquiry.list to throw on this test (post-collapse: listLots
+    // routes through lotInquiry; listFarms was retired in T23).
+    const failingLotInquiry = {
       list: async () => {
         throw new Error("DB down");
       },
@@ -291,13 +293,13 @@ describe("SCN-27.1 — tool error mid-loop surfaces gracefully via LLM", () => {
       .fn<(args: LLMQuery) => Promise<LLMResponse>>()
       .mockImplementationOnce(async () => ({
         text: "",
-        toolCalls: [{ id: "c-err", name: "listFarms", input: {} }],
+        toolCalls: [{ id: "c-err", name: "listLots", input: {} }],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       }))
       .mockImplementationOnce(async (args) => {
         secondCallArgs = args;
         return {
-          text: "Hubo un error al consultar las granjas. Intentá más tarde.",
+          text: "Hubo un error al consultar los lotes. Intentá más tarde.",
           toolCalls: [],
           usage: { inputTokens: 200, outputTokens: 20, totalTokens: 220 },
         };
@@ -305,19 +307,19 @@ describe("SCN-27.1 — tool error mid-loop surfaces gracefully via LLM", () => {
 
     const deps = makeDeps(queryFn);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    deps.farmInquiry = failingFarmInquiry as any;
+    deps.lotInquiry = failingLotInquiry as any;
 
     const res = await executeChatMode(deps, {
       orgId: "org",
       userId: "u",
       role: "owner",
-      prompt: "qué granjas tengo?",
+      prompt: "qué lotes tengo?",
       surface: "sidebar-qa",
     });
 
     expect(queryFn).toHaveBeenCalledTimes(2);
     expect(res.message).toBe(
-      "Hubo un error al consultar las granjas. Intentá más tarde.",
+      "Hubo un error al consultar los lotes. Intentá más tarde.",
     );
 
     // Loop appended a ToolResultTurn with the error envelope so the model can
@@ -340,7 +342,7 @@ describe("SCN-24.1 — telemetry aggregates tokens across turns + adds turnCount
       .mockResolvedValueOnce({
         text: "",
         toolCalls: [
-          { id: "call-1", name: "listFarms", input: {} },
+          { id: "call-1", name: "listLots", input: {} },
         ],
         usage: { inputTokens: 1000, outputTokens: 10, totalTokens: 1010 },
       })
@@ -367,7 +369,7 @@ describe("SCN-24.1 — telemetry aggregates tokens across turns + adds turnCount
     expect(invocation?.totalTokens).toBe(2290);
     expect(invocation?.turnCount).toBe(2);
     expect(invocation?.toolCallsCount).toBe(1);
-    expect(invocation?.toolNames).toEqual(["listFarms"]);
+    expect(invocation?.toolNames).toEqual(["listLots"]);
   });
 });
 
@@ -380,8 +382,8 @@ describe("SCN-24.2 — multi-tool telemetry: toolCallsCount spans ALL turns", ()
       .mockResolvedValueOnce({
         text: "",
         toolCalls: [
-          { id: "c1", name: "listFarms", input: {} },
-          { id: "c2", name: "listLots", input: { farmId: "farm-1" } },
+          { id: "c1", name: "listLots", input: {} },
+          { id: "c2", name: "getLotSummary", input: { lotId: "lot-1" } },
         ],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       })
@@ -395,7 +397,7 @@ describe("SCN-24.2 — multi-tool telemetry: toolCallsCount spans ALL turns", ()
       orgId: "org",
       userId: "u",
       role: "owner",
-      prompt: "granjas y lotes",
+      prompt: "lotes y resumen",
       surface: "sidebar-qa",
     });
 
@@ -403,7 +405,7 @@ describe("SCN-24.2 — multi-tool telemetry: toolCallsCount spans ALL turns", ()
       .map((c) => c[0] as Record<string, unknown>)
       .find((e) => e.event === "agent_invocation");
     expect(invocation?.toolCallsCount).toBe(2);
-    expect(invocation?.toolNames).toEqual(["listFarms", "listLots"]);
+    expect(invocation?.toolNames).toEqual(["listLots", "getLotSummary"]);
     expect(invocation?.turnCount).toBe(2);
   });
 });
@@ -457,7 +459,7 @@ describe("chatMemory append contract — only initial user + final model text", 
       .mockResolvedValueOnce({
         text: "",
         toolCalls: [
-          { id: "c1", name: "listFarms", input: {} },
+          { id: "c1", name: "listLots", input: {} },
         ],
         usage: { inputTokens: 100, outputTokens: 10, totalTokens: 110 },
       })

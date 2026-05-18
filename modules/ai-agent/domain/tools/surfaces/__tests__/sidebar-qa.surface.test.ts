@@ -2,21 +2,28 @@ import { describe, expect, it } from "vitest";
 import { SIDEBAR_QA_SURFACE } from "../sidebar-qa.surface";
 
 // SCN-1.1 — sidebar-qa conversational + read-only granja surface.
-// Bundle post-cleanup #2026-05-17:
-//   [searchDocuments, getLotSummary, listFarms, listLots]
-// Las 8 tools contables (listRecentJournalEntries, getAccountMovements,
-// getAccountBalance, findAccountsByName, listAccounts, listSales,
-// listPurchases, listPayments) fueron removidas — duplicaban las páginas
-// dedicadas y la UI exacta es más confiable que la respuesta del LLM.
+// Bundle post retire-farm-collapse-to-lot (T23):
+//   [searchDocuments, getLotSummary, listLots]
+// `listFarms` retirado: Farm desaparece como concepto — `farmName` queda
+// como columna libre en Lot (REQ-200). UI/agente listan/agrupan por
+// `farmName` directamente. Cleanup previo #2026-05-17 retiró 8 tools
+// contables (listRecentJournalEntries, getAccountMovements, etc.) —
+// duplicaban las páginas dedicadas y la UI exacta es más confiable.
 
 describe("SCN-1.1: sidebar-qa surface bundle", () => {
   it("bundle name is 'sidebar-qa'", () => {
     expect(SIDEBAR_QA_SURFACE.name).toBe("sidebar-qa");
   });
 
-  it("bundle includes searchDocuments + 3 read-only granja tools", () => {
+  it("bundle includes searchDocuments + 2 read-only granja tools (post-collapse)", () => {
     expect(SIDEBAR_QA_SURFACE.tools.map((t) => t.name).sort()).toEqual(
-      ["searchDocuments", "getLotSummary", "listFarms", "listLots"].sort(),
+      ["searchDocuments", "getLotSummary", "listLots"].sort(),
+    );
+  });
+
+  it("bundle excludes listFarms (retired in retire-farm-collapse-to-lot T23)", () => {
+    expect(SIDEBAR_QA_SURFACE.tools.map((t) => t.name)).not.toContain(
+      "listFarms",
     );
   });
 

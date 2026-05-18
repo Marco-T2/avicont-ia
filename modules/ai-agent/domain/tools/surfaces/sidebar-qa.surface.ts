@@ -1,6 +1,5 @@
 import {
   getLotSummaryTool,
-  listFarmsTool,
   listLotsTool,
   searchDocumentsTool,
 } from "../agent.tool-definitions.ts";
@@ -9,7 +8,12 @@ import type { SurfaceBundle } from "./surface.types.ts";
 /**
  * Conversational sidebar Q&A surface. RAG search + read-only granja tools.
  *
- * Previously included 8 F2 accounting-query tools (listRecentJournalEntries,
+ * Post retire-farm-collapse-to-lot T23: `listFarmsTool` retirado. Farm
+ * desaparece como concepto — `farmName` queda como columna libre en Lot
+ * (REQ-200), y `listLots` lista directamente (la UI agrupa client-side por
+ * farmName cuando lo necesita).
+ *
+ * Previously also included 8 F2 accounting-query tools (listRecentJournalEntries,
  * getAccountMovements, getAccountBalance, findAccountsByName, listAccounts,
  * listSales, listPurchases, listPayments). Removed por decisión de Marco
  * (cleanup #2026-05-17): duplicaban las páginas dedicadas (`/accounting/...`)
@@ -27,7 +31,6 @@ export const SIDEBAR_QA_SURFACE: SurfaceBundle = {
   tools: [
     searchDocumentsTool,
     getLotSummaryTool,
-    listFarmsTool,
     listLotsTool,
   ],
 } as const;

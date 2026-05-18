@@ -13,7 +13,6 @@ export {
   createExpenseTool,
   logMortalityTool,
   getLotSummaryTool,
-  listFarmsTool,
   listLotsTool,
   searchDocumentsTool,
   journalEntryAiTools,

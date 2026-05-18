@@ -57,19 +57,15 @@ export const getLotSummaryTool = defineTool({
   action: "read",
 });
 
-export const listFarmsTool = defineTool({
-  name: "listFarms",
-  description: "Listar todas las granjas del usuario en la organización.",
-  inputSchema: z.object({}),
-  resource: "farms",
-  action: "read",
-});
-
 export const listLotsTool = defineTool({
   name: "listLots",
-  description: "Listar los lotes de una granja específica.",
+  description:
+    "Listar los lotes de la organización. Opcionalmente filtrar por nombre de granja (texto libre).",
   inputSchema: z.object({
-    farmId: z.string().describe("ID de la granja"),
+    farmName: z
+      .string()
+      .optional()
+      .describe("Nombre de granja (texto libre) para filtrar — opcional"),
   }),
   resource: "farms",
   action: "read",
@@ -123,7 +119,6 @@ const socioTools: Tool[] = [
   createExpenseTool,
   logMortalityTool,
   getLotSummaryTool,
-  listFarmsTool,
   listLotsTool,
   searchDocumentsTool,
 ];
@@ -147,7 +142,6 @@ export const TOOL_REGISTRY: Record<string, Tool> = {
   [createExpenseTool.name]: createExpenseTool,
   [logMortalityTool.name]: logMortalityTool,
   [getLotSummaryTool.name]: getLotSummaryTool,
-  [listFarmsTool.name]: listFarmsTool,
   [listLotsTool.name]: listLotsTool,
   [searchDocumentsTool.name]: searchDocumentsTool,
   [parseAccountingOperationToSuggestionTool.name]: parseAccountingOperationToSuggestionTool,
