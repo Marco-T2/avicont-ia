@@ -223,24 +223,20 @@ export default function LotDetailClient({
       "bg-gray-100 dark:bg-gray-800/50 text-gray-800 dark:text-gray-200",
   };
 
-  // Post-collapse (REQ-200): LotSnapshot no longer carries `farmId`.
-  // The /farms hierarchy is retired in F4 — this back link is
-  // disabled until lot-detail-client gets re-pointed at /lots in F4
-  // (task T20). Keeping the JSX structure stable to minimise diff.
-  const farmId: string | null = null;
-
+  // Post-collapse (REQ-200, T20): LotSnapshot carries free-text
+  // `farmName` instead of `farmId`. The C3 stub `const farmId =
+  // null` is retired; the back link now points at the flat /lots
+  // list landed in T18 (the /farms hierarchy is deleted in T22).
   return (
     <div className="space-y-6">
       {/* Back + Header */}
       <div>
-        {farmId && (
-          <Link href={`/${orgSlug}/farms/${farmId}`}>
-            <Button variant="ghost" size="sm" className="mb-4">
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Volver a la Granja
-            </Button>
-          </Link>
-        )}
+        <Link href={`/${orgSlug}/lots`}>
+          <Button variant="ghost" size="sm" className="mb-4">
+            <ArrowLeft className="h-4 w-4 mr-1" />
+            Volver a Mis Lotes
+          </Button>
+        </Link>
 
         <div className="flex justify-between items-start">
           <div>
@@ -249,9 +245,9 @@ export default function LotDetailClient({
               <Badge className={status.className}>{status.label}</Badge>
             </div>
             <p className="text-muted-foreground mt-1">
-              Galpon #{lot.barnNumber} &middot; Inicio:{" "}
-              {formatDateBO(lot.startDate)}
-              {lot.endDate && ` &middot; Cierre: ${formatDateBO(lot.endDate)}`}
+              Granja: {lot.farmName} &middot; Galpon #{lot.barnNumber}{" "}
+              &middot; Inicio: {formatDateBO(lot.startDate)}
+              {lot.endDate && ` · Cierre: ${formatDateBO(lot.endDate)}`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -548,9 +544,9 @@ export default function LotDetailClient({
         lotId={lot.id}
         lotName={lot.name}
         onDeleted={() => {
-          // Lot is gone — bounce back to the org root. The /farms
-          // hierarchy is retired in F4; T20 will retarget to /lots.
-          router.push(`/${orgSlug}/farms`);
+          // Lot is gone — bounce back to the flat /lots list
+          // (post-collapse REQ-200, T20).
+          router.push(`/${orgSlug}/lots`);
         }}
       />
       {editingExpense ? (

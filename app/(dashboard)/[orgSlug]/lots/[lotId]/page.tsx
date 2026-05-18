@@ -37,7 +37,9 @@ export default async function LotDetailPage({ params }: LotDetailPageProps) {
     lotEntity = result.lot;
     summary = result.summary;
   } catch {
-    redirect(`/${orgSlug}/farms`);
+    // Post-collapse (REQ-200, T20): /farms is retired in T22. The
+    // back-out target is now the flat /lots list landed in T18.
+    redirect(`/${orgSlug}/lots`);
   }
   const lot = lotEntity.toSnapshot();
 
