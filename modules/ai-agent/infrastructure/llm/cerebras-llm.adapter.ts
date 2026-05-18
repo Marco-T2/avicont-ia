@@ -1,5 +1,5 @@
 import "server-only";
-import Cerebras from "@cerebras/cerebras_cloud_sdk";
+import type Cerebras from "@cerebras/cerebras_cloud_sdk";
 import { z } from "zod";
 import { logStructured } from "@/lib/logging/structured";
 import { LLMQuotaExceededError } from "@/modules/shared/domain/errors";
@@ -62,7 +62,20 @@ if (!apiKey) {
   );
 }
 
-const cerebras = new Cerebras({ apiKey });
+// Lazy SDK load. The Cerebras SDK transitively pulls `node-fetch@2`, which
+// emits DEP0169 (`url.parse()`) on its first fetch. Loading the SDK at
+// module top-level dragged that emission into every page-data collection
+// worker that touched a route importing this adapter (4×) and into server
+// boot (1×). With `import type` + per-call dynamic import, the SDK module
+// graph never loads during build or boot — only when `query()` actually
+// runs. The env-var check above stays eager (fail-fast preserved).
+let cerebrasInstance: Cerebras | null = null;
+async function getCerebrasClient(): Promise<Cerebras> {
+  if (cerebrasInstance) return cerebrasInstance;
+  const { default: CerebrasCtor } = await import("@cerebras/cerebras_cloud_sdk");
+  cerebrasInstance = new CerebrasCtor({ apiKey });
+  return cerebrasInstance;
+}
 
 // Production-tier open-weight model from OpenAI hosted on Cerebras. Chosen
 // for native function-calling support and 65k context window. Stable model
@@ -325,9 +338,10 @@ export class CerebrasLLMAdapter implements LLMProviderPort {
       // response object directly.
       // Cast through unknown for the SDK overload — the typed surface uses
       // a discriminated union we can narrow on the response shape.
-      response = (await cerebras.chat.completions.create(
+      const client = await getCerebrasClient();
+      response = (await client.chat.completions.create(
         params as unknown as Parameters<
-          typeof cerebras.chat.completions.create
+          Cerebras["chat"]["completions"]["create"]
         >[0],
       )) as {
         choices: Array<{

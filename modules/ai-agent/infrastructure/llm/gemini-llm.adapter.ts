@@ -6,7 +6,7 @@ import {
   type FunctionDeclaration,
   type Part,
 } from "@google/generative-ai";
-import Cerebras from "@cerebras/cerebras_cloud_sdk";
+import type Cerebras from "@cerebras/cerebras_cloud_sdk";
 import { z } from "zod";
 import { logStructured } from "@/lib/logging/structured";
 import { LLMQuotaExceededError } from "@/modules/shared/domain/errors";
@@ -282,7 +282,9 @@ export async function analyzeDocument(text: string): Promise<string> {
       "La API KEY de CEREBRAS no está configurada en las variables de entorno",
     );
   }
-  const client = new Cerebras({ apiKey: cerebrasKey });
+  // Lazy SDK load — see cerebras-llm.adapter.ts for the DEP0169 rationale.
+  const { default: CerebrasCtor } = await import("@cerebras/cerebras_cloud_sdk");
+  const client: Cerebras = new CerebrasCtor({ apiKey: cerebrasKey });
   try {
     const response = await client.chat.completions.create({
       model: "gpt-oss-120b",
