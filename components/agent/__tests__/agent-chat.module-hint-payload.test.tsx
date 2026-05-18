@@ -71,15 +71,19 @@ describe("SCN-3.1: pathname /<org>/accounting/* yields module_hint='accounting'"
   });
 });
 
-describe("SCN-3.2: pathname /<org>/farms/* yields module_hint='farm'", () => {
+describe("SCN-3.2: pathname /<org>/farms/* yields module_hint=null (retired T21)", () => {
+  // Post-collapse (T21 retire-farm-collapse-to-lot): the /farms
+  // hierarchy is retired in T22. /farms/... no longer maps to a
+  // module hint; the agent receives module_hint=null and falls
+  // back to no module-specific context.
   beforeEach(() => {
     currentPathname = "/test-org/farms/farm-1";
   });
-  it("fetch body contains module_hint: 'farm'", async () => {
+  it("fetch body contains module_hint: null", async () => {
     render(<AgentChat isOpen={true} onClose={() => {}} orgSlug="test-org" />);
     await submitPrompt("hola");
     const body = bodyJSON();
-    expect(body.module_hint).toBe("farm");
+    expect(body.module_hint).toBeNull();
   });
 });
 

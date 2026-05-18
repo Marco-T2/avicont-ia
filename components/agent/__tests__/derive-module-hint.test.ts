@@ -5,11 +5,10 @@ import { deriveModuleHint } from "../derive-module-hint";
 // the dashboard pathname segment to a ModuleHintValue. Pathname convention:
 // /<orgSlug>/<moduleSegment>/...
 //
-// Mapping (D2.1):
+// Mapping post-collapse (T21 retire-farm-collapse-to-lot):
 //   - /<orgSlug>/accounting/...   -> "accounting"
-//   - /<orgSlug>/farms/...        -> "farm"
 //   - /<orgSlug>/lots/...         -> "farm"
-//   - anything else               -> null
+//   - anything else (incl. retired /farms/...) -> null
 
 describe("deriveModuleHint — accounting", () => {
   it.each([
@@ -21,10 +20,8 @@ describe("deriveModuleHint — accounting", () => {
   });
 });
 
-describe("deriveModuleHint — farm (farms or lots)", () => {
+describe("deriveModuleHint — farm (lots only post-collapse)", () => {
   it.each([
-    ["/acme/farms", "farm"],
-    ["/acme/farms/farm-123", "farm"],
     ["/acme/lots", "farm"],
     ["/acme/lots/lot-456", "farm"],
   ] as const)("maps %s to %s", (pathname, expected) => {
@@ -32,11 +29,14 @@ describe("deriveModuleHint — farm (farms or lots)", () => {
   });
 });
 
-describe("deriveModuleHint — null (unmapped modules, root, empty)", () => {
+describe("deriveModuleHint — null (unmapped modules, root, empty, retired farms)", () => {
   it.each([
     ["/acme/documents"],
     ["/acme/members"],
     ["/acme/settings"],
+    // Retired post-T21 — /farms hierarchy is deleted in T22.
+    ["/acme/farms"],
+    ["/acme/farms/farm-123"],
     ["/acme"],
     ["/"],
     [""],

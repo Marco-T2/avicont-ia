@@ -290,16 +290,9 @@ describe("PR1.7 — REQ-MS.3: useActiveModule() — route match overrides localS
   });
 
   it("route match overrides localStorage value", () => {
-    mockPathname = "/test-org/farms";
+    // T21 post-collapse: granjas module homeRoute is now /lots.
+    mockPathname = "/test-org/lots";
     localStorage.setItem("sidebar-active-module", "contabilidad");
-    const { result } = renderHook(() => useActiveModule(), {
-      wrapper: wrapper(ALL_RESOURCES),
-    });
-    expect(result.current.activeModule?.id).toBe("granjas");
-  });
-
-  it("returns granjas for /farms/* route", () => {
-    mockPathname = "/test-org/farms";
     const { result } = renderHook(() => useActiveModule(), {
       wrapper: wrapper(ALL_RESOURCES),
     });

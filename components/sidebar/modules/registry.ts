@@ -134,12 +134,17 @@ export const MODULES: Module[] = [
     id: "granjas",
     label: "Granjas",
     icon: null,
+    // Resource "farms" is intentionally kept (D-10 + Marco I.2/I.3
+    // lock) — the permissions Resource union is frozen and "farms"
+    // stays as the symbolic permission key for post-collapse
+    // (retire-farm-collapse-to-lot). Route surface migrates to
+    // /lots in T21; the permission identifier does NOT.
     resources: ["farms"],
-    homeRoute: (orgSlug: string) => `/${orgSlug}/farms`,
+    homeRoute: (orgSlug: string) => `/${orgSlug}/lots`,
     navItems: [
       {
-        label: "Mis Granjas",
-        href: (orgSlug) => `/${orgSlug}/farms`,
+        label: "Mis Lotes",
+        href: (orgSlug) => `/${orgSlug}/lots`,
         resource: "farms",
         iconKey: "mis-granjas",
       },

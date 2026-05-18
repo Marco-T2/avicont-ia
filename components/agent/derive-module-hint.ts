@@ -4,9 +4,15 @@ import type { ModuleHintValue } from "@/modules/ai-agent/domain/types/module-hin
  * Derive a module hint from the current dashboard pathname.
  * Pathname convention: `/<orgSlug>/<moduleSegment>/...`.
  *
- * - /<orgSlug>/accounting/...           -> "accounting"
- * - /<orgSlug>/farms/... | /lots/...    -> "farm"
- * - anything else (incl. root, sales, purchases, documents, etc.)  -> null
+ * - /<orgSlug>/accounting/...   -> "accounting"
+ * - /<orgSlug>/lots/...         -> "farm"
+ * - anything else (incl. root, sales, purchases, documents,
+ *   AND the retired /farms/...)                                -> null
+ *
+ * Post-collapse (T21, retire-farm-collapse-to-lot): the /farms
+ * branch is dropped because the /farms hierarchy is retired in
+ * T22. Any surviving path under /farms would 404, so mapping it
+ * to a moduleHint was dead behavior.
  *
  * PURE. No React, no usePathname. Test with plain string fixtures.
  *
@@ -18,6 +24,6 @@ export function deriveModuleHint(pathname: string): ModuleHintValue {
   const segments = pathname.split("/");
   const moduleSegment = segments[2]; // 0 = "", 1 = orgSlug, 2 = module
   if (moduleSegment === "accounting") return "accounting";
-  if (moduleSegment === "farms" || moduleSegment === "lots") return "farm";
+  if (moduleSegment === "lots") return "farm";
   return null;
 }
