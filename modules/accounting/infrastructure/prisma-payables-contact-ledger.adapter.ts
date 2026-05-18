@@ -5,24 +5,20 @@ import type {
   PayableLedgerEnrichmentRow,
   PayablesContactLedgerPort,
 } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
-import {
-  purchaseTypeToCode,
-  formatDocumentReferenceNumber,
-} from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
  * Prisma adapter for the contact-ledger payable enrichment lookup.
  *
- * Symmetric sister of `PrismaReceivablesContactLedgerAdapter` — same batched
- * findMany + journalEntryId narrow + minimal projection. See sister adapter
- * JSDoc for the N+1 mitigation rationale.
+ * journal-physical-document Phase 5 simplification: dropped the
+ * `purchase.findMany` batched lookup — `documentTypeCode` +
+ * `documentReferenceNumber` are now read off the JE row directly in
+ * `LedgerService.getContactLedgerPaginated`. Net effect: 1 fewer DB query
+ * per page; no more PurchaseType enum→code mapping in infrastructure.
  *
- * `documentTypeCode` resolution per `sourceType`:
- *   - "purchase" → batched lookup `purchase.findMany({id in sourceIds})` para
- *                  resolver PurchaseType enum → FL|PF|CG|SV.
- *   - "manual"/null → null (UI muestra "Ajuste").
+ * Symmetric sister of PrismaReceivablesContactLedgerAdapter — single batched
+ * findMany with org+JE-id narrowing.
  */
-type DbClient = Pick<PrismaClient, "accountsPayable" | "purchase">;
+type DbClient = Pick<PrismaClient, "accountsPayable">;
 
 export class PrismaPayablesContactLedgerAdapter
   implements PayablesContactLedgerPort
@@ -43,54 +39,17 @@ export class PrismaPayablesContactLedgerAdapter
         journalEntryId: true,
         status: true,
         dueDate: true,
-        sourceType: true,
-        sourceId: true,
       },
     });
-
-    // Batched purchase lookup: misma forma sister Receivable adapter.
-    // DT4 — adicionar `sequenceNumber` al select para surface el número raw
-    // del documento físico (sin prefijo ni padding, ej "5").
-    const purchaseIds = rows
-      .filter((r) => r.sourceType === "purchase" && r.sourceId)
-      .map((r) => r.sourceId!) as string[];
-    const purchaseTypeById = new Map<string, string>();
-    const purchaseSequenceById = new Map<string, number>();
-    if (purchaseIds.length > 0) {
-      const purchases = await this.db.purchase.findMany({
-        where: {
-          organizationId,
-          id: { in: purchaseIds },
-        },
-        select: { id: true, purchaseType: true, sequenceNumber: true },
-      });
-      for (const p of purchases) {
-        purchaseTypeById.set(p.id, purchaseTypeToCode(p.purchaseType));
-        purchaseSequenceById.set(p.id, p.sequenceNumber);
-      }
-    }
 
     return rows
       .filter((r): r is typeof r & { journalEntryId: string } =>
         r.journalEntryId !== null,
       )
-      .map((r) => {
-        let documentTypeCode: string | null = null;
-        let sequence: number | null = null;
-        if (r.sourceType === "purchase" && r.sourceId) {
-          documentTypeCode = purchaseTypeById.get(r.sourceId) ?? null;
-          sequence = purchaseSequenceById.get(r.sourceId) ?? null;
-        }
-        return {
-          journalEntryId: r.journalEntryId,
-          status: r.status,
-          dueDate: r.dueDate,
-          documentTypeCode,
-          documentReferenceNumber: formatDocumentReferenceNumber(
-            documentTypeCode,
-            sequence,
-          ),
-        };
-      });
+      .map((r) => ({
+        journalEntryId: r.journalEntryId,
+        status: r.status,
+        dueDate: r.dueDate,
+      }));
   }
 }

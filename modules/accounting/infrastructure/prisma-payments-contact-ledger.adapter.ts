@@ -5,25 +5,20 @@ import type {
   PaymentLedgerEnrichmentRow,
   PaymentsContactLedgerPort,
 } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
-import { formatDocumentReferenceNumber } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
  * Prisma adapter for the contact-ledger payment enrichment lookup.
  *
- * Batched `payment.findMany({ where: { organizationId, journalEntryId: { in } } })`
- * + minimal include of the FIRST allocation (id asc) to derive `direction`
- * (COBRO when first allocation targets a receivable, PAGO when payable).
- * `bankAccountName` is the Payment.accountCode string scalar — schema reality:
- * the Payment model carries `accountCode` directly (no BankAccount FK), so
- * the human "BNB Cta Cte" the spec mentions surfaces as `accountCode` here.
+ * journal-physical-document Phase 5 simplification: `operationalDocType` +
+ * `referenceNumber` removed from the select — the ledger service reads them
+ * directly off the JE row now. Live state still surfaced: `paymentMethod`
+ * (forma de pago suffix), `bankAccountName` (BNB/etc), `direction`
+ * (COBRO|PAGO drives the "Cobranza" vs "Pago" human label per BF2).
  *
- * `documentTypeCode` resuelve desde la relación opcional `operationalDocType`
- * (Payment.operationalDocTypeId → OperationalDocType.code, ej. "RC"/"RE"/"RI").
- * Null cuando el Payment no tiene operationalDocType asignado (org sin
- * configuración o payments legacy) — la UI cae al label genérico.
- *
- * Service-side merge maps `(method, direction, bankAccountName)` to UI labels
- * — adapter stays pure SQL + projection (DEC-1 / D3 parity).
+ * Batched `payment.findMany` + minimal include of the FIRST allocation
+ * (id asc) to derive `direction` (COBRO when the first allocation targets a
+ * receivable, PAGO when payable). Payment-allocation invariants guarantee
+ * homogeneous direction per payment so one allocation suffices.
  */
 type DbClient = Pick<PrismaClient, "payment">;
 
@@ -46,11 +41,6 @@ export class PrismaPaymentsContactLedgerAdapter
         journalEntryId: true,
         method: true,
         accountCode: true,
-        referenceNumber: true,
-        operationalDocType: { select: { code: true } },
-        // First allocation reveals direction (RECEIVABLE → COBRO, PAYABLE → PAGO);
-        // payment-allocation invariants guarantee homogeneous direction per
-        // payment (PAYMENT_MIXED_ALLOCATION), so any one allocation suffices.
         allocations: {
           orderBy: { id: "asc" },
           take: 1,
@@ -73,20 +63,11 @@ export class PrismaPaymentsContactLedgerAdapter
             : "PAGO"
           : "COBRO"; // no allocations → safe default; UI rarely renders direction
                     // in this case (payment-only rows show forma de pago suffix only).
-        const documentTypeCode = r.operationalDocType?.code ?? null;
         return {
           journalEntryId: r.journalEntryId,
           paymentMethod: r.method,
           bankAccountName: r.accountCode,
           direction,
-          documentTypeCode,
-          // DT4 — formatear desde `referenceNumber` (Int? — el dato físico
-          // que el operador captura al crear el Payment). Si NO está,
-          // documentReferenceNumber=null y la UI cae al displayNumber.
-          documentReferenceNumber: formatDocumentReferenceNumber(
-            documentTypeCode,
-            r.referenceNumber,
-          ),
         };
       });
   }

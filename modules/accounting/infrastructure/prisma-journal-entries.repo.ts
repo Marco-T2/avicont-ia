@@ -74,6 +74,12 @@ const journalIncludeLines = {
   },
   contact: true,
   voucherType: true,
+  // journal-physical-document Phase 5: eager-hydrate the physical doc type
+  // so contact-ledger reads `je.operationalDocType.code` direct (D3) and
+  // the manual JE detail view shows code + name without a follow-up query.
+  // Tradeoff acceptable per §13/journal-include-lines-eager-hydration —
+  // OperationalDocType is ≤20 rows/org so the extra JOIN is a point lookup.
+  operationalDocType: true,
 } as const;
 
 export class JournalRepository extends BaseRepository {
@@ -308,6 +314,7 @@ export class JournalRepository extends BaseRepository {
             sourceId: data.sourceId ?? null,
             aiOriginalText: data.aiOriginalText ?? null,
             referenceNumber: data.referenceNumber ?? null,
+            operationalDocTypeId: data.operationalDocTypeId ?? null,
             createdById: data.createdById,
             organizationId: scope.organizationId,
             lines: {
@@ -364,6 +371,7 @@ export class JournalRepository extends BaseRepository {
           ...(data.description !== undefined && { description: data.description }),
           ...(data.contactId !== undefined && { contactId: data.contactId }),
           ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber }),
+          ...(data.operationalDocTypeId !== undefined && { operationalDocTypeId: data.operationalDocTypeId }),
           updatedById,
         },
         include: journalIncludeLines,
@@ -772,6 +780,12 @@ export class JournalRepository extends BaseRepository {
               description: true,
               sourceType: true,
               sourceId: true,
+              // journal-physical-document — denormalized doc-type column +
+              // reference number lifted from the JE so the contact-ledger
+              // reads documentTypeCode + documentReferenceNumber from this
+              // row instead of the 3-way enrichment precedence (design D3).
+              referenceNumber: true,
+              operationalDocType: { select: { code: true } },
               voucherType: { select: { code: true, prefix: true, name: true } },
             },
           },
@@ -820,6 +834,8 @@ export class JournalRepository extends BaseRepository {
         description: r.description,
         sourceType: sourceType ?? null,
         sourceId: sourceId ?? null,
+        // journalEntry already carries referenceNumber + operationalDocType
+        // from the new select; spread preserves them through the row mapping.
         journalEntry: je,
       };
     });
@@ -922,6 +938,7 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
       sourceId: journal.sourceId ?? undefined,
       aiOriginalText: journal.aiOriginalText ?? undefined,
       referenceNumber: journal.referenceNumber ?? undefined,
+      operationalDocTypeId: journal.operationalDocTypeId ?? undefined,
     };
     const row = await journalRepo.createWithRetryTx(
       this.tx,
@@ -962,6 +979,7 @@ export class PrismaJournalEntriesRepository implements JournalEntriesRepository 
       description: journal.description,
       contactId: journal.contactId,
       referenceNumber: journal.referenceNumber,
+      operationalDocTypeId: journal.operationalDocTypeId,
     };
     const lines = options.replaceLines
       ? mapLinesToInputs(journal.lines)

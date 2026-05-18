@@ -6,6 +6,7 @@ import type {
   JournalEntryStatus,
   Contact,
   VoucherTypeCfg,
+  OperationalDocType,
 } from "@/generated/prisma/client";
 
 // ── Input types ──
@@ -80,6 +81,11 @@ export type JournalEntryWithLines = JournalEntry & {
   lines: JournalLineWithAccount[];
   contact?: Contact | null;
   voucherType: VoucherTypeCfg;
+  // journal-physical-document — eager-hydrated via journalIncludeLines so
+  // contact-ledger reads `je.operationalDocType.code` direct + detail view
+  // renders code + name without follow-up query. Nullable: legacy/manual JEs
+  // without a doc type set keep it null.
+  operationalDocType?: OperationalDocType | null;
 };
 
 // ── Correlation audit types ──

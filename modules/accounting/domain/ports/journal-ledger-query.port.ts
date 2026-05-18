@@ -56,6 +56,13 @@ export interface LedgerLineRow {
       code: string;
       prefix: string;
     };
+    // journal-physical-document — physical document type carried in the row
+    // shape so the contact-ledger reads documentTypeCode + referenceNumber
+    // directly from the JE join (drops the 3-way enrichment precedence).
+    // Optional at this level because the account-keyed sister query does NOT
+    // need them; the contact adapter populates them.
+    operationalDocType?: { code: string } | null;
+    referenceNumber?: number | null;
   };
 }
 

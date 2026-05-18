@@ -18,6 +18,7 @@ import {
 import type { PaginationOptions } from "@/modules/shared/domain/value-objects/pagination";
 import type { AccountType } from "@/generated/prisma/client";
 import Decimal from "decimal.js";
+import { formatDocumentReferenceNumber } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 /**
  * Application-layer libro-mayor use cases.
@@ -317,30 +318,26 @@ export class LedgerService {
         // UI/PDF/XLSX puede distinguir "Cobranza" vs "Pago" cuando
         // `sourceType="payment"`. `null` para sale/purchase/manual.
         paymentDirection: payment?.direction ?? null,
-        // DT — código operacional físico para la columna "Tipo":
-        //   payment → OperationalDocType.code (RC/RE/RI/etc)
-        //   sale    → "VG"
-        //   dispatch→ ND|BC (DispatchType enum)
-        //   purchase→ FL|PF|CG|SV (PurchaseType enum)
-        // El adapter de Receivable/Payable resuelve sourceType desde la fila
-        // y agrupa por source — el service sólo forwardea. Payment toma
-        // precedencia sobre receivable/payable cuando el JE las trae a las
-        // dos (caso real raro: payment apunta al mismo JE que su CxC/CxP).
-        documentTypeCode:
-          payment?.documentTypeCode ??
-          receivable?.documentTypeCode ??
-          payable?.documentTypeCode ??
-          null,
-        // DT4 — sequence raw del documento físico (ej "1", "42"). Misma
-        // precedencia que documentTypeCode (payment > receivable > payable).
-        // El adapter resuelve el sequence + maneja el fallback a null
-        // (Payment sin referenceNumber, manual sin auxiliar). UI/PDF/XLSX
-        // caen a `displayNumber` cuando esto es null.
-        documentReferenceNumber:
-          payment?.documentReferenceNumber ??
-          receivable?.documentReferenceNumber ??
-          payable?.documentReferenceNumber ??
-          null,
+        // journal-physical-document — DT/DT4 source simplified.
+        //
+        // Pre-change: the columna "Tipo" + "Nro" were resolved via a 3-way
+        // precedence `payment ?? receivable ?? payable`, with each
+        // enrichment adapter doing its own batched `sale.findMany`/
+        // `dispatch.findMany`/`purchase.findMany`/`Payment.operationalDocType`
+        // lookup so it could surface a code/number.
+        //
+        // Post-change: JE itself carries `operationalDocType.code` +
+        // `referenceNumber` directly (denormalized via Phase 5 select). The
+        // service reads them off the row — no precedence, no per-source
+        // adapter coupling. Null when the JE has no doc type set
+        // (legacy/manual entries not yet edited). Format via
+        // `formatDocumentReferenceNumber` to preserve the sequence-only
+        // shape Marco confirmed in DT4 (no prefix, no padding).
+        documentTypeCode: row.journalEntry.operationalDocType?.code ?? null,
+        documentReferenceNumber: formatDocumentReferenceNumber(
+          row.journalEntry.operationalDocType?.code ?? null,
+          row.journalEntry.referenceNumber ?? null,
+        ),
         withoutAuxiliary,
       };
     });

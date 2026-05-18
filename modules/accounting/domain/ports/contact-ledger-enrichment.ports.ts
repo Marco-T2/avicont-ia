@@ -24,48 +24,39 @@
 
 import type { ContactsReadPort } from "./contacts-read.port";
 
-/** Receivable enrichment projection — the minimum fields the service needs
- *  to derive `status` (PENDIENTE/PARCIAL/PAGADO/CANCELADO) + ATRASADO (when
- *  status ∈ {PENDIENTE, PARCIAL} AND dueDate < now). `journalEntryId` is the
- *  join key. Status mirrors `ReceivableStatus` domain values (PENDING / PARTIAL
- *  / PAID / VOIDED) — service maps to UI-facing labels at the DTO boundary.
+/** Receivable enrichment projection — only the fields the service still
+ *  needs to derive `status` (PENDIENTE/PARCIAL/PAGADO/CANCELADO) + ATRASADO
+ *  (when status ∈ {PENDIENTE, PARCIAL} AND dueDate < now). `journalEntryId`
+ *  is the join key. Status mirrors `ReceivableStatus` domain values (PENDING
+ *  / PARTIAL / PAID / VOIDED) — service maps to UI-facing labels at the DTO
+ *  boundary.
  *
- *  `documentTypeCode` carries el código operacional físico del documento
- *  fuente (VG para Sale, ND/BC para Dispatch según DispatchType enum). Null
- *  cuando la receivable no tiene sourceId resoluble (sourceType="manual").
- *
- *  `documentReferenceNumber` es el sequence raw del documento (p.ej. `"1"`,
- *  `"5"`) — sin prefijo ni padding. Null cuando el sourceType no resuelve a
- *  un documento físico o el sequence no está disponible. */
+ *  journal-physical-document Phase 5: `documentTypeCode` /
+ *  `documentReferenceNumber` REMOVED — they are now read off the JE row
+ *  directly (`je.operationalDocType.code`, `je.referenceNumber`) so the
+ *  adapter no longer needs to do `sale.findMany` / `dispatch.findMany`. */
 export interface ReceivableLedgerEnrichmentRow {
   journalEntryId: string;
   status: string;
   dueDate: Date | null;
-  documentTypeCode: string | null;
-  documentReferenceNumber: string | null;
 }
 
-/** Payable enrichment projection — sister de Receivable. `documentTypeCode`
- *  resuelve desde Purchase.purchaseType (FL/PF/CG/SV) cuando sourceType="purchase";
- *  null para sourceType="manual". `documentReferenceNumber` es el sequence
- *  raw de Purchase.sequenceNumber (sin prefijo ni padding); null cuando no
- *  aplica. */
+/** Payable enrichment projection — sister de Receivable. Doc-type/number
+ *  fields removed for the same reason (denormalized to JE row, Phase 5). */
 export interface PayableLedgerEnrichmentRow {
   journalEntryId: string;
   status: string;
   dueDate: Date | null;
-  documentTypeCode: string | null;
-  documentReferenceNumber: string | null;
 }
 
 /** Payment enrichment projection — exposes `paymentMethod` + optional
  *  `bankAccountName` for the "Forma de pago" column suffix (spec REQ "Type
  *  Column": "Cobranza (efectivo)" / "Cobranza (transferencia BNB Cta Cte)").
  *
- *  `documentTypeCode` carries el código del `OperationalDocType` configurado
- *  por la org (ej. "RC"=Recibo de Cobro, "RE"=Recibo de Egreso, "RI"=Recibo
- *  Interno). Null cuando el Payment no tiene operationalDocType wired
- *  (orgs nuevas o payments legacy pre-OperationalDocType). */
+ *  journal-physical-document Phase 5: `documentTypeCode` /
+ *  `documentReferenceNumber` REMOVED — read directly from the JE row now.
+ *  `direction` STAYS because BF2 uses it to render "Cobranza" vs "Pago" in
+ *  the human "Tipo" label when `sourceType === "payment"`. */
 export interface PaymentLedgerEnrichmentRow {
   journalEntryId: string;
   /** Native PaymentMethod enum value: EFECTIVO | TRANSFERENCIA | CHEQUE | DEPOSITO. */
@@ -76,14 +67,6 @@ export interface PaymentLedgerEnrichmentRow {
   /** "COBRO" (Receipt) | "PAGO" (Payment) — used to pick "Cobranza" vs "Pago"
    *  human label when sourceType doesn't disambiguate. */
   direction: string;
-  documentTypeCode: string | null;
-  /** DT4 — sequence raw del documento físico (p.ej. `"42"`), sin prefijo ni
-   *  padding. Source: `Payment.referenceNumber` (nullable Int — el dato
-   *  físico capturado por el operador). Null cuando NO hay documentTypeCode
-   *  wired O NO hay referenceNumber capturado — en ese caso el service no
-   *  puede armar el string y el campo del DTO también es null; la UI cae al
-   *  `displayNumber` correlative voucher contable. */
-  documentReferenceNumber: string | null;
 }
 
 export interface ReceivablesContactLedgerPort {

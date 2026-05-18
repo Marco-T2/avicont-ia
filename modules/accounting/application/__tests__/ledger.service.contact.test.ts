@@ -149,6 +149,13 @@ function contactRow(opts: {
   voucherPrefix?: string;
   voucherName?: string;
   description?: string | null;
+  /** journal-physical-document Phase 5 — physical doc-type code that the
+   *  service reads off the JE row directly (no longer from enrichment
+   *  precedence). Pass undefined → row has no doc type → DTO surfaces null. */
+  operationalDocCode?: string | null;
+  /** Physical document number lifted off JournalEntry.referenceNumber. Same
+   *  rationale as operationalDocCode — denormalized in Phase 5. */
+  referenceNumber?: number | null;
 }) {
   return {
     debit: opts.debit,
@@ -166,6 +173,14 @@ function contactRow(opts: {
         prefix: opts.voucherPrefix ?? "D",
         name: opts.voucherName ?? "Comprobante de Diario",
       },
+      // Denormalized doc-type from the JE row (Phase 5 select). Null when the
+      // caller doesn't specify — mirrors legacy/manual entries with no
+      // operationalDocTypeId set.
+      operationalDocType:
+        opts.operationalDocCode != null
+          ? { code: opts.operationalDocCode }
+          : null,
+      referenceNumber: opts.referenceNumber ?? null,
     },
   };
 }
@@ -277,15 +292,11 @@ describe("LedgerService.getContactLedgerPaginated", () => {
             journalEntryId: "je-1",
             status: "PENDING",
             dueDate: new Date("2099-12-31"),
-            documentTypeCode: null,
-            documentReferenceNumber: null,
           },
           {
             journalEntryId: "je-2",
             status: "PARTIAL",
             dueDate: new Date("2099-12-31"),
-            documentTypeCode: null,
-            documentReferenceNumber: null,
           },
         ],
       });
@@ -427,8 +438,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           direction: "COBRO",
-          documentTypeCode: null,
-          documentReferenceNumber: null,
         },
       ],
     });
@@ -574,6 +583,10 @@ describe("LedgerService.getContactLedgerPaginated", () => {
   // sourceType=manual o sin auxiliar → null (UI muestra "Ajuste").
 
   it("DT-T1 propagates Payment documentTypeCode (org-configurable code, p.ej. 'RC') al ContactLedgerEntry", async () => {
+    // journal-physical-document Phase 5: doc-type code now read off the JE
+    // row directly (not from Payment enrichment). The Payment composition
+    // root populates JournalEntry.operationalDocTypeId at JE creation; the
+    // ledger query select hydrates `operationalDocType.code`.
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -584,6 +597,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-pay",
         sourceType: "payment",
         sourceId: "pay-1",
+        operationalDocCode: "RC",
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -595,8 +609,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           direction: "COBRO",
-          documentTypeCode: "RC",
-          documentReferenceNumber: null,
         },
       ],
     });
@@ -621,7 +633,10 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(entry.documentTypeCode).toBe("RC");
   });
 
-  it("DT-T2 propagates Receivable documentTypeCode='VG' para sourceType=sale (hardcoded — Sale no tiene operationalDocType)", async () => {
+  it("DT-T2 propagates documentTypeCode='VG' para sourceType=sale (Sale composition root resolves 'VG' via findByCode at JE creation)", async () => {
+    // Post-Phase-5: Sale factory adapter sets JE.operationalDocTypeId via
+    // OperationalDocTypesRepository.findByCode(orgId, 'VG'). Ledger reads
+    // the code off the row — no Sale.findMany lookup in enrichment.
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -632,6 +647,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-sale",
         sourceType: "sale",
         sourceId: "sale-1",
+        operationalDocCode: "VG",
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -642,8 +658,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           journalEntryId: "je-sale",
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
-          documentTypeCode: "VG",
-          documentReferenceNumber: null,
         },
       ],
     });
@@ -668,7 +682,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(entry.documentTypeCode).toBe("VG");
   });
 
-  it("DT-T3 propagates Receivable documentTypeCode para sourceType=dispatch (ND/BC desde DispatchType enum)", async () => {
+  it("DT-T3 propagates documentTypeCode para sourceType=dispatch (Dispatch composition root resolves 'ND'/'BC' via dispatchTypeToCode + findByCode)", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -679,6 +693,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-dispatch",
         sourceType: "dispatch",
         sourceId: "disp-1",
+        operationalDocCode: "ND",
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -689,8 +704,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           journalEntryId: "je-dispatch",
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
-          documentTypeCode: "ND",
-          documentReferenceNumber: null,
         },
       ],
     });
@@ -715,7 +728,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(entry.documentTypeCode).toBe("ND");
   });
 
-  it("DT-T4 propagates Payable documentTypeCode para sourceType=purchase (FL/PF/CG/SV desde PurchaseType enum)", async () => {
+  it("DT-T4 propagates documentTypeCode para sourceType=purchase (Purchase unit of work resolves 'FL'/'PF'/'CG'/'SV' via purchaseTypeToCode + findByCode)", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -726,6 +739,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-purchase",
         sourceType: "purchase",
         sourceId: "purch-1",
+        operationalDocCode: "FL",
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -736,8 +750,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           journalEntryId: "je-purchase",
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
-          documentTypeCode: "FL",
-          documentReferenceNumber: null,
         },
       ],
     });
@@ -810,7 +822,10 @@ describe("LedgerService.getContactLedgerPaginated", () => {
   // Fallback: null en el enrichment row → null en el DTO → UI cae al
   // displayNumber.
 
-  it("DT4-T1 propagates Payment documentReferenceNumber (p.ej. '42') al ContactLedgerEntry", async () => {
+  it("DT4-T1 propagates documentReferenceNumber from JE row (e.g. '42') al ContactLedgerEntry", async () => {
+    // journal-physical-document Phase 5: referenceNumber denormalized to the
+    // JE row, formatted via formatDocumentReferenceNumber (sequence-only —
+    // no prefix, no padding per DT4 lock).
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -821,6 +836,8 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-pay",
         sourceType: "payment",
         sourceId: "pay-1",
+        operationalDocCode: "RC",
+        referenceNumber: 42,
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -832,8 +849,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
           direction: "COBRO",
-          documentTypeCode: "RC",
-          documentReferenceNumber: "42",
         },
       ],
     });
@@ -858,7 +873,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(entry.documentReferenceNumber).toBe("42");
   });
 
-  it("DT4-T2 propagates Receivable documentReferenceNumber='1' para sourceType=sale", async () => {
+  it("DT4-T2 propagates documentReferenceNumber='1' from JE row para sourceType=sale", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -869,6 +884,8 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-sale",
         sourceType: "sale",
         sourceId: "sale-1",
+        operationalDocCode: "VG",
+        referenceNumber: 1,
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -879,8 +896,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           journalEntryId: "je-sale",
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
-          documentTypeCode: "VG",
-          documentReferenceNumber: "1",
         },
       ],
     });
@@ -905,7 +920,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(entry.documentReferenceNumber).toBe("1");
   });
 
-  it("DT4-T3 propagates Payable documentReferenceNumber='5' para sourceType=purchase", async () => {
+  it("DT4-T3 propagates documentReferenceNumber='5' from JE row para sourceType=purchase", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -916,6 +931,8 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-purchase",
         sourceType: "purchase",
         sourceId: "purch-1",
+        operationalDocCode: "FL",
+        referenceNumber: 5,
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
@@ -926,8 +943,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           journalEntryId: "je-purchase",
           status: "PENDING",
           dueDate: new Date("2099-12-31"),
-          documentTypeCode: "FL",
-          documentReferenceNumber: "5",
         },
       ],
     });
@@ -1011,9 +1026,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
           journalEntryId: "je-pay-noref",
           paymentMethod: "EFECTIVO",
           bankAccountName: null,
-          direction: "COBRO",
-          documentTypeCode: "RC",
-          documentReferenceNumber: null, // operador NO capturó referenceNumber
+          direction: "COBRO", // operador NO capturó referenceNumber
         },
       ],
     });
