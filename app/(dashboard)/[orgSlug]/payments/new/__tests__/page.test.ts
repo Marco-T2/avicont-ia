@@ -215,6 +215,69 @@ describe("/payments/new — shortcut mode: searchParams branch (T-10)", () => {
   });
 });
 
+// ── T-11 — ok → PaymentForm initialValues ───────────────────────────────────
+describe("/payments/new — shortcut mode: ok → initialValues (T-11)", () => {
+  it("passes a fully-coerced ShortcutInitialValues to PaymentForm on ok-sale", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce(okSaleSource());
+
+    const element = await NewPaymentPage({
+      params: makeParams(),
+      searchParams: makeSearchParams({ type: "COBRO", saleId: SALE_ID }),
+    });
+
+    const formProps = findPaymentFormProps(element);
+    expect(formProps).toBeDefined();
+    expect(formProps?.initialValues).toEqual({
+      type: "COBRO",
+      contactId: "cnt-1",
+      description: "Cobro Venta #42",
+      sourceKind: "sale",
+      sourceId: SALE_ID,
+      voucherCode: "V-42",
+      referenceNumber: "REF-001",
+      allocationTargetId: "rcv-1",
+      allocationBalance: 1000,
+    });
+    // DEC-1 boundary: balance must be a JS number, not a Decimal instance.
+    const iv = formProps?.initialValues as { allocationBalance: number };
+    expect(typeof iv.allocationBalance).toBe("number");
+  });
+
+  it("coerces decimal balance with HALF_UP to two decimal places at the boundary", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({
+      kind: "ok" as const,
+      source: {
+        kind: "purchase" as const,
+        id: PURCHASE_ID,
+        contactId: "cnt-2",
+        voucherCode: "C-7",
+        number: 7,
+        referenceNumber: null,
+        allocationTargetId: "pay-1",
+        // 12.345 → HALF_UP @ 2dp → 12.35
+        balance: new Decimal("12.345"),
+        defaultDescription: "Pago Compra #7",
+      },
+    });
+
+    const element = await NewPaymentPage({
+      params: makeParams(),
+      searchParams: makeSearchParams({
+        type: "PAGO",
+        purchaseId: PURCHASE_ID,
+      }),
+    });
+
+    const formProps = findPaymentFormProps(element);
+    const iv = formProps?.initialValues as {
+      allocationBalance: number;
+      sourceKind: string;
+    };
+    expect(iv.allocationBalance).toBe(12.35);
+    expect(iv.sourceKind).toBe("purchase");
+  });
+});
+
 /**
  * Walk the React element tree returned by the Server Component and return
  * the props of the first PaymentForm element encountered. Returns undefined
