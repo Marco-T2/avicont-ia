@@ -14,7 +14,9 @@ import { Contact } from "@/modules/contacts/domain/contact.entity";
 import { PaymentTermsDays } from "@/modules/contacts/domain/value-objects/payment-terms-days";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { OrgSettings } from "@/modules/org-settings/domain/org-settings.entity";
+import { Receivable } from "@/modules/receivables/domain/receivable.entity";
 import { Sale } from "../../domain/sale.entity";
+import { SaleDetail } from "../../domain/sale-detail.entity";
 import { SaleService } from "../sale.service";
 import { InMemoryContactRepository } from "./fakes/in-memory-contact.repository";
 import { InMemorySaleRepository } from "./fakes/in-memory-sale.repository";
@@ -360,6 +362,204 @@ describe("SaleService.createAndPost — glosa builder wiring", () => {
 
     expect(journalEntryFactory.calls[0]!.description).not.toBe(
       "raw user text to be ignored by builder path",
+    );
+  });
+});
+
+describe("SaleService.updatePosted — glosa builder wiring (F5)", () => {
+  let saleRepo: InMemorySaleRepository;
+  let receivableRepo: InMemoryReceivableRepository;
+  let contactRepo: InMemoryContactRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  function buildPostedSale(): Sale {
+    return Sale.fromPersistence({
+      id: "posted-sale",
+      organizationId: ORG,
+      status: "POSTED",
+      sequenceNumber: 7,
+      date: new Date("2026-05-17"),
+      contactId: "c-1",
+      periodId: "period-1",
+      description: "Venta posteada",
+      referenceNumber: 99,
+      notes: null,
+      totalAmount: MonetaryAmount.of(320),
+      journalEntryId: "journal-1",
+      receivableId: "receivable-1",
+      createdById: "user-1",
+      createdAt: new Date("2026-05-17"),
+      updatedAt: new Date("2026-05-17"),
+      details: [
+        SaleDetail.fromPersistence({
+          id: "det-1",
+          saleId: "posted-sale",
+          description: "Pollo faenado x 20kg",
+          lineAmount: MonetaryAmount.of(200),
+          order: 0,
+          incomeAccountId: "acc-income-1",
+        }),
+        SaleDetail.fromPersistence({
+          id: "det-2",
+          saleId: "posted-sale",
+          description: "servicio Flete",
+          lineAmount: MonetaryAmount.of(120),
+          order: 1,
+          incomeAccountId: "acc-income-1",
+        }),
+      ],
+      receivable: null,
+    });
+  }
+
+  function buildExistingReceivable(): Receivable {
+    return Receivable.fromPersistence({
+      id: "receivable-1",
+      organizationId: ORG,
+      contactId: "c-1",
+      description: "stale description (pre-F5)",
+      amount: MonetaryAmount.of(320),
+      paid: MonetaryAmount.of(0),
+      balance: MonetaryAmount.of(320),
+      dueDate: new Date("2026-06-17"),
+      status: "PENDING",
+      sourceType: "sale",
+      sourceId: "posted-sale",
+      journalEntryId: "journal-1",
+      notes: null,
+      createdAt: new Date("2026-05-17"),
+      updatedAt: new Date("2026-05-17"),
+    });
+  }
+
+  function buildJournalStub(id: string): Journal {
+    return Journal.fromPersistence({
+      id,
+      organizationId: ORG,
+      status: "POSTED",
+      number: 7,
+      referenceNumber: 99,
+      operationalDocTypeId: null,
+      date: new Date("2026-05-17"),
+      description: "",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CI",
+      contactId: "c-1",
+      sourceType: "sale",
+      sourceId: "posted-sale",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2026-05-17"),
+      updatedAt: new Date("2026-05-17"),
+      lines: [],
+    });
+  }
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    receivableRepo = new InMemoryReceivableRepository();
+    contactRepo = new InMemoryContactRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+
+    contactRepo.preload(
+      Contact.fromPersistence({
+        id: "c-1",
+        organizationId: ORG,
+        type: "CLIENTE",
+        name: "Pollería Don Pepe",
+        nit: null,
+        email: null,
+        phone: null,
+        address: null,
+        paymentTermsDays: PaymentTermsDays.of(30),
+        creditLimit: null,
+        isActive: true,
+        createdAt: new Date("2026-05-15"),
+        updatedAt: new Date("2026-05-15"),
+      }),
+    );
+    orgSettings.preload(ORG, OrgSettings.createDefault({
+      id: "settings-1",
+      organizationId: ORG,
+      createdAt: new Date("2026-05-15"),
+      updatedAt: new Date("2026-05-15"),
+    }));
+    accountLookup.preload({
+      id: "acc-income-1",
+      code: "4.1.1",
+      isDetail: true,
+      isActive: true,
+    });
+    fiscalPeriods.preload("period-1", "OPEN");
+
+    uow = new InMemorySaleUnitOfWork({
+      sales: saleRepo,
+      accountBalances,
+      receivables: receivableRepo,
+      journalEntryFactory,
+    });
+
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+    });
+  });
+
+  it("updatePosted: JE.description = buildSaleGlosa output (no más passthrough)", async () => {
+    saleRepo.preload(buildPostedSale());
+    receivableRepo.preloadReceivable(buildExistingReceivable());
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+
+    await service.update(
+      ORG,
+      "posted-sale",
+      { description: "user-typed header (debe ignorarse)" },
+      { userId: "user-1" },
+    );
+
+    expect(journalEntryFactory.regenCalls).toHaveLength(1);
+    expect(journalEntryFactory.regenCalls[0]!.template.description).toBe(
+      "VENTA: Pollería Don Pepe VG-99 por Bs. 320,00 (Pollo faenado x 20kg | servicio Flete)",
+    );
+  });
+
+  it("updatePosted: AR.description se sincroniza con JE (Bug E del plan)", async () => {
+    saleRepo.preload(buildPostedSale());
+    receivableRepo.preloadReceivable(buildExistingReceivable());
+    journalEntryFactory.enqueueRegen({
+      old: buildJournalStub("journal-1"),
+      new: buildJournalStub("journal-1"),
+    });
+
+    await service.update(
+      ORG,
+      "posted-sale",
+      { description: "user-typed header" },
+      { userId: "user-1" },
+    );
+
+    expect(receivableRepo.updateCalls).toHaveLength(1);
+    expect(receivableRepo.updateCalls[0]!.description).toBe(
+      "VENTA: Pollería Don Pepe VG-99 por Bs. 320,00 (Pollo faenado x 20kg | servicio Flete)",
     );
   });
 });
