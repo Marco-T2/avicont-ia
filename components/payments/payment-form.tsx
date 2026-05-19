@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import Decimal from "decimal.js";
 import { useRouter } from "next/navigation";
 import {
   Card,
@@ -29,6 +30,7 @@ import type { FiscalPeriod } from "@/generated/prisma/client";
 import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/payment-with-relations";
 import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
 import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
+import type { ShortcutInitialValues } from "@/modules/payment/application/types/shortcut-initial-values";
 import { JustificationModal } from "@/components/shared/justification-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
@@ -132,6 +134,15 @@ interface PaymentFormProps {
   bankAccounts?: AccountOption[];
   defaultCashCode?: string;
   defaultBankCode?: string;
+  /**
+   * Pre-filled values for the "registrar pago" shortcut flow. When defined,
+   * the form is rendered in shortcut mode: type + contact + allocation row are
+   * locked, amount is seeded to `allocationBalance` and capped at it, and a
+   * successful submit redirects back to the source comprobante. When
+   * `undefined` the form behaves exactly as it has historically (zero
+   * regression). Shape is owned by `modules/payment/application/types`.
+   */
+  initialValues?: ShortcutInitialValues;
 }
 
 export default function PaymentForm({
@@ -146,6 +157,7 @@ export default function PaymentForm({
   bankAccounts = [],
   defaultCashCode: _defaultCashCode,
   defaultBankCode: _defaultBankCode,
+  initialValues,
 }: PaymentFormProps) {
   const router = useRouter();
 
@@ -170,11 +182,21 @@ export default function PaymentForm({
     return defaultType ?? "COBRO";
   }
 
+  // ── Shortcut mode ──
+  // When `initialValues` is provided (entered via the "registrar pago" flow
+  // from sale-form / purchase-form), the form locks type/contact/allocation
+  // and redirects back to the source on submit. Phase 4 (T-16..T-19).
+  const isShortcut = !!initialValues;
+
   // ── Header state ──
   const [paymentType, _setPaymentType] = useState<PaymentDirection>(
-    existingPayment ? inferDirection(existingPayment) : (defaultType ?? "COBRO"),
+    existingPayment
+      ? inferDirection(existingPayment)
+      : (initialValues?.type ?? defaultType ?? "COBRO"),
   );
-  const [contactId, setContactId] = useState(existingPayment?.contactId ?? "");
+  const [contactId, setContactId] = useState(
+    existingPayment?.contactId ?? initialValues?.contactId ?? "",
+  );
   const [date, setDate] = useState(
     existingPayment
       ? new Date(existingPayment.date).toISOString().split("T")[0]
@@ -217,7 +239,9 @@ export default function PaymentForm({
     existingPayment?.accountCode ?? "",
   );
 
-  const [description, setDescription] = useState(existingPayment?.description ?? "");
+  const [description, setDescription] = useState(
+    existingPayment?.description ?? initialValues?.description ?? "",
+  );
   const [notes, setNotes] = useState(existingPayment?.notes ?? "");
   const [operationalDocTypeId, setOperationalDocTypeId] = useState(
     existingPayment?.operationalDocTypeId ?? "",
@@ -226,11 +250,37 @@ export default function PaymentForm({
     existingPayment?.referenceNumber?.toString() ?? "",
   );
   const [amountOverride, setAmountOverride] = useState(
-    existingPayment ? String(existingPayment.amount) : "",
+    existingPayment
+      ? String(existingPayment.amount)
+      : initialValues
+        ? String(initialValues.allocationBalance)
+        : "",
   );
 
   // ── Allocations state ──
-  const [allocations, setAllocations] = useState<AllocationLine[]>([]);
+  // Shortcut mode seeds ONE allocation line pointing at the source's
+  // receivable / payable, pre-checked at the full balance. Cannot be removed.
+  const [allocations, setAllocations] = useState<AllocationLine[]>(
+    initialValues
+      ? [
+          {
+            id: initialValues.allocationTargetId,
+            type: initialValues.type === "COBRO" ? "receivable" : "payable",
+            description:
+              initialValues.voucherCode + " — " + initialValues.description,
+            totalAmount: initialValues.allocationBalance,
+            paid: 0,
+            balance: initialValues.allocationBalance,
+            displayBalance: initialValues.allocationBalance,
+            sourceType: initialValues.sourceKind,
+            sourceId: initialValues.sourceId,
+            dueDate: new Date(),
+            assignedAmount: String(initialValues.allocationBalance),
+            checked: true,
+          },
+        ]
+      : [],
+  );
   const [loadingDocs, setLoadingDocs] = useState(false);
   const [creditBalance, setCreditBalance] = useState(0);
 
@@ -440,10 +490,12 @@ export default function PaymentForm({
   // Fires for new payments AND for edits (DRAFT, POSTED, LOCKED+admin).
   // Skipped for VOIDED payments (read-only with no editable state).
   useEffect(() => {
-    if (contactId && !isVoided) {
+    // Shortcut mode pre-seeds a single allocation line and locks the contact;
+    // skip the pending-documents fetch so it does not clobber the seed.
+    if (contactId && !isVoided && !isShortcut) {
       fetchPendingDocuments(contactId);
     }
-  }, [contactId, isVoided, paymentType, fetchPendingDocuments]);
+  }, [contactId, isVoided, paymentType, fetchPendingDocuments, isShortcut]);
 
   // ── Reset accountCode when method changes (new payments only) ──
   useEffect(() => {
@@ -724,6 +776,17 @@ export default function PaymentForm({
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
+    // Shortcut mode: amount must not exceed the source's outstanding balance
+    // (the seeded `allocationBalance`). DEC-1: Decimal compare, not float math.
+    if (
+      initialValues &&
+      new Decimal(paymentAmount).gt(new Decimal(initialValues.allocationBalance))
+    ) {
+      toast.error(
+        `El importe no puede superar el saldo del comprobante (${initialValues.allocationBalance})`,
+      );
+      return;
+    }
     if (isCreditOnly) {
       // Mode B: delegate to credit-only handler
       await handleApplyCredits();
@@ -771,7 +834,12 @@ export default function PaymentForm({
           ? "Pago actualizado correctamente"
           : "Pago guardado como borrador",
       );
-      router.push(`/${orgSlug}/payments`);
+      // Shortcut mode redirects back to the source comprobante; the standalone
+      // flow keeps its historical landing on the payments listing.
+      const returnTo = initialValues
+        ? `/${orgSlug}/${initialValues.sourceKind === "sale" ? "sales" : "purchases"}/${initialValues.sourceId}`
+        : `/${orgSlug}/payments`;
+      router.push(returnTo);
       router.refresh();
     } catch (err) {
       toast.error(
@@ -1226,7 +1294,7 @@ export default function PaymentForm({
                   onChange={(v) => setContactId(v ?? "")}
                   typeFilter={paymentType === "COBRO" ? "CLIENTE" : "PROVEEDOR"}
                   placeholder="Seleccione contacto"
-                  disabled={!!existingPayment}
+                  disabled={!!existingPayment || isShortcut}
                   initialContact={existingPayment?.contact}
                 />
               )}
@@ -1454,7 +1522,8 @@ export default function PaymentForm({
                               type="checkbox"
                               checked={alloc.checked}
                               onChange={(e) => handleCheckToggle(alloc.id, e.target.checked)}
-                              className="h-4 w-4 rounded border-border accent-info cursor-pointer"
+                              disabled={isShortcut}
+                              className="h-4 w-4 rounded border-border accent-info cursor-pointer disabled:cursor-not-allowed disabled:opacity-50"
                             />
                           </td>
                         )}

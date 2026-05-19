@@ -14,10 +14,11 @@
  * the rest of `components/**` test conventions.
  */
 
-import { render, screen, cleanup, fireEvent, waitFor } from "@testing-library/react";
+import { render, screen, cleanup, fireEvent, waitFor, within } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PaymentForm from "../payment-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 import type { ShortcutInitialValues } from "@/modules/payment/application/types/shortcut-initial-values";
 
 afterEach(() => cleanup());
@@ -138,13 +139,15 @@ const SHORTCUT_INITIAL: ShortcutInitialValues = {
 
 function renderShortcutForm(overrides?: Partial<ShortcutInitialValues>) {
   return render(
-    <PaymentForm
-      orgSlug="test-org"
-      contacts={[SHORTCUT_CONTACT]}
-      periods={[BASE_PERIOD]}
-      existingPayment={undefined}
-      initialValues={{ ...SHORTCUT_INITIAL, ...overrides }}
-    />,
+    <SystemRoleProvider role="owner">
+      <PaymentForm
+        orgSlug="test-org"
+        contacts={[SHORTCUT_CONTACT]}
+        periods={[BASE_PERIOD]}
+        existingPayment={undefined}
+        initialValues={{ ...SHORTCUT_INITIAL, ...overrides }}
+      />
+    </SystemRoleProvider>,
   );
 }
 
@@ -185,8 +188,11 @@ describe("PaymentForm — shortcut mode T-16: seeds state from initialValues", (
 describe("PaymentForm — shortcut mode T-17: locked fields disabled", () => {
   it("T-17.a — contact selector is disabled", () => {
     renderShortcutForm();
-    // ContactSelector renders a combobox button — disabled in shortcut mode.
-    const combobox = screen.getByRole("combobox");
+    // Two comboboxes exist: operational-doc-type (id="operational-doc-type")
+    // and the ContactSelector. Scope to the contact card region.
+    const contactLabel = screen.getByText(/^Cliente$/);
+    const card = contactLabel.closest("div.space-y-2") as HTMLElement;
+    const combobox = within(card).getByRole("combobox");
     expect(combobox).toBeDisabled();
   });
 
