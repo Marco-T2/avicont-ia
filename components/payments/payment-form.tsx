@@ -38,6 +38,7 @@ import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 import { buildPaymentGlosa } from "@/modules/payment/domain/payment-glosa-builder";
+import { selectGlosaAllocations } from "./payment-form.glosa-helpers";
 
 const PAYMENT_METHODS = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -58,6 +59,9 @@ interface AllocationLine {
   displayBalance: number; // actual CxC balance for display
   sourceType: string | null;
   sourceId: string | null;
+  sourceTypeCode: string | null;
+  referenceNumber: number | null;
+  sourceDate: Date;
   dueDate: Date;
   assignedAmount: string; // string for input control
   checked: boolean;
@@ -285,6 +289,13 @@ export default function PaymentForm({
             displayBalance: initialValues.allocationBalance,
             sourceType: initialValues.sourceKind,
             sourceId: initialValues.sourceId,
+            // Shortcut mode doesn't carry AR.sourceTypeCode nor source date —
+            // builder falls back to "DOC" prefix until edit re-fetches docs.
+            sourceTypeCode: null,
+            referenceNumber: initialValues.referenceNumber
+              ? Number(initialValues.referenceNumber) || null
+              : null,
+            sourceDate: new Date(),
             dueDate: new Date(),
             assignedAmount: String(initialValues.allocationBalance),
             checked: true,
@@ -326,17 +337,21 @@ export default function PaymentForm({
         const desc = target
           ? `${target.sourceType ?? "Documento"} — ${(target as Record<string, unknown>).description ?? ""}`
           : "Documento";
+        const t = target as Record<string, unknown> | undefined;
         return {
           id: a.receivableId ?? a.payableId ?? a.id,
           type: a.receivableId ? "receivable" : "payable",
           description: desc,
-          totalAmount: Number((target as Record<string, unknown>)?.amount ?? 0),
-          paid: Number((target as Record<string, unknown>)?.paid ?? 0),
-          balance: Number((target as Record<string, unknown>)?.balance ?? 0) + Number(a.amount),
-          displayBalance: Number((target as Record<string, unknown>)?.balance ?? 0),
-          sourceType: (target as Record<string, unknown>)?.sourceType as string | null ?? null,
-          sourceId: (target as Record<string, unknown>)?.sourceId as string | null ?? null,
-          dueDate: (target as Record<string, unknown>)?.dueDate as Date ?? new Date(),
+          totalAmount: Number(t?.amount ?? 0),
+          paid: Number(t?.paid ?? 0),
+          balance: Number(t?.balance ?? 0) + Number(a.amount),
+          displayBalance: Number(t?.balance ?? 0),
+          sourceType: (t?.sourceType as string | null) ?? null,
+          sourceId: (t?.sourceId as string | null) ?? null,
+          sourceTypeCode: (t?.sourceTypeCode as string | null) ?? null,
+          referenceNumber: (t?.referenceNumber as number | null) ?? null,
+          sourceDate: (t?.sourceDate as Date | undefined) ?? (t?.createdAt as Date | undefined) ?? new Date(),
+          dueDate: (t?.dueDate as Date) ?? new Date(),
           assignedAmount: String(a.amount),
           checked: true,
         };
@@ -389,7 +404,10 @@ export default function PaymentForm({
             displayBalance: doc.balance,
             sourceType: doc.sourceType,
             sourceId: doc.sourceId,
-            dueDate: doc.dueDate,
+            sourceTypeCode: doc.sourceTypeCode,
+            referenceNumber: doc.referenceNumber,
+            sourceDate: new Date(doc.sourceDate),
+            dueDate: new Date(doc.dueDate),
             assignedAmount: "0",
             checked: false,
           }));
@@ -638,12 +656,6 @@ export default function PaymentForm({
   // Direct-invoke callback (NOT useEffect for write) — fires from header
   // (method/contact/total) and allocation mutation handlers. Guard at top:
   // if override locked, no rebuild.
-  //
-  // Deviation: the form preview omits per-allocation tokens because the
-  // PendingDocument DTO does not yet carry (sourceTypeCode, refNo, sourceDate).
-  // Service rebuild at post-time emits canonical glosa with full allocation
-  // list (REQ-GE-2 / Batch B Phase 5). Header preview matches REQ-GE-2
-  // Scenario 2.4 shape (empty-allocations form).
   const rebuildDescription = useCallback(
     (overrides?: {
       method?: string;
@@ -668,7 +680,7 @@ export default function PaymentForm({
         method: effectiveMethod.toUpperCase(),
         contactName,
         totalAmount: effectiveTotal,
-        allocations: [],
+        allocations: selectGlosaAllocations(allocations),
         journalEntryDate: date ? new Date(date) : new Date(),
       });
       setDescription(auto);
@@ -681,6 +693,7 @@ export default function PaymentForm({
       contacts,
       amountOverride,
       date,
+      allocations,
     ],
   );
 
