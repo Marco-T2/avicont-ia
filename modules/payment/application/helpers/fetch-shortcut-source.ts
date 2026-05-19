@@ -76,6 +76,15 @@ export async function fetchShortcutSource(
     return { kind: "voided" };
   }
 
+  if (!sale.receivable) {
+    return { kind: "fully-paid" };
+  }
+
+  const balance = new Decimal(sale.receivable.balance.toString());
+  if (balance.lte(0)) {
+    return { kind: "fully-paid" };
+  }
+
   return {
     kind: "ok",
     source: {
@@ -86,8 +95,8 @@ export async function fetchShortcutSource(
       number: sale.sequenceNumber,
       referenceNumber:
         sale.referenceNumber == null ? null : String(sale.referenceNumber),
-      allocationTargetId: sale.receivable!.id,
-      balance: new Decimal(sale.receivable!.balance.toString()),
+      allocationTargetId: sale.receivable.id,
+      balance,
       defaultDescription: `Cobro Venta #${sale.sequenceNumber}`,
     },
   };
