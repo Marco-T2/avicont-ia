@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/generated/prisma/client";
@@ -37,6 +37,7 @@ import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
+import { buildPaymentGlosa } from "@/modules/payment/domain/payment-glosa-builder";
 
 const PAYMENT_METHODS = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -241,6 +242,16 @@ export default function PaymentForm({
 
   const [description, setDescription] = useState(
     existingPayment?.description ?? initialValues?.description ?? "",
+  );
+  // descriptionOverride controls whether the description is user-authored
+  // (true → input editable, builder gated) or auto-built by buildPaymentGlosa
+  // (false → input readOnly, rebuilt on header/allocation mutations).
+  // Edit-mode initializes true (preserve historical text). Create-mode false
+  // (REQ-GE-4 / design D9). Shortcut mode initializes true because the source
+  // pre-seeds a meaningful description.
+  // Toggling back to false does NOT immediately rebuild — next mutation does.
+  const [descriptionOverride, setDescriptionOverride] = useState(
+    !!existingPayment || !!initialValues,
   );
   const [notes, setNotes] = useState(existingPayment?.notes ?? "");
   const [operationalDocTypeId, setOperationalDocTypeId] = useState(
@@ -623,20 +634,61 @@ export default function PaymentForm({
   // Mode B: credit-only payment (no new cash), just apply existing credits to invoices
   const isCreditOnly = paymentAmount === 0 && creditApplied > 0;
 
-  // ── Auto-description ──
-  const autoDescription = useCallback(() => {
-    const contactName = contacts.find((c) => c.id === contactId)?.name ?? "";
-    const typeLabel = paymentType === "COBRO" ? "Cobro" : "Pago";
-    const methodLabel =
-      PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method;
-    return `${typeLabel} ${methodLabel} - ${contactName}`;
-  }, [contactId, contacts, paymentType, method]);
+  // ── Auto-description rebuild (REQ-GE-4 / design D9) ──
+  // Direct-invoke callback (NOT useEffect for write) — fires from header
+  // (method/contact/total) and allocation mutation handlers. Guard at top:
+  // if override locked, no rebuild.
+  //
+  // Deviation: the form preview omits per-allocation tokens because the
+  // PendingDocument DTO does not yet carry (sourceTypeCode, refNo, sourceDate).
+  // Service rebuild at post-time emits canonical glosa with full allocation
+  // list (REQ-GE-2 / Batch B Phase 5). Header preview matches REQ-GE-2
+  // Scenario 2.4 shape (empty-allocations form).
+  const rebuildDescription = useCallback(
+    (overrides?: {
+      method?: string;
+      contactId?: string;
+      total?: number;
+    }) => {
+      if (descriptionOverride) return;
+      if (paymentType !== "COBRO") return; // PAGO out of scope (REQ-GE / spec out-of-scope)
+      const effectiveMethod = overrides?.method ?? method;
+      const effectiveContactId = overrides?.contactId ?? contactId;
+      const contactName =
+        contacts.find((c) => c.id === effectiveContactId)?.name ?? "";
+      if (!contactName) {
+        setDescription("");
+        return;
+      }
+      const effectiveTotal =
+        overrides?.total !== undefined
+          ? overrides.total
+          : parseFloat(amountOverride) || 0;
+      const auto = buildPaymentGlosa({
+        method: effectiveMethod.toUpperCase(),
+        contactName,
+        totalAmount: effectiveTotal,
+        allocations: [],
+        journalEntryDate: date ? new Date(date) : new Date(),
+      });
+      setDescription(auto);
+    },
+    [
+      descriptionOverride,
+      paymentType,
+      method,
+      contactId,
+      contacts,
+      amountOverride,
+      date,
+    ],
+  );
 
+  // Trigger rebuild when key inputs change (header fields) — replicates the
+  // direct-invoke pattern; React batches and the guard prevents loops.
   useEffect(() => {
-    if (isNew && contactId && !description) {
-      setDescription(autoDescription());
-    }
-  }, [isNew, contactId, method, paymentType, autoDescription, description]);
+    rebuildDescription();
+  }, [rebuildDescription]);
 
   // ── Validation ──
 
@@ -805,6 +857,7 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
+        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -972,6 +1025,7 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
+        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1019,6 +1073,7 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
+        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1096,6 +1151,7 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
+        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1367,16 +1423,35 @@ export default function PaymentForm({
             })()}
           </div>
 
-          {/* Row 3: Descripción (full width) */}
+          {/* Row 3: Descripción — auto-built by buildPaymentGlosa (REQ-GE-4 / D9).
+              Pencil toggles override. Label is the ACTION on click. */}
           <div className="space-y-2">
-            <Label htmlFor="payment-description">Descripción</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="payment-description">Descripción</Label>
+              {!isReadOnly && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 px-2 text-xs text-muted-foreground"
+                  onClick={() => setDescriptionOverride((prev) => !prev)}
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  {descriptionOverride ? "Auto" : "Editar"}
+                </Button>
+              )}
+            </div>
             <Input
               id="payment-description"
-              placeholder="Descripción del pago"
+              placeholder="Se genera automáticamente"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              readOnly={isReadOnly}
-              className={isReadOnly ? "bg-muted cursor-default" : ""}
+              readOnly={isReadOnly || !descriptionOverride}
+              className={
+                isReadOnly || !descriptionOverride
+                  ? "bg-muted cursor-default"
+                  : ""
+              }
               required
             />
           </div>
