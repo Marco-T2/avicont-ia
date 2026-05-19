@@ -296,6 +296,23 @@ describe("/payments/new — shortcut mode: not-found (T-12)", () => {
   });
 });
 
+// ── T-13 — cross-org → redirect to /{orgSlug}/payments ──────────────────────
+describe("/payments/new — shortcut mode: cross-org (T-13)", () => {
+  it("redirects to /{orgSlug}/payments when helper returns cross-org", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({ kind: "cross-org" });
+
+    await expect(
+      NewPaymentPage({
+        params: makeParams(),
+        searchParams: makeSearchParams({ type: "COBRO", saleId: SALE_ID }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith(`/${ORG_SLUG}/payments`);
+    expect(mockNotFound).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * Walk the React element tree returned by the Server Component and return
  * the props of the first PaymentForm element encountered. Returns undefined
