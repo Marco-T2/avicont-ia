@@ -523,13 +523,26 @@ export class SaleService {
       }
     }
 
-    let edited = sale.applyEdit({
-      date: input.date,
-      description: input.description,
-      contactId: input.contactId,
-      referenceNumber: input.referenceNumber,
-      notes: input.notes,
-    });
+    // F5: builder canónico necesita contact.name SIEMPRE (no solo cuando
+    // contactId cambia). Pre-fetch del contacto efectivo (post-applyEdit).
+    const effectiveContactId = input.contactId ?? sale.contactId;
+    const editedContact = await this.deps.contacts!.findById(
+      organizationId,
+      effectiveContactId,
+    );
+    if (!editedContact) throw new ContactNotFound();
+
+    // F5: `applyEdit` interpreta `"referenceNumber" in input` como "borrar a
+    // null si undefined" — incluir la key siempre (aunque el caller no edite)
+    // borra el referenceNumber del sale. Construir input incremental para
+    // preservar referenceNumber/notes cuando el caller no los toca.
+    const editInput: Parameters<typeof sale.applyEdit>[0] = {};
+    if (input.date !== undefined) editInput.date = input.date;
+    if (input.description !== undefined) editInput.description = input.description;
+    if (input.contactId !== undefined) editInput.contactId = input.contactId;
+    if ("referenceNumber" in input) editInput.referenceNumber = input.referenceNumber;
+    if ("notes" in input) editInput.notes = input.notes;
+    let edited = sale.applyEdit(editInput);
     const replaceDetails = input.details !== undefined;
     if (replaceDetails) {
       const newDetails = input.details!.map((d, idx) =>
@@ -579,11 +592,16 @@ export class SaleService {
           edited.contactId,
         );
 
-        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
-        // `| ${notes}` suffix when notes present.
-        const journalDescription = edited.notes
-          ? `${edited.description} | ${edited.notes}`
-          : edited.description;
+        // F5: builder canónico al editar (Bug D del plan). Reemplaza el
+        // passthrough viejo `${description} | ${notes}`. Marco lock: notas
+        // persiste manual via sale.notes; glosa es siempre builder output.
+        const journalDescription = buildSaleGlosa({
+          contactName: editedContact.name,
+          referenceNumber: String(edited.referenceNumber ?? ""),
+          totalAmount: edited.totalAmount.value,
+          lineConcepts: edited.details.map((d) => d.description),
+          saleDate: edited.date,
+        });
 
         const { old, new: newJournal } =
           await scope.journalEntryFactory.regenerateForSaleEdit(
@@ -625,6 +643,10 @@ export class SaleService {
                 edited.contactId,
               );
             }
+            // F5: sync AR.description con la nueva glosa (Bug E del plan).
+            updatedReceivable = updatedReceivable.update({
+              description: journalDescription,
+            });
             await scope.receivables.update(updatedReceivable);
 
             if (receivable.paid.value > edited.totalAmount.value) {
