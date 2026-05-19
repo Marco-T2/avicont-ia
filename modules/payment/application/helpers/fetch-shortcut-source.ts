@@ -71,45 +71,86 @@ export async function fetchShortcutSource(
     return { kind: "invalid-params" };
   }
 
-  const sale = await prisma.sale.findUnique({
-    where: { id: saleId as string },
-    include: { receivable: true },
+  if (hasSale) {
+    const sale = await prisma.sale.findUnique({
+      where: { id: saleId as string },
+      include: { receivable: true },
+    });
+
+    if (!sale) {
+      return { kind: "not-found" };
+    }
+    if (sale.organizationId !== orgId) {
+      return { kind: "cross-org" };
+    }
+    if (sale.status === "VOIDED") {
+      return { kind: "voided" };
+    }
+    if (!sale.receivable) {
+      return { kind: "fully-paid" };
+    }
+
+    const balance = new Decimal(sale.receivable.balance.toString());
+    if (balance.lte(0)) {
+      return { kind: "fully-paid" };
+    }
+
+    return {
+      kind: "ok",
+      source: {
+        kind: "sale",
+        id: sale.id,
+        contactId: sale.contactId,
+        voucherCode: `V-${sale.sequenceNumber}`,
+        number: sale.sequenceNumber,
+        referenceNumber:
+          sale.referenceNumber == null ? null : String(sale.referenceNumber),
+        allocationTargetId: sale.receivable.id,
+        balance,
+        defaultDescription: `Cobro Venta #${sale.sequenceNumber}`,
+      },
+    };
+  }
+
+  // Purchase branch (hasPurchase, type === "PAGO").
+  const purchase = await prisma.purchase.findUnique({
+    where: { id: purchaseId as string },
+    include: { payable: true },
   });
 
-  if (!sale) {
+  if (!purchase) {
     return { kind: "not-found" };
   }
-
-  if (sale.organizationId !== orgId) {
+  if (purchase.organizationId !== orgId) {
     return { kind: "cross-org" };
   }
-
-  if (sale.status === "VOIDED") {
+  if (purchase.status === "VOIDED") {
     return { kind: "voided" };
   }
-
-  if (!sale.receivable) {
+  if (!purchase.payable) {
     return { kind: "fully-paid" };
   }
 
-  const balance = new Decimal(sale.receivable.balance.toString());
-  if (balance.lte(0)) {
+  const purchaseBalance = new Decimal(purchase.payable.balance.toString());
+  if (purchaseBalance.lte(0)) {
     return { kind: "fully-paid" };
   }
 
   return {
     kind: "ok",
     source: {
-      kind: "sale",
-      id: sale.id,
-      contactId: sale.contactId,
-      voucherCode: `V-${sale.sequenceNumber}`,
-      number: sale.sequenceNumber,
+      kind: "purchase",
+      id: purchase.id,
+      contactId: purchase.contactId,
+      voucherCode: `C-${purchase.sequenceNumber}`,
+      number: purchase.sequenceNumber,
       referenceNumber:
-        sale.referenceNumber == null ? null : String(sale.referenceNumber),
-      allocationTargetId: sale.receivable.id,
-      balance,
-      defaultDescription: `Cobro Venta #${sale.sequenceNumber}`,
+        purchase.referenceNumber == null
+          ? null
+          : String(purchase.referenceNumber),
+      allocationTargetId: purchase.payable.id,
+      balance: purchaseBalance,
+      defaultDescription: `Pago Compra #${purchase.sequenceNumber}`,
     },
   };
 }
