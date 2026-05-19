@@ -37,6 +37,7 @@ import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
+import Decimal from "decimal.js";
 
 // ── Interfaz para la línea de detalle ──
 
@@ -865,6 +866,15 @@ export default function SaleForm({
                   <span className="text-foreground">Saldo pendiente</span>
                   <span className="font-mono text-right">{formatBs(sale.receivable.balance)}</span>
                 </div>
+                {/* Registrar pago — DEC-1: solo POSTED + balance > 0 (Option B, B1) */}
+                {status === "POSTED" && new Decimal(sale.receivable.balance).gt(0) && (
+                  <Link
+                    href={`/${orgSlug}/payments/new?type=COBRO&saleId=${sale.id}`}
+                    className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+                  >
+                    Registrar pago
+                  </Link>
+                )}
               </div>
             </CardContent>
           </Card>
