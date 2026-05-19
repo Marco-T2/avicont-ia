@@ -144,6 +144,13 @@ export class PaymentService {
         allocations: input.allocations,
         creditSources: input.creditSources,
       },
+      // W-1 fix: propagate the form's Auto/Editar toggle to the post-time
+      // builder gate. Without this, payments.service.post.createAndPost
+      // receives `options.descriptionOverride === undefined` and falls back
+      // to the legacy passthrough — JE.description ends up as the form's
+      // header-only preview ("COBRO EFECTIVO: Marco Bs. 250,00") instead
+      // of the canonical builder output enumerating allocations.
+      { descriptionOverride: input.descriptionOverride },
     );
     const row = await this.readById(organizationId, payment.id);
     if (!row) throw new PaymentNotFound();

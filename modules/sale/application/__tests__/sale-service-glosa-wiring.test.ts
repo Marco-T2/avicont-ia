@@ -35,6 +35,7 @@ import { InMemoryAccountBalancesRepository } from "./fakes/in-memory-account-bal
 import { InMemoryFiscalPeriodsRead } from "./fakes/in-memory-fiscal-periods-read";
 import { InMemoryJournalEntryFactory } from "./fakes/in-memory-journal-entry-factory";
 import { InMemoryOrgSettingsReader } from "./fakes/in-memory-org-settings-reader";
+import { InMemorySalePermissions } from "./fakes/in-memory-sale-permissions";
 
 const ORG = "org-1";
 
@@ -226,6 +227,194 @@ describe("SaleService.post — glosa builder wiring (T-19/T-20)", () => {
     await service.post(ORG, draft.id, "user-1");
 
     // Existing sale.service.test.ts line 639 sister contract.
+    expect(journalEntryFactory.calls[0]!.description).toBe(
+      "raw user text to be ignored by builder path",
+    );
+  });
+});
+
+/**
+ * W-1 fix: sale.service.createAndPost was the "fast path" used by the API route
+ * `app/api/organizations/[orgSlug]/sales/route.ts` when the form submits with
+ * `postImmediately=true` ("Guardar y Contabilizar"). Batch B deferred wiring
+ * the glosa builder into this method; Batch C never picked it up. Marco hit
+ * the bug in production: COBROs/VENTAS posted via this path emit the legacy
+ * `${description} | ${notes}` passthrough instead of the canonical
+ * `buildSaleGlosa` output.
+ *
+ * Declared RED failure mode (pre-fix): the createAndPost signature does not
+ * accept a 4th `options` parameter — TypeScript compilation fails. After the
+ * signature is added, JE.description still equals the sale's raw description
+ * (no builder gate) — assertion on the builder-shaped string fails.
+ */
+describe("SaleService.createAndPost — glosa builder wiring (W-1 fix)", () => {
+  let saleRepo: InMemorySaleRepository;
+  let receivableRepo: InMemoryReceivableRepository;
+  let contactRepo: InMemoryContactRepository;
+  let accountLookup: InMemoryAccountLookup;
+  let orgSettings: InMemoryOrgSettingsReader;
+  let fiscalPeriods: InMemoryFiscalPeriodsRead;
+  let journalEntryFactory: InMemoryJournalEntryFactory;
+  let accountBalances: InMemoryAccountBalancesRepository;
+  let salePermissions: InMemorySalePermissions;
+  let uow: InMemorySaleUnitOfWork;
+  let service: SaleService;
+
+  function buildPostContact(): Contact {
+    return Contact.fromPersistence({
+      id: "c-1",
+      organizationId: ORG,
+      type: "CLIENTE",
+      name: "Pollería Don Pepe",
+      nit: null,
+      email: null,
+      phone: null,
+      address: null,
+      paymentTermsDays: PaymentTermsDays.of(30),
+      creditLimit: null,
+      isActive: true,
+      createdAt: new Date("2026-05-15"),
+      updatedAt: new Date("2026-05-15"),
+    });
+  }
+
+  function buildDefaultSettings(): OrgSettings {
+    return OrgSettings.createDefault({
+      id: "settings-1",
+      organizationId: ORG,
+      createdAt: new Date("2026-05-15"),
+      updatedAt: new Date("2026-05-15"),
+    });
+  }
+
+  function buildJournalStub(): Journal {
+    return Journal.fromPersistence({
+      id: "journal-1",
+      organizationId: ORG,
+      status: "POSTED",
+      number: 1,
+      referenceNumber: null,
+      operationalDocTypeId: null,
+      date: new Date("2026-05-17"),
+      description: "",
+      periodId: "period-1",
+      voucherTypeId: "voucher-CI",
+      contactId: "c-1",
+      sourceType: "sale",
+      sourceId: "sale-1",
+      aiOriginalText: null,
+      createdById: "user-1",
+      updatedById: null,
+      createdAt: new Date("2026-05-17"),
+      updatedAt: new Date("2026-05-17"),
+      lines: [],
+    });
+  }
+
+  const baseInput = () => ({
+    contactId: "c-1",
+    periodId: "period-1",
+    date: new Date("2026-05-17"),
+    description: "raw user text to be ignored by builder path",
+    referenceNumber: 99,
+    details: [
+      {
+        description: "Pollo faenado x 20kg",
+        lineAmount: MonetaryAmount.of(200),
+        incomeAccountId: "acc-income-1",
+      },
+      {
+        description: "servicio Flete",
+        lineAmount: MonetaryAmount.of(120),
+        incomeAccountId: "acc-income-1",
+      },
+    ],
+  });
+
+  beforeEach(() => {
+    saleRepo = new InMemorySaleRepository();
+    receivableRepo = new InMemoryReceivableRepository();
+    contactRepo = new InMemoryContactRepository();
+    accountLookup = new InMemoryAccountLookup();
+    orgSettings = new InMemoryOrgSettingsReader();
+    fiscalPeriods = new InMemoryFiscalPeriodsRead();
+    journalEntryFactory = new InMemoryJournalEntryFactory();
+    accountBalances = new InMemoryAccountBalancesRepository();
+    salePermissions = new InMemorySalePermissions();
+
+    contactRepo.preload(buildPostContact());
+    orgSettings.preload(ORG, buildDefaultSettings());
+    accountLookup.preload({
+      id: "acc-income-1",
+      code: "4.1.1",
+      isDetail: true,
+      isActive: true,
+    });
+    fiscalPeriods.preload("period-1", "OPEN");
+    salePermissions.allow("ADMIN");
+
+    (receivableRepo as unknown as {
+      createTx: (tx: unknown, data: { sourceId: string }) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => ({ id: `receivable-${data.sourceId}` });
+
+    uow = new InMemorySaleUnitOfWork({
+      sales: saleRepo,
+      accountBalances,
+      receivables: receivableRepo,
+      journalEntryFactory,
+    });
+
+    service = new SaleService({
+      repo: saleRepo,
+      receivables: receivableRepo,
+      contacts: contactRepo,
+      uow,
+      accountLookup,
+      orgSettings,
+      fiscalPeriods,
+      salePermissions,
+    });
+  });
+
+  it("descriptionOverride=false: JE.description = buildSaleGlosa output (W-1)", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.createAndPost(
+      ORG,
+      baseInput(),
+      { userId: "user-1", role: "ADMIN" },
+      { descriptionOverride: false },
+    );
+
+    expect(journalEntryFactory.calls).toHaveLength(1);
+    expect(journalEntryFactory.calls[0]!.description).toBe(
+      "VENTA: Pollería Don Pepe VG-99 por Bs. 320,00 (Pollo faenado x 20kg | servicio Flete)",
+    );
+  });
+
+  it("descriptionOverride=true: legacy passthrough preserved", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.createAndPost(
+      ORG,
+      baseInput(),
+      { userId: "user-1", role: "ADMIN" },
+      { descriptionOverride: true },
+    );
+
+    expect(journalEntryFactory.calls[0]!.description).toBe(
+      "raw user text to be ignored by builder path",
+    );
+  });
+
+  it("options omitted: legacy passthrough preserved (back-compat default)", async () => {
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.createAndPost(ORG, baseInput(), {
+      userId: "user-1",
+      role: "ADMIN",
+    });
+
     expect(journalEntryFactory.calls[0]!.description).toBe(
       "raw user text to be ignored by builder path",
     );

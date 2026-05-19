@@ -697,6 +697,7 @@ export class SaleService {
     organizationId: string,
     input: CreateDraftInput,
     context: { userId: string; role: string },
+    options: PostSaleOptions = {},
   ): Promise<PostSaleResult> {
     const required = {
       contacts: this.deps.contacts,
@@ -783,11 +784,22 @@ export class SaleService {
         const seq = await scope.sales.getNextSequenceNumberTx(organizationId);
         const numbered = posted.assignSequenceNumber(seq);
 
-        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
-        // `| ${notes}` suffix when notes present.
-        const journalDescription = numbered.notes
-          ? `${numbered.description} | ${numbered.notes}`
-          : numbered.description;
+        // W-1 fix: createAndPost honors `descriptionOverride: false` opt-in,
+        // mirroring sale.service.post (lines 319-336). The fast-path Guardar y
+        // Contabilizar must produce the canonical glosa, not the legacy
+        // REQ-DISPLAY-3 passthrough, when the form is in Auto mode.
+        const journalDescription =
+          options.descriptionOverride === false
+            ? buildSaleGlosa({
+                contactName: contact.name,
+                referenceNumber: String(numbered.referenceNumber ?? ""),
+                totalAmount: numbered.totalAmount.value,
+                lineConcepts: numbered.details.map((d) => d.description),
+                saleDate: numbered.date,
+              })
+            : numbered.notes
+              ? `${numbered.description} | ${numbered.notes}`
+              : numbered.description;
 
         const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,

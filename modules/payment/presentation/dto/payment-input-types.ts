@@ -93,6 +93,7 @@ export interface CreatePaymentInput {
   notes?: string;
   createdById: string;
   creditSources?: CreditAllocationSource[];
+  descriptionOverride?: boolean;
 }
 
 export interface UpdatePaymentInput {

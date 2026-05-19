@@ -22,6 +22,7 @@ export const createSaleSchema = z.object({
   referenceNumber: z.number().int().positive().optional(),
   notes: z.string().optional(),
   details: z.array(saleDetailSchema).min(1),
+  descriptionOverride: z.boolean().optional(),
 });
 
 export const updateSaleSchema = z.object({
