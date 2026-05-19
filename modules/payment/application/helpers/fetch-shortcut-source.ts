@@ -72,6 +72,10 @@ export async function fetchShortcutSource(
     return { kind: "cross-org" };
   }
 
+  if (sale.status === "VOIDED") {
+    return { kind: "voided" };
+  }
+
   return {
     kind: "ok",
     source: {
