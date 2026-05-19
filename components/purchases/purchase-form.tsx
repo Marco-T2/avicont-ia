@@ -1490,15 +1490,17 @@ export default function PurchaseForm({
                   <span className="font-mono text-right">{formatBs(purchase.payable.balance)}</span>
                 </div>
                 {canRegisterPayment(purchase) && (
-                  <div className="pt-3">
-                    <Link
-                      href={`/${orgSlug}/payments/new?type=PAGO&purchaseId=${purchase.id}`}
-                    >
-                      <Button type="button" className="w-full">
-                        Registrar pago
-                      </Button>
-                    </Link>
-                  </div>
+                  <Gated resource="payments" action="write">
+                    <div className="pt-3">
+                      <Link
+                        href={`/${orgSlug}/payments/new?type=PAGO&purchaseId=${purchase.id}`}
+                      >
+                        <Button type="button" className="w-full">
+                          Registrar pago
+                        </Button>
+                      </Link>
+                    </div>
+                  </Gated>
                 )}
               </div>
             </CardContent>

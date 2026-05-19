@@ -867,13 +867,16 @@ export default function SaleForm({
                   <span className="font-mono text-right">{formatBs(sale.receivable.balance)}</span>
                 </div>
                 {/* Registrar pago — DEC-1: solo POSTED + balance > 0 (Option B, B1) */}
+                {/* Gated por payments/write: UI defense in depth — server gate en /payments/new sigue activo */}
                 {status === "POSTED" && new Decimal(sale.receivable.balance).gt(0) && (
-                  <Link
-                    href={`/${orgSlug}/payments/new?type=COBRO&saleId=${sale.id}`}
-                    className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
-                  >
-                    Registrar pago
-                  </Link>
+                  <Gated resource="payments" action="write">
+                    <Link
+                      href={`/${orgSlug}/payments/new?type=COBRO&saleId=${sale.id}`}
+                      className="mt-2 inline-flex w-full items-center justify-center rounded-md border border-primary bg-primary px-3 py-2 text-sm font-medium text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+                    >
+                      Registrar pago
+                    </Link>
+                  </Gated>
                 )}
               </div>
             </CardContent>
