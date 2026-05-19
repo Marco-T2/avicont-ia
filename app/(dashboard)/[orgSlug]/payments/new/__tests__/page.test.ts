@@ -349,6 +349,42 @@ describe("/payments/new — shortcut mode: voided (T-14)", () => {
   });
 });
 
+// ── T-15 — fully-paid → redirect to source with ?error=fully-paid ───────────
+describe("/payments/new — shortcut mode: fully-paid (T-15)", () => {
+  it("redirects to sale detail with ?error=fully-paid for COBRO", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({ kind: "fully-paid" });
+
+    await expect(
+      NewPaymentPage({
+        params: makeParams(),
+        searchParams: makeSearchParams({ type: "COBRO", saleId: SALE_ID }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/${ORG_SLUG}/sales/${SALE_ID}?error=fully-paid`,
+    );
+  });
+
+  it("redirects to purchase detail with ?error=fully-paid for PAGO", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({ kind: "fully-paid" });
+
+    await expect(
+      NewPaymentPage({
+        params: makeParams(),
+        searchParams: makeSearchParams({
+          type: "PAGO",
+          purchaseId: PURCHASE_ID,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/${ORG_SLUG}/purchases/${PURCHASE_ID}?error=fully-paid`,
+    );
+  });
+});
+
 /**
  * Walk the React element tree returned by the Server Component and return
  * the props of the first PaymentForm element encountered. Returns undefined
