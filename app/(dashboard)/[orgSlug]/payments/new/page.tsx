@@ -138,9 +138,6 @@ export default async function NewPaymentPage({
         bankAccounts={JSON.parse(JSON.stringify(bankAccounts.map((a) => ({ id: a.id, code: a.code, name: a.name }))))}
         defaultCashCode={orgSettings.cajaGeneralAccountCode}
         defaultBankCode={orgSettings.bancoAccountCode}
-        // Phase 4 will add `initialValues?: ShortcutInitialValues` to PaymentFormProps.
-        // Until then, suppress the missing-prop TS error (test-only consumer in Phase 3).
-        // @ts-expect-error — Phase 4 adds `initialValues` to PaymentFormProps; remove this annotation then.
         initialValues={initialValues}
       />
     </div>

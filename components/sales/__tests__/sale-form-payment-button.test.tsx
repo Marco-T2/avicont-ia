@@ -126,8 +126,8 @@ describe("T-20 — Botón 'Registrar pago' — visibilidad", () => {
     expect(screen.queryByRole("link", { name: /registrar pago/i })).not.toBeInTheDocument();
   });
 
-  it("T-20-3 — POSTED + receivable=null → botón NO visible", () => {
-    renderForm({ status: "POSTED", receivable: null });
+  it("T-20-3 — POSTED + receivable=undefined → botón NO visible", () => {
+    renderForm({ status: "POSTED", receivable: undefined });
     expect(screen.queryByRole("link", { name: /registrar pago/i })).not.toBeInTheDocument();
   });
 
@@ -137,12 +137,12 @@ describe("T-20 — Botón 'Registrar pago' — visibilidad", () => {
   });
 
   it("T-20-5 — DRAFT → botón NO visible", () => {
-    renderForm({ status: "DRAFT", receivable: null });
+    renderForm({ status: "DRAFT", receivable: undefined });
     expect(screen.queryByRole("link", { name: /registrar pago/i })).not.toBeInTheDocument();
   });
 
   it("T-20-6 — VOIDED → botón NO visible", () => {
-    renderForm({ status: "VOIDED", receivable: null });
+    renderForm({ status: "VOIDED", receivable: undefined });
     expect(screen.queryByRole("link", { name: /registrar pago/i })).not.toBeInTheDocument();
   });
 });
