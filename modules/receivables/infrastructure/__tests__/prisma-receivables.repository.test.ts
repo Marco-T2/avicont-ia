@@ -169,7 +169,7 @@ describe("PrismaReceivablesRepository", () => {
   });
 
   describe("findPendingByContact", () => {
-    it("returns plain-number snapshots ordered by createdAt asc", async () => {
+    it("returns plain-number snapshots ordered by createdAt asc, includes sourceTypeCode + sale meta (referenceNumber, sourceDate)", async () => {
       const findMany = vi.fn().mockResolvedValueOnce([
         {
           id: "r1",
@@ -180,7 +180,10 @@ describe("PrismaReceivablesRepository", () => {
           dueDate: new Date("2026-05-15"),
           sourceType: "sale",
           sourceId: "s-1",
+          sourceTypeCode: "VG",
           createdAt: new Date("2026-04-01"),
+          sale: { referenceNumber: 99, date: new Date("2026-03-20") },
+          dispatch: null,
         },
       ]);
       const repo = new PrismaReceivablesRepository(dbWith({ findMany }));
@@ -199,7 +202,10 @@ describe("PrismaReceivablesRepository", () => {
           dueDate: true,
           sourceType: true,
           sourceId: true,
+          sourceTypeCode: true,
           createdAt: true,
+          sale: { select: { referenceNumber: true, date: true } },
+          dispatch: { select: { referenceNumber: true, date: true } },
         },
       });
       expect(result).toEqual([
@@ -212,9 +218,69 @@ describe("PrismaReceivablesRepository", () => {
           dueDate: new Date("2026-05-15"),
           sourceType: "sale",
           sourceId: "s-1",
+          sourceTypeCode: "VG",
           createdAt: new Date("2026-04-01"),
+          referenceNumber: 99,
+          sourceDate: new Date("2026-03-20"),
         },
       ]);
+    });
+
+    it("maps dispatch-sourced AR to dispatch meta (referenceNumber, sourceDate)", async () => {
+      const findMany = vi.fn().mockResolvedValueOnce([
+        {
+          id: "r2",
+          description: "ND123",
+          amount: new Prisma.Decimal(500),
+          paid: new Prisma.Decimal(0),
+          balance: new Prisma.Decimal(500),
+          dueDate: new Date("2026-06-01"),
+          sourceType: "dispatch",
+          sourceId: "d-1",
+          sourceTypeCode: "ND",
+          createdAt: new Date("2026-05-01"),
+          sale: null,
+          dispatch: { referenceNumber: 123, date: new Date("2026-04-15") },
+        },
+      ]);
+      const repo = new PrismaReceivablesRepository(dbWith({ findMany }));
+
+      const result = await repo.findPendingByContact("org-1", "c-1");
+
+      expect(result[0]).toMatchObject({
+        sourceType: "dispatch",
+        sourceTypeCode: "ND",
+        referenceNumber: 123,
+        sourceDate: new Date("2026-04-15"),
+      });
+    });
+
+    it("orphan AR (no sale/dispatch loaded) falls back to null referenceNumber + createdAt as sourceDate", async () => {
+      const findMany = vi.fn().mockResolvedValueOnce([
+        {
+          id: "r3",
+          description: "orphan",
+          amount: new Prisma.Decimal(50),
+          paid: new Prisma.Decimal(0),
+          balance: new Prisma.Decimal(50),
+          dueDate: new Date("2026-06-01"),
+          sourceType: "sale",
+          sourceId: "s-deleted",
+          sourceTypeCode: null,
+          createdAt: new Date("2026-05-10"),
+          sale: null,
+          dispatch: null,
+        },
+      ]);
+      const repo = new PrismaReceivablesRepository(dbWith({ findMany }));
+
+      const result = await repo.findPendingByContact("org-1", "c-1");
+
+      expect(result[0]).toMatchObject({
+        sourceTypeCode: null,
+        referenceNumber: null,
+        sourceDate: new Date("2026-05-10"),
+      });
     });
   });
 
