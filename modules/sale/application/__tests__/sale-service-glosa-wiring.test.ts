@@ -1,22 +1,12 @@
 /**
- * T-19/T-20: sale.service.post wires buildSaleGlosa into JournalEntry.description
- * when `descriptionOverride === false` (explicit opt-in).
- *
- * Default behavior (descriptionOverride undefined or true) preserves the legacy
- * passthrough described by REQ-DISPLAY-3 — see
- *   modules/sale/application/__tests__/sale.service.test.ts:632
- * which asserts JE.description === sale.description verbatim. That contract is
- * NOT broken here.
+ * sale.service.post + createAndPost wire buildSaleGlosa into
+ * JournalEntry.description on every post (simplificación post-archive F4 —
+ * descriptionOverride flag eliminado, builder canónico siempre).
  *
  * REQ-GE-1 acceptance scenarios 1.1/1.2/1.4 are exercised at the domain
  * builder layer (modules/sale/domain/__tests__/sale-glosa-builder.test.ts).
  * This file proves the application-layer wiring is correct: the right inputs
  * flow into buildSaleGlosa and the output reaches JE.description.
- *
- * Declared RED failure mode (pre-T-20 GREEN): JE.description equals
- * "Venta builder test" (sale entity's raw description) — service does not yet
- * call buildSaleGlosa under any flag. Assertions on the builder-shaped string
- * fail with strings differing.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -168,14 +158,12 @@ describe("SaleService.post — glosa builder wiring (T-19/T-20)", () => {
     });
   });
 
-  it("descriptionOverride=false: JE.description = buildSaleGlosa output (REQ-GE-1 1.2 + 1.4)", async () => {
+  it("post: JE.description = buildSaleGlosa output (REQ-GE-1 1.2 + 1.4)", async () => {
     const draft = buildDraftSale();
     saleRepo.preload(draft);
     journalEntryFactory.enqueue(buildJournalStub());
 
-    await service.post(ORG, draft.id, "user-1", {
-      descriptionOverride: false,
-    });
+    await service.post(ORG, draft.id, "user-1");
 
     expect(journalEntryFactory.calls).toHaveLength(1);
     expect(journalEntryFactory.calls[0]!.description).toBe(
@@ -183,7 +171,7 @@ describe("SaleService.post — glosa builder wiring (T-19/T-20)", () => {
     );
   });
 
-  it("descriptionOverride=false: AR.description matches JE.description (consistency)", async () => {
+  it("post: AR.description matches JE.description (consistency)", async () => {
     const draft = buildDraftSale();
     saleRepo.preload(draft);
     journalEntryFactory.enqueue(buildJournalStub());
@@ -196,58 +184,29 @@ describe("SaleService.post — glosa builder wiring (T-19/T-20)", () => {
       return { id: `receivable-${data.sourceId}` };
     };
 
-    await service.post(ORG, draft.id, "user-1", {
-      descriptionOverride: false,
-    });
+    await service.post(ORG, draft.id, "user-1");
 
     expect(capturedArDescription).toBe(
       "VENTA: Pollería Don Pepe VG-99 por Bs. 320,00 (Pollo faenado x 20kg | servicio Flete)",
     );
   });
 
-  it("descriptionOverride=true: JE.description = sale.description (legacy passthrough preserved — Scenario 1.3)", async () => {
-    const draft = buildDraftSale();
-    saleRepo.preload(draft);
-    journalEntryFactory.enqueue(buildJournalStub());
-
-    await service.post(ORG, draft.id, "user-1", {
-      descriptionOverride: true,
-    });
-
-    expect(journalEntryFactory.calls[0]!.description).toBe(
-      "raw user text to be ignored by builder path",
-    );
-  });
-
-  it("options omitted: legacy passthrough preserved (back-compat default)", async () => {
+  it("post: builder canónico ignora la description user-typed del Sale", async () => {
     const draft = buildDraftSale();
     saleRepo.preload(draft);
     journalEntryFactory.enqueue(buildJournalStub());
 
     await service.post(ORG, draft.id, "user-1");
 
-    // Existing sale.service.test.ts line 639 sister contract.
-    expect(journalEntryFactory.calls[0]!.description).toBe(
+    // El sale.description en buildDraftSale es "raw user text..." pero el
+    // builder produce la glosa canónica — no se respeta el passthrough viejo.
+    expect(journalEntryFactory.calls[0]!.description).not.toBe(
       "raw user text to be ignored by builder path",
     );
   });
 });
 
-/**
- * W-1 fix: sale.service.createAndPost was the "fast path" used by the API route
- * `app/api/organizations/[orgSlug]/sales/route.ts` when the form submits with
- * `postImmediately=true` ("Guardar y Contabilizar"). Batch B deferred wiring
- * the glosa builder into this method; Batch C never picked it up. Marco hit
- * the bug in production: COBROs/VENTAS posted via this path emit the legacy
- * `${description} | ${notes}` passthrough instead of the canonical
- * `buildSaleGlosa` output.
- *
- * Declared RED failure mode (pre-fix): the createAndPost signature does not
- * accept a 4th `options` parameter — TypeScript compilation fails. After the
- * signature is added, JE.description still equals the sale's raw description
- * (no builder gate) — assertion on the builder-shaped string fails.
- */
-describe("SaleService.createAndPost — glosa builder wiring (W-1 fix)", () => {
+describe("SaleService.createAndPost — glosa builder wiring", () => {
   let saleRepo: InMemorySaleRepository;
   let receivableRepo: InMemoryReceivableRepository;
   let contactRepo: InMemoryContactRepository;
@@ -376,14 +335,13 @@ describe("SaleService.createAndPost — glosa builder wiring (W-1 fix)", () => {
     });
   });
 
-  it("descriptionOverride=false: JE.description = buildSaleGlosa output (W-1)", async () => {
+  it("createAndPost: JE.description = buildSaleGlosa output (REQ-GE-1)", async () => {
     journalEntryFactory.enqueue(buildJournalStub());
 
     await service.createAndPost(
       ORG,
       baseInput(),
       { userId: "user-1", role: "ADMIN" },
-      { descriptionOverride: false },
     );
 
     expect(journalEntryFactory.calls).toHaveLength(1);
@@ -392,22 +350,7 @@ describe("SaleService.createAndPost — glosa builder wiring (W-1 fix)", () => {
     );
   });
 
-  it("descriptionOverride=true: legacy passthrough preserved", async () => {
-    journalEntryFactory.enqueue(buildJournalStub());
-
-    await service.createAndPost(
-      ORG,
-      baseInput(),
-      { userId: "user-1", role: "ADMIN" },
-      { descriptionOverride: true },
-    );
-
-    expect(journalEntryFactory.calls[0]!.description).toBe(
-      "raw user text to be ignored by builder path",
-    );
-  });
-
-  it("options omitted: legacy passthrough preserved (back-compat default)", async () => {
+  it("createAndPost: builder canónico ignora user-typed description", async () => {
     journalEntryFactory.enqueue(buildJournalStub());
 
     await service.createAndPost(ORG, baseInput(), {
@@ -415,7 +358,7 @@ describe("SaleService.createAndPost — glosa builder wiring (W-1 fix)", () => {
       role: "ADMIN",
     });
 
-    expect(journalEntryFactory.calls[0]!.description).toBe(
+    expect(journalEntryFactory.calls[0]!.description).not.toBe(
       "raw user text to be ignored by builder path",
     );
   });

@@ -33,7 +33,6 @@ export const createPaymentSchema = z.object({
   allocations: z.array(allocationInputSchema),
   notes: z.string().optional(),
   creditSources: z.array(creditAllocationSourceSchema).optional(),
-  descriptionOverride: z.boolean().optional(),
 });
 
 export const updatePaymentSchema = z.object({

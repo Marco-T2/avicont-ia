@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Loader2, ArrowLeft, Trash2, Pencil, CheckCircle, XCircle } from "lucide-react";
+import { Plus, Loader2, ArrowLeft, Trash2, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
@@ -315,7 +315,6 @@ export default function DispatchForm({
       : "",
   );
   const [description, setDescription] = useState(existingDispatch?.description ?? "");
-  const [descriptionOverride, setDescriptionOverride] = useState(!!existingDispatch);
   const [notes, setNotes] = useState(existingDispatch?.notes ?? "");
 
   // ── BC-only header state ──
@@ -368,7 +367,6 @@ export default function DispatchForm({
   // ── Auto-description rebuild ──
   const rebuildDescription = useCallback(
     (updatedLines: DetailLine[], updatedComputedLines: ComputedLine[]) => {
-      if (descriptionOverride) return;
       const productMap = new Map(productTypes.map((p) => [p.id, p]));
       const descLines: DescriptionLine[] = updatedLines.map((l, i) => {
         const pt = productMap.get(l.productTypeId);
@@ -384,7 +382,7 @@ export default function DispatchForm({
       const autoDesc = buildDispatchDescription(descLines, dispatchType);
       setDescription(autoDesc);
     },
-    [descriptionOverride, productTypes, dispatchType],
+    [productTypes, dispatchType],
   );
 
   // ── Line handlers ──
@@ -1004,36 +1002,18 @@ export default function DispatchForm({
                 )}
               </div>
 
-              {/* Row 3: Descripción auto-generada */}
+              {/* Row 3: Descripción auto-generada (preview, siempre editable
+                  fuera de read-only; rebuildea con cada cambio de línea). */}
               <div className="grid grid-cols-1 gap-4">
-                {/* Descripción auto-generada */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="dispatch-description">Descripción</Label>
-                    {!isReadOnly && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 px-2 text-xs text-muted-foreground"
-                        onClick={() => setDescriptionOverride((prev) => !prev)}
-                      >
-                        <Pencil className="h-3 w-3 mr-1" />
-                        {descriptionOverride ? "Auto" : "Editar"}
-                      </Button>
-                    )}
-                  </div>
+                  <Label htmlFor="dispatch-description">Descripción</Label>
                   <Input
                     id="dispatch-description"
                     placeholder="Se genera automáticamente"
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
-                    readOnly={isReadOnly || !descriptionOverride}
-                    className={
-                      isReadOnly || !descriptionOverride
-                        ? "bg-muted cursor-default text-xs"
-                        : "text-xs"
-                    }
+                    readOnly={isReadOnly}
+                    className={isReadOnly ? "bg-muted cursor-default text-xs" : "text-xs"}
                   />
                 </div>
               </div>

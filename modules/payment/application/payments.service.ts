@@ -129,23 +129,6 @@ export interface LockedEditContext {
   justification?: string;
 }
 
-/**
- * Optional options for the post-time write use cases (`post`, `createAndPost`).
- *
- * `descriptionOverride` controls JournalEntry.description sourcing
- * (REQ-GE-2, design D9):
- *   - `true` or undefined (default) — passthrough: `JE.description =
- *     payment.description` verbatim. Preserves legacy behavior — used by ALL
- *     pre-Batch-C callers and tests.
- *   - `false` — builder: `JE.description = buildPaymentGlosa({...})` using
- *     the contact name (`ContactReadPort.findName`) and per-allocation
- *     metadata (`ReceivablesPort.findGlosaMetaTx`). Used by the new payment
- *     form (Batch C) when the user has NOT toggled Pencil to manual-edit mode.
- */
-export interface PostPaymentOptions {
-  descriptionOverride?: boolean;
-}
-
 export interface PaymentsServiceDeps {
   repo: PaymentRepository;
   receivables: ReceivablesPort;
@@ -286,7 +269,6 @@ export class PaymentsService {
     organizationId: string,
     userId: string,
     id: string,
-    options: PostPaymentOptions = {},
   ): Promise<PaymentResult> {
     const payment = await this.getById(organizationId, id);
     // Pre-validation OUTSIDE the tx (mirror legacy)
@@ -305,9 +287,7 @@ export class PaymentsService {
       asAuditTxRepo(this.repo),
       { userId, organizationId },
       async (tx) => {
-        return this.postInternal(tx, organizationId, userId, payment, settings, {
-          descriptionOverride: options.descriptionOverride,
-        });
+        return this.postInternal(tx, organizationId, userId, payment, settings);
       },
     );
     return { payment: result, correlationId };
@@ -317,7 +297,6 @@ export class PaymentsService {
     organizationId: string,
     userId: string,
     input: CreatePaymentServiceInput,
-    options: PostPaymentOptions = {},
   ): Promise<PaymentResult> {
     const period = await this.fiscalPeriods.getById(
       organizationId,
@@ -372,7 +351,6 @@ export class PaymentsService {
           {
             directionOverride: direction,
             isCreateAndPost: true,
-            descriptionOverride: options.descriptionOverride,
           },
         );
         // Apply credit sources (Modo A)
@@ -687,7 +665,6 @@ export class PaymentsService {
     opts: {
       directionOverride?: PaymentDirection;
       isCreateAndPost?: boolean;
-      descriptionOverride?: boolean;
     } = {},
   ): Promise<Payment> {
     // 1. Resolve direction
@@ -725,12 +702,10 @@ export class PaymentsService {
         contactId: payment.contactId,
         selectedAccountCode: payment.accountCode ?? undefined,
       });
-      // REQ-GE-2 / design D9: opt-in builder path. Builder is gated by
-      // direction === "COBRO" per REQ-GE-1 Scenario 1.5 (PAGO path stays
-      // legacy). Default (undefined/true) preserves legacy passthrough so
-      // every pre-Batch-C test keeps passing verbatim.
+      // Builder canónico para COBRO siempre (simplificación post-archive).
+      // PAGO sigue el passthrough — Marco lock: glosa PAGO fuera de scope.
       let entryDescription = payment.description;
-      if (opts.descriptionOverride === false && direction === "COBRO") {
+      if (direction === "COBRO") {
         const arIds = payment.allocations
           .map((a) => a.receivableId)
           .filter((id): id is string => Boolean(id));

@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle, Pencil } from "lucide-react";
+import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/generated/prisma/client";
@@ -246,16 +246,6 @@ export default function PaymentForm({
 
   const [description, setDescription] = useState(
     existingPayment?.description ?? initialValues?.description ?? "",
-  );
-  // descriptionOverride controls whether the description is user-authored
-  // (true → input editable, builder gated) or auto-built by buildPaymentGlosa
-  // (false → input readOnly, rebuilt on header/allocation mutations).
-  // Edit-mode initializes true (preserve historical text). Create-mode false
-  // (REQ-GE-4 / design D9). Shortcut mode initializes true because the source
-  // pre-seeds a meaningful description.
-  // Toggling back to false does NOT immediately rebuild — next mutation does.
-  const [descriptionOverride, setDescriptionOverride] = useState(
-    !!existingPayment || !!initialValues,
   );
   const [notes, setNotes] = useState(existingPayment?.notes ?? "");
   const [operationalDocTypeId, setOperationalDocTypeId] = useState(
@@ -662,8 +652,7 @@ export default function PaymentForm({
       contactId?: string;
       total?: number;
     }) => {
-      if (descriptionOverride) return;
-      if (paymentType !== "COBRO") return; // PAGO out of scope (REQ-GE / spec out-of-scope)
+      if (paymentType !== "COBRO") return; // PAGO out of scope — passthrough.
       const effectiveMethod = overrides?.method ?? method;
       const effectiveContactId = overrides?.contactId ?? contactId;
       const contactName =
@@ -685,16 +674,7 @@ export default function PaymentForm({
       });
       setDescription(auto);
     },
-    [
-      descriptionOverride,
-      paymentType,
-      method,
-      contactId,
-      contacts,
-      amountOverride,
-      date,
-      allocations,
-    ],
+    [paymentType, method, contactId, contacts, amountOverride, date, allocations],
   );
 
   // Trigger rebuild when key inputs change (header fields) — replicates the
@@ -870,7 +850,6 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
-        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1038,7 +1017,6 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
-        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1086,7 +1064,6 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
-        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1164,7 +1141,6 @@ export default function PaymentForm({
         creditSources: creditSources.length > 0 ? creditSources : undefined,
         direction: allocs.length === 0 ? paymentType : undefined,
         description: description.trim(),
-        descriptionOverride,
         periodId,
         contactId,
         allocations: allocs,
@@ -1436,35 +1412,19 @@ export default function PaymentForm({
             })()}
           </div>
 
-          {/* Row 3: Descripción — auto-built by buildPaymentGlosa (REQ-GE-4 / D9).
-              Pencil toggles override. Label is the ACTION on click. */}
+          {/* Row 3: Descripción — preview del builder canónico (siempre editable
+              salvo read-only, pero rebuildea desde buildPaymentGlosa al togglear
+              checkboxes, cambiar contacto/método o asignar montos). "Notas"
+              persiste info manual. */}
           <div className="space-y-2">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="payment-description">Descripción</Label>
-              {!isReadOnly && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 px-2 text-xs text-muted-foreground"
-                  onClick={() => setDescriptionOverride((prev) => !prev)}
-                >
-                  <Pencil className="h-3 w-3 mr-1" />
-                  {descriptionOverride ? "Auto" : "Editar"}
-                </Button>
-              )}
-            </div>
+            <Label htmlFor="payment-description">Descripción</Label>
             <Input
               id="payment-description"
               placeholder="Se genera automáticamente"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              readOnly={isReadOnly || !descriptionOverride}
-              className={
-                isReadOnly || !descriptionOverride
-                  ? "bg-muted cursor-default"
-                  : ""
-              }
+              readOnly={isReadOnly}
+              className={isReadOnly ? "bg-muted cursor-default" : ""}
               required
             />
           </div>

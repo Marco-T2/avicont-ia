@@ -160,10 +160,12 @@ describe("PaymentForm — shortcut mode T-16: seeds state from initialValues", (
     expect(amount.value).toBe("500");
   });
 
-  it("T-16.b — description input is seeded with initialValues.description", () => {
+  it("T-16.b — description input is rebuilt by builder en shortcut mode (post-F4 simplificación)", () => {
     renderShortcutForm();
     const desc = screen.getByLabelText(/^descripción$/i) as HTMLInputElement;
-    expect(desc.value).toBe("Cobro Venta #42");
+    // F4 lock: builder canónico siempre. El seed "Cobro Venta #42" de
+    // initialValues queda sobreescrito por buildPaymentGlosa al mount.
+    expect(desc.value).toMatch(/^COBRO /);
   });
 
   it("T-16.c — title reflects the locked payment type (COBRO → Nuevo Cobro)", () => {

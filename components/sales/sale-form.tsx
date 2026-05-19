@@ -20,7 +20,6 @@ import {
   Trash2,
   CheckCircle,
   XCircle,
-  Pencil,
 } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -148,14 +147,6 @@ export default function SaleForm({
     sale?.referenceNumber != null ? String(sale.referenceNumber) : "",
   );
   const [description, setDescription] = useState(sale?.description ?? "");
-  // descriptionOverride controls whether the description is user-authored
-  // (true → input editable, builder gated) or auto-built by buildSaleGlosa
-  // (false → input readOnly, rebuilt on line mutations). Edit-mode initializes
-  // true to preserve historical descriptions; create-mode initializes false to
-  // surface the canonical glosa as the user fills lines (REQ-GE-3 / design D9).
-  // Toggling from override=true back to false does NOT immediately rebuild —
-  // the next line mutation triggers the rebuild (replicates dispatch-form.tsx).
-  const [descriptionOverride, setDescriptionOverride] = useState(!!sale);
   const [notes, setNotes] = useState(sale?.notes ?? "");
 
   // ── Estado de las líneas de detalle ──
@@ -196,7 +187,6 @@ export default function SaleForm({
   // handlers. Guard at top: if override locked, no rebuild.
   const rebuildDescription = useCallback(
     (updatedLines: SaleDetailLine[]) => {
-      if (descriptionOverride) return;
       const contactName =
         contacts.find((c) => c.id === contactId)?.name ?? sale?.contact?.name ?? "";
       const subtotalNow = updatedLines.reduce((sum, l) => {
@@ -213,7 +203,7 @@ export default function SaleForm({
       });
       setDescription(auto);
     },
-    [descriptionOverride, contacts, contactId, sale, referenceNumber, date],
+    [contacts, contactId, sale, referenceNumber, date],
   );
 
   // ── Manejadores de líneas ──
@@ -288,10 +278,6 @@ export default function SaleForm({
       contactId,
       periodId,
       description: description.trim(),
-      // descriptionOverride mirrors the form state. The service interprets:
-      //   true  → user-authored: pass `description` through.
-      //   false → auto-build: call buildSaleGlosa at post-time (REQ-GE-1).
-      descriptionOverride,
       referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
       notes: notes.trim() || undefined,
       details: buildDetailsPayload(),
@@ -726,36 +712,18 @@ export default function SaleForm({
 
               </div>
 
-              {/* Descripción — auto-built by buildSaleGlosa (REQ-GE-3 / design D9).
-                  Pencil button toggles descriptionOverride. Label is the ACTION
-                  on click ("Editar" → unlock; "Auto" → return to auto). */}
+              {/* Descripción — preview del builder canónico (siempre editable,
+                  pero el próximo cambio de línea/contacto/referencia rebuildea
+                  desde buildSaleGlosa). "Notas" persiste info manual. */}
               <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="sale-description">Descripción</Label>
-                  {!isReadOnly && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-xs text-muted-foreground"
-                      onClick={() => setDescriptionOverride((prev) => !prev)}
-                    >
-                      <Pencil className="h-3 w-3 mr-1" />
-                      {descriptionOverride ? "Auto" : "Editar"}
-                    </Button>
-                  )}
-                </div>
+                <Label htmlFor="sale-description">Descripción</Label>
                 <Input
                   id="sale-description"
                   placeholder="Se genera automáticamente"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  readOnly={isReadOnly || !descriptionOverride}
-                  className={
-                    isReadOnly || !descriptionOverride
-                      ? "bg-muted cursor-default text-xs"
-                      : "text-xs"
-                  }
+                  readOnly={isReadOnly}
+                  className={isReadOnly ? "bg-muted cursor-default text-xs" : "text-xs"}
                 />
               </div>
             </>

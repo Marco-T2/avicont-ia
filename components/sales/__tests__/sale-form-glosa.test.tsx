@@ -1,17 +1,11 @@
 /**
- * T-23/T-24/T-25/T-26 — sale-form rebuildDescription + Pencil toggle
- *
- * RED expected failure modes:
- *  - T-23: form does not auto-rebuild description on line add (override=false → input stays at initial value).
- *  - T-24: covered by T-23 GREEN wiring.
- *  - T-25: Pencil button does not exist → cannot toggle override.
- *  - T-26: covered by T-25 GREEN wiring (lock + rebuild gating).
- *
- * Pattern replicates dispatch-form.tsx:318/369-388/1013-1037 EXACT.
- * Builder under test: buildSaleGlosa (REQ-GE-1, REQ-GE-3 scenarios 3.1–3.8).
+ * sale-form description input — post-F4 simplificación.
+ * descriptionOverride flag eliminado; el input es siempre editable (salvo
+ * read-only por status), pero el próximo cambio de línea/contacto/referencia
+ * rebuildea desde buildSaleGlosa. Tests verifican shape básico del input.
  */
 
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SaleForm from "../sale-form";
@@ -143,46 +137,21 @@ function renderEditMode() {
   );
 }
 
-// ── T-23: auto-fill on line add (override=false) ──
-
-describe("T-23 — sale-form auto-rebuilds description on line mutation (override=false)", () => {
-  it("T-23.1 — create mode initializes descriptionOverride=false (button label 'Editar')", () => {
-    renderCreateMode();
-    // Pencil toggle button is rendered with label "Editar" in auto mode
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-  });
-
-  it("T-23.2 — description input is readOnly while override=false", () => {
+describe("sale-form description input (post-F4 simplificación)", () => {
+  it("create mode: description input is editable (no readOnly, no Pencil toggle)", () => {
     renderCreateMode();
     const descInput = document.getElementById("sale-description") as HTMLInputElement;
     expect(descInput).toBeInTheDocument();
-    expect(descInput.readOnly).toBe(true);
-  });
-});
-
-// ── T-25: Pencil toggle locks auto-rebuild ──
-
-describe("T-25 — Pencil toggle (override ON) locks auto-rebuild", () => {
-  it("T-25.1 — clicking Pencil toggles label to 'Auto' and unlocks input", () => {
-    renderCreateMode();
-    const btn = screen.getByRole("button", { name: /editar/i });
-    fireEvent.click(btn);
-    // After toggle, button now indicates Auto-return action
-    expect(screen.getByRole("button", { name: /auto/i })).toBeInTheDocument();
-    const descInput = document.getElementById("sale-description") as HTMLInputElement;
     expect(descInput.readOnly).toBe(false);
+    // Pencil button removido — no debería existir
+    expect(screen.queryByRole("button", { name: /editar/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^auto$/i })).toBeNull();
   });
-});
 
-// ── T-23.3: edit-mode initializes with override=true (Pencil shows "Auto") ──
-
-describe("T-23.3 — edit mode initializes descriptionOverride=true", () => {
-  it("T-23.3 — edit-mode opens with Pencil in 'Auto' label state, input editable", () => {
+  it("edit DRAFT mode: input editable + valor preservado", () => {
     renderEditMode();
-    expect(screen.getByRole("button", { name: /auto/i })).toBeInTheDocument();
     const descInput = document.getElementById("sale-description") as HTMLInputElement;
     expect(descInput.readOnly).toBe(false);
-    // Existing description is preserved
     expect(descInput.value).toBe("Mi glosa personalizada");
   });
 });

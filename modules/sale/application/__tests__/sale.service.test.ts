@@ -629,14 +629,18 @@ describe("SaleService.post", () => {
     expect(capturedDueDate?.getTime()).toBe(expected);
   });
 
-  it("invokes the journal factory with raw description (REQ-DISPLAY-3 FUTURE-only — no displayCode prefix)", async () => {
+  it("invokes the journal factory with buildSaleGlosa output (post-F4: builder canónico, REQ-GE-1)", async () => {
     const draft = buildDraftSale();
     saleRepo.preload(draft);
     journalEntryFactory.enqueue(buildJournalStub());
 
     await service.post(ORG, draft.id, "user-1");
 
-    expect(journalEntryFactory.calls[0]!.description).toBe("Venta test");
+    // Post-F4 (simplificación): builder canónico; ya no se respeta el
+    // "Venta test" passthrough de REQ-DISPLAY-3. La glosa sigue el template
+    // de buildSaleGlosa con contact + ref + total + lineConcepts.
+    expect(journalEntryFactory.calls[0]!.description).toMatch(/^VENTA: /);
+    expect(journalEntryFactory.calls[0]!.description).not.toBe("Venta test");
   });
 
   it("forwards Sale.referenceNumber (789) to the journal factory template (Marco bug — sale-generated JE was getting referenceNumber=NULL)", async () => {

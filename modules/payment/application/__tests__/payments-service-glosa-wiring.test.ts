@@ -1,21 +1,12 @@
 /**
- * T-21/T-22: payments.service.post wires buildPaymentGlosa into
- * JournalEntry.description when `descriptionOverride === false`.
- *
- * Default behavior (descriptionOverride undefined or true) preserves the
- * legacy passthrough — see payments.service.ts:701
- * `description: payment.description` and existing tests asserting on raw
- * payment.description.
+ * payments.service.createAndPost wires buildPaymentGlosa into
+ * JournalEntry.description for every COBRO post (simplificación post-archive
+ * F4 — descriptionOverride flag eliminado, builder canónico siempre).
  *
  * REQ-GE-2 scenarios 2.1-2.7 are exercised at the domain builder layer
  * (modules/payment/domain/__tests__/payment-glosa-builder.test.ts). This file
  * proves the application-layer wiring: the right contact + per-allocation
  * metadata flow into buildPaymentGlosa and the output reaches JE.description.
- *
- * Declared RED failure mode (pre-T-22 GREEN): JE.description equals
- * payment.description verbatim. Assertions on the builder-shaped string fail
- * with strings differing. Plus: TS error if the test relies on new port
- * methods `findGlosaMetaTx` / `findName` before they exist on the port shape.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { PaymentsService, type CreatePaymentServiceInput } from "../payments.service";
@@ -130,14 +121,14 @@ function baseCobro(
   };
 }
 
-describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", () => {
+describe("PaymentsService.createAndPost — glosa builder wiring", () => {
   let bench: Bench;
 
   beforeEach(() => {
     bench = makeBench();
   });
 
-  it("descriptionOverride=false: JE.description = buildPaymentGlosa output (REQ-GE-2 Scenario 2.1)", async () => {
+  it("COBRO single allocation: JE.description = buildPaymentGlosa output (REQ-GE-2 Scenario 2.1)", async () => {
     bench.receivables.status.set("rec-1", "PENDING");
     bench.receivables.glosaMeta.set("rec-1", {
       sourceTypeCode: "VG",
@@ -153,7 +144,6 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
         amount: 200,
         allocations: [{ receivableId: "rec-1", amount: 200 }],
       }),
-      { descriptionOverride: false },
     );
 
     expect(bench.accounting.generateCalls).toHaveLength(1);
@@ -162,7 +152,7 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
     );
   });
 
-  it("descriptionOverride=false multi allocation (REQ-GE-2 Scenario 2.2)", async () => {
+  it("COBRO multi allocation (REQ-GE-2 Scenario 2.2)", async () => {
     bench.receivables.status.set("rec-1", "PENDING");
     bench.receivables.status.set("rec-2", "PENDING");
     bench.receivables.glosaMeta.set("rec-1", {
@@ -188,7 +178,6 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
           { receivableId: "rec-2", amount: 100 },
         ],
       }),
-      { descriptionOverride: false },
     );
 
     expect(bench.accounting.generateCalls[0]!.description).toBe(
@@ -196,7 +185,7 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
     );
   });
 
-  it("descriptionOverride=false NULL sourceTypeCode → DOC fallback (REQ-GE-2 Scenario 2.5)", async () => {
+  it("COBRO NULL sourceTypeCode → DOC fallback (REQ-GE-2 Scenario 2.5)", async () => {
     bench.receivables.status.set("rec-orphan", "PENDING");
     bench.receivables.glosaMeta.set("rec-orphan", {
       sourceTypeCode: null,
@@ -212,7 +201,6 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
         amount: 200,
         allocations: [{ receivableId: "rec-orphan", amount: 200 }],
       }),
-      { descriptionOverride: false },
     );
 
     expect(bench.accounting.generateCalls[0]!.description).toBe(
@@ -220,7 +208,7 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
     );
   });
 
-  it("descriptionOverride=false empty allocations: no doc-list suffix (REQ-GE-2 Scenario 2.4)", async () => {
+  it("COBRO empty allocations: no doc-list suffix (REQ-GE-2 Scenario 2.4)", async () => {
     bench.accounting.defaultEntry = makeEntry({ id: "entry-4" });
 
     await bench.svc.createAndPost(
@@ -230,7 +218,6 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
         amount: 200,
         allocations: [],
       }),
-      { descriptionOverride: false },
     );
 
     expect(bench.accounting.generateCalls[0]!.description).toBe(
@@ -238,7 +225,7 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
     );
   });
 
-  it("descriptionOverride=true: passthrough preserved (Scenario 2.7)", async () => {
+  it("COBRO builder canónico — ignora user-typed description, builder gana siempre", async () => {
     bench.accounting.defaultEntry = makeEntry({ id: "entry-5" });
 
     await bench.svc.createAndPost(
@@ -249,27 +236,10 @@ describe("PaymentsService.createAndPost — glosa builder wiring (T-21/T-22)", (
         description: "user override exact text",
         allocations: [],
       }),
-      { descriptionOverride: true },
     );
 
     expect(bench.accounting.generateCalls[0]!.description).toBe(
-      "user override exact text",
+      "COBRO EFECTIVO: Marco Bs. 200,00",
     );
-  });
-
-  it("options omitted: legacy passthrough preserved (back-compat default)", async () => {
-    bench.accounting.defaultEntry = makeEntry({ id: "entry-6" });
-
-    await bench.svc.createAndPost(
-      ORG,
-      USER,
-      baseCobro({
-        amount: 200,
-        description: "legacy raw",
-        allocations: [],
-      }),
-    );
-
-    expect(bench.accounting.generateCalls[0]!.description).toBe("legacy raw");
   });
 });

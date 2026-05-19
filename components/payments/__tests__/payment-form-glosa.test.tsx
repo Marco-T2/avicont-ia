@@ -1,23 +1,11 @@
 /**
- * T-27 — payment-form rebuildDescription + Pencil toggle (REQ-GE-4)
- *
- * RED expected failure modes:
- *  - T-27.1/.2: Pencil button does not exist; current autoDescription useEffect
- *    only runs when description is empty.
- *  - T-27.3: edit-mode does not initialize override=true (Pencil missing).
- *
- * Pattern replicates dispatch-form.tsx EXACT (design D9).
- *
- * Deviation lock (surfaced honestly):
- *  The form preview calls buildPaymentGlosa with the data available at form
- *  level (method, contactName, total). The per-allocation tokens
- *  (sourceTypeCode/refNo/sourceDate) are NOT yet plumbed into the form because
- *  PendingDocument DTO does not expose them — service rebuild at post-time
- *  emits the canonical full glosa (REQ-GE-2 / Batch B Phase 5). Header-only
- *  preview matches REQ-GE-2 Scenario 2.4 (empty-allocations form) by design.
+ * payment-form description input — post-F4 simplificación.
+ * descriptionOverride flag eliminado; el input es siempre editable (salvo
+ * read-only por status), pero el próximo cambio de header/allocation rebuildea
+ * desde buildPaymentGlosa. Tests verifican shape básico del input.
  */
 
-import { render, screen, cleanup, fireEvent } from "@testing-library/react";
+import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PaymentForm from "../payment-form";
@@ -128,35 +116,22 @@ function renderEditMode() {
   );
 }
 
-// ── T-27.1: create mode initializes descriptionOverride=false (Pencil label "Editar") ──
-
-describe("T-27 — payment-form rebuildDescription + Pencil toggle", () => {
-  it("T-27.1 — create mode initializes descriptionOverride=false (Pencil 'Editar')", () => {
-    renderCreateMode();
-    expect(screen.getByRole("button", { name: /editar/i })).toBeInTheDocument();
-  });
-
-  it("T-27.2 — description input is readOnly while override=false (create mode)", () => {
+describe("payment-form description input (post-F4 simplificación)", () => {
+  it("create mode: description input is editable (no readOnly, no Pencil toggle)", () => {
     renderCreateMode();
     const descInput = document.getElementById("payment-description") as HTMLInputElement;
     expect(descInput).toBeInTheDocument();
-    expect(descInput.readOnly).toBe(true);
+    expect(descInput.readOnly).toBe(false);
+    expect(screen.queryByRole("button", { name: /editar/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^auto$/i })).toBeNull();
   });
 
-  it("T-27.3 — edit mode initializes descriptionOverride=true (Pencil 'Auto', input editable, value preserved)", () => {
+  it("edit DRAFT mode: input editable; rebuilds desde builder al mount (no preserva user-typed)", () => {
     renderEditMode();
-    expect(screen.getByRole("button", { name: /auto/i })).toBeInTheDocument();
     const descInput = document.getElementById("payment-description") as HTMLInputElement;
     expect(descInput.readOnly).toBe(false);
-    expect(descInput.value).toBe("Mi glosa de cobro");
-  });
-
-  it("T-27.4 — clicking Pencil in create mode toggles to 'Auto' label and unlocks input", () => {
-    renderCreateMode();
-    const btn = screen.getByRole("button", { name: /editar/i });
-    fireEvent.click(btn);
-    expect(screen.getByRole("button", { name: /auto/i })).toBeInTheDocument();
-    const descInput = document.getElementById("payment-description") as HTMLInputElement;
-    expect(descInput.readOnly).toBe(false);
+    // Marco lock post-archive: "no importa que se borre el dato que escribió
+    // el usuario" — al editar, el builder rebuildea. Notas persiste manual.
+    expect(descInput.value).toMatch(/^COBRO /);
   });
 });

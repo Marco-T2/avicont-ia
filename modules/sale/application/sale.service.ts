@@ -65,27 +65,6 @@ export interface PostSaleResult {
   correlationId: string;
 }
 
-/**
- * Optional options for `SaleService.post`.
- *
- * `descriptionOverride` controls JournalEntry.description sourcing
- * (REQ-GE-1, design D9):
- *   - `true` or undefined (default) — passthrough: `JE.description = sale.description`
- *     concatenated with `| ${sale.notes}` suffix when notes present. Preserves
- *     legacy REQ-DISPLAY-3 behavior — used by ALL pre-Batch-C callers and tests.
- *   - `false` — builder: `JE.description = buildSaleGlosa({...})` (REQ-GE-1
- *     template). Used by the new sale form (Batch C) when the user has NOT
- *     toggled Pencil to manual-edit mode. The same builder output flows to
- *     `AR.description` for consistency.
- *
- * The flag lives on the post-time options rather than on the Sale entity so
- * the form's Auto/Editar toggle state stays a presentation concern — the
- * persisted `Sale.description` carries the user-visible text either way.
- */
-export interface PostSaleOptions {
-  descriptionOverride?: boolean;
-}
-
 export interface UpdateSaleInput extends ApplySaleEditInput {
   details?: CreateSaleDraftDetailInput[];
 }
@@ -243,7 +222,6 @@ export class SaleService {
     organizationId: string,
     saleId: string,
     userId: string,
-    options: PostSaleOptions = {},
   ): Promise<PostSaleResult> {
     const required = {
       contacts: this.deps.contacts,
@@ -316,24 +294,16 @@ export class SaleService {
         const seq = await scope.sales.getNextSequenceNumberTx(organizationId);
         const numbered = posted.assignSequenceNumber(seq);
 
-        // REQ-GE-1 / design D9: when the caller opts-in via
-        // `descriptionOverride: false`, JE.description is built from the
-        // canonical glosa template using already-fetched contact + line data.
-        // Default (undefined / true) preserves the REQ-DISPLAY-3 passthrough
-        // with the legacy `| ${notes}` suffix — all pre-Batch-C callers and
-        // tests rely on this behavior.
-        const journalDescription =
-          options.descriptionOverride === false
-            ? buildSaleGlosa({
-                contactName: contact.name,
-                referenceNumber: String(numbered.referenceNumber ?? ""),
-                totalAmount: numbered.totalAmount.value,
-                lineConcepts: numbered.details.map((d) => d.description),
-                saleDate: numbered.date,
-              })
-            : numbered.notes
-              ? `${numbered.description} | ${numbered.notes}`
-              : numbered.description;
+        // REQ-GE-1: builder is canonical at post-time (simplificación
+        // post-archive). The user-typed description on the form is ephemeral
+        // preview; "notas" carries persistent manual info via Sale.notes.
+        const journalDescription = buildSaleGlosa({
+          contactName: contact.name,
+          referenceNumber: String(numbered.referenceNumber ?? ""),
+          totalAmount: numbered.totalAmount.value,
+          lineConcepts: numbered.details.map((d) => d.description),
+          saleDate: numbered.date,
+        });
 
         const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,
@@ -697,7 +667,6 @@ export class SaleService {
     organizationId: string,
     input: CreateDraftInput,
     context: { userId: string; role: string },
-    options: PostSaleOptions = {},
   ): Promise<PostSaleResult> {
     const required = {
       contacts: this.deps.contacts,
@@ -784,22 +753,14 @@ export class SaleService {
         const seq = await scope.sales.getNextSequenceNumberTx(organizationId);
         const numbered = posted.assignSequenceNumber(seq);
 
-        // W-1 fix: createAndPost honors `descriptionOverride: false` opt-in,
-        // mirroring sale.service.post (lines 319-336). The fast-path Guardar y
-        // Contabilizar must produce the canonical glosa, not the legacy
-        // REQ-DISPLAY-3 passthrough, when the form is in Auto mode.
-        const journalDescription =
-          options.descriptionOverride === false
-            ? buildSaleGlosa({
-                contactName: contact.name,
-                referenceNumber: String(numbered.referenceNumber ?? ""),
-                totalAmount: numbered.totalAmount.value,
-                lineConcepts: numbered.details.map((d) => d.description),
-                saleDate: numbered.date,
-              })
-            : numbered.notes
-              ? `${numbered.description} | ${numbered.notes}`
-              : numbered.description;
+        // Builder canónico siempre (simplificación post-archive).
+        const journalDescription = buildSaleGlosa({
+          contactName: contact.name,
+          referenceNumber: String(numbered.referenceNumber ?? ""),
+          totalAmount: numbered.totalAmount.value,
+          lineConcepts: numbered.details.map((d) => d.description),
+          saleDate: numbered.date,
+        });
 
         const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,

@@ -59,9 +59,8 @@ export async function POST(
     const input = createSaleSchema.parse(rest);
 
     const user = await usersService.resolveByClerkId(userId);
-    const { descriptionOverride, ...rest2 } = input;
     const wrappedInput = {
-      ...rest2,
+      ...input,
       date: new Date(input.date),
       details: input.details.map((d) => ({ ...d, lineAmount: M(d.lineAmount) })),
     };
@@ -70,7 +69,6 @@ export async function POST(
           orgId,
           wrappedInput,
           { userId: user.id, role },
-          { descriptionOverride },
         )
       : await saleService.createDraft(orgId, wrappedInput, user.id);
 
