@@ -67,3 +67,28 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
     expect(result.source.defaultDescription).toBe("Cobro Venta #42");
   });
 });
+
+describe("fetchShortcutSource — cross-org rejection", () => {
+  it("returns cross-org when sale.organizationId does not match orgId", async () => {
+    mockSaleFindUnique.mockResolvedValueOnce({
+      id: "clxabc123",
+      organizationId: "org-B",
+      status: "POSTED",
+      contactId: "cnt-1",
+      sequenceNumber: 42,
+      referenceNumber: null,
+      receivable: {
+        id: "rcv-1",
+        balance: new Decimal("1000.00"),
+      },
+    });
+
+    const result = await fetchShortcutSource({
+      orgId: "org-A",
+      type: "COBRO",
+      saleId: "clxabc123",
+    });
+
+    expect(result.kind).toBe("cross-org");
+  });
+});
