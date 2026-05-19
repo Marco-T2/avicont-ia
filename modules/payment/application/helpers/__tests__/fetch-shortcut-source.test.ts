@@ -68,6 +68,41 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   });
 });
 
+describe("fetchShortcutSource — happy path PAGO (purchase)", () => {
+  it("returns ok with source data when purchase is POSTED with positive balance", async () => {
+    mockPurchaseFindUnique.mockResolvedValueOnce({
+      id: "clxpqr456",
+      organizationId: ORG,
+      status: "POSTED",
+      contactId: "cnt-9",
+      sequenceNumber: 7,
+      referenceNumber: null,
+      payable: {
+        id: "pay-1",
+        balance: new Decimal("500.00"),
+      },
+    });
+
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "PAGO",
+      purchaseId: "clxpqr456",
+    });
+
+    expect(result.kind).toBe("ok");
+    if (result.kind !== "ok") return;
+    expect(result.source.kind).toBe("purchase");
+    expect(result.source.id).toBe("clxpqr456");
+    expect(result.source.contactId).toBe("cnt-9");
+    expect(result.source.allocationTargetId).toBe("pay-1");
+    expect(result.source.balance).toBeInstanceOf(Decimal);
+    expect(result.source.balance.toString()).toBe("500");
+    expect(result.source.defaultDescription).toBe("Pago Compra #7");
+    // Did not touch the sale table.
+    expect(mockSaleFindUnique).not.toHaveBeenCalled();
+  });
+});
+
 describe("fetchShortcutSource — invalid-params type/kind mismatch", () => {
   it("returns invalid-params when type=PAGO is paired with saleId", async () => {
     const result = await fetchShortcutSource({
