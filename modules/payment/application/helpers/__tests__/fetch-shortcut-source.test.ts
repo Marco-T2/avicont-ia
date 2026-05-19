@@ -68,6 +68,32 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   });
 });
 
+describe("fetchShortcutSource — invalid-params type/kind mismatch", () => {
+  it("returns invalid-params when type=PAGO is paired with saleId", async () => {
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "PAGO",
+      saleId: "sale-1",
+    });
+
+    expect(result.kind).toBe("invalid-params");
+    expect(mockSaleFindUnique).not.toHaveBeenCalled();
+    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns invalid-params when type=COBRO is paired with purchaseId", async () => {
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "COBRO",
+      purchaseId: "pch-1",
+    });
+
+    expect(result.kind).toBe("invalid-params");
+    expect(mockSaleFindUnique).not.toHaveBeenCalled();
+    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+  });
+});
+
 describe("fetchShortcutSource — invalid-params XOR (saleId vs purchaseId)", () => {
   it("returns invalid-params when both saleId and purchaseId are provided", async () => {
     const result = await fetchShortcutSource({
