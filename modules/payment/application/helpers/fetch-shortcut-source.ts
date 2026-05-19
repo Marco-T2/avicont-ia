@@ -57,12 +57,17 @@ export interface FetchShortcutSourceParams {
 export async function fetchShortcutSource(
   params: FetchShortcutSourceParams,
 ): Promise<ShortcutSourceResult> {
-  const { orgId, saleId, purchaseId } = params;
+  const { orgId, type, saleId, purchaseId } = params;
 
   const hasSale = Boolean(saleId);
   const hasPurchase = Boolean(purchaseId);
   if (hasSale === hasPurchase) {
     // XOR: both present OR neither present → invalid.
+    return { kind: "invalid-params" };
+  }
+
+  // type ↔ id-kind agreement: COBRO must carry a saleId, PAGO a purchaseId.
+  if ((hasSale && type !== "COBRO") || (hasPurchase && type !== "PAGO")) {
     return { kind: "invalid-params" };
   }
 
