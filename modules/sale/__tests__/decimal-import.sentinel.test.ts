@@ -24,6 +24,9 @@ const DECIMAL_DEFAULT_IMPORT_RE =
 
 const TARGETS = [
   "modules/sale/domain/build-sale-entry-lines.ts",
+  // REQ-GE-7 Scenario 7.3 (DEC-1): glosa builder must NOT value-import Prisma
+  // nor default-import Decimal — it consumes already-converted `number`.
+  "modules/sale/domain/sale-glosa-builder.ts",
 ] as const;
 
 describe("sentinel: import-shape — sale/domain/build-sale-entry-lines (post-lcv-retirement)", () => {
