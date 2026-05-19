@@ -1,3 +1,4 @@
+import Decimal from "decimal.js";
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
@@ -6,6 +7,7 @@ import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/pr
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import { fetchShortcutSource } from "@/modules/payment/application/helpers/fetch-shortcut-source";
+import type { ShortcutInitialValues } from "@/modules/payment/application/types/shortcut-initial-values";
 import PaymentForm from "@/components/payments/payment-form";
 
 interface NewPaymentPageProps {
@@ -34,6 +36,7 @@ export default async function NewPaymentPage({
   // agreement; on `invalid-params` we fall through to the manual flow.
   // Other rejection kinds (not-found / cross-org / voided / fully-paid)
   // are handled in subsequent tasks (T-12..T-15).
+  let initialValues: ShortcutInitialValues | undefined;
   if (saleId || purchaseId) {
     if (type === "COBRO" || type === "PAGO") {
       const shortcut = await fetchShortcutSource({
@@ -42,10 +45,26 @@ export default async function NewPaymentPage({
         saleId,
         purchaseId,
       });
-      // For now only `invalid-params` is wired — fall through to manual form.
-      // Subsequent tasks (T-11..T-15) handle ok / not-found / cross-org /
-      // voided / fully-paid.
-      void shortcut;
+      if (shortcut.kind === "ok") {
+        // DEC-1 boundary: coerce decimal balance to JS number ONCE here
+        // (HALF_UP @ 2dp). Client Components never receive a Decimal.
+        const balance = shortcut.source.balance
+          .toDecimalPlaces(2, Decimal.ROUND_HALF_UP)
+          .toNumber();
+        initialValues = {
+          type,
+          contactId: shortcut.source.contactId,
+          description: shortcut.source.defaultDescription,
+          sourceKind: shortcut.source.kind,
+          sourceId: shortcut.source.id,
+          voucherCode: shortcut.source.voucherCode,
+          referenceNumber: shortcut.source.referenceNumber,
+          allocationTargetId: shortcut.source.allocationTargetId,
+          allocationBalance: balance,
+        };
+      }
+      // `invalid-params` falls through to the manual form.
+      // T-12..T-15 will add not-found / cross-org / voided / fully-paid.
     }
   }
 
@@ -98,6 +117,10 @@ export default async function NewPaymentPage({
         bankAccounts={JSON.parse(JSON.stringify(bankAccounts.map((a) => ({ id: a.id, code: a.code, name: a.name }))))}
         defaultCashCode={orgSettings.cajaGeneralAccountCode}
         defaultBankCode={orgSettings.bancoAccountCode}
+        // Phase 4 will add `initialValues?: ShortcutInitialValues` to PaymentFormProps.
+        // Until then, suppress the missing-prop TS error (test-only consumer in Phase 3).
+        // @ts-expect-error — Phase 4 adds `initialValues` to PaymentFormProps; remove this annotation then.
+        initialValues={initialValues}
       />
     </div>
   );
