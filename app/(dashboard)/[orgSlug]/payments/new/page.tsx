@@ -49,6 +49,11 @@ export default async function NewPaymentPage({
         // Source comprobante does not exist — render the framework's 404.
         notFound();
       }
+      if (shortcut.kind === "cross-org") {
+        // Helper already blocked the read. Redirect to the org's payments
+        // list — same target the manual type-gate uses.
+        redirect(`/${orgSlug}/payments`);
+      }
       if (shortcut.kind === "ok") {
         // DEC-1 boundary: coerce decimal balance to JS number ONCE here
         // (HALF_UP @ 2dp). Client Components never receive a Decimal.
