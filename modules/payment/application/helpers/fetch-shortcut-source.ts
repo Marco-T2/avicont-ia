@@ -64,7 +64,11 @@ export async function fetchShortcutSource(
     include: { receivable: true },
   });
 
-  if (sale!.organizationId !== orgId) {
+  if (!sale) {
+    return { kind: "not-found" };
+  }
+
+  if (sale.organizationId !== orgId) {
     return { kind: "cross-org" };
   }
 
@@ -72,15 +76,15 @@ export async function fetchShortcutSource(
     kind: "ok",
     source: {
       kind: "sale",
-      id: sale!.id,
-      contactId: sale!.contactId,
-      voucherCode: `V-${sale!.sequenceNumber}`,
-      number: sale!.sequenceNumber,
+      id: sale.id,
+      contactId: sale.contactId,
+      voucherCode: `V-${sale.sequenceNumber}`,
+      number: sale.sequenceNumber,
       referenceNumber:
-        sale!.referenceNumber == null ? null : String(sale!.referenceNumber),
-      allocationTargetId: sale!.receivable!.id,
-      balance: new Decimal(sale!.receivable!.balance.toString()),
-      defaultDescription: `Cobro Venta #${sale!.sequenceNumber}`,
+        sale.referenceNumber == null ? null : String(sale.referenceNumber),
+      allocationTargetId: sale.receivable!.id,
+      balance: new Decimal(sale.receivable!.balance.toString()),
+      defaultDescription: `Cobro Venta #${sale.sequenceNumber}`,
     },
   };
 }
