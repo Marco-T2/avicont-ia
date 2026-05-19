@@ -141,4 +141,19 @@ describe("LegacyJournalEntryFactoryAdapter — operationalDocTypeId resolution (
     const tpl = generateMock.mock.calls[0][1];
     expect(tpl.operationalDocTypeId).toBeNull();
   });
+
+  it("forwards template.referenceNumber (789) to the AutoEntryGenerator (Marco bug — dispatch-generated JE was getting referenceNumber=NULL)", async () => {
+    const docTypesRepo = makeDocTypesRepoFake({ ND: "odt-nd-1", BC: "odt-bc-1" });
+    const adapter = new LegacyJournalEntryFactoryAdapter(docTypesRepo);
+
+    generateMock.mockClear();
+    await adapter.generateForDispatch({
+      ...baseTemplate,
+      dispatchType: "NOTA_DESPACHO",
+      referenceNumber: 789,
+    });
+
+    const tpl = generateMock.mock.calls[0][1] as { referenceNumber?: number | null };
+    expect(tpl.referenceNumber).toBe(789);
+  });
 });

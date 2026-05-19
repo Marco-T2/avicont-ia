@@ -46,6 +46,7 @@ function buildSale(overrides: {
   contactId?: string;
   date?: Date;
   receivableId?: string | null;
+  referenceNumber?: number | null;
 } = {}): Sale {
   return Sale.fromPersistence({
     id: overrides.id ?? `sale-${Math.random().toString(36).slice(2, 8)}`,
@@ -56,7 +57,7 @@ function buildSale(overrides: {
     contactId: overrides.contactId ?? "contact-1",
     periodId: "period-1",
     description: "Venta test",
-    referenceNumber: null,
+    referenceNumber: overrides.referenceNumber === undefined ? null : overrides.referenceNumber,
     notes: null,
     totalAmount: MonetaryAmount.zero(),
     journalEntryId: null,
@@ -432,7 +433,7 @@ describe("SaleService.post", () => {
     });
   }
 
-  function buildDraftSale(): Sale {
+  function buildDraftSale(overrides: { referenceNumber?: number } = {}): Sale {
     return Sale.createDraft({
       organizationId: ORG,
       contactId: "c-1",
@@ -440,6 +441,9 @@ describe("SaleService.post", () => {
       date: new Date("2025-01-15"),
       description: "Venta test",
       createdById: "user-1",
+      ...(overrides.referenceNumber !== undefined && {
+        referenceNumber: overrides.referenceNumber,
+      }),
       details: [
         {
           description: "Línea 1",
@@ -633,6 +637,16 @@ describe("SaleService.post", () => {
     await service.post(ORG, draft.id, "user-1");
 
     expect(journalEntryFactory.calls[0]!.description).toBe("Venta test");
+  });
+
+  it("forwards Sale.referenceNumber (789) to the journal factory template (Marco bug — sale-generated JE was getting referenceNumber=NULL)", async () => {
+    const draft = buildDraftSale({ referenceNumber: 789 });
+    saleRepo.preload(draft);
+    journalEntryFactory.enqueue(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-1");
+
+    expect(journalEntryFactory.calls[0]!.referenceNumber).toBe(789);
   });
 
 });

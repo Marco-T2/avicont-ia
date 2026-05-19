@@ -456,6 +456,52 @@ describe("PrismaJournalEntriesRepository — Postgres integration", () => {
     expect(orphanLines).toHaveLength(0);
   });
 
+  it("update with replaceLines: false — propagates operationalDocTypeId change to DB (regression: updateTx was dropping the field — Marco bonus fix, no dejar deuda futura)", async () => {
+    // Setup: persistir un DRAFT sin operationalDocTypeId, después crear
+    // un OperationalDocType en DB para mutar el JE hacia esa FK.
+    const draft = buildDraftJournal();
+    const persistedDraft = await prisma.$transaction(async (tx) => {
+      return new PrismaJournalEntriesRepository(tx).create(draft);
+    });
+
+    const docType = await prisma.operationalDocType.create({
+      data: {
+        organizationId: testOrgId,
+        code: "TEST-RC",
+        name: "Test Recibo de Cobranza",
+        direction: "COBRO",
+        isActive: true,
+      },
+    });
+
+    // Mutar el aggregate aplicando operationalDocTypeId NEW.
+    const mutated = persistedDraft.update({
+      operationalDocTypeId: docType.id,
+      updatedById: testUserId,
+    });
+
+    // Acto: persistir via hex update path (que internamente llama updateTx,
+    // donde vive el bug latente — operationalDocTypeId NO se propagaba).
+    await prisma.$transaction(async (tx) => {
+      return new PrismaJournalEntriesRepository(tx).update(mutated, {
+        replaceLines: false,
+      });
+    });
+
+    // Verificación: la DB row debe tener el nuevo operationalDocTypeId.
+    const row = await prisma.journalEntry.findUnique({
+      where: { id: persistedDraft.id },
+    });
+    expect(row!.operationalDocTypeId).toBe(docType.id);
+
+    // Cleanup explícito del docType (afterEach no lo limpia).
+    await prisma.journalEntry.update({
+      where: { id: persistedDraft.id },
+      data: { operationalDocTypeId: null },
+    });
+    await prisma.operationalDocType.delete({ where: { id: docType.id } });
+  });
+
   // ── findLinesByAccountPaginated — openingBalanceDelta historical scope ──
   // Follow-up to poc-pagination-ledger (GREEN at 0ed87baf): the original
   // 3-query Promise.all summed priors using the SAME where as the page window

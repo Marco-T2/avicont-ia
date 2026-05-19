@@ -51,6 +51,7 @@ function buildPurchase(overrides: {
   date?: Date;
   purchaseType?: PurchaseType;
   payableId?: string | null;
+  referenceNumber?: number | null;
 } = {}): Purchase {
   return Purchase.fromPersistence({
     id: overrides.id ?? `purchase-${Math.random().toString(36).slice(2, 8)}`,
@@ -62,7 +63,7 @@ function buildPurchase(overrides: {
     contactId: overrides.contactId ?? "contact-1",
     periodId: "period-1",
     description: "Compra test",
-    referenceNumber: null,
+    referenceNumber: overrides.referenceNumber === undefined ? null : overrides.referenceNumber,
     notes: null,
     totalAmount: MonetaryAmount.zero(),
     ruta: null,
@@ -488,7 +489,7 @@ describe("PurchaseService.post", () => {
   }
 
   function buildDraftPurchase(
-    overrides: { purchaseType?: PurchaseType; expenseAccountId?: string } = {},
+    overrides: { purchaseType?: PurchaseType; expenseAccountId?: string; referenceNumber?: number } = {},
   ): Purchase {
     const purchaseType = overrides.purchaseType ?? "COMPRA_GENERAL";
     const needsExpense =
@@ -501,6 +502,9 @@ describe("PurchaseService.post", () => {
       date: new Date("2025-01-15"),
       description: "Compra test",
       createdById: "user-1",
+      ...(overrides.referenceNumber !== undefined && {
+        referenceNumber: overrides.referenceNumber,
+      }),
       details: [
         {
           description: "Línea 1",
@@ -699,6 +703,19 @@ describe("PurchaseService.post", () => {
       "Compra test",
     );
     expect(accountLookup.callsByIds[0]!.ids).toEqual([]);
+  });
+
+  it("forwards Purchase.referenceNumber (789) to the journal factory template (Marco bug — purchase-generated JE was getting referenceNumber=NULL)", async () => {
+    const draft = buildDraftPurchase({
+      purchaseType: "COMPRA_GENERAL",
+      referenceNumber: 789,
+    });
+    purchaseRepo.preload(draft);
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    await service.post(ORG, draft.id, "user-1");
+
+    expect(journalEntryFactory.purchaseCalls[0]!.referenceNumber).toBe(789);
   });
 
   /**
