@@ -33,8 +33,8 @@ afterEach(() => {
 
 // ── Suite ──────────────────────────────────────────────────────────────────
 describe("CatalogPage", () => {
-  // 4.1-A: Renders all 9 category section headers
-  it("renders all 9 category section headers in Spanish", () => {
+  // 4.1-A: Renders every category section header registered in the catalog
+  it("renders every category section header in Spanish", () => {
     render(<CatalogPage orgSlug={orgSlug} entries={reportRegistry} />);
 
     for (const cat of reportCategories) {

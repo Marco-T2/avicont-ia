@@ -191,16 +191,15 @@ describe("validators de invariantes con fixtures no vacíos", () => {
 // Estos tests verifican que el catálogo tiene los datos reales poblados.
 
 describe("reportCategories — datos curados (PR3)", () => {
-  it("tiene exactamente 5 categorías", () => {
-    expect(reportCategories).toHaveLength(5);
+  it("tiene exactamente 4 categorías", () => {
+    expect(reportCategories).toHaveLength(4);
   });
 
-  it("contiene las 5 categorías esperadas por id", () => {
+  it("contiene las 4 categorías esperadas por id", () => {
     const expectedIds = [
       "estados-financieros",
       "para-mi-contador",
-      "quien-te-debe",
-      "lo-que-debes",
+      "mayores-auxiliares",
       "empresa",
     ];
     const actualIds = reportCategories.map((c) => c.id);

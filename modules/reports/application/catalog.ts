@@ -51,9 +51,8 @@ export interface ReportEntry {
 export const reportCategories: readonly ReportCategory[] = [
   { id: "estados-financieros", label: "Estados Financieros",     order: 1 },
   { id: "para-mi-contador",    label: "Para mi contador",         order: 2 },
-  { id: "quien-te-debe",       label: "Quién te debe",            order: 3 },
-  { id: "lo-que-debes",        label: "Lo que debes",             order: 4 },
-  { id: "empresa",             label: "Empresa y actividad",      order: 5 },
+  { id: "mayores-auxiliares",  label: "Mayores Auxiliares",       order: 3 },
+  { id: "empresa",             label: "Empresa y actividad",      order: 4 },
 ];
 
 // ── Registro de reportes ─────────────────────────────────────────────────────
@@ -117,24 +116,22 @@ export const reportRegistry: readonly ReportEntry[] = [
     icon: "ListOrdered",
   },
 
-  // ── Quién te debe ──────────────────────────────────────────────────────────
+  // ── Mayores Auxiliares ─────────────────────────────────────────────────────
   {
     id: "cuentas-por-cobrar",
     title: "Cuentas por Cobrar",
     description: "Saldos pendientes de cobro por cliente.",
-    category: "quien-te-debe",
+    category: "mayores-auxiliares",
     status: "available",
     route: "/accounting/cxc",
     icon: "HandCoins",
     resource: "sales",
   },
-
-  // ── Lo que debes ───────────────────────────────────────────────────────────
   {
     id: "cuentas-por-pagar",
     title: "Cuentas por Pagar",
     description: "Saldos pendientes de pago por proveedor.",
-    category: "lo-que-debes",
+    category: "mayores-auxiliares",
     status: "available",
     route: "/accounting/cxp",
     icon: "Receipt",
