@@ -15,6 +15,7 @@ const row = (override: Partial<AccountsReceivable> = {}): AccountsReceivable => 
   status: "PARTIAL",
   sourceType: "dispatch",
   sourceId: "disp-1",
+  sourceTypeCode: null,
   journalEntryId: "je-1",
   notes: null,
   createdAt: new Date("2026-04-01T00:00:00Z"),
