@@ -374,6 +374,7 @@ export class DispatchService {
       // factory adapter resolves operationalDocTypeId via dispatchTypeToCode
       // + findByCode (ND|BC).
       dispatchType: input.dispatchType,
+      referenceNumber: input.referenceNumber ?? null,
       createdById: userId,
       lines: [
         {
@@ -641,6 +642,7 @@ export class DispatchService {
       sourceType: "dispatch",
       sourceId: dispatch.id,
       dispatchType: dispatch.dispatchType,
+      referenceNumber: dispatch.referenceNumber ?? null,
       createdById: userId,
       lines: [
         {

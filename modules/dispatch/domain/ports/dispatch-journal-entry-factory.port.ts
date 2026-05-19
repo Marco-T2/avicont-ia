@@ -32,6 +32,11 @@ export interface DispatchJournalTemplate {
    *  creation. Domain stays Prisma-free; the type is a string union here
    *  and resolved against the Prisma enum at the adapter layer. */
   dispatchType: "NOTA_DESPACHO" | "BOLETA_CERRADA";
+  /** Physical document reference number captured for the dispatch. Forwarded
+   *  as-is to JE.referenceNumber so the contact ledger surfaces
+   *  "ND— Nota de Despacho Nº {referenceNumber}" / "BC— Boleta Cerrada Nº ...".
+   *  Null when the dispatch has no captured physical number. */
+  referenceNumber?: number | null;
   lines: DispatchJournalLineTemplate[];
 }
 

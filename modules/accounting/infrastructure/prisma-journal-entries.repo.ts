@@ -421,6 +421,7 @@ export class JournalRepository extends BaseRepository {
         ...(data.description !== undefined && { description: data.description }),
         ...(data.contactId !== undefined && { contactId: data.contactId }),
         ...(data.referenceNumber !== undefined && { referenceNumber: data.referenceNumber }),
+        ...(data.operationalDocTypeId !== undefined && { operationalDocTypeId: data.operationalDocTypeId }),
         updatedById,
       },
       include: journalIncludeLines,

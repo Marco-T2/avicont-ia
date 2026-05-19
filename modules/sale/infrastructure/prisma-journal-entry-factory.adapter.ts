@@ -87,6 +87,7 @@ export class PrismaJournalEntryFactoryAdapter
       sourceType: template.sourceType,
       sourceId: template.sourceId,
       operationalDocTypeId: docType?.id ?? null,
+      referenceNumber: template.referenceNumber ?? undefined,
       lines: template.lines.map((l) => ({
         accountCode: l.accountCode,
         side: l.side,
@@ -117,6 +118,7 @@ export class PrismaJournalEntryFactoryAdapter
       sourceType: template.sourceType,
       sourceId: template.sourceId,
       operationalDocTypeId: docType?.id ?? null,
+      referenceNumber: template.referenceNumber ?? undefined,
       lines: template.lines.map((l) => ({
         accountCode: l.accountCode,
         side: l.side,
@@ -185,6 +187,7 @@ export class PrismaJournalEntryFactoryAdapter
         date: template.date,
         description: template.description,
         contactId: template.contactId,
+        referenceNumber: template.referenceNumber ?? null,
         updatedById: template.createdById,
       },
       drafts,

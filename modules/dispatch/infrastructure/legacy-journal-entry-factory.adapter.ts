@@ -63,6 +63,7 @@ export class LegacyJournalEntryFactoryAdapter
         sourceType: template.sourceType,
         sourceId: template.sourceId,
         operationalDocTypeId: docType?.id ?? null,
+        referenceNumber: template.referenceNumber ?? undefined,
         createdById: template.createdById,
         lines: template.lines,
       });

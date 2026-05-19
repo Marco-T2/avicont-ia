@@ -307,6 +307,7 @@ export class SaleService {
           description: journalDescription,
           sourceType: "sale",
           sourceId: numbered.id,
+          referenceNumber: numbered.referenceNumber ?? null,
           createdById: userId,
           lines: entryLines.map((l) => ({
             accountCode: l.accountCode,
@@ -759,6 +760,7 @@ export class SaleService {
           description: journalDescription,
           sourceType: "sale",
           sourceId: numbered.id,
+          referenceNumber: numbered.referenceNumber ?? null,
           createdById: context.userId,
           lines: entryLines.map((l) => ({
             accountCode: l.accountCode,

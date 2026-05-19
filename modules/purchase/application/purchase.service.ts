@@ -358,6 +358,7 @@ export class PurchaseService {
           // journal-physical-document Phase 6 — forwards the purchase type so
           // the factory resolves the OperationalDocType code (FL|PF|CG|SV).
           purchaseType: numbered.purchaseType,
+          referenceNumber: numbered.referenceNumber ?? null,
           createdById: userId,
           lines: entryLines.map((l) => ({
             accountCode: l.accountCode,
@@ -532,6 +533,7 @@ export class PurchaseService {
           // journal-physical-document Phase 6 — forwards the purchase type so
           // the factory resolves the OperationalDocType code (FL|PF|CG|SV).
           purchaseType: numbered.purchaseType,
+          referenceNumber: numbered.referenceNumber ?? null,
           createdById: context.userId,
           lines: entryLines.map((l) => ({
             accountCode: l.accountCode,

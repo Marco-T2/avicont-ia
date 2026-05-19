@@ -17,6 +17,11 @@ export interface SaleJournalTemplate {
   sourceType: "sale";
   sourceId: string;
   createdById: string;
+  /** Physical document reference number captured by the seller (e.g. invoice
+   *  number). Forwarded as-is to JE.referenceNumber so the contact ledger
+   *  surfaces "VG— Venta de Gestión Nº {referenceNumber}". Null when the
+   *  sale has no captured physical number. */
+  referenceNumber?: number | null;
   lines: SaleJournalLineTemplate[];
 }
 
@@ -42,6 +47,11 @@ export interface PurchaseJournalTemplate {
    *  resolves the OperationalDocType code (FL|PF|CG|SV) via
    *  purchaseTypeToCode + findByCode at JE creation. */
   purchaseType: "FLETE" | "POLLO_FAENADO" | "COMPRA_GENERAL" | "SERVICIO";
+  /** Physical document reference number captured for the purchase (e.g.
+   *  supplier invoice number). Forwarded as-is to JE.referenceNumber so the
+   *  contact ledger surfaces "FL— Flete Nº {referenceNumber}". Null when the
+   *  purchase has no captured physical number. */
+  referenceNumber?: number | null;
   lines: PurchaseJournalLineTemplate[];
 }
 
