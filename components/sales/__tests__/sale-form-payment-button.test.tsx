@@ -8,8 +8,9 @@
 
 import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import SaleForm from "../sale-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -20,9 +21,15 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ orgSlug: "test-org" }),
 }));
 
+const mockRole = vi.hoisted(() => ({ current: "owner" as string | null }));
+
 vi.mock("@/components/common/use-org-role", () => ({
-  useOrgRole: () => ({ role: "owner", isLoading: false, orgSlug: "test-org" }),
+  useOrgRole: () => ({ role: mockRole.current, isLoading: false, orgSlug: "test-org" }),
 }));
+
+beforeEach(() => {
+  mockRole.current = "owner";
+});
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -102,14 +109,16 @@ const BASE_CONTACTS = [
 function renderForm(salePatch: Partial<typeof BASE_SALE> = {}) {
   const sale = { ...BASE_SALE, ...salePatch };
   return render(
-    <SaleForm
-      orgSlug="test-org"
-      contacts={BASE_CONTACTS}
-      periods={[BASE_PERIOD]}
-      incomeAccounts={[INCOME_ACCOUNT]}
-      sale={sale as any}
-      mode="edit"
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <SaleForm
+        orgSlug="test-org"
+        contacts={BASE_CONTACTS}
+        periods={[BASE_PERIOD]}
+        incomeAccounts={[INCOME_ACCOUNT]}
+        sale={sale as any}
+        mode="edit"
+      />
+    </SystemRoleProvider>,
   );
 }
 
@@ -170,5 +179,24 @@ describe("T-22 — Period CLOSED no bloquea el botón (B1 regression lock)", () 
       receivable: { ...BASE_RECEIVABLE, balance: 500 },
     });
     expect(screen.getByRole("link", { name: /registrar pago/i })).toBeInTheDocument();
+  });
+});
+
+// ── T-25: Permission gating (resource=payments, action=write) ──
+// Matrix: payments/write = [owner, admin, contador, cobrador]. `member` queda fuera.
+// Defense in depth: server gate sigue activo en /payments/new, pero la UI esconde
+// el botón a usuarios sin permiso (cierra W-1 del verify report).
+
+describe("T-25 — Permission gating (payments/write)", () => {
+  it("T-25-1 — role=cobrador (granted): botón visible", () => {
+    mockRole.current = "cobrador";
+    renderForm({ status: "POSTED", receivable: { ...BASE_RECEIVABLE, balance: 1000 } });
+    expect(screen.getByRole("link", { name: /registrar pago/i })).toBeInTheDocument();
+  });
+
+  it("T-25-2 — role=member (NOT granted): botón NO visible", () => {
+    mockRole.current = "member";
+    renderForm({ status: "POSTED", receivable: { ...BASE_RECEIVABLE, balance: 1000 } });
+    expect(screen.queryByRole("link", { name: /registrar pago/i })).not.toBeInTheDocument();
   });
 });

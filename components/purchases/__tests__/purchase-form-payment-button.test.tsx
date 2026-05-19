@@ -10,8 +10,9 @@
 
 import { render, screen, cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import PurchaseForm from "../purchase-form";
+import { SystemRoleProvider } from "@/components/common/__tests__/_test-matrix-provider";
 
 afterEach(() => cleanup());
 
@@ -21,9 +22,15 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
+const mockRole = vi.hoisted(() => ({ current: "admin" as string | null }));
+
 vi.mock("@/components/common/use-org-role", () => ({
-  useOrgRole: () => ({ role: "admin" }),
+  useOrgRole: () => ({ role: mockRole.current }),
 }));
+
+beforeEach(() => {
+  mockRole.current = "admin";
+});
 
 vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
@@ -134,15 +141,17 @@ const BASE_PURCHASE: Record<string, unknown> = {
 function renderForm(patch: Record<string, unknown> = {}) {
   const purchase = { ...BASE_PURCHASE, ...patch };
   return render(
-    <PurchaseForm
-      orgSlug="mi-org"
-      purchaseType="COMPRA_GENERAL"
-      contacts={[BASE_CONTACT]}
-      periods={[BASE_PERIOD]}
-      productTypes={[]}
-      purchase={purchase as any}
-      mode="edit"
-    />,
+    <SystemRoleProvider role={mockRole.current}>
+      <PurchaseForm
+        orgSlug="mi-org"
+        purchaseType="COMPRA_GENERAL"
+        contacts={[BASE_CONTACT]}
+        periods={[BASE_PERIOD]}
+        productTypes={[]}
+        purchase={purchase as any}
+        mode="edit"
+      />
+    </SystemRoleProvider>,
   );
 }
 
@@ -190,5 +199,23 @@ describe("PurchaseForm — Registrar pago button href (T-24)", () => {
       "href",
       "/mi-org/payments/new?type=PAGO&purchaseId=purchase-99",
     );
+  });
+});
+
+// ── T-26: Permission gating (resource=payments, action=write) ──
+// Matrix: payments/write = [owner, admin, contador, cobrador]. `member` queda fuera.
+// Mirror de T-25 sobre purchases. Cierra W-1 del verify report.
+
+describe("PurchaseForm — Permission gating (T-26)", () => {
+  it("T-26.1 — role=cobrador (granted): botón visible", () => {
+    mockRole.current = "cobrador";
+    renderForm({ status: "POSTED", payable: makePayable(1000) });
+    expect(screen.getByRole("link", { name: /registrar pago/i })).toBeInTheDocument();
+  });
+
+  it("T-26.2 — role=member (NOT granted): botón NO visible", () => {
+    mockRole.current = "member";
+    renderForm({ status: "POSTED", payable: makePayable(1000) });
+    expect(screen.queryByRole("link", { name: /registrar pago/i })).not.toBeInTheDocument();
   });
 });
