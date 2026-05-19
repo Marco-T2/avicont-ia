@@ -408,6 +408,8 @@ export class DispatchService {
       dueDate,
       sourceType: "dispatch",
       sourceId: dispatch.id,
+      sourceTypeCode:
+        input.dispatchType === "NOTA_DESPACHO" ? "ND" : "BC",
       journalEntryId,
     });
 
@@ -680,6 +682,8 @@ export class DispatchService {
       dueDate,
       sourceType: "dispatch",
       sourceId: dispatch.id,
+      sourceTypeCode:
+        dispatch.dispatchType === "NOTA_DESPACHO" ? "ND" : "BC",
       journalEntryId,
     });
 

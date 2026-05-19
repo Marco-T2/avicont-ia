@@ -29,6 +29,7 @@ export class LegacyReceivablesAdapter implements DispatchReceivablesPort {
         dueDate: input.dueDate,
         sourceType: input.sourceType,
         sourceId: input.sourceId,
+        sourceTypeCode: input.sourceTypeCode,
         journalEntryId: input.journalEntryId,
       });
     });

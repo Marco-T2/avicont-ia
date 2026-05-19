@@ -10,6 +10,13 @@ export interface CreateReceivableInput {
   dueDate: Date;
   sourceType: "dispatch";
   sourceId: string;
+  /**
+   * Denormalized doc-type code for glosa-builder LOOKUP-B (REQ-GE-5; design D7).
+   * "ND" for NOTA_DESPACHO, "BC" for BOLETA_CERRADA. Required by the glosa
+   * builder via AccountsReceivable.sourceTypeCode. Optional in this port for
+   * additive compatibility while callers migrate.
+   */
+  sourceTypeCode?: string | null;
   journalEntryId: string;
 }
 
