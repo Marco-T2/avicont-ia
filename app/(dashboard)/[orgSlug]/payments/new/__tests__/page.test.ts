@@ -313,6 +313,42 @@ describe("/payments/new — shortcut mode: cross-org (T-13)", () => {
   });
 });
 
+// ── T-14 — voided → redirect to source with ?error=voided ───────────────────
+describe("/payments/new — shortcut mode: voided (T-14)", () => {
+  it("redirects to sale detail with ?error=voided for COBRO", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({ kind: "voided" });
+
+    await expect(
+      NewPaymentPage({
+        params: makeParams(),
+        searchParams: makeSearchParams({ type: "COBRO", saleId: SALE_ID }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/${ORG_SLUG}/sales/${SALE_ID}?error=voided`,
+    );
+  });
+
+  it("redirects to purchase detail with ?error=voided for PAGO", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({ kind: "voided" });
+
+    await expect(
+      NewPaymentPage({
+        params: makeParams(),
+        searchParams: makeSearchParams({
+          type: "PAGO",
+          purchaseId: PURCHASE_ID,
+        }),
+      }),
+    ).rejects.toThrow("NEXT_REDIRECT");
+
+    expect(mockRedirect).toHaveBeenCalledWith(
+      `/${ORG_SLUG}/purchases/${PURCHASE_ID}?error=voided`,
+    );
+  });
+});
+
 /**
  * Walk the React element tree returned by the Server Component and return
  * the props of the first PaymentForm element encountered. Returns undefined
