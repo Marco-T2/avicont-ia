@@ -67,6 +67,10 @@ import {
 import { buildEntryLines } from "./helpers/build-entry-lines";
 import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import { PaymentDateOutsidePeriod } from "../domain/errors/payment-errors";
+import {
+  buildPaymentGlosa,
+  type PaymentAllocationGlosa,
+} from "../domain/payment-glosa-builder";
 
 // ── Service-layer input shapes ─────────────────────────────────────────────
 
@@ -123,6 +127,23 @@ export interface UpdatePaymentServiceInput {
 export interface LockedEditContext {
   role?: string;
   justification?: string;
+}
+
+/**
+ * Optional options for the post-time write use cases (`post`, `createAndPost`).
+ *
+ * `descriptionOverride` controls JournalEntry.description sourcing
+ * (REQ-GE-2, design D9):
+ *   - `true` or undefined (default) — passthrough: `JE.description =
+ *     payment.description` verbatim. Preserves legacy behavior — used by ALL
+ *     pre-Batch-C callers and tests.
+ *   - `false` — builder: `JE.description = buildPaymentGlosa({...})` using
+ *     the contact name (`ContactReadPort.findName`) and per-allocation
+ *     metadata (`ReceivablesPort.findGlosaMetaTx`). Used by the new payment
+ *     form (Batch C) when the user has NOT toggled Pencil to manual-edit mode.
+ */
+export interface PostPaymentOptions {
+  descriptionOverride?: boolean;
 }
 
 export interface PaymentsServiceDeps {
@@ -265,6 +286,7 @@ export class PaymentsService {
     organizationId: string,
     userId: string,
     id: string,
+    options: PostPaymentOptions = {},
   ): Promise<PaymentResult> {
     const payment = await this.getById(organizationId, id);
     // Pre-validation OUTSIDE the tx (mirror legacy)
@@ -283,7 +305,9 @@ export class PaymentsService {
       asAuditTxRepo(this.repo),
       { userId, organizationId },
       async (tx) => {
-        return this.postInternal(tx, organizationId, userId, payment, settings);
+        return this.postInternal(tx, organizationId, userId, payment, settings, {
+          descriptionOverride: options.descriptionOverride,
+        });
       },
     );
     return { payment: result, correlationId };
@@ -293,6 +317,7 @@ export class PaymentsService {
     organizationId: string,
     userId: string,
     input: CreatePaymentServiceInput,
+    options: PostPaymentOptions = {},
   ): Promise<PaymentResult> {
     const period = await this.fiscalPeriods.getById(
       organizationId,
@@ -344,7 +369,11 @@ export class PaymentsService {
           userId,
           draft,
           settings,
-          { directionOverride: direction, isCreateAndPost: true },
+          {
+            directionOverride: direction,
+            isCreateAndPost: true,
+            descriptionOverride: options.descriptionOverride,
+          },
         );
         // Apply credit sources (Modo A)
         for (const cs of input.creditSources ?? []) {
@@ -655,7 +684,11 @@ export class PaymentsService {
     userId: string,
     payment: Payment,
     settings: { cajaGeneralAccountCode: string; bancoAccountCode: string; cxcAccountCode: string; cxpAccountCode: string },
-    opts: { directionOverride?: PaymentDirection; isCreateAndPost?: boolean } = {},
+    opts: {
+      directionOverride?: PaymentDirection;
+      isCreateAndPost?: boolean;
+      descriptionOverride?: boolean;
+    } = {},
   ): Promise<Payment> {
     // 1. Resolve direction
     const allocsForDirection: AllocationDirectionInput[] = payment.allocations.map(
@@ -692,13 +725,45 @@ export class PaymentsService {
         contactId: payment.contactId,
         selectedAccountCode: payment.accountCode ?? undefined,
       });
+      // REQ-GE-2 / design D9: opt-in builder path. Builder is gated by
+      // direction === "COBRO" per REQ-GE-1 Scenario 1.5 (PAGO path stays
+      // legacy). Default (undefined/true) preserves legacy passthrough so
+      // every pre-Batch-C test keeps passing verbatim.
+      let entryDescription = payment.description;
+      if (opts.descriptionOverride === false && direction === "COBRO") {
+        const arIds = payment.allocations
+          .map((a) => a.receivableId)
+          .filter((id): id is string => Boolean(id));
+        const [contactName, metaList] = await Promise.all([
+          this.contacts.findName(tx, payment.contactId),
+          arIds.length === 0
+            ? Promise.resolve([])
+            : this.receivables.findGlosaMetaTx(tx, organizationId, arIds),
+        ]);
+        const metaById = new Map(metaList.map((m) => [m.id, m]));
+        const allocationsGlosa: PaymentAllocationGlosa[] = arIds
+          .map((id) => metaById.get(id))
+          .filter((m): m is NonNullable<typeof m> => Boolean(m))
+          .map((m) => ({
+            sourceTypeCode: m.sourceTypeCode,
+            referenceNumber: m.referenceNumber,
+            sourceDate: m.sourceDate,
+          }));
+        entryDescription = buildPaymentGlosa({
+          method: String(payment.method).toUpperCase(),
+          contactName: contactName ?? "",
+          totalAmount: payment.amount.value,
+          allocations: allocationsGlosa,
+          journalEntryDate: payment.date,
+        });
+      }
       const entry = await this.accounting.generateEntryTx(tx, {
         organizationId,
         voucherTypeCode,
         contactId: payment.contactId,
         date: payment.date,
         periodId: payment.periodId,
-        description: payment.description,
+        description: entryDescription,
         referenceNumber: payment.referenceNumber ?? undefined,
         // journal-physical-document Phase 6 — Payment already carries the
         // operationalDocTypeId selected via admin UI; forward it directly

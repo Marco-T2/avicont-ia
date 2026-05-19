@@ -8,6 +8,7 @@ import {
 import type {
   ReceivablesPort,
   ReceivableStatusValue,
+  ReceivableGlosaMeta,
 } from "../../../domain/ports/receivables.port";
 import type {
   PayablesPort,
@@ -96,6 +97,28 @@ export class FakeReceivablesPort implements ReceivablesPort {
     const err = this.revertShouldThrow.get(id);
     if (err) throw err;
     this.revertCalls.push({ id, amount: amount.value });
+  }
+
+  /**
+   * Fixture map: AR id → glosa metadata (REQ-GE-2 LOOKUP-B). Unset ids are
+   * silently omitted from the returned array — mirrors the adapter's
+   * orphan-tolerant contract (caller's builder falls back to "DOC-<refNo>").
+   */
+  glosaMeta = new Map<string, Omit<ReceivableGlosaMeta, "id">>();
+
+  async findGlosaMetaTx(
+    _tx: unknown,
+    _orgId: string,
+    arIds: string[],
+  ): Promise<ReceivableGlosaMeta[]> {
+    const out: ReceivableGlosaMeta[] = [];
+    for (const id of arIds) {
+      const meta = this.glosaMeta.get(id);
+      if (meta) {
+        out.push({ id, ...meta });
+      }
+    }
+    return out;
   }
 }
 
@@ -303,10 +326,17 @@ export class FakeAccountBalancesPort implements AccountBalancesPort {
 
 export class FakeContactReadPort implements ContactReadPort {
   types = new Map<string, ContactType>();
+  names = new Map<string, string>();
   calls: string[] = [];
+  nameCalls: string[] = [];
 
   async findType(_tx: unknown, contactId: string): Promise<ContactType | null> {
     this.calls.push(contactId);
     return this.types.get(contactId) ?? null;
+  }
+
+  async findName(_tx: unknown, contactId: string): Promise<string | null> {
+    this.nameCalls.push(contactId);
+    return this.names.get(contactId) ?? null;
   }
 }

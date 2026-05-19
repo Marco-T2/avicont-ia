@@ -29,4 +29,15 @@ export class LegacyContactReadAdapter implements ContactReadPort {
     if (row.type === "PROVEEDOR") return "PROVEEDOR";
     return "OTHER";
   }
+
+  async findName(
+    tx: unknown,
+    contactId: string,
+  ): Promise<string | null> {
+    const row = await (tx as Prisma.TransactionClient).contact.findUnique({
+      where: { id: contactId },
+      select: { name: true },
+    });
+    return row?.name ?? null;
+  }
 }

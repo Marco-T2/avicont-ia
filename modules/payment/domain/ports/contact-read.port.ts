@@ -25,4 +25,12 @@ export interface ContactReadPort {
    * Use `null` ONLY for "row not found".
    */
   findType(tx: unknown, contactId: string): Promise<ContactType | null>;
+
+  /**
+   * Returns the contact display name, or null when the contact does not
+   * exist. Used by `buildPaymentGlosa` (REQ-GE-2) to render the
+   * `<contactName>` segment of the COBRO glosa. Tx-aware so the read sits in
+   * the same audit-tx as the rest of the post.
+   */
+  findName(tx: unknown, contactId: string): Promise<string | null>;
 }
