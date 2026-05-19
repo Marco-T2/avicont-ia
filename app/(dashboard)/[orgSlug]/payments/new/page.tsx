@@ -54,6 +54,16 @@ export default async function NewPaymentPage({
         // list — same target the manual type-gate uses.
         redirect(`/${orgSlug}/payments`);
       }
+      if (shortcut.kind === "voided") {
+        // Source comprobante is VOIDED — bounce back to its detail page so
+        // the user sees the void state. `?error=voided` lets the target
+        // surface a toast in a later phase (B1 stays silent).
+        const target =
+          type === "COBRO"
+            ? `/${orgSlug}/sales/${saleId}`
+            : `/${orgSlug}/purchases/${purchaseId}`;
+        redirect(`${target}?error=voided`);
+      }
       if (shortcut.kind === "ok") {
         // DEC-1 boundary: coerce decimal balance to JS number ONCE here
         // (HALF_UP @ 2dp). Client Components never receive a Decimal.
