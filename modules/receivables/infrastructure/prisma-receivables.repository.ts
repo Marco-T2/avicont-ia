@@ -151,7 +151,10 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
         dueDate: true,
         sourceType: true,
         sourceId: true,
+        sourceTypeCode: true,
         createdAt: true,
+        sale: { select: { referenceNumber: true, date: true } },
+        dispatch: { select: { referenceNumber: true, date: true } },
       },
     });
     return rows.map((r) => ({
@@ -163,7 +166,10 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
       dueDate: r.dueDate,
       sourceType: r.sourceType,
       sourceId: r.sourceId,
+      sourceTypeCode: r.sourceTypeCode,
       createdAt: r.createdAt,
+      referenceNumber: r.sale?.referenceNumber ?? r.dispatch?.referenceNumber ?? null,
+      sourceDate: r.sale?.date ?? r.dispatch?.date ?? r.createdAt,
     }));
   }
 

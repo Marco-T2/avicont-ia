@@ -41,7 +41,10 @@ export class ReceivablesQueryAdapter implements ReceivablesQueryPort {
       dueDate: d.dueDate,
       sourceType: d.sourceType,
       sourceId: d.sourceId,
+      sourceTypeCode: d.sourceTypeCode,
       createdAt: d.createdAt,
+      referenceNumber: d.referenceNumber,
+      sourceDate: d.sourceDate,
     }));
   }
 }

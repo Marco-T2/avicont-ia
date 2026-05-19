@@ -12,7 +12,10 @@ export interface PendingDocumentSnapshot {
   dueDate: Date;
   sourceType: string | null;
   sourceId: string | null;
+  sourceTypeCode: string | null;
   createdAt: Date;
+  referenceNumber: number | null;
+  sourceDate: Date;
 }
 
 export interface PaymentForCreditCalc {

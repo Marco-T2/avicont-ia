@@ -90,7 +90,10 @@ class InMemoryReceivableRepository implements ReceivableRepository {
         dueDate: r.dueDate,
         sourceType: r.sourceType,
         sourceId: r.sourceId,
+        sourceTypeCode: null,
         createdAt: r.createdAt,
+        referenceNumber: null,
+        sourceDate: r.createdAt,
       }));
   }
 

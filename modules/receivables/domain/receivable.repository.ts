@@ -23,7 +23,24 @@ export interface PendingDocumentSnapshot {
   dueDate: Date;
   sourceType: string | null;
   sourceId: string | null;
+  /**
+   * Denormalized doc-type code for form-side glosa builder (REQ-GE-5; design D7).
+   * "VG" for sale; "ND"/"BC" for dispatch. NULL for orphans (Sale/Dispatch borrado)
+   * or rows created pre-backfill — builder fallback "DOC" at read time.
+   */
+  sourceTypeCode: string | null;
   createdAt: Date;
+  /**
+   * referenceNumber from the originating Sale or Dispatch. NULL when the source
+   * row is absent (orphan) or the field is unset on the source.
+   */
+  referenceNumber: number | null;
+  /**
+   * Date of the originating Sale or Dispatch. Falls back to `createdAt` when
+   * the source row is absent (orphan) so the form-side `formatDateConditional`
+   * always receives a Date.
+   */
+  sourceDate: Date;
 }
 
 /**
