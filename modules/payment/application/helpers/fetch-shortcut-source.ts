@@ -57,7 +57,14 @@ export interface FetchShortcutSourceParams {
 export async function fetchShortcutSource(
   params: FetchShortcutSourceParams,
 ): Promise<ShortcutSourceResult> {
-  const { orgId, saleId } = params;
+  const { orgId, saleId, purchaseId } = params;
+
+  const hasSale = Boolean(saleId);
+  const hasPurchase = Boolean(purchaseId);
+  if (hasSale === hasPurchase) {
+    // XOR: both present OR neither present → invalid.
+    return { kind: "invalid-params" };
+  }
 
   const sale = await prisma.sale.findUnique({
     where: { id: saleId as string },
