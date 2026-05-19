@@ -1,4 +1,6 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Tabs } from "radix-ui";
 import { requirePermission } from "@/features/permissions/server";
 import {
@@ -11,6 +13,7 @@ import {
   attachContacts,
 } from "@/modules/receivables/presentation/server";
 import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
+import { Button } from "@/components/ui/button";
 import ContactLedgerPageClient from "@/components/accounting/contact-ledger-page-client";
 import ReceivableList from "@/components/accounting/receivable-list";
 
@@ -97,6 +100,13 @@ export default async function CxcContactLedgerPage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/${orgSlug}/accounting/cxc`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Cuentas por Cobrar
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Libro Mayor por Cliente</h1>
         <p className="text-muted-foreground mt-1">

@@ -1,7 +1,10 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import { Button } from "@/components/ui/button";
 import { IncomeStatementPageClient } from "@/components/financial-statements/income-statement-page-client";
 
 const orgProfileService = makeOrgProfileService();
@@ -32,6 +35,13 @@ export default async function IncomeStatementPage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/${orgSlug}/informes`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Informes
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Estado de Resultados</h1>
         <p className="text-muted-foreground mt-1">

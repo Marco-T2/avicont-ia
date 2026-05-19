@@ -1,6 +1,9 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { requirePermission } from "@/features/permissions/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
+import { Button } from "@/components/ui/button";
 import CorrelationAuditView from "@/components/accounting/correlation-audit-view";
 
 interface CorrelationAuditPageProps {
@@ -27,6 +30,13 @@ export default async function CorrelationAuditPage({
 
   return (
     <div className="space-y-6">
+      <Link href={`/${orgSlug}/informes`}>
+        <Button variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Informes
+        </Button>
+      </Link>
+
       <div>
         <h1 className="text-3xl font-bold">Auditoría de Correlativos</h1>
         <p className="text-muted-foreground mt-1">
