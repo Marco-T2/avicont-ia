@@ -68,6 +68,20 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   });
 });
 
+describe("fetchShortcutSource — not-found", () => {
+  it("returns not-found when prisma.sale.findUnique resolves to null", async () => {
+    mockSaleFindUnique.mockResolvedValueOnce(null);
+
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "COBRO",
+      saleId: "non-existent",
+    });
+
+    expect(result.kind).toBe("not-found");
+  });
+});
+
 describe("fetchShortcutSource — cross-org rejection", () => {
   it("returns cross-org when sale.organizationId does not match orgId", async () => {
     mockSaleFindUnique.mockResolvedValueOnce({
