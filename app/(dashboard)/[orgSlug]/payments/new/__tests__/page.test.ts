@@ -278,6 +278,24 @@ describe("/payments/new — shortcut mode: ok → initialValues (T-11)", () => {
   });
 });
 
+// ── T-12 — not-found → notFound() ───────────────────────────────────────────
+describe("/payments/new — shortcut mode: not-found (T-12)", () => {
+  it("calls Next.js notFound() when helper returns not-found", async () => {
+    mockFetchShortcutSource.mockResolvedValueOnce({ kind: "not-found" });
+
+    await expect(
+      NewPaymentPage({
+        params: makeParams(),
+        searchParams: makeSearchParams({ type: "COBRO", saleId: SALE_ID }),
+      }),
+    ).rejects.toThrow("NEXT_NOT_FOUND");
+
+    expect(mockNotFound).toHaveBeenCalledTimes(1);
+    // Page must NOT continue past notFound() — no redirect should fire.
+    expect(mockRedirect).not.toHaveBeenCalled();
+  });
+});
+
 /**
  * Walk the React element tree returned by the Server Component and return
  * the props of the first PaymentForm element encountered. Returns undefined
