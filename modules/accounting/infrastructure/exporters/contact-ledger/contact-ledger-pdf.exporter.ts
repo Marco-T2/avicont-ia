@@ -151,19 +151,10 @@ function humanPaymentMethod(
 }
 
 function renderTipo(entry: ContactLedgerEntry): string {
-  // DT — código operacional físico (Marco QA): el cobrador necesita ver
-  // VG/RC/ND/BC/FL/PF/CG/SV en lugar del label genérico.
-  //
-  // Orden de prioridad mirror UI page-client per
-  // [[paired_sister_default_no_surface]]:
-  //   1. withoutAuxiliary → "Ajuste".
-  //   2. documentTypeCode + payment → "${code} (${formaPago})".
-  //   3. documentTypeCode plano → code.
-  //   4. Fallback legacy cuando documentTypeCode=null.
-
-  if (entry.withoutAuxiliary) {
-    return "Ajuste";
-  }
+  // Mirror UI page-client renderTipo per [[paired_sister_default_no_surface]].
+  // documentTypeCode del JE manda; withoutAuxiliary NO bloquea el code —
+  // asientos manuales pueden llevar doc físico vía el dropdown del SDD
+  // journal-physical-document. Fallback por sourceType solo si code=null.
 
   const src = entry.sourceType?.toLowerCase() ?? null;
   const code = entry.documentTypeCode;
@@ -199,11 +190,9 @@ function renderTipo(entry: ContactLedgerEntry): string {
 //   - PARTIAL → "Parcial"
 //   - PENDING → "Pendiente" (unless dueDate < hoy → "ATRASADO" runtime)
 //   - VOIDED / CANCELLED → "Anulado"
-//   - withoutAuxiliary=true → "Sin auxiliar"
-//   - null (RECEIPT/PAYMENT) → "—"
+//   - null (payment-only o asiento manual sin auxiliar) → "—"
 
 function renderEstado(entry: ContactLedgerEntry): string {
-  if (entry.withoutAuxiliary) return "Sin auxiliar";
   const status = entry.status;
   if (status == null) return "—";
 

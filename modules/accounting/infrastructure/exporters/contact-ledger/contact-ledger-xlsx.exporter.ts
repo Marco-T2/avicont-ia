@@ -114,12 +114,9 @@ function humanPaymentMethod(
 }
 
 function renderTipo(entry: ContactLedgerEntry): string {
-  // DT — código operacional físico (Marco QA). Mirror UI/PDF per
-  // [[paired_sister_default_no_surface]].
-
-  if (entry.withoutAuxiliary) {
-    return "Ajuste";
-  }
+  // Mirror UI/PDF per [[paired_sister_default_no_surface]]. documentTypeCode
+  // del JE manda; withoutAuxiliary NO bloquea el code (asientos manuales con
+  // doc físico vía dropdown SDD journal-physical-document).
 
   const src = entry.sourceType?.toLowerCase() ?? null;
   const code = entry.documentTypeCode;
@@ -151,7 +148,6 @@ function renderTipo(entry: ContactLedgerEntry): string {
 // ── Estado cell derivation ────────────────────────────────────────────────────
 
 function renderEstado(entry: ContactLedgerEntry): string {
-  if (entry.withoutAuxiliary) return "Sin auxiliar";
   const status = entry.status;
   if (status == null) return "—";
 

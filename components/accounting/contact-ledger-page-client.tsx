@@ -21,7 +21,6 @@ import {
   Printer,
   FileSpreadsheet,
   Loader2,
-  AlertTriangle,
 } from "lucide-react";
 import type { Contact } from "@/modules/contacts/presentation/index";
 import type { ContactType } from "@/generated/prisma/client";
@@ -122,20 +121,11 @@ function humanPaymentMethod(
 }
 
 function renderTipo(entry: ContactLedgerEntry): string {
-  // DT — código operacional físico (Marco QA): el cobrador necesita ver el
-  // código del documento físico (VG, RC, ND, BC, FL, etc.) para saber qué
-  // documento ir a buscar. Tiene precedencia sobre el label genérico.
-  //
-  // Orden de prioridad:
-  //   1. withoutAuxiliary → "Ajuste" (sin code, asiento manual).
-  //   2. documentTypeCode + sourceType=payment → "${code} (${formaPago})".
-  //   3. documentTypeCode plano → ${code} (VG, ND, BC, FL, PF, CG, SV).
-  //   4. fallback legacy (documentTypeCode=null): payment → "Cobranza"/"Pago";
-  //      sale → voucherTypeHuman; purchase → voucherTypeHuman; null → "Ajuste".
-
-  if (entry.withoutAuxiliary) {
-    return "Ajuste";
-  }
+  // Precedencia: documentTypeCode del JE manda. Solo si no llega code, caer
+  // al fallback por sourceType (payment → "Cobranza"/"Pago", sale/purchase →
+  // voucherTypeHuman, sino "Ajuste"). withoutAuxiliary NO bloquea el code —
+  // asientos manuales pueden tener doc físico vía el dropdown introducido por
+  // SDD journal-physical-document.
 
   const src = entry.sourceType?.toLowerCase() ?? null;
   const code = entry.documentTypeCode;
@@ -149,11 +139,7 @@ function renderTipo(entry: ContactLedgerEntry): string {
   }
 
   // BF3 fallback — producción usa `sourceType="payment"` para AMBAS direcciones
-  // (cobranza y pago). El discriminador real es `paymentDirection`:
-  //   COBRO → "Cobranza ..."
-  //   PAGO  → "Pago ..."
-  //   null  → fallback a "Pago" (legacy fixtures + edge case).
-  // `sourceType="receipt"` se conserva por back-compat.
+  // (cobranza y pago). Discriminador real: `paymentDirection`.
   if (src === "payment" || src === "receipt") {
     const pm = humanPaymentMethod(entry.paymentMethod, entry.bankAccountName);
     const dir = entry.paymentDirection;
@@ -167,7 +153,6 @@ function renderTipo(entry: ContactLedgerEntry): string {
   if (src === "purchase") {
     return entry.voucherTypeHuman || "Compra";
   }
-  // null sourceType — manual fallback.
   return "Ajuste";
 }
 
@@ -176,18 +161,13 @@ function renderTipo(entry: ContactLedgerEntry): string {
 //   - PARTIAL → "Parcial"
 //   - PENDING → "Pendiente" (unless dueDate < hoy → "ATRASADO" runtime)
 //   - VOIDED / CANCELLED → "Anulado"
-//   - withoutAuxiliary=true → "Sin auxiliar" with warning icon
-//   - null → "—"
+//   - null (payment-only o asiento manual sin auxiliar) → "—"
 type EstadoDisplay = {
   label: string;
-  variant: "default" | "warning" | "destructive" | "muted";
+  variant: "default" | "destructive" | "muted";
 };
 
 function renderEstado(entry: ContactLedgerEntry): EstadoDisplay {
-  if (entry.withoutAuxiliary) {
-    return { label: "Sin auxiliar", variant: "warning" };
-  }
-
   const status = entry.status;
   if (status === null || status === undefined) {
     return { label: "—", variant: "muted" };
@@ -551,18 +531,7 @@ export default function ContactLedgerPageClient({
                             {entry.documentReferenceNumber ?? String(entry.entryNumber)}
                           </td>
                           <td className="py-3 px-4">
-                            {estado.variant === "warning" ? (
-                              <span
-                                className="inline-flex items-center gap-1 text-warning"
-                                aria-label="Sin auxiliar"
-                              >
-                                <AlertTriangle
-                                  className="h-4 w-4"
-                                  aria-hidden="true"
-                                />
-                                {estado.label}
-                              </span>
-                            ) : estado.variant === "destructive" ? (
+                            {estado.variant === "destructive" ? (
                               <span className="font-semibold text-destructive">
                                 {estado.label}
                               </span>

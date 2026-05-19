@@ -91,9 +91,11 @@ export interface ContactLedgerEntry extends LedgerEntry {
   /** Código del documento operacional físico para la columna "Tipo":
    *  VG (Venta General — Sale), ND/BC (Dispatch), FL/PF/CG/SV (Purchase),
    *  RC/RE/RI/etc (Payment.operationalDocType.code — configurable por org).
-   *  Null cuando el row es asiento manual sin auxiliar (UI muestra "Ajuste")
-   *  o cuando el Payment no tiene operationalDocType wired. El cobrador usa
-   *  este código para identificar qué documento físico ir a buscar. */
+   *  Null cuando el JE no tiene `operationalDocTypeId` (legacy pre-SDD
+   *  journal-physical-document, o Payment sin operationalDocType wired). UI
+   *  muestra "Ajuste" como fallback final SOLO cuando este code es null. El
+   *  cobrador usa este código para identificar qué documento físico ir a
+   *  buscar. */
   documentTypeCode: string | null;
   /** DT4 — sequence raw del documento fuente (sin prefijo, sin padding):
    *  p.ej. "1", "42", "5". Source per sourceType:
@@ -103,8 +105,10 @@ export interface ContactLedgerEntry extends LedgerEntry {
    *    - payment  → Payment.referenceNumber (nullable — el dato físico
    *      capturado por el operador; si NO está, este campo es null y la
    *      UI cae al raw `entryNumber` del JournalEntry contable).
-   *  Null para asiento manual sin auxiliar (no hay documento físico). El
-   *  prefijo operacional (VG/RC/ND/etc.) se surfacea en la columna "Tipo"
+   *  Null cuando el JE no tiene `referenceNumber` (legacy pre-SDD
+   *  journal-physical-document, o asiento manual sin doc físico asignado vía
+   *  el dropdown). El prefijo operacional (VG/RC/ND/etc.) se surfacea en
+   *  la columna "Tipo"
    *  vía `documentTypeCode` — antes este campo combinaba ambos pero se
    *  consideró ruido visual (QA Marco). Formato `${prefix}-${padded}`
    *  retirado per REQ-DISPLAY-2. */
