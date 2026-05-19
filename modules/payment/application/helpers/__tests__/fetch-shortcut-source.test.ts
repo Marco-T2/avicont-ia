@@ -68,6 +68,31 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   });
 });
 
+describe("fetchShortcutSource — fully-paid source", () => {
+  it("returns fully-paid when receivable.balance is exactly Decimal(0)", async () => {
+    mockSaleFindUnique.mockResolvedValueOnce({
+      id: "clxabc123",
+      organizationId: ORG,
+      status: "POSTED",
+      contactId: "cnt-1",
+      sequenceNumber: 42,
+      referenceNumber: null,
+      receivable: {
+        id: "rcv-1",
+        balance: new Decimal("0"),
+      },
+    });
+
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "COBRO",
+      saleId: "clxabc123",
+    });
+
+    expect(result.kind).toBe("fully-paid");
+  });
+});
+
 describe("fetchShortcutSource — voided source", () => {
   it("returns voided when sale.status === VOIDED (correct org)", async () => {
     mockSaleFindUnique.mockResolvedValueOnce({
