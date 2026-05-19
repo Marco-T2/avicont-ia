@@ -25,6 +25,7 @@ import {
   buildSaleEntryLines,
   type SaleEntryDetail,
 } from "../domain/build-sale-entry-lines";
+import { buildSaleGlosa } from "../domain/sale-glosa-builder";
 import type { OrgSettingsReaderPort } from "../domain/ports/org-settings-reader.port";
 import type { SalePermissionsPort } from "../domain/ports/sale-permissions.port";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
@@ -62,6 +63,27 @@ export interface CreateDraftResult {
 export interface PostSaleResult {
   sale: Sale;
   correlationId: string;
+}
+
+/**
+ * Optional options for `SaleService.post`.
+ *
+ * `descriptionOverride` controls JournalEntry.description sourcing
+ * (REQ-GE-1, design D9):
+ *   - `true` or undefined (default) — passthrough: `JE.description = sale.description`
+ *     concatenated with `| ${sale.notes}` suffix when notes present. Preserves
+ *     legacy REQ-DISPLAY-3 behavior — used by ALL pre-Batch-C callers and tests.
+ *   - `false` — builder: `JE.description = buildSaleGlosa({...})` (REQ-GE-1
+ *     template). Used by the new sale form (Batch C) when the user has NOT
+ *     toggled Pencil to manual-edit mode. The same builder output flows to
+ *     `AR.description` for consistency.
+ *
+ * The flag lives on the post-time options rather than on the Sale entity so
+ * the form's Auto/Editar toggle state stays a presentation concern — the
+ * persisted `Sale.description` carries the user-visible text either way.
+ */
+export interface PostSaleOptions {
+  descriptionOverride?: boolean;
 }
 
 export interface UpdateSaleInput extends ApplySaleEditInput {
@@ -221,6 +243,7 @@ export class SaleService {
     organizationId: string,
     saleId: string,
     userId: string,
+    options: PostSaleOptions = {},
   ): Promise<PostSaleResult> {
     const required = {
       contacts: this.deps.contacts,
@@ -293,11 +316,24 @@ export class SaleService {
         const seq = await scope.sales.getNextSequenceNumberTx(organizationId);
         const numbered = posted.assignSequenceNumber(seq);
 
-        // REQ-DISPLAY-3 FUTURE-only: NO ${displayCode} prefix; preserve
-        // `| ${notes}` suffix when notes present.
-        const journalDescription = numbered.notes
-          ? `${numbered.description} | ${numbered.notes}`
-          : numbered.description;
+        // REQ-GE-1 / design D9: when the caller opts-in via
+        // `descriptionOverride: false`, JE.description is built from the
+        // canonical glosa template using already-fetched contact + line data.
+        // Default (undefined / true) preserves the REQ-DISPLAY-3 passthrough
+        // with the legacy `| ${notes}` suffix — all pre-Batch-C callers and
+        // tests rely on this behavior.
+        const journalDescription =
+          options.descriptionOverride === false
+            ? buildSaleGlosa({
+                contactName: contact.name,
+                referenceNumber: String(numbered.referenceNumber ?? ""),
+                totalAmount: numbered.totalAmount.value,
+                lineConcepts: numbered.details.map((d) => d.description),
+                saleDate: numbered.date,
+              })
+            : numbered.notes
+              ? `${numbered.description} | ${numbered.notes}`
+              : numbered.description;
 
         const journal = await scope.journalEntryFactory.generateForSale({
           organizationId,
