@@ -331,6 +331,7 @@ export class SaleService {
           dueDate,
           sourceType: "sale",
           sourceId: numbered.id,
+          sourceTypeCode: "VG",
           journalEntryId: journal.id,
         });
 
@@ -784,6 +785,7 @@ export class SaleService {
           dueDate,
           sourceType: "sale",
           sourceId: numbered.id,
+          sourceTypeCode: "VG",
           journalEntryId: journal.id,
         });
 

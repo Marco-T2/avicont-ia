@@ -57,6 +57,14 @@ export interface CreateReceivableTxData {
   dueDate: Date;
   sourceType?: string;
   sourceId?: string;
+  /**
+   * Denormalized doc-type code for glosa-builder LOOKUP-B (REQ-GE-5; design D7).
+   * "VG" for sale; "ND"/"BC" for dispatch (NOTA_DESPACHO / BOLETA_CERRADA).
+   * Optional for backwards compatibility with consumers not yet upgraded —
+   * persists as NULL when omitted. Builder fallback "DOC" handles NULL at
+   * read time (REQ-GE-5 Scenario 5.8).
+   */
+  sourceTypeCode?: string | null;
   journalEntryId?: string;
 }
 
