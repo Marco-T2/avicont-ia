@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { requirePermission } from "@/features/permissions/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
@@ -45,6 +45,10 @@ export default async function NewPaymentPage({
         saleId,
         purchaseId,
       });
+      if (shortcut.kind === "not-found") {
+        // Source comprobante does not exist — render the framework's 404.
+        notFound();
+      }
       if (shortcut.kind === "ok") {
         // DEC-1 boundary: coerce decimal balance to JS number ONCE here
         // (HALF_UP @ 2dp). Client Components never receive a Decimal.
