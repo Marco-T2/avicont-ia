@@ -129,26 +129,24 @@ export default function CxcDashboardPageClient({
 
   return (
     <>
-      {/* Filter bar */}
-      <Card>
-        <CardContent className="flex items-center gap-4 py-4">
-          <label className="flex items-center gap-2 text-sm cursor-pointer">
-            <input
-              type="checkbox"
-              checked={!includeZero}
-              onChange={handleToggleZero}
-              className="h-4 w-4 rounded border-input"
-              aria-label="Solo con saldo abierto"
-            />
-            Solo con saldo
-          </label>
-          {dashboard.total > 0 && (
-            <span className="text-sm text-muted-foreground ml-auto">
-              {dashboard.total} contacto{dashboard.total === 1 ? "" : "s"}
-            </span>
-          )}
-        </CardContent>
-      </Card>
+      {/* Filter bar — inline (no Card wrapper) */}
+      <div className="flex items-center gap-4 px-1">
+        <label className="flex items-center gap-2 text-sm cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!includeZero}
+            onChange={handleToggleZero}
+            className="h-4 w-4 rounded border-input"
+            aria-label="Solo con saldo abierto"
+          />
+          Solo con saldo
+        </label>
+        {dashboard.total > 0 && (
+          <span className="text-sm text-muted-foreground ml-auto">
+            {dashboard.total} contacto{dashboard.total === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
 
       {/* Table */}
       <Card>
