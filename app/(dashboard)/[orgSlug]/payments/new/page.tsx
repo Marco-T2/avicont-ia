@@ -5,11 +5,12 @@ import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/
 import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
+import { fetchShortcutSource } from "@/modules/payment/application/helpers/fetch-shortcut-source";
 import PaymentForm from "@/components/payments/payment-form";
 
 interface NewPaymentPageProps {
   params: Promise<{ orgSlug: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; saleId?: string; purchaseId?: string }>;
 }
 
 export default async function NewPaymentPage({
@@ -17,7 +18,7 @@ export default async function NewPaymentPage({
   searchParams,
 }: NewPaymentPageProps) {
   const { orgSlug } = await params;
-  const { type } = await searchParams;
+  const { type, saleId, purchaseId } = await searchParams;
 
   let orgId: string;
   try {
@@ -25,6 +26,27 @@ export default async function NewPaymentPage({
     orgId = result.orgId;
   } catch {
     redirect(`/${orgSlug}`);
+  }
+
+  // ── Shortcut-mode branch ────────────────────────────────────────────────
+  // When the URL carries a source id (saleId/purchaseId), call the helper
+  // BEFORE the type-gate redirect. The helper enforces XOR + type/id
+  // agreement; on `invalid-params` we fall through to the manual flow.
+  // Other rejection kinds (not-found / cross-org / voided / fully-paid)
+  // are handled in subsequent tasks (T-12..T-15).
+  if (saleId || purchaseId) {
+    if (type === "COBRO" || type === "PAGO") {
+      const shortcut = await fetchShortcutSource({
+        orgId,
+        type,
+        saleId,
+        purchaseId,
+      });
+      // For now only `invalid-params` is wired — fall through to manual form.
+      // Subsequent tasks (T-11..T-15) handle ok / not-found / cross-org /
+      // voided / fully-paid.
+      void shortcut;
+    }
   }
 
   const contactsService = makeContactsService();

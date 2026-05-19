@@ -199,15 +199,47 @@ describe("/payments/new — shortcut mode: searchParams branch (T-10)", () => {
   it("falls through to the manual form (no notFound/redirect) when helper returns invalid-params", async () => {
     mockFetchShortcutSource.mockResolvedValueOnce({ kind: "invalid-params" });
 
-    await NewPaymentPage({
+    const element = await NewPaymentPage({
       params: makeParams(),
       searchParams: makeSearchParams({ type: "COBRO", saleId: SALE_ID }),
     });
 
     expect(mockNotFound).not.toHaveBeenCalled();
     expect(mockRedirect).not.toHaveBeenCalled();
-    expect(mockPaymentForm).toHaveBeenCalled();
-    const props = mockPaymentForm.mock.calls[0][0];
-    expect(props.initialValues).toBeUndefined();
+    // The Server Component returns a React element tree without invoking the
+    // PaymentForm function. Inspect the rendered PaymentForm element's props
+    // directly via findPaymentFormProps().
+    const formProps = findPaymentFormProps(element);
+    expect(formProps).toBeDefined();
+    expect(formProps?.initialValues).toBeUndefined();
   });
 });
+
+/**
+ * Walk the React element tree returned by the Server Component and return
+ * the props of the first PaymentForm element encountered. Returns undefined
+ * if no PaymentForm element is present in the tree.
+ *
+ * The page test mocks `@/components/payments/payment-form` with a hoisted
+ * `mockPaymentForm` vi.fn — that same identity is the `type` of the rendered
+ * element, so we can compare by reference.
+ */
+function findPaymentFormProps(
+  // React element shape — minimal duck-typing avoids importing react types.
+  element: unknown,
+): Record<string, unknown> | undefined {
+  if (!element || typeof element !== "object") return undefined;
+  const node = element as { type?: unknown; props?: Record<string, unknown> };
+  if (node.type === mockPaymentForm) {
+    return node.props ?? {};
+  }
+  const children = node.props?.children;
+  if (Array.isArray(children)) {
+    for (const c of children) {
+      const found = findPaymentFormProps(c);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  return findPaymentFormProps(children);
+}
