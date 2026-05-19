@@ -56,6 +56,9 @@ next-env.d.ts
 # Editor settings (personal)
 .vscode/
 
+# Claude Code local config (per-user tooling — settings.local.json, scheduled tasks, worktrees)
+.claude/
+
 # Documentación de referencia (no es código)
 /propuestaContabilidad
 /public/estrutura.md
