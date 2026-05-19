@@ -246,7 +246,7 @@ describe("exportContactLedgerPdf — opening balance row", () => {
 });
 
 describe("exportContactLedgerPdf — Estado column", () => {
-  it("withoutAuxiliary=true → Estado cell 'Sin auxiliar'", async () => {
+  it("withoutAuxiliary=true → Estado cell '—' (collapsed into muted dash per Marco bug #3 fix; no longer 'Sin auxiliar')", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
         makeEntry({
@@ -262,7 +262,7 @@ describe("exportContactLedgerPdf — Estado column", () => {
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
     // Column 3 (index 3) = Estado en 8-col layout
-    expect(dataRow[3].text).toBe("Sin auxiliar");
+    expect(dataRow[3].text).toBe("—");
   });
 
   it("status=PENDING y dueDate < hoy → Estado 'ATRASADO'", async () => {
@@ -472,7 +472,7 @@ describe("exportContactLedgerPdf — Tipo column", () => {
     expect(dataRow[1].text).toBe("FL");
   });
 
-  it("DT — withoutAuxiliary=true → 'Ajuste' (overrides documentTypeCode si llegara)", async () => {
+  it("DT — withoutAuxiliary=true + documentTypeCode=null → 'Ajuste' (fallback final cuando no hay code)", async () => {
     const { docDef } = await exportContactLedgerPdf(
       [
         makeEntry({
@@ -489,6 +489,25 @@ describe("exportContactLedgerPdf — Tipo column", () => {
     const tableBlock = content.find((c) => c.table)!;
     const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
     expect(dataRow[1].text).toBe("Ajuste");
+  });
+
+  it("DT — withoutAuxiliary=true + documentTypeCode='RC' → 'RC' (code wins over withoutAuxiliary — Marco bug #3 fix: asiento manual con doc físico asignado vía dropdown)", async () => {
+    const { docDef } = await exportContactLedgerPdf(
+      [
+        makeEntry({
+          sourceType: null,
+          status: null,
+          withoutAuxiliary: true,
+          documentTypeCode: "RC",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const content = docDef.content as Array<{ table?: { body: unknown[][] } }>;
+    const tableBlock = content.find((c) => c.table)!;
+    const dataRow = tableBlock.table!.body[1] as Array<{ text: string }>;
+    expect(dataRow[1].text).toBe("RC");
   });
 });
 

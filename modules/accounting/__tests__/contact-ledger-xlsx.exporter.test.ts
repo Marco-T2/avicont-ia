@@ -207,7 +207,7 @@ describe("exportContactLedgerXlsx — opening balance row", () => {
 });
 
 describe("exportContactLedgerXlsx — data row Estado/Tipo cells", () => {
-  it("withoutAuxiliary=true → Estado cell 'Sin auxiliar', Tipo 'Ajuste'", async () => {
+  it("withoutAuxiliary=true (sin documentTypeCode) → Estado '—' (collapsed muted dash per Marco bug #3 fix), Tipo 'Ajuste' (fallback)", async () => {
     const buffer = await exportContactLedgerXlsx(
       [
         makeEntry({
@@ -222,8 +222,27 @@ describe("exportContactLedgerXlsx — data row Estado/Tipo cells", () => {
     const wb = await parseWorkbook(buffer);
     const sheet = wb.getWorksheet(SHEET)!;
     // row 8 col 4 = Estado, col 2 = Tipo
-    expect(sheet.getRow(8).getCell(4).value).toBe("Sin auxiliar");
+    expect(sheet.getRow(8).getCell(4).value).toBe("—");
     expect(sheet.getRow(8).getCell(2).value).toBe("Ajuste");
+  });
+
+  it("withoutAuxiliary=true + documentTypeCode='RC' → Estado '—', Tipo 'RC' (Marco bug #3 fix: asiento manual con doc físico — code wins over withoutAuxiliary)", async () => {
+    const buffer = await exportContactLedgerXlsx(
+      [
+        makeEntry({
+          status: null,
+          sourceType: null,
+          withoutAuxiliary: true,
+          documentTypeCode: "RC",
+        }),
+      ],
+      makeOpts(),
+      "Avicont SA",
+    );
+    const wb = await parseWorkbook(buffer);
+    const sheet = wb.getWorksheet(SHEET)!;
+    expect(sheet.getRow(8).getCell(4).value).toBe("—");
+    expect(sheet.getRow(8).getCell(2).value).toBe("RC");
   });
 
   it("status=PENDING + dueDate < hoy → 'ATRASADO'", async () => {

@@ -278,7 +278,39 @@ describe("ContactLedgerPageClient — Tipo column", () => {
     expect(within(row).getByText(/Pago \(efectivo\)/i)).toBeInTheDocument();
   });
 
-  it("renders 'Ajuste' for null sourceType with withoutAuxiliary=true", () => {
+  it("DT bug #3 (Marco) — withoutAuxiliary=true + documentTypeCode='RC' → 'RC' (code wins; antes pisaba con 'Ajuste' porque renderTipo chequeaba withoutAuxiliary primero. El SDD journal-physical-document introdujo el dropdown que permite asignar doc físico a asientos manuales)", () => {
+    render(
+      <ContactLedgerPageClient
+        orgSlug={ORG_SLUG}
+        contacts={makeContacts()}
+        ledger={makeLedger({
+          total: 1,
+          items: [
+            makeEntry({
+              entryId: "je-rc-manual",
+              sourceType: null,
+              voucherTypeHuman: "Comprobante de Ingreso",
+              documentTypeCode: "RC",
+              description: "Cobro manual asiento #3",
+              debit: "0.00",
+              credit: "200.00",
+              balance: "-200.00",
+              withoutAuxiliary: true,
+              status: null,
+            }),
+          ],
+        })}
+        filters={{ contactId: CONTACT_ID, dateFrom: "2025-06-01", dateTo: "2025-06-30" }}
+        typeFilter="CLIENTE"
+      />,
+    );
+
+    const row = screen.getByRole("row", { name: /Cobro manual asiento #3/i });
+    expect(within(row).getByText("RC")).toBeInTheDocument();
+    expect(within(row).queryByText("Ajuste")).toBeNull();
+  });
+
+  it("renders 'Ajuste' for null sourceType with withoutAuxiliary=true and no documentTypeCode (fallback final)", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -668,7 +700,7 @@ describe("ContactLedgerPageClient — Estado column", () => {
     expect(cells[3].textContent).toBe("—");
   });
 
-  it("renders 'Sin auxiliar' with warning icon for withoutAuxiliary=true", () => {
+  it("renders '—' (no warning) for withoutAuxiliary=true with no status (collapse 'Sin auxiliar' into muted dash per Marco bug #3 fix)", () => {
     render(
       <ContactLedgerPageClient
         orgSlug={ORG_SLUG}
@@ -697,12 +729,12 @@ describe("ContactLedgerPageClient — Estado column", () => {
     const row = screen.getByRole("row", {
       name: /Asiento manual sin auxiliar/i,
     });
-    // Warning text + icon (semantic accessible marker). The Estado cell
-    // wraps the label inside a span with aria-label "Sin auxiliar" so we
-    // assert the label, then verify the span contains the visible text.
-    const warningSpan = within(row).getByLabelText(/sin auxiliar/i);
-    expect(warningSpan).toBeInTheDocument();
-    expect(warningSpan.textContent).toMatch(/Sin auxiliar/i);
+    // Columns: Fecha | Tipo | Nº | Estado | Descripción | Debe | Haber | Saldo
+    // Estado is index 3. After Marco bug #3 fix, "Sin auxiliar" collapsed
+    // into "—" to read consistently with payment-only rows (status=null).
+    const cells = within(row).getAllByRole("cell");
+    expect(cells[3].textContent).toBe("—");
+    expect(within(row).queryByLabelText(/sin auxiliar/i)).toBeNull();
   });
 });
 
