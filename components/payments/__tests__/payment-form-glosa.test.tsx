@@ -134,4 +134,57 @@ describe("payment-form description input (post-F4 simplificación)", () => {
     // el usuario" — al editar, el builder rebuildea. Notas persiste manual.
     expect(descInput.value).toMatch(/^COBRO /);
   });
+
+  it("edit mode con allocations serialized: no crashea cuando receivable dates llegan como strings (JSON server→client)", () => {
+    // Regression: server-rendered Payment con .allocations[].receivable.*
+    // dates llega serializado como strings ISO. El form crasheaba en
+    // formatDateConditional (`date.getDate is not a function`) porque
+    // los type casts `as Date` no convertían en runtime.
+    const paymentWithSerializedDates = {
+      ...BASE_PAYMENT_EDIT,
+      allocations: [
+        {
+          id: "alloc-1",
+          paymentId: "pay-1",
+          receivableId: "ar-1",
+          payableId: null,
+          amount: 100,
+          createdAt: new Date(),
+          receivable: {
+            id: "ar-1",
+            description: "VENTA antigua",
+            amount: 100,
+            paid: 0,
+            balance: 0,
+            dueDate: "2026-06-19T00:00:00.000Z",
+            sourceType: "sale",
+            sourceId: "s-1",
+            sourceTypeCode: "VG",
+            referenceNumber: 42,
+            createdAt: "2026-05-10T00:00:00.000Z",
+          },
+          payable: null,
+        },
+      ],
+    };
+
+    expect(() =>
+      render(
+        <SystemRoleProvider role="owner">
+          <PaymentForm
+            orgSlug="test-org"
+            contacts={BASE_CONTACTS}
+            periods={[BASE_PERIOD]}
+            existingPayment={paymentWithSerializedDates as never}
+            userRole="owner"
+          />
+        </SystemRoleProvider>,
+      ),
+    ).not.toThrow();
+
+    // Description rebuildeada con el token VG-42 (sourceDate fue parseada
+    // correctamente desde el string ISO).
+    const descInput = document.getElementById("payment-description") as HTMLInputElement;
+    expect(descInput.value).toMatch(/VG-42/);
+  });
 });

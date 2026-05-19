@@ -340,8 +340,15 @@ export default function PaymentForm({
           sourceId: (t?.sourceId as string | null) ?? null,
           sourceTypeCode: (t?.sourceTypeCode as string | null) ?? null,
           referenceNumber: (t?.referenceNumber as number | null) ?? null,
-          sourceDate: (t?.sourceDate as Date | undefined) ?? (t?.createdAt as Date | undefined) ?? new Date(),
-          dueDate: (t?.dueDate as Date) ?? new Date(),
+          // JSON serialized dates llegan como strings al cliente — envolvemos
+          // siempre con new Date() para garantizar instancia (formatDateConditional
+          // crashea con `date.getDate is not a function` si llega string).
+          sourceDate: t?.sourceDate
+            ? new Date(t.sourceDate as string | Date)
+            : t?.createdAt
+              ? new Date(t.createdAt as string | Date)
+              : new Date(),
+          dueDate: t?.dueDate ? new Date(t.dueDate as string | Date) : new Date(),
           assignedAmount: String(a.amount),
           checked: true,
         };
