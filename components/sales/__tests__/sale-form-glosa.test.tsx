@@ -148,10 +148,12 @@ describe("sale-form description input (post-F4 simplificación)", () => {
     expect(screen.queryByRole("button", { name: /^auto$/i })).toBeNull();
   });
 
-  it("edit DRAFT mode: input editable + valor preservado", () => {
+  it("edit DRAFT mode: input editable; rebuilds desde builder al mount (no preserva user-typed)", () => {
     renderEditMode();
     const descInput = document.getElementById("sale-description") as HTMLInputElement;
     expect(descInput.readOnly).toBe(false);
-    expect(descInput.value).toBe("Mi glosa personalizada");
+    // Marco lock post-archive: "no importa que se borre el dato que escribió
+    // el usuario" — al editar, el builder rebuildea. Notas persiste manual.
+    expect(descInput.value).toMatch(/^VENTA: /);
   });
 });

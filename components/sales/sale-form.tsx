@@ -183,8 +183,10 @@ export default function SaleForm({
   }, 0);
 
   // ── Auto-description rebuild (REQ-GE-3 / design D9) ──
-  // Direct-invoke callback (NOT useEffect) — fires from line mutation
-  // handlers. Guard at top: if override locked, no rebuild.
+  // Auto-rebuild fires from line mutation handlers (direct invoke) AND
+  // from a useEffect below that re-dispara cuando cambian header fields
+  // (contactId, referenceNumber, date) — el callback queda fresh por
+  // useCallback con esas deps.
   const rebuildDescription = useCallback(
     (updatedLines: SaleDetailLine[]) => {
       const contactName =
@@ -205,6 +207,14 @@ export default function SaleForm({
     },
     [contacts, contactId, sale, referenceNumber, date],
   );
+
+  // Re-build description cuando cambia header (contactId, referenceNumber,
+  // date) — sin esto, registrar el referenceNumber después de agregar
+  // líneas no actualiza la glosa (Marco runtime bug).
+  useEffect(() => {
+    rebuildDescription(lines);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rebuildDescription]);
 
   // ── Manejadores de líneas ──
 
