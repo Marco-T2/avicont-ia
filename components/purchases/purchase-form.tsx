@@ -1,5 +1,6 @@
 "use client";
 
+import Decimal from "decimal.js";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -58,6 +59,16 @@ const PURCHASE_TYPE_LABEL: Record<string, string> = {
   COMPRA_GENERAL: "Compra General",
   SERVICIO: "Servicio",
 };
+
+// ── Payment shortcut predicate (DEC-1) ──
+
+function canRegisterPayment(purchase: PurchaseWithDetails): boolean {
+  return (
+    purchase.status === "POSTED" &&
+    purchase.payable != null &&
+    new Decimal(purchase.payable.balance).gt(0)
+  );
+}
 
 // ── Detail line interfaces ──
 
@@ -1478,6 +1489,17 @@ export default function PurchaseForm({
                   <span className="text-foreground">Saldo pendiente</span>
                   <span className="font-mono text-right">{formatBs(purchase.payable.balance)}</span>
                 </div>
+                {canRegisterPayment(purchase) && (
+                  <div className="pt-3">
+                    <Link
+                      href={`/${orgSlug}/payments/new?type=PAGO&purchaseId=${purchase.id}`}
+                    >
+                      <Button type="button" className="w-full">
+                        Registrar pago
+                      </Button>
+                    </Link>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
