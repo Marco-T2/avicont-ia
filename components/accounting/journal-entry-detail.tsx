@@ -164,7 +164,9 @@ export default function JournalEntryDetail({
                 <CardTitle className="text-2xl">Asiento #{entry.number}</CardTitle>
                 <Badge className={statusBadge.className}>{statusBadge.label}</Badge>
               </div>
-              <p className="text-muted-foreground mt-1">{entry.description}</p>
+              {entry.description && (
+                <p className="text-muted-foreground mt-1">{entry.description}</p>
+              )}
             </div>
 
             {/* Action buttons */}

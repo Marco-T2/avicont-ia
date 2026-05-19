@@ -251,3 +251,46 @@ describe("JournalEntryDetail — display-date TZ-safe (REQ-D.2)", () => {
     expect(dateEls.length).toBeGreaterThanOrEqual(1);
   });
 });
+
+// ── T-28 RED: empty description must NOT render an empty <p> (design D10) ──
+//
+// RED expected failure mode: the unguarded `<p>{entry.description}</p>` at
+// journal-entry-detail.tsx:167 renders even when description is "". Asserting
+// no `<p>` with the description className text node passes only after T-29
+// guards the render with `{entry.description && <p>...</p>}`.
+
+describe("JournalEntryDetail — empty description guard (design D10)", () => {
+  it("T-28 — entry.description = '' → no description <p> in DOM", () => {
+    const entry = makeDetailEntry({ description: "" });
+    const { container } = renderOwner(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={entry as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />,
+    );
+    // The description <p> uses class "text-muted-foreground mt-1" inside the
+    // header card. After the guard it must NOT be rendered when description=''.
+    const ps = container.querySelectorAll("p.text-muted-foreground.mt-1");
+    // Ensure no empty paragraph with the description shape exists.
+    ps.forEach((p) => {
+      expect(p.textContent ?? "").not.toBe("");
+    });
+  });
+
+  it("T-28.2 — entry.description = 'Asiento de prueba' → description <p> renders", () => {
+    const entry = makeDetailEntry({ description: "Asiento de prueba" });
+    renderOwner(
+      <JournalEntryDetail
+        orgSlug="test-org"
+        entry={entry as any}
+        periodName="Abril 2026"
+        periodStatus="OPEN"
+        voucherTypeName="Egreso"
+      />,
+    );
+    expect(screen.getByText("Asiento de prueba")).toBeInTheDocument();
+  });
+});
