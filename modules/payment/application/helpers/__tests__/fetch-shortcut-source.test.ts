@@ -68,6 +68,33 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   });
 });
 
+describe("fetchShortcutSource — invalid-params XOR (saleId vs purchaseId)", () => {
+  it("returns invalid-params when both saleId and purchaseId are provided", async () => {
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "COBRO",
+      saleId: "sale-1",
+      purchaseId: "pch-1",
+    });
+
+    expect(result.kind).toBe("invalid-params");
+    // Helper should reject BEFORE hitting Prisma — assert no DB call.
+    expect(mockSaleFindUnique).not.toHaveBeenCalled();
+    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+  });
+
+  it("returns invalid-params when neither saleId nor purchaseId is provided", async () => {
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "COBRO",
+    });
+
+    expect(result.kind).toBe("invalid-params");
+    expect(mockSaleFindUnique).not.toHaveBeenCalled();
+    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+  });
+});
+
 describe("fetchShortcutSource — fully-paid source", () => {
   it("returns fully-paid when receivable.balance is exactly Decimal(0)", async () => {
     mockSaleFindUnique.mockResolvedValueOnce({
