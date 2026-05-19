@@ -68,6 +68,31 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   });
 });
 
+describe("fetchShortcutSource — voided source", () => {
+  it("returns voided when sale.status === VOIDED (correct org)", async () => {
+    mockSaleFindUnique.mockResolvedValueOnce({
+      id: "clxabc123",
+      organizationId: ORG,
+      status: "VOIDED",
+      contactId: "cnt-1",
+      sequenceNumber: 42,
+      referenceNumber: null,
+      receivable: {
+        id: "rcv-1",
+        balance: new Decimal("1000.00"),
+      },
+    });
+
+    const result = await fetchShortcutSource({
+      orgId: ORG,
+      type: "COBRO",
+      saleId: "clxabc123",
+    });
+
+    expect(result.kind).toBe("voided");
+  });
+});
+
 describe("fetchShortcutSource — not-found", () => {
   it("returns not-found when prisma.sale.findUnique resolves to null", async () => {
     mockSaleFindUnique.mockResolvedValueOnce(null);
