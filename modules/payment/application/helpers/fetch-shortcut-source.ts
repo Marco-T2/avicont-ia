@@ -64,6 +64,10 @@ export async function fetchShortcutSource(
     include: { receivable: true },
   });
 
+  if (sale!.organizationId !== orgId) {
+    return { kind: "cross-org" };
+  }
+
   return {
     kind: "ok",
     source: {
@@ -79,6 +83,4 @@ export async function fetchShortcutSource(
       defaultDescription: `Cobro Venta #${sale!.sequenceNumber}`,
     },
   };
-  // orgId reserved for org-check (T-02 GREEN)
-  void orgId;
 }
