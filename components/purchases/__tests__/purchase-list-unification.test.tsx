@@ -39,7 +39,10 @@ const BASE_PURCHASE = {
   date: new Date("2026-01-15"),
   status: "POSTED",
   totalAmount: 100,
-  description: "Compra general",
+  // NOTE: must NOT equal a card/filter label (e.g. "Compra General") — the
+  // Detalle column renders this verbatim and C.1.2 asserts no element exactly
+  // matches /^compra general$/i.
+  description: "Compra de insumos varios",
   referenceNumber: null,
   notes: null,
   ruta: null,
@@ -105,6 +108,22 @@ describe("PurchaseList — unified entry button (T7.1/T7.2 REQ-C.1)", () => {
     // (header + 2 data rows). Structural check, complementary to C.2.5 which validates the label mapping.
     const rows = screen.getAllByRole("row");
     expect(rows).toHaveLength(3);
+  });
+});
+
+// ── Detalle column replaces Nro ──
+
+describe("PurchaseList — Detalle column replaces Nro", () => {
+  it("renders a 'Detalle' column header and drops the 'Nro' header", () => {
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
+    const headers = screen.getAllByRole("columnheader").map((h) => h.textContent?.trim());
+    expect(headers).toContain("Detalle");
+    expect(headers).not.toContain("Nro");
+  });
+
+  it("renders the row description in the Detalle cell", () => {
+    render(<PurchaseList orgSlug="test-org" items={[BASE_PURCHASE as any]} total={1} page={1} pageSize={25} totalPages={1} />);
+    expect(screen.getByText("Compra de insumos varios")).toBeInTheDocument();
   });
 });
 

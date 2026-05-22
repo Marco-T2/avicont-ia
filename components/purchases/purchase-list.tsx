@@ -322,17 +322,31 @@ export default function PurchaseList({
       <Card>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
+            {/* `table-fixed` + colgroup: column widths are declared once and
+                honored regardless of cell content, so every row lines up. The
+                `Detalle` column has no fixed width — it absorbs the remaining
+                space and truncates long glosas (full text via `title`). */}
+            <table className="w-full table-fixed text-sm">
+              <colgroup>
+                <col className="w-[104px]" /> {/* Fecha */}
+                <col className="w-[150px]" /> {/* Tipo */}
+                <col className="w-[80px]" /> {/* Ref. */}
+                <col className="w-[180px]" /> {/* Proveedor */}
+                <col /> {/* Detalle — flexes */}
+                <col className="w-[128px]" /> {/* Total */}
+                <col className="w-[116px]" /> {/* Estado */}
+                <col className="w-[56px]" /> {/* Opciones */}
+              </colgroup>
               <thead>
                 <tr className="border-b bg-muted/50">
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Fecha</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Tipo</th>
-                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Nro</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Ref.</th>
                   <th className="text-left py-3 px-4 font-medium text-muted-foreground">Proveedor</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Detalle</th>
                   <th className="text-right py-3 px-4 font-medium text-muted-foreground">Total</th>
                   <th className="text-center py-3 px-4 font-medium text-muted-foreground">Estado</th>
-                  <th className="w-12 py-3 px-4" />
+                  <th className="py-3 px-4" />
                 </tr>
               </thead>
               <tbody>
@@ -362,19 +376,23 @@ export default function PurchaseList({
                         <td className="py-3 px-4 whitespace-nowrap">
                           {formatDateBO(purchase.date)}
                         </td>
-                        <td className="py-3 px-4">{typeName}</td>
-                        <td className="py-3 px-4 font-mono font-medium">
-                          {purchase.sequenceNumber != null
-                            ? String(purchase.sequenceNumber)
-                            : "—"}
-                        </td>
+                        <td className="py-3 px-4 truncate">{typeName}</td>
                         <td className="py-3 px-4 font-mono text-muted-foreground">
                           {purchase.referenceNumber ?? "—"}
                         </td>
-                        <td className="py-3 px-4 text-muted-foreground">
+                        <td
+                          className="py-3 px-4 text-muted-foreground truncate"
+                          title={purchase.contact?.name ?? undefined}
+                        >
                           {purchase.contact?.name ?? "—"}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono">
+                        <td
+                          className="py-3 px-4 text-muted-foreground truncate"
+                          title={purchase.description}
+                        >
+                          {purchase.description || "—"}
+                        </td>
+                        <td className="py-3 px-4 text-right font-mono whitespace-nowrap">
                           {formatBs(purchase.totalAmount)}
                         </td>
                         <td className="py-3 px-4 text-center">

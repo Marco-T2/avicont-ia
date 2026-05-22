@@ -205,6 +205,29 @@ describe("DispatchList — type labels (REQ-2)", () => {
   });
 });
 
+describe("TransactionsList — Detalle column replaces Nro", () => {
+  it("renders a 'Detalle' column header and drops the 'Nro' header", () => {
+    renderList({ items: [SALE_ITEM] });
+    const headers = screen
+      .getAllByRole("columnheader")
+      .map((h) => h.textContent?.trim());
+    expect(headers).toContain("Detalle");
+    expect(headers).not.toContain("Nro");
+  });
+
+  it("renders the row description in the Detalle cell", () => {
+    renderList({ items: [SALE_ITEM] });
+    expect(screen.getByText("Venta de servicios")).toBeInTheDocument();
+  });
+
+  it("does not render the sequenceLabel anywhere in the table", () => {
+    renderList({ items: [SALE_ITEM, DISPATCH_ND_ITEM, DISPATCH_BC_ITEM] });
+    expect(screen.queryByText("VG-001")).toBeNull();
+    expect(screen.queryByText("ND-001")).toBeNull();
+    expect(screen.queryByText("BC-001")).toBeNull();
+  });
+});
+
 describe("DispatchList — actions menu source routing (REQ-8)", () => {
   beforeEach(() => {
     mockPush.mockClear();
@@ -212,8 +235,10 @@ describe("DispatchList — actions menu source routing (REQ-8)", () => {
 
   it("sale row click navigates to /[orgSlug]/sales/[id]", () => {
     renderList({ items: [SALE_ITEM], orgSlug: "acme" });
-    // Click the row (table row click)
-    const row = screen.getByText("VG-001").closest("tr");
+    // Click the row (table row click). Locate by contactName — the `Nro`
+    // (sequenceLabel) column was removed in favor of `Detalle`, so it is no
+    // longer a stable row anchor.
+    const row = screen.getByText("Empresa Test SA").closest("tr");
     expect(row).not.toBeNull();
     fireEvent.click(row!);
     expect(mockPush).toHaveBeenCalledWith("/acme/sales/sale-001");
@@ -221,7 +246,7 @@ describe("DispatchList — actions menu source routing (REQ-8)", () => {
 
   it("dispatch row click navigates to /[orgSlug]/dispatches/[id]", () => {
     renderList({ items: [DISPATCH_ND_ITEM], orgSlug: "acme" });
-    const row = screen.getByText("ND-001").closest("tr");
+    const row = screen.getByText("Cliente ND").closest("tr");
     expect(row).not.toBeNull();
     fireEvent.click(row!);
     expect(mockPush).toHaveBeenCalledWith("/acme/dispatches/dispatch-001");
@@ -243,7 +268,7 @@ describe("DispatchList — empty state (REQ-10)", () => {
   it("renders table rows when items present", () => {
     renderList({ items: [SALE_ITEM] });
     expect(screen.queryByTestId("dispatch-list-empty")).toBeNull();
-    expect(screen.getByText("VG-001")).toBeInTheDocument();
+    expect(screen.getByText("Venta de servicios")).toBeInTheDocument();
   });
 });
 
