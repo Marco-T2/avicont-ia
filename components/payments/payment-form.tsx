@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, ArrowLeft, CheckSquare, CheckCircle, XCircle } from "lucide-react";
+import { Loader2, ArrowLeft, CheckSquare, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import Link from "next/link";
 import type { FiscalPeriod } from "@/generated/prisma/client";
@@ -31,7 +31,6 @@ import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/pa
 import type { PaymentDirection, PaymentMethod, CreditAllocationSource } from "@/modules/payment/presentation/server";
 import type { PendingDocument } from "@/modules/contact-balances/presentation/index";
 import type { ShortcutInitialValues } from "@/modules/payment/application/types/shortcut-initial-values";
-import { JustificationModal } from "@/components/shared/justification-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
@@ -132,7 +131,6 @@ interface PaymentFormProps {
   contacts: ContactOption[];
   periods: FiscalPeriod[];
   existingPayment?: PaymentWithRelations;
-  userRole?: string;
   defaultType?: "COBRO" | "PAGO";
   operationalDocTypes?: DocTypeOption[];
   cashAccounts?: AccountOption[];
@@ -155,7 +153,6 @@ export default function PaymentForm({
   contacts,
   periods,
   existingPayment,
-  userRole,
   defaultType,
   operationalDocTypes = [],
   cashAccounts = [],
@@ -172,8 +169,10 @@ export default function PaymentForm({
   const isPosted = existingPayment?.status === "POSTED";
   const isVoided = existingPayment?.status === "VOIDED";
   const isLocked = existingPayment?.status === "LOCKED";
-  const isAdminOrOwner = userRole === "admin" || userRole === "owner";
-  const isReadOnly = isVoided || (isLocked && !isAdminOrOwner);
+  // Espejo journal (REQ-A.2): un documento LOCKED es solo lectura en la UI. El
+  // gate de auditoría backend (validateLockedEdit/REQ-A6) queda intacto, solo
+  // deja de alcanzarse porque ya no se ofrece editar bloqueados.
+  const isReadOnly = isVoided || isLocked;
 
   // Infer direction from existing payment allocations, then fallback to contact type
   function inferDirection(payment: PaymentWithRelations): PaymentDirection {
@@ -313,11 +312,6 @@ export default function PaymentForm({
   const [confirmPost, setConfirmPost] = useState(false);
   const [confirmVoid, setConfirmVoid] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
-
-  // ── Justification modal state ──
-  const [showJustification, setShowJustification] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
-  const [isJustificationLoading, setIsJustificationLoading] = useState(false);
 
   // ── Load existing allocations ──
   useEffect(() => {
@@ -1063,11 +1057,14 @@ export default function PaymentForm({
     }
   }
 
-  // ── LOCKED edit handlers ──
+  // ── POSTED edit handler — guarda directo, sin modal de justificación ──
+  // Espejo journal: editar un documento POSTED en período abierto no requiere
+  // pasos extra. LOCKED es solo lectura, así que ya no hay handlers de edición
+  // bloqueada (handleLockedSave/handleLockedVoid eliminados).
 
-  async function handleLockedSave(justification: string) {
+  async function handlePostedSave() {
     if (!existingPayment) return;
-    setIsJustificationLoading(true);
+    setIsSubmitting(true);
     try {
       const creditSources = buildCreditSources();
       const allocs = buildCashAllocations(creditSources);
@@ -1086,84 +1083,6 @@ export default function PaymentForm({
         operationalDocTypeId: operationalDocTypeId || null,
         referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
         accountCode: accountCode || null,
-        justification,
-      };
-
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/payments/${existingPayment.id}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Error al guardar el pago bloqueado");
-      }
-
-      toast.success("Pago actualizado");
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar el pago bloqueado");
-    } finally {
-      setIsJustificationLoading(false);
-    }
-  }
-
-  async function handleLockedVoid(justification: string) {
-    if (!existingPayment) return;
-    setIsJustificationLoading(true);
-    try {
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/payments/${existingPayment.id}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "VOIDED", justification }),
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Error al anular el pago bloqueado");
-      }
-
-      toast.success("Pago anulado");
-      router.push(`/${orgSlug}/payments`);
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al anular el pago bloqueado");
-    } finally {
-      setIsJustificationLoading(false);
-    }
-  }
-
-  // ── POSTED edit handler ──
-
-  async function handlePostedSave(justification: string) {
-    if (!existingPayment) return;
-    setIsJustificationLoading(true);
-    try {
-      const creditSources = buildCreditSources();
-      const allocs = buildCashAllocations(creditSources);
-
-      const body = {
-        method,
-        date,
-        amount: paymentAmount,
-        creditSources: creditSources.length > 0 ? creditSources : undefined,
-        direction: allocs.length === 0 ? paymentType : undefined,
-        description: description.trim(),
-        periodId,
-        contactId,
-        allocations: allocs,
-        notes: notes.trim() || undefined,
-        operationalDocTypeId: operationalDocTypeId || null,
-        referenceNumber: referenceNumber ? parseInt(referenceNumber, 10) : undefined,
-        accountCode: accountCode || null,
-        justification,
       };
 
       const response = await fetch(
@@ -1185,7 +1104,7 @@ export default function PaymentForm({
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Error al guardar el pago contabilizado");
     } finally {
-      setIsJustificationLoading(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -1888,7 +1807,7 @@ export default function PaymentForm({
       <div className="flex justify-end gap-3">
         <Link href={backHref}>
           <Button type="button" variant="outline">
-            {isVoided ? "Volver" : "Cancelar"}
+            {isReadOnly ? "Volver" : "Cancelar"}
           </Button>
         </Link>
 
@@ -1977,43 +1896,15 @@ export default function PaymentForm({
             </>
           )}
 
-          {/* LOCKED actions (admin/owner only) */}
-          {isLocked && isAdminOrOwner && (
-            <>
-              <Button
-                type="button"
-                variant="destructive"
-                onClick={() => { setPendingAction("void"); setShowJustification(true); }}
-                disabled={isJustificationLoading}
-              >
-                {isJustificationLoading && pendingAction === "void" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <XCircle className="h-4 w-4 mr-2" />
-                )}
-                Anular
-              </Button>
-              <Button
-                type="button"
-                onClick={() => { setPendingAction("save"); setShowJustification(true); }}
-                disabled={!canSubmit || isJustificationLoading}
-              >
-                {isJustificationLoading && pendingAction === "save" ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : null}
-                Guardar
-              </Button>
-            </>
-          )}
-
-          {/* Posted actions */}
+          {/* Posted actions — edición directa, sin modal de justificación
+              (espejo journal). LOCKED no aparece: es solo lectura. */}
           {isPosted && (
             <>
               <Button
                 type="button"
                 variant="destructive"
                 onClick={handleVoid}
-                disabled={isVoiding || isJustificationLoading}
+                disabled={isVoiding}
               >
                 {isVoiding ? (
                   <>
@@ -2026,10 +1917,10 @@ export default function PaymentForm({
               </Button>
               <Button
                 type="button"
-                onClick={() => { setPendingAction("save"); setShowJustification(true); }}
-                disabled={!canSubmit || isJustificationLoading}
+                onClick={handlePostedSave}
+                disabled={!canSubmit || isSubmitting}
               >
-                {isJustificationLoading && pendingAction === "save" ? (
+                {isSubmitting ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : null}
                 Guardar
@@ -2038,20 +1929,6 @@ export default function PaymentForm({
           )}
         </Gated>
       </div>
-
-      {/* Justification Modal */}
-      <JustificationModal
-        isOpen={showJustification}
-        onClose={() => { setShowJustification(false); setPendingAction(null); }}
-        onConfirm={async (justification: string) => {
-          if (pendingAction === "save" && isLocked) await handleLockedSave(justification);
-          else if (pendingAction === "save" && isPosted) await handlePostedSave(justification);
-          else if (pendingAction === "void") await handleLockedVoid(justification);
-          setShowJustification(false);
-          setPendingAction(null);
-        }}
-        isLoading={isJustificationLoading}
-      />
 
       <ConfirmDialog
         open={confirmPost}

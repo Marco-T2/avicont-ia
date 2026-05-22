@@ -70,7 +70,6 @@ function renderCreateMode() {
         contacts={BASE_CONTACTS}
         periods={[BASE_PERIOD]}
         defaultType="COBRO"
-        userRole="owner"
       />
     </SystemRoleProvider>,
   );
@@ -110,7 +109,6 @@ function renderEditMode() {
         contacts={BASE_CONTACTS}
         periods={[BASE_PERIOD]}
         existingPayment={BASE_PAYMENT_EDIT as any}
-        userRole="owner"
       />
     </SystemRoleProvider>,
   );
@@ -176,7 +174,6 @@ describe("payment-form description input (post-F4 simplificación)", () => {
             contacts={BASE_CONTACTS}
             periods={[BASE_PERIOD]}
             existingPayment={paymentWithSerializedDates as never}
-            userRole="owner"
           />
         </SystemRoleProvider>,
       ),

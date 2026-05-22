@@ -110,7 +110,6 @@ function renderCreateMode() {
         contacts={BASE_CONTACTS}
         periods={[BASE_PERIOD]}
         defaultType="COBRO"
-        userRole="owner"
       />
     </SystemRoleProvider>,
   );
