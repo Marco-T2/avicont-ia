@@ -91,14 +91,14 @@ describe("α2–α8 hex middleware.ts content sentinels", () => {
     expect(content).toMatch(/UnauthorizedError/);
   });
 
-  it("α7: hex middleware line count matches features source (10 LOC)", () => {
+  it("α7: hex middleware line count is 48 LOC (era 10; +38 por el fallback Bearer para la app móvil — Fase B mobile-bearer-cors)", () => {
     const content = readFileSync(HEX_MIDDLEWARE, "utf-8");
     const lines = content.split("\n").filter((_, i, arr) => {
       // exclude trailing empty line from count
       if (i === arr.length - 1 && arr[i] === "") return false;
       return true;
     });
-    expect(lines.length).toBe(10);
+    expect(lines.length).toBe(48);
   });
 
   it("α8: hex middleware has no @/features import (arch boundary absence)", () => {
