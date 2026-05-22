@@ -1,6 +1,14 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Server Actions: Next compara el origin del request contra el host para
+  // prevenir CSRF. Detrás del túnel (avicontai.mattbits.com) el origin difiere
+  // del host interno → sin esto, los Server Actions se rechazan EN SILENCIO.
+  experimental: {
+    serverActions: {
+      allowedOrigins: ['avicontai.mattbits.com'],
+    },
+  },
   async headers() {
     return [
       {
