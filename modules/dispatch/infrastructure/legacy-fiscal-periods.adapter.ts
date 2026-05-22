@@ -28,4 +28,19 @@ export class LegacyFiscalPeriodsAdapter implements DispatchFiscalPeriodsPort {
       endDate: period.endDate,
     };
   }
+
+  async findByDate(
+    organizationId: string,
+    date: Date,
+  ): Promise<DispatchFiscalPeriod | null> {
+    const period = await this.service.findByDate(organizationId, date);
+    if (!period) return null;
+    return {
+      id: period.id,
+      name: period.name,
+      status: period.status.value,
+      startDate: period.startDate,
+      endDate: period.endDate,
+    };
+  }
 }

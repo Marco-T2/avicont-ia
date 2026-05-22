@@ -10,6 +10,7 @@ import {
   DispatchDateOutsidePeriod,
   DispatchNoDetails,
   DispatchNotDraft,
+  DispatchPeriodNotFoundForDate,
 } from "../domain/errors/dispatch-errors";
 import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import {
@@ -75,7 +76,9 @@ export interface CreateDispatchInput {
   dispatchType: DispatchType;
   date: Date;
   contactId: string;
-  periodId: string;
+  // Optional: when absent the service resolves the period via findByDate.
+  // Web always sends it; mobile offline omits it.
+  periodId?: string;
   description: string;
   referenceNumber?: number;
   notes?: string;
@@ -83,6 +86,8 @@ export interface CreateDispatchInput {
   farmOrigin?: string;
   chickenCount?: number;
   shrinkagePct?: number;
+  // Mobile offline idempotency key — omit when creating from web.
+  clientId?: string;
   details: DetailLineInput[];
 }
 
@@ -140,6 +145,15 @@ export class DispatchService {
     organizationId: string,
     input: CreateDispatchInput,
   ): Promise<Dispatch> {
+    // Change C — idempotency: check for existing dispatch by clientId first.
+    if (input.clientId !== undefined) {
+      const existing = await this.deps.repo.findByClientId(
+        organizationId,
+        input.clientId,
+      );
+      if (existing) return existing;
+    }
+
     // Validate contact is CLIENTE
     const contact = await this.deps.contacts.getActiveById(
       organizationId,
@@ -152,10 +166,25 @@ export class DispatchService {
       );
     }
 
+    // Change B — resolve periodId when absent (mobile offline).
+    let resolvedPeriodId: string;
+    if (input.periodId !== undefined) {
+      resolvedPeriodId = input.periodId;
+    } else {
+      const periodByDate = await this.deps.fiscalPeriods.findByDate(
+        organizationId,
+        input.date,
+      );
+      if (!periodByDate) {
+        throw new DispatchPeriodNotFoundForDate(input.date);
+      }
+      resolvedPeriodId = periodByDate.id;
+    }
+
     // I12 — defense in depth: date∈período (NO valida status para preservar DRAFT en CLOSED).
     const periodForI12 = await this.deps.fiscalPeriods.getById(
       organizationId,
-      input.periodId,
+      resolvedPeriodId,
     );
     if (!isDateWithinPeriod(input.date, periodForI12)) {
       throw new DispatchDateOutsidePeriod(input.date, periodForI12.name);
@@ -188,7 +217,7 @@ export class DispatchService {
       organizationId,
       dispatchType: input.dispatchType,
       contactId: input.contactId,
-      periodId: input.periodId,
+      periodId: resolvedPeriodId,
       date: input.date,
       description: input.description,
       createdById: input.createdById,
@@ -197,6 +226,7 @@ export class DispatchService {
       farmOrigin: input.farmOrigin,
       chickenCount: input.chickenCount,
       shrinkagePct: input.shrinkagePct,
+      clientId: input.clientId,
       details: computedDetails.map((d) => ({
         description: d.description,
         boxes: d.boxes,
@@ -223,6 +253,28 @@ export class DispatchService {
     ) {
       const bcSummary = computeBcSummary(computedDetails, input.chickenCount);
       dispatch = dispatch.setBcSummary(bcSummary);
+    }
+
+    // Change C — race-safe idempotency: if the insert fails with a unique
+    // constraint violation on (organizationId, clientId), recover the winner.
+    if (input.clientId !== undefined) {
+      try {
+        return await this.deps.repo.saveTx(dispatch);
+      } catch (err) {
+        if (
+          typeof err === "object" &&
+          err !== null &&
+          "code" in err &&
+          (err as { code: unknown }).code === "P2002"
+        ) {
+          const recovered = await this.deps.repo.findByClientId(
+            organizationId,
+            input.clientId,
+          );
+          if (recovered) return recovered;
+        }
+        throw err;
+      }
     }
 
     return this.deps.repo.saveTx(dispatch);
@@ -258,10 +310,25 @@ export class DispatchService {
       }
     }
 
+    // Change B — resolve periodId when absent (mobile offline).
+    let resolvedPeriodId: string;
+    if (input.periodId !== undefined) {
+      resolvedPeriodId = input.periodId;
+    } else {
+      const periodByDate = await this.deps.fiscalPeriods.findByDate(
+        organizationId,
+        input.date,
+      );
+      if (!periodByDate) {
+        throw new DispatchPeriodNotFoundForDate(input.date);
+      }
+      resolvedPeriodId = periodByDate.id;
+    }
+
     // Validate period open
     const period = await this.deps.fiscalPeriods.getById(
       organizationId,
-      input.periodId,
+      resolvedPeriodId,
     );
     if (period.status !== "OPEN") {
       throw new ValidationError(
@@ -269,7 +336,7 @@ export class DispatchService {
         "PERIOD_CLOSED",
       );
     }
-    // I12 — date∈período (createAndPost: nace con input.date + input.periodId).
+    // I12 — date∈período (createAndPost: nace con input.date + resolvedPeriodId).
     if (!isDateWithinPeriod(input.date, period)) {
       throw new DispatchDateOutsidePeriod(input.date, period.name);
     }
@@ -321,7 +388,7 @@ export class DispatchService {
       organizationId,
       dispatchType: input.dispatchType,
       contactId: input.contactId,
-      periodId: input.periodId,
+      periodId: resolvedPeriodId,
       date: input.date,
       description: input.description,
       createdById: userId,
@@ -366,7 +433,7 @@ export class DispatchService {
       organizationId,
       contactId: input.contactId,
       date: input.date,
-      periodId: input.periodId,
+      periodId: resolvedPeriodId,
       description: journalDescription,
       sourceType: "dispatch",
       sourceId: dispatch.id,

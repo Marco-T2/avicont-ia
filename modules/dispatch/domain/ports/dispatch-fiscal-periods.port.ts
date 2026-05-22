@@ -16,4 +16,14 @@ export interface DispatchFiscalPeriodsPort {
     organizationId: string,
     periodId: string,
   ): Promise<DispatchFiscalPeriod>;
+
+  /**
+   * Resolves the fiscal period that contains the given date.
+   * Returns null when no period covers that date (mobile offline: missing period).
+   * Used by create/createAndPost when the caller omits periodId.
+   */
+  findByDate(
+    organizationId: string,
+    date: Date,
+  ): Promise<DispatchFiscalPeriod | null>;
 }

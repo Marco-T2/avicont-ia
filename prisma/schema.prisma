@@ -724,6 +724,9 @@ model Dispatch {
   journalEntryId  String?        @unique
   receivableId    String?        @unique
   notes           String?
+  // Mobile offline idempotency key — nullable so multiple web dispatches (null)
+  // don't collide; Postgres treats each NULL as distinct in a unique index.
+  clientId        String?
   createdById     String
   createdAt       DateTime       @db.Timestamptz(3) @default(now())
   updatedAt       DateTime       @db.Timestamptz(3) @updatedAt
@@ -736,6 +739,7 @@ model Dispatch {
   details         DispatchDetail[]
 
   @@unique([organizationId, dispatchType, sequenceNumber])
+  @@unique([organizationId, clientId])
   @@index([organizationId, status])
   @@index([organizationId, contactId])
   @@index([organizationId, date])

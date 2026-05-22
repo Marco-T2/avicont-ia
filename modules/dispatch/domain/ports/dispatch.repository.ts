@@ -91,4 +91,14 @@ export interface DispatchRepository {
     organizationId: string,
     source: Dispatch,
   ): Promise<Dispatch>;
+
+  /**
+   * Looks up a dispatch by mobile idempotency key.
+   * Returns null when clientId is not found (new call) or the repository
+   * implementation doesn't support idempotency (should not happen in production).
+   */
+  findByClientId(
+    organizationId: string,
+    clientId: string,
+  ): Promise<Dispatch | null>;
 }

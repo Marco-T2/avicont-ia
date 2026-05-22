@@ -49,6 +49,8 @@ export interface DispatchProps {
   totalShrinkKg: number | null;
   totalShortageKg: number | null;
   totalRealNetKg: number | null;
+  // Mobile offline idempotency key — null when created from web
+  clientId: string | null;
 }
 
 export interface CreateDispatchDraftInput {
@@ -64,6 +66,8 @@ export interface CreateDispatchDraftInput {
   farmOrigin?: string;
   chickenCount?: number;
   shrinkagePct?: number;
+  // Mobile offline idempotency key — omit when creating from web
+  clientId?: string;
   details: Omit<import("./dispatch-detail.entity").CreateDispatchDetailInput, "dispatchId">[];
 }
 
@@ -107,6 +111,7 @@ export interface DispatchSnapshot {
   totalShrinkKg: number | null;
   totalShortageKg: number | null;
   totalRealNetKg: number | null;
+  clientId: string | null;
 }
 
 export class Dispatch {
@@ -162,6 +167,7 @@ export class Dispatch {
       totalShrinkKg: null,
       totalShortageKg: null,
       totalRealNetKg: null,
+      clientId: input.clientId ?? null,
     });
   }
 
@@ -291,6 +297,9 @@ export class Dispatch {
   get totalRealNetKg(): number | null {
     return this.props.totalRealNetKg;
   }
+  get clientId(): string | null {
+    return this.props.clientId;
+  }
 
   // ── State Machine ────────────────────────────────────────────────────────
 
@@ -411,6 +420,7 @@ export class Dispatch {
       totalShrinkKg: this.props.totalShrinkKg,
       totalShortageKg: this.props.totalShortageKg,
       totalRealNetKg: this.props.totalRealNetKg,
+      clientId: this.props.clientId,
     };
   }
 }

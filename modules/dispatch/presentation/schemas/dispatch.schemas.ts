@@ -4,7 +4,7 @@ const dispatchDetailSchema = z.object({
   productTypeId: z.string().min(1).optional(),
   detailNote: z.string().max(200).optional(),
   description: z.string().min(1).max(200),
-  boxes: z.number().int().min(1),
+  boxes: z.number().int().min(0), // 0 allowed: trozado sin cajas (mobile)
   grossWeight: z.number().positive(),
   unitPrice: z.number().positive(),
   shortage: z.number().min(0).optional(), // BC only: faltante
@@ -15,7 +15,9 @@ export const createDispatchSchema = z.object({
   dispatchType: z.enum(["NOTA_DESPACHO", "BOLETA_CERRADA"]),
   date: z.coerce.date(),
   contactId: z.string().min(1),
-  periodId: z.string().min(1),
+  // periodId is optional: mobile offline omits it and the service resolves it
+  // from the date; the web always sends it explicitly (retrocompatible).
+  periodId: z.string().min(1).optional(),
   description: z.string().min(1).max(500),
   referenceNumber: z.number().int().positive().optional(),
   notes: z.string().optional(),
@@ -23,6 +25,9 @@ export const createDispatchSchema = z.object({
   chickenCount: z.number().int().positive().optional(),
   shrinkagePct: z.number().min(0).max(100).optional(),
   details: z.array(dispatchDetailSchema).min(0),
+  // clientId: mobile app generates a UUID per sale for idempotency;
+  // web omits it (retrocompatible). The service deduplicates on this key.
+  clientId: z.string().optional(),
 });
 
 export const updateDispatchSchema = z.object({
