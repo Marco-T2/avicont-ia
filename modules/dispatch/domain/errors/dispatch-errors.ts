@@ -113,3 +113,15 @@ export class DispatchDateOutsidePeriod extends ValidationError {
     this.name = "DispatchDateOutsidePeriod";
   }
 }
+
+// Mobile offline: periodId omitted and no period covers the given date.
+export class DispatchPeriodNotFoundForDate extends ValidationError {
+  constructor(date: Date) {
+    super(
+      `No se encontró un período fiscal para la fecha ${date.toISOString().slice(0, 10)}`,
+      "FISCAL_PERIOD_NOT_FOUND_FOR_DATE",
+      { date: date.toISOString().slice(0, 10) },
+    );
+    this.name = "DispatchPeriodNotFoundForDate";
+  }
+}

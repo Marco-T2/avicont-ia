@@ -164,6 +164,7 @@ function toDomainDispatch(row: Record<string, unknown>): Dispatch {
       row.totalShortageKg !== null ? Number(row.totalShortageKg) : null,
     totalRealNetKg:
       row.totalRealNetKg !== null ? Number(row.totalRealNetKg) : null,
+    clientId: (row.clientId as string | null) ?? null,
   };
 
   return Dispatch.fromPersistence(props);
@@ -262,6 +263,7 @@ export class PrismaDispatchRepository implements DispatchRepository {
         notes: dispatch.notes,
         farmOrigin: dispatch.farmOrigin,
         chickenCount: dispatch.chickenCount,
+        clientId: dispatch.clientId,
         shrinkagePct:
           dispatch.shrinkagePct !== null
             ? new Prisma.Decimal(dispatch.shrinkagePct)
@@ -461,6 +463,18 @@ export class PrismaDispatchRepository implements DispatchRepository {
       },
     });
     return this.findById(organizationId, id) as Promise<Dispatch>;
+  }
+
+  async findByClientId(
+    organizationId: string,
+    clientId: string,
+  ): Promise<Dispatch | null> {
+    const row = await this.db.dispatch.findFirst({
+      where: { organizationId, clientId },
+      include: dispatchDetailInclude,
+    });
+    if (!row) return null;
+    return toDomainDispatch(row as unknown as Record<string, unknown>);
   }
 
   async cloneToDraftTx(

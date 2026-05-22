@@ -279,6 +279,7 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
         totalShrinkKg: null,
         totalShortageKg: null,
         totalRealNetKg: null,
+        clientId: null,
       });
       expect(dispatch.id).toBe("d-1");
       expect(dispatch.status).toBe("POSTED");
@@ -357,6 +358,7 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
           totalShrinkKg: null,
           totalShortageKg: null,
           totalRealNetKg: null,
+        clientId: null,
         });
         expect(() => posted.post()).toThrow(InvalidDispatchStatusTransition);
       });
@@ -392,6 +394,7 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
           totalShrinkKg: null,
           totalShortageKg: null,
           totalRealNetKg: null,
+        clientId: null,
         });
         const voided = posted.void();
         expect(voided.status).toBe("VOIDED");
@@ -428,6 +431,7 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
           totalShrinkKg: null,
           totalShortageKg: null,
           totalRealNetKg: null,
+        clientId: null,
         });
         const locked = posted.lock();
         expect(locked.status).toBe("LOCKED");
@@ -464,6 +468,7 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
           totalShrinkKg: null,
           totalShortageKg: null,
           totalRealNetKg: null,
+        clientId: null,
         });
         expect(() => voided.post()).toThrow(DispatchVoidedImmutable);
         expect(() => voided.void()).toThrow(DispatchVoidedImmutable);
@@ -515,6 +520,7 @@ describe("POC dispatch-hex C0 — domain layer shape", () => {
         totalShrinkKg: null,
         totalShortageKg: null,
         totalRealNetKg: null,
+        clientId: null,
       });
       expect(() => posted.assertCanDelete()).toThrow(DispatchNotDraft);
     });

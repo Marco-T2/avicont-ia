@@ -50,6 +50,7 @@ function makeRepo(): DispatchRepository {
     linkJournalAndReceivableTx: async () => {},
     updateStatusTx: async (_o, _i, _s, _t, _sq) => null as never,
     cloneToDraftTx: async (_o, s) => s,
+    findByClientId: async () => null,
   };
 }
 
@@ -93,6 +94,13 @@ function makeContacts(): DispatchContactsPort {
 function makePeriods(): DispatchFiscalPeriodsPort {
   return {
     getById: async () => ({
+      id: "p-1",
+      name: "2026-01",
+      status: "OPEN",
+      startDate: new Date("2000-01-01T00:00:00.000Z"),
+      endDate: new Date("2099-12-31T23:59:59.999Z"),
+    }),
+    findByDate: async () => ({
       id: "p-1",
       name: "2026-01",
       status: "OPEN",
