@@ -47,10 +47,17 @@ export async function requirePermission(
   // member ya existen local) son 2 reads DB, sin pegar a Clerk. Sólo paga
   // el costo de Clerk API la primera vez tras borrar la tabla. Modo
   // restrictivo: el primer init exige Clerk-owner; ver EnsureFromClerkService.
-  if (!session.orgId) {
+  //
+  // Requiere el clerkOrgId de la org ACTIVA de la sesión (flujo web). Los
+  // clientes externos por Bearer (app móvil, Fase B) no traen org activa: el
+  // orgSlug viaja por la URL y la org+member ya existen en BD (creados desde la
+  // web), así que se omite el ensure y se autoriza directo por slug + membership.
+  if (session.orgId) {
+    await makeEnsureFromClerkService().ensure(session.orgId, session.userId);
+  } else if (!session.viaBearer) {
+    // Sesión web sin org activa → 403, igual que antes.
     throw new ForbiddenError();
   }
-  await makeEnsureFromClerkService().ensure(session.orgId, session.userId);
 
   const orgId = await requireOrgAccess(session.userId, orgSlug);
 

@@ -21,6 +21,27 @@ const nextConfig: NextConfig = {
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
+      {
+        // CORS para clientes externos (app móvil Expo) que consumen la API.
+        // Origin `*` es seguro acá: la auth es por Bearer (header Authorization),
+        // NO por cookies, así que no se necesita Allow-Credentials. El fetch
+        // nativo de Android ignora CORS; esto habilita además pruebas en Expo web.
+        // Nota: el preflight OPTIONS en browser requeriría un handler propio —
+        // fuera de alcance mientras el cliente sea nativo.
+        source: '/api/:path*',
+        headers: [
+          { key: 'Access-Control-Allow-Origin', value: '*' },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PATCH, DELETE, OPTIONS',
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: 'Authorization, Content-Type',
+          },
+          { key: 'Access-Control-Max-Age', value: '86400' },
+        ],
+      },
     ];
   },
   async redirects() {
