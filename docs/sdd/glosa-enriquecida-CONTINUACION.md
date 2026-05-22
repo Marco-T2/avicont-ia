@@ -1,8 +1,10 @@
 # Glosa Enriquecida Ventas+Cobros — CONTINUACIÓN (próxima sesión)
 
-> **Estado**: Feature al 80%. SDD archivada (#2987) pero 5 edge flows no contemplados rompen UX real.
+> **Estado**: ✅ COMPLETADO (2026-05-22). Las 7 fases entregadas. Bugs A-G resueltos.
+> **Verificación final**: TSC clean · suite 7149/7150 (único fail = α18 sentinel baseline pre-existente) · backfills no-op (data ya canónica: 6/6 AR con `VG`, 0 descripciones a regenerar) · browser checklist §3 Fase 7 confirmado OK por Marco.
+> **Baseline commit pre-fix**: `b2b6a717` · **HEAD final**: `4e34871f`.
+>
 > **Decisión Marco (2026-05-19)**: Push through con simplificación radical. Eliminar `descriptionOverride` flag complejo. Builder = canónico. Notas para info manual del usuario.
-> **Baseline commit pre-fix**: `b2b6a717` (último de la feature).
 
 ---
 
