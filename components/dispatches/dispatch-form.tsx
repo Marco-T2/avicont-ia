@@ -26,8 +26,6 @@ import Link from "next/link";
 import type { Contact, FiscalPeriod } from "@/generated/prisma/client";
 import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
-import { useOrgRole } from "@/components/common/use-org-role";
-import { JustificationModal } from "@/components/shared/justification-modal";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
@@ -245,20 +243,16 @@ export default function DispatchForm({
   existingDispatch,
 }: DispatchFormProps) {
   const router = useRouter();
-  const { role } = useOrgRole();
   const isBC = dispatchType === "BOLETA_CERRADA";
   const isEditMode = !!existingDispatch;
   const status = existingDispatch?.status ?? "DRAFT";
-  const isAdminOrOwner = role === "admin" || role === "owner";
   const isLocked = status === "LOCKED";
   const isPosted = status === "POSTED";
-  const isReadOnly = status === "VOIDED" || (isLocked && !isAdminOrOwner);
+  // Espejo journal (REQ-A.2): un documento LOCKED es solo lectura en la UI. El
+  // gate de auditoría backend (validateLockedEdit) queda intacto, solo deja de
+  // alcanzarse porque ya no se ofrece editar bloqueados.
+  const isReadOnly = status === "VOIDED" || isLocked;
   const isVoided = status === "VOIDED";
-
-  // ── Justification modal state ──
-  const [showJustification, setShowJustification] = useState(false);
-  const [pendingAction, setPendingAction] = useState<"save" | "void" | null>(null);
-  const [isJustificationLoading, setIsJustificationLoading] = useState(false);
 
   // ── Initialize lines from existing dispatch ──
   function initLinesFromExisting(details: ExistingDispatchDetail[]): DetailLine[] {
@@ -698,11 +692,14 @@ export default function DispatchForm({
     }
   }
 
-  // ── LOCKED edit handlers ──
+  // ── POSTED edit handler — guarda directo, sin modal de justificación ──
+  // Espejo journal: editar un documento POSTED en período abierto no requiere
+  // pasos extra. LOCKED es solo lectura, así que ya no hay handlers de edición
+  // bloqueada (handleLockedSave/handleLockedVoid eliminados).
 
-  async function handleLockedSave(justification: string) {
+  async function handlePostedSave() {
     if (!existingDispatch) return;
-    setIsJustificationLoading(true);
+    setIsSubmitting(true);
     try {
       const detailPayload = lines.map((line, i) => ({
         productTypeId: line.productTypeId || undefined,
@@ -725,7 +722,6 @@ export default function DispatchForm({
         chickenCount: isBC && chickenCount ? parseInt(chickenCount, 10) : undefined,
         shrinkagePct: isBC ? shrinkagePctNum : undefined,
         details: detailPayload,
-        justification,
       };
 
       const response = await fetch(
@@ -739,42 +735,15 @@ export default function DispatchForm({
 
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error ?? "Error al guardar el despacho bloqueado");
+        throw new Error(data.error ?? "Error al guardar el despacho contabilizado");
       }
 
       toast.success("Despacho actualizado");
       router.refresh();
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al guardar el despacho bloqueado");
+      toast.error(err instanceof Error ? err.message : "Error al guardar el despacho contabilizado");
     } finally {
-      setIsJustificationLoading(false);
-    }
-  }
-
-  async function handleLockedVoid(justification: string) {
-    if (!existingDispatch) return;
-    setIsJustificationLoading(true);
-    try {
-      const response = await fetch(
-        `/api/organizations/${orgSlug}/dispatches/${existingDispatch.id}/status`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ status: "VOIDED", justification }),
-        },
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error ?? "Error al anular el despacho bloqueado");
-      }
-
-      toast.success("Despacho anulado");
-      router.refresh();
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Error al anular el despacho bloqueado");
-    } finally {
-      setIsJustificationLoading(false);
+      setIsSubmitting(false);
     }
   }
 
@@ -1508,7 +1477,7 @@ export default function DispatchForm({
         <div className="flex gap-3">
           <Link href={backHref}>
             <Button type="button" variant="outline">
-              {isReadOnly && !isLocked ? "Volver" : "Cancelar"}
+              {isReadOnly ? "Volver" : "Cancelar"}
             </Button>
           </Link>
 
@@ -1572,36 +1541,8 @@ export default function DispatchForm({
               </>
             )}
 
-            {/* LOCKED edit actions (admin/owner only) */}
-            {isEditMode && isLocked && isAdminOrOwner && (
-              <>
-                <Button
-                  type="button"
-                  onClick={() => { setPendingAction("void"); setShowJustification(true); }}
-                  variant="destructive"
-                  disabled={isJustificationLoading}
-                >
-                  {isJustificationLoading && pendingAction === "void" ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <XCircle className="h-4 w-4 mr-2" />
-                  )}
-                  Anular
-                </Button>
-                <Button
-                  type="button"
-                  onClick={() => { setPendingAction("save"); setShowJustification(true); }}
-                  disabled={!canSubmit || isJustificationLoading}
-                >
-                  {isJustificationLoading && pendingAction === "save" ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : null}
-                  Guardar
-                </Button>
-              </>
-            )}
-
-            {/* POSTED actions */}
+            {/* POSTED actions — edición directa, sin modal de justificación
+                (espejo journal). LOCKED no aparece: es solo lectura. */}
             {isEditMode && isPosted && (
               <>
                 <Button
@@ -1615,13 +1556,10 @@ export default function DispatchForm({
                 </Button>
                 <Button
                   type="button"
-                  onClick={() => {
-                    setPendingAction("save");
-                    setShowJustification(true);
-                  }}
-                  disabled={!canSubmit || isJustificationLoading}
+                  onClick={handlePostedSave}
+                  disabled={!canSubmit || isSubmitting}
                 >
-                  {isJustificationLoading && pendingAction === "save" ? (
+                  {isSubmitting ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                   ) : null}
                   Guardar
@@ -1630,22 +1568,9 @@ export default function DispatchForm({
             )}
           </Gated>
 
-          {/* VOIDED — no actions */}
+          {/* VOIDED / LOCKED — no actions (solo lectura) */}
         </div>
       </div>
-
-      {/* Justification Modal */}
-      <JustificationModal
-        isOpen={showJustification}
-        onClose={() => { setShowJustification(false); setPendingAction(null); }}
-        onConfirm={async (justification: string) => {
-          if (pendingAction === "save") await handleLockedSave(justification);
-          else if (pendingAction === "void") await handleLockedVoid(justification);
-          setShowJustification(false);
-          setPendingAction(null);
-        }}
-        isLoading={isJustificationLoading}
-      />
 
       <ConfirmDialog
         open={confirmPost}

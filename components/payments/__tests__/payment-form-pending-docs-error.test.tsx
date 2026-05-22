@@ -41,10 +41,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/shared/justification-modal", () => ({
-  JustificationModal: () => null,
-}));
-
 // fetch mock por URL: pending-documents falla (!ok), el resto OK para aislar
 // el path bajo prueba (que NO crashee por undefined.map en unapplied/credit).
 beforeEach(() => {

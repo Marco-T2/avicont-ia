@@ -33,10 +33,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/shared/justification-modal", () => ({
-  JustificationModal: () => null,
-}));
-
 // ── Fixtures ──
 
 const BASE_PERIOD = {

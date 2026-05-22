@@ -30,10 +30,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/shared/justification-modal", () => ({
-  JustificationModal: () => null,
-}));
-
 const BASE_PERIOD = {
   id: "period-1",
   name: "Abril 2026",

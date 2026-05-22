@@ -41,10 +41,6 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/components/shared/justification-modal", () => ({
-  JustificationModal: () => null,
-}));
-
 // `fetchPendingDocuments` hits these endpoints on contactId change. In shortcut
 // mode the form should NOT clobber the pre-seeded allocation row — but the
 // effect still runs once. Mock fetch to return an empty list so the merge is
