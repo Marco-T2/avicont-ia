@@ -417,8 +417,16 @@ export default function PaymentForm({
             // Editing — merge pending docs into existing allocations
             setAllocations((prev) => mergeAllocationsWithPending(prev, resolvedPendingLines));
           }
-        } else if (!isNew) {
-          toast.error("No se pudieron cargar los documentos pendientes adicionales");
+        } else {
+          // Surfacear el fallo en AMBOS modos. Antes solo se avisaba en edición
+          // (!isNew); en alta un 4xx/5xx se tragaba en silencio y la UI caía al
+          // empty-state "No hay documentos pendientes", disfrazando un fallo de
+          // red de "el cliente no debe nada" (bug pending-documents 404).
+          toast.error(
+            isNew
+              ? "No se pudieron cargar los documentos pendientes"
+              : "No se pudieron cargar los documentos pendientes adicionales",
+          );
         }
 
         if (creditRes.ok) {
