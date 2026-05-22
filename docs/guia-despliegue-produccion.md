@@ -177,10 +177,19 @@ cd /home/marco/avicont-ia
 git pull
 pnpm install --frozen-lockfile
 pnpm prisma migrate deploy        # si hay migraciones nuevas
+pnpm prisma generate              # regenera el client (el dir generado/prisma está gitignoreado)
 pnpm build
 sudo systemctl restart avicont
 ```
 Logs en vivo: `journalctl -u avicont -f`
+
+> ⚠️ **No te saltees `pnpm prisma generate`.** El client de Prisma vive en
+> `generated/prisma`, que está **gitignoreado** (no viaja en los commits), y
+> `migrate deploy` aplica el SQL pero **NO** regenera el client. Normalmente
+> `pnpm install --frozen-lockfile` lo cubre vía postinstall, pero si una
+> migración no cambió el lockfile, el `install` es no-op y el `pnpm build`
+> rompe con un type error contra el schema nuevo. Correr `generate` explícito
+> hace el flujo idempotente y a prueba de ese caso.
 
 ---
 
