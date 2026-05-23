@@ -60,6 +60,7 @@ const BASE_PERIOD = {
 
 const BASE_CONTACTS = [
   { id: "contact-1", name: "Marco", type: "CLIENTE" },
+  { id: "supplier-1", name: "Proveedor X", type: "PROVEEDOR" },
 ];
 
 function renderCreateMode() {
@@ -113,6 +114,79 @@ function renderEditMode() {
     </SystemRoleProvider>,
   );
 }
+
+// PAGO edit-mode fixture: a payable allocation makes inferDirection() return
+// "PAGO" (allocations[0].payableId truthy) and the allocation maps to type
+// "payable". The glosa builder should rebuild the description with the PAGO
+// header + CG-1023 token (AP-3 / design D8).
+const BASE_PAYMENT_EDIT_PAGO = {
+  ...BASE_PAYMENT_EDIT,
+  contactId: "supplier-1",
+  type: "PAGO",
+  direction: "PAGO",
+  method: "TRANSFERENCIA",
+  description: "Mi glosa de pago vieja",
+  contact: { id: "supplier-1", name: "Proveedor X", type: "PROVEEDOR" },
+  allocations: [
+    {
+      id: "alloc-1",
+      paymentId: "pay-1",
+      receivableId: null,
+      payableId: "ap-1",
+      amount: 200,
+      createdAt: new Date(),
+      receivable: null,
+      payable: {
+        id: "ap-1",
+        description: "COMPRA antigua",
+        amount: 200,
+        paid: 0,
+        balance: 0,
+        dueDate: "2026-06-19T00:00:00.000Z",
+        sourceType: "purchase",
+        sourceId: "pur-1",
+        sourceTypeCode: "CG",
+        referenceNumber: 1023,
+        sourceDate: "2026-05-15T00:00:00.000Z",
+        createdAt: "2026-05-10T00:00:00.000Z",
+      },
+    },
+  ],
+};
+
+function renderEditModePago() {
+  return render(
+    <SystemRoleProvider role="owner">
+      <PaymentForm
+        orgSlug="test-org"
+        contacts={BASE_CONTACTS}
+        periods={[BASE_PERIOD]}
+        existingPayment={BASE_PAYMENT_EDIT_PAGO as never}
+      />
+    </SystemRoleProvider>,
+  );
+}
+
+describe("payment-form PAGO rebuild gate (AP-3, design D8)", () => {
+  it("edit PAGO mode: rebuilds description via glosa builder with PAGO header + CG token", () => {
+    renderEditModePago();
+    const descInput = document.getElementById(
+      "payment-description",
+    ) as HTMLInputElement;
+    // Gate must be direction-aware: PAGO triggers buildPaymentGlosa, not the
+    // pre-existing literal "Mi glosa de pago vieja".
+    expect(descInput.value).toMatch(/^PAGO TRANSFERENCIA: Proveedor X /);
+    expect(descInput.value).toMatch(/CG-1023 del 15\/05/);
+  });
+
+  it("edit COBRO mode still rebuilds (regression guard — gate did not break COBRO)", () => {
+    renderEditMode();
+    const descInput = document.getElementById(
+      "payment-description",
+    ) as HTMLInputElement;
+    expect(descInput.value).toMatch(/^COBRO /);
+  });
+});
 
 describe("payment-form description input (post-F4 simplificación)", () => {
   it("create mode: description input is editable (no readOnly, no Pencil toggle)", () => {
