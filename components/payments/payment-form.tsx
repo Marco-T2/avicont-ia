@@ -39,6 +39,10 @@ import { Gated } from "@/components/common/gated";
 import { buildPaymentGlosa } from "@/modules/payment/domain/payment-glosa-builder";
 import { FifoStrategy } from "@/modules/payment/domain/allocation-strategy";
 import { selectGlosaAllocations } from "./payment-form.glosa-helpers";
+import {
+  buildCreditSources as buildCreditSourcesPure,
+  buildCashAllocations as buildCashAllocationsPure,
+} from "./payment-form.credit-helpers";
 
 const PAYMENT_METHODS = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -810,78 +814,18 @@ export default function PaymentForm({
     // throws as last defense.
     !hasNegativeRestante;
 
-  // ── Build CreditAllocationSource[] with receivableId FIFO mapping ──
-  // For each checked credit line, distribute its assignedAmount across checked allocations
-  // in FIFO order. Creates one entry per (sourcePayment, receivable) pair.
+  // ── Credit-source / cash-allocation builders ──
+  // Pure logic lives in payment-form.credit-helpers.ts (Extract-Before-Mock;
+  // sibling precedent payment-form.glosa-helpers.ts). The credit gate is now
+  // direction-generalized (pago-credit-system Phase 6): COBRO pays receivable
+  // lines via credit, PAGO pays payable lines (AllocationTarget XOR). glosa
+  // PAGO stays OUT (rebuildDescription:754 guard) — only the credit path opens.
   function buildCreditSources(): CreditAllocationSource[] {
-    const checkedCredits = creditLines.filter(
-      (c) => c.checked && parseFloat(c.assignedAmount) > 0,
-    );
-    if (checkedCredits.length === 0) return [];
-
-    // Only receivable allocations can be paid via credit (COBRO direction)
-    const checkedReceivables = allocations
-      .filter((a) => a.checked && a.type === "receivable" && parseFloat(a.assignedAmount) > 0)
-      .sort((a, b) => {
-        const dateDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-        return dateDiff !== 0 ? dateDiff : a.id < b.id ? -1 : 1;
-      });
-
-    if (checkedReceivables.length === 0) return [];
-
-    const sources: CreditAllocationSource[] = [];
-    // Track remaining capacity per receivable
-    const receivableRemaining = new Map<string, number>(
-      checkedReceivables.map((a) => [a.id, parseFloat(a.assignedAmount) || 0]),
-    );
-
-    for (const credit of checkedCredits) {
-      let creditRemaining = parseFloat(credit.assignedAmount) || 0;
-      for (const alloc of checkedReceivables) {
-        if (creditRemaining <= 0) break;
-        const allocRemaining = receivableRemaining.get(alloc.id) ?? 0;
-        if (allocRemaining <= 0) continue;
-        const apply = Math.min(creditRemaining, allocRemaining);
-        sources.push({
-          sourcePaymentId: credit.sourcePaymentId,
-          receivableId: alloc.id,
-          amount: apply,
-        });
-        receivableRemaining.set(alloc.id, allocRemaining - apply);
-        creditRemaining -= apply;
-      }
-    }
-
-    return sources;
+    return buildCreditSourcesPure(creditLines, allocations, paymentType);
   }
 
-  // Build cash-only allocations: total assigned minus what credits cover per CxC
   function buildCashAllocations(creditSources: CreditAllocationSource[]) {
-    const creditByReceivable = new Map<string, number>();
-    for (const cs of creditSources) {
-      // CreditAllocationSource widened to XOR (receivableId | payableId,
-      // pago-credit-system). The UI still emits receivable credit only —
-      // payable credit lands in Phase 6 — so skip non-receivable sources here
-      // (none are produced today). Behavior unchanged.
-      if (!cs.receivableId) continue;
-      creditByReceivable.set(
-        cs.receivableId,
-        (creditByReceivable.get(cs.receivableId) ?? 0) + cs.amount,
-      );
-    }
-    return activeAllocations
-      .map((a) => {
-        const totalAssigned = parseFloat(a.assignedAmount) || 0;
-        const creditCovering = creditByReceivable.get(a.id) ?? 0;
-        const cashPortion = Math.max(0, totalAssigned - creditCovering);
-        return {
-          ...(a.type === "receivable"
-            ? { receivableId: a.id }
-            : { payableId: a.id }),
-          amount: cashPortion,
-        };
-      })
-      .filter((a) => a.amount > 0);
+    return buildCashAllocationsPure(creditSources, activeAllocations);
   }
 
   // ── Mode B submit (credit-only — no new payment, just apply credits) ──
