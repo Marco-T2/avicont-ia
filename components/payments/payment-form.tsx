@@ -37,6 +37,7 @@ import { formatBs } from "@/lib/format-currency";
 import { findPeriodCoveringDate } from "@/modules/fiscal-periods/presentation/index";
 import { Gated } from "@/components/common/gated";
 import { buildPaymentGlosa } from "@/modules/payment/domain/payment-glosa-builder";
+import { FifoStrategy } from "@/modules/payment/domain/allocation-strategy";
 import { selectGlosaAllocations } from "./payment-form.glosa-helpers";
 
 const PAYMENT_METHODS = [
@@ -542,52 +543,78 @@ export default function PaymentForm({
     );
   }
 
+  // Select all lines: Aplicar = full Saldo per line. One-way — no write-back to
+  // Importe recibido (REQ-PAY-1); Restante recomputes from the new applied total.
   function selectAll() {
-    setAllocations((prev) => {
-      const updated = prev.map((a) => ({ ...a, checked: true, assignedAmount: String(a.balance) }));
-      const totalChecked = updated.reduce((sum, a) => sum + a.balance, 0);
-      const totalCredits = creditLines
-        .filter((c) => c.checked)
-        .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
-      const cashNeeded = Math.max(0, totalChecked - totalCredits);
-      setAmountOverride(cashNeeded > 0 ? String(cashNeeded) : "");
-      return updated;
-    });
+    setAllocations((prev) =>
+      prev.map((a) => ({ ...a, checked: true, assignedAmount: String(a.balance) })),
+    );
   }
 
+  // Checking a line fills "Aplicar" per REQ-PAY-1 (one-way; NO write-back to
+  // Importe recibido — that two-way binding loop is removed):
+  //   - budget blank → Aplicar = Saldo (full balance).
+  //   - budget set   → Aplicar = min(Saldo, Restante) where Restante is the
+  //     budget minus what is already applied (DEC-1 Decimal math).
   function handleCheckToggle(id: string, checked: boolean) {
-    setAllocations((prev) => {
-      const updated = prev.map((line) => {
+    setAllocations((prev) =>
+      prev.map((line) => {
         if (line.id !== id) return line;
         if (!checked) return { ...line, checked: false, assignedAmount: "0" };
-        const currentApplied = prev
+
+        // Unset budget (blank or ≤ 0) → fill the full Saldo (REQ-PAY-1).
+        const budgetVal = parseFloat(amountOverride);
+        const budgetBlank =
+          !amountOverride ||
+          amountOverride.trim() === "" ||
+          isNaN(budgetVal) ||
+          budgetVal <= 0;
+        const balance = new Decimal(line.balance);
+
+        if (budgetBlank) {
+          return { ...line, checked: true, assignedAmount: String(balance.toNumber()) };
+        }
+
+        // Restante = budget − already-applied cash demand on OTHER checked lines.
+        const budget = new Decimal(budgetVal);
+        const alreadyApplied = prev
           .filter((l) => l.id !== id && l.checked)
-          .reduce((sum, l) => sum + (parseFloat(l.assignedAmount) || 0), 0);
-        const paymentAmt = parseFloat(amountOverride) || 0;
-        const currentCreditTotal = creditLines
-          .filter((c) => c.checked)
-          .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
-        const totalFunds = paymentAmt + currentCreditTotal;
-        const remaining = totalFunds > 0
-          ? Math.max(0, totalFunds - currentApplied)
-          : line.balance;
-        const fillAmount = Math.min(line.balance, remaining);
-        return { ...line, checked: true, assignedAmount: String(fillAmount) };
-      });
+          .reduce(
+            (sum, l) => sum.plus(new Decimal(parseFloat(l.assignedAmount) || 0)),
+            new Decimal(0),
+          );
+        const remaining = Decimal.max(0, budget.minus(alreadyApplied));
+        const fill = Decimal.min(balance, remaining);
+        return { ...line, checked: true, assignedAmount: String(fill.toNumber()) };
+      }),
+    );
+  }
 
-      // Update importe recibido to reflect cash needed:
-      // Cash needed = total checked allocations - total credits
-      const totalChecked = updated
-        .filter((a) => a.checked)
-        .reduce((sum, a) => sum + (parseFloat(a.assignedAmount) || 0), 0);
-      const totalCredits = creditLines
-        .filter((c) => c.checked)
-        .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
-      const cashNeeded = Math.max(0, totalChecked - totalCredits);
-      setAmountOverride(cashNeeded > 0 ? String(cashNeeded) : "");
-
-      return updated;
-    });
+  // ── Auto-FIFO (REQ-PAY-6) — distribute the budget across invoice lines via
+  // the domain FifoStrategy (oldest dueDate first). Manual per-line override
+  // remains available afterward (Scenario O). One-way: writes Aplicar only.
+  function handleAutoFifo() {
+    const typed = parseFloat(amountOverride);
+    const budgetBlank =
+      !amountOverride || amountOverride.trim() === "" || isNaN(typed) || typed <= 0;
+    const budget = budgetBlank
+      ? allocations.reduce(
+          (sum, a) => sum.plus(new Decimal(a.balance)),
+          new Decimal(0),
+        ).toNumber()
+      : typed;
+    const strategy = new FifoStrategy();
+    const distribution = strategy.distribute(
+      budget,
+      allocations.map((a) => ({ id: a.id, dueDate: new Date(a.dueDate), saldo: a.balance })),
+    );
+    const byId = new Map(distribution.map((d) => [d.id, d.applied]));
+    setAllocations((prev) =>
+      prev.map((a) => {
+        const applied = byId.get(a.id) ?? 0;
+        return { ...a, checked: applied > 0, assignedAmount: String(applied) };
+      }),
+    );
   }
 
   function handleAmountBlur() {
@@ -606,46 +633,91 @@ export default function PaymentForm({
       return;
     }
 
-    // FIFO allocation of cash amount across invoices
+    // FIFO allocation of total funds (cash + checked credit) across invoices.
+    // DEC-1: delegate to the domain FifoStrategy (MonetaryAmount math) instead
+    // of inline float-cents arithmetic — the strategy owns the distribution rule
+    // (REQ-PAY-6), shared with the explicit "Aplicar automático" button.
     const currentCreditTotal = creditLines
       .filter((c) => c.checked)
-      .reduce((sum, c) => sum + (parseFloat(c.assignedAmount) || 0), 0);
-    const totalFunds = parsed + currentCreditTotal;
+      .reduce(
+        (sum, c) => sum.plus(new Decimal(parseFloat(c.assignedAmount) || 0)),
+        new Decimal(0),
+      );
+    const totalFunds = new Decimal(parsed).plus(currentCreditTotal).toNumber();
 
-    const sorted = [...allocations].sort((a, b) => {
-      const dateDiff = new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      if (dateDiff !== 0) return dateDiff;
-      return a.id < b.id ? -1 : a.id > b.id ? 1 : 0;
-    });
+    const distribution = new FifoStrategy().distribute(
+      totalFunds,
+      allocations.map((a) => ({
+        id: a.id,
+        dueDate: new Date(a.dueDate),
+        saldo: a.balance,
+      })),
+    );
+    const byId = new Map(distribution.map((d) => [d.id, d.applied]));
 
-    let remaining = totalFunds;
-    const newAllocations = sorted.map((a) => {
-      if (remaining > 0 && a.balance > 0) {
-        const assigned = Math.min(a.balance, remaining);
-        remaining -= assigned;
-        return { ...a, checked: true, assignedAmount: String(assigned) };
-      }
-      return { ...a, checked: false, assignedAmount: "0" };
-    });
-
-    setAllocations(newAllocations);
+    setAllocations((prev) =>
+      prev.map((a) => {
+        const applied = byId.get(a.id) ?? 0;
+        return { ...a, checked: applied > 0, assignedAmount: String(applied) };
+      }),
+    );
   }
 
-  // ── Computed totals ──
+  // ── Computed totals — one-way derivation (REQ-PAY-1), DEC-1 Decimal math ──
+  //
+  // Data flows ONE WAY: editable inputs are `amountOverride` (Importe recibido =
+  // budget) and per-line `aplicar`; everything below is DERIVED and read-only.
+  // No write-back from these totals into form state (REQ-PAY-1 Scenario D).
+  // All arithmetic uses Decimal — never float-cents (DEC-1: no Math.round).
 
-  const totalAllocated = allocations.reduce(
-    (sum, a) => sum + (parseFloat(a.assignedAmount) || 0),
+  // Importe aplicado = Σ Aplicar (cash + credit-covered, across all lines).
+  const totalAllocatedDec = allocations.reduce(
+    (sum, a) => sum.plus(new Decimal(parseFloat(a.assignedAmount) || 0)),
+    new Decimal(0),
+  );
+  const totalAllocated = totalAllocatedDec.toNumber();
+
+  // Credit applied from checked credit lines (covers part of the applied total).
+  const creditAppliedDec = new Decimal(creditApplied);
+
+  // recibido "unset" = blank OR ≤ 0. Treated as "no explicit budget" → resolves
+  // at save to the applied total (REQ-PAY-1). A seeded amount of 0 (edit of a
+  // not-yet-funded payment) counts as unset, not as a 0 budget that would block.
+  const recibidoTyped = parseFloat(amountOverride);
+  const recibidoIsBlank =
+    !amountOverride ||
+    amountOverride.trim() === "" ||
+    isNaN(recibidoTyped) ||
+    recibidoTyped <= 0;
+  const recibidoDec = recibidoIsBlank ? new Decimal(0) : new Decimal(recibidoTyped);
+
+  // Cash applied = applied total minus the credit-covered portion.
+  const cashAppliedDec = Decimal.max(
     0,
+    totalAllocatedDec.minus(creditAppliedDec),
   );
 
-  // paymentAmount = cash received (0 if empty/blank — credit-only mode)
-  const paymentAmount =
-    amountOverride && parseFloat(amountOverride) > 0
-      ? parseFloat(amountOverride)
-      : 0;
+  // paymentAmount = cash received. Unset → falls back to the cash portion of the
+  // applied total so the server receives recibido = cash demand (REQ-PAY-1
+  // "recibido blank at save → recibido = aplicado").
+  const paymentAmount = recibidoIsBlank
+    ? cashAppliedDec.toNumber()
+    : recibidoDec.toNumber();
 
-  const creditFromPayment =
-    paymentAmount > totalAllocated ? paymentAmount - totalAllocated : 0;
+  // Restante = Recibido − cash applied. With an unset budget this is 0 (budget
+  // resolves to the cash demand). With a set budget, a negative Restante means
+  // the cash demand exceeds the received amount → save is blocked (REQ-PAY-4,
+  // mirror of the server invariant entity.ts:387).
+  const restanteDec = recibidoIsBlank
+    ? new Decimal(0)
+    : recibidoDec.minus(cashAppliedDec);
+  const restante = restanteDec.toNumber();
+  const hasNegativeRestante = restanteDec.lessThan(0);
+
+  // creditFromPayment = positive Restante (saldo a favor / credit to CxC).
+  const creditFromPayment = restanteDec.greaterThan(0)
+    ? restanteDec.toNumber()
+    : 0;
 
   // ── Mode detection ──
   // Mode B: credit-only payment (no new cash), just apply existing credits to invoices
@@ -713,7 +785,12 @@ export default function PaymentForm({
     description.trim() &&
     (paymentAmount > 0 || creditApplied > 0) &&
     !hasOverAllocation &&
-    !hasCreditOverLimit;
+    !hasCreditOverLimit &&
+    // REQ-PAY-4 — aggregate client guard: block save when the cash demand
+    // (aplicado − credit) exceeds the received amount (Restante < 0). Mirror of
+    // the server invariant sum(cash) ≤ amount (entity.ts:387); the server still
+    // throws as last defense.
+    !hasNegativeRestante;
 
   // ── Build CreditAllocationSource[] with receivableId FIFO mapping ──
   // For each checked credit line, distribute its assignedAmount across checked allocations
@@ -1398,12 +1475,23 @@ export default function PaymentForm({
                 </p>
               </div>
 
-              {/* Resumen en tiempo real */}
+              {/* Resumen en tiempo real — derivado one-way (REQ-PAY-1) */}
               <div className="flex gap-6 text-sm flex-wrap">
                 <div className="text-center">
                   <p className="text-muted-foreground">Importe aplicado</p>
                   <p className="font-mono font-semibold text-foreground">
                     {formatBs(totalAllocated)}
+                  </p>
+                </div>
+                <div className="text-center">
+                  <p className="text-muted-foreground">Restante</p>
+                  <p
+                    data-testid="payment-restante"
+                    className={`font-mono font-semibold ${
+                      hasNegativeRestante ? "text-destructive" : "text-foreground"
+                    }`}
+                  >
+                    {formatBs(restante)}
                   </p>
                 </div>
                 {creditFromPayment > 0 && (
@@ -1431,15 +1519,25 @@ export default function PaymentForm({
                 : "Cuentas por Pagar"}
             </CardTitle>
             {!isReadOnly && allocations.length > 0 && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={selectAll}
-              >
-                <CheckSquare className="h-4 w-4 mr-1" />
-                Seleccionar Todo
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutoFifo}
+                >
+                  Aplicar automático
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAll}
+                >
+                  <CheckSquare className="h-4 w-4 mr-1" />
+                  Seleccionar Todo
+                </Button>
+              </div>
             )}
           </div>
         </CardHeader>
@@ -1620,6 +1718,13 @@ export default function PaymentForm({
               Una o más asignaciones exceden el saldo disponible del documento.
             </p>
           )}
+
+          {hasNegativeRestante && (
+            <p className="text-destructive text-sm mt-2">
+              El importe aplicado supera el importe recibido (Restante negativo).
+              Ajuste las líneas o el importe recibido para poder guardar.
+            </p>
+          )}
         </CardContent>
       </Card>
 
@@ -1674,6 +1779,7 @@ export default function PaymentForm({
                             <td className="py-3 px-3 text-center">
                               <input
                                 type="checkbox"
+                                aria-label="Usar este saldo a favor"
                                 checked={credit.checked}
                                 onChange={(e) => {
                                   const nowChecked = e.target.checked;
