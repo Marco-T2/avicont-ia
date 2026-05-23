@@ -75,7 +75,7 @@ describe("α2–α8 hex file contains 7 error classes", () => {
   });
 });
 
-// ── α9: grep-count 84 const codes ────────────────────────────────────────────
+// ── α9: grep-count 85 const codes ────────────────────────────────────────────
 // ── α9 driver enumeration (sentinel hygiene per α18 precedent) ──────────────
 // Base: 78 (baseline-test-cleanup pre-SDD).
 // +5 by *_DATE_OUTSIDE_PERIOD constants (modules/shared/domain/errors/index.ts:129-133):
@@ -84,18 +84,22 @@ describe("α2–α8 hex file contains 7 error classes", () => {
 //   - PURCHASE_DATE_OUTSIDE_PERIOD
 //   - PAYMENT_DATE_OUTSIDE_PERIOD
 //   - DISPATCH_DATE_OUTSIDE_PERIOD
-// +1 by PAYMENT_CREDIT_INVALID_TARGET (pago-credit-system Phase 5, index.ts:162):
+// +1 by PAYMENT_CREDIT_INVALID_TARGET (pago-credit-system Phase 5, index.ts:166):
 //   credit-source XOR (receivableId|payableId) rejection code, consumed by the
 //   apply-credits route + validation.ts creditAllocationSourceSchema .refine.
-// Net: 78 + 5 + 1 = 84. [[invariant_collision_elevation]] applied — additive only.
+// +1 by PAYMENT_CREDIT_WRONG_CONTACT (supplier-scope-guard, index.ts:158):
+//   same-contact credit guard — rejects a credit whose source contact differs
+//   from the target document's contact (symmetric COBRO/PAGO), thrown at
+//   applyCreditToInvoiceTx step 2b, skip-on-null.
+// Net: 78 + 5 + 1 + 1 = 85. [[invariant_collision_elevation]] applied — additive only.
 
-describe("α9 hex file contains 84 const error codes", () => {
-  it("α9: grep-count of ^export const [A-Z_]+ = \" in hex file === 84", () => {
+describe("α9 hex file contains 85 const error codes", () => {
+  it("α9: grep-count of ^export const [A-Z_]+ = \" in hex file === 85", () => {
     const result = execSync(
       `grep -cE '^export const [A-Z_]+ = "' "${HEX_FILE}"`,
       { encoding: "utf-8" },
     ).trim();
-    expect(Number(result)).toBe(84);
+    expect(Number(result)).toBe(85);
   });
 });
 
