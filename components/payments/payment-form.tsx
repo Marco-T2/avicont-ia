@@ -1207,38 +1207,37 @@ export default function PaymentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href={backHref}>
-          <Button type="button" variant="ghost" size="sm">
-            <ArrowLeft className="h-4 w-4 mr-1" />
-            Volver a Cobros y Pagos
-          </Button>
-        </Link>
-
-        {existingPayment && (
-          <div className="flex items-center gap-2">
-            {isVoided && (
-              <Badge className="bg-destructive/10 text-destructive dark:bg-destructive/20 text-sm px-3 py-1">
-                ANULADO
-              </Badge>
-            )}
-            <VoucherStatusBadge status={existingPayment.status} />
-          </div>
-        )}
-      </div>
+      <Link href={backHref}>
+        <Button type="button" variant="ghost" size="sm">
+          <ArrowLeft className="h-4 w-4 mr-1" />
+          Volver a Cobros y Pagos
+        </Button>
+      </Link>
 
       {/* Header fields */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            {isNew
-              ? `Nuevo ${paymentType === "COBRO" ? "Cobro" : "Pago"}`
-              : buildPaymentCardTitle(
-                  paymentType,
-                  existingPayment?.operationalDocType?.name,
-                  existingPayment?.referenceNumber,
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              {isNew
+                ? `Nuevo ${paymentType === "COBRO" ? "Cobro" : "Pago"}`
+                : buildPaymentCardTitle(
+                    paymentType,
+                    existingPayment?.operationalDocType?.name,
+                    existingPayment?.referenceNumber,
+                  )}
+            </CardTitle>
+            {existingPayment && (
+              <div className="flex items-center gap-2">
+                {isVoided && (
+                  <Badge className="bg-destructive/10 text-destructive dark:bg-destructive/20 text-sm px-3 py-1">
+                    ANULADO
+                  </Badge>
                 )}
-          </CardTitle>
+                <VoucherStatusBadge status={existingPayment.status} />
+              </div>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Row 1: Tipo Documento / Nro Referencia / Fecha (con hint período) */}
