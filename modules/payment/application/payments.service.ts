@@ -1015,6 +1015,10 @@ export class PaymentsService {
       consumerPaymentId,
       sourcePaymentId,
       receivableId,
+      // Phase 2 type-satisfaction: the write input widened to XOR target.
+      // This receivable-credit path keeps payableId null; the PAGO write path
+      // (forPayable target threading) is Phase 3 (task 3.4).
+      payableId: null,
       amount: requested,
     });
   }
@@ -1054,17 +1058,29 @@ export class PaymentsService {
       // link is still cleared below so no orphan remains.
       if (!source || source.status === "VOIDED") continue;
 
+      // Phase 2 boundary adaptation (pago-credit-system): removeCreditAllocation
+      // now matches by AllocationTarget (XOR receivable|payable). Build the
+      // target from the link's XOR — legacy links have payableId null →
+      // forReceivable. Full revert-side dispatch (payables.revertAllocation) is
+      // Phase 3; this is the minimal change to keep tsc green at the signature.
+      const target = link.payableId
+        ? AllocationTarget.forPayable(link.payableId)
+        : AllocationTarget.forReceivable(link.receivableId!);
       const restored = source.removeCreditAllocation(
         link.sourcePaymentId,
-        link.receivableId,
+        target,
         link.amount,
       );
       await this.repo.updateTx(tx, restored);
 
+      // Phase 2 type-satisfaction: link.receivableId widened to string|null.
+      // Today every link is a receivable credit (payableId null), so the
+      // assertion holds. Phase 3 (task 3.4) replaces this with a target dispatch
+      // (payables.revertAllocation when link.payableId is set).
       await this.receivables.revertAllocation(
         tx,
         organizationId,
-        link.receivableId,
+        link.receivableId!,
         link.amount,
       );
     }

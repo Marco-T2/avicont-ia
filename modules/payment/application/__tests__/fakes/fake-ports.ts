@@ -381,6 +381,7 @@ export class FakeCreditConsumptionPort implements CreditConsumptionPort {
       .map((r) => ({
         sourcePaymentId: r.sourcePaymentId,
         receivableId: r.receivableId,
+        payableId: r.payableId,
         amount: r.amount,
         consumerPaymentId: r.consumerPaymentId,
       }));

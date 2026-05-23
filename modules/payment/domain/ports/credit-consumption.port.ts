@@ -5,29 +5,36 @@ import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monet
  * is the QB-style LinkedTxn that makes credit application reversible WITHOUT
  * mutating the source payment's journal entry (design v2 §CENTERPIECE, D-G/D-H).
  *
+ * The link carries an XOR allocation target: EITHER `receivableId` (COBRO) OR
+ * `payableId` (PAGO), never both, never neither — mirroring `PaymentAllocation`.
+ * The XOR is enforced by the `AllocationTarget` VO and Zod, NOT a DB CHECK.
+ * Legacy rows have `receivableId` set and `payableId` null.
+ *
  * `amount` is a `MonetaryAmount` at the port boundary — the Prisma `Decimal`
  * value-form is confined to the infra adapter (DEC-1: no Prisma.Decimal in
  * domain/application).
  *
  * `consumerPaymentId` is nullable: standalone apply-credits (`applyCreditOnly`)
- * supply credit from a source to a receivable with no consumer payment.
+ * supply credit from a source to a target with no consumer payment.
  */
 export interface CreditConsumptionLink {
   sourcePaymentId: string;
-  receivableId: string;
+  receivableId: string | null;
+  payableId: string | null;
   amount: MonetaryAmount;
   consumerPaymentId: string | null;
 }
 
 /**
- * Input for writing a new credit-consumption link. Same shape as the link,
- * minus nothing — kept as its own type so the write contract is explicit.
+ * Input for writing a new credit-consumption link. Same XOR target shape as the
+ * link — kept as its own type so the write contract is explicit.
  */
 export interface WriteCreditConsumptionInput {
   organizationId: string;
   consumerPaymentId: string | null;
   sourcePaymentId: string;
-  receivableId: string;
+  receivableId: string | null;
+  payableId: string | null;
   amount: MonetaryAmount;
 }
 

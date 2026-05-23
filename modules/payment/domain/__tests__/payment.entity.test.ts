@@ -570,6 +570,29 @@ describe("Payment aggregate root", () => {
       ).toThrow(PaymentMixedAllocation);
     });
 
+    // ── D3 cross-direction credit sentinel (pago-credit-system task 2.4) ──
+    // A COBRO source (existing RECEIVABLE allocation) cannot apply credit to a
+    // PAYABLE target: enforceAllocationInvariants rejects the mixed set with
+    // PaymentMixedAllocation BEFORE any balance mutation. This is the existing
+    // aggregate invariant (design D3, payment.entity.ts enforceAllocationInvariants)
+    // covering the credit path — EXPECTED GREEN by the pre-existing guard, NOT a
+    // new behavior. If this ever goes RED, the guard stopped evaluating the
+    // credit-source direction against the proposed target direction.
+    it("[D3 sentinel] COBRO source applying credit to a PAYABLE target throws PaymentMixedAllocation", () => {
+      const cobroSource = Payment.create({
+        ...baseInput,
+        amount: 1000,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-1"), amount: 300 },
+        ],
+      });
+      expect(() =>
+        cobroSource.applyCreditAllocation(
+          alloc(AllocationTarget.forPayable("pay-1"), 100, cobroSource.id),
+        ),
+      ).toThrow(PaymentMixedAllocation);
+    });
+
     // Failure mode declarado: CannotModifyVoidedPayment (validation, PAYMENT_VOIDED_IMMUTABLE).
     it("rejects on VOIDED payment with CannotModifyVoidedPayment", () => {
       const p = Payment.create(baseInput).post().void();
@@ -802,7 +825,7 @@ describe("Payment aggregate root", () => {
       const source = makeSourceWithTwoCredits();
       const updated = source.removeCreditAllocation(
         source.id,
-        "rec-a",
+        AllocationTarget.forReceivable("rec-a"),
         MonetaryAmount.of(100),
       );
       expect(updated.allocations).toHaveLength(1);
@@ -814,7 +837,7 @@ describe("Payment aggregate root", () => {
       expect(source.unappliedAmount.value).toBe(100);
       const updated = source.removeCreditAllocation(
         source.id,
-        "rec-a",
+        AllocationTarget.forReceivable("rec-a"),
         MonetaryAmount.of(100),
       );
       expect(updated.unappliedAmount.value).toBe(200);
@@ -822,27 +845,31 @@ describe("Payment aggregate root", () => {
 
     it("does not mutate the original aggregate (immutability)", () => {
       const source = makeSourceWithTwoCredits();
-      source.removeCreditAllocation(source.id, "rec-a", MonetaryAmount.of(100));
+      source.removeCreditAllocation(
+        source.id,
+        AllocationTarget.forReceivable("rec-a"),
+        MonetaryAmount.of(100),
+      );
       expect(source.allocations).toHaveLength(2);
     });
 
-    it("throws CreditAllocationNotFound when no allocation matches the receivableId", () => {
+    it("throws CreditAllocationNotFound when no allocation matches the target", () => {
       const source = makeSourceWithTwoCredits();
       expect(() =>
         source.removeCreditAllocation(
           source.id,
-          "rec-missing",
+          AllocationTarget.forReceivable("rec-missing"),
           MonetaryAmount.of(100),
         ),
       ).toThrow(CreditAllocationNotFound);
     });
 
-    it("throws CreditAllocationNotFound when receivableId matches but amount differs", () => {
+    it("throws CreditAllocationNotFound when the target matches but amount differs", () => {
       const source = makeSourceWithTwoCredits();
       expect(() =>
         source.removeCreditAllocation(
           source.id,
-          "rec-a",
+          AllocationTarget.forReceivable("rec-a"),
           MonetaryAmount.of(50),
         ),
       ).toThrow(CreditAllocationNotFound);
@@ -853,7 +880,7 @@ describe("Payment aggregate root", () => {
       expect(() =>
         source.removeCreditAllocation(
           "some-other-source",
-          "rec-a",
+          AllocationTarget.forReceivable("rec-a"),
           MonetaryAmount.of(100),
         ),
       ).toThrow(CreditAllocationNotFound);
@@ -873,7 +900,7 @@ describe("Payment aggregate root", () => {
       });
       const updated = source.removeCreditAllocation(
         source.id,
-        "rec-dup",
+        AllocationTarget.forReceivable("rec-dup"),
         MonetaryAmount.of(100),
       );
       expect(updated.allocations).toHaveLength(1);
@@ -887,10 +914,81 @@ describe("Payment aggregate root", () => {
       expect(() =>
         voided.removeCreditAllocation(
           voided.id,
-          "rec-a",
+          AllocationTarget.forReceivable("rec-a"),
           MonetaryAmount.of(100),
         ),
       ).toThrow(CannotModifyVoidedPayment);
+    });
+
+    // ── Phase 2 (pago-credit-system): match by AllocationTarget, not
+    // receivableId-only. A PAGO credit link carries payableId; removeCredit
+    // must dispatch on the target VO (XOR by construction), mirroring the
+    // applyAllocationTx receivables|payables dispatch.
+    describe("matches by AllocationTarget (payable target)", () => {
+      // amount 300, two PAYABLE allocations → unappliedAmount = 100.
+      function makeSourceWithTwoPayableCredits(): Payment {
+        return Payment.create({
+          ...baseInput,
+          amount: 300,
+          allocations: [
+            { target: AllocationTarget.forPayable("pay-a"), amount: 100 },
+            { target: AllocationTarget.forPayable("pay-b"), amount: 100 },
+          ],
+        });
+      }
+
+      it("removes the credit allocation matching a payable target", () => {
+        const source = makeSourceWithTwoPayableCredits();
+        const updated = source.removeCreditAllocation(
+          source.id,
+          AllocationTarget.forPayable("pay-a"),
+          MonetaryAmount.of(100),
+        );
+        expect(updated.allocations).toHaveLength(1);
+        expect(updated.allocations[0].payableId).toBe("pay-b");
+        expect(updated.allocations[0].receivableId).toBeNull();
+      });
+
+      it("restores unappliedAmount when a payable credit is removed", () => {
+        const source = makeSourceWithTwoPayableCredits();
+        expect(source.unappliedAmount.value).toBe(100);
+        const updated = source.removeCreditAllocation(
+          source.id,
+          AllocationTarget.forPayable("pay-a"),
+          MonetaryAmount.of(100),
+        );
+        expect(updated.unappliedAmount.value).toBe(200);
+      });
+
+      it("does not match a receivable target against a payable allocation of the same id", () => {
+        const source = Payment.create({
+          ...baseInput,
+          amount: 300,
+          allocations: [
+            { target: AllocationTarget.forPayable("x"), amount: 100 },
+          ],
+        });
+        // AllocationTarget.forReceivable("x") must NOT match forPayable("x") —
+        // the VO equality is kind-sensitive (XOR), not id-only.
+        expect(() =>
+          source.removeCreditAllocation(
+            source.id,
+            AllocationTarget.forReceivable("x"),
+            MonetaryAmount.of(100),
+          ),
+        ).toThrow(CreditAllocationNotFound);
+      });
+
+      it("throws CreditAllocationNotFound when no payable target matches", () => {
+        const source = makeSourceWithTwoPayableCredits();
+        expect(() =>
+          source.removeCreditAllocation(
+            source.id,
+            AllocationTarget.forPayable("pay-missing"),
+            MonetaryAmount.of(100),
+          ),
+        ).toThrow(CreditAllocationNotFound);
+      });
     });
   });
 });

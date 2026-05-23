@@ -50,6 +50,12 @@ export class PrismaCreditConsumptionAdapter implements CreditConsumptionPort {
     return rows.map((r) => ({
       sourcePaymentId: r.sourcePaymentId,
       receivableId: r.receivableId,
+      // STUB (Phase 2 type-satisfaction): payableId is not yet selected/mapped.
+      // The real payableId round-trip (select + map) is Phase 4 (task 4.2) and
+      // is driven by its own RED integration test (4.1) — implementing it here
+      // would make that RED pass by accident. Legacy + current receivable links
+      // are payableId null regardless, so this stub is behavior-preserving today.
+      payableId: null,
       amount: MonetaryAmount.of(r.amount.toString()),
       consumerPaymentId: r.consumerPaymentId,
     }));

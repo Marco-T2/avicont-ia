@@ -385,18 +385,20 @@ export class Payment {
   /**
    * Inverse of `applyCreditAllocation`. Removes the single credit-application
    * allocation that matches the R-3 triple key — sourcePaymentId (must equal
-   * this aggregate's id), receivableId, and amount — restoring the source's
-   * `unappliedAmount`. Used by the trivial `revertCreditTx` (design v2
-   * §CENTERPIECE / D-C). Matching by the triple key disambiguates equal-amount
-   * credits to the same receivable (distinct rows) and equal credits from
-   * different sources. Removes exactly ONE row. Throws
+   * this aggregate's id), the allocation `target`, and amount — restoring the
+   * source's `unappliedAmount`. Used by the trivial `revertCreditTx` (design v2
+   * §CENTERPIECE / D-C). Matching by the `AllocationTarget` VO (XOR
+   * receivable|payable, kind-sensitive equality) generalizes the former
+   * receivable-only match so PAGO credit links revert correctly; it
+   * disambiguates equal-amount credits to the same target (distinct rows) and
+   * equal credits from different sources. Removes exactly ONE row. Throws
    * `CreditAllocationNotFound` when no row matches. Re-runs
    * `enforceAllocationInvariants` on the remaining set (removal can only relax
    * the sum invariant, but the homogeneity check is preserved for symmetry).
    */
   removeCreditAllocation(
     sourcePaymentId: string,
-    receivableId: string,
+    target: AllocationTarget,
     amount: MonetaryAmount,
   ): Payment {
     this.assertNotVoided();
@@ -404,7 +406,7 @@ export class Payment {
       throw new CreditAllocationNotFound();
     }
     const idx = this.props.allocations.findIndex(
-      (a) => a.receivableId === receivableId && a.amount.equals(amount),
+      (a) => a.target.equals(target) && a.amount.equals(amount),
     );
     if (idx === -1) {
       throw new CreditAllocationNotFound();

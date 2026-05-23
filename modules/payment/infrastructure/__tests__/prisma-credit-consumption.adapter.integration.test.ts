@@ -147,6 +147,7 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
         consumerPaymentId,
         sourcePaymentId,
         receivableId,
+        payableId: null,
         amount: MonetaryAmount.of(100),
       });
     });
@@ -179,6 +180,7 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
         consumerPaymentId,
         sourcePaymentId,
         receivableId,
+        payableId: null,
         amount: MonetaryAmount.of(40),
       });
       await adapter.writeTx(tx, {
@@ -186,6 +188,7 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
         consumerPaymentId,
         sourcePaymentId,
         receivableId,
+        payableId: null,
         amount: MonetaryAmount.of(40),
       });
     });
@@ -208,6 +211,7 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
         consumerPaymentId,
         sourcePaymentId,
         receivableId,
+        payableId: null,
         amount: MonetaryAmount.of(100),
       });
     });
