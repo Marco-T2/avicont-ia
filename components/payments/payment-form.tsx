@@ -149,6 +149,24 @@ interface PaymentFormProps {
   initialValues?: ShortcutInitialValues;
 }
 
+/**
+ * Card title for an existing payment: the operational document type (the doc the
+ * payment was created with) + reference number — NOT the glosa. The glosa already
+ * lives verbatim in the "Descripción" field below the title, so repeating it here
+ * was redundant and confused users. Format "Nombre + ref", graceful fallbacks:
+ * no ref → "{tipo} — {name}"; no doc type → "{tipo} — N° {ref}"; neither → "{tipo}".
+ */
+function buildPaymentCardTitle(
+  paymentType: string,
+  docTypeName: string | null | undefined,
+  referenceNumber: number | null | undefined,
+): string {
+  const prefix = paymentType === "COBRO" ? "Cobro" : "Pago";
+  const ref = referenceNumber != null ? `N° ${referenceNumber}` : null;
+  const detail = [docTypeName, ref].filter(Boolean).join(" ");
+  return detail ? `${prefix} — ${detail}` : prefix;
+}
+
 export default function PaymentForm({
   orgSlug,
   contacts,
@@ -1215,7 +1233,11 @@ export default function PaymentForm({
           <CardTitle>
             {isNew
               ? `Nuevo ${paymentType === "COBRO" ? "Cobro" : "Pago"}`
-              : `${paymentType === "COBRO" ? "Cobro" : "Pago"} — ${existingPayment?.description ?? ""}`}
+              : buildPaymentCardTitle(
+                  paymentType,
+                  existingPayment?.operationalDocType?.name,
+                  existingPayment?.referenceNumber,
+                )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -1442,11 +1464,46 @@ export default function PaymentForm({
         </CardContent>
       </Card>
 
-      {/* Importe recibido — aparece antes de las asignaciones (estilo QuickBooks) */}
-      {!isVoided && (
-        <Card>
-          <CardContent>
-            <div className="flex items-center gap-6 flex-wrap">
+      {/* Allocations table — "Importe recibido" + resumen se renderizan como
+          fila superior de esta card (estilo QuickBooks: el presupuesto vive
+          pegado a las líneas que lo consumen, no en su propia card). */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>
+              Asignación a{" "}
+              {paymentType === "COBRO"
+                ? "Cuentas por Cobrar"
+                : "Cuentas por Pagar"}
+            </CardTitle>
+            {!isReadOnly && allocations.length > 0 && (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAutoFifo}
+                >
+                  Aplicar automático
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAll}
+                >
+                  <CheckSquare className="h-4 w-4 mr-1" />
+                  Seleccionar Todo
+                </Button>
+              </div>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {/* Importe recibido + resumen en tiempo real (REQ-PAY-1) — fila
+              superior, separada de la tabla por un borde. */}
+          {!isVoided && (
+            <div className="flex items-center gap-6 flex-wrap mb-4 pb-4 border-b">
               <div className="space-y-1 flex-1 min-w-[200px]">
                 <Label htmlFor="payment-amount-override">Importe recibido (Bs.)</Label>
                 {isReadOnly && !isPosted ? (
@@ -1504,44 +1561,7 @@ export default function PaymentForm({
                 )}
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Allocations table */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>
-              Asignación a{" "}
-              {paymentType === "COBRO"
-                ? "Cuentas por Cobrar"
-                : "Cuentas por Pagar"}
-            </CardTitle>
-            {!isReadOnly && allocations.length > 0 && (
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAutoFifo}
-                >
-                  Aplicar automático
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={selectAll}
-                >
-                  <CheckSquare className="h-4 w-4 mr-1" />
-                  Seleccionar Todo
-                </Button>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
+          )}
           {loadingDocs && allocations.length === 0 ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
