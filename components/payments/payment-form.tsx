@@ -859,6 +859,11 @@ export default function PaymentForm({
   function buildCashAllocations(creditSources: CreditAllocationSource[]) {
     const creditByReceivable = new Map<string, number>();
     for (const cs of creditSources) {
+      // CreditAllocationSource widened to XOR (receivableId | payableId,
+      // pago-credit-system). The UI still emits receivable credit only —
+      // payable credit lands in Phase 6 — so skip non-receivable sources here
+      // (none are produced today). Behavior unchanged.
+      if (!cs.receivableId) continue;
       creditByReceivable.set(
         cs.receivableId,
         (creditByReceivable.get(cs.receivableId) ?? 0) + cs.amount,

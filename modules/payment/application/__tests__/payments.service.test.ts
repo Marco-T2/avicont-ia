@@ -1123,6 +1123,157 @@ describe("PaymentsService", () => {
     });
   });
 
+  // ── PAGO credit (allocation-target dispatch — pago-credit-system) ─────────
+  //
+  // Phase 3: applyCreditToInvoiceTx / revertCreditTx must dispatch by the
+  // present id (receivable → receivables port, payable → payables port),
+  // mirroring applyAllocationTx/revertAllocationTx. A PAGO source supplies
+  // credit to a PAYABLE; the link carries payableId (receivableId null).
+  describe("PAGO credit — allocation-target dispatch", () => {
+    // Seed a PROVEEDOR source payment with positive unappliedAmount and NO prior
+    // allocations (so a forPayable credit keeps the aggregate homogeneous).
+    async function seedPayableSource(amount = 200): Promise<Payment> {
+      const source = await seedPosted(bench, { amount });
+      return source;
+    }
+
+    // Task 3.1 — RED: applyCreditOnly with a payable source must route to the
+    // PAYABLES port and write a link carrying payableId (receivableId null).
+    // Declared RED failure mode: applyCreditToInvoiceTx unconditionally calls
+    // AllocationTarget.forReceivable + receivables.applyAllocation, so the
+    // payables port is never hit (payables.applyCalls empty) and the link
+    // carries receivableId instead of payableId.
+    it("3.1 applies PAGO credit via the payables port and writes a payableId link", async () => {
+      const source = await seedPayableSource(200);
+      bench.payables.status.set("pay-target", "PENDING");
+
+      await bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+        {
+          sourcePaymentId: source.id,
+          payableId: "pay-target",
+          amount: 50,
+        },
+      ]);
+
+      // (a) the PAYABLES port apply fired for the credit-target — NOT receivables.
+      expect(
+        bench.payables.applyCalls.some(
+          (c) => c.id === "pay-target" && c.amount === 50,
+        ),
+      ).toBe(true);
+      expect(bench.receivables.applyCalls).toHaveLength(0);
+
+      // (b) the link carries payableId, receivableId null.
+      expect(bench.creditConsumption.writeCalls).toHaveLength(1);
+      const link = bench.creditConsumption.writeCalls[0];
+      expect(link.payableId).toBe("pay-target");
+      expect(link.receivableId).toBeNull();
+      expect(link.amount.value).toBe(50);
+
+      // (c) source unappliedAmount reduced exactly (DEC-1): 200 - 50 = 150.
+      const refreshed = await bench.repo.findById(ORG, source.id);
+      expect(refreshed?.unappliedAmount.value).toBe(150);
+    });
+
+    // Task 3.2 — RED: revertCreditTx for a payable link must call
+    // payables.revertAllocation, NOT receivables.revertAllocation, and restore
+    // the source unappliedAmount. Declared RED failure mode: revertCreditTx
+    // unconditionally calls receivables.revertAllocation(link.receivableId!),
+    // which is null for a payable link → wrong port (payables.revertCalls empty)
+    // and a non-null assertion on null.
+    it("3.2 reverts PAGO credit via the payables port (consumer edit drops it)", async () => {
+      const source = await seedPayableSource(200);
+      bench.payables.status.set("pay-credit-target", "PENDING");
+
+      // Consumer payment that consumes 100 payable credit from the source.
+      bench.accounting.accountsByCode.set("1.1.4.1", { id: "acct-cxc", code: "1.1.4.1" });
+      bench.accounting.accountsByCode.set("1.1.1.1", { id: "acct-caja", code: "1.1.1.1" });
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-pago-consumer" });
+      const consumer = await bench.svc.createAndPost(ORG, USER, baseCreate({
+        amount: 50,
+        creditSources: [
+          { sourcePaymentId: source.id, payableId: "pay-credit-target", amount: 100 },
+        ],
+      }));
+      bench.accounting.entries.set("entry-pago-consumer", makeEntry({ id: "entry-pago-consumer" }));
+
+      // Source consumed: 200 - 100 = 100 unapplied.
+      const sourceAfterApply = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfterApply?.unappliedAmount.value).toBe(100);
+
+      bench.payables.revertCalls = [];
+      bench.receivables.revertCalls = [];
+
+      // Edit the consumer dropping creditSources → revertCreditTx fires.
+      await bench.svc.update(ORG, USER, consumer.payment.id, {
+        description: "edited-drop-pago-credit",
+      });
+
+      // (a) PAYABLES revert fired — NOT receivables.
+      expect(
+        bench.payables.revertCalls.some(
+          (c) => c.id === "pay-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+      expect(bench.receivables.revertCalls).toHaveLength(0);
+
+      // (b) source unappliedAmount restored: 100 → 200.
+      const sourceAfterRevert = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfterRevert?.unappliedAmount.value).toBe(200);
+
+      // (c) no orphan link left for the consumer.
+      expect(
+        await bench.creditConsumption.findByConsumerPaymentIdTx(null, ORG, consumer.payment.id),
+      ).toHaveLength(0);
+    });
+
+    // Task 3.3 — RED/regression sentinel: a LEGACY receivable-only link
+    // (payableId null) must STILL revert via the receivables port — the
+    // payableId-first dispatch must not misroute null-payableId rows to payables.
+    // Declared RED failure mode: if dispatch keys on `link.payableId` with a
+    // falsy fallback to payables, the legacy receivable link routes to
+    // payables.revertAllocation (wrong) → receivables.revertCalls empty.
+    it("3.3 backward-compat: legacy receivable-only link still reverts via the receivables port", async () => {
+      const source = await seedPosted(bench, {
+        amount: 200,
+        allocations: [{ receivableId: "rec-original", amount: 50 }],
+      });
+      bench.receivables.status.set("rec-original", "PARTIAL");
+      bench.receivables.status.set("rec-credit-target", "PENDING");
+      bench.accounting.accountsByCode.set("1.1.4.1", { id: "acct-cxc", code: "1.1.4.1" });
+      bench.accounting.accountsByCode.set("1.1.1.1", { id: "acct-caja", code: "1.1.1.1" });
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-legacy-consumer" });
+      bench.receivables.status.set("rec-consumer-alloc", "PENDING");
+
+      const consumer = await bench.svc.createAndPost(ORG, USER, baseCreate({
+        amount: 50,
+        allocations: [{ receivableId: "rec-consumer-alloc", amount: 50 }],
+        creditSources: [
+          { sourcePaymentId: source.id, receivableId: "rec-credit-target", amount: 100 },
+        ],
+      }));
+      bench.accounting.entries.set("entry-legacy-consumer", makeEntry({ id: "entry-legacy-consumer" }));
+
+      bench.receivables.revertCalls = [];
+      bench.payables.revertCalls = [];
+
+      await bench.svc.update(ORG, USER, consumer.payment.id, {
+        description: "edited-drop-legacy-credit",
+      });
+
+      // Legacy link reverts via RECEIVABLES — never touches payables.
+      expect(
+        bench.receivables.revertCalls.some(
+          (c) => c.id === "rec-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+      expect(bench.payables.revertCalls).toHaveLength(0);
+
+      const sourceAfter = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfter?.unappliedAmount.value).toBe(150);
+    });
+  });
+
   // ── direction resolution ─────────────────────────────────────────────────
 
   describe("direction resolution (via post)", () => {

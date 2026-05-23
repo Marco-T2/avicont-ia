@@ -80,9 +80,18 @@ export interface AllocationInput {
   amount: number;
 }
 
+/**
+ * A credit source the consumer applies, carrying an XOR allocation target:
+ * EITHER `receivableId` (COBRO credit) OR `payableId` (PAGO credit), never both,
+ * never neither — mirroring `AllocationInput` and the `AllocationTarget` VO. The
+ * service builds an `AllocationTarget` from whichever id is present and
+ * dispatches to the matching port (pago-credit-system, design D1). Receivable
+ * callers stay source-compatible (omit `payableId`).
+ */
 export interface CreditAllocationSource {
   sourcePaymentId: string;
-  receivableId: string;
+  receivableId?: string;
+  payableId?: string;
   amount: number;
 }
 
@@ -371,7 +380,7 @@ export class PaymentsService {
             tx,
             organizationId,
             cs.sourcePaymentId,
-            cs.receivableId,
+            creditTargetOf(cs),
             cs.amount,
             posted.id,
           );
@@ -596,12 +605,13 @@ export class PaymentsService {
       async (tx) => {
         for (const cs of creditSources) {
           // Standalone apply-credit — there is no consumer payment, only a
-          // source supplying credit to a receivable (consumerPaymentId = null).
+          // source supplying credit to a receivable OR payable (consumerPaymentId
+          // = null). The target is dispatched by the source's XOR id.
           await this.applyCreditToInvoiceTx(
             tx,
             organizationId,
             cs.sourcePaymentId,
-            cs.receivableId,
+            creditTargetOf(cs),
             cs.amount,
             null,
           );
@@ -932,7 +942,7 @@ export class PaymentsService {
             tx,
             organizationId,
             cs.sourcePaymentId,
-            cs.receivableId,
+            creditTargetOf(cs),
             cs.amount,
             updated.id,
           );
@@ -949,7 +959,7 @@ export class PaymentsService {
     tx: unknown,
     organizationId: string,
     sourcePaymentId: string,
-    receivableId: string,
+    target: AllocationTarget,
     amount: number,
     consumerPaymentId: string | null,
   ): Promise<void> {
@@ -982,25 +992,37 @@ export class PaymentsService {
     }
 
     // 4. Mutate source aggregate + persist (creates the credit-application
-    //    allocation pointing at the target receivable).
+    //    allocation pointing at the XOR target — receivable OR payable). The
+    //    aggregate's enforceAllocationInvariants rejects a mixed-direction credit
+    //    (PAYABLE credit on a COBRO source) by construction (design D3).
     const newAllocation = PaymentAllocation.create({
       paymentId: source.id,
-      target: AllocationTarget.forReceivable(receivableId),
+      target,
       amount,
     });
     const updated = source.applyCreditAllocation(newAllocation);
     await this.repo.updateTx(tx, updated);
 
-    // 5. Apply to receivable. Receivables entity is the only invariant guard:
-    //    throws NotFoundError on missing target, PAYMENT_ALLOCATION_TARGET_VOIDED
-    //    when target is VOIDED, PAYMENT_ALLOCATION_EXCEEDS_BALANCE when amount
-    //    exceeds available balance. Tx rollback handles atomicity for step 4.
-    await this.receivables.applyAllocation(
-      tx,
-      organizationId,
-      receivableId,
-      requested,
-    );
+    // 5. Apply to the target via the matching port — dispatch by the present id,
+    //    mirroring applyAllocationTx. The receivables/payables entity is the only
+    //    invariant guard: throws NotFoundError on missing target,
+    //    PAYMENT_ALLOCATION_TARGET_VOIDED when VOIDED, PAYMENT_ALLOCATION_EXCEEDS_BALANCE
+    //    when amount exceeds balance. Tx rollback handles atomicity for step 4.
+    if (target.receivableId) {
+      await this.receivables.applyAllocation(
+        tx,
+        organizationId,
+        target.receivableId,
+        requested,
+      );
+    } else {
+      await this.payables.applyAllocation(
+        tx,
+        organizationId,
+        target.payableId!,
+        requested,
+      );
+    }
 
     // 6. (v2 — design §CENTERPIECE D-H) Record the reversible consumer↔source
     //    link instead of mutating the source journal. Applying credit is pure
@@ -1009,16 +1031,14 @@ export class PaymentsService {
     //    CxC-positive and the source's CxC-negative net WITHIN CxC with no extra
     //    line. The old step 6 appended a net-zero Dr-cxc/Cr-cxc pair on the SAME
     //    account+contact (accounting-neutral) — REMOVED. The CreditConsumption
-    //    row is what makes revertCreditTx authoritative (no journal touch).
+    //    row is what makes revertCreditTx authoritative (no journal touch). The
+    //    link carries the XOR target — receivableId for COBRO, payableId for PAGO.
     await this.creditConsumption.writeTx(tx, {
       organizationId,
       consumerPaymentId,
       sourcePaymentId,
-      receivableId,
-      // Phase 2 type-satisfaction: the write input widened to XOR target.
-      // This receivable-credit path keeps payableId null; the PAGO write path
-      // (forPayable target threading) is Phase 3 (task 3.4).
-      payableId: null,
+      receivableId: target.receivableId,
+      payableId: target.payableId,
       amount: requested,
     });
   }
@@ -1058,11 +1078,10 @@ export class PaymentsService {
       // link is still cleared below so no orphan remains.
       if (!source || source.status === "VOIDED") continue;
 
-      // Phase 2 boundary adaptation (pago-credit-system): removeCreditAllocation
-      // now matches by AllocationTarget (XOR receivable|payable). Build the
-      // target from the link's XOR — legacy links have payableId null →
-      // forReceivable. Full revert-side dispatch (payables.revertAllocation) is
-      // Phase 3; this is the minimal change to keep tsc green at the signature.
+      // Build the AllocationTarget from the link's XOR (pago-credit-system):
+      // a payable link has payableId set → forPayable; a legacy/COBRO link has
+      // payableId null → forReceivable. removeCreditAllocation matches by this
+      // target VO (kind-sensitive equality).
       const target = link.payableId
         ? AllocationTarget.forPayable(link.payableId)
         : AllocationTarget.forReceivable(link.receivableId!);
@@ -1073,16 +1092,24 @@ export class PaymentsService {
       );
       await this.repo.updateTx(tx, restored);
 
-      // Phase 2 type-satisfaction: link.receivableId widened to string|null.
-      // Today every link is a receivable credit (payableId null), so the
-      // assertion holds. Phase 3 (task 3.4) replaces this with a target dispatch
-      // (payables.revertAllocation when link.payableId is set).
-      await this.receivables.revertAllocation(
-        tx,
-        organizationId,
-        link.receivableId!,
-        link.amount,
-      );
+      // Restore the target balance via the matching port — dispatch by the
+      // present id, mirroring revertAllocationTx. Legacy receivable-only links
+      // (payableId null) route to receivables; payable links route to payables.
+      if (target.receivableId) {
+        await this.receivables.revertAllocation(
+          tx,
+          organizationId,
+          target.receivableId,
+          link.amount,
+        );
+      } else {
+        await this.payables.revertAllocation(
+          tx,
+          organizationId,
+          target.payableId!,
+          link.amount,
+        );
+      }
     }
 
     await this.creditConsumption.deleteByConsumerPaymentIdTx(
@@ -1153,6 +1180,21 @@ export class PaymentsService {
 }
 
 // ─────────────────────────── Helpers ────────────────────────────────────────
+
+/**
+ * Build the `AllocationTarget` for a credit source by dispatching on the present
+ * XOR id (pago-credit-system, design D1) — receivableId → forReceivable, else
+ * payableId → forPayable. Mirrors the receivable|payable mapping already used for
+ * `AllocationInput` (e.g. payments.service.ts allocation mapping). The XOR
+ * (both/neither rejection, code `PAYMENT_CREDIT_INVALID_TARGET`) is enforced at
+ * the API edge by the Zod schema (Phase 5) and is valid-by-construction here
+ * because exactly one factory is called.
+ */
+function creditTargetOf(cs: CreditAllocationSource): AllocationTarget {
+  return cs.receivableId
+    ? AllocationTarget.forReceivable(cs.receivableId)
+    : AllocationTarget.forPayable(cs.payableId!);
+}
 
 function assertPeriodOpen(period: { status: "OPEN" | "CLOSED" }): void {
   if (period.status !== "OPEN") {
