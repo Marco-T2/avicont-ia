@@ -1,12 +1,29 @@
 /**
- * payments.service.createAndPost wires buildPaymentGlosa into
- * JournalEntry.description for every COBRO post (simplificación post-archive
- * F4 — descriptionOverride flag eliminado, builder canónico siempre).
+ * REQ-PAY-5 (W-2) — glosa is CLIENT-AUTHORITATIVE on both create and edit.
  *
- * REQ-GE-2 scenarios 2.1-2.7 are exercised at the domain builder layer
- * (modules/payment/domain/__tests__/payment-glosa-builder.test.ts). This file
- * proves the application-layer wiring: the right contact + per-allocation
- * metadata flow into buildPaymentGlosa and the output reaches JE.description.
+ * BEHAVIOR CHANGE (W-2 accepted): the server previously rebuilt COBRO glosa
+ * server-side via findGlosaMetaTx + buildPaymentGlosa (real receivable metadata).
+ * That server-side rebuild is REMOVED per design §7 + spec REQ-PAY-5. The client
+ * computes buildPaymentGlosa and sends the result as payment.description; the
+ * server persists it as-is.
+ *
+ * APPROVAL-TESTING CONVERSION (Phase 8, Tanda 5):
+ * All 5 tests in this file previously asserted the SERVER-REBUILT glosa string
+ * (builder output from real metadata). They are converted to assert that the
+ * SERVICE PASSES THROUGH the client-provided description unchanged. The domain
+ * builder (payment-glosa-builder.ts) is still tested at
+ * modules/payment/domain/__tests__/payment-glosa-builder.test.ts; this file no
+ * longer duplicates that coverage.
+ *
+ * SURFACED: 5 tests converted (approval-testing):
+ *   1. COBRO single allocation — was: "COBRO EFECTIVO: Marco Bs. 200,00: VG-45 del 17/05"
+ *      now: client-provided "user-typed cobro text"
+ *   2. COBRO multi allocation — was: builder multi-alloc string; now: client passthrough
+ *   3. COBRO NULL sourceTypeCode — was: "COBRO EFECTIVO: Marco Bs. 200,00: DOC-77 del 17/05"
+ *      now: client passthrough
+ *   4. COBRO empty allocations — was: "COBRO EFECTIVO: Marco Bs. 200,00"; now: client passthrough
+ *   5. "builder gana siempre" — INVERTED: client now wins, not the builder; "user override exact text"
+ *      is the persisted description.
  */
 import { beforeEach, describe, expect, it } from "vitest";
 import { PaymentsService, type CreatePaymentServiceInput } from "../payments.service";
@@ -124,14 +141,16 @@ function baseCobro(
   };
 }
 
-describe("PaymentsService.createAndPost — glosa builder wiring", () => {
+describe("PaymentsService.createAndPost — glosa client-authoritative (REQ-PAY-5, W-2)", () => {
   let bench: Bench;
 
   beforeEach(() => {
     bench = makeBench();
   });
 
-  it("COBRO single allocation: JE.description = buildPaymentGlosa output (REQ-GE-2 Scenario 2.1)", async () => {
+  // CONVERTED (approval-testing): was asserting server-rebuilt builder output.
+  // After W-2: the service passes through payment.description unchanged.
+  it("COBRO single allocation: JE.description = client-provided description (REQ-PAY-5 client-authoritative)", async () => {
     bench.receivables.status.set("rec-1", "PENDING");
     bench.receivables.glosaMeta.set("rec-1", {
       sourceTypeCode: "VG",
@@ -150,12 +169,12 @@ describe("PaymentsService.createAndPost — glosa builder wiring", () => {
     );
 
     expect(bench.accounting.generateCalls).toHaveLength(1);
-    expect(bench.accounting.generateCalls[0]!.description).toBe(
-      "COBRO EFECTIVO: Marco Bs. 200,00: VG-45 del 17/05",
-    );
+    // W-2: server uses payment.description (client-provided), not server-rebuilt builder output.
+    expect(bench.accounting.generateCalls[0]!.description).toBe("user-typed cobro text");
   });
 
-  it("COBRO multi allocation (REQ-GE-2 Scenario 2.2)", async () => {
+  // CONVERTED (approval-testing): multi-allocation — client passthrough.
+  it("COBRO multi allocation: JE.description = client-provided description (REQ-PAY-5 client-authoritative)", async () => {
     bench.receivables.status.set("rec-1", "PENDING");
     bench.receivables.status.set("rec-2", "PENDING");
     bench.receivables.glosaMeta.set("rec-1", {
@@ -183,12 +202,12 @@ describe("PaymentsService.createAndPost — glosa builder wiring", () => {
       }),
     );
 
-    expect(bench.accounting.generateCalls[0]!.description).toBe(
-      "COBRO EFECTIVO: Marco Bs. 200,00: VG-45 del 17/05 | ND-63 del 18/05",
-    );
+    // W-2: server uses payment.description (client-provided), not server-rebuilt output.
+    expect(bench.accounting.generateCalls[0]!.description).toBe("user-typed cobro text");
   });
 
-  it("COBRO NULL sourceTypeCode → DOC fallback (REQ-GE-2 Scenario 2.5)", async () => {
+  // CONVERTED (approval-testing): NULL sourceTypeCode path — client passthrough.
+  it("COBRO NULL sourceTypeCode: JE.description = client-provided description (REQ-PAY-5 client-authoritative)", async () => {
     bench.receivables.status.set("rec-orphan", "PENDING");
     bench.receivables.glosaMeta.set("rec-orphan", {
       sourceTypeCode: null,
@@ -206,12 +225,12 @@ describe("PaymentsService.createAndPost — glosa builder wiring", () => {
       }),
     );
 
-    expect(bench.accounting.generateCalls[0]!.description).toBe(
-      "COBRO EFECTIVO: Marco Bs. 200,00: DOC-77 del 17/05",
-    );
+    // W-2: server uses payment.description (client-provided).
+    expect(bench.accounting.generateCalls[0]!.description).toBe("user-typed cobro text");
   });
 
-  it("COBRO empty allocations: no doc-list suffix (REQ-GE-2 Scenario 2.4)", async () => {
+  // CONVERTED (approval-testing): empty allocations — client passthrough.
+  it("COBRO empty allocations: JE.description = client-provided description (REQ-PAY-5 client-authoritative)", async () => {
     bench.accounting.defaultEntry = makeEntry({ id: "entry-4" });
 
     await bench.svc.createAndPost(
@@ -223,12 +242,14 @@ describe("PaymentsService.createAndPost — glosa builder wiring", () => {
       }),
     );
 
-    expect(bench.accounting.generateCalls[0]!.description).toBe(
-      "COBRO EFECTIVO: Marco Bs. 200,00",
-    );
+    // W-2: server uses payment.description (client-provided).
+    expect(bench.accounting.generateCalls[0]!.description).toBe("user-typed cobro text");
   });
 
-  it("COBRO builder canónico — ignora user-typed description, builder gana siempre", async () => {
+  // CONVERTED (approval-testing): INVERTED — client wins, NOT the builder.
+  // Old behavior: builder overrode user-typed text → "COBRO EFECTIVO: Marco Bs. 200,00".
+  // New behavior (W-2): user-typed text ("user override exact text") is persisted as-is.
+  it("COBRO client-authoritative — user-typed description persists, builder does NOT override (REQ-PAY-5 W-2 inversion)", async () => {
     bench.accounting.defaultEntry = makeEntry({ id: "entry-5" });
 
     await bench.svc.createAndPost(
@@ -241,8 +262,7 @@ describe("PaymentsService.createAndPost — glosa builder wiring", () => {
       }),
     );
 
-    expect(bench.accounting.generateCalls[0]!.description).toBe(
-      "COBRO EFECTIVO: Marco Bs. 200,00",
-    );
+    // W-2 inversion: client value wins. The server no longer calls buildPaymentGlosa.
+    expect(bench.accounting.generateCalls[0]!.description).toBe("user override exact text");
   });
 });

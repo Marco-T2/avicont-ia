@@ -68,10 +68,9 @@ import {
 import { buildEntryLines } from "./helpers/build-entry-lines";
 import { isDateWithinPeriod } from "@/modules/fiscal-periods/domain/date-period-check";
 import { PaymentDateOutsidePeriod } from "../domain/errors/payment-errors";
-import {
-  buildPaymentGlosa,
-  type PaymentAllocationGlosa,
-} from "../domain/payment-glosa-builder";
+// buildPaymentGlosa / PaymentAllocationGlosa removed: glosa is now client-authoritative
+// (REQ-PAY-5, W-2). The builder is still used at the domain layer and in the
+// client-side payment form — NOT in the service post path.
 
 // ── Service-layer input shapes ─────────────────────────────────────────────
 
@@ -730,36 +729,14 @@ export class PaymentsService {
         contactId: payment.contactId,
         selectedAccountCode: payment.accountCode ?? undefined,
       });
-      // Builder canónico para COBRO siempre (simplificación post-archive).
-      // PAGO sigue el passthrough — Marco lock: glosa PAGO fuera de scope.
-      let entryDescription = payment.description;
-      if (direction === "COBRO") {
-        const arIds = payment.allocations
-          .map((a) => a.receivableId)
-          .filter((id): id is string => Boolean(id));
-        const [contactName, metaList] = await Promise.all([
-          this.contacts.findName(tx, payment.contactId),
-          arIds.length === 0
-            ? Promise.resolve([])
-            : this.receivables.findGlosaMetaTx(tx, organizationId, arIds),
-        ]);
-        const metaById = new Map(metaList.map((m) => [m.id, m]));
-        const allocationsGlosa: PaymentAllocationGlosa[] = arIds
-          .map((id) => metaById.get(id))
-          .filter((m): m is NonNullable<typeof m> => Boolean(m))
-          .map((m) => ({
-            sourceTypeCode: m.sourceTypeCode,
-            referenceNumber: m.referenceNumber,
-            sourceDate: m.sourceDate,
-          }));
-        entryDescription = buildPaymentGlosa({
-          method: String(payment.method).toUpperCase(),
-          contactName: contactName ?? "",
-          totalAmount: payment.amount.value,
-          allocations: allocationsGlosa,
-          journalEntryDate: payment.date,
-        });
-      }
+      // REQ-PAY-5 (W-2) — glosa is client-authoritative on both create and edit.
+      // The server previously rebuilt COBRO glosa via findGlosaMetaTx + buildPaymentGlosa
+      // (using real receivable metadata). That server-side rebuild is REMOVED.
+      // The client computes buildPaymentGlosa and sends the result as payment.description;
+      // the server persists it as-is. Minor format differences for shortcut-mode payments
+      // are accepted — client glosa is authoritative by design (spec W-2 accepted behavior
+      // change). PAGO passthrough is unchanged — Marco lock: glosa PAGO out of scope.
+      const entryDescription = payment.description;
       const entry = await this.accounting.generateEntryTx(tx, {
         organizationId,
         voucherTypeCode,
