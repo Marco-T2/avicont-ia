@@ -189,6 +189,9 @@ export class PrismaPayablesRepository implements PayableRepository {
         status: "PENDING",
         ...(data.sourceType ? { sourceType: data.sourceType } : {}),
         ...(data.sourceId ? { sourceId: data.sourceId } : {}),
+        ...(data.sourceTypeCode !== undefined
+          ? { sourceTypeCode: data.sourceTypeCode }
+          : {}),
         ...(data.journalEntryId ? { journalEntryId: data.journalEntryId } : {}),
       },
       select: { id: true },
