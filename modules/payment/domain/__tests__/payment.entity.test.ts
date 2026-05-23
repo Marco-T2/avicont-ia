@@ -418,6 +418,52 @@ describe("Payment aggregate root", () => {
         CannotModifyVoidedPayment,
       );
     });
+
+    // W1 — increase with HEADROOM (sum < amount): proves update() accepts new
+    // allocations whose sum is STRICTLY LESS than the new amount. The invariant
+    // uses isGreaterThan, so sum<amount and sum==amount exit the same non-throwing
+    // path; this test names the headroom variant explicitly.
+    it("increases amount with allocations whose sum is strictly less than the new amount (headroom)", () => {
+      const p = Payment.create({
+        ...baseInput,
+        amount: 500,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-1"), amount: 500 },
+        ],
+      });
+      const updated = p.update({
+        amount: 1000,
+        allocations: [
+          alloc(AllocationTarget.forReceivable("rec-1"), 800, p.id),
+        ],
+      });
+      expect(updated.amount.value).toBe(1000);
+      expect(updated.totalAllocated.value).toBe(800);
+      expect(updated.unappliedAmount.value).toBe(200);
+      expect(updated.allocations).toHaveLength(1);
+    });
+
+    // W2 — mixed targets via update(): proves enforceAllocationInvariants runs on
+    // the NEW allocations supplied to update(), not only via replaceAllocations.
+    // Failure mode declarado: PaymentMixedAllocation (validation, PAYMENT_MIXED_ALLOCATION).
+    it("rejects mixed receivable+payable allocations supplied via update() with PaymentMixedAllocation", () => {
+      const p = Payment.create({
+        ...baseInput,
+        amount: 1000,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-1"), amount: 600 },
+        ],
+      });
+      expect(() =>
+        p.update({
+          amount: 1000,
+          allocations: [
+            alloc(AllocationTarget.forReceivable("rec-1"), 500, p.id),
+            alloc(AllocationTarget.forPayable("pay-1"), 500, p.id),
+          ],
+        }),
+      ).toThrow(PaymentMixedAllocation);
+    });
   });
 
   describe("replaceAllocations()", () => {
