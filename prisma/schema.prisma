@@ -657,6 +657,7 @@ model AccountsPayable {
   status         PayableStatus @default(PENDING)
   sourceType     String?
   sourceId       String?
+  sourceTypeCode String?
   journalEntryId String?
   notes          String?
   createdAt      DateTime      @db.Timestamptz(3) @default(now())
