@@ -462,37 +462,11 @@ export class PaymentsService {
   ): Promise<PaymentResult> {
     const payment = await this.getById(organizationId, id);
 
-    if (payment.status === "POSTED") {
-      // Atomic reverse-modify-reapply path (mirror legacy updatePostedPaymentTx)
-      const period = await this.fiscalPeriods.getById(
-        organizationId,
-        payment.periodId,
-      );
-      assertPeriodOpen(period);
-      // I12 — si la fecha cambia en update POSTED, la nueva debe caer en el período.
-      const nextDate = input.date ?? payment.date;
-      if (!isDateWithinPeriod(nextDate, period)) {
-        throw new PaymentDateOutsidePeriod(nextDate, period.name);
-      }
-      return this.updatePostedPaymentTx(
-        organizationId,
-        userId,
-        payment,
-        input,
-      );
-    }
-
-    // VOIDED rejection lives inside the entity (`payment.update()` calls
-    // `assertNotVoided` which throws `CannotModifyVoidedPayment` carrying the
-    // SHARED `ENTRY_VOIDED_IMMUTABLE` code — legacy parity, C2-FIX-2). We
-    // intentionally drop the previous explicit guard here that emitted
-    // `INVALID_STATUS_TRANSITION` with a different message; the entity guard
-    // is the single source of truth for "can this aggregate be mutated".
-
-    // REQ-A6 — LOCKED-edit parity with legacy: validate role + justification
-    // against period status, then proceed with the same mutation path used
-    // by DRAFT, but wrap the audit-tx with `justification` so the
-    // setAuditContext call writes app.audit_justification.
+    // REQ-A6 / W-1 — LOCKED-edit gate, validated BEFORE the status branch so it
+    // covers BOTH the unified POSTED|LOCKED path and the DRAFT path. The gate
+    // (role mandatory + validateLockedEdit on justification length vs period
+    // status) is the enforcement the now-dead updateAllocations carried; the
+    // unified path MUST preserve it (Scenario F2/F3). Only fires for LOCKED.
     if (payment.status === "LOCKED") {
       if (!lockedCtx.role) {
         throw new ValidationError(
@@ -511,7 +485,49 @@ export class PaymentsService {
       );
     }
 
-    // DRAFT or LOCKED (post-validation) — same mutation path. The aggregate
+    if (payment.status === "POSTED" || payment.status === "LOCKED") {
+      // Unified atomic reverse-modify-reapply path (REQ-PAY-2 §2). A POSTED or
+      // LOCKED edit — whether cash, allocations, or credit changes — goes
+      // through updatePostedPaymentTx. The didCashChange seam decides journal
+      // recompute; credit is reverted+reapplied; the LOCKED gate above already
+      // authorized a LOCKED edit. justification is forwarded so the audit tx
+      // writes app.audit_justification (LOCKED only; undefined for POSTED).
+      //
+      // PERIOD CHECKS are POSTED-only. A POSTED edit requires an OPEN period
+      // (assertPeriodOpen) and date∈period (I12). A LOCKED edit is, BY DESIGN,
+      // the authorized path to amend a CLOSED-period document — validateLockedEdit
+      // above already gated it (role + 50-char justification when CLOSED). Running
+      // assertPeriodOpen for LOCKED would defeat the LOCKED-edit policy and break
+      // REQ-A6 parity (legacy allowed LOCKED edits on CLOSED periods).
+      if (payment.status === "POSTED") {
+        const period = await this.fiscalPeriods.getById(
+          organizationId,
+          payment.periodId,
+        );
+        assertPeriodOpen(period);
+        // I12 — si la fecha cambia en update POSTED, la nueva debe caer en el período.
+        const nextDate = input.date ?? payment.date;
+        if (!isDateWithinPeriod(nextDate, period)) {
+          throw new PaymentDateOutsidePeriod(nextDate, period.name);
+        }
+      }
+      return this.updatePostedPaymentTx(
+        organizationId,
+        userId,
+        payment,
+        input,
+        lockedCtx,
+      );
+    }
+
+    // VOIDED rejection lives inside the entity (`payment.update()` calls
+    // `assertNotVoided` which throws `CannotModifyVoidedPayment` carrying the
+    // SHARED `ENTRY_VOIDED_IMMUTABLE` code — legacy parity, C2-FIX-2). We
+    // intentionally drop the previous explicit guard here that emitted
+    // `INVALID_STATUS_TRANSITION` with a different message; the entity guard
+    // is the single source of truth for "can this aggregate be mutated".
+
+    // DRAFT — same mutation path. The aggregate
     // permits non-status edits on LOCKED (only VOIDED is rejected); the
     // role/justification gate above is the LOCKED enforcement layer.
     const next = payment.update({
@@ -539,16 +555,11 @@ export class PaymentsService {
         )
       : next;
 
+    // DRAFT only — LOCKED is routed to updatePostedPaymentTx above, so no
+    // justification is forwarded here (DRAFT edits never carry one).
     const { result, correlationId } = await withAuditTx(
       asAuditTxRepo(this.repo),
-      {
-        userId,
-        organizationId,
-        // For DRAFT this is undefined; for LOCKED it is the validated
-        // justification. Mirrors legacy update() audit-tx wrapping.
-        justification:
-          payment.status === "LOCKED" ? lockedCtx.justification : undefined,
-      },
+      { userId, organizationId },
       async (tx) => {
         await this.repo.updateTx(tx, replaced);
         return replaced;
@@ -786,6 +797,7 @@ export class PaymentsService {
     userId: string,
     payment: Payment,
     input: UpdatePaymentServiceInput,
+    lockedCtx: LockedEditContext = {},
   ): Promise<PaymentResult> {
     const newAmount = input.amount ?? payment.amount.value;
     const oldAmount = payment.amount.value;
@@ -806,7 +818,14 @@ export class PaymentsService {
 
     const { result, correlationId } = await withAuditTx(
       asAuditTxRepo(this.repo),
-      { userId, organizationId },
+      {
+        userId,
+        organizationId,
+        // LOCKED edit (W-1): forward the validated justification so
+        // setAuditContext writes app.audit_justification. undefined for POSTED.
+        justification:
+          payment.status === "LOCKED" ? lockedCtx.justification : undefined,
+      },
       async (tx) => {
         // a. Revert old allocations
         for (const old of payment.allocations) {

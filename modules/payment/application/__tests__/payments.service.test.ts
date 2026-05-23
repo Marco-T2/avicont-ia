@@ -1234,6 +1234,91 @@ describe("PaymentsService", () => {
     });
   });
 
+  // ── LOCKED allocation-only edit via unified path (W-1, Scenario F2/F3) ────
+  //
+  // The unified edit path (updatePostedPaymentTx) MUST preserve the LOCKED gate
+  // (role + justification + validateLockedEdit) that lived in the now-dead
+  // updateAllocations. A LOCKED allocation-only edit goes through update() →
+  // updatePostedPaymentTx, and the gate must still enforce role + justification.
+  describe("update LOCKED allocation-only — unified path gate (Scenario F2/F3)", () => {
+    it("Scenario F2: LOCKED allocation-only edit WITHOUT role/justification is rejected", async () => {
+      const locked = await seedLocked(bench, {
+        amount: 100,
+        allocations: [{ receivableId: "rec-old", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-old", "PARTIAL");
+      bench.receivables.status.set("rec-new", "PENDING");
+
+      // No lockedCtx → role missing → rejected (same as legacy updateAllocations).
+      await expect(
+        bench.svc.update(ORG, USER, locked.id, {
+          allocations: [{ receivableId: "rec-new", amount: 100 }],
+        }),
+      ).rejects.toThrow(ValidationError);
+    });
+
+    it("Scenario F2b: LOCKED + period CLOSED + justification < 50 chars rejected (requiredMin: 50)", async () => {
+      const locked = await seedLocked(bench, {
+        amount: 100,
+        periodStatus: "CLOSED",
+        allocations: [{ receivableId: "rec-old", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-old", "PARTIAL");
+      bench.receivables.status.set("rec-new", "PENDING");
+
+      await expect(
+        bench.svc.update(
+          ORG,
+          USER,
+          locked.id,
+          { allocations: [{ receivableId: "rec-new", amount: 100 }] },
+          { role: "admin", justification: "corta" },
+        ),
+      ).rejects.toMatchObject({
+        code: LOCKED_EDIT_REQUIRES_JUSTIFICATION,
+        details: { requiredMin: 50 },
+      });
+    });
+
+    it("Scenario F3: LOCKED allocation-only edit WITH valid role + justification proceeds; allocations reassigned; journal untouched; justification forwarded", async () => {
+      const locked = await seedLocked(bench, {
+        amount: 100,
+        periodStatus: "OPEN",
+        allocations: [{ receivableId: "rec-old", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-old", "PARTIAL");
+      bench.receivables.status.set("rec-new", "PENDING");
+      const justification = "Reasignación post-bloqueo autorizada por dirección";
+
+      await bench.svc.update(
+        ORG,
+        USER,
+        locked.id,
+        { allocations: [{ receivableId: "rec-new", amount: 100 }] },
+        { role: "admin", justification },
+      );
+
+      // Allocations were reassigned (revert old → apply new).
+      expect(bench.receivables.revertCalls).toEqual([
+        { id: "rec-old", amount: 100 },
+      ]);
+      expect(bench.receivables.applyCalls).toEqual([
+        { id: "rec-new", amount: 100 },
+      ]);
+      // Cash unchanged → journal NOT recomputed (Scenario E holds for LOCKED too).
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyVoidCalls).toHaveLength(0);
+      // Justification forwarded to the audit context.
+      const justSet = bench.repo.executeRawCalls.find(
+        (call) =>
+          typeof call[0] === "string" &&
+          (call[0] as string).includes("app.audit_justification"),
+      );
+      expect(justSet).toBeDefined();
+      expect((justSet?.[0] as string).includes(justification)).toBe(true);
+    });
+  });
+
   describe("void LOCKED — REQ-A6 parity", () => {
     it("rejects when role is missing on LOCKED", async () => {
       const locked = await seedLocked(bench, { amount: 100 });
