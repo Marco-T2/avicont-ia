@@ -782,6 +782,18 @@ export class PaymentsService {
     const newAmount = input.amount ?? payment.amount.value;
     const oldAmount = payment.amount.value;
 
+    // REQ-PAY-2 — journal↔matching seam. "Cash changed" = amount / method /
+    // date / accountCode differs from the persisted values (payment.entity
+    // didCashChange, pure). When cash did NOT change, the journal entry is left
+    // BYTE-IDENTICAL: we skip the entire void/regenerate block below
+    // (Scenario E). Only the allocations (and any credit) are reassigned.
+    const cashChanged = payment.didCashChange({
+      amount: input.amount,
+      method: input.method,
+      date: input.date,
+      accountCode: input.accountCode,
+    });
+
     const settings = await this.orgSettings.getOrCreate(organizationId);
 
     const { result, correlationId } = await withAuditTx(
@@ -793,8 +805,8 @@ export class PaymentsService {
           await this.revertAllocationTx(tx, organizationId, old);
         }
 
-        // b. Reverse old journal entry balances if any
-        if (payment.journalEntryId) {
+        // b. Reverse old journal entry balances if any — ONLY when cash changed.
+        if (cashChanged && payment.journalEntryId) {
           const old = await this.accounting.findEntryByIdTx(
             tx,
             organizationId,
@@ -827,96 +839,104 @@ export class PaymentsService {
         );
         const voucherTypeCode = direction === "COBRO" ? "CI" : "CE";
 
-        // e. Journal entry transitions based on amount
-        if (oldAmount > 0 && newAmount > 0) {
-          // Update existing entry in place
-          const newLines = buildEntryLines({
-            isCollection: direction === "COBRO",
-            method: updated.method,
-            amount: newAmount,
-            cajaAccountCode: settings.cajaGeneralAccountCode,
-            bancoAccountCode: settings.bancoAccountCode,
-            cxcAccountCode: settings.cxcAccountCode,
-            cxpAccountCode: settings.cxpAccountCode,
-            contactId: payment.contactId,
-            selectedAccountCode:
-              input.accountCode ?? payment.accountCode ?? undefined,
-          });
-          const resolvedLines: ResolvedEntryLine[] = [];
-          for (let i = 0; i < newLines.length; i++) {
-            const line = newLines[i];
-            const account = await this.accounting.findAccountByCodeTx(
-              tx,
-              organizationId,
-              line.accountCode,
-            );
-            if (!account) {
-              throw new NotFoundError(`Cuenta ${line.accountCode}`);
-            }
-            resolvedLines.push({
-              accountId: account.id,
-              debit: line.side === "DEBIT" ? newAmount : 0,
-              credit: line.side === "CREDIT" ? newAmount : 0,
-              contactId: line.contactId,
-              order: i,
-            });
-          }
-          const entry = await this.accounting.updateEntryTx(
-            tx,
-            organizationId,
-            payment.journalEntryId!,
-            {
-              date: updated.date,
-              description: updated.description,
+        // e. Journal entry transitions based on amount — ONLY when cash changed.
+        //    Cash unchanged → the entry stays exactly as posted (Scenario E):
+        //    no findAccountByCodeTx / updateEntryTx / generateEntryTx / voidEntryTx
+        //    / applyPostTx. The journal is the source of truth for the cash leg;
+        //    an allocation-only edit never touches it. The whole block is gated
+        //    so the seam is unambiguous (the oldAmount/newAmount sub-branches are
+        //    only reachable when the amount — hence cash — changed anyway).
+        if (cashChanged) {
+          if (oldAmount > 0 && newAmount > 0) {
+            // Update existing entry in place
+            const newLines = buildEntryLines({
+              isCollection: direction === "COBRO",
+              method: updated.method,
+              amount: newAmount,
+              cajaAccountCode: settings.cajaGeneralAccountCode,
+              bancoAccountCode: settings.bancoAccountCode,
+              cxcAccountCode: settings.cxcAccountCode,
+              cxpAccountCode: settings.cxpAccountCode,
               contactId: payment.contactId,
-              referenceNumber: updated.referenceNumber ?? undefined,
-            },
-            resolvedLines,
-            userId,
-          );
-          await this.accountBalances.applyPostTx(tx, entry);
-        } else if (oldAmount === 0 && newAmount > 0) {
-          // Create a fresh entry
-          const newLines = buildEntryLines({
-            isCollection: direction === "COBRO",
-            method: updated.method,
-            amount: newAmount,
-            cajaAccountCode: settings.cajaGeneralAccountCode,
-            bancoAccountCode: settings.bancoAccountCode,
-            cxcAccountCode: settings.cxcAccountCode,
-            cxpAccountCode: settings.cxpAccountCode,
-            contactId: payment.contactId,
-            selectedAccountCode:
-              input.accountCode ?? payment.accountCode ?? undefined,
-          });
-          const entry = await this.accounting.generateEntryTx(tx, {
-            organizationId,
-            voucherTypeCode,
-            contactId: payment.contactId,
-            date: updated.date,
-            periodId: payment.periodId,
-            description: updated.description,
-            referenceNumber: updated.referenceNumber ?? undefined,
-            // journal-physical-document Phase 6 — same as create path; the
-            // updated aggregate's operationalDocTypeId reflects any changes
-            // the user made on the edit form.
-            operationalDocTypeId: updated.operationalDocTypeId ?? null,
-            sourceType: "payment",
-            sourceId: payment.id,
-            createdById: userId,
-            lines: newLines,
-          });
-          await this.accountBalances.applyPostTx(tx, entry);
-          updated = updated.linkJournalEntry(entry.id);
-        } else if (oldAmount > 0 && newAmount === 0) {
-          // Void existing entry (balances already reversed in step b)
-          if (payment.journalEntryId) {
-            await this.accounting.voidEntryTx(
+              selectedAccountCode:
+                input.accountCode ?? payment.accountCode ?? undefined,
+            });
+            const resolvedLines: ResolvedEntryLine[] = [];
+            for (let i = 0; i < newLines.length; i++) {
+              const line = newLines[i];
+              const account = await this.accounting.findAccountByCodeTx(
+                tx,
+                organizationId,
+                line.accountCode,
+              );
+              if (!account) {
+                throw new NotFoundError(`Cuenta ${line.accountCode}`);
+              }
+              resolvedLines.push({
+                accountId: account.id,
+                debit: line.side === "DEBIT" ? newAmount : 0,
+                credit: line.side === "CREDIT" ? newAmount : 0,
+                contactId: line.contactId,
+                order: i,
+              });
+            }
+            const entry = await this.accounting.updateEntryTx(
               tx,
               organizationId,
-              payment.journalEntryId,
+              payment.journalEntryId!,
+              {
+                date: updated.date,
+                description: updated.description,
+                contactId: payment.contactId,
+                referenceNumber: updated.referenceNumber ?? undefined,
+              },
+              resolvedLines,
               userId,
             );
+            await this.accountBalances.applyPostTx(tx, entry);
+          } else if (oldAmount === 0 && newAmount > 0) {
+            // Create a fresh entry
+            const newLines = buildEntryLines({
+              isCollection: direction === "COBRO",
+              method: updated.method,
+              amount: newAmount,
+              cajaAccountCode: settings.cajaGeneralAccountCode,
+              bancoAccountCode: settings.bancoAccountCode,
+              cxcAccountCode: settings.cxcAccountCode,
+              cxpAccountCode: settings.cxpAccountCode,
+              contactId: payment.contactId,
+              selectedAccountCode:
+                input.accountCode ?? payment.accountCode ?? undefined,
+            });
+            const entry = await this.accounting.generateEntryTx(tx, {
+              organizationId,
+              voucherTypeCode,
+              contactId: payment.contactId,
+              date: updated.date,
+              periodId: payment.periodId,
+              description: updated.description,
+              referenceNumber: updated.referenceNumber ?? undefined,
+              // journal-physical-document Phase 6 — same as create path; the
+              // updated aggregate's operationalDocTypeId reflects any changes
+              // the user made on the edit form.
+              operationalDocTypeId: updated.operationalDocTypeId ?? null,
+              sourceType: "payment",
+              sourceId: payment.id,
+              createdById: userId,
+              lines: newLines,
+            });
+            await this.accountBalances.applyPostTx(tx, entry);
+            updated = updated.linkJournalEntry(entry.id);
+          } else if (oldAmount > 0 && newAmount === 0) {
+            // Void existing entry (balances already reversed in step b)
+            if (payment.journalEntryId) {
+              await this.accounting.voidEntryTx(
+                tx,
+                organizationId,
+                payment.journalEntryId,
+                userId,
+              );
+            }
           }
         }
 

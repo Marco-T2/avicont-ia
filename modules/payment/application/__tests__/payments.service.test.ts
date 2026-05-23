@@ -552,7 +552,13 @@ describe("PaymentsService", () => {
   // ── update (POSTED) — atomic reverse-modify-reapply ─────────────────────
 
   describe("update POSTED", () => {
-    it("reverses old balances + allocations, then applies new ones", async () => {
+    // NOTE (Phase 4, REQ-PAY-2): this was an approval test for the legacy
+    // behavior where ANY POSTED edit recomputed the journal. With the
+    // didCashChange seam, a description-only edit no longer touches the journal
+    // (now covered by the "didCashChange seam" Scenario E test). To keep the
+    // journal-recompute path under test here, the edit now CHANGES cash (amount)
+    // — which is the branch that legitimately reverses balances + updates entry.
+    it("on a cash-changing edit, reverses old balances + allocations, then applies new ones", async () => {
       const posted = await seedPosted(bench, {
         amount: 100,
         allocations: [{ receivableId: "rec-1", amount: 100 }],
@@ -570,11 +576,14 @@ describe("PaymentsService", () => {
       });
 
       const result = await bench.svc.update(ORG, USER, posted.id, {
+        amount: 250,
         description: "edit",
+        allocations: [{ receivableId: "rec-1", amount: 250 }],
       });
 
       expect(result.payment.status).toBe("POSTED");
       expect(result.payment.description).toBe("edit");
+      expect(result.payment.amount.value).toBe(250);
       expect(bench.receivables.revertCalls).toEqual([
         { id: "rec-1", amount: 100 },
       ]);
@@ -586,7 +595,7 @@ describe("PaymentsService", () => {
         entryId: "entry-seeded",
       });
       expect(bench.receivables.applyCalls).toEqual([
-        { id: "rec-1", amount: 100 },
+        { id: "rec-1", amount: 250 },
       ]);
     });
 
@@ -600,6 +609,104 @@ describe("PaymentsService", () => {
       await expect(
         bench.svc.update(ORG, USER, posted.id, { description: "x" }),
       ).rejects.toMatchObject({ code: FISCAL_PERIOD_CLOSED });
+    });
+  });
+
+  // ── update POSTED — didCashChange seam (REQ-PAY-2, Phase 4) ──────────────
+  //
+  // The unified edit path MUST branch on payment.didCashChange:
+  //   - cash UNCHANGED (only allocations / description) → journal entry left
+  //     BYTE-IDENTICAL: NO findEntryByIdTx / applyVoidTx / updateEntryTx /
+  //     applyPostTx calls. Only the allocations are reverted + reapplied
+  //     (Scenario E). The allocation reassignment still runs.
+  //   - cash CHANGED (amount/method/date/accountCode) → full recompute as
+  //     today: void old balances + updateEntryTx + applyPostTx (Scenario F).
+  describe("update POSTED — didCashChange seam (Scenario E / F)", () => {
+    it("Scenario E: alloc-only edit leaves the journal untouched (no journal calls), same entry id", async () => {
+      const posted = await seedPosted(bench, {
+        amount: 100,
+        allocations: [{ receivableId: "rec-1", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-1", "PARTIAL");
+      bench.receivables.status.set("rec-2", "PENDING");
+      // Snapshot the journal entry the seed produced (id + lines).
+      const entryBefore = await bench.accounting.findEntryByIdTx(
+        null,
+        ORG,
+        "entry-seeded",
+      );
+      // Reset counters dirtied by the snapshot read above.
+      bench.accountBalances.applyVoidCalls = [];
+      bench.accountBalances.applyPostCalls = [];
+      bench.accounting.updateCalls = [];
+
+      // Edit ONLY allocations — no cash field changes.
+      const result = await bench.svc.update(ORG, USER, posted.id, {
+        allocations: [{ receivableId: "rec-2", amount: 100 }],
+      });
+
+      // The journal entry is byte-identical: same id, same lines.
+      expect(result.payment.journalEntryId).toBe("entry-seeded");
+      const entryAfter = await bench.accounting.findEntryByIdTx(
+        null,
+        ORG,
+        "entry-seeded",
+      );
+      expect(entryAfter).toEqual(entryBefore);
+
+      // NO journal mutation at all — the centerpiece of Scenario E.
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyVoidCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyPostCalls).toHaveLength(0);
+      expect(bench.accounting.voidCalls).toHaveLength(0);
+      expect(bench.accounting.generateCalls).toHaveLength(0);
+
+      // Allocations were still reassigned (revert old → apply new).
+      expect(bench.receivables.revertCalls).toEqual([
+        { id: "rec-1", amount: 100 },
+      ]);
+      expect(bench.receivables.applyCalls).toEqual([
+        { id: "rec-2", amount: 100 },
+      ]);
+    });
+
+    it("Scenario F: cash-change edit (amount) recomputes the journal (updateEntryTx + applyPost/applyVoid)", async () => {
+      const posted = await seedPosted(bench, {
+        amount: 100,
+        allocations: [{ receivableId: "rec-1", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-1", "PARTIAL");
+      bench.accounting.accountsByCode.set("1.1.1.1", {
+        id: "acct-caja",
+        code: "1.1.1.1",
+      });
+      bench.accounting.accountsByCode.set("1.1.4.1", {
+        id: "acct-cxc",
+        code: "1.1.4.1",
+      });
+      bench.accountBalances.applyVoidCalls = [];
+      bench.accountBalances.applyPostCalls = [];
+      bench.accounting.updateCalls = [];
+
+      // Edit the amount → cash changed → journal must recompute.
+      const result = await bench.svc.update(ORG, USER, posted.id, {
+        amount: 1000,
+        allocations: [{ receivableId: "rec-1", amount: 1000 }],
+      });
+
+      expect(result.payment.amount.value).toBe(1000);
+      // Journal recomputed in place: old balances voided + entry updated + reposted.
+      expect(bench.accountBalances.applyVoidCalls).toEqual([
+        { entryId: "entry-seeded" },
+      ]);
+      expect(bench.accounting.updateCalls).toHaveLength(1);
+      expect(bench.accounting.updateCalls[0]?.lines).toEqual([
+        { accountId: "acct-caja", debit: 1000, credit: 0, contactId: undefined, order: 0 },
+        { accountId: "acct-cxc", debit: 0, credit: 1000, contactId: CONTACT, order: 1 },
+      ]);
+      expect(bench.accountBalances.applyPostCalls.at(-1)).toEqual({
+        entryId: "entry-seeded",
+      });
     });
   });
 
