@@ -1681,28 +1681,23 @@ describe("PaymentsService", () => {
     });
   });
 
-  // ── edit POSTED with prior credit — bug repro R-4 ────────────────────────
+  // ── edit POSTED with prior credit — bug repro R-4 (FIXED in Phase 4) ─────
   //
   // Scenario G-order: a contact has two POSTED COBRO payments, one of which
   // was used as a credit source via createAndPost (creditSources field).
-  // Editing the CONSUMER payment POSTED should:
-  //   (Phase 4 GREEN) revert prior credit (restore source.unappliedAmount),
-  //   then re-apply the same credit (reduce source.unappliedAmount again).
+  // Editing the CONSUMER payment POSTED now (Phase 4 GREEN):
+  //   reverts prior credit (restore source.unappliedAmount), then re-applies
+  //   the same credit (reduce source.unappliedAmount again) — net unchanged.
   //
-  // CURRENT BUG (R-4): UpdatePaymentServiceInput has no creditSources field.
-  // updatePostedPaymentTx does not call revertCreditTx / applyCreditToInvoiceTx.
-  // Result: credit is silently dropped — source.unappliedAmount is not restored,
-  // and no CreditConsumption link is written (the table does not yet exist).
-  //
-  // Convention choice: it.skip (not it.fails) because the bug is a SILENT DROP,
-  // not a throw. it.fails requires the test itself to throw; this test would
-  // PASS in the wrong way (update succeeds but state is inconsistent).
-  // The eventual GREEN assertion is written inside as a comment target.
-  // TODO(pagos-cobros-fifo Phase 4): un-skip — edit path must honor credit
-  // without throwing and without silent drop.
+  // BUG that was here (R-4): UpdatePaymentServiceInput had no creditSources
+  // field and updatePostedPaymentTx never called revertCreditTx /
+  // applyCreditToInvoiceTx, so credit was SILENTLY DROPPED on edit (source's
+  // unappliedAmount left wrong). Phase 4 wired creditSources through the
+  // service input + the unified edit path (revert-before-reapply). This test
+  // was Phase 0's it.skip RED repro; un-skipped here, it is the bug fix landing.
 
-  describe("edit POSTED with prior credit — bug repro R-4", () => {
-    it.skip("edit POSTED consumer payment re-applies same creditSources without dropping them", async () => {
+  describe("edit POSTED with prior credit — bug repro R-4 (FIXED)", () => {
+    it("edit POSTED consumer payment re-applies same creditSources without dropping them", async () => {
       // ── Arrange ────────────────────────────────────────────────────────────
       // SOURCE: amount=200, allocated=100 to rec-original → unappliedAmount=100
       const source = await seedPosted(bench, {
@@ -1753,17 +1748,21 @@ describe("PaymentsService", () => {
       bench.accounting.accountsByCode.set("1.1.1.1", { id: "acct-caja", code: "1.1.1.1" });
 
       // ── Act ────────────────────────────────────────────────────────────────
-      // Edit the CONSUMER POSTED payment with the same creditSources.
-      // Phase 4 will wire creditSources through UpdatePaymentServiceInput and
+      // Edit the CONSUMER POSTED payment with the same creditSources. Phase 4
+      // wired creditSources through UpdatePaymentServiceInput and
       // updatePostedPaymentTx: revert prior links → re-apply same creditSources.
       await bench.svc.update(ORG, USER, consumer.payment.id, {
         description: "edited",
-        // TODO(pagos-cobros-fifo Phase 4): creditSources is not yet part of
-        // UpdatePaymentServiceInput — add it and wire through update().
-        // creditSources: [{ sourcePaymentId: source.id, receivableId: "rec-credit-target", amount: 100 }],
-      } as Parameters<typeof bench.svc.update>[3]);
+        creditSources: [
+          {
+            sourcePaymentId: source.id,
+            receivableId: "rec-credit-target",
+            amount: 100,
+          },
+        ],
+      });
 
-      // ── Assert (GREEN target — currently these fail because credit is silently dropped) ──
+      // ── Assert (GREEN — credit reverted then re-applied, no silent drop) ──
       // After edit, source.unappliedAmount must still be 0 (credit reverted then
       // re-applied in same tx → net effect = unchanged).
       const sourceAfterEdit = await bench.repo.findById(ORG, source.id);
