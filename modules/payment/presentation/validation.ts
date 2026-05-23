@@ -64,7 +64,6 @@ export const paymentFiltersSchema = z.object({
   periodId: z.string().optional(),
 });
 
-export const updateAllocationsSchema = z.object({
-  allocations: z.array(allocationInputSchema),
-  justification: z.string().min(1).optional(),
-});
+// updateAllocationsSchema REMOVED (Phase 9, REQ-PAY-8): dead code. The
+// /payments/[paymentId]/allocations route was deleted; allocation-only edits
+// now go through the unified PATCH edit path (updatePaymentSchema).

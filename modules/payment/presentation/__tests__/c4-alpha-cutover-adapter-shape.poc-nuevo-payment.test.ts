@@ -189,7 +189,7 @@ const PAYMENT_SERVICE_CALLSITES = [
   "app/api/organizations/[orgSlug]/payments/route.ts",
   "app/api/organizations/[orgSlug]/payments/[paymentId]/route.ts",
   "app/api/organizations/[orgSlug]/payments/[paymentId]/status/route.ts",
-  "app/api/organizations/[orgSlug]/payments/[paymentId]/allocations/route.ts",
+  // allocations/route.ts REMOVED (Phase 9, REQ-PAY-8): dead code — unified edit path.
   "app/api/organizations/[orgSlug]/payments/apply-credits/route.ts",
 ] as const;
 
@@ -391,7 +391,7 @@ describe("POC nuevo payment C4-α — Adapter Layer presentation/ delegate via r
   // post-GREEN (mirror feedback_red_acceptance_failure_mode precedent C0-pre +
   // C1 + C2 + C3 cumulative).
 
-  it("Test 13 — 7 PaymentService production callsites preservation imports from hex barrel (PASS preservation pre+post-GREEN)", () => {
+  it("Test 13 — 6 PaymentService production callsites preservation imports from hex barrel (allocations route removed Phase 9 REQ-PAY-8; PASS preservation pre+post-GREEN)", () => {
     for (const callsite of PAYMENT_SERVICE_CALLSITES) {
       const filePath = path.join(REPO_ROOT, callsite);
       const exists = fs.existsSync(filePath);

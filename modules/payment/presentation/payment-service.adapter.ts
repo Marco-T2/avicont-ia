@@ -221,26 +221,6 @@ export class PaymentService {
     return { ...row, correlationId };
   }
 
-  async updateAllocations(
-    organizationId: string,
-    id: string,
-    newAllocations: AllocationInput[],
-    userId: string,
-    role?: string,
-    justification?: string,
-  ): Promise<WithCorrelation<PaymentWithRelations>> {
-    const { payment, correlationId } = await this.inner.updateAllocations(
-      organizationId,
-      userId,
-      id,
-      newAllocations,
-      { role, justification },
-    );
-    const row = await this.readById(organizationId, payment.id);
-    if (!row) throw new PaymentNotFound();
-    return { ...row, correlationId };
-  }
-
   async applyCreditOnly(
     organizationId: string,
     userId: string,

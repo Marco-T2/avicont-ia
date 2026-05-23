@@ -389,10 +389,9 @@ describe("POC nuevo payment C1 — cross-feature/cross-module presentation cutov
     expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
   });
 
-  it("Test 4: app/api/organizations/[orgSlug]/payments/[paymentId]/allocations/route.ts DOES import from `@/modules/payment/presentation/server` (PaymentService factory hex post-cutover)", () => {
-    const source = fs.readFileSync(PAYMENTS_ALLOCATIONS_ROUTE, "utf8");
-    expect(source).toMatch(HEX_CANONICAL_SERVER_IMPORT_RE);
-  });
+  // Test 4 REMOVED (Phase 9, REQ-PAY-8): the allocations route file was deleted as
+  // dead code (unified edit path). fs.readFileSync would throw ENOENT. The cutover
+  // assertion (route imported from hex barrel) is moot — route no longer exists.
 
   it("Test 5: app/api/organizations/[orgSlug]/payments/apply-credits/route.ts DOES import from `@/modules/payment/presentation/server` (PaymentService factory hex post-cutover)", () => {
     const source = fs.readFileSync(PAYMENTS_APPLY_CREDITS_ROUTE, "utf8");
@@ -419,12 +418,12 @@ describe("POC nuevo payment C1 — cross-feature/cross-module presentation cutov
   // sources collectively NO contain legacy barrel import. Single assertion
   // replaces 8 per-callsite negatives (consolidated 14-total target estricto).
 
-  it("Test 9: 8 callsite sources collectively NO contain `from \"@/features/payment/server\"` (legacy barrel import dropped post-cutover ALL 8 callsites consolidated PROJECT-scope grep app/ paths)", () => {
+  it("Test 9: 7 callsite sources collectively NO contain `from \"@/features/payment/server\"` (legacy barrel import dropped post-cutover ALL remaining callsites — allocations route deleted Phase 9, REQ-PAY-8)", () => {
+    // allocations/route.ts removed (Phase 9, REQ-PAY-8 dead-code deletion) — 7 callsites remain.
     const sources = [
       fs.readFileSync(PAYMENTS_ROUTE, "utf8"),
       fs.readFileSync(PAYMENTS_BY_ID_ROUTE, "utf8"),
       fs.readFileSync(PAYMENTS_STATUS_ROUTE, "utf8"),
-      fs.readFileSync(PAYMENTS_ALLOCATIONS_ROUTE, "utf8"),
       fs.readFileSync(PAYMENTS_APPLY_CREDITS_ROUTE, "utf8"),
       fs.readFileSync(PAYMENTS_PAGE, "utf8"),
       fs.readFileSync(PAYMENT_DETAIL_PAGE, "utf8"),

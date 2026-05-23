@@ -871,48 +871,6 @@ describe("PaymentsService", () => {
     });
   });
 
-  // ── updateAllocations ────────────────────────────────────────────────────
-
-  describe("updateAllocations", () => {
-    it("rejects on DRAFT (use update instead)", async () => {
-      const p = await bench.svc.create(ORG, USER, baseCreate({ amount: 100 }));
-      await expect(
-        bench.svc.updateAllocations(ORG, USER, p.id, [
-          { receivableId: "rec-1", amount: 50 },
-        ]),
-      ).rejects.toMatchObject({ code: INVALID_STATUS_TRANSITION });
-    });
-
-    it("reverts old + applies new on POSTED", async () => {
-      const posted = await seedPosted(bench, {
-        amount: 100,
-        allocations: [{ receivableId: "rec-old", amount: 100 }],
-      });
-      bench.receivables.status.set("rec-old", "PARTIAL");
-      bench.receivables.status.set("rec-new", "PENDING");
-
-      await bench.svc.updateAllocations(ORG, USER, posted.id, [
-        { receivableId: "rec-new", amount: 100 },
-      ]);
-      expect(bench.receivables.revertCalls).toEqual([
-        { id: "rec-old", amount: 100 },
-      ]);
-      expect(bench.receivables.applyCalls).toEqual([
-        { id: "rec-new", amount: 100 },
-      ]);
-    });
-
-    it("propagates PAYMENT_ALLOCATIONS_EXCEED_TOTAL from aggregate", async () => {
-      const posted = await seedPosted(bench, { amount: 100 });
-      bench.receivables.status.set("rec-1", "PENDING");
-      await expect(
-        bench.svc.updateAllocations(ORG, USER, posted.id, [
-          { receivableId: "rec-1", amount: 200 },
-        ]),
-      ).rejects.toMatchObject({ code: PAYMENT_ALLOCATIONS_EXCEED_TOTAL });
-    });
-  });
-
   // ── applyCreditOnly ──────────────────────────────────────────────────────
 
   describe("applyCreditOnly", () => {
@@ -1372,76 +1330,6 @@ describe("PaymentsService", () => {
     });
   });
 
-  describe("updateAllocations LOCKED — REQ-A6 parity", () => {
-    it("rejects when role is missing on LOCKED", async () => {
-      const locked = await seedLocked(bench, {
-        amount: 100,
-        allocations: [{ receivableId: "rec-old", amount: 100 }],
-      });
-      bench.receivables.status.set("rec-old", "PARTIAL");
-      bench.receivables.status.set("rec-new", "PENDING");
-      await expect(
-        bench.svc.updateAllocations(ORG, USER, locked.id, [
-          { receivableId: "rec-new", amount: 100 },
-        ]),
-      ).rejects.toThrow(ValidationError);
-    });
-
-    it("rejects when period CLOSED and justification < 50 chars", async () => {
-      const locked = await seedLocked(bench, {
-        amount: 100,
-        periodStatus: "CLOSED",
-        allocations: [{ receivableId: "rec-old", amount: 100 }],
-      });
-      bench.receivables.status.set("rec-old", "PARTIAL");
-      bench.receivables.status.set("rec-new", "PENDING");
-      await expect(
-        bench.svc.updateAllocations(
-          ORG,
-          USER,
-          locked.id,
-          [{ receivableId: "rec-new", amount: 100 }],
-          { role: "admin", justification: "corto" },
-        ),
-      ).rejects.toMatchObject({
-        code: LOCKED_EDIT_REQUIRES_JUSTIFICATION,
-        details: { requiredMin: 50 },
-      });
-    });
-
-    it("proceeds when role + justification valid; forwards justification", async () => {
-      const locked = await seedLocked(bench, {
-        amount: 100,
-        periodStatus: "OPEN",
-        allocations: [{ receivableId: "rec-old", amount: 100 }],
-      });
-      bench.receivables.status.set("rec-old", "PARTIAL");
-      bench.receivables.status.set("rec-new", "PENDING");
-      const justification = "Reasignación post-bloqueo autorizada";
-
-      await bench.svc.updateAllocations(
-        ORG,
-        USER,
-        locked.id,
-        [{ receivableId: "rec-new", amount: 100 }],
-        { role: "admin", justification },
-      );
-      expect(bench.receivables.revertCalls).toEqual([
-        { id: "rec-old", amount: 100 },
-      ]);
-      expect(bench.receivables.applyCalls).toEqual([
-        { id: "rec-new", amount: 100 },
-      ]);
-      const justSet = bench.repo.executeRawCalls.find(
-        (call) =>
-          typeof call[0] === "string" &&
-          (call[0] as string).includes("app.audit_justification"),
-      );
-      expect(justSet).toBeDefined();
-      expect((justSet?.[0] as string).includes(justification)).toBe(true);
-    });
-  });
-
   // ── Legacy parity: error-code drifts (C2-FIX-2) ─────────────────────────
   //
   // These cover the gaps surfaced in the C2 audit:
@@ -1531,25 +1419,6 @@ describe("PaymentsService", () => {
             allocations: [{ receivableId: "rec-cap-low", amount: 100 }],
           }),
         ),
-      ).rejects.toMatchObject({
-        code: PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
-        message: expect.stringContaining("excede el saldo disponible"),
-      });
-    });
-
-    it("updateAllocations emits PAYMENT_ALLOCATION_EXCEEDS_BALANCE when new alloc balance insufficient", async () => {
-      const posted = await seedPosted(bench, {
-        amount: 100,
-        allocations: [{ receivableId: "rec-old", amount: 100 }],
-      });
-      bench.receivables.status.set("rec-old", "PARTIAL");
-      bench.receivables.status.set("rec-new-low", "PENDING");
-      bench.receivables.balance.set("rec-new-low", 30);
-
-      await expect(
-        bench.svc.updateAllocations(ORG, USER, posted.id, [
-          { receivableId: "rec-new-low", amount: 100 },
-        ]),
       ).rejects.toMatchObject({
         code: PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
         message: expect.stringContaining("excede el saldo disponible"),

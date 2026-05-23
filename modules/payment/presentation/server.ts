@@ -12,7 +12,8 @@ export {
   createPaymentSchema,
   updatePaymentSchema,
   paymentFiltersSchema,
-  updateAllocationsSchema,
+  // updateAllocationsSchema REMOVED (Phase 9, REQ-PAY-8): dead code along with
+  // the /payments/[paymentId]/allocations route file.
 } from "./validation";
 
 export { Payment } from "../domain/payment.entity";

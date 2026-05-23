@@ -470,22 +470,6 @@ describe("PaymentsService — Phase 2: correlationId emission", () => {
     expect(result.correlationId).toMatch(UUID_V4_REGEX);
   });
 
-  // ── D28: updateAllocations() ──────────────────────────────────────────────
-  it("D28: updateAllocations() returns a UUID v4 correlationId", async () => {
-    const posted = await seedPosted(bench, {
-      amount: 100,
-      allocations: [{ receivableId: "rec-old-d28", amount: 100 }],
-    });
-    bench.receivables.status.set("rec-old-d28", "PARTIAL");
-    bench.receivables.status.set("rec-new-d28", "PENDING");
-
-    const result = await bench.svc.updateAllocations(ORG, USER, posted.id, [
-      { receivableId: "rec-new-d28", amount: 100 },
-    ]);
-
-    expect(result.correlationId).toMatch(UUID_V4_REGEX);
-  });
-
   // ── D29: update() POSTED branch (updatePostedPaymentTx) ───────────────────
   it("D29: update() POSTED returns a UUID v4 correlationId", async () => {
     const posted = await seedPosted(bench, {

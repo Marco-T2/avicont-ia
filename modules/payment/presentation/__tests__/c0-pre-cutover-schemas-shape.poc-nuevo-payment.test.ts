@@ -291,10 +291,13 @@ describe("POC nuevo payment C0-pre — barrel sub-import migration prerequisite 
     expect(source).not.toMatch(LEGACY_FEATURES_PAYMENT_BARREL_IMPORT_RE);
   });
 
-  it("Test 3: app/api/organizations/[orgSlug]/payments/[paymentId]/allocations/route.ts does NOT import from `@/features/payment` (legacy barrel sub-import dropped post-cutover — updateAllocationsSchema migrate canonical home)", () => {
-    const source = fs.readFileSync(PAYMENTS_ALLOCATIONS_ROUTE, "utf8");
-    expect(source).not.toMatch(LEGACY_FEATURES_PAYMENT_BARREL_IMPORT_RE);
-  });
+  // Test 3 REMOVED (Phase 9, REQ-PAY-8, design D-E): the allocations route file
+  // app/api/.../payments/[paymentId]/allocations/route.ts was deleted as dead code
+  // (unified edit path; no frontend consumer). The assertion purpose was confirming
+  // the barrel-sub-import migration was complete — that migration is done and the
+  // route is gone. Asserting absence (via fs.readFileSync) would throw ENOENT.
+  // Per design: REMOVE, not flip-to-assert-absence (purpose was a completed
+  // migration gate, now obsolete).
 
   // ── B: Hex canonical home import POSITIVE (Tests 4-6) ──────────────────
   // §13.A5-ζ-prerequisite NEW classification 2da evidencia matures — schemas
@@ -314,8 +317,8 @@ describe("POC nuevo payment C0-pre — barrel sub-import migration prerequisite 
     expect(source).toMatch(HEX_CANONICAL_VALIDATION_IMPORT_RE);
   });
 
-  it("Test 6: app/api/organizations/[orgSlug]/payments/[paymentId]/allocations/route.ts DOES import from `@/modules/payment/presentation/validation` (canonical home — updateAllocationsSchema post-cutover)", () => {
-    const source = fs.readFileSync(PAYMENTS_ALLOCATIONS_ROUTE, "utf8");
-    expect(source).toMatch(HEX_CANONICAL_VALIDATION_IMPORT_RE);
-  });
+  // Test 6 REMOVED (Phase 9, REQ-PAY-8, design D-E): symmetric with Test 3 above.
+  // The allocations route file no longer exists; fs.readFileSync would throw ENOENT.
+  // Purpose was confirming the canonical-home import was in place — completed and
+  // now moot since the route is deleted.
 });
