@@ -169,7 +169,7 @@ describe("PrismaPayablesRepository", () => {
   });
 
   describe("findPendingByContact", () => {
-    it("returns plain-number snapshots ordered by createdAt asc", async () => {
+    it("returns plain-number snapshots ordered by createdAt asc, includes sourceTypeCode + purchase meta (referenceNumber, sourceDate)", async () => {
       const findMany = vi.fn().mockResolvedValueOnce([
         {
           id: "p1",
@@ -180,7 +180,9 @@ describe("PrismaPayablesRepository", () => {
           dueDate: new Date("2026-05-15"),
           sourceType: "purchase",
           sourceId: "p-1",
+          sourceTypeCode: "CG",
           createdAt: new Date("2026-04-01"),
+          purchase: { referenceNumber: 1023, date: new Date("2026-03-20") },
         },
       ]);
       const repo = new PrismaPayablesRepository(dbWith({ findMany }));
@@ -199,7 +201,9 @@ describe("PrismaPayablesRepository", () => {
           dueDate: true,
           sourceType: true,
           sourceId: true,
+          sourceTypeCode: true,
           createdAt: true,
+          purchase: { select: { referenceNumber: true, date: true } },
         },
       });
       expect(result).toEqual([
@@ -212,9 +216,39 @@ describe("PrismaPayablesRepository", () => {
           dueDate: new Date("2026-05-15"),
           sourceType: "purchase",
           sourceId: "p-1",
+          sourceTypeCode: "CG",
           createdAt: new Date("2026-04-01"),
+          referenceNumber: 1023,
+          sourceDate: new Date("2026-03-20"),
         },
       ]);
+    });
+
+    it("orphan AP (no purchase loaded) falls back to null referenceNumber + createdAt as sourceDate", async () => {
+      const findMany = vi.fn().mockResolvedValueOnce([
+        {
+          id: "p2",
+          description: "orphan",
+          amount: new Prisma.Decimal(50),
+          paid: new Prisma.Decimal(0),
+          balance: new Prisma.Decimal(50),
+          dueDate: new Date("2026-06-01"),
+          sourceType: "purchase",
+          sourceId: "p-deleted",
+          sourceTypeCode: null,
+          createdAt: new Date("2026-05-10"),
+          purchase: null,
+        },
+      ]);
+      const repo = new PrismaPayablesRepository(dbWith({ findMany }));
+
+      const result = await repo.findPendingByContact("org-1", "c-1");
+
+      expect(result[0]).toMatchObject({
+        sourceTypeCode: null,
+        referenceNumber: null,
+        sourceDate: new Date("2026-05-10"),
+      });
     });
   });
 
