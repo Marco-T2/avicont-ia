@@ -755,7 +755,10 @@ export default function PaymentForm({
       contactId?: string;
       total?: number;
     }) => {
-      if (paymentType !== "COBRO") return; // PAGO out of scope — passthrough.
+      // Direction-aware rebuild gate (design D8 / AP-3): COBRO and PAGO both
+      // rebuild via the glosa builder; any other direction passes through.
+      // COBRO branch stays byte-identical (parity invariant REQ-PAY-5/W-2).
+      if (paymentType !== "COBRO" && paymentType !== "PAGO") return;
       const effectiveMethod = overrides?.method ?? method;
       const effectiveContactId = overrides?.contactId ?? contactId;
       const contactName =
@@ -769,6 +772,7 @@ export default function PaymentForm({
           ? overrides.total
           : parseFloat(amountOverride) || 0;
       const auto = buildPaymentGlosa({
+        direction: paymentType,
         method: effectiveMethod.toUpperCase(),
         contactName,
         totalAmount: effectiveTotal,

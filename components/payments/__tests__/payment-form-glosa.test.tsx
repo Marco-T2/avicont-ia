@@ -176,7 +176,11 @@ describe("payment-form PAGO rebuild gate (AP-3, design D8)", () => {
     // Gate must be direction-aware: PAGO triggers buildPaymentGlosa, not the
     // pre-existing literal "Mi glosa de pago vieja".
     expect(descInput.value).toMatch(/^PAGO TRANSFERENCIA: Proveedor X /);
-    expect(descInput.value).toMatch(/CG-1023 del 15\/05/);
+    // Assert the CG-1023 token (sourceTypeCode + referenceNumber). The "del
+    // DD/MM" day is timezone-sensitive in jsdom (formatDateConditional renders
+    // local time of the midnight-UTC fixture), so we match the code-ref token
+    // only — same convention as the VG-42 serialized-date test below.
+    expect(descInput.value).toMatch(/CG-1023 del \d{2}\/\d{2}/);
   });
 
   it("edit COBRO mode still rebuilds (regression guard — gate did not break COBRO)", () => {
