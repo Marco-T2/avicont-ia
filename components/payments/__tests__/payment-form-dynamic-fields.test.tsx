@@ -182,8 +182,10 @@ function getRestanteText(): string {
 
 async function invoiceCheckboxes(): Promise<HTMLInputElement[]> {
   // Wait until both invoice rows are present, then return their row checkboxes.
-  await screen.findByText(/VENTA A/);
-  await screen.findByText(/VENTA B/);
+  // Rows are located by their Nro Ref token (Libro-Mayor layout) since the
+  // glosa/description column was removed: INVOICE_A → "VG-1", INVOICE_B → "VG-2".
+  await screen.findByText(/VG-1/);
+  await screen.findByText(/VG-2/);
   return screen.getAllByRole("checkbox") as HTMLInputElement[];
 }
 
@@ -223,7 +225,7 @@ describe("payment-form dynamic fields — Restante guard (REQ-PAY-1/4)", () => {
 
     // Second invoice's Aplicar input holds 470, NOT its full 1232 saldo
     // (budget-aware fill: min(saldo, restante)).
-    const rowB = screen.getByText(/VENTA B/).closest("tr") as HTMLElement;
+    const rowB = screen.getByText(/VG-2/).closest("tr") as HTMLElement;
     await waitFor(() => {
       const aplicarB = within(rowB).getByRole("spinbutton") as HTMLInputElement;
       expect(parseFloat(aplicarB.value)).toBe(470);
@@ -257,8 +259,8 @@ describe("payment-form dynamic fields — Restante guard (REQ-PAY-1/4)", () => {
     // Apply 1530 to A and 1232 to B directly (deterministic — independent of the
     // check-fill ordering). B's 1232 will be covered by the credit, not cash.
     await invoiceCheckboxes();
-    const rowA = screen.getByText(/VENTA A/).closest("tr") as HTMLElement;
-    const rowB = screen.getByText(/VENTA B/).closest("tr") as HTMLElement;
+    const rowA = screen.getByText(/VG-1/).closest("tr") as HTMLElement;
+    const rowB = screen.getByText(/VG-2/).closest("tr") as HTMLElement;
     fireEvent.click(within(rowA).getByRole("checkbox"));
     fireEvent.click(within(rowB).getByRole("checkbox"));
     fireEvent.change(within(rowA).getByRole("spinbutton"), {

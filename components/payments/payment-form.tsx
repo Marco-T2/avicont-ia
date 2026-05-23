@@ -1569,7 +1569,13 @@ export default function PaymentForm({
                       <th className="py-3 px-3 w-10" />
                     )}
                     <th className="text-left py-3 px-4 font-medium text-muted-foreground">
-                      Descripción
+                      Fecha
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Tipo
+                    </th>
+                    <th className="text-left py-3 px-4 font-medium text-muted-foreground">
+                      Nro Ref
                     </th>
                     <th className="text-right py-3 px-4 font-medium text-muted-foreground">
                       Total
@@ -1589,6 +1595,17 @@ export default function PaymentForm({
                   {allocations.map((alloc) => {
                     const assigned = parseFloat(alloc.assignedAmount) || 0;
                     const overLimit = assigned > alloc.balance;
+                    // Nro Ref token, Libro-Mayor style: `${code}-${number}`
+                    // (e.g. "VG-1"). Falls back to the bare number, then to the
+                    // glosa for shortcut rows that carry neither a doc code nor a
+                    // reference (sourceTypeCode/referenceNumber null) so the row
+                    // never renders anonymous.
+                    const refLabel =
+                      alloc.sourceTypeCode && alloc.referenceNumber != null
+                        ? `${alloc.sourceTypeCode}-${alloc.referenceNumber}`
+                        : alloc.referenceNumber != null
+                          ? String(alloc.referenceNumber)
+                          : alloc.description;
                     return (
                       <tr
                         key={alloc.id}
@@ -1607,10 +1624,16 @@ export default function PaymentForm({
                             />
                           </td>
                         )}
+                        <td className="py-3 px-4 whitespace-nowrap text-muted-foreground">
+                          {formatDateBO(alloc.sourceDate)}
+                        </td>
+                        <td className="py-3 px-4 font-mono text-xs uppercase">
+                          {alloc.sourceTypeCode ?? "—"}
+                        </td>
                         <td className="py-3 px-4">
                           <div>
-                            <p className="font-medium text-foreground">
-                              {alloc.description}
+                            <p className="font-medium text-foreground font-mono text-xs">
+                              {refLabel}
                             </p>
                             {alloc.dueDate && (
                               <p className="text-xs text-muted-foreground">
@@ -1669,7 +1692,7 @@ export default function PaymentForm({
                 <tfoot>
                   <tr className="border-t bg-muted/50">
                     <td
-                      colSpan={isReadOnly ? 4 : 5}
+                      colSpan={isReadOnly ? 6 : 7}
                       className="py-2 px-4 text-right text-sm text-muted-foreground"
                     >
                       Importe aplicado:
@@ -1683,7 +1706,7 @@ export default function PaymentForm({
                   {creditFromPayment > 0 && !isReadOnly && (
                     <tr className="bg-warning/10">
                       <td
-                        colSpan={5}
+                        colSpan={7}
                         className="py-2 px-4 text-right text-sm text-warning"
                       >
                         Importe a acreditar:
@@ -1698,7 +1721,7 @@ export default function PaymentForm({
                   {creditBalance > 0 && isNew && (
                     <tr className="bg-info/10">
                       <td
-                        colSpan={5}
+                        colSpan={7}
                         className="py-2 px-4 text-right text-sm text-info"
                       >
                         Saldo a favor existente del contacto:
