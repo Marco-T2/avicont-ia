@@ -47,6 +47,14 @@ export class FakeReceivablesPort implements ReceivablesPort {
   /** Fixture map: id → status. Unset → applyAllocation throws NotFoundError. */
   status = new Map<string, ReceivableStatusValue>();
   /**
+   * Fixture map: id → contactId, for the same-contact scope guard
+   * (supplier-scope-guard). Unseeded id → null (skip-on-null): existing tests
+   * that don't configure it leave the guard with a null target → it skips the
+   * compare. Cross-contact RED tests seed a DIFFERING contactId to trigger
+   * PAYMENT_CREDIT_WRONG_CONTACT.
+   */
+  contactIds = new Map<string, string>();
+  /**
    * Fixture map: id → current balance. Consumed by `applyAllocation` to
    * mirror the receivables-entity invariant (throws shared
    * PAYMENT_ALLOCATION_EXCEEDS_BALANCE when amount exceeds balance). When
@@ -65,6 +73,14 @@ export class FakeReceivablesPort implements ReceivablesPort {
     id: string,
   ): Promise<ReceivableStatusValue | null> {
     return this.status.get(id) ?? null;
+  }
+
+  async getContactIdByIdTx(
+    _tx: unknown,
+    _orgId: string,
+    id: string,
+  ): Promise<string | null> {
+    return this.contactIds.get(id) ?? null;
   }
 
   async applyAllocation(
@@ -129,6 +145,8 @@ export class FakeReceivablesPort implements ReceivablesPort {
 
 export class FakePayablesPort implements PayablesPort {
   status = new Map<string, PayableStatusValue>();
+  /** See FakeReceivablesPort.contactIds for rationale (skip-on-null guard). */
+  contactIds = new Map<string, string>();
   /** See FakeReceivablesPort.balance for rationale. */
   balance = new Map<string, number>();
   applyCalls: Array<{ id: string; amount: number }> = [];
@@ -142,6 +160,14 @@ export class FakePayablesPort implements PayablesPort {
     id: string,
   ): Promise<PayableStatusValue | null> {
     return this.status.get(id) ?? null;
+  }
+
+  async getContactIdByIdTx(
+    _tx: unknown,
+    _orgId: string,
+    id: string,
+  ): Promise<string | null> {
+    return this.contactIds.get(id) ?? null;
   }
 
   async applyAllocation(

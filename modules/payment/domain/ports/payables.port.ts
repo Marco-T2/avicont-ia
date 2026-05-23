@@ -23,6 +23,18 @@ export interface PayablesPort {
     id: string,
   ): Promise<PayableStatusValue | null>;
 
+  /**
+   * Read the payable's `contactId` inside the tx. Symmetric mirror of
+   * `ReceivablesPort.getContactIdByIdTx` — narrow read of an existing column
+   * for the same-contact scope guard (supplier-scope-guard). Null ⟺ missing
+   * row → guard skips (skip-on-null).
+   */
+  getContactIdByIdTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+  ): Promise<string | null>;
+
   applyAllocation(
     tx: unknown,
     organizationId: string,

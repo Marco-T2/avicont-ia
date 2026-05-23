@@ -26,6 +26,18 @@ export class LegacyPayablesAdapter implements PayablesPort {
     return (row?.status as PayableStatusValue | undefined) ?? null;
   }
 
+  async getContactIdByIdTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+  ): Promise<string | null> {
+    const row = await (tx as Prisma.TransactionClient).accountsPayable.findFirst({
+      where: { id, organizationId },
+      select: { contactId: true },
+    });
+    return row?.contactId ?? null;
+  }
+
   async applyAllocation(
     tx: unknown,
     organizationId: string,

@@ -48,6 +48,20 @@ export interface ReceivablesPort {
   ): Promise<ReceivableStatusValue | null>;
 
   /**
+   * Read the receivable's `contactId` inside the tx. Returns null when the
+   * receivable does not exist. Mirrors `getStatusByIdTx` — a narrow read of an
+   * existing column. Used by the payment orchestrator's same-contact scope
+   * guard (supplier-scope-guard) to verify the credit source and target belong
+   * to the same contact before applying. Null ⟺ missing row → guard skips
+   * (skip-on-null) and lets `applyAllocation` surface NotFound downstream.
+   */
+  getContactIdByIdTx(
+    tx: unknown,
+    organizationId: string,
+    id: string,
+  ): Promise<string | null>;
+
+  /**
    * Apply an allocation: increases paid by amount, decreases balance, and
    * advances status (PENDING → PARTIAL/PAID). Throws domain errors from the
    * receivables entity — `PAYMENT_ALLOCATION_TARGET_VOIDED` (shared) when the
