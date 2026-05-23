@@ -47,6 +47,12 @@ export const updatePaymentSchema = z.object({
   accountCode: z.string().min(1).nullish(),
   allocations: z.array(allocationInputSchema).optional(),
   notes: z.string().optional(),
+  // REQ-PAY-3b (Phase 5, L1) — the edit path must honor credit. Reuse the same
+  // creditAllocationSourceSchema as createPaymentSchema:35 so the PATCH body's
+  // creditSources survives the parse instead of being silently stripped
+  // (discovery #3022). The service reverts prior credit then re-applies these
+  // (Phase 4, L4); empty/omitted → prior credit reverted with no re-apply.
+  creditSources: z.array(creditAllocationSourceSchema).optional(),
 });
 
 export const paymentFiltersSchema = z.object({

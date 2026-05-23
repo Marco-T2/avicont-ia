@@ -105,4 +105,8 @@ export interface UpdatePaymentInput {
   accountCode?: string | null;
   allocations?: AllocationInput[];
   notes?: string;
+  // REQ-PAY-3b (Phase 5, L2) — DTO boundary now carries creditSources on the
+  // edit path so the adapter can thread it into UpdatePaymentServiceInput
+  // (mirrors CreatePaymentInput.creditSources above).
+  creditSources?: CreditAllocationSource[];
 }

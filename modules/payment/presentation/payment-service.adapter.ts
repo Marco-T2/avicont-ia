@@ -172,6 +172,10 @@ export class PaymentService {
         accountCode: input.accountCode ?? null,
         notes: input.notes ?? null,
         allocations: input.allocations,
+        // REQ-PAY-3b (Phase 5, L3) — previously DROPPED here; thread credit
+        // through so the unified edit path reverts prior credit then re-applies
+        // these (Phase 4 L4 consumption at payments.service.ts:1011).
+        creditSources: input.creditSources,
       },
       { role, justification },
     );
