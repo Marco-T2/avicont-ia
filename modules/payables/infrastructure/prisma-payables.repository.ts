@@ -111,7 +111,9 @@ export class PrismaPayablesRepository implements PayableRepository {
         dueDate: true,
         sourceType: true,
         sourceId: true,
+        sourceTypeCode: true,
         createdAt: true,
+        purchase: { select: { referenceNumber: true, date: true } },
       },
     });
     return rows.map((r) => ({
@@ -123,7 +125,10 @@ export class PrismaPayablesRepository implements PayableRepository {
       dueDate: r.dueDate,
       sourceType: r.sourceType,
       sourceId: r.sourceId,
+      sourceTypeCode: r.sourceTypeCode,
       createdAt: r.createdAt,
+      referenceNumber: r.purchase?.referenceNumber ?? null,
+      sourceDate: r.purchase?.date ?? r.createdAt,
     }));
   }
 
