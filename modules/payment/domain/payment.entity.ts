@@ -70,6 +70,15 @@ export interface UpdatePaymentInput {
   notes?: string | null;
   accountCode?: string | null;
   operationalDocTypeId?: string | null;
+  /**
+   * When provided, replaces the allocation list atomically in the SAME
+   * transition as the amount change, so `enforceAllocationInvariants` runs
+   * against the FINAL aggregate state (new amount + new allocations) instead of
+   * an intermediate state (new amount vs. old allocations). Omitting this key
+   * retains the existing allocations — the invariant then still fires on the
+   * intermediate state, preserving the reduce-below-current-sum guard.
+   */
+  allocations?: PaymentAllocation[];
 }
 
 /**
@@ -330,6 +339,11 @@ export class Payment {
     if ("operationalDocTypeId" in input) {
       next.operationalDocTypeId = input.operationalDocTypeId ?? null;
     }
+    // Atomic aggregate transition: when the caller supplies new allocations,
+    // apply them BEFORE the invariant runs so SUM ≤ amount is evaluated against
+    // the FINAL state (new amount + new allocations). Omitting allocations
+    // retains the old list — the invariant then checks old allocs vs new amount.
+    if (input.allocations !== undefined) next.allocations = [...input.allocations];
     // Re-check the SUM ≤ amount invariant after potential amount change.
     enforceAllocationInvariants(next.allocations, next.amount);
     return new Payment(next);

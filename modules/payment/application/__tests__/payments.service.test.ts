@@ -547,6 +547,29 @@ describe("PaymentsService", () => {
         message: expect.stringContaining("anulado"),
       });
     });
+
+    // Failure mode declarado: rejects with PAYMENT_ALLOCATIONS_EXCEED_TOTAL at
+    // the update() step (~payments.service.ts:532). Pre-fix the DRAFT path calls
+    // update({amount: 500}) which checks OLD allocs (sum 1000) vs NEW amount 500
+    // BEFORE replaceAllocations runs. After the fix update() applies the new
+    // allocations atomically, so the final-state check (500 vs 500) passes.
+    it("reduces amount with new lower allocations summing to the new amount (atomic)", async () => {
+      const p = await bench.svc.create(
+        ORG,
+        USER,
+        baseCreate({
+          amount: 1000,
+          allocations: [{ receivableId: "rec-1", amount: 1000 }],
+        }),
+      );
+      const result = await bench.svc.update(ORG, USER, p.id, {
+        amount: 500,
+        allocations: [{ receivableId: "rec-1", amount: 500 }],
+      });
+      expect(result.payment.amount.value).toBe(500);
+      expect(result.payment.totalAllocated.value).toBe(500);
+      expect(result.payment.allocations).toHaveLength(1);
+    });
   });
 
   // ── update (POSTED) — atomic reverse-modify-reapply ─────────────────────
@@ -609,6 +632,45 @@ describe("PaymentsService", () => {
       await expect(
         bench.svc.update(ORG, USER, posted.id, { description: "x" }),
       ).rejects.toMatchObject({ code: FISCAL_PERIOD_CLOSED });
+    });
+
+    // Failure mode declarado: rejects with PAYMENT_ALLOCATIONS_EXCEED_TOTAL at
+    // the update() step (~payments.service.ts:759). Pre-fix updatePostedPaymentTx
+    // calls update({amount: 500}) which checks OLD allocs (sum 1000) vs NEW
+    // amount 500 BEFORE replaceAllocations (:901). After the fix the new
+    // allocations are passed into update() so the final-state check passes.
+    it("reduces amount with new lower allocations summing to the new amount (atomic)", async () => {
+      const posted = await seedPosted(bench, {
+        amount: 1000,
+        allocations: [{ receivableId: "rec-1", amount: 1000 }],
+      });
+      bench.receivables.status.set("rec-1", "PARTIAL");
+      // Reducing the amount changes cash → journal recompute path. Configure the
+      // account-by-code lookups the in-place line update needs.
+      bench.accounting.accountsByCode.set("1.1.1.1", {
+        id: "acct-caja",
+        code: "1.1.1.1",
+      });
+      bench.accounting.accountsByCode.set("1.1.4.1", {
+        id: "acct-cxc",
+        code: "1.1.4.1",
+      });
+
+      const result = await bench.svc.update(ORG, USER, posted.id, {
+        amount: 500,
+        allocations: [{ receivableId: "rec-1", amount: 500 }],
+      });
+
+      expect(result.payment.status).toBe("POSTED");
+      expect(result.payment.amount.value).toBe(500);
+      expect(result.payment.totalAllocated.value).toBe(500);
+      // Old allocation reverted, new one applied at the reduced amount.
+      expect(bench.receivables.revertCalls).toEqual([
+        { id: "rec-1", amount: 1000 },
+      ]);
+      expect(bench.receivables.applyCalls).toEqual([
+        { id: "rec-1", amount: 500 },
+      ]);
     });
   });
 

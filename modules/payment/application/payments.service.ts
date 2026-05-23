@@ -529,6 +529,24 @@ export class PaymentsService {
     // DRAFT — same mutation path. The aggregate
     // permits non-status edits on LOCKED (only VOIDED is rejected); the
     // role/justification gate above is the LOCKED enforcement layer.
+    //
+    // Build the new allocations (keyed on payment.id — stable across update())
+    // BEFORE the single update() call and pass them in, so the SUM ≤ amount
+    // invariant is evaluated against the FINAL aggregate state (new amount + new
+    // allocations) instead of an intermediate state (new amount vs old allocs).
+    // Omitting input.allocations leaves the entity's old allocations in place.
+    const newAllocations = input.allocations
+      ? input.allocations.map((a) =>
+          PaymentAllocation.create({
+            paymentId: payment.id,
+            target: a.receivableId
+              ? AllocationTarget.forReceivable(a.receivableId)
+              : AllocationTarget.forPayable(a.payableId!),
+            amount: a.amount,
+          }),
+        )
+      : undefined;
+
     const next = payment.update({
       method: input.method,
       date: input.date,
@@ -538,21 +556,8 @@ export class PaymentsService {
       notes: input.notes,
       accountCode: input.accountCode,
       operationalDocTypeId: input.operationalDocTypeId,
+      allocations: newAllocations,
     });
-
-    const replaced = input.allocations
-      ? next.replaceAllocations(
-          input.allocations.map((a) =>
-            PaymentAllocation.create({
-              paymentId: next.id,
-              target: a.receivableId
-                ? AllocationTarget.forReceivable(a.receivableId)
-                : AllocationTarget.forPayable(a.payableId!),
-              amount: a.amount,
-            }),
-          ),
-        )
-      : next;
 
     // DRAFT only — LOCKED is routed to updatePostedPaymentTx above, so no
     // justification is forwarded here (DRAFT edits never carry one).
@@ -560,8 +565,8 @@ export class PaymentsService {
       asAuditTxRepo(this.repo),
       { userId, organizationId },
       async (tx) => {
-        await this.repo.updateTx(tx, replaced);
-        return replaced;
+        await this.repo.updateTx(tx, next);
+        return next;
       },
     );
     return { payment: result, correlationId };
@@ -755,7 +760,32 @@ export class PaymentsService {
           if (old) await this.accountBalances.applyVoidTx(tx, old);
         }
 
-        // c. Update payment fields (no allocations yet)
+        // c0. Resolve the allocations to apply BEFORE update() so the SUM ≤
+        //     amount invariant is evaluated against the FINAL aggregate state
+        //     (new amount + new allocations) inside the single update() call,
+        //     not an intermediate state (new amount vs old allocations). When
+        //     input.allocations is omitted, fall back to the old allocations so
+        //     the invariant still fires on the intermediate state (reduce-only
+        //     edits without new allocations remain rejected). paymentId is keyed
+        //     on payment.id — stable across update() (id is never reassigned).
+        const allocsToApply: AllocationInput[] =
+          input.allocations ??
+          payment.allocations.map((a) => ({
+            receivableId: a.receivableId ?? undefined,
+            payableId: a.payableId ?? undefined,
+            amount: a.amount.value,
+          }));
+        const refreshedAllocs = allocsToApply.map((a) =>
+          PaymentAllocation.create({
+            paymentId: payment.id,
+            target: a.receivableId
+              ? AllocationTarget.forReceivable(a.receivableId)
+              : AllocationTarget.forPayable(a.payableId!),
+            amount: a.amount,
+          }),
+        );
+
+        // c. Update payment fields AND allocations atomically.
         let updated = payment.update({
           method: input.method,
           date: input.date,
@@ -765,6 +795,7 @@ export class PaymentsService {
           notes: input.notes,
           accountCode: input.accountCode,
           operationalDocTypeId: input.operationalDocTypeId,
+          allocations: refreshedAllocs,
         });
 
         // d. Resolve direction (uses original allocations to derive)
@@ -880,25 +911,9 @@ export class PaymentsService {
           }
         }
 
-        // f. Persist new allocations or re-apply old ones
-        const allocsToApply: AllocationInput[] =
-          input.allocations ??
-          payment.allocations.map((a) => ({
-            receivableId: a.receivableId ?? undefined,
-            payableId: a.payableId ?? undefined,
-            amount: a.amount.value,
-          }));
-
-        const refreshedAllocs = allocsToApply.map((a) =>
-          PaymentAllocation.create({
-            paymentId: updated.id,
-            target: a.receivableId
-              ? AllocationTarget.forReceivable(a.receivableId)
-              : AllocationTarget.forPayable(a.payableId!),
-            amount: a.amount,
-          }),
-        );
-        updated = updated.replaceAllocations(refreshedAllocs);
+        // f. Persist the updated aggregate (allocations were already applied
+        //    atomically inside update() at step c — refreshedAllocs above) and
+        //    re-apply each allocation against its target document.
         await this.repo.updateTx(tx, updated);
 
         for (const alloc of updated.allocations) {

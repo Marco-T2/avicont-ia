@@ -339,6 +339,78 @@ describe("Payment aggregate root", () => {
       );
     });
 
+    // ── Atomic update() with allocations (fix-payment-amount-reduce-invariant) ──
+    // The invariant `sum(allocations) <= amount` is now evaluated against the
+    // FINAL aggregate state: when the caller supplies new allocations alongside
+    // a new amount, BOTH are applied before enforceAllocationInvariants runs.
+
+    // Failure mode declarado: PaymentAllocationsExceedTotal (pre-fix update()
+    // ignores input.allocations and checks OLD sum 600 vs NEW amount 500). After
+    // the fix, NEW allocations (sum 500) vs NEW amount 500 → must NOT throw.
+    it("reduces amount when new lower allocations summing to new amount are supplied", () => {
+      const p = Payment.create({
+        ...baseInput,
+        amount: 1000,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-1"), amount: 600 },
+        ],
+      });
+      const updated = p.update({
+        amount: 500,
+        allocations: [
+          alloc(AllocationTarget.forReceivable("rec-1"), 500, p.id),
+        ],
+      });
+      expect(updated.amount.value).toBe(500);
+      expect(updated.totalAllocated.value).toBe(500);
+      expect(updated.allocations).toHaveLength(1);
+    });
+
+    // Failure mode declarado: PaymentAllocationsExceedTotal — final-state check.
+    // NOTE (honest classification): this throws BOTH pre-fix and post-fix, but
+    // for DIFFERENT reasons. Pre-fix: OLD allocs (sum 600) vs NEW amount 500.
+    // Post-fix: NEW allocs (sum 600) vs NEW amount 500. It is therefore a GREEN
+    // regression-guard (invariant still enforced on the final state), NOT a RED.
+    it("rejects new allocations summing above the new amount", () => {
+      const p = Payment.create({
+        ...baseInput,
+        amount: 1000,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-1"), amount: 600 },
+        ],
+      });
+      expect(() =>
+        p.update({
+          amount: 500,
+          allocations: [
+            alloc(AllocationTarget.forReceivable("rec-1"), 600, p.id),
+          ],
+        }),
+      ).toThrow(PaymentAllocationsExceedTotal);
+    });
+
+    // Failure mode declarado: PaymentAllocationsExceedTotal (increase path also
+    // broken pre-fix — OLD allocs are checked against the new amount, but here
+    // the symmetry case proves the final-state semantics: NEW allocs sum 700 ==
+    // NEW amount 700 must pass).
+    it("increases amount with higher allocations summing to the new amount (symmetry)", () => {
+      const p = Payment.create({
+        ...baseInput,
+        amount: 500,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-1"), amount: 500 },
+        ],
+      });
+      const updated = p.update({
+        amount: 700,
+        allocations: [
+          alloc(AllocationTarget.forReceivable("rec-1"), 700, p.id),
+        ],
+      });
+      expect(updated.amount.value).toBe(700);
+      expect(updated.totalAllocated.value).toBe(700);
+    });
+
     // Failure mode declarado: CannotModifyVoidedPayment (validation, PAYMENT_VOIDED_IMMUTABLE).
     it("rejects update on VOIDED payment with CannotModifyVoidedPayment", () => {
       const p = Payment.create(baseInput).post().void();
