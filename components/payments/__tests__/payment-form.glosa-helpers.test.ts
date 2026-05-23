@@ -27,8 +27,33 @@ describe("selectGlosaAllocations", () => {
     expect(selectGlosaAllocations([{ ...base, assignedAmount: "" }])).toEqual([]);
   });
 
-  it("excludes payable allocations (COBRO glosa scope only)", () => {
-    expect(selectGlosaAllocations([{ ...base, type: "payable" }])).toEqual([]);
+  it("includes payable allocations (D8 — PAGO glosa parity)", () => {
+    // AP-3: filter widened from receivable-only to both sides. A checked
+    // payable with positive assignedAmount is now mapped (was previously
+    // excluded under "COBRO glosa scope only").
+    expect(selectGlosaAllocations([{ ...base, type: "payable" }])).toEqual([
+      {
+        sourceTypeCode: "VG",
+        referenceNumber: "99",
+        sourceDate: new Date("2026-03-20"),
+      },
+    ]);
+  });
+
+  it("still includes receivable allocations (regression — both sides pass)", () => {
+    expect(selectGlosaAllocations([{ ...base, type: "receivable" }])).toEqual([
+      {
+        sourceTypeCode: "VG",
+        referenceNumber: "99",
+        sourceDate: new Date("2026-03-20"),
+      },
+    ]);
+  });
+
+  it("excludes a payable with non-positive assignedAmount (filter still guards amount)", () => {
+    expect(
+      selectGlosaAllocations([{ ...base, type: "payable", assignedAmount: "0" }]),
+    ).toEqual([]);
   });
 
   it("maps a VG-coded receivable to a glosa token with stringified referenceNumber", () => {
