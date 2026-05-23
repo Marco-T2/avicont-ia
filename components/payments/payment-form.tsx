@@ -1925,15 +1925,21 @@ export default function PaymentForm({
         </Card>
       )}
 
-      {/* Journal Entry reference (POSTED) */}
+      {/* Journal Entry reference (POSTED) — tipo de comprobante + N° + fecha,
+          linkeado al detalle del asiento (mismo destino que el Libro Mayor). */}
       {isPosted && existingPayment?.journalEntry && (
         <Card>
           <CardContent>
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <span className="font-medium">Asiento Contable:</span>
-              <span className="font-mono text-info">
-                {`#${existingPayment.journalEntry.number}`}
-              </span>
+              <Link
+                href={`/${orgSlug}/accounting/journal/${existingPayment.journalEntry.id}`}
+                className="font-mono text-info hover:underline"
+              >
+                {existingPayment.journalEntry.voucherType.name} N°{" "}
+                {existingPayment.journalEntry.number} ·{" "}
+                {formatDateBO(existingPayment.journalEntry.date)}
+              </Link>
             </div>
           </CardContent>
         </Card>

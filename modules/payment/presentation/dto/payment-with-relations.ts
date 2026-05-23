@@ -3,6 +3,7 @@ import type {
   Contact,
   FiscalPeriod,
   JournalEntry,
+  VoucherTypeCfg,
   PaymentAllocation,
   AccountsReceivable,
   AccountsPayable,
@@ -59,7 +60,7 @@ export type PaymentWithRelations = Omit<Payment, "amount"> & {
   amount: number;
   contact: Contact;
   period: FiscalPeriod;
-  journalEntry: JournalEntry | null;
+  journalEntry: (JournalEntry & { voucherType: VoucherTypeCfg }) | null;
   operationalDocType?: { id: string; code: string; name: string } | null;
   allocations: (Omit<PaymentAllocation, "amount"> & {
     amount: number;

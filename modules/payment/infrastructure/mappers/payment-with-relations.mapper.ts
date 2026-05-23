@@ -43,7 +43,10 @@ import type { PaymentWithRelations } from "@/modules/payment/presentation/dto/pa
 export const paymentInclude = {
   contact: true,
   period: true,
-  journalEntry: true,
+  // voucherType eager-load: el detalle de pago muestra el tipo de comprobante
+  // del asiento ("Comprobante de Ingreso N° 3 · fecha"). `journalEntry: true`
+  // trae solo escalares — la relación voucherType requiere include anidado.
+  journalEntry: { include: { voucherType: true } },
   operationalDocType: { select: { id: true, code: true, name: true } },
   allocations: {
     include: {
