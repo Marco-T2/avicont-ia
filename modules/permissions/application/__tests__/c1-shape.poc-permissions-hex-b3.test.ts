@@ -171,8 +171,8 @@ describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggr
 
 // ── α18: DUAL-SENTINEL — baseline 92 vi.mock count invariant ─────────────────
 
-describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5, +1 by equity-statement route test, +1 by contact-ledger route test, +1 by contact-balances dashboard route test, +1 by another untracked post-86 driver, +1 by agent-surface-separation route.surface-validation test, +1 by agent-sidebar-module-hint route.module-hint test, +1 by baseline-test-cleanup C1 journal route.json test, +1 by baseline-test-cleanup C1 tags route.post test, +1 by baseline-test-cleanup C1 tags route test, -10 by lcv-feature-retirement L6 modules/iva-books/ deletion)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 84 (line count; 83 consumer files + self-lock-integration.test.ts double-mock — pre-existing, no new consumers)", () => {
+describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5, +1 by equity-statement route test, +1 by contact-ledger route test, +1 by contact-balances dashboard route test, +1 by another untracked post-86 driver, +1 by agent-surface-separation route.surface-validation test, +1 by agent-sidebar-module-hint route.module-hint test, +1 by baseline-test-cleanup C1 journal route.json test, +1 by baseline-test-cleanup C1 tags route.post test, +1 by baseline-test-cleanup C1 tags route test, -10 by lcv-feature-retirement L6 modules/iva-books/ deletion, +1 by pago-credit-system Phase 5 apply-credits route test)", () => {
+  it("α18: vi.mock count for @/features/permissions/server equals 85 (line count; 84 consumer files + self-lock-integration.test.ts double-mock — pre-existing, no new consumers)", () => {
     // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
     // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
     // Original baseline: 84. Adjusted by:
@@ -212,16 +212,19 @@ describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, d
     //     [[invariant_collision_elevation]] + [[low_cost_verification_asymmetry]].
     //   - lcv-feature-retirement L6: modules/iva-books/ DELETED entirely (RND 102100000011).
     //     10 iva-books test files contained vi.mock("@/features/permissions/server") — all removed (-10).
+    //   - pago-credit-system Phase 5: app/api/organizations/[orgSlug]/payments/apply-credits/__tests__/route.test.ts
+    //     NEW — RED route contract for the credit-source XOR (receivableId|payableId)
+    //     apply-credits endpoint; mocks requirePermission like its sibling route tests (+1).
     // REQ-010 invariant preserved; drifts accounted explicit per [[invariant_collision_elevation]].
     //   +1 RECONCILIATION (pagos-cobros-fifo master-green fix): this grep counts LINES (wc -l),
     //   and roles/[roleSlug]/__tests__/self-lock-integration.test.ts has TWO
     //   vi.mock("@/features/permissions/server") lines (async importOriginal at :130 + plain
-    //   factory at :140), BOTH pre-existing since ≤536eb05b. So 83 consumer FILES = 84 matched
-    //   LINES. Verified: zero new/unauthorized consumers added → the legitimate count is 84.
+    //   factory at :140), BOTH pre-existing since ≤536eb05b. So 84 consumer FILES = 85 matched
+    //   LINES. Verified: zero new/unauthorized consumers added → the legitimate count is 85.
     const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
     const count = Number(stdout);
-    expect(count).toBe(84);
+    expect(count).toBe(85);
   });
 });
 
