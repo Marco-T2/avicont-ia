@@ -1428,6 +1428,149 @@ describe("PaymentsService", () => {
       ).toBe(true);
     });
   });
+
+  // ── revertCreditTx v2 (Phase 3 — standalone revert capability) ─────────────
+  // design v2 §CENTERPIECE / D-C: trivial revert = read links by consumer →
+  // restore each source's removeCreditAllocation + receivables.revertAllocation
+  // → delete the links. NO journal touch (updateEntryTx never called). The edit
+  // path wiring (revert-before-reapply ordering) is Phase 4 — here we exercise
+  // the standalone capability via the private method seam.
+  describe("revertCreditTx (standalone — Scenario G-revert)", () => {
+    // Build a consumer scenario: a SOURCE payment supplies 100 credit to
+    // rec-credit-target, consumed by CONSUMER. After createAndPost, the source
+    // has a credit allocation (unappliedAmount 0) and a CreditConsumption link
+    // keyed by consumer.id.
+    async function seedConsumerScenario(): Promise<{
+      source: Payment;
+      consumerId: string;
+    }> {
+      const source = await seedPosted(bench, {
+        amount: 200,
+        allocations: [{ receivableId: "rec-original", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-original", "PARTIAL");
+      bench.receivables.status.set("rec-credit-target", "PENDING");
+      bench.receivables.status.set("rec-consumer-alloc", "PENDING");
+      bench.accounting.accountsByCode.set("1.1.4.1", {
+        id: "acct-cxc",
+        code: "1.1.4.1",
+      });
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-consumer" });
+
+      const consumer = await bench.svc.createAndPost(ORG, USER, baseCreate({
+        amount: 50,
+        allocations: [{ receivableId: "rec-consumer-alloc", amount: 50 }],
+        creditSources: [
+          {
+            sourcePaymentId: source.id,
+            receivableId: "rec-credit-target",
+            amount: 100,
+          },
+        ],
+      }));
+
+      // Sanity: source fully consumed; one link recorded for the consumer.
+      const sourceAfter = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfter?.unappliedAmount.value).toBe(0);
+      expect(
+        await bench.creditConsumption.findByConsumerPaymentIdTx(
+          null,
+          ORG,
+          consumer.payment.id,
+        ),
+      ).toHaveLength(1);
+
+      // Reset counters so the revert assertions observe only the revert.
+      bench.receivables.revertCalls = [];
+      bench.accounting.updateCalls = [];
+      bench.accountBalances.applyVoidCalls = [];
+      bench.accountBalances.applyPostCalls = [];
+
+      return { source: sourceAfter as Payment, consumerId: consumer.payment.id };
+    }
+
+    // Private-method seam: revertCreditTx is private, public wiring is Phase 4.
+    function callRevertCreditTx(
+      consumerPaymentId: string,
+    ): Promise<void> {
+      const svc = bench.svc as unknown as {
+        revertCreditTx: (
+          tx: unknown,
+          organizationId: string,
+          consumerPaymentId: string,
+        ) => Promise<void>;
+      };
+      return bench.repo.transaction((tx) =>
+        svc.revertCreditTx(tx, ORG, consumerPaymentId),
+      );
+    }
+
+    it("restores the source unappliedAmount, reverts the receivable, deletes the link, NO journal touch", async () => {
+      const { source, consumerId } = await seedConsumerScenario();
+
+      await callRevertCreditTx(consumerId);
+
+      // Source credit allocation removed → unappliedAmount restored 0 → 100.
+      const sourceAfterRevert = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfterRevert?.unappliedAmount.value).toBe(100);
+
+      // Receivable balance restored via revertAllocation.
+      expect(
+        bench.receivables.revertCalls.some(
+          (c) => c.id === "rec-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+
+      // Link deleted by consumer.
+      expect(
+        await bench.creditConsumption.findByConsumerPaymentIdTx(
+          null,
+          ORG,
+          consumerId,
+        ),
+      ).toHaveLength(0);
+      expect(bench.creditConsumption.deleteCalls).toContainEqual({
+        organizationId: ORG,
+        consumerPaymentId: consumerId,
+      });
+
+      // NO journal mutation — the centerpiece of v2 revert.
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyVoidCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyPostCalls).toHaveLength(0);
+    });
+
+    it("is a no-op when the consumer has no credit links", async () => {
+      // No setup — no links for this consumer id.
+      await callRevertCreditTx("consumer-with-no-links");
+      expect(bench.receivables.revertCalls).toHaveLength(0);
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+    });
+
+    it("skips a VOIDED source payment (symmetric to revertAllocationTx) but still deletes the link", async () => {
+      const { source, consumerId } = await seedConsumerScenario();
+
+      // VOID the source after the credit was applied.
+      bench.receivables.status.set("rec-original", "VOIDED");
+      bench.receivables.status.set("rec-credit-target", "VOIDED");
+      const voided = source.void();
+      await bench.repo.update(voided);
+      bench.receivables.revertCalls = [];
+
+      await callRevertCreditTx(consumerId);
+
+      // Source is VOIDED → its aggregate is not mutated (skip), but the link
+      // for the consumer is still cleared so no orphan persists.
+      expect(
+        await bench.creditConsumption.findByConsumerPaymentIdTx(
+          null,
+          ORG,
+          consumerId,
+        ),
+      ).toHaveLength(0);
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+    });
+  });
 });
 
 // ─────────────────────────── Helpers ────────────────────────────────────────

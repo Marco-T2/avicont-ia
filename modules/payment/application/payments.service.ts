@@ -1026,6 +1026,63 @@ export class PaymentsService {
     });
   }
 
+  /**
+   * Reverts ALL credit that a consumer payment applied, using the
+   * CreditConsumption links as the authoritative record (design v2
+   * §CENTERPIECE / D-C, Scenario G-revert). Trivial by construction — NO
+   * journal mutation:
+   *   1. Read links WHERE consumerPaymentId (server-side truth, not the client).
+   *   2. For each link: remove the credit allocation from the source aggregate
+   *      (restoring its unappliedAmount) and restore the receivable balance.
+   *      A VOIDED source is skipped — symmetric to revertAllocationTx (a voided
+   *      source's allocations are frozen; its journal already reversed on void).
+   *   3. Delete all the consumer's links so no orphan persists (Scenario H).
+   * The whole thing runs inside the caller's tx; a throw rolls everything back
+   * (Scenario G-rollback). DEC-1: amounts stay MonetaryAmount through the app.
+   */
+  private async revertCreditTx(
+    tx: unknown,
+    organizationId: string,
+    consumerPaymentId: string,
+  ): Promise<void> {
+    const links = await this.creditConsumption.findByConsumerPaymentIdTx(
+      tx,
+      organizationId,
+      consumerPaymentId,
+    );
+
+    for (const link of links) {
+      const source = await this.repo.findByIdTx(
+        tx,
+        organizationId,
+        link.sourcePaymentId,
+      );
+      // Skip a missing or VOIDED source (symmetric to revertAllocationTx) — the
+      // link is still cleared below so no orphan remains.
+      if (!source || source.status === "VOIDED") continue;
+
+      const restored = source.removeCreditAllocation(
+        link.sourcePaymentId,
+        link.receivableId,
+        link.amount,
+      );
+      await this.repo.updateTx(tx, restored);
+
+      await this.receivables.revertAllocation(
+        tx,
+        organizationId,
+        link.receivableId,
+        link.amount,
+      );
+    }
+
+    await this.creditConsumption.deleteByConsumerPaymentIdTx(
+      tx,
+      organizationId,
+      consumerPaymentId,
+    );
+  }
+
   // ── Allocation tx helpers (delegate to receivables/payables ports) ───────
 
   private async applyAllocationTx(
