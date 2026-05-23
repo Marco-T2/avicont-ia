@@ -71,6 +71,19 @@ export interface UpdatePaymentInput {
   operationalDocTypeId?: string | null;
 }
 
+/**
+ * Subset of edit fields that affect the cash leg of the journal entry. Used by
+ * `didCashChange` to decide whether an edit must void+regenerate the journal
+ * (REQ-PAY-2 journal↔matching seam). Every field is optional: an absent field
+ * means "not part of this edit" and is treated as unchanged.
+ */
+export interface CashFieldsInput {
+  amount?: number | string;
+  method?: PaymentMethod;
+  date?: Date;
+  accountCode?: string | null;
+}
+
 export interface PaymentSnapshot {
   id: string;
   organizationId: string;
@@ -228,6 +241,40 @@ export class Payment {
   get direction(): PaymentDirection | null {
     const first = this.props.allocations[0];
     return first?.target.direction ?? null;
+  }
+
+  /**
+   * Returns whether any cash-affecting field in the proposed edit differs from
+   * the current persisted values. "Cash fields" = amount, method, date,
+   * accountCode (REQ-PAY-2). An absent field is treated as unchanged. Pure: no
+   * side effects, deterministic. The application layer branches the journal
+   * void/regenerate on this — false means the journal entry is left untouched
+   * (Scenario E). Money compared via `MonetaryAmount.equals` (DEC-1 — no float
+   * cents); dates compared by `getTime()`.
+   */
+  didCashChange(input: CashFieldsInput): boolean {
+    if (
+      input.amount !== undefined &&
+      !MonetaryAmount.of(input.amount).equals(this.props.amount)
+    ) {
+      return true;
+    }
+    if (input.method !== undefined && input.method !== this.props.method) {
+      return true;
+    }
+    if (
+      input.date !== undefined &&
+      input.date.getTime() !== this.props.date.getTime()
+    ) {
+      return true;
+    }
+    if (
+      input.accountCode !== undefined &&
+      input.accountCode !== this.props.accountCode
+    ) {
+      return true;
+    }
+    return false;
   }
 
   // ── Status transitions ──

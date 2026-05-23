@@ -577,4 +577,85 @@ describe("Payment aggregate root", () => {
       expect(snap.updatedAt).toBeInstanceOf(Date);
     });
   });
+
+  // ── didCashChange (Phase 2 — REQ-PAY-2 journal↔matching seam) ──────────────
+  // Pure domain predicate: returns whether any cash-affecting field (amount,
+  // method, date, accountCode) of the proposed edit differs from the current
+  // persisted aggregate. The application layer branches the journal void/regen
+  // on this (Scenario E: cash unchanged → journal untouched).
+  describe("didCashChange()", () => {
+    const cashBase = {
+      ...baseInput,
+      amount: 100,
+      method: "EFECTIVO" as const,
+      date: new Date("2026-04-15T00:00:00Z"),
+      accountCode: "1.1.1.1",
+    };
+
+    it("returns false when no cash field changes (empty input)", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({})).toBe(false);
+    });
+
+    it("returns false when cash fields match current values", () => {
+      const p = Payment.create(cashBase);
+      expect(
+        p.didCashChange({
+          amount: 100,
+          method: "EFECTIVO",
+          date: new Date("2026-04-15T00:00:00Z"),
+          accountCode: "1.1.1.1",
+        }),
+      ).toBe(false); // every field equals current → no cash change
+    });
+
+    it("returns true when amount differs", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({ amount: 200 })).toBe(true);
+    });
+
+    it("returns false when amount equals via MonetaryAmount (100 vs '100.00')", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({ amount: "100.00" })).toBe(false);
+    });
+
+    it("returns true when method differs", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({ method: "TRANSFERENCIA" })).toBe(true);
+    });
+
+    it("returns false when method equals current", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({ method: "EFECTIVO" })).toBe(false);
+    });
+
+    it("returns true when date differs", () => {
+      const p = Payment.create(cashBase);
+      expect(
+        p.didCashChange({ date: new Date("2026-05-01T00:00:00Z") }),
+      ).toBe(true);
+    });
+
+    it("returns false when date equals current (compared by getTime)", () => {
+      const p = Payment.create(cashBase);
+      expect(
+        p.didCashChange({ date: new Date("2026-04-15T00:00:00Z") }),
+      ).toBe(false);
+    });
+
+    it("returns true when accountCode differs", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({ accountCode: "1.1.2.1" })).toBe(true);
+    });
+
+    it("returns false when accountCode equals current", () => {
+      const p = Payment.create(cashBase);
+      expect(p.didCashChange({ accountCode: "1.1.1.1" })).toBe(false);
+    });
+
+    it("returns true when accountCode changes from null to a value", () => {
+      const p = Payment.create({ ...cashBase, accountCode: null });
+      expect(p.didCashChange({ accountCode: "1.1.1.1" })).toBe(true);
+    });
+  });
 });
