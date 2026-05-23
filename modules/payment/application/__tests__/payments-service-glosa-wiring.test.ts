@@ -18,6 +18,7 @@ import {
   FakeAccountingPort,
   FakeAccountBalancesPort,
   FakeContactReadPort,
+  FakeCreditConsumptionPort,
 } from "./fakes/fake-ports";
 import { InMemoryPaymentRepository } from "./fakes/in-memory-payment.repository";
 import type { JournalEntrySnapshot } from "../../domain/ports/accounting.port";
@@ -72,6 +73,7 @@ function makeBench(): Bench {
   const accounting = new FakeAccountingPort();
   const accountBalances = new FakeAccountBalancesPort();
   const contacts = new FakeContactReadPort();
+  const creditConsumption = new FakeCreditConsumptionPort();
   fiscalPeriods.periods.set(PERIOD_OPEN, {
     id: PERIOD_OPEN,
     status: "OPEN",
@@ -87,6 +89,7 @@ function makeBench(): Bench {
     accounting,
     accountBalances,
     contacts,
+    creditConsumption,
   });
   return {
     repo,

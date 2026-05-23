@@ -9,6 +9,7 @@ import { LegacyOrgSettingsAdapter } from "../infrastructure/adapters/legacy-org-
 import { LegacyFiscalPeriodsAdapter } from "../infrastructure/adapters/legacy-fiscal-periods.adapter";
 import { LegacyAccountingAdapter } from "../infrastructure/adapters/legacy-accounting.adapter";
 import { PrismaAccountBalancesAdapter } from "../infrastructure/adapters/prisma-account-balances.adapter";
+import { PrismaCreditConsumptionAdapter } from "../infrastructure/adapters/prisma-credit-consumption.adapter";
 import { PrismaPaymentWithRelationsReaderAdapter } from "../infrastructure/adapters/payment-with-relations.reader.adapter";
 import type { PaymentWithRelationsReaderPort } from "../domain/ports/payment-with-relations-reader.port";
 import { PaymentService } from "./payment-service.adapter";
@@ -26,6 +27,7 @@ export function makePaymentsService(): PaymentsService {
     fiscalPeriods: new LegacyFiscalPeriodsAdapter(),
     accounting: new LegacyAccountingAdapter(),
     accountBalances: new PrismaAccountBalancesAdapter(),
+    creditConsumption: new PrismaCreditConsumptionAdapter(),
   });
 }
 
@@ -41,6 +43,7 @@ export function makePaymentsServiceForTx(
     fiscalPeriods: new LegacyFiscalPeriodsAdapter(),
     accounting: new LegacyAccountingAdapter(),
     accountBalances: new PrismaAccountBalancesAdapter(),
+    creditConsumption: new PrismaCreditConsumptionAdapter(),
   });
 }
 

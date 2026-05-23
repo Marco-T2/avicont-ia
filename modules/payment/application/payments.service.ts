@@ -51,6 +51,7 @@ import type {
 } from "../domain/ports/accounting.port";
 import type { AccountBalancesPort } from "../domain/ports/account-balances.port";
 import type { ContactReadPort } from "../domain/ports/contact-read.port";
+import type { CreditConsumptionPort } from "../domain/ports/credit-consumption.port";
 import { Payment as PaymentEntity } from "../domain/payment.entity";
 import { PaymentAllocation } from "../domain/payment-allocation.entity";
 import { AllocationTarget } from "../domain/value-objects/allocation-target";
@@ -138,6 +139,7 @@ export interface PaymentsServiceDeps {
   accounting: AccountingPort;
   accountBalances: AccountBalancesPort;
   contacts: ContactReadPort;
+  creditConsumption: CreditConsumptionPort;
 }
 
 /**
@@ -163,6 +165,7 @@ export class PaymentsService {
   private readonly accounting: AccountingPort;
   private readonly accountBalances: AccountBalancesPort;
   private readonly contacts: ContactReadPort;
+  private readonly creditConsumption: CreditConsumptionPort;
 
   constructor(deps: PaymentsServiceDeps) {
     this.repo = deps.repo;
@@ -173,6 +176,7 @@ export class PaymentsService {
     this.accounting = deps.accounting;
     this.accountBalances = deps.accountBalances;
     this.contacts = deps.contacts;
+    this.creditConsumption = deps.creditConsumption;
   }
 
   // ── Reads ────────────────────────────────────────────────────────────────
@@ -353,7 +357,8 @@ export class PaymentsService {
             isCreateAndPost: true,
           },
         );
-        // Apply credit sources (Modo A)
+        // Apply credit sources (Modo A). The newly-posted payment is the
+        // consumer — link each credit to it so a later edit can revert it.
         for (const cs of input.creditSources ?? []) {
           await this.applyCreditToInvoiceTx(
             tx,
@@ -361,6 +366,7 @@ export class PaymentsService {
             cs.sourcePaymentId,
             cs.receivableId,
             cs.amount,
+            posted.id,
           );
         }
         return posted;
@@ -639,12 +645,15 @@ export class PaymentsService {
       { userId, organizationId },
       async (tx) => {
         for (const cs of creditSources) {
+          // Standalone apply-credit — there is no consumer payment, only a
+          // source supplying credit to a receivable (consumerPaymentId = null).
           await this.applyCreditToInvoiceTx(
             tx,
             organizationId,
             cs.sourcePaymentId,
             cs.receivableId,
             cs.amount,
+            null,
           );
         }
         return undefined;
@@ -949,6 +958,7 @@ export class PaymentsService {
     sourcePaymentId: string,
     receivableId: string,
     amount: number,
+    consumerPaymentId: string | null,
   ): Promise<void> {
     // 1. Validate amount
     if (amount <= 0) {
@@ -999,68 +1009,21 @@ export class PaymentsService {
       requested,
     );
 
-    // 6. Update source payment's journal entry: append the credit-application
-    //    line pair (DEBIT cxc / CREDIT cxc with proper contact ids).
-    if (source.journalEntryId) {
-      const settings = await this.orgSettings.getOrCreate(organizationId);
-      const oldEntry = await this.accounting.findEntryByIdTx(
-        tx,
-        organizationId,
-        source.journalEntryId,
-      );
-      if (oldEntry) {
-        await this.accountBalances.applyVoidTx(tx, oldEntry);
-        const cxcAccount = await this.accounting.findAccountByCodeTx(
-          tx,
-          organizationId,
-          settings.cxcAccountCode,
-        );
-        if (!cxcAccount) {
-          throw new NotFoundError(`Cuenta ${settings.cxcAccountCode}`);
-        }
-
-        const existingLines: ResolvedEntryLine[] = oldEntry.lines.map(
-          (l, idx) => ({
-            accountId: l.accountId,
-            debit: l.debit,
-            credit: l.credit,
-            contactId: l.contactId ?? undefined,
-            order: idx,
-          }),
-        );
-        const newLines: ResolvedEntryLine[] = [
-          ...existingLines,
-          {
-            accountId: cxcAccount.id,
-            debit: amount,
-            credit: 0,
-            contactId: source.contactId,
-            order: existingLines.length,
-          },
-          {
-            accountId: cxcAccount.id,
-            debit: 0,
-            credit: amount,
-            // contactId of the receivable's owner — legacy reads it from
-            // the receivable row. Without a receivable read, we use source
-            // contactId as a fallback (legacy parity preserved when the
-            // receivable belongs to the same contact, which is the common
-            // case for credit-application).
-            contactId: source.contactId,
-            order: existingLines.length + 1,
-          },
-        ];
-        const updatedEntry = await this.accounting.updateEntryTx(
-          tx,
-          organizationId,
-          source.journalEntryId,
-          {},
-          newLines,
-          "system",
-        );
-        await this.accountBalances.applyPostTx(tx, updatedEntry);
-      }
-    }
+    // 6. (v2 — design §CENTERPIECE D-H) Record the reversible consumer↔source
+    //    link instead of mutating the source journal. Applying credit is pure
+    //    MATCHING: the source's original entry already posted the full cash to
+    //    CxC (build-entry-lines.ts:46-66, REQ-PAY-7 QB-pure); the invoice's
+    //    CxC-positive and the source's CxC-negative net WITHIN CxC with no extra
+    //    line. The old step 6 appended a net-zero Dr-cxc/Cr-cxc pair on the SAME
+    //    account+contact (accounting-neutral) — REMOVED. The CreditConsumption
+    //    row is what makes revertCreditTx authoritative (no journal touch).
+    await this.creditConsumption.writeTx(tx, {
+      organizationId,
+      consumerPaymentId,
+      sourcePaymentId,
+      receivableId,
+      amount: requested,
+    });
   }
 
   // ── Allocation tx helpers (delegate to receivables/payables ports) ───────

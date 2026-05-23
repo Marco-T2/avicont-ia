@@ -30,6 +30,7 @@ import {
   FakeAccountingPort,
   FakeAccountBalancesPort,
   FakeContactReadPort,
+  FakeCreditConsumptionPort,
 } from "./fakes/fake-ports";
 import type { JournalEntrySnapshot } from "../../domain/ports/accounting.port";
 
@@ -72,6 +73,7 @@ interface Bench {
   accounting: FakeAccountingPort;
   accountBalances: FakeAccountBalancesPort;
   contacts: FakeContactReadPort;
+  creditConsumption: FakeCreditConsumptionPort;
   svc: PaymentsService;
 }
 
@@ -84,6 +86,7 @@ function makeBench(): Bench {
   const accounting = new FakeAccountingPort();
   const accountBalances = new FakeAccountBalancesPort();
   const contacts = new FakeContactReadPort();
+  const creditConsumption = new FakeCreditConsumptionPort();
   fiscalPeriods.periods.set(PERIOD_OPEN, {
     id: PERIOD_OPEN,
     status: "OPEN",
@@ -102,6 +105,7 @@ function makeBench(): Bench {
     accounting,
     accountBalances,
     contacts,
+    creditConsumption,
   });
   return {
     repo,
@@ -112,6 +116,7 @@ function makeBench(): Bench {
     accounting,
     accountBalances,
     contacts,
+    creditConsumption,
     svc,
   };
 }
@@ -671,7 +676,11 @@ describe("PaymentsService", () => {
       ).rejects.toThrow(NotFoundError);
     });
 
-    it("appends an allocation, applies to receivable, and rewrites journal entry", async () => {
+    // v2 INVERSION (tasks changelog): this test previously asserted the source
+    // journal was voided+updated+reposted (old step 6). v2 removes that — credit
+    // application is MATCHING only. Now it asserts the allocation appends + the
+    // receivable apply fires, and that the journal is LEFT UNTOUCHED.
+    it("appends an allocation, applies to receivable, and leaves the source journal untouched (v2)", async () => {
       const source = await seedPosted(bench, {
         amount: 200,
         allocations: [{ receivableId: "rec-original", amount: 50 }],
@@ -682,6 +691,9 @@ describe("PaymentsService", () => {
         id: "acct-cxc",
         code: "1.1.4.1",
       });
+      bench.accounting.updateCalls = [];
+      bench.accountBalances.applyVoidCalls = [];
+      bench.accountBalances.applyPostCalls = [];
 
       await bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
         {
@@ -700,14 +712,68 @@ describe("PaymentsService", () => {
       // The source payment now has a second allocation.
       const refreshedSource = await bench.repo.findById(ORG, source.id);
       expect(refreshedSource?.allocations).toHaveLength(2);
-      // The journal entry was voided + updated + balances re-applied.
-      expect(bench.accountBalances.applyVoidCalls.at(-1)?.entryId).toBe(
-        "entry-seeded",
-      );
-      expect(bench.accounting.updateCalls).toHaveLength(1);
-      expect(bench.accountBalances.applyPostCalls.at(-1)?.entryId).toBe(
-        "entry-seeded",
-      );
+      // v2: the journal entry was NOT voided / updated / reposted.
+      expect(bench.accountBalances.applyVoidCalls).toHaveLength(0);
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyPostCalls).toHaveLength(0);
+      // v2: a CreditConsumption link row was written instead.
+      expect(bench.creditConsumption.writeCalls).toHaveLength(1);
+    });
+
+    // ── v2: credit application is MATCHING, NOT journal mutation ──────────────
+    // design v2 §CENTERPIECE D-H: applying credit posts NO new journal. Step 6
+    // (source journal void+update+post) is REMOVED. Instead a CreditConsumption
+    // link row is written. The receivable balance still moves; the source's
+    // unappliedAmount still reduces.
+    it("v2: applies credit WITHOUT mutating the source journal (updateEntryTx not called) and writes a CreditConsumption link", async () => {
+      const source = await seedPosted(bench, {
+        amount: 200,
+        allocations: [{ receivableId: "rec-original", amount: 50 }],
+      });
+      bench.receivables.status.set("rec-original", "PARTIAL");
+      bench.receivables.status.set("rec-target", "PENDING");
+      bench.accounting.accountsByCode.set("1.1.4.1", {
+        id: "acct-cxc",
+        code: "1.1.4.1",
+      });
+      // Reset journal counters dirtied by seeding.
+      bench.accounting.updateCalls = [];
+      bench.accountBalances.applyVoidCalls = [];
+      bench.accountBalances.applyPostCalls = [];
+
+      await bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+        {
+          sourcePaymentId: source.id,
+          receivableId: "rec-target",
+          amount: 50,
+        },
+      ]);
+
+      // (a) NO journal mutation on the source — the centerpiece of v2.
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyVoidCalls).toHaveLength(0);
+      expect(bench.accountBalances.applyPostCalls).toHaveLength(0);
+
+      // (b) a CreditConsumption link row was written for the credit.
+      expect(bench.creditConsumption.writeCalls).toHaveLength(1);
+      const link = bench.creditConsumption.writeCalls[0];
+      expect(link.sourcePaymentId).toBe(source.id);
+      expect(link.receivableId).toBe("rec-target");
+      expect(link.amount.value).toBe(50);
+      // applyCreditOnly has no consumer payment → consumerPaymentId is null.
+      expect(link.consumerPaymentId).toBeNull();
+
+      // (c) receivable balance still moved (apply was called for the target).
+      expect(
+        bench.receivables.applyCalls.some(
+          (c) => c.id === "rec-target" && c.amount === 50,
+        ),
+      ).toBe(true);
+
+      // (d) source unappliedAmount reduced: 200 - 50(original) - 50(credit) = 100.
+      const refreshedSource = await bench.repo.findById(ORG, source.id);
+      expect(refreshedSource?.unappliedAmount.value).toBe(100);
+      expect(refreshedSource?.allocations).toHaveLength(2);
     });
 
     it("rejects credit when target receivable is VOIDED", async () => {
