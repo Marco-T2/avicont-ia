@@ -14,9 +14,12 @@ export interface FormAllocationForGlosa {
 }
 
 /**
- * Filters checked receivable allocations with a positive `assignedAmount`
- * and maps them to the `PaymentAllocationGlosa` shape consumed by
- * `buildPaymentGlosa`. Payables are excluded — COBRO glosa scope only.
+ * Filters checked receivable AND payable allocations with a positive
+ * `assignedAmount` and maps them to the `PaymentAllocationGlosa` shape
+ * consumed by `buildPaymentGlosa`. Both sides are included (design D8):
+ * COBRO surfaces receivables, PAGO surfaces payables, and the form only ever
+ * fetches one side's documents — so accepting both is safe and direction-
+ * agnostic here.
  *
  * - `referenceNumber: null` → empty string (builder renders `VG-` with no number).
  * - `sourceTypeCode: null` → preserved (builder falls back to `DOC-` per design D5).
@@ -28,7 +31,7 @@ export function selectGlosaAllocations(
     .filter(
       (a) =>
         a.checked &&
-        a.type === "receivable" &&
+        (a.type === "receivable" || a.type === "payable") &&
         (parseFloat(a.assignedAmount) || 0) > 0,
     )
     .map((a) => ({
