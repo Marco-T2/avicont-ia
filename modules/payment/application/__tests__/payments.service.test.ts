@@ -710,6 +710,167 @@ describe("PaymentsService", () => {
     });
   });
 
+  // ── update POSTED honors credit — revert-before-reapply (Phase 4) ────────
+  //
+  // REQ-PAY-3a/3b + Scenario G-order/G-rollback/H. The unified edit path must
+  // thread input.creditSources: REVERT all prior credit (link-driven,
+  // authoritative) BEFORE re-applying the new creditSources. The order is
+  // load-bearing — reapplying first throws PAYMENT_CREDIT_EXCEEDS_AVAILABLE
+  // because the source is still depleted by the prior application.
+  describe("update POSTED honors credit (Scenario G-order / G-rollback / H)", () => {
+    // Build a CONSUMER POSTED payment that consumed 100 credit from a SOURCE,
+    // returning both ids. After this, source.unappliedAmount === 0 and one
+    // CreditConsumption link keyed by the consumer exists.
+    async function seedConsumer(): Promise<{
+      sourceId: string;
+      consumerId: string;
+    }> {
+      const source = await seedPosted(bench, {
+        amount: 200,
+        allocations: [{ receivableId: "rec-original", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-original", "PARTIAL");
+      bench.receivables.status.set("rec-credit-target", "PENDING");
+      bench.receivables.status.set("rec-consumer-alloc", "PENDING");
+      bench.accounting.accountsByCode.set("1.1.4.1", {
+        id: "acct-cxc",
+        code: "1.1.4.1",
+      });
+      bench.accounting.accountsByCode.set("1.1.1.1", {
+        id: "acct-caja",
+        code: "1.1.1.1",
+      });
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-consumer" });
+
+      const consumer = await bench.svc.createAndPost(ORG, USER, baseCreate({
+        amount: 50,
+        allocations: [{ receivableId: "rec-consumer-alloc", amount: 50 }],
+        creditSources: [
+          {
+            sourcePaymentId: source.id,
+            receivableId: "rec-credit-target",
+            amount: 100,
+          },
+        ],
+      }));
+
+      // Sanity: source fully consumed by the credit application.
+      const sourceAfter = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfter?.unappliedAmount.value).toBe(0);
+
+      // Keep the consumer's entry available for the (no-cash-change) edit path.
+      bench.accounting.entries.set("entry-consumer", makeEntry({
+        id: "entry-consumer",
+        lines: [
+          { accountId: "acct-caja", debit: 50, credit: 0, contactId: null, accountNature: "DEBIT" },
+          { accountId: "acct-cxc", debit: 0, credit: 50, contactId: CONTACT, accountNature: "DEBIT" },
+        ],
+      }));
+
+      // Reset counters so the edit assertions observe only the edit.
+      bench.receivables.applyCalls = [];
+      bench.receivables.revertCalls = [];
+
+      return { sourceId: source.id, consumerId: consumer.payment.id };
+    }
+
+    it("Scenario G-order: alloc-only edit reverts prior credit THEN re-applies same creditSources; source unappliedAmount net-unchanged", async () => {
+      const { sourceId, consumerId } = await seedConsumer();
+
+      await bench.svc.update(ORG, USER, consumerId, {
+        description: "edited",
+        creditSources: [
+          {
+            sourcePaymentId: sourceId,
+            receivableId: "rec-credit-target",
+            amount: 100,
+          },
+        ],
+      } as Parameters<typeof bench.svc.update>[3]);
+
+      // Net effect: revert restored unapplied 0→100, re-apply reduced 100→0.
+      const sourceAfterEdit = await bench.repo.findById(ORG, sourceId);
+      expect(sourceAfterEdit?.unappliedAmount.value).toBe(0);
+
+      // The credit-target receivable was reverted (revert step) AND re-applied.
+      expect(
+        bench.receivables.revertCalls.some(
+          (c) => c.id === "rec-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+      expect(
+        bench.receivables.applyCalls.some(
+          (c) => c.id === "rec-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+
+      // Cash unchanged → journal NOT recomputed (seam holds with credit too).
+      expect(bench.accounting.updateCalls).toHaveLength(0);
+    });
+
+    it("Scenario H: alloc-only edit with creditSources omitted reverts prior credit (no orphan link)", async () => {
+      const { sourceId, consumerId } = await seedConsumer();
+
+      await bench.svc.update(ORG, USER, consumerId, {
+        description: "edited-no-credit",
+      });
+
+      // Prior credit reverted → source.unappliedAmount restored to 100.
+      const sourceAfterEdit = await bench.repo.findById(ORG, sourceId);
+      expect(sourceAfterEdit?.unappliedAmount.value).toBe(100);
+      expect(
+        bench.receivables.revertCalls.some(
+          (c) => c.id === "rec-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+      // No link left for the consumer.
+      expect(
+        await bench.creditConsumption.findByConsumerPaymentIdTx(
+          null,
+          ORG,
+          consumerId,
+        ),
+      ).toHaveLength(0);
+    });
+
+    it("Scenario G-rollback: reapply with an invalid creditSource throws PAYMENT_CREDIT_EXCEEDS_AVAILABLE (propagates to roll the tx back)", async () => {
+      // NOTE: true rollback (state restored on throw) is provided by the REAL
+      // withAuditTx/Prisma tx and is asserted at the integration layer. The
+      // in-memory repo's transaction() is NON-transactional (updateTx writes
+      // directly to the store, no snapshot), so this unit test asserts the
+      // load-bearing observable: the error PROPAGATES out of update() — that
+      // propagation is what makes the real tx roll back. Asserting "source
+      // restored" here would be a false GREEN against a fake that cannot revert.
+      const { sourceId, consumerId } = await seedConsumer();
+
+      // Re-apply 999 — exceeds the source's restored unapplied (100). Because
+      // revert runs BEFORE reapply (G-order), the source was restored to 100;
+      // 999 > 100 → PAYMENT_CREDIT_EXCEEDS_AVAILABLE. (If reapply ran first the
+      // source would still be 0 and the SAME error would fire for a DIFFERENT
+      // reason — the ordering is verified by G-order's net-unchanged assertion.)
+      await expect(
+        bench.svc.update(ORG, USER, consumerId, {
+          description: "edited-bad-credit",
+          creditSources: [
+            {
+              sourcePaymentId: sourceId,
+              receivableId: "rec-credit-target",
+              amount: 999,
+            },
+          ],
+        } as Parameters<typeof bench.svc.update>[3]),
+      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_EXCEEDS_AVAILABLE });
+
+      // The revert step DID run (and restored the source) before the failing
+      // reapply — proving revert-before-reapply ordering on the failure path.
+      expect(
+        bench.receivables.revertCalls.some(
+          (c) => c.id === "rec-credit-target" && c.amount === 100,
+        ),
+      ).toBe(true);
+    });
+  });
+
   // ── updateAllocations ────────────────────────────────────────────────────
 
   describe("updateAllocations", () => {

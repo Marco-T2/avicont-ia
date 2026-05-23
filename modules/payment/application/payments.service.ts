@@ -113,6 +113,14 @@ export interface UpdatePaymentServiceInput {
   accountCode?: string | null;
   notes?: string | null;
   allocations?: AllocationInput[];
+  /**
+   * Credit sources the edited payment consumes (REQ-PAY-3b, Phase 4). The edit
+   * path REVERTS all prior credit (link-driven, authoritative) then RE-APPLIES
+   * these. Omitted/empty → prior credit is reverted with no re-apply (Scenario
+   * H). The HTTP layers (Zod / DTO / adapter, L1–L3) thread this in Phase 5;
+   * here only the service input + edit-path consumption land.
+   */
+  creditSources?: CreditAllocationSource[];
 }
 
 /**
@@ -805,6 +813,15 @@ export class PaymentsService {
           await this.revertAllocationTx(tx, organizationId, old);
         }
 
+        // a2. Revert ALL prior credit this payment consumed (REQ-PAY-3a,
+        //     Scenario G-order). Link-driven + authoritative — reads the
+        //     CreditConsumption rows keyed by this payment, restores each
+        //     source's unappliedAmount + the receivable, and deletes the links.
+        //     MUST run BEFORE the reapply (step f2): reapplying first would
+        //     throw PAYMENT_CREDIT_EXCEEDS_AVAILABLE on a still-depleted source.
+        //     NO journal touch (design v2 §CENTERPIECE).
+        await this.revertCreditTx(tx, organizationId, payment.id);
+
         // b. Reverse old journal entry balances if any — ONLY when cash changed.
         if (cashChanged && payment.journalEntryId) {
           const old = await this.accounting.findEntryByIdTx(
@@ -963,6 +980,24 @@ export class PaymentsService {
 
         for (const alloc of updated.allocations) {
           await this.applyAllocationTx(tx, organizationId, alloc);
+        }
+
+        // f2. Re-apply the new credit sources (REQ-PAY-3b, Scenario G-order/H).
+        //     Prior credit was already reverted (step a2), so each source's
+        //     unappliedAmount is restored and the apply will not falsely throw
+        //     PAYMENT_CREDIT_EXCEEDS_AVAILABLE. This payment is the consumer —
+        //     pass its id so a later edit can revert these via the links.
+        //     Omitted/empty creditSources → nothing re-applied (Scenario H).
+        //     MATCHING only — NO journal touch.
+        for (const cs of input.creditSources ?? []) {
+          await this.applyCreditToInvoiceTx(
+            tx,
+            organizationId,
+            cs.sourcePaymentId,
+            cs.receivableId,
+            cs.amount,
+            updated.id,
+          );
         }
 
         return updated;
