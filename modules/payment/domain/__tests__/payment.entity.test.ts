@@ -9,6 +9,7 @@ import {
   PaymentMixedAllocation,
   PaymentAllocationsExceedTotal,
   CannotModifyVoidedPayment,
+  CreditAllocationNotFound,
 } from "../errors/payment-errors";
 
 const baseInput = {
@@ -656,6 +657,122 @@ describe("Payment aggregate root", () => {
     it("returns true when accountCode changes from null to a value", () => {
       const p = Payment.create({ ...cashBase, accountCode: null });
       expect(p.didCashChange({ accountCode: "1.1.1.1" })).toBe(true);
+    });
+  });
+
+  // ── removeCreditAllocation (Phase 2 — inverse of applyCreditAllocation) ────
+  // Used by the trivial revertCreditTx (design v2 §CENTERPIECE). Removes ONE
+  // credit-application allocation from the SOURCE payment, matched by the R-3
+  // triple key (sourcePaymentId + receivableId + amount) to disambiguate equal
+  // credits from different sources. Re-runs enforceAllocationInvariants;
+  // restores unappliedAmount.
+  describe("removeCreditAllocation()", () => {
+    // A source payment with amount 300 and two RECEIVABLE allocations:
+    //  - rec-a / 100  and  rec-b / 100  → unappliedAmount = 100
+    function makeSourceWithTwoCredits(): Payment {
+      return Payment.create({
+        ...baseInput,
+        amount: 300,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-a"), amount: 100 },
+          { target: AllocationTarget.forReceivable("rec-b"), amount: 100 },
+        ],
+      });
+    }
+
+    it("removes the matching credit allocation by triple key", () => {
+      const source = makeSourceWithTwoCredits();
+      const updated = source.removeCreditAllocation(
+        source.id,
+        "rec-a",
+        MonetaryAmount.of(100),
+      );
+      expect(updated.allocations).toHaveLength(1);
+      expect(updated.allocations[0].receivableId).toBe("rec-b");
+    });
+
+    it("restores unappliedAmount by the removed amount", () => {
+      const source = makeSourceWithTwoCredits();
+      expect(source.unappliedAmount.value).toBe(100);
+      const updated = source.removeCreditAllocation(
+        source.id,
+        "rec-a",
+        MonetaryAmount.of(100),
+      );
+      expect(updated.unappliedAmount.value).toBe(200);
+    });
+
+    it("does not mutate the original aggregate (immutability)", () => {
+      const source = makeSourceWithTwoCredits();
+      source.removeCreditAllocation(source.id, "rec-a", MonetaryAmount.of(100));
+      expect(source.allocations).toHaveLength(2);
+    });
+
+    it("throws CreditAllocationNotFound when no allocation matches the receivableId", () => {
+      const source = makeSourceWithTwoCredits();
+      expect(() =>
+        source.removeCreditAllocation(
+          source.id,
+          "rec-missing",
+          MonetaryAmount.of(100),
+        ),
+      ).toThrow(CreditAllocationNotFound);
+    });
+
+    it("throws CreditAllocationNotFound when receivableId matches but amount differs", () => {
+      const source = makeSourceWithTwoCredits();
+      expect(() =>
+        source.removeCreditAllocation(
+          source.id,
+          "rec-a",
+          MonetaryAmount.of(50),
+        ),
+      ).toThrow(CreditAllocationNotFound);
+    });
+
+    it("throws CreditAllocationNotFound when sourcePaymentId does not match this aggregate (R-3 guard)", () => {
+      const source = makeSourceWithTwoCredits();
+      expect(() =>
+        source.removeCreditAllocation(
+          "some-other-source",
+          "rec-a",
+          MonetaryAmount.of(100),
+        ),
+      ).toThrow(CreditAllocationNotFound);
+    });
+
+    // R-3: two equal-amount credits to the SAME receivable but accounted as
+    // distinct rows. Removing one (amount 100) leaves exactly the other 100,
+    // proving the match removes ONE row, not all matching rows.
+    it("removes only ONE row when two equal credits target the same receivable (R-3)", () => {
+      const source = Payment.create({
+        ...baseInput,
+        amount: 300,
+        allocations: [
+          { target: AllocationTarget.forReceivable("rec-dup"), amount: 100 },
+          { target: AllocationTarget.forReceivable("rec-dup"), amount: 100 },
+        ],
+      });
+      const updated = source.removeCreditAllocation(
+        source.id,
+        "rec-dup",
+        MonetaryAmount.of(100),
+      );
+      expect(updated.allocations).toHaveLength(1);
+      expect(updated.allocations[0].receivableId).toBe("rec-dup");
+      expect(updated.allocations[0].amount.value).toBe(100);
+    });
+
+    it("throws CannotModifyVoidedPayment when the source is VOIDED", () => {
+      const source = makeSourceWithTwoCredits();
+      const voided = source.post().void();
+      expect(() =>
+        voided.removeCreditAllocation(
+          voided.id,
+          "rec-a",
+          MonetaryAmount.of(100),
+        ),
+      ).toThrow(CannotModifyVoidedPayment);
     });
   });
 });

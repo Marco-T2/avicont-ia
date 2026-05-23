@@ -122,6 +122,19 @@ export class PaymentNotFound extends NotFoundError {
   }
 }
 
+/**
+ * Raised by `Payment.removeCreditAllocation` when no allocation on the source
+ * aggregate matches the R-3 triple key (sourcePaymentId + receivableId +
+ * amount). The credit-application row to revert does not exist — a NotFound,
+ * not a validation failure.
+ */
+export class CreditAllocationNotFound extends NotFoundError {
+  constructor() {
+    super("Asignación de crédito");
+    this.name = "CreditAllocationNotFound";
+  }
+}
+
 // I12 — la fecha del pago/cobro DEBE caer en [period.startDate, period.endDate].
 // Mismo invariante familia date-outside-period — cierra el gap de coherencia
 // date↔período. El use case ya valida period status (assertPeriodOpen) pero

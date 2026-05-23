@@ -15,6 +15,7 @@ import {
   PaymentMixedAllocation,
   PaymentAllocationsExceedTotal,
   CannotModifyVoidedPayment,
+  CreditAllocationNotFound,
 } from "./errors/payment-errors";
 
 export interface PaymentProps {
@@ -359,6 +360,45 @@ export class Payment {
   applyCreditAllocation(allocation: PaymentAllocation): Payment {
     this.assertNotVoided();
     const next = [...this.props.allocations, allocation];
+    enforceAllocationInvariants(next, this.props.amount);
+    return new Payment({
+      ...this.props,
+      allocations: next,
+      updatedAt: new Date(),
+    });
+  }
+
+  /**
+   * Inverse of `applyCreditAllocation`. Removes the single credit-application
+   * allocation that matches the R-3 triple key — sourcePaymentId (must equal
+   * this aggregate's id), receivableId, and amount — restoring the source's
+   * `unappliedAmount`. Used by the trivial `revertCreditTx` (design v2
+   * §CENTERPIECE / D-C). Matching by the triple key disambiguates equal-amount
+   * credits to the same receivable (distinct rows) and equal credits from
+   * different sources. Removes exactly ONE row. Throws
+   * `CreditAllocationNotFound` when no row matches. Re-runs
+   * `enforceAllocationInvariants` on the remaining set (removal can only relax
+   * the sum invariant, but the homogeneity check is preserved for symmetry).
+   */
+  removeCreditAllocation(
+    sourcePaymentId: string,
+    receivableId: string,
+    amount: MonetaryAmount,
+  ): Payment {
+    this.assertNotVoided();
+    if (sourcePaymentId !== this.props.id) {
+      throw new CreditAllocationNotFound();
+    }
+    const idx = this.props.allocations.findIndex(
+      (a) => a.receivableId === receivableId && a.amount.equals(amount),
+    );
+    if (idx === -1) {
+      throw new CreditAllocationNotFound();
+    }
+    const next = [
+      ...this.props.allocations.slice(0, idx),
+      ...this.props.allocations.slice(idx + 1),
+    ];
     enforceAllocationInvariants(next, this.props.amount);
     return new Payment({
       ...this.props,
