@@ -1453,7 +1453,9 @@ export default function PaymentForm({
           {!isVoided && (
             <div className="flex items-center gap-6 flex-wrap mb-4 pb-4 border-b">
               <div className="space-y-1 flex-1 min-w-[200px]">
-                <Label htmlFor="payment-amount-override">Importe recibido (Bs.)</Label>
+                <Label htmlFor="payment-amount-override">
+                  {paymentType === "COBRO" ? "Importe recibido" : "Importe pagado"} (Bs.)
+                </Label>
                 {isReadOnly && !isPosted ? (
                   <Input
                     value={existingPayment ? formatBs(existingPayment.amount) : ""}
