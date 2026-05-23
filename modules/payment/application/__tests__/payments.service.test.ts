@@ -12,6 +12,7 @@ import {
   PAYMENT_ALLOCATION_TARGET_VOIDED,
   PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+  PAYMENT_CREDIT_WRONG_CONTACT,
   PAYMENT_DIRECTION_REQUIRED,
   PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
   PAYMENT_MIXED_ALLOCATION,
@@ -949,7 +950,7 @@ describe("PaymentsService", () => {
             amount: 50,
           },
         ]),
-      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_EXCEEDS_AVAILABLE });
+      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_WRONG_CONTACT });
     });
 
     it("throws NotFoundError when source payment is missing", async () => {

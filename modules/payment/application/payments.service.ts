@@ -595,7 +595,7 @@ export class PaymentsService {
       if (sp.contactId !== contactId) {
         throw new ValidationError(
           "Todos los pagos origen deben pertenecer al mismo contacto",
-          PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+          PAYMENT_CREDIT_WRONG_CONTACT,
         );
       }
     }
