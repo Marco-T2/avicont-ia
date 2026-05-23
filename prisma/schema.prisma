@@ -666,6 +666,7 @@ model AccountsPayable {
   journalEntry   JournalEntry? @relation(fields: [journalEntryId], references: [id])
   purchase       Purchase?
   allocations    PaymentAllocation[]
+  creditConsumptions CreditConsumption[]
 
   @@index([organizationId, contactId])
   @@index([organizationId, status])
@@ -951,16 +952,23 @@ model CreditConsumption {
   organizationId    String
   consumerPaymentId String?
   sourcePaymentId   String
-  receivableId      String
+  // XOR target (mirrors PaymentAllocation): a credit link points at EITHER a
+  // receivable (COBRO) OR a payable (PAGO), never both, never neither. The XOR
+  // is enforced by the AllocationTarget VO + Zod (NO SQL CHECK — true mirror of
+  // PaymentAllocation, design D2). Legacy rows keep receivableId set / payableId null.
+  receivableId      String?
+  payableId         String?
   amount            Decimal  @db.Decimal(12, 2)
   createdAt         DateTime @db.Timestamptz(3) @default(now())
   organization      Organization        @relation(fields: [organizationId], references: [id])
   consumerPayment   Payment?            @relation("CreditConsumer", fields: [consumerPaymentId], references: [id], onDelete: Cascade)
   sourcePayment     Payment             @relation("CreditSource", fields: [sourcePaymentId], references: [id])
-  receivable        AccountsReceivable  @relation(fields: [receivableId], references: [id])
+  receivable        AccountsReceivable? @relation(fields: [receivableId], references: [id])
+  payable           AccountsPayable?    @relation(fields: [payableId], references: [id])
 
   @@index([organizationId, consumerPaymentId])
   @@index([organizationId, sourcePaymentId])
+  @@index([payableId])
   @@map("credit_consumptions")
 }
 
