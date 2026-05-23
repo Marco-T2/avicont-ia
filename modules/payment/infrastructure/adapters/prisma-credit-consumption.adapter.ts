@@ -26,7 +26,10 @@ export class PrismaCreditConsumptionAdapter implements CreditConsumptionPort {
         organizationId: input.organizationId,
         consumerPaymentId: input.consumerPaymentId,
         sourcePaymentId: input.sourcePaymentId,
+        // XOR target: receivableId for COBRO, payableId for PAGO. The port
+        // already passes exactly one non-null (AllocationTarget VO, Zod).
         receivableId: input.receivableId,
+        payableId: input.payableId,
         amount: input.amount.value.toFixed(2),
       },
     });
@@ -43,19 +46,18 @@ export class PrismaCreditConsumptionAdapter implements CreditConsumptionPort {
       select: {
         sourcePaymentId: true,
         receivableId: true,
+        payableId: true,
         amount: true,
         consumerPaymentId: true,
       },
     });
     return rows.map((r) => ({
       sourcePaymentId: r.sourcePaymentId,
+      // XOR target round-trip: a COBRO link reads receivableId (payableId null),
+      // a PAGO link reads payableId (receivableId null). revertCreditTx dispatches
+      // by whichever is present.
       receivableId: r.receivableId,
-      // STUB (Phase 2 type-satisfaction): payableId is not yet selected/mapped.
-      // The real payableId round-trip (select + map) is Phase 4 (task 4.2) and
-      // is driven by its own RED integration test (4.1) — implementing it here
-      // would make that RED pass by accident. Legacy + current receivable links
-      // are payableId null regardless, so this stub is behavior-preserving today.
-      payableId: null,
+      payableId: r.payableId,
       amount: MonetaryAmount.of(r.amount.toString()),
       consumerPaymentId: r.consumerPaymentId,
     }));

@@ -23,6 +23,7 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
   let sourcePaymentId: string;
   let consumerPaymentId: string;
   let receivableId: string;
+  let payableId: string;
 
   beforeAll(async () => {
     const stamp = Date.now();
@@ -110,6 +111,20 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
       },
     });
     receivableId = receivable.id;
+
+    const payable = await prisma.accountsPayable.create({
+      data: {
+        organizationId: testOrgId,
+        contactId: testContactId,
+        description: "CC test payable",
+        amount: "100.00",
+        paid: "0.00",
+        balance: "100.00",
+        dueDate: new Date("2099-02-01T00:00:00Z"),
+        status: "PENDING",
+      },
+    });
+    payableId = payable.id;
   });
 
   beforeEach(async () => {
@@ -123,6 +138,9 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
       where: { organizationId: testOrgId },
     });
     await prisma.accountsReceivable.deleteMany({
+      where: { organizationId: testOrgId },
+    });
+    await prisma.accountsPayable.deleteMany({
       where: { organizationId: testOrgId },
     });
     await prisma.payment.deleteMany({ where: { organizationId: testOrgId } });
@@ -161,6 +179,47 @@ describe("PrismaCreditConsumptionAdapter — Postgres integration", () => {
     expect(links[0].receivableId).toBe(receivableId);
     expect(links[0].consumerPaymentId).toBe(consumerPaymentId);
     expect(links[0].amount.equals(MonetaryAmount.of(100))).toBe(true);
+  });
+
+  // Task 4.1 (pago-credit-system) — RED: a PAGO credit link carries payableId
+  // (receivableId null). The adapter must WRITE payableId into the row and SELECT
+  // + MAP it back. Declared RED failure mode: writeTx omits payableId from the
+  // create data AND findByConsumerPaymentIdTx stubs payableId:null in the map, so
+  // the round-trip returns receivableId=null/payableId=null — the link target is
+  // lost (links[0].payableId is null instead of payableId).
+  it("writeTx persists a PAGO link (payableId set, receivableId null) and reads payableId back (round-trip)", async () => {
+    const adapter = new PrismaCreditConsumptionAdapter();
+
+    await prisma.$transaction(async (tx) => {
+      await adapter.writeTx(tx, {
+        organizationId: testOrgId,
+        consumerPaymentId,
+        sourcePaymentId,
+        receivableId: null,
+        payableId,
+        amount: MonetaryAmount.of(75),
+      });
+    });
+
+    const links = await prisma.$transaction((tx) =>
+      adapter.findByConsumerPaymentIdTx(tx, testOrgId, consumerPaymentId),
+    );
+
+    expect(links).toHaveLength(1);
+    expect(links[0].payableId).toBe(payableId);
+    expect(links[0].receivableId).toBeNull();
+    expect(links[0].sourcePaymentId).toBe(sourcePaymentId);
+    expect(links[0].consumerPaymentId).toBe(consumerPaymentId);
+    expect(links[0].amount.equals(MonetaryAmount.of(75))).toBe(true);
+
+    // Confirm the column was actually written at the DB level (not just mapped).
+    const dbRows = await prisma.creditConsumption.findMany({
+      where: { organizationId: testOrgId, consumerPaymentId },
+      select: { payableId: true, receivableId: true },
+    });
+    expect(dbRows).toHaveLength(1);
+    expect(dbRows[0].payableId).toBe(payableId);
+    expect(dbRows[0].receivableId).toBeNull();
   });
 
   it("findByConsumerPaymentIdTx returns empty array when no links exist for the consumer", async () => {
