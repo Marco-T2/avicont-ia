@@ -1124,6 +1124,102 @@ describe("PaymentsService", () => {
     });
   });
 
+  // ── same-contact scope guard (supplier-scope-guard, step 2b) ──────────────
+  //
+  // applyCreditToInvoiceTx step 2b verifies SOURCE.contactId === TARGET.contactId
+  // (the AR/AP document's contactId, looked up via getContactIdByIdTx). Symmetric
+  // COBRO/PAGO. SKIP-ON-NULL: a null target contactId (missing row) skips the
+  // compare and lets applyAllocation surface NotFound. RED tests seed a DIFFERING
+  // contactId to force PAYMENT_CREDIT_WRONG_CONTACT; same-contact tests seed a
+  // MATCHING contactId and assert the flow completes.
+  describe("same-contact scope guard", () => {
+    // D-2 RED: COBRO cross-contact. Source belongs to CONTACT; target receivable
+    // belongs to a DIFFERENT contact ("B"). Declared RED failure mode: no step 2b
+    // guard exists yet → applyCreditToInvoiceTx resolves (receivables.applyCalls
+    // fires) instead of throwing.
+    it("COBRO: rejects a credit whose source contact differs from the target receivable contact", async () => {
+      const source = await seedPosted(bench, { amount: 200 });
+      bench.receivables.status.set("rec-cross", "PENDING");
+      bench.receivables.contactIds.set("rec-cross", "contact-B"); // ≠ source CONTACT
+
+      await expect(
+        bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+          {
+            sourcePaymentId: source.id,
+            receivableId: "rec-cross",
+            amount: 50,
+          },
+        ]),
+      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_WRONG_CONTACT });
+    });
+
+    // D-3 RED: PAGO cross-contact (symmetry mirror of D-2). Source belongs to
+    // CONTACT; target payable belongs to "B". Declared RED failure mode: same —
+    // no guard → resolves (payables.applyCalls fires) instead of throwing.
+    it("PAGO: rejects a credit whose source contact differs from the target payable contact", async () => {
+      const source = await seedPosted(bench, { amount: 200 });
+      bench.payables.status.set("pay-cross", "PENDING");
+      bench.payables.contactIds.set("pay-cross", "contact-B"); // ≠ source CONTACT
+
+      await expect(
+        bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+          {
+            sourcePaymentId: source.id,
+            payableId: "pay-cross",
+            amount: 50,
+          },
+        ]),
+      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_WRONG_CONTACT });
+    });
+
+    // D-4 RED: COBRO same-contact passes. Source and target receivable both
+    // belong to CONTACT. Declared RED failure mode: if the guard over-fires (e.g.
+    // throws on a match, or treats a seeded-equal contactId wrongly), this throws
+    // instead of completing. After GREEN it validates skip-on-match.
+    it("COBRO: allows a credit when source and target receivable share the same contact", async () => {
+      const source = await seedPosted(bench, { amount: 200 });
+      bench.receivables.status.set("rec-same", "PENDING");
+      bench.receivables.contactIds.set("rec-same", CONTACT); // === source CONTACT
+
+      await bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+        {
+          sourcePaymentId: source.id,
+          receivableId: "rec-same",
+          amount: 50,
+        },
+      ]);
+
+      // The credit was applied to the target receivable — guard did NOT block.
+      expect(
+        bench.receivables.applyCalls.some(
+          (c) => c.id === "rec-same" && c.amount === 50,
+        ),
+      ).toBe(true);
+    });
+
+    // D-5 RED: PAGO same-contact passes (symmetry mirror of D-4 for payable).
+    it("PAGO: allows a credit when source and target payable share the same contact", async () => {
+      const source = await seedPosted(bench, { amount: 200 });
+      bench.payables.status.set("pay-same", "PENDING");
+      bench.payables.contactIds.set("pay-same", CONTACT); // === source CONTACT
+
+      await bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+        {
+          sourcePaymentId: source.id,
+          payableId: "pay-same",
+          amount: 50,
+        },
+      ]);
+
+      // The credit was applied to the target payable — guard did NOT block.
+      expect(
+        bench.payables.applyCalls.some(
+          (c) => c.id === "pay-same" && c.amount === 50,
+        ),
+      ).toBe(true);
+    });
+  });
+
   // ── PAGO credit (allocation-target dispatch — pago-credit-system) ─────────
   //
   // Phase 3: applyCreditToInvoiceTx / revertCreditTx must dispatch by the

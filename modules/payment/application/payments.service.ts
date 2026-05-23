@@ -982,6 +982,33 @@ export class PaymentsService {
       );
     }
 
+    // 2b. Same-contact scope guard (supplier-scope-guard, design D-1/D-3).
+    //     Single enforcement seam: source.contactId is live (step 2) and we are
+    //     BEFORE the first mutation (step 4), so every credit call site
+    //     (createAndPost, applyCreditOnly, update) is covered here. The target's
+    //     contactId is looked up via the matching port, dispatched by the XOR id
+    //     mirroring step 5. SKIP-ON-NULL (design D-2): a null target contactId
+    //     means the row is missing — we skip the compare and let step 5
+    //     applyAllocation surface NotFound (preserves the existing NotFound
+    //     taxonomy). Only a non-null, DIFFERING contactId is rejected.
+    const targetContactId = target.receivableId
+      ? await this.receivables.getContactIdByIdTx(
+          tx,
+          organizationId,
+          target.receivableId,
+        )
+      : await this.payables.getContactIdByIdTx(
+          tx,
+          organizationId,
+          target.payableId!,
+        );
+    if (targetContactId !== null && targetContactId !== source.contactId) {
+      throw new ValidationError(
+        "El crédito origen pertenece a un contacto distinto del documento destino",
+        PAYMENT_CREDIT_WRONG_CONTACT,
+      );
+    }
+
     // 3. Validate unappliedAmount >= amount
     const unapplied = source.unappliedAmount;
     const requested = MonetaryAmount.of(amount);
