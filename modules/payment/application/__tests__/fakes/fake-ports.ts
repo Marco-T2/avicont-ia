@@ -35,6 +35,11 @@ import type {
   ContactReadPort,
   ContactType,
 } from "../../../domain/ports/contact-read.port";
+import type {
+  CreditConsumptionPort,
+  CreditConsumptionLink,
+  WriteCreditConsumptionInput,
+} from "../../../domain/ports/credit-consumption.port";
 
 // ─────────────────────────── Receivables / Payables ─────────────────────────
 
@@ -338,5 +343,61 @@ export class FakeContactReadPort implements ContactReadPort {
   async findName(_tx: unknown, contactId: string): Promise<string | null> {
     this.nameCalls.push(contactId);
     return this.names.get(contactId) ?? null;
+  }
+}
+
+// ─────────────────────────── CreditConsumption ──────────────────────────────
+
+/**
+ * In-memory CreditConsumption bridge table. Each `writeTx` appends a row;
+ * `findByConsumerPaymentIdTx` filters by consumer; `deleteByConsumerPaymentIdTx`
+ * removes matching rows. Call vectors (`writeCalls`, `deleteCalls`) let tests
+ * assert the link write/delete contract (Phase 3 — applyCredit v2 + revert v2).
+ */
+export class FakeCreditConsumptionPort implements CreditConsumptionPort {
+  rows: WriteCreditConsumptionInput[] = [];
+  writeCalls: WriteCreditConsumptionInput[] = [];
+  deleteCalls: Array<{ organizationId: string; consumerPaymentId: string }> = [];
+
+  async writeTx(
+    _tx: unknown,
+    input: WriteCreditConsumptionInput,
+  ): Promise<void> {
+    this.rows.push(input);
+    this.writeCalls.push(input);
+  }
+
+  async findByConsumerPaymentIdTx(
+    _tx: unknown,
+    organizationId: string,
+    consumerPaymentId: string,
+  ): Promise<CreditConsumptionLink[]> {
+    return this.rows
+      .filter(
+        (r) =>
+          r.organizationId === organizationId &&
+          r.consumerPaymentId === consumerPaymentId,
+      )
+      .map((r) => ({
+        sourcePaymentId: r.sourcePaymentId,
+        receivableId: r.receivableId,
+        amount: r.amount,
+        consumerPaymentId: r.consumerPaymentId,
+      }));
+  }
+
+  async deleteByConsumerPaymentIdTx(
+    _tx: unknown,
+    organizationId: string,
+    consumerPaymentId: string,
+  ): Promise<void> {
+    this.deleteCalls.push({ organizationId, consumerPaymentId });
+    this.rows = this.rows.filter(
+      (r) =>
+        !(
+          r.organizationId === organizationId &&
+          r.consumerPaymentId === consumerPaymentId
+        ),
+    );
   }
 }
