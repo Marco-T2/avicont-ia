@@ -9,6 +9,7 @@ import { Payable } from "@/modules/payables/domain/payable.entity";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { OrgSettings } from "@/modules/org-settings/domain/org-settings.entity";
 import { Purchase, type PurchaseType } from "../../domain/purchase.entity";
+import { purchaseTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 import type { PurchaseStatus } from "../../domain/value-objects/purchase-status";
 import {
   PurchaseAccountNotFound,
@@ -751,6 +752,39 @@ describe("PurchaseService.post", () => {
     // CRITICAL: must be 1, NOT 2 — secuencias separadas por type
     expect(compraResult.purchase.sequenceNumber).toBe(1);
   });
+
+  // B-8 RED (AP-1) — denormaliza el código operacional del tipo de compra en
+  // el payable al postear, espejo de sale-hex que setea AR.sourceTypeCode. Lo
+  // que el form-side glosa builder PAGO necesita leer (LOOKUP-B).
+  it.each([
+    ["FLETE", "FL"],
+    ["POLLO_FAENADO", "PF"],
+    ["COMPRA_GENERAL", "CG"],
+    ["SERVICIO", "SV"],
+  ] as const)(
+    "post() sets payable.sourceTypeCode=%s code (%s) from purchaseTypeToCode (AP-1)",
+    async (purchaseType, expectedCode) => {
+      const draft = buildDraftPurchase({ purchaseType });
+      purchaseRepo.preload(draft);
+      journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+      let capturedCode: string | null | undefined = "__unset__";
+      (payableRepo as unknown as {
+        createTx: (
+          tx: unknown,
+          data: { sourceTypeCode?: string | null; sourceId: string },
+        ) => Promise<{ id: string }>;
+      }).createTx = async (_tx, data) => {
+        capturedCode = data.sourceTypeCode;
+        return { id: `payable-${data.sourceId}` };
+      };
+
+      await service.post(ORG, draft.id, "user-1");
+
+      expect(capturedCode).toBe(purchaseTypeToCode(purchaseType));
+      expect(capturedCode).toBe(expectedCode);
+    },
+  );
 });
 
 describe("PurchaseService.createAndPost", () => {
@@ -1055,6 +1089,60 @@ describe("PurchaseService.createAndPost", () => {
 
     const expected = new Date("2025-01-15").getTime() + 30 * 86400000;
     expect(capturedDueDate?.getTime()).toBe(expected);
+  });
+
+  // B-8 RED (AP-1) — createAndPost atomic path mirrors post(): denormaliza el
+  // código operacional del tipo de compra en el payable.
+  it("createAndPost() sets payable.sourceTypeCode from purchaseTypeToCode (CG — expense path) (AP-1)", async () => {
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    let capturedCode: string | null | undefined = "__unset__";
+    (payableRepo as unknown as {
+      createTx: (
+        tx: unknown,
+        data: { sourceTypeCode?: string | null; sourceId: string },
+      ) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => {
+      capturedCode = data.sourceTypeCode;
+      return { id: `payable-${data.sourceId}` };
+    };
+
+    await service.createAndPost(ORG, input, {
+      userId: "user-1",
+      role: ROLE_ADMIN,
+    });
+
+    expect(capturedCode).toBe(purchaseTypeToCode("COMPRA_GENERAL"));
+    expect(capturedCode).toBe("CG");
+  });
+
+  it("createAndPost() sets payable.sourceTypeCode from purchaseTypeToCode (FL — non-expense path) (AP-1)", async () => {
+    journalEntryFactory.enqueuePurchase(buildJournalStub());
+
+    const fleteInput = {
+      ...input,
+      purchaseType: "FLETE" as PurchaseType,
+      details: [{ description: "Flete", lineAmount: MonetaryAmount.of(1000) }],
+    };
+
+    let capturedCode: string | null | undefined = "__unset__";
+    (payableRepo as unknown as {
+      createTx: (
+        tx: unknown,
+        data: { sourceTypeCode?: string | null; sourceId: string },
+      ) => Promise<{ id: string }>;
+    }).createTx = async (_tx, data) => {
+      capturedCode = data.sourceTypeCode;
+      return { id: `payable-${data.sourceId}` };
+    };
+
+    await service.createAndPost(ORG, fleteInput, {
+      userId: "user-1",
+      role: ROLE_ADMIN,
+    });
+
+    expect(capturedCode).toBe(purchaseTypeToCode("FLETE"));
+    expect(capturedCode).toBe("FL");
   });
 });
 
