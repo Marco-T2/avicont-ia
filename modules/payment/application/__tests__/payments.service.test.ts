@@ -1218,6 +1218,34 @@ describe("PaymentsService", () => {
         ),
       ).toBe(true);
     });
+
+    // E-1: orthogonality — the step 2b guard must NOT short-circuit D3
+    // (enforceAllocationInvariants / PAYMENT_MIXED_ALLOCATION). Source has a
+    // prior COBRO (receivable) allocation; we apply a SAME-CONTACT PAGO
+    // (payable) credit. The guard passes (same contact), but the aggregate's
+    // applyCreditAllocation (step 4) must still reject the mixed direction.
+    // Declared failure mode: if the guard accidentally returned early / replaced
+    // the mutation path, D3 would not fire and the call would resolve.
+    it("does not short-circuit D3 mixed-allocation: same-contact PAGO credit on a COBRO source still throws PAYMENT_MIXED_ALLOCATION", async () => {
+      const source = await seedPosted(bench, {
+        amount: 200,
+        allocations: [{ receivableId: "rec-orig", amount: 50 }],
+      });
+      bench.receivables.status.set("rec-orig", "PARTIAL");
+      // Same-contact PAGO target → step 2b guard passes; D3 must still fire.
+      bench.payables.status.set("pay-mixed", "PENDING");
+      bench.payables.contactIds.set("pay-mixed", CONTACT);
+
+      await expect(
+        bench.svc.applyCreditOnly(ORG, USER, CONTACT, [
+          {
+            sourcePaymentId: source.id,
+            payableId: "pay-mixed",
+            amount: 50,
+          },
+        ]),
+      ).rejects.toMatchObject({ code: PAYMENT_MIXED_ALLOCATION });
+    });
   });
 
   // ── PAGO credit (allocation-target dispatch — pago-credit-system) ─────────
