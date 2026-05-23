@@ -1261,6 +1261,107 @@ describe("PaymentsService", () => {
       expect(params!.operationalDocTypeId).toBeNull();
     });
   });
+
+  // ── edit POSTED with prior credit — bug repro R-4 ────────────────────────
+  //
+  // Scenario G-order: a contact has two POSTED COBRO payments, one of which
+  // was used as a credit source via createAndPost (creditSources field).
+  // Editing the CONSUMER payment POSTED should:
+  //   (Phase 4 GREEN) revert prior credit (restore source.unappliedAmount),
+  //   then re-apply the same credit (reduce source.unappliedAmount again).
+  //
+  // CURRENT BUG (R-4): UpdatePaymentServiceInput has no creditSources field.
+  // updatePostedPaymentTx does not call revertCreditTx / applyCreditToInvoiceTx.
+  // Result: credit is silently dropped — source.unappliedAmount is not restored,
+  // and no CreditConsumption link is written (the table does not yet exist).
+  //
+  // Convention choice: it.skip (not it.fails) because the bug is a SILENT DROP,
+  // not a throw. it.fails requires the test itself to throw; this test would
+  // PASS in the wrong way (update succeeds but state is inconsistent).
+  // The eventual GREEN assertion is written inside as a comment target.
+  // TODO(pagos-cobros-fifo Phase 4): un-skip — edit path must honor credit
+  // without throwing and without silent drop.
+
+  describe("edit POSTED with prior credit — bug repro R-4", () => {
+    it.skip("edit POSTED consumer payment re-applies same creditSources without dropping them", async () => {
+      // ── Arrange ────────────────────────────────────────────────────────────
+      // SOURCE: amount=200, allocated=100 to rec-original → unappliedAmount=100
+      const source = await seedPosted(bench, {
+        amount: 200,
+        allocations: [{ receivableId: "rec-original", amount: 100 }],
+      });
+      bench.receivables.status.set("rec-original", "PARTIAL");
+      bench.receivables.status.set("rec-credit-target", "PENDING");
+      bench.receivables.status.set("rec-consumer-alloc", "PENDING");
+
+      // Step 6 of applyCreditToInvoiceTx needs a CxC account code lookup.
+      bench.accounting.accountsByCode.set("1.1.4.1", {
+        id: "acct-cxc",
+        code: "1.1.4.1",
+      });
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-consumer" });
+
+      // CONSUMER: cash amount=50, also consumes 100 credit from SOURCE.
+      // After createAndPost: source.unappliedAmount should be 0 (100 credit applied).
+      const consumer = await bench.svc.createAndPost(ORG, USER, baseCreate({
+        amount: 50,
+        allocations: [{ receivableId: "rec-consumer-alloc", amount: 50 }],
+        creditSources: [
+          {
+            sourcePaymentId: source.id,
+            receivableId: "rec-credit-target",
+            amount: 100,
+          },
+        ],
+      }));
+
+      // Sanity: source unapplied is now 0 after credit was applied.
+      const sourceAfterApply = await bench.repo.findById(ORG, source.id);
+      expect(sourceAfterApply?.unappliedAmount.value).toBe(0);
+
+      // Reset call counters after setup.
+      bench.receivables.applyCalls = [];
+      bench.receivables.revertCalls = [];
+
+      // Keep consumer's entry available for the edit's void+update path.
+      bench.accounting.entries.set("entry-consumer", makeEntry({
+        id: "entry-consumer",
+        lines: [
+          { accountId: "acct-caja", debit: 50, credit: 0, contactId: null, accountNature: "DEBIT" },
+          { accountId: "acct-cxc", debit: 0, credit: 50, contactId: CONTACT, accountNature: "DEBIT" },
+        ],
+      }));
+      bench.accounting.accountsByCode.set("1.1.1.1", { id: "acct-caja", code: "1.1.1.1" });
+
+      // ── Act ────────────────────────────────────────────────────────────────
+      // Edit the CONSUMER POSTED payment with the same creditSources.
+      // Phase 4 will wire creditSources through UpdatePaymentServiceInput and
+      // updatePostedPaymentTx: revert prior links → re-apply same creditSources.
+      await bench.svc.update(ORG, USER, consumer.payment.id, {
+        description: "edited",
+        // TODO(pagos-cobros-fifo Phase 4): creditSources is not yet part of
+        // UpdatePaymentServiceInput — add it and wire through update().
+        // creditSources: [{ sourcePaymentId: source.id, receivableId: "rec-credit-target", amount: 100 }],
+      } as Parameters<typeof bench.svc.update>[3]);
+
+      // ── Assert (GREEN target — currently these fail because credit is silently dropped) ──
+      // After edit, source.unappliedAmount must still be 0 (credit reverted then
+      // re-applied in same tx → net effect = unchanged).
+      const sourceAfterEdit = await bench.repo.findById(ORG, source.id);
+      // GREEN: credit revert restores unapplied to 100, re-apply reduces back to 0.
+      expect(sourceAfterEdit?.unappliedAmount.value).toBe(0);
+
+      // GREEN: the receivable that received credit must still be "applied to".
+      expect(
+        bench.receivables.applyCalls.some((c) => c.id === "rec-credit-target" && c.amount === 100),
+      ).toBe(true);
+
+      // GREEN: the credit revert must have restored the receivable first.
+      expect(
+        bench.receivables.revertCalls.some((c) => c.id === "rec-credit-target" && c.amount === 100),
+      ).toBe(true);
+    });
+  });
 });
 
 // ─────────────────────────── Helpers ────────────────────────────────────────
