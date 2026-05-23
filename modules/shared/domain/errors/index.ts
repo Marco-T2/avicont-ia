@@ -152,6 +152,10 @@ export const PRODUCT_TYPE_DUPLICATE_CODE = "PRODUCT_TYPE_DUPLICATE_CODE";
 
 // Pago
 export const PAYMENT_CREDIT_EXCEEDS_AVAILABLE = "PAYMENT_CREDIT_EXCEEDS_AVAILABLE";
+// Crédito de pago — el contacto del pago ORIGEN no coincide con el contacto del
+// documento DESTINO (CxC/CxP). Distinto de EXCEEDS_AVAILABLE (saldo insuficiente):
+// éste rechaza un crédito de OTRO proveedor/cliente (supplier-scope-guard).
+export const PAYMENT_CREDIT_WRONG_CONTACT = "PAYMENT_CREDIT_WRONG_CONTACT";
 export const PAYMENT_DIRECTION_REQUIRED = "PAYMENT_DIRECTION_REQUIRED";
 // Crédito de pago — un origen de crédito debe vincular a EXACTAMENTE una CxC o
 // CxP (XOR), nunca ambas ni ninguna. Mirror del par de allocation

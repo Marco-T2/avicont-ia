@@ -58,6 +58,7 @@ import { AllocationTarget } from "../domain/value-objects/allocation-target";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import {
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
+  PAYMENT_CREDIT_WRONG_CONTACT,
   FISCAL_PERIOD_CLOSED,
   INVALID_STATUS_TRANSITION,
 } from "@/features/shared/errors";
