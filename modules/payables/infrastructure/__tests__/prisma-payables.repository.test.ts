@@ -298,6 +298,41 @@ describe("PrismaPayablesRepository", () => {
       expect(callArg.data.sourceId).toBeUndefined();
       expect(callArg.data.journalEntryId).toBeUndefined();
     });
+
+    it("persists sourceTypeCode when provided (D4 — mirror receivables:193)", async () => {
+      const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
+      const tx = { accountsPayable: { create } };
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.createTx(tx, {
+        organizationId: "org-1",
+        contactId: "c-1",
+        description: "Purchase",
+        amount: 500,
+        dueDate: new Date("2026-05-15"),
+        sourceTypeCode: "CG",
+      });
+
+      const callArg = create.mock.calls[0]?.[0];
+      expect(callArg.data.sourceTypeCode).toBe("CG");
+    });
+
+    it("omits sourceTypeCode key entirely when undefined (NULL by DB default)", async () => {
+      const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
+      const tx = { accountsPayable: { create } };
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.createTx(tx, {
+        organizationId: "org-1",
+        contactId: "c-1",
+        description: "x",
+        amount: 100,
+        dueDate: new Date("2026-05-15"),
+      });
+
+      const callArg = create.mock.calls[0]?.[0];
+      expect("sourceTypeCode" in callArg.data).toBe(false);
+    });
   });
 
   describe("voidTx", () => {
