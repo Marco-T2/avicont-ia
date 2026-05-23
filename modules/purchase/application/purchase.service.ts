@@ -45,6 +45,7 @@ import {
   PurchasePostNotAllowedForRole,
 } from "./errors/purchase-orchestration-errors";
 import type { PurchaseUnitOfWork } from "./purchase-unit-of-work";
+import { purchaseTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
 
 // TYPE_PREFIXES local helper retired per REQ-DISPLAY-2 (T5.2) — was only
 // used by journalDescription templates that no longer prepend the prefix.
@@ -382,6 +383,10 @@ export class PurchaseService {
           dueDate,
           sourceType: "purchase",
           sourceId: numbered.id,
+          // AP-1 — denormaliza el código operacional del tipo de compra
+          // (FL|PF|CG|SV) para que el form-side glosa builder PAGO lo lea sin
+          // re-join. Espejo de sale-hex que setea AR.sourceTypeCode.
+          sourceTypeCode: purchaseTypeToCode(numbered.purchaseType),
           journalEntryId: journal.id,
         });
 
@@ -557,6 +562,10 @@ export class PurchaseService {
           dueDate,
           sourceType: "purchase",
           sourceId: numbered.id,
+          // AP-1 — denormaliza el código operacional del tipo de compra
+          // (FL|PF|CG|SV) para que el form-side glosa builder PAGO lo lea sin
+          // re-join. Espejo de sale-hex que setea AR.sourceTypeCode.
+          sourceTypeCode: purchaseTypeToCode(numbered.purchaseType),
           journalEntryId: journal.id,
         });
 
