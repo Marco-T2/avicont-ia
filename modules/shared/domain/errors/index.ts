@@ -153,6 +153,13 @@ export const PRODUCT_TYPE_DUPLICATE_CODE = "PRODUCT_TYPE_DUPLICATE_CODE";
 // Pago
 export const PAYMENT_CREDIT_EXCEEDS_AVAILABLE = "PAYMENT_CREDIT_EXCEEDS_AVAILABLE";
 export const PAYMENT_DIRECTION_REQUIRED = "PAYMENT_DIRECTION_REQUIRED";
+// Crédito de pago — un origen de crédito debe vincular a EXACTAMENTE una CxC o
+// CxP (XOR), nunca ambas ni ninguna. Mirror del par de allocation
+// PAYMENT_ALLOCATION_TARGET_REQUIRED/_EXCLUSIVE, pero para el camino de crédito.
+// Enforced en el borde Zod (.refine) de apply-credits + create/update payment,
+// NO por CHECK SQL (la XOR de PaymentAllocation/CreditConsumption es VO/Zod-
+// enforced — discovery #3060). El refine lo emite vía params.code.
+export const PAYMENT_CREDIT_INVALID_TARGET = "PAYMENT_CREDIT_INVALID_TARGET";
 
 export const DISPATCH_CONTACT_CHANGE_BLOCKED = "DISPATCH_CONTACT_CHANGE_BLOCKED";
 export const ENTRY_SYSTEM_GENERATED_IMMUTABLE = "ENTRY_SYSTEM_GENERATED_IMMUTABLE";

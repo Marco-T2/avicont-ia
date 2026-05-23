@@ -1,11 +1,30 @@
 import { z } from "zod";
 import { toNoonUtc } from "@/lib/date-utils";
+import { PAYMENT_CREDIT_INVALID_TARGET } from "@/modules/shared/domain/errors";
 
-const creditAllocationSourceSchema = z.object({
-  sourcePaymentId: z.string(),
-  receivableId: z.string(),
-  amount: z.number().positive(),
-});
+// pago-credit-system Phase 5 — a credit source targets EITHER a receivable
+// (COBRO) OR a payable (PAGO), never both, never neither (XOR). Mirror of
+// `allocationInputSchema` below and of the apply-credits inline schema. The
+// create/update payment routes thread creditSources through these schemas
+// (route.ts:56 / [paymentId]/route.ts:39); without this XOR widening, Phase 6's
+// payable credit would be stripped/rejected on the create/update paths. The
+// refine emits PAYMENT_CREDIT_INVALID_TARGET via params.code; a failed refine
+// surfaces as a ZodError → handleError → HTTP 400.
+const creditAllocationSourceSchema = z
+  .object({
+    sourcePaymentId: z.string(),
+    receivableId: z.string().optional(),
+    payableId: z.string().optional(),
+    amount: z.number().positive(),
+  })
+  .refine(
+    (cs) =>
+      (!!cs.receivableId && !cs.payableId) || (!cs.receivableId && !!cs.payableId),
+    {
+      message: "Cada origen de crédito debe vincular a una CxC o CxP, no ambas",
+      params: { code: PAYMENT_CREDIT_INVALID_TARGET },
+    },
+  );
 
 const allocationInputSchema = z.object({
   receivableId: z.string().optional(),
