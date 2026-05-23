@@ -572,14 +572,22 @@ export default function TransactionsList({
                 space and truncates long glosas (full text via `title`). */}
             <table className="w-full table-fixed text-sm">
               <colgroup>
-                <col className="w-[104px]" /> {/* Fecha */}
-                <col className="w-[150px]" /> {/* Tipo */}
-                <col className="w-[80px]" /> {/* Ref. */}
-                <col className="w-[180px]" /> {/* Cliente */}
-                <col /> {/* Detalle — flexes */}
-                <col className="w-[128px]" /> {/* Total */}
-                <col className="w-[116px]" /> {/* Estado */}
-                <col className="w-[56px]" /> {/* Opciones */}
+                {/* Fecha */}
+                <col className="w-[104px]" />
+                {/* Tipo */}
+                <col className="w-[150px]" />
+                {/* Ref. */}
+                <col className="w-[80px]" />
+                {/* Cliente */}
+                <col className="w-[180px]" />
+                {/* Detalle — flexes */}
+                <col />
+                {/* Total */}
+                <col className="w-[128px]" />
+                {/* Estado */}
+                <col className="w-[116px]" />
+                {/* Opciones */}
+                <col className="w-[56px]" />
               </colgroup>
               <thead>
                 <tr className="border-b bg-muted/50">
