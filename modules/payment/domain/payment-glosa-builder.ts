@@ -34,6 +34,14 @@ export interface PaymentAllocationGlosa {
  * The builder is deterministic and pure: same input → byte-identical output.
  */
 export interface PaymentGlosaInput {
+  /**
+   * Glosa header direction word (design D1). OPTIONAL, default "COBRO".
+   * "COBRO" → `COBRO <METHOD>: ...` (AR collection); "PAGO" → `PAGO <METHOD>: ...`
+   * (AP supplier payment). Optional+default keeps every existing COBRO call
+   * site byte-identical (none passes `direction`) — parity invariant
+   * REQ-PAY-5/W-2: glosa is client-authoritative, COBRO output is frozen.
+   */
+  direction?: "COBRO" | "PAGO";
   /** Payment method in UPPERCASE (caller's responsibility). */
   method: string;
   /** Contact display name (already-fetched). */
@@ -50,10 +58,14 @@ export interface PaymentGlosaInput {
 }
 
 /**
- * Builds the canonical COBRO glosa for a Payment's JournalEntry.description.
+ * Builds the canonical glosa for a Payment's JournalEntry.description.
+ *
+ * Header word is direction-aware (design D1): "COBRO" (default, AR collection)
+ * or "PAGO" (AP supplier payment). The per-allocation token format is identical
+ * for both directions.
  *
  * Template:
- *   `COBRO <METHOD>: <contactName> Bs. <total,XX>[: <TIPO>-<refNo> del <fecha> | ...]`
+ *   `<DIRECTION> <METHOD>: <contactName> Bs. <total,XX>[: <TIPO>-<refNo> del <fecha> | ...]`
  *
  * Per-allocation token:
  *   - `<sourceTypeCode>-<refNo> del <fecha>` when `sourceTypeCode` non-null.
@@ -68,7 +80,7 @@ export interface PaymentGlosaInput {
  * Pure function — no I/O, no side effects.
  */
 export function buildPaymentGlosa(input: PaymentGlosaInput): string {
-  const head = `COBRO ${input.method}: ${input.contactName} Bs. ${formatBs(input.totalAmount)}`;
+  const head = `${input.direction ?? "COBRO"} ${input.method}: ${input.contactName} Bs. ${formatBs(input.totalAmount)}`;
 
   if (input.allocations.length === 0) {
     return head;
