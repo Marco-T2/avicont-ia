@@ -23,7 +23,25 @@ export interface PendingDocumentSnapshot {
   dueDate: Date;
   sourceType: string | null;
   sourceId: string | null;
+  /**
+   * Denormalized doc-type code for form-side glosa builder (REQ-GE-5; design D6).
+   * FL|PF|CG|SV for purchase (purchaseTypeToCode). NULL for orphans (Purchase
+   * borrado) or rows created pre-backfill — builder fallback "DOC" at read time.
+   * Espejo simétrico de receivable PendingDocumentSnapshot:31.
+   */
+  sourceTypeCode: string | null;
   createdAt: Date;
+  /**
+   * referenceNumber from the originating Purchase. NULL when the source row is
+   * absent (orphan) or the field is unset on the source.
+   */
+  referenceNumber: number | null;
+  /**
+   * Date of the originating Purchase. Falls back to `createdAt` when the source
+   * row is absent (orphan) so the form-side `formatDateConditional` always
+   * receives a Date.
+   */
+  sourceDate: Date;
 }
 
 /**
@@ -62,6 +80,14 @@ export interface CreatePayableTxData {
   dueDate: Date;
   sourceType?: string;
   sourceId?: string;
+  /**
+   * Denormalized doc-type code for glosa-builder LOOKUP-B (REQ-GE-5; design D4).
+   * FL|PF|CG|SV for purchase (purchaseTypeToCode). Optional for backwards
+   * compatibility with consumers not yet upgraded — persists as NULL when
+   * omitted. Builder fallback "DOC" handles NULL at read time. Espejo simétrico
+   * de CreateReceivableTxData.sourceTypeCode:84.
+   */
+  sourceTypeCode?: string | null;
   journalEntryId?: string;
 }
 

@@ -92,7 +92,10 @@ class InMemoryPayableRepository implements PayableRepository {
         dueDate: p.dueDate,
         sourceType: p.sourceType,
         sourceId: p.sourceId,
+        sourceTypeCode: null,
         createdAt: p.createdAt,
+        referenceNumber: null,
+        sourceDate: p.createdAt,
       }));
   }
 
