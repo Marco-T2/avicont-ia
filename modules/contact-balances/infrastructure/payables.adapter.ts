@@ -41,12 +41,10 @@ export class PayablesQueryAdapter implements PayablesQueryPort {
       dueDate: d.dueDate,
       sourceType: d.sourceType,
       sourceId: d.sourceId,
-      // Payables (purchase/expense) do not feed the COBRO glosa builder —
-      // these fields stay null/createdAt for shape parity with receivables.
-      sourceTypeCode: null,
+      sourceTypeCode: d.sourceTypeCode,
       createdAt: d.createdAt,
-      referenceNumber: null,
-      sourceDate: d.createdAt,
+      referenceNumber: d.referenceNumber,
+      sourceDate: d.sourceDate,
     }));
   }
 }
