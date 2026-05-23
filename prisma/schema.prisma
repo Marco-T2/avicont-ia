@@ -738,7 +738,13 @@ model Dispatch {
   createdBy       User                 @relation("DispatchCreator", fields: [createdById], references: [id])
   details         DispatchDetail[]
 
-  @@unique([organizationId, dispatchType, sequenceNumber])
+  // El correlativo (sequenceNumber) es único SOLO entre despachos emitidos. Los
+  // DRAFT comparten sequenceNumber=0 (el número real se asigna al postear), por lo
+  // que se excluyen de la unicidad para permitir múltiples borradores. Como Prisma
+  // no soporta índices únicos parciales de forma declarativa, el índice se maneja
+  // por migración raw (dispatches_organizationId_dispatchType_sequenceNumber_key
+  // con WHERE status <> 'DRAFT'). No correr `prisma migrate dev` a ciegas: querría
+  // recrear el unique plano.
   @@unique([organizationId, clientId])
   @@index([organizationId, status])
   @@index([organizationId, contactId])
