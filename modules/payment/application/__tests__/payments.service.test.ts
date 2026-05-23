@@ -1246,6 +1246,86 @@ describe("PaymentsService", () => {
         ]),
       ).rejects.toMatchObject({ code: PAYMENT_MIXED_ALLOCATION });
     });
+
+    // G-1 (characterization — W1): createAndPost funnel lock. Verifies that the
+    // single-funnel guarantee holds at the createAndPost call site: when a credit
+    // source in creditSources targets a receivable belonging to a DIFFERENT
+    // contact, the guard fires via applyCreditToInvoiceTx and the call rejects.
+    // This test would catch a future refactor that bypasses the guard at this
+    // site (e.g. inlining the credit apply outside applyCreditToInvoiceTx).
+    it("createAndPost: rejects a creditSource whose target receivable contact differs from the source payment contact (COBRO, funnel lock)", async () => {
+      const source = await seedPosted(bench, { amount: 200 });
+      // New payment accounting stub — postInternal runs before the credit loop.
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-new" });
+      // Target receivable belongs to a different contact — guard must fire.
+      bench.receivables.status.set("rec-cap-cross", "PENDING");
+      bench.receivables.contactIds.set("rec-cap-cross", "contact-B"); // ≠ CONTACT
+
+      await expect(
+        bench.svc.createAndPost(
+          ORG,
+          USER,
+          baseCreate({
+            amount: 50,
+            allocations: [],
+            creditSources: [
+              {
+                sourcePaymentId: source.id,
+                receivableId: "rec-cap-cross",
+                amount: 50,
+              },
+            ],
+          }),
+        ),
+      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_WRONG_CONTACT });
+    });
+
+    // G-2 (characterization — W1): update funnel lock. Verifies that the
+    // single-funnel guarantee holds at the update call site: the re-apply step
+    // (post-revert) calls applyCreditToInvoiceTx, which carries the guard.
+    // This test would catch a future refactor that bypasses the guard during
+    // the update re-apply path.
+    it("update: rejects a creditSource whose target payable contact differs from the source payment contact (PAGO, funnel lock)", async () => {
+      // Seed a source with credit available (no prior allocations keeps it
+      // direction-agnostic at the source level).
+      const source = await seedPosted(bench, { amount: 200 });
+      // Seed a consumer posted payment that already consumed 50 credit from the
+      // source via a same-contact receivable — gives update a prior credit to
+      // revert before re-applying.
+      bench.accounting.defaultEntry = makeEntry({ id: "entry-consumer" });
+      bench.receivables.status.set("rec-consumer-target", "PENDING");
+      bench.receivables.contactIds.set("rec-consumer-target", CONTACT); // same-contact passes
+      const consumer = await bench.svc.createAndPost(
+        ORG,
+        USER,
+        baseCreate({
+          amount: 50,
+          allocations: [],
+          creditSources: [
+            {
+              sourcePaymentId: source.id,
+              receivableId: "rec-consumer-target",
+              amount: 50,
+            },
+          ],
+        }),
+      );
+      // Now update: re-apply to a DIFFERENT-contact payable — guard must fire.
+      bench.payables.status.set("pay-update-cross", "PENDING");
+      bench.payables.contactIds.set("pay-update-cross", "contact-B"); // ≠ CONTACT
+
+      await expect(
+        bench.svc.update(ORG, USER, consumer.payment.id, {
+          creditSources: [
+            {
+              sourcePaymentId: source.id,
+              payableId: "pay-update-cross",
+              amount: 50,
+            },
+          ],
+        } as Parameters<typeof bench.svc.update>[3]),
+      ).rejects.toMatchObject({ code: PAYMENT_CREDIT_WRONG_CONTACT });
+    });
   });
 
   // ── PAGO credit (allocation-target dispatch — pago-credit-system) ─────────
