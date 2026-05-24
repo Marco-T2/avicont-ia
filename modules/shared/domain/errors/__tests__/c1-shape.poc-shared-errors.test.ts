@@ -92,14 +92,25 @@ describe("α2–α8 hex file contains 7 error classes", () => {
 //   from the target document's contact (symmetric COBRO/PAGO), thrown at
 //   applyCreditToInvoiceTx step 2b, skip-on-null.
 // Net: 78 + 5 + 1 + 1 = 85. [[invariant_collision_elevation]] applied — additive only.
+// −3 by ORG_SETTINGS_ACCOUNT_* migration to modules/org-settings/domain/errors
+//   (arch 4.1 code-ownership): NOT_FOUND, NOT_USABLE, WRONG_PARENT relocated to
+//   their owning module. Codes NOT deleted — relocated; conservation is enforced
+//   by the PAIRED destination sentinel
+//   modules/org-settings/domain/errors/__tests__/org-settings-errors-shape.arch-4-1.test.ts
+//   (=== 5). A code removed here without appearing there breaks BOTH sentinels.
+// Net post-migration: 78 + 5 + 1 + 1 − 3 = 82.
+// Derived from: α9 "additive only" → "additive, OR decrement via documented
+//   migration to an owning module (arch 4.1)". The additive-only contract is
+//   preserved for genuinely-SHARED codes; module-owned codes leave by migration
+//   only, never by silent deletion.
 
-describe("α9 hex file contains 85 const error codes", () => {
-  it("α9: grep-count of ^export const [A-Z_]+ = \" in hex file === 85", () => {
+describe("α9 hex file contains 82 const error codes", () => {
+  it("α9: grep-count of ^export const [A-Z_]+ = \" in hex file === 82", () => {
     const result = execSync(
       `grep -cE '^export const [A-Z_]+ = "' "${HEX_FILE}"`,
       { encoding: "utf-8" },
     ).trim();
-    expect(Number(result)).toBe(85);
+    expect(Number(result)).toBe(82);
   });
 });
 

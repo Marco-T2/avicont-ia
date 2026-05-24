@@ -1,12 +1,10 @@
-// TODO(arch 4.1): los códigos ORG_SETTINGS_ACCOUNT_* viven todavía en
-// `features/shared/errors`. Cuando todos los POCs hayan migrado, moverlos a este
-// archivo (los "específicos de cada módulo migran al domain/errors/" del módulo).
 import { ValidationError } from "@/features/shared/errors";
-export {
-  ORG_SETTINGS_ACCOUNT_NOT_FOUND,
-  ORG_SETTINGS_ACCOUNT_NOT_USABLE,
-  ORG_SETTINGS_ACCOUNT_WRONG_PARENT,
-} from "@/features/shared/errors";
+
+// OrgSettings — validación de listas de cuentas default (caja/banco) para captura
+// asistida por IA. Owned por org-settings (migrados del shared hex registry, arch 4.1).
+export const ORG_SETTINGS_ACCOUNT_NOT_FOUND = "ORG_SETTINGS_ACCOUNT_NOT_FOUND";
+export const ORG_SETTINGS_ACCOUNT_NOT_USABLE = "ORG_SETTINGS_ACCOUNT_NOT_USABLE";
+export const ORG_SETTINGS_ACCOUNT_WRONG_PARENT = "ORG_SETTINGS_ACCOUNT_WRONG_PARENT";
 
 export const INVALID_ROUNDING_THRESHOLD = "INVALID_ROUNDING_THRESHOLD";
 export const INVALID_ACCOUNT_CODE = "INVALID_ACCOUNT_CODE";
