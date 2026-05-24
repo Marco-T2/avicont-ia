@@ -36,7 +36,9 @@
  */
 import { describe, it, expect, vi, beforeEach, type Mock } from "vitest";
 
-// Raise timeout — passes solo but times out under full-suite WSL memory pressure (Bucket D)
+// Defensive timeout bump — the route module import is heavy and can be slow
+// under full-suite WSL memory pressure. (The real isolation failure was a
+// duplicate vi.mock, fixed above — not a timeout.)
 vi.setConfig({ testTimeout: 15000 });
 
 // ─── Module mocks (hoisted) ─────────────────────────────────────────────────
@@ -127,16 +129,10 @@ vi.mock("@/modules/organizations/presentation/server", async (importOriginal) =>
   };
 });
 
-vi.mock("@/features/permissions/server", async (importOriginal) => {
-  const actual =
-    await importOriginal<typeof import("@/features/permissions/server")>();
-  return {
-    ...actual,
-    revalidateOrgMatrix: vi.fn(),
-    getMatrix: vi.fn(),
-  };
-});
-
+// route.ts imports ONLY `requirePermission` from this module — mock just that.
+// (A prior duplicate `vi.mock` for this same path left requirePermission REAL
+// via `...actual`; which of the two factories won was order-dependent, so the
+// test passed in the full suite but failed in isolation. One mock = deterministic.)
 vi.mock("@/features/permissions/server", () => ({
   requirePermission: vi.fn(),
 }));

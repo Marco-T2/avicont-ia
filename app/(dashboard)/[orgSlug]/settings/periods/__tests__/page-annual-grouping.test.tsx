@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 /**
  * Phase 7.5 RED — periods page server-side data shape: year-grouped.
  *

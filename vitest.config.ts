@@ -39,6 +39,12 @@ export default defineConfig({
           include: [
             "components/**/__tests__/**/*.test.tsx",
             "features/reports/__tests__/**/*.test.tsx",
+            // React page/server-component tests under app/ render via
+            // @testing-library/react → need jsdom + react plugin. They live
+            // as .test.tsx so the node project (which matches *.test.ts only)
+            // never claims them, avoiding the per-file @vitest-environment
+            // docblock whose module-cache leak caused "window is not defined".
+            "app/**/__tests__/**/*.test.tsx",
           ],
           setupFiles: ["./vitest.setup.ts"],
           // TZ=America/La_Paz para consistencia con el proyecto node
