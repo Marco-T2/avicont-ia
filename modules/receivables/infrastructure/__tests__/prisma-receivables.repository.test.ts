@@ -436,4 +436,24 @@ describe("PrismaReceivablesRepository", () => {
       expect(txCreate).toHaveBeenCalled();
     });
   });
+
+  // ── findAllocationsForReceivable ────────────────────────────────────────────
+
+  describe("findAllocationsForReceivable", () => {
+    it("includes only POSTED/LOCKED payment allocations for the LIFO trim plan (excludes DRAFT and VOIDED)", async () => {
+      // The trim plan reduces allocations to cover `excess = paid - newTotal`,
+      // and `paid` reflects ONLY posted allocations. A DRAFT allocation never
+      // touched `paid`, so it must not enter the trim list (else a draft row is
+      // trimmed for an excess it never caused). draft-credit-leak sibling.
+      const findMany = vi.fn().mockResolvedValueOnce([]);
+      const db = { paymentAllocation: { findMany } } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      await repo.findAllocationsForReceivable("org-1", "ar-1");
+
+      const where = findMany.mock.calls[0]?.[0]?.where;
+      expect(where.payment).toEqual({ status: { in: ["POSTED", "LOCKED"] } });
+      expect(where.receivableId).toBe("ar-1");
+    });
+  });
 });

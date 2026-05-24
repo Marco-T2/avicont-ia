@@ -160,7 +160,10 @@ export class PrismaPayablesRepository implements PayableRepository {
     const rows = await this.db.paymentAllocation.findMany({
       where: {
         payableId,
-        payment: { status: { not: "VOIDED" } },
+        // Only POSTED/LOCKED allocations contributed to the payable's `paid`,
+        // so only they are eligible for the LIFO trim. A DRAFT allocation never
+        // touched `paid` and must not be trimmed (draft-credit-leak sibling).
+        payment: { status: { in: ["POSTED", "LOCKED"] } },
       },
       orderBy: { id: "desc" },
       include: { payment: { select: { date: true } } },

@@ -43,6 +43,7 @@ import {
   buildCreditSources as buildCreditSourcesPure,
   buildCashAllocations as buildCashAllocationsPure,
 } from "./payment-form.credit-helpers";
+import { maxAssignableBalance } from "./payment-form.balance-helpers";
 
 const PAYMENT_METHODS = [
   { value: "EFECTIVO", label: "Efectivo" },
@@ -351,7 +352,11 @@ export default function PaymentForm({
           description: desc,
           totalAmount: Number(t?.amount ?? 0),
           paid: Number(t?.paid ?? 0),
-          balance: Number(t?.balance ?? 0) + Number(a.amount),
+          balance: maxAssignableBalance(
+            Number(t?.balance ?? 0),
+            Number(a.amount),
+            existingPayment.status,
+          ),
           displayBalance: Number(t?.balance ?? 0),
           sourceType: (t?.sourceType as string | null) ?? null,
           sourceId: (t?.sourceId as string | null) ?? null,

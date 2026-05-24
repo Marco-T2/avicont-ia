@@ -387,17 +387,21 @@ describe("PrismaPaymentsRepository", () => {
   // ── findUnappliedByContact ────────────────────────────────────────────────
 
   describe("findUnappliedByContact", () => {
-    it("queries non-voided payments for contact, ordered by date asc", async () => {
+    it("queries only POSTED/LOCKED payments for contact, ordered by date asc (DRAFT excluded from credit)", async () => {
       const findMany = vi.fn().mockResolvedValueOnce([]);
       const repo = new PrismaPaymentsRepository(dbWith({ findMany }));
 
       await repo.findUnappliedByContact("org-1", "c-1");
 
+      // A DRAFT payment has not moved cash, so its unapplied remainder must NOT
+      // be offered as available credit (bug: draft-credit-leak — a partial
+      // payment draft was auto-applied to the next comprobante). Only POSTED and
+      // LOCKED (posted-then-locked, immutable) represent real cash.
       expect(findMany).toHaveBeenCalledWith({
         where: {
           organizationId: "org-1",
           contactId: "c-1",
-          status: { not: "VOIDED" },
+          status: { in: ["POSTED", "LOCKED"] },
         },
         include: { allocations: { select: { amount: true } } },
         orderBy: { date: "asc" },
@@ -517,6 +521,27 @@ describe("PrismaPaymentsRepository", () => {
       const result = await repo.getCustomerBalance("org-1", "c-1");
 
       expect(result.unappliedCredit).toBe(0);
+    });
+
+    it("counts only POSTED/LOCKED payments as cash & allocations (DRAFT excluded; receivable filter untouched)", async () => {
+      const aggCxc = vi.fn().mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal("0") } });
+      const aggPayments = vi.fn().mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal("0") } });
+      const aggAllocations = vi.fn().mockResolvedValueOnce({ _sum: { amount: new Prisma.Decimal("0") } });
+      const db = {
+        accountsReceivable: { aggregate: aggCxc },
+        payment: { aggregate: aggPayments },
+        paymentAllocation: { aggregate: aggAllocations },
+        $transaction: vi.fn(),
+      } as unknown as PrismaClient;
+      const repo = new PrismaPaymentsRepository(db);
+
+      await repo.getCustomerBalance("org-1", "c-1");
+
+      // Cash paid + allocated come from PAYMENT status — a DRAFT moved no cash.
+      expect(aggPayments.mock.calls[0]?.[0]?.where.status).toEqual({ in: ["POSTED", "LOCKED"] });
+      expect(aggAllocations.mock.calls[0]?.[0]?.where.payment.status).toEqual({ in: ["POSTED", "LOCKED"] });
+      // totalInvoiced uses RECEIVABLE status — VOIDED-exclusion stays unchanged.
+      expect(aggCxc.mock.calls[0]?.[0]?.where.status).toEqual({ not: "VOIDED" });
     });
   });
 

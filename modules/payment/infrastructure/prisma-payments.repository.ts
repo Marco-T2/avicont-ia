@@ -331,7 +331,10 @@ export class PrismaPaymentsRepository implements PaymentRepository {
       where: {
         organizationId,
         contactId,
-        status: { not: "VOIDED" },
+        // Only POSTED/LOCKED payments moved cash and can offer available credit.
+        // A DRAFT has not been contabilizado, so its unapplied remainder must NOT
+        // surface as credit and auto-apply to the next comprobante (draft-credit-leak).
+        status: { in: ["POSTED", "LOCKED"] },
         ...(excludePaymentId ? { id: { not: excludePaymentId } } : {}),
       },
       include: {
@@ -378,17 +381,18 @@ export class PrismaPaymentsRepository implements PaymentRepository {
     });
     const totalInvoiced = Number(cxcAgg._sum.amount ?? 0);
 
-    // 2. Sum all non-voided payment amounts for this contact
+    // 2. Sum POSTED/LOCKED payment amounts for this contact (cash that moved).
+    //    A DRAFT has not been contabilizado, so it is not cash paid.
     const payAgg = await this.db.payment.aggregate({
-      where: { organizationId, contactId, status: { not: "VOIDED" } },
+      where: { organizationId, contactId, status: { in: ["POSTED", "LOCKED"] } },
       _sum: { amount: true },
     });
     const totalCashPaid = Number(payAgg._sum.amount ?? 0);
 
-    // 3. Sum all allocations from non-voided payments to receivables for this contact
+    // 3. Sum allocations from POSTED/LOCKED payments to receivables for this contact
     const allocAgg = await this.db.paymentAllocation.aggregate({
       where: {
-        payment: { organizationId, contactId, status: { not: "VOIDED" } },
+        payment: { organizationId, contactId, status: { in: ["POSTED", "LOCKED"] } },
         receivableId: { not: null },
       },
       _sum: { amount: true },

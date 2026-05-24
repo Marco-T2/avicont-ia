@@ -14,7 +14,10 @@ export class PrismaPaymentCreditAdapter implements PaymentCreditPort {
     contactId: string,
   ): Promise<PaymentForCreditCalc[]> {
     const rows = await this.db.payment.findMany({
-      where: { organizationId, contactId, status: { not: "VOIDED" } },
+      // Only POSTED/LOCKED payments moved cash and count as available credit.
+      // A DRAFT has not been contabilizado, so it must NOT inflate the contact's
+      // saldo a favor (draft-credit-leak).
+      where: { organizationId, contactId, status: { in: ["POSTED", "LOCKED"] } },
       include: {
         allocations: {
           include: { receivable: true, payable: true },

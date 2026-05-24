@@ -102,7 +102,10 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     const rows = await this.db.paymentAllocation.findMany({
       where: {
         receivableId,
-        payment: { status: { not: "VOIDED" } },
+        // Only POSTED/LOCKED allocations contributed to the receivable's `paid`,
+        // so only they are eligible for the LIFO trim. A DRAFT allocation never
+        // touched `paid` and must not be trimmed (draft-credit-leak sibling).
+        payment: { status: { in: ["POSTED", "LOCKED"] } },
       },
       orderBy: { id: "desc" },
       include: { payment: { select: { date: true } } },
