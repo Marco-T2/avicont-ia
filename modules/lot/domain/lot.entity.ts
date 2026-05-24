@@ -31,9 +31,6 @@ export interface DeactivateLotInput {
   endDate: Date;
 }
 
-/** @deprecated Use DeactivateLotInput post-collapse (REQ-203, D-4). */
-export type CloseLotInput = DeactivateLotInput;
-
 export interface UpdateLotInput {
   farmName?: string;
 }

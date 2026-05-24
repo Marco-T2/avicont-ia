@@ -10,8 +10,6 @@ import type { LotSummary } from "../domain/value-objects/lot-summary";
 
 export type CreateLotServiceInput = Omit<CreateLotInput, "organizationId">;
 export type DeactivateLotServiceInput = DeactivateLotInput;
-/** @deprecated Use DeactivateLotServiceInput post-collapse (REQ-203, D-4). */
-export type CloseLotServiceInput = DeactivateLotServiceInput;
 export type UpdateLotServiceInput = UpdateLotInput;
 
 export class LotService {

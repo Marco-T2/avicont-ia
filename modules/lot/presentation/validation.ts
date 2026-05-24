@@ -22,16 +22,13 @@ export const createLotSchema = z.object({
 });
 
 /**
- * REQ-203 / D-4: replaces the legacy `closeLotSchema`. Same shape
- * (single `endDate`) — the rename aligns with the user-language
- * verb "desactivar" established for the binary lifecycle.
+ * REQ-203 / D-4: binary lifecycle schema (single `endDate`). The
+ * "deactivate" naming aligns with the user-language verb "desactivar"
+ * established for the lot lifecycle (former close-lot schema retired).
  */
 export const deactivateLotSchema = z.object({
   endDate: z.coerce.date({ message: "La fecha de desactivación es requerida" }),
 });
-
-/** @deprecated Use `deactivateLotSchema` post-collapse (REQ-203, D-4). */
-export const closeLotSchema = deactivateLotSchema;
 
 /**
  * Update payload for an existing Lot. Post simplify-lot-identifier
