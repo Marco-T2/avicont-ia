@@ -8,7 +8,6 @@
  */
 export {
   TOOL_REGISTRY,
-  getToolsForRole,
   isWriteAction,
   createExpenseTool,
   logMortalityTool,
