@@ -28,13 +28,6 @@ export interface UnappliedPaymentSnapshot {
   available: number;
 }
 
-export interface CustomerBalanceSnapshot {
-  totalInvoiced: number;
-  totalPaid: number;
-  netBalance: number;
-  unappliedCredit: number;
-}
-
 /**
  * Port for persisting and querying Payment aggregates. The implementation
  * lives in modules/payment/infrastructure/ and is the only place allowed to
@@ -75,11 +68,6 @@ export interface PaymentRepository {
     contactId: string,
     excludePaymentId?: string,
   ): Promise<UnappliedPaymentSnapshot[]>;
-
-  getCustomerBalance(
-    organizationId: string,
-    contactId: string,
-  ): Promise<CustomerBalanceSnapshot>;
 
   // ── Write (non-tx convenience for DRAFT create / list-then-edit flows) ──
 

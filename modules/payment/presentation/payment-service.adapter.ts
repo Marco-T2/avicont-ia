@@ -82,18 +82,6 @@ export class PaymentService {
     return row;
   }
 
-  async getCustomerBalance(
-    organizationId: string,
-    contactId: string,
-  ): Promise<{
-    totalInvoiced: number;
-    totalPaid: number;
-    netBalance: number;
-    unappliedCredit: number;
-  }> {
-    return this.inner.getCustomerBalance(organizationId, contactId);
-  }
-
   // ── Writes ──
 
   async create(

@@ -196,24 +196,6 @@ describe("PaymentsService", () => {
     });
   });
 
-  describe("getCustomerBalance", () => {
-    it("delegates to repo.getCustomerBalance", async () => {
-      bench.repo.customerBalanceFixtures.set(CONTACT, {
-        totalInvoiced: 500,
-        totalPaid: 200,
-        netBalance: 300,
-        unappliedCredit: 50,
-      });
-      const bal = await bench.svc.getCustomerBalance(ORG, CONTACT);
-      expect(bal).toEqual({
-        totalInvoiced: 500,
-        totalPaid: 200,
-        netBalance: 300,
-        unappliedCredit: 50,
-      });
-    });
-  });
-
   // ── create (DRAFT) ───────────────────────────────────────────────────────
 
   describe("create", () => {

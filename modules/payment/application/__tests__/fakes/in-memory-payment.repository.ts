@@ -3,7 +3,6 @@ import type {
   PaymentRepository,
   PaymentFilters,
   UnappliedPaymentSnapshot,
-  CustomerBalanceSnapshot,
 } from "../../../domain/payment.repository";
 import type {
   PaginatedResult,
@@ -62,7 +61,6 @@ export class InMemoryPaymentRepository implements PaymentRepository {
   deleteTxCalls: Array<{ id: string; orgId: string }> = [];
   findByIdTxCalls: Array<{ orgId: string; id: string }> = [];
   unappliedFixtures = new Map<string, UnappliedPaymentSnapshot[]>();
-  customerBalanceFixtures = new Map<string, CustomerBalanceSnapshot>();
 
   preload(...payments: Payment[]): void {
     for (const p of payments) this.store.set(p.id, p);
@@ -78,7 +76,6 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     this.deleteTxCalls = [];
     this.findByIdTxCalls = [];
     this.unappliedFixtures.clear();
-    this.customerBalanceFixtures.clear();
   }
 
   /** Satisfies the RepoLike shape consumed by withAuditTx. */
@@ -137,20 +134,6 @@ export class InMemoryPaymentRepository implements PaymentRepository {
     _excludePaymentId?: string,
   ): Promise<UnappliedPaymentSnapshot[]> {
     return this.unappliedFixtures.get(contactId) ?? [];
-  }
-
-  async getCustomerBalance(
-    _orgId: string,
-    contactId: string,
-  ): Promise<CustomerBalanceSnapshot> {
-    return (
-      this.customerBalanceFixtures.get(contactId) ?? {
-        totalInvoiced: 0,
-        totalPaid: 0,
-        netBalance: 0,
-        unappliedCredit: 0,
-      }
-    );
   }
 
   // ── Writes ──

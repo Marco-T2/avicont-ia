@@ -5,7 +5,6 @@ import type {
   PaymentRepository,
   PaymentFilters,
   UnappliedPaymentSnapshot,
-  CustomerBalanceSnapshot,
 } from "../domain/payment.repository";
 import type {
   PaginatedResult,
@@ -24,7 +23,7 @@ const paymentInclude = {
 
 // ── DbClient type (minimal intersection needed for this adapter) ────────────
 
-type DbClient = Pick<PrismaClient, "payment" | "paymentAllocation" | "accountsReceivable" | "$transaction">;
+type DbClient = Pick<PrismaClient, "payment" | "paymentAllocation" | "$transaction">;
 
 // ── Row → Domain mapper ────────────────────────────────────────────────────
 
@@ -366,48 +365,6 @@ export class PrismaPaymentsRepository implements PaymentRepository {
         };
       })
       .filter((p) => p.available > 0);
-  }
-
-  // ── getCustomerBalance ────────────────────────────────────────────────────
-
-  async getCustomerBalance(
-    organizationId: string,
-    contactId: string,
-  ): Promise<CustomerBalanceSnapshot> {
-    // 1. Sum all non-voided receivables for this contact
-    const cxcAgg = await this.db.accountsReceivable.aggregate({
-      where: { organizationId, contactId, status: { not: "VOIDED" } },
-      _sum: { amount: true },
-    });
-    const totalInvoiced = Number(cxcAgg._sum.amount ?? 0);
-
-    // 2. Sum POSTED/LOCKED payment amounts for this contact (cash that moved).
-    //    A DRAFT has not been contabilizado, so it is not cash paid.
-    const payAgg = await this.db.payment.aggregate({
-      where: { organizationId, contactId, status: { in: ["POSTED", "LOCKED"] } },
-      _sum: { amount: true },
-    });
-    const totalCashPaid = Number(payAgg._sum.amount ?? 0);
-
-    // 3. Sum allocations from POSTED/LOCKED payments to receivables for this contact
-    const allocAgg = await this.db.paymentAllocation.aggregate({
-      where: {
-        payment: { organizationId, contactId, status: { in: ["POSTED", "LOCKED"] } },
-        receivableId: { not: null },
-      },
-      _sum: { amount: true },
-    });
-    const totalAllocated = Number(allocAgg._sum.amount ?? 0);
-
-    const unappliedCredit = Math.max(0, totalCashPaid - totalAllocated);
-    const netBalance = totalInvoiced - totalCashPaid;
-
-    return {
-      totalInvoiced,
-      totalPaid: totalCashPaid,
-      netBalance,
-      unappliedCredit,
-    };
   }
 
   // ── transaction ───────────────────────────────────────────────────────────

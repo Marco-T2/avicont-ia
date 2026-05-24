@@ -33,7 +33,6 @@ export type {
 export type {
   PaymentFilters,
   UnappliedPaymentSnapshot,
-  CustomerBalanceSnapshot,
 } from "../domain/payment.repository";
 export type { PaymentStatus } from "../domain/value-objects/payment-status";
 export { PAYMENT_STATUSES } from "../domain/value-objects/payment-status";

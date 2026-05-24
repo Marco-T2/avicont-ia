@@ -33,7 +33,6 @@ import type { Payment } from "../domain/payment.entity";
 import type {
   PaymentRepository,
   PaymentFilters,
-  CustomerBalanceSnapshot,
 } from "../domain/payment.repository";
 import type {
   PaginatedResult,
@@ -217,13 +216,6 @@ export class PaymentsService {
     const found = await this.repo.findById(organizationId, id);
     if (!found) throw new NotFoundError("Pago");
     return found;
-  }
-
-  async getCustomerBalance(
-    organizationId: string,
-    contactId: string,
-  ): Promise<CustomerBalanceSnapshot> {
-    return this.repo.getCustomerBalance(organizationId, contactId);
   }
 
   // ── Writes ───────────────────────────────────────────────────────────────
