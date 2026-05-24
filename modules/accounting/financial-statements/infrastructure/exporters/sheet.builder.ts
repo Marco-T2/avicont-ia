@@ -38,14 +38,6 @@ function fmt(d: { toFixed: (n: number) => string; toDecimalPlaces: (n: number, m
 }
 
 /**
- * @deprecated pdf.exporter usa BODY_FONT_SIZE=8 fijo (QB-style portrait).
- * Shim para no romper código externo que aún la importe.
- */
-export function selectBodyFontSize(_columnCount: number): number {
-  return 8;
-}
-
-/**
  * Divide un array de columnas en grupos de `maxPerPage` para el layout
  * QB-style: portrait siempre, contenido cortado horizontalmente por páginas.
  *
