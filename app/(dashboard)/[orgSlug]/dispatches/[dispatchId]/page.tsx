@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import type { Contact } from "@/modules/contacts/presentation/index";

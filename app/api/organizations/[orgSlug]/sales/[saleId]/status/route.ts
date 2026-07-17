@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { UsersService } from "@/modules/users/application/users.service";
 import { saleStatusSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";

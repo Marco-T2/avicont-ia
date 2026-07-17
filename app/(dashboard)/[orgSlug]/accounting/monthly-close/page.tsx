@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { MonthlyClosePanel } from "@/components/accounting/monthly-close-panel";
 

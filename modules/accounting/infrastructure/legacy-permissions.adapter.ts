@@ -1,4 +1,4 @@
-import { canPost as legacyCanPost } from "@/features/permissions/server";
+import { canPost as legacyCanPost } from "@/modules/permissions/application/server";
 import type {
   PermissionScope,
   PermissionsPort,

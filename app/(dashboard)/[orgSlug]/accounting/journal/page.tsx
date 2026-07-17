@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeJournalsService } from "@/modules/accounting/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeAnnualCloseService } from "@/modules/annual-close/presentation/server";

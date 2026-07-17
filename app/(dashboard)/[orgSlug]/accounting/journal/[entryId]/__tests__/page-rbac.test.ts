@@ -26,7 +26,7 @@ vi.mock("next/navigation", () => ({
   notFound: mockNotFound,
 }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

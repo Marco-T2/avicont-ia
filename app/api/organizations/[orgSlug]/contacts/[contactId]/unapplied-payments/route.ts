@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { PrismaPaymentsRepository } from "@/modules/payment/presentation/server";
 
 const paymentRepository = new PrismaPaymentsRepository();

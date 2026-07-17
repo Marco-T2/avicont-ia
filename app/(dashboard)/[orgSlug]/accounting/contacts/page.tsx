@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 import ContactList from "@/components/contacts/contact-list";
 

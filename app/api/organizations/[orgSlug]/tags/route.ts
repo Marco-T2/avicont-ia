@@ -22,7 +22,7 @@
  * resource string passed to its constructor).
  */
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeTagsService } from "@/modules/tags/presentation/server";
 import { ConflictError } from "@/features/shared/errors";
 import { z } from "zod";

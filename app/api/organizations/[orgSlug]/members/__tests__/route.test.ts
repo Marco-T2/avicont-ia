@@ -47,7 +47,7 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
 }));
 
@@ -83,7 +83,7 @@ vi.mock("@/modules/organizations/presentation/roles.service.singleton", () => ({
   },
 }));
 
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { rolesService } from "@/modules/organizations/presentation/roles.service.singleton";
 
 const ORG_SLUG = "acme";

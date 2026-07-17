@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { Button } from "@/components/ui/button";
 import { TrialBalancePageClient } from "@/components/accounting/trial-balance-page-client";
 

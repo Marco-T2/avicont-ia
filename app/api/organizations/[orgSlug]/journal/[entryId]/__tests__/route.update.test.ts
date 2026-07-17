@@ -42,7 +42,7 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
 }));
 
@@ -63,7 +63,7 @@ vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
   })),
 }));
 
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { PATCH } from "../route";
 
 const ORG_SLUG = "test-org";

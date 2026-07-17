@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   canPost: vi.fn(),
 }));
 
-import { canPost as legacyCanPost } from "@/features/permissions/server";
+import { canPost as legacyCanPost } from "@/modules/permissions/application/server";
 
 import { LegacyPurchasePermissionsAdapter } from "../legacy-purchase-permissions.adapter";
 

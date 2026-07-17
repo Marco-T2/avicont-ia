@@ -29,7 +29,7 @@
  *   right after the service call completes.
  */
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { z } from "zod";
 

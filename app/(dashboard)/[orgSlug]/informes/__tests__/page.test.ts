@@ -23,7 +23,7 @@ const { mockRedirect, mockRequirePermission, mockCanAccess, CatalogPageMock } =
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
   canAccess: mockCanAccess,
 }));

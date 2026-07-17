@@ -1,6 +1,6 @@
 import Decimal from "decimal.js";
 import { notFound, redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";

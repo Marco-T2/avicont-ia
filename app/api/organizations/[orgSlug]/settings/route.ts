@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import { updateOrgSettingsSchema } from "@/modules/org-settings/presentation";
 

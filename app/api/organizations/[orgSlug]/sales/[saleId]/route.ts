@@ -1,6 +1,6 @@
 import Decimal from "decimal.js";
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { updateSaleSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
 import { UsersService } from "@/modules/users/application/users.service";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";

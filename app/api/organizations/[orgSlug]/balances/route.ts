@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { ValidationError } from "@/features/shared/errors";
 import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
 

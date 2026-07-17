@@ -40,7 +40,7 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
 }));
 
@@ -62,7 +62,7 @@ vi.mock("@/modules/tags/presentation/server", async (importOriginal) => {
 
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
 
 // ─── Constants ───────────────────────────────────────────────────────────────

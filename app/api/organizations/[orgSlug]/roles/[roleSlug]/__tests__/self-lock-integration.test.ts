@@ -133,13 +133,13 @@ vi.mock("@/modules/organizations/presentation/server", async (importOriginal) =>
 // (A prior duplicate `vi.mock` for this same path left requirePermission REAL
 // via `...actual`; which of the two factories won was order-dependent, so the
 // test passed in the full suite but failed in isolation. One mock = deterministic.)
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
 }));
 
 // ─── Imports (AFTER mocks) ──────────────────────────────────────────────────
 
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { SELF_LOCK_GUARD } from "@/features/shared/errors";
 
 // ─── Constants ──────────────────────────────────────────────────────────────

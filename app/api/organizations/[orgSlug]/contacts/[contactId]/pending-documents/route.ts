@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
 
 const service = makeContactBalancesService();

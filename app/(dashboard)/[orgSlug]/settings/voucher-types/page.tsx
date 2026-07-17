@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeVoucherTypesService } from "@/modules/voucher-types/presentation/server";
 import { Button } from "@/components/ui/button";
 import VoucherTypesManager from "@/components/settings/voucher-types-manager";

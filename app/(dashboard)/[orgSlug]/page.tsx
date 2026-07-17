@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
-import { buildClientMatrixSnapshot } from "@/features/permissions/server";
+import { buildClientMatrixSnapshot } from "@/modules/permissions/application/server";
 import { getRoleDefaultModuleFromSnapshot } from "@/components/sidebar/modules/get-role-default-module";
 import { MODULES } from "@/components/sidebar/modules/registry";
 

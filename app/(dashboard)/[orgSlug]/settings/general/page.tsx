@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { Button } from "@/components/ui/button";

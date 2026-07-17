@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import AccountsPageClient from "@/components/accounting/accounts-page-client";
 

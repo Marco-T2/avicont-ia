@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { createAccountSchema } from "@/modules/accounting/presentation/validation";
 import { AccountSubtype } from "@/generated/prisma/client";

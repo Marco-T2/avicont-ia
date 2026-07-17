@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requireAuth } from "@/features/shared";
-import { canAccess } from "@/features/permissions/server";
+import { canAccess } from "@/modules/permissions/application/server";
 import {
   makeOrganizationsService,
   requireOrgAccess,

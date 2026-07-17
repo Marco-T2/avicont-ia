@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
-import { canAccess, requirePermission } from "@/features/permissions/server";
+import { canAccess, requirePermission } from "@/modules/permissions/application/server";
 import { reportRegistry } from "@/modules/reports/application/catalog";
 import { CatalogPage } from "@/components/reports/catalog-page";
 

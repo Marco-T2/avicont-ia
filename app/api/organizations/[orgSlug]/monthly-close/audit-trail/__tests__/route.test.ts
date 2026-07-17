@@ -22,7 +22,7 @@ const { mockRequirePermission, mockFindMany } = vi.hoisted(() => ({
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

@@ -6,7 +6,7 @@ import {
   makeOrganizationsService,
   requireOrgAccess,
 } from "@/modules/organizations/presentation/server";
-import { canAccess } from "@/features/permissions/server";
+import { canAccess } from "@/modules/permissions/application/server";
 import {
   Card,
   CardContent,

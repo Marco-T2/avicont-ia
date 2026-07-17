@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/presentation/server";
 import { Button } from "@/components/ui/button";
 import OperationalDocTypesManager from "@/components/settings/operational-doc-types-manager";

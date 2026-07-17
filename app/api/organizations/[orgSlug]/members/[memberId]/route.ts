@@ -1,5 +1,5 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeMembersService, buildUpdateMemberRoleSchema } from "@/modules/organizations/presentation/server";
 
 const service = makeMembersService();

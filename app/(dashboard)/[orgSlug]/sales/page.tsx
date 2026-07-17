@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { prisma } from "@/lib/prisma";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { toSaleWithDetails } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";

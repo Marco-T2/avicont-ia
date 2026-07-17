@@ -16,7 +16,7 @@ const { mockRedirect, mockRequirePermission, mockList } = vi.hoisted(() => ({
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

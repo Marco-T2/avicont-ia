@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeFinancialStatementsService,
   serializeStatement,
   incomeStatementQuerySchema,
 } from "@/modules/accounting/financial-statements/presentation/server";
-import type { Role } from "@/features/permissions";
+import type { Role } from "@/modules/permissions/domain/permissions";
 
 // Node.js runtime requerido por los exporters de PR4 (pdfmake + exceljs usan Buffer/streams nativos)
 export const runtime = "nodejs";

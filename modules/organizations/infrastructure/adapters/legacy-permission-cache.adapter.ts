@@ -1,5 +1,5 @@
 import "server-only";
-import { revalidateOrgMatrix } from "@/features/permissions/cache";
+import { revalidateOrgMatrix } from "@/modules/permissions/infrastructure/cache";
 import type { PermissionCachePort } from "../../domain/ports/permission-cache.port";
 
 /**

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import BalanceTable from "@/components/accounting/balance-table";

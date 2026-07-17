@@ -67,7 +67,7 @@ vi.mock("@/modules/organizations/presentation/server", async (importOriginal) =>
 // (requireAuth / requireOrgAccess / requireRole) stay mocked too for tests
 // that want to force a 401/403 at a specific layer. revalidateOrgMatrix /
 // getMatrix are mocked here because the route pulls them transitively.
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
   revalidateOrgMatrix: vi.fn(),
   getMatrix: vi.fn(),
@@ -77,7 +77,7 @@ vi.mock("@/features/permissions/server", () => ({
 
 import { requireAuth } from "@/features/shared/middleware";
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import {
   UnauthorizedError,
   ForbiddenError,

@@ -17,7 +17,7 @@ import {
   createJournalEntryConfirmSchema,
   type CreateJournalEntryConfirmInput,
 } from "@/modules/ai-agent/presentation/server";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeJournalsService,
   parseEntryDate,

@@ -59,10 +59,10 @@ vi.mock("@/modules/organizations/presentation/server", () => ({
 
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
 }));
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

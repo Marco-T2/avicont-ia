@@ -72,7 +72,7 @@ vi.mock("@/modules/organizations/presentation/server", async (importOriginal) =>
   };
 });
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 

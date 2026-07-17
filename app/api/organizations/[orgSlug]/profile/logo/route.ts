@@ -1,7 +1,7 @@
 import { put } from "@vercel/blob";
 import { handleError } from "@/features/shared/middleware";
 import { AppError } from "@/features/shared/errors";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeOrgProfileService,
   logoUploadConstraints,

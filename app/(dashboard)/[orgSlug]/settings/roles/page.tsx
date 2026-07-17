@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { Button } from "@/components/ui/button";
 import RolesListClient from "@/components/settings/roles-list-client";

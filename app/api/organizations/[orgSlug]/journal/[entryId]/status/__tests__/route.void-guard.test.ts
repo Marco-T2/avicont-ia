@@ -33,7 +33,7 @@ vi.mock("@/features/shared/middleware", () => ({
   }),
 }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: vi.fn(),
 }));
 
@@ -52,7 +52,7 @@ vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
   })),
 }));
 
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { ValidationError, AUTO_ENTRY_VOID_FORBIDDEN } from "@/features/shared/errors";
 import { PATCH } from "../route";
 

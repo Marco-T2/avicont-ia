@@ -1,5 +1,5 @@
 import { redirect, notFound } from "next/navigation";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { PaymentService } from "@/modules/payment/presentation/server";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";

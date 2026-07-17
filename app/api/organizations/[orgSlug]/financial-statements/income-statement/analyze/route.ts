@@ -1,11 +1,11 @@
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
 import { makeFinancialStatementsService } from "@/modules/accounting/financial-statements/presentation/server";
 import { incomeStatementQuerySchema } from "@/modules/accounting/financial-statements/presentation/server";
 import { makeAgentService, makeAgentRateLimitService } from "@/modules/ai-agent/presentation/server";
 import { logStructured } from "@/lib/logging/structured";
-import type { Role } from "@/features/permissions";
+import type { Role } from "@/modules/permissions/domain/permissions";
 
 export const runtime = "nodejs";
 

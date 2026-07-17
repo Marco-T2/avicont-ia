@@ -46,7 +46,7 @@ vi.mock("@/modules/organizations/presentation/server", () => ({
   }),
 }));
 
-vi.mock("@/features/permissions/server", () => ({
+vi.mock("@/modules/permissions/application/server", () => ({
   canAccess: mockCanAccess,
 }));
 

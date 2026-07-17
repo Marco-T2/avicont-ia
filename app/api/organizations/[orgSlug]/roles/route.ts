@@ -15,7 +15,7 @@
  *   context through for consistency with the service signature.
  */
 import { handleError } from "@/features/shared/middleware";
-import { requirePermission } from "@/features/permissions/server";
+import { requirePermission } from "@/modules/permissions/application/server";
 import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { z } from "zod";
 
