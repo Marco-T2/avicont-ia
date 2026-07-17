@@ -1,21 +1,23 @@
 /**
  * RED test — poc-permissions-hex B2 (infrastructure): structural shape assertions C1.
  *
- * 11α declarations. Expected failure mode pre-GREEN:
- *   FAIL (11α): hex infra files non-existent; features/ SHIMs still source impl
- *   - α1  FAIL: modules/permissions/infrastructure/permissions.cache.ts non-existent (existsSync)
- *   - α2  FAIL: hex permissions.cache.ts non-existent → readFileSync throws (getMatrix)
- *   - α3  FAIL: hex permissions.cache.ts non-existent → readFileSync throws (ensureOrgSeeded)
- *   - α4  FAIL: hex permissions.cache.ts non-existent → readFileSync throws (export type OrgMatrix)
- *   - α5  FAIL: modules/permissions/infrastructure/__tests__/permissions.cache.test.ts non-existent
- *   - α6  FAIL: modules/permissions/infrastructure/cache.ts non-existent
- *   - α7  FAIL: hex infrastructure/cache.ts non-existent → readFileSync throws
- *   - α8  FAIL: features/permissions/permissions.cache.ts SHIM not in place → no `export type { OrgMatrix }`
- *   - α9  FAIL: features/permissions/permissions.cache.ts SHIM not in place → no _setLoader/_resetCache named re-export
- *   - α10 FAIL: features/permissions/permissions.cache.ts SHIM not in place → no hex import path
- *   - α11 FAIL: features/permissions/cache.ts SHIM JSDoc banner absent
+ * 11α declarations. α1–α7 are HEX-existence sentinels (still valid). α8–α11 were
+ * SHIM-existence sentinels — INVERTED to retirement/absence sentinels after
+ * permissions-shim-cutover deleted features/permissions/ (delete + absence
+ * sentinel per repo convention).
+ *   - α1  PASS: modules/permissions/infrastructure/permissions.cache.ts exists
+ *   - α2  PASS: hex permissions.cache.ts exports getMatrix + server-only
+ *   - α3  PASS: hex permissions.cache.ts exports ensureOrgSeeded/revalidateOrgMatrix/_setLoader/_resetCache
+ *   - α4  PASS: hex permissions.cache.ts declares export type OrgMatrix
+ *   - α5  PASS: modules/permissions/infrastructure/__tests__/permissions.cache.test.ts exists
+ *   - α6  PASS: modules/permissions/infrastructure/cache.ts exists
+ *   - α7  PASS: hex infrastructure/cache.ts forwards ./permissions.cache + server-only
+ *   - α8  RETIRED: features/permissions/permissions.cache.ts SHIM no longer exists
+ *   - α9  RETIRED: hex owns _setLoader/_resetCache (SHIM re-export gone)
+ *   - α10 RETIRED: hex permissions.cache.ts canonical (SHIM alias import gone)
+ *   - α11 RETIRED: features/permissions/cache.ts SHIM barrel no longer exists
  *
- * Gate: run pre-GREEN → 11/11α FAIL before proceeding to GREEN.
+ * Gate: post-cutover → 11/11α PASS (hex-existence + retirement/absence sentinels).
  *
  * Paired sister: poc-shared-audit infra (SHA 69178f3f) — Option B SHIM precedent for isolatedModules + types.
  * [[red_acceptance_failure_mode]]: every α declares expected failure mode (above).
@@ -89,32 +91,36 @@ describe("α6–α7 hex infrastructure/cache.ts barrel", () => {
   });
 });
 
-// ── α8–α10: SHIM at features/permissions/permissions.cache.ts (Option B) ─────
+// ── α8–α11: RETIREMENT sentinels — features/permissions/ cache SHIMs DELETED ──
+//   Inverted from SHIM-existence assertions per repo retirement convention
+//   ([[c1-hubservice-retirement]], c7-wholesale-delete-shape: delete + absence
+//   sentinel). The infrastructure SHIMs (permissions.cache.ts, cache.ts) were
+//   retired after permissions-shim-cutover repointed all consumers onto hex.
 
-describe("α8–α10 features/permissions/permissions.cache.ts SHIM (Option B)", () => {
-  it("α8: SHIM contains `export type { OrgMatrix }` (isolatedModules-compliant)", () => {
-    const content = readFileSync(SHIM_CACHE, "utf-8");
-    expect(content).toMatch(/export type \{[^}]*\bOrgMatrix\b/);
+describe("α8–α10 features/permissions/ cache SHIMs RETIRED (absence sentinels)", () => {
+  it("α8: SHIM features/permissions/permissions.cache.ts is RETIRED (no longer exists)", () => {
+    expect(existsSync(SHIM_CACHE)).toBe(false);
   });
 
-  it("α9: SHIM exports test hooks _setLoader + _resetCache in named re-export block from hex path", () => {
-    const content = readFileSync(SHIM_CACHE, "utf-8");
-    const namedReexport = /export \{[^}]*\b_setLoader\b[^}]*\b_resetCache\b[^}]*\}\s*from ["']@\/modules\/permissions\/infrastructure\/permissions\.cache["']/s;
-    expect(content).toMatch(namedReexport);
+  it("α9: hex permissions.cache.ts owns _setLoader + _resetCache (SHIM re-export retired)", () => {
+    // Retirement proof: the SHIM re-export block is gone; the hex infra file is
+    // the sole source of the _setLoader/_resetCache test hooks.
+    expect(existsSync(SHIM_CACHE)).toBe(false);
+    const content = readFileSync(HEX_CACHE, "utf-8");
+    expect(content).toMatch(/^export function _setLoader/m);
+    expect(content).toMatch(/^export function _resetCache/m);
   });
 
-  it("α10: SHIM imports from hex path @/modules/permissions/infrastructure/permissions.cache", () => {
-    const content = readFileSync(SHIM_CACHE, "utf-8");
-    expect(content).toMatch(/from ["']@\/modules\/permissions\/infrastructure\/permissions\.cache["']/);
+  it("α10: hex permissions.cache.ts is canonical (SHIM alias import retired)", () => {
+    expect(existsSync(SHIM_CACHE)).toBe(false);
+    expect(existsSync(HEX_CACHE)).toBe(true);
   });
 });
 
-// ── α11: SHIM at features/permissions/cache.ts (Option A) ────────────────────
+// ── α11: RETIREMENT sentinel — features/permissions/cache.ts barrel DELETED ───
 
-describe("α11 features/permissions/cache.ts SHIM (Option A barrel)", () => {
-  it("α11: features/permissions/cache.ts has SHIM banner + forwards ./permissions.cache", () => {
-    const content = readFileSync(SHIM_CACHE_BARREL, "utf-8");
-    expect(content).toMatch(/Re-exports moved to hex/);
-    expect(content).toMatch(/^export \* from ["']\.\/permissions\.cache["']/m);
+describe("α11 features/permissions/cache.ts barrel SHIM RETIRED (absence sentinel)", () => {
+  it("α11: SHIM features/permissions/cache.ts is RETIRED (no longer exists)", () => {
+    expect(existsSync(SHIM_CACHE_BARREL)).toBe(false);
   });
 });

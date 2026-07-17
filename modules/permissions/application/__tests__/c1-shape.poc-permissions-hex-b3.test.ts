@@ -1,31 +1,35 @@
 /**
  * RED test — poc-permissions-hex B3 (application): structural shape assertions C1.
  *
- * 19α declarations. Expected failure mode pre-GREEN:
- *   FAIL (18α) + PASS (α18 dual-sentinel baseline 84-vi.mock count invariant)
+ * 19α declarations. α1–α11 are HEX-existence sentinels (still valid). α12–α19 were
+ * SHIM-existence / re-export-shape / 84-vi.mock-count sentinels — INVERTED to
+ * retirement/absence sentinels after permissions-shim-cutover deleted the 7
+ * features/permissions/ SHIMs and repointed all 84 vi.mock consumers onto the
+ * hex barrel @/modules/permissions/application/server (delete + absence sentinel
+ * per repo convention: [[c1-hubservice-retirement]], c7-wholesale-delete-shape).
  *
- *   - α1  FAIL: modules/permissions/application/permissions.server.ts non-existent
- *   - α2  FAIL: hex permissions.server.ts non-existent → readFileSync throws (requirePermission)
- *   - α3  FAIL: hex permissions.server.ts non-existent → readFileSync throws (canAccess + canPost)
- *   - α4  FAIL: modules/permissions/application/client-matrix.ts non-existent
- *   - α5  FAIL: hex client-matrix.ts non-existent → readFileSync throws (buildClientMatrixSnapshot)
- *   - α6  FAIL: modules/permissions/application/__tests__/require-permission.test.ts non-existent
- *   - α7  FAIL: modules/permissions/application/__tests__/client-matrix.test.ts non-existent
- *   - α8  FAIL: modules/permissions/application/server.ts non-existent
- *   - α9  FAIL: hex application/server.ts non-existent → readFileSync throws (requirePermission re-export)
- *   - α10 FAIL: hex application/server.ts non-existent → readFileSync throws (_setLoader + _resetCache)
- *   - α11 FAIL: hex application/server.ts non-existent → readFileSync throws (OrgMatrix export type)
- *   - α12 FAIL: features/permissions/server.ts SHIM not in place → no named `export { canPost` from hex
- *   - α13 FAIL: features/permissions/server.ts SHIM not in place → no named `export { _setLoader, _resetCache` from hex cache
- *   - α14 FAIL: features/permissions/server.ts SHIM not in place → no `export type { OrgMatrix }` from hex
- *   - α15 FAIL: features/permissions/permissions.server.ts SHIM not in place → no hex application path
- *   - α16 FAIL: features/permissions/client-matrix.ts SHIM not in place → no hex application path
- *   - α17 FAIL: features/permissions/server.ts symbol surface mismatch (no named re-exports to hex yet)
- *   - α18 PASS: vi.mock("@/features/permissions/server") count === 84 (DUAL-SENTINEL — baseline invariant)
- *     If α18 ≠ 84: STOP — unauthorized consumer edit detected pre-GREEN.
- *   - α19 FAIL: features/permissions/server.ts does NOT yet import from "@/modules/permissions/application"
+ *   - α1  PASS: modules/permissions/application/permissions.server.ts exists
+ *   - α2  PASS: hex permissions.server.ts exports requirePermission + server-only
+ *   - α3  PASS: hex permissions.server.ts exports canAccess + canPost
+ *   - α4  PASS: modules/permissions/application/client-matrix.ts exists
+ *   - α5  PASS: hex client-matrix.ts exports buildClientMatrixSnapshot
+ *   - α6  PASS: modules/permissions/application/__tests__/require-permission.test.ts exists
+ *   - α7  PASS: modules/permissions/application/__tests__/client-matrix.test.ts exists
+ *   - α8  PASS: modules/permissions/application/server.ts exists
+ *   - α9  PASS: hex application/server.ts re-exports requirePermission + server-only
+ *   - α10 PASS: hex application/server.ts re-exports _setLoader + _resetCache
+ *   - α11 PASS: hex application/server.ts re-exports type OrgMatrix
+ *   - α12 RETIRED: features/permissions/server.ts SHIM deleted; hex owns canPost
+ *   - α13 RETIRED: SHIM deleted; hex application/server.ts re-exports _setLoader + _resetCache
+ *   - α14 RETIRED: SHIM deleted; hex application/server.ts re-exports type OrgMatrix
+ *   - α15 RETIRED: features/permissions/permissions.server.ts SHIM deleted
+ *   - α16 RETIRED: features/permissions/client-matrix.ts SHIM deleted
+ *   - α17 RETIRED: SHIM server.ts symbol surface fully retired to hex barrel
+ *   - α18 RETIRED: vi.mock("@/features/permissions/server") count === 0 (all 84 repointed to hex)
+ *     Key retirement proof: OLD-path count === 0 AND NEW-path (hex) count > 0.
+ *   - α19 RETIRED: features/permissions/server.ts SHIM deleted; hex barrel canonical
  *
- * Gate: run pre-GREEN → 18α FAIL + 1α PASS (α18). Post-GREEN: 19α PASS.
+ * Gate: post-cutover → 19/19α PASS (hex-existence + retirement/absence sentinels).
  *
  * Paired sister: poc-shared-canonical umbrella (c15abb4c); poc-shared-base-repo (5517966d).
  * [[red_acceptance_failure_mode]]: every α declares expected failure mode (above).
@@ -119,63 +123,71 @@ describe("α8–α11 hex application/server.ts aggregate barrel", () => {
   });
 });
 
-// ── α12–α14: SHIM features/permissions/server.ts (Option B aggregate) ────────
+// ── α12–α17: RETIREMENT sentinels — features/permissions/ app SHIMs DELETED ───
+//   Inverted from SHIM-existence/re-export-shape assertions per repo retirement
+//   convention ([[c1-hubservice-retirement]], c7-wholesale-delete-shape: delete
+//   + absence sentinel). The application SHIMs (server.ts, permissions.server.ts,
+//   client-matrix.ts) were retired after permissions-shim-cutover repointed all
+//   consumers onto hex paths. The hex application barrel is now the sole surface.
 
-describe("α12–α14 features/permissions/server.ts SHIM (Option B aggregate)", () => {
-  it("α12: SHIM features/permissions/server.ts has named `canPost` re-export from hex application path", () => {
-    const content = readFileSync(SHIM_SERVER, "utf-8");
-    const reexport = /export \{[^}]*\bcanPost\b[^}]*\}\s*from ["']@\/modules\/permissions\/application\//s;
-    expect(content).toMatch(reexport);
+describe("α12–α14 features/permissions/server.ts SHIM RETIRED (absence sentinels)", () => {
+  it("α12: SHIM features/permissions/server.ts is RETIRED (no longer exists); hex owns canPost", () => {
+    expect(existsSync(SHIM_SERVER)).toBe(false);
+    const content = readFileSync(HEX_SERVER, "utf-8");
+    expect(content).toMatch(/\bcanPost\b/);
   });
 
-  it("α13: SHIM features/permissions/server.ts has named `_setLoader` + `_resetCache` re-export from hex infra path", () => {
-    const content = readFileSync(SHIM_SERVER, "utf-8");
-    const reexport = /export \{[^}]*\b_setLoader\b[^}]*\b_resetCache\b[^}]*\}\s*from ["']@\/modules\/permissions\/infrastructure\/permissions\.cache["']/s;
-    expect(content).toMatch(reexport);
+  it("α13: SHIM server.ts retired; hex application/server.ts re-exports _setLoader + _resetCache", () => {
+    expect(existsSync(SHIM_SERVER)).toBe(false);
+    const content = readFileSync(HEX_SERVER, "utf-8");
+    expect(content).toMatch(/export \{[^}]*\b_setLoader\b[^}]*\b_resetCache\b[^}]*\}/s);
   });
 
-  it("α14: SHIM features/permissions/server.ts has `export type { OrgMatrix }` from hex infra path", () => {
-    const content = readFileSync(SHIM_SERVER, "utf-8");
-    const reexport = /export type \{[^}]*\bOrgMatrix\b[^}]*\}\s*from ["']@\/modules\/permissions\/infrastructure\/permissions\.cache["']/s;
-    expect(content).toMatch(reexport);
-  });
-});
-
-// ── α15–α16: SHIMs features/permissions/{permissions.server, client-matrix}.ts (Option B) ─
-
-describe("α15–α16 features/permissions/{permissions.server, client-matrix}.ts SHIMs (Option B)", () => {
-  it("α15: SHIM features/permissions/permissions.server.ts has named re-exports from hex application path", () => {
-    const content = readFileSync(SHIM_PSERVER, "utf-8");
-    const reexport = /export \{[^}]*\brequirePermission\b[^}]*\bcanAccess\b[^}]*\bcanPost\b[^}]*\}\s*from ["']@\/modules\/permissions\/application\/permissions\.server["']/s;
-    expect(content).toMatch(reexport);
-  });
-
-  it("α16: SHIM features/permissions/client-matrix.ts has named `buildClientMatrixSnapshot` from hex application path", () => {
-    const content = readFileSync(SHIM_CLIENT_MATRIX, "utf-8");
-    const reexport = /export \{[^}]*\bbuildClientMatrixSnapshot\b[^}]*\}\s*from ["']@\/modules\/permissions\/application\/client-matrix["']/s;
-    expect(content).toMatch(reexport);
+  it("α14: SHIM server.ts retired; hex application/server.ts re-exports type OrgMatrix", () => {
+    expect(existsSync(SHIM_SERVER)).toBe(false);
+    const content = readFileSync(HEX_SERVER, "utf-8");
+    expect(content).toMatch(/export type \{[^}]*\bOrgMatrix\b/);
   });
 });
 
-// ── α17: SHIM features/permissions/server.ts symbol surface — all 6 values + 1 type ─
+// ── α15–α16: SHIMs features/permissions/{permissions.server, client-matrix}.ts RETIRED ─
 
-describe("α17 SHIM features/permissions/server.ts symbol surface (Option B aggregate)", () => {
-  it("α17: SHIM features/permissions/server.ts exports requirePermission + canAccess + canPost + buildClientMatrixSnapshot all named from hex", () => {
-    const content = readFileSync(SHIM_SERVER, "utf-8");
-    const appReexport = /export \{[^}]*\brequirePermission\b[^}]*\bcanAccess\b[^}]*\bcanPost\b[^}]*\}\s*from ["']@\/modules\/permissions\/application\//s;
-    const cmReexport = /export \{[^}]*\bbuildClientMatrixSnapshot\b[^}]*\}\s*from ["']@\/modules\/permissions\/application\/client-matrix["']/s;
-    expect(content).toMatch(appReexport);
-    expect(content).toMatch(cmReexport);
+describe("α15–α16 features/permissions/{permissions.server, client-matrix}.ts SHIMs RETIRED", () => {
+  it("α15: SHIM features/permissions/permissions.server.ts is RETIRED (no longer exists)", () => {
+    expect(existsSync(SHIM_PSERVER)).toBe(false);
+    expect(existsSync(HEX_PSERVER)).toBe(true);
+  });
+
+  it("α16: SHIM features/permissions/client-matrix.ts is RETIRED (no longer exists)", () => {
+    expect(existsSync(SHIM_CLIENT_MATRIX)).toBe(false);
+    expect(existsSync(HEX_CLIENT_MATRIX)).toBe(true);
+  });
+});
+
+// ── α17: RETIREMENT — SHIM server.ts symbol surface fully retired to hex ──────
+
+describe("α17 features/permissions/server.ts symbol surface RETIRED (absence sentinel)", () => {
+  it("α17: SHIM server.ts retired; hex application/server.ts owns full symbol surface", () => {
+    expect(existsSync(SHIM_SERVER)).toBe(false);
+    const content = readFileSync(HEX_SERVER, "utf-8");
+    expect(content).toMatch(/\brequirePermission\b/);
+    expect(content).toMatch(/\bcanAccess\b/);
+    expect(content).toMatch(/\bcanPost\b/);
+    expect(content).toMatch(/\bbuildClientMatrixSnapshot\b/);
   });
 });
 
 // ── α18: DUAL-SENTINEL — baseline 92 vi.mock count invariant ─────────────────
 
-describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, drifted -2 by poc-dispatch-retirement-into-sales C3+C1, +1 by sidebar-reorg-settings-hub C3, +1 by accounting-dashboard-pro, +1 by annual-close Phase 5.4, +1 by annual-close Phase 7.5, +1 by equity-statement route test, +1 by contact-ledger route test, +1 by contact-balances dashboard route test, +1 by another untracked post-86 driver, +1 by agent-surface-separation route.surface-validation test, +1 by agent-sidebar-module-hint route.module-hint test, +1 by baseline-test-cleanup C1 journal route.json test, +1 by baseline-test-cleanup C1 tags route.post test, +1 by baseline-test-cleanup C1 tags route test, -10 by lcv-feature-retirement L6 modules/iva-books/ deletion, +1 by pago-credit-system Phase 5 apply-credits route test, -1 by test-isolation cleanup self-lock double-mock dedup)", () => {
-  it("α18: vi.mock count for @/features/permissions/server equals 84 (line count; 84 consumer files — self-lock double-mock removed by test-isolation cleanup)", () => {
-    // Counts grep hits for vi.mock("@/features/permissions/server") across consumer tests,
-    // EXCLUDING this shape sentinel file (which mentions the pattern in JSDoc and would self-match).
-    // Original baseline: 84. Adjusted by:
+describe("α18 RETIREMENT sentinel — deprecated @/features/permissions/server vi.mock path fully retired (was 84, now 0; repointed to hex barrel)", () => {
+  it("α18: vi.mock count for the RETIRED @/features/permissions/server SHIM path equals 0 (fully repointed to hex)", () => {
+    // RETIREMENT sentinel (inverted from the 84-count invariant). permissions-shim-cutover
+    // moved all 84 vi.mock declarations from the deprecated SHIM path
+    // @/features/permissions/server → the hex barrel @/modules/permissions/application/server.
+    // The key retirement proof is OLD-path count === 0. We also assert the NEW-path count
+    // is present (> 0) to confirm the mocks were repointed, not deleted.
+    //
+    // Historical drift ledger (pre-retirement, count was 84 — preserved for provenance):
     //   - poc-dispatch-retirement-into-sales C3 GREEN: dispatches/__tests__/page.test.ts
     //     rewritten as redirect-shim test (-1)
     //   - poc-dispatch-retirement-into-sales C1 GREEN: dispatches-hub/__tests__/route.test.ts
@@ -225,20 +237,25 @@ describe("α18 DUAL-SENTINEL — baseline 92 vi.mock count (REQ-010 invariant, d
     //   passed in the full suite but FAILED in isolation. The dead async-importOriginal mock was
     //   removed, leaving the single plain factory. So 84 consumer FILES = 84 matched LINES now.
     //   Verified: zero new/unauthorized consumers added → the legitimate count is 84.
-    const cmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
-    const stdout = execSync(cmd, { encoding: "utf-8" }).trim();
-    const count = Number(stdout);
-    expect(count).toBe(84);
+    const oldCmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
+    const oldCount = Number(execSync(oldCmd, { encoding: "utf-8" }).trim());
+    // KEY retirement sentinel: the deprecated SHIM path has ZERO remaining mock consumers.
+    expect(oldCount).toBe(0);
+
+    const newCmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/modules/permissions/application/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
+    const newCount = Number(execSync(newCmd, { encoding: "utf-8" }).trim());
+    // Confirmation: the mocks were REPOINTED to hex, not deleted.
+    expect(newCount).toBeGreaterThan(0);
   });
 });
 
-// ── α19: SHIM features/permissions/server.ts does NOT yet have hex application re-export (pre-GREEN sentinel)
-//        Post-GREEN: this α flips — it MUST have the hex re-export to PASS. To remain a clean
-//        dual-state α we re-shape: SHIM MUST eventually have hex import.
+// ── α19: RETIREMENT — SHIM features/permissions/server.ts deleted; hex is canonical ─
+//        Inverted from the SHIM-imports-hex assertion. The SHIM no longer exists;
+//        the hex application/server.ts is the canonical aggregate barrel.
 
-describe("α19 SHIM features/permissions/server.ts hex application path import", () => {
-  it("α19: SHIM features/permissions/server.ts contains `from \"@/modules/permissions/application\"` (any application re-export)", () => {
-    const content = readFileSync(SHIM_SERVER, "utf-8");
-    expect(content).toMatch(/from ["']@\/modules\/permissions\/application\//);
+describe("α19 features/permissions/server.ts SHIM RETIRED (absence sentinel)", () => {
+  it("α19: SHIM features/permissions/server.ts is RETIRED (no longer exists); hex application/server.ts is canonical", () => {
+    expect(existsSync(SHIM_SERVER)).toBe(false);
+    expect(existsSync(HEX_SERVER)).toBe(true);
   });
 });

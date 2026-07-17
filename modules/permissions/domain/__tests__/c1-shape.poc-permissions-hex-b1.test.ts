@@ -1,25 +1,27 @@
 /**
  * RED test — poc-permissions-hex B1 (domain): structural shape assertions C1.
  *
- * 15α declarations. Expected failure mode pre-GREEN:
- *   FAIL (15α): hex domain files non-existent; features/ SHIMs still source impl
- *   - α1  FAIL: modules/permissions/domain/permissions.ts non-existent (existsSync)
- *   - α2  FAIL: hex permissions.ts non-existent → readFileSync throws
- *   - α3  FAIL: hex permissions.ts non-existent → readFileSync throws
- *   - α4  FAIL: hex permissions.ts non-existent → readFileSync throws (type Role)
- *   - α5  FAIL: modules/permissions/domain/__tests__/permissions.test.ts non-existent
- *   - α6  FAIL: modules/permissions/domain/index.ts non-existent
- *   - α7  FAIL: hex domain/index.ts non-existent → readFileSync throws
- *   - α8  FAIL: features/permissions/permissions.ts SHIM not in place → no `export type { Role`
- *   - α9  FAIL: features/permissions/permissions.ts SHIM not in place → no hex import path
- *   - α10 FAIL: features/permissions/index.ts unchanged (currently `export * from "./permissions"` — same form, but no JSDoc SHIM banner yet)
- *   - α11 FAIL: features/permissions/permissions.ts still has SYSTEM_ROLES const decl
- *   - α12 FAIL: SHIM forwards named values (10 const exports) — not in place
- *   - α13 FAIL: SHIM forwards `getPostAllowedRoles` named export — not in place
- *   - α14 FAIL: hex permissions.ts has POST_ALLOWED_ROLES const internal (preserved from source)
- *   - α15 FAIL: hex domain/__tests__/permissions.types.test.ts non-existent
+ * 15α declarations. α1–α7, α14, α15 are HEX-existence sentinels (still valid).
+ * α8–α13 were SHIM-existence sentinels — INVERTED to retirement/absence sentinels
+ * after permissions-shim-cutover deleted features/permissions/ (all consumers
+ * repointed to hex; delete + absence sentinel per repo convention).
+ *   - α1  PASS: modules/permissions/domain/permissions.ts exists
+ *   - α2  PASS: hex permissions.ts exports PERMISSIONS_READ
+ *   - α3  PASS: hex permissions.ts exports PERMISSIONS_WRITE/CLOSE/REOPEN
+ *   - α4  PASS: hex permissions.ts declares type Role + Resource/Action/DocumentScope/PostableResource
+ *   - α5  PASS: modules/permissions/domain/__tests__/permissions.test.ts exists
+ *   - α6  PASS: modules/permissions/domain/index.ts exists
+ *   - α7  PASS: hex domain/index.ts bare barrel forwarding ./permissions
+ *   - α8  RETIRED: features/permissions/permissions.ts SHIM no longer exists (absence sentinel)
+ *   - α9  RETIRED: SHIM gone; hex permissions.ts is sole Role source
+ *   - α10 RETIRED: features/permissions/index.ts SHIM barrel no longer exists
+ *   - α11 RETIRED: no permissions.ts SHIM residue
+ *   - α12 RETIRED: SHIM re-export block gone; hex owns SYSTEM_ROLES + named values
+ *   - α13 RETIRED: getPostAllowedRoles hex-owned (SHIM forward gone)
+ *   - α14 PASS: hex permissions.ts has POST_ALLOWED_ROLES const internal (preserved)
+ *   - α15 PASS: hex domain/__tests__/permissions.types.test.ts exists
  *
- * Gate: run pre-GREEN → 15/15α FAIL before proceeding to GREEN.
+ * Gate: post-cutover → 15/15α PASS (hex-existence + retirement/absence sentinels).
  *
  * Paired sister: poc-shared-base-repo C1 RED (SHA 5517966d) —
  *   modules/shared/infrastructure/__tests__/c1-shape.poc-shared-base-repo.test.ts.
@@ -96,42 +98,45 @@ describe("α6–α7 hex domain/index.ts", () => {
   });
 });
 
-// ── α8–α13: SHIM at features/permissions/permissions.ts (Option B) ───────────
+// ── α8–α13: RETIREMENT sentinels — features/permissions/ SHIMs DELETED ────────
+//   Inverted from SHIM-existence assertions per repo retirement convention
+//   ([[c1-hubservice-retirement]], c7-wholesale-delete-shape: delete + absence
+//   sentinel). The domain SHIMs (permissions.ts, index.ts) were retired after
+//   permissions-shim-cutover repointed all consumers onto hex paths. These α's
+//   now lock the ABSENCE of the deprecated SHIM files.
 
-describe("α8–α13 features/permissions/permissions.ts SHIM (Option B)", () => {
-  it("α8: SHIM contains `export type { Role` (isolatedModules-compliant)", () => {
-    const content = readFileSync(SHIM_PERMISSIONS, "utf-8");
-    expect(content).toMatch(/export type \{[^}]*\bRole\b/);
+describe("α8–α13 features/permissions/ domain SHIMs RETIRED (absence sentinels)", () => {
+  it("α8: SHIM features/permissions/permissions.ts is RETIRED (no longer exists)", () => {
+    expect(existsSync(SHIM_PERMISSIONS)).toBe(false);
   });
 
-  it("α9: SHIM imports from hex path @/modules/permissions/domain/permissions", () => {
-    const content = readFileSync(SHIM_PERMISSIONS, "utf-8");
-    expect(content).toMatch(/from ["']@\/modules\/permissions\/domain\/permissions["']/);
+  it("α9: hex permissions.ts is the canonical `Role` source (SHIM alias no longer imports hex)", () => {
+    // Retirement proof: the SHIM that used to bridge into hex is gone; the hex
+    // domain file remains the sole source of the Role type.
+    expect(existsSync(SHIM_PERMISSIONS)).toBe(false);
+    expect(existsSync(HEX_PERMISSIONS)).toBe(true);
   });
 
-  it("α10: features/permissions/index.ts SHIM banner present (Option A barrel forwarding SHIM)", () => {
-    const content = readFileSync(SHIM_INDEX, "utf-8");
-    expect(content).toMatch(/^export \* from ["']\.\/permissions["']/m);
-    expect(content).toMatch(/Re-exports moved to hex/);
+  it("α10: SHIM features/permissions/index.ts barrel is RETIRED (no longer exists)", () => {
+    expect(existsSync(SHIM_INDEX)).toBe(false);
   });
 
-  it("α11: SHIM features/permissions/permissions.ts does NOT contain SYSTEM_ROLES const declaration", () => {
-    const content = readFileSync(SHIM_PERMISSIONS, "utf-8");
-    expect(content).not.toMatch(/^export const SYSTEM_ROLES/m);
+  it("α11: features/permissions/ directory is fully retired (no permissions.ts SHIM residue)", () => {
+    expect(existsSync(SHIM_PERMISSIONS)).toBe(false);
   });
 
-  it("α12: SHIM exports 10 named values via named re-export block from hex path", () => {
-    const content = readFileSync(SHIM_PERMISSIONS, "utf-8");
-    // Named re-export block: { SYSTEM_ROLES, ... } from "@/modules/permissions/domain/permissions"
-    const namedReexport = /export \{[^}]*SYSTEM_ROLES[^}]*\bisSystemRole\b[^}]*\bPERMISSIONS_READ\b[^}]*\}\s*from ["']@\/modules\/permissions\/domain\/permissions["']/s;
-    expect(content).toMatch(namedReexport);
+  it("α12: hex domain/permissions.ts is the sole named-value source (SHIM re-export block retired)", () => {
+    // The 10-value SHIM re-export block is gone; the hex file owns the exports.
+    expect(existsSync(SHIM_PERMISSIONS)).toBe(false);
+    const content = readFileSync(HEX_PERMISSIONS, "utf-8");
+    expect(content).toMatch(/^export const SYSTEM_ROLES/m);
   });
 
-  it("α13: SHIM forwards `getPostAllowedRoles` named export from hex path (internal seed accessor preserved)", () => {
-    const content = readFileSync(SHIM_PERMISSIONS, "utf-8");
-    // getPostAllowedRoles must appear inside a named re-export block pointing at hex
-    const reexport = /export \{[^}]*\bgetPostAllowedRoles\b[^}]*\}\s*from ["']@\/modules\/permissions\/domain\/permissions["']/s;
-    expect(content).toMatch(reexport);
+  it("α13: getPostAllowedRoles hex-owned (SHIM forward retired)", () => {
+    // getPostAllowedRoles no longer transits a SHIM re-export — it lives in hex.
+    expect(existsSync(SHIM_PERMISSIONS)).toBe(false);
+    const content = readFileSync(HEX_PERMISSIONS, "utf-8");
+    expect(content).toMatch(/\bgetPostAllowedRoles\b/);
   });
 });
 
