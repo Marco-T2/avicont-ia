@@ -168,32 +168,32 @@ describe("α13–α16 features/shared/middleware.ts RETIRED — shim physically 
   });
 });
 
-// ── α17–α20: SHIM features/shared/http-error-serializer.ts sentinels ────────
-
-describe("α17–α20 features/shared/http-error-serializer.ts is 2-line SHIM", () => {
-  it("α17: SHIM http-serializer line 1 exact literal — JSDoc canonical home comment", () => {
-    const lines = readFileSync(SHIM_SERIALIZER, "utf-8").split("\n");
-    expect(lines[0]).toBe(
-      "/** Re-exports moved to hex (§13.X canonical home). */",
-    );
+// ── α17–α20: SHIM features/shared/http-error-serializer.ts RETIRED (physically deleted) ─
+//
+// INVERTED at http-error-serializer-cutover Batch 2 (RETIREMENT). Originally these
+// four cases HARD-PINNED the 2-line re-export shim's content shape (line 1
+// JSDoc canonical-home comment, line 2 `export *`, exact 2-line length, no
+// `^export (function|const)` declaration). Batch 1 repointed the sole remaining
+// consumer to the hex (@/modules/shared/presentation/http-error-serializer);
+// Batch 2 DELETES the dead shim. `readFileSync` on a deleted file throws ENOENT,
+// so each content sentinel re-inverts to a single absence sentinel: the file
+// must NOT exist. Mirrors the α13–α16 middleware delete + absence-sentinel
+// retirement convention above.
+describe("α17–α20 features/shared/http-error-serializer.ts RETIRED — shim physically deleted", () => {
+  it("α17: SHIM http-serializer physically deleted — no JSDoc canonical-home line 1 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_SERIALIZER)).toBe(false);
   });
 
-  it("α18: SHIM http-serializer line 2 exact literal — export * re-export", () => {
-    const lines = readFileSync(SHIM_SERIALIZER, "utf-8").split("\n");
-    expect(lines[1]).toBe(
-      'export * from "@/modules/shared/presentation/http-error-serializer";',
-    );
+  it("α18: SHIM http-serializer physically deleted — no `export *` re-export line 2 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_SERIALIZER)).toBe(false);
   });
 
-  it("α19: SHIM http-serializer has exactly 2 lines + trailing newline (line[2] empty)", () => {
-    const lines = readFileSync(SHIM_SERIALIZER, "utf-8").split("\n");
-    expect(lines.length).toBe(3);
-    expect(lines[2]).toBe("");
+  it("α19: SHIM http-serializer physically deleted — no 2-line shim body possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_SERIALIZER)).toBe(false);
   });
 
-  it("α20: SHIM http-serializer has no ^export (function|const) (absence sentinel)", () => {
-    const content = readFileSync(SHIM_SERIALIZER, "utf-8");
-    expect(content).not.toMatch(/^export (function|const)/m);
+  it("α20: SHIM http-serializer physically deleted — no `^export (function|const)` declaration possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_SERIALIZER)).toBe(false);
   });
 });
 
