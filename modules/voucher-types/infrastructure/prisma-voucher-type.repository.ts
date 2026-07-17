@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { Prisma, PrismaClient } from "@/generated/prisma/client";
-import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
+import { isPrismaUniqueViolation } from "@/modules/shared/infrastructure/prisma-errors";
 import type {
   VoucherTypeRepository,
   ListVoucherTypesOptions,

@@ -1,7 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { isPrismaUniqueViolation } from "@/features/shared/prisma-errors";
+import { isPrismaUniqueViolation } from "@/modules/shared/infrastructure/prisma-errors";
 import type { FiscalPeriodRepository } from "../domain/fiscal-period.repository";
 import { FiscalPeriod } from "../domain/fiscal-period.entity";
 import { MonthAlreadyExists } from "../domain/errors/fiscal-period-errors";
