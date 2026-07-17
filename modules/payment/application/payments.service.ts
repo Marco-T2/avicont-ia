@@ -1,5 +1,5 @@
 import "server-only";
-import { withAuditTx } from "@/features/shared/audit-tx";
+import { withAuditTx } from "@/modules/shared/infrastructure/audit-tx";
 // Reuse the shared LOCKED-edit helper (REQ-A6) — single source of truth for
 // role + period + justification length validation.
 import { validateLockedEdit } from "@/modules/accounting/domain/document-lifecycle";

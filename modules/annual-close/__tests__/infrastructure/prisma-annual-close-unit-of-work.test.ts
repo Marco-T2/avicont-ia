@@ -22,7 +22,7 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const mockWithAuditTx = vi.hoisted(() => vi.fn());
 
-vi.mock("@/features/shared/audit-tx", () => ({
+vi.mock("@/modules/shared/infrastructure/audit-tx", () => ({
   withAuditTx: mockWithAuditTx,
 }));
 

@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 
-import { withAuditTx } from "@/features/shared/audit-tx";
+import { withAuditTx } from "@/modules/shared/infrastructure/audit-tx";
 
 import type {
   AuditContext,

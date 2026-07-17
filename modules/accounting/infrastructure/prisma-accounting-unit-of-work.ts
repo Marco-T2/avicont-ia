@@ -1,6 +1,6 @@
 import "server-only";
 
-import { withAuditTx } from "@/features/shared/audit-tx";
+import { withAuditTx } from "@/modules/shared/infrastructure/audit-tx";
 import { PrismaFiscalPeriodsTxRepo } from "@/modules/shared/infrastructure/prisma-fiscal-periods-tx.repo";
 import type { AuditContext } from "@/modules/shared/domain/ports/unit-of-work";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";

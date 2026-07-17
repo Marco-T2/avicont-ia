@@ -2,7 +2,7 @@ import "server-only";
 
 import type { PrismaClient } from "@/generated/prisma/client";
 
-import { withAuditTx } from "@/features/shared/audit-tx";
+import { withAuditTx } from "@/modules/shared/infrastructure/audit-tx";
 import { PrismaAccountingReaderAdapter } from "@/modules/monthly-close/infrastructure/prisma-accounting-reader.adapter";
 import { PrismaPeriodLockingWriterAdapter } from "@/modules/monthly-close/infrastructure/prisma-period-locking-writer.adapter";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";

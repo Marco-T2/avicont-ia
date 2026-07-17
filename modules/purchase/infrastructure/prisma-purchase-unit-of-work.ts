@@ -1,7 +1,7 @@
 import "server-only";
 
 import type { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
-import { withAuditTx } from "@/features/shared/audit-tx";
+import { withAuditTx } from "@/modules/shared/infrastructure/audit-tx";
 import type { JournalEntriesReadPort } from "@/modules/accounting/domain/ports/journal-entries-read.port";
 import { PrismaAccountBalancesRepo } from "@/modules/accounting/infrastructure/prisma-account-balances.repo";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";

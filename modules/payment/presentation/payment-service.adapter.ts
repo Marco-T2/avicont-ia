@@ -3,7 +3,7 @@ import { makePaymentsService, makePaymentReader } from "./composition-root";
 import type { PaymentWithRelationsReaderPort } from "../domain/ports/payment-with-relations-reader.port";
 import { PaymentNotFound } from "../domain/errors/payment-errors";
 import type { PaymentsService as InnerPaymentsService } from "../application/payments.service";
-import type { WithCorrelation } from "@/features/shared/audit-tx";
+import type { WithCorrelation } from "@/modules/shared/infrastructure/audit-tx";
 import type { PaymentWithRelations } from "./dto/payment-with-relations";
 import type {
   CreatePaymentInput,

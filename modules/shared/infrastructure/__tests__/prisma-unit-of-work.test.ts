@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-import * as auditTxModule from "@/features/shared/audit-tx";
+import * as auditTxModule from "@/modules/shared/infrastructure/audit-tx";
 
 import {
   PrismaUnitOfWork,
