@@ -1,5 +1,5 @@
 import "server-only";
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import { Prisma } from "@/generated/prisma/client";
 import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type {

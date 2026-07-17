@@ -1,6 +1,6 @@
 import "server-only";
 import Decimal from "decimal.js";
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type { AccountSubtype } from "@/generated/prisma/client";
 import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type {
@@ -21,7 +21,7 @@ import type { InitialBalanceQueryPort } from "../domain/initial-balance.ports";
  * that never cross the port boundary. Domain imports come directly from
  * `../domain/initial-balance.types`.
  *
- * **Shared-dep carry**: `BaseRepository` from `@/features/shared/base.repository`
+ * **Shared-dep carry**: `BaseRepository` from `@/modules/shared/infrastructure/base.repository`
  * is a shared infrastructure class (NOT under features/accounting/initial-balance/)
  * and is NOT deleted at C5. Accepted carry per design §10.
  *

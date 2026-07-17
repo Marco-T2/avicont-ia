@@ -5,7 +5,7 @@
  * no validation. The service layer owns the domain rules.
  */
 import "server-only";
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type { CustomRole, Prisma } from "@/generated/prisma/client";
 import type {
   RolesRepositoryPort,

@@ -4,10 +4,9 @@
  * R5 isolation: this is the Prisma-bearing layer for documents. NO server-only
  * marker here (REQ-005 NEGATIVE — that concern is carried by presentation/server.ts).
  *
- * Extends BaseRepository (canonical at @/modules/shared/infrastructure/base.repository
- * via the @/features/shared/base.repository SHIM).
+ * Extends BaseRepository (canonical at @/modules/shared/infrastructure/base.repository).
  */
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type { Prisma } from "@/generated/prisma/client";
 import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 import type {

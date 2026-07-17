@@ -1,4 +1,4 @@
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import Decimal from "decimal.js";
 import { FINALIZED_JE_STATUSES_SQL } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
 import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";

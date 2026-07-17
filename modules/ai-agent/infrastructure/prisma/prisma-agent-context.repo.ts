@@ -1,6 +1,6 @@
 import "server-only";
 import { formatDateBO } from "@/lib/date-utils";
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type {
   ActiveLot,
   AgentContextReaderPort,

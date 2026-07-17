@@ -1,5 +1,5 @@
 import "server-only";
-import { BaseRepository } from "@/features/shared/base.repository";
+import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type { Organization, OrganizationMember, Prisma } from "@/generated/prisma/client";
 import type {
   AddMemberInput,
