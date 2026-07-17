@@ -155,36 +155,27 @@ describe("α7–α13 hex audit-tx.ts content sentinels", () => {
   });
 });
 
-// ── α14–α18: SHIM features/shared/audit-context.ts sentinels ─────────────────
+// ── α14–α18: SHIM features/shared/audit-context.ts RETIRED (physically deleted) ─
 
-describe("α14–α18 features/shared/audit-context.ts is 2-line Option B SHIM", () => {
-  it("α14: SHIM audit-context line 1 exact literal — JSDoc canonical home comment", () => {
-    const lines = readFileSync(SHIM_AUDIT_CTX, "utf-8").split("\n");
-    expect(lines[0]).toMatch(/^\/\*\*/);
+describe("α14–α18 features/shared/audit-context.ts RETIRED — shim physically deleted", () => {
+  it("α14: SHIM audit-context physically deleted — no JSDoc canonical-home line 1 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_AUDIT_CTX)).toBe(false);
   });
 
-  it("α15: SHIM audit-context contains named export { setAuditContext } from @/modules/shared/infrastructure/audit-context", () => {
-    const content = readFileSync(SHIM_AUDIT_CTX, "utf-8");
-    expect(content).toContain(
-      'export { setAuditContext } from "@/modules/shared/infrastructure/audit-context"',
-    );
+  it("α15: SHIM audit-context physically deleted — no named `export { setAuditContext }` re-export possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_AUDIT_CTX)).toBe(false);
   });
 
-  it("α16: SHIM audit-context has exactly 2 non-empty lines + trailing newline (line[2] empty)", () => {
-    const lines = readFileSync(SHIM_AUDIT_CTX, "utf-8").split("\n");
-    // 2 lines + trailing newline → split produces ["line1", "line2", ""]
-    expect(lines.length).toBe(3);
-    expect(lines[2]).toBe("");
+  it("α16: SHIM audit-context physically deleted — no 2-line shim body possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_AUDIT_CTX)).toBe(false);
   });
 
-  it("α17: SHIM audit-context has no ^export (async function|function|class) (absence sentinel)", () => {
-    const content = readFileSync(SHIM_AUDIT_CTX, "utf-8");
-    expect(content).not.toMatch(/^export (async function|function|class)/m);
+  it("α17: SHIM audit-context physically deleted — no `^export` re-export possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_AUDIT_CTX)).toBe(false);
   });
 
-  it("α18: SHIM audit-context has no export * (named re-export invariant — Option B divergence)", () => {
-    const content = readFileSync(SHIM_AUDIT_CTX, "utf-8");
-    expect(content).not.toMatch(/export \*/);
+  it("α18: SHIM audit-context physically deleted — no `export *` re-export possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_AUDIT_CTX)).toBe(false);
   });
 });
 
