@@ -28,6 +28,11 @@
  * BaseRepository re-export now resolves directly to the hex canonical home).
  * Mirrors the sub-POC #1 middleware α13–α16 absence pattern.
  *
+ * Retirement addendum (α22–α25): absence sentinels for the retired SHIM
+ * features/shared/prisma-errors.ts (physically deleted at cutover — the
+ * isPrismaUniqueViolation re-export now resolves directly to the hex canonical
+ * home modules/shared/infrastructure/prisma-errors.ts). Mirrors α18–α21.
+ *
  * Paired sister: poc-shared-audit (sub-POC #3) — SHA 69178f3f
  * modules/shared/infrastructure/__tests__/c1-shape.poc-shared-audit.test.ts
  * [[paired_sister_default_no_surface]] — applied with Option A SHIM restoration:
@@ -50,6 +55,7 @@ const HEX_PRISMA_ERRORS = join(
   "modules/shared/infrastructure/prisma-errors.ts",
 );
 const SHIM_BASE_REPO = join(ROOT, "features/shared/base.repository.ts");
+const SHIM_PRISMA_ERRORS = join(ROOT, "features/shared/prisma-errors.ts");
 
 // ── α1: hex base.repository existence ────────────────────────────────────────
 
@@ -198,5 +204,25 @@ describe("α18–α21 features/shared/base.repository.ts RETIRED — shim physic
 
   it("α21: SHIM base.repository physically deleted — no `^export` re-export possible (absence sentinel)", () => {
     expect(existsSync(SHIM_BASE_REPO)).toBe(false);
+  });
+});
+
+// ── α22–α25: SHIM features/shared/prisma-errors.ts RETIRED (physically deleted) ─
+
+describe("α22–α25 features/shared/prisma-errors.ts RETIRED — shim physically deleted", () => {
+  it("α22: SHIM prisma-errors physically deleted — no JSDoc canonical-home line 1 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_PRISMA_ERRORS)).toBe(false);
+  });
+
+  it("α23: SHIM prisma-errors physically deleted — no `export *` re-export line 2 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_PRISMA_ERRORS)).toBe(false);
+  });
+
+  it("α24: SHIM prisma-errors physically deleted — no 2-line shim body possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_PRISMA_ERRORS)).toBe(false);
+  });
+
+  it("α25: SHIM prisma-errors physically deleted — no `^export` re-export possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_PRISMA_ERRORS)).toBe(false);
   });
 });
