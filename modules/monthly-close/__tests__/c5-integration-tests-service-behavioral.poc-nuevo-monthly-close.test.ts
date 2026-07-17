@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { setAuditContext } from "@/features/shared/audit-context";
+import { setAuditContext } from "@/modules/shared/infrastructure/audit-context";
 import { prisma } from "@/lib/prisma";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 

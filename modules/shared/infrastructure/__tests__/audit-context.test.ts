@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import type { Prisma } from "@/generated/prisma/client";
-import { setAuditContext } from "@/features/shared/audit-context";
+import { setAuditContext } from "@/modules/shared/infrastructure/audit-context";
 
 describe("setAuditContext", () => {
   let executeRawUnsafe: ReturnType<typeof vi.fn>;

@@ -22,7 +22,7 @@
  * Read-only sobre data existente (busca; no modifica accounts/voucherTypes).
  */
 import { prisma } from "@/lib/prisma";
-import { setAuditContext } from "@/features/shared/audit-context";
+import { setAuditContext } from "@/modules/shared/infrastructure/audit-context";
 
 async function main() {
   const orgSlug = process.argv[2];
