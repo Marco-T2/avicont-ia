@@ -22,7 +22,7 @@ import {
   type DivergentState,
   type ExternalSyncErrorDetails,
 } from "@/features/shared/errors";
-import { handleError } from "@/features/shared/http-error-serializer";
+import { handleError } from "@/modules/shared/presentation/http-error-serializer";
 
 describe("ExternalSyncError — S-MCS.4-1 (503 class, code constant)", () => {
   const divergentState: DivergentState = {
