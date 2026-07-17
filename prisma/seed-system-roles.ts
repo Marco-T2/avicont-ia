@@ -16,7 +16,7 @@ import {
   type SystemRole,
   type Resource,
   type PostableResource,
-} from "@/features/permissions";
+} from "@/modules/permissions/domain/permissions";
 
 /**
  * Build the 5 system role payloads for a given orgId.

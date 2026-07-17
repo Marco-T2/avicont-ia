@@ -1,5 +1,5 @@
 import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
-import { PERMISSIONS_READ, type Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";
 import { buildWorksheet } from "../domain/worksheet.builder";
 import type { WorksheetFilters, WorksheetReport } from "../domain/worksheet.types";

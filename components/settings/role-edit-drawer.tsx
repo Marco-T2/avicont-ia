@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { Pencil, Eye, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import type { Resource, PostableResource } from "@/features/permissions";
+import type { Resource, PostableResource } from "@/modules/permissions/domain/permissions";
 import { MODULES } from "@/components/sidebar/modules/registry";
 import { RolesMatrixGrouped } from "@/components/settings/roles-matrix-grouped";
 import { MatrixWarnings } from "@/components/settings/matrix-warnings";

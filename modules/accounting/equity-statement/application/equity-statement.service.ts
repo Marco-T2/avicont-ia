@@ -1,5 +1,5 @@
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
-import { PERMISSIONS_READ, type Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import { addUTCDays } from "@/lib/date-utils";
 import type { EquityStatementQueryPort } from "../domain/ports/equity-statement-query.port";
 import type { EquityOrgMetadata } from "../domain/ports/equity-statement-query.port";

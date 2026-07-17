@@ -2,7 +2,7 @@ import type {
   ClientMatrix,
   ClientMatrixSnapshot,
 } from "@/components/common/roles-matrix-provider";
-import type { Resource } from "@/features/permissions";
+import type { Resource } from "@/modules/permissions/domain/permissions";
 import type { ModuleId } from "./registry";
 
 export const ACCOUNTING_RESOURCES: Resource[] = [

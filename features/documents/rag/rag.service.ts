@@ -1,5 +1,5 @@
 import "server-only";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 import { EmbeddingService } from "./embedding.service";
 import { VectorRepository } from "./vector.repository";
 import { chunkText } from "./chunking";

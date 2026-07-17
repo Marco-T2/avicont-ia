@@ -11,7 +11,7 @@ import {
   History,
   type LucideIcon,
 } from "lucide-react";
-import type { Resource } from "@/features/permissions";
+import type { Resource } from "@/modules/permissions/domain/permissions";
 
 /**
  * Card definition for the settings hub page.

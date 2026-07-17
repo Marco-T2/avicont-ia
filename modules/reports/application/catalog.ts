@@ -7,7 +7,7 @@
 // cada reporte se implemente. El type union conserva "planned" | "hidden"
 // para soportar reactivación sin tocar contratos.
 
-import type { Resource } from "@/features/permissions";
+import type { Resource } from "@/modules/permissions/domain/permissions";
 
 export type ReportStatus = "available" | "planned" | "hidden";
 

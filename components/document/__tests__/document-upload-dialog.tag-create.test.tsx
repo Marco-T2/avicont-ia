@@ -30,8 +30,8 @@ vi.mock("sonner", () => ({
   toast: { success: vi.fn(), error: vi.fn() },
 }));
 
-vi.mock("@/features/permissions", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/permissions")>();
+vi.mock("@/modules/permissions/domain/permissions", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/permissions/domain/permissions")>();
   return {
     ...actual,
     getUploadScopes: () => ["ORGANIZATION", "ACCOUNTING", "FARM"],

@@ -17,7 +17,7 @@ import {
   canUploadToScope,
   getRagScopes,
   type DocumentScope,
-} from "@/features/permissions";
+} from "@/modules/permissions/domain/permissions";
 // cross-module canonical-bypass REQ-004 — rag/ stays at features path (poc-rag-hex)
 import { RagService } from "@/features/documents/rag/server";
 import type { BlobStoragePort } from "@/modules/documents/domain/ports/blob-storage.port";

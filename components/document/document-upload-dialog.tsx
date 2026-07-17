@@ -25,7 +25,7 @@ import {
 import { Upload, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 import { allowedTypes } from "@/app/data/data";
-import { getUploadScopes, type DocumentScope } from "@/features/permissions";
+import { getUploadScopes, type DocumentScope } from "@/modules/permissions/domain/permissions";
 
 interface OrgTag {
   id: string;

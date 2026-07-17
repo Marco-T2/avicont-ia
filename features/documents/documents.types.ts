@@ -1,5 +1,5 @@
 import type { Document as PrismaDocument } from "@/generated/prisma/client";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 
 // ── Domain types ──
 

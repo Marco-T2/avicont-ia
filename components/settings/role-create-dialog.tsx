@@ -22,7 +22,7 @@ import {
 import { Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { slugify } from "@/modules/organizations/presentation";
-import { SYSTEM_ROLES } from "@/features/permissions";
+import { SYSTEM_ROLES } from "@/modules/permissions/domain/permissions";
 
 interface RoleCreateDialogProps {
   orgSlug: string;

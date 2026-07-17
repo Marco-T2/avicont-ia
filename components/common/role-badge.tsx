@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge";
 import { useOrgRole } from "./use-org-role";
-import type { Role } from "@/features/permissions";
+import type { Role } from "@/modules/permissions/domain/permissions";
 
 const ROLE_LABELS: Record<Role, string> = {
   owner: "Owner",

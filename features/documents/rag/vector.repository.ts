@@ -1,6 +1,6 @@
 import "server-only";
 import { BaseRepository } from "@/features/shared/base.repository";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 
 interface ChunkInput {
   documentId: string;

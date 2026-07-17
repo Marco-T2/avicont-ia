@@ -7,7 +7,7 @@
  * Zero hardcoded module names — new modules auto-appear.
  */
 import type { Module } from "@/components/sidebar/modules/registry";
-import type { Resource } from "@/features/permissions";
+import type { Resource } from "@/modules/permissions/domain/permissions";
 
 type MatrixGroup = {
   label: string;

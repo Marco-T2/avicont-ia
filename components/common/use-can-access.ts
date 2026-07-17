@@ -1,6 +1,6 @@
 "use client";
 
-import type { Action, Resource } from "@/features/permissions";
+import type { Action, Resource } from "@/modules/permissions/domain/permissions";
 import { useRolesMatrix } from "./roles-matrix-provider";
 
 /**

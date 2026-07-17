@@ -17,7 +17,7 @@
  */
 
 import type { ReactNode } from "react";
-import type { Resource } from "@/features/permissions";
+import type { Resource } from "@/modules/permissions/domain/permissions";
 
 export type ModuleId = "contabilidad" | "granjas";
 

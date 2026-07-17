@@ -3,7 +3,7 @@ import type {
   DocumentWithRelations,
 } from "@/modules/documents/domain/documents.types";
 import type { DocumentsRepositoryPort } from "@/modules/documents/application/documents.service";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 
 /**
  * Minimal in-memory implementation of DocumentsRepositoryPort for testing.

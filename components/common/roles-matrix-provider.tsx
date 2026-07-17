@@ -5,7 +5,7 @@ import type {
   Action,
   PostableResource,
   Resource,
-} from "@/features/permissions";
+} from "@/modules/permissions/domain/permissions";
 
 /**
  * ClientMatrixSnapshot — serializable shape fetched server-side and passed

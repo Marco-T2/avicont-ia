@@ -8,7 +8,7 @@
  *   - RESERVED_SLUG (422 ValidationError) -- reserved slug on CREATE
  *   - SLUG_TAKEN (409 ConflictError) -- collision could not be resolved with -2..-99
  */
-import { isSystemRole } from "@/features/permissions";
+import { isSystemRole } from "@/modules/permissions/domain/permissions";
 import {
   ValidationError,
   ConflictError,

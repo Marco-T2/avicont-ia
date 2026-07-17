@@ -24,7 +24,7 @@
 
 import { Bot, FileText } from "lucide-react";
 import { useRolesMatrix } from "@/components/common/roles-matrix-provider";
-import type { Resource } from "@/features/permissions";
+import type { Resource } from "@/modules/permissions/domain/permissions";
 import { NavItem } from "./nav-item";
 
 interface CrossModuleNavProps {

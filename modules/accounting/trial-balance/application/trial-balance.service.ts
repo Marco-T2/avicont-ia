@@ -1,5 +1,5 @@
 import { ForbiddenError, ValidationError } from "@/features/shared/errors";
-import { PERMISSIONS_READ, type Role } from "@/features/permissions";
+import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import type { TrialBalanceQueryPort } from "../domain/ports/trial-balance-query.port";
 import { buildTrialBalance } from "../domain/trial-balance.builder";
 import type { TrialBalanceFilters, TrialBalanceReport } from "../domain/trial-balance.types";

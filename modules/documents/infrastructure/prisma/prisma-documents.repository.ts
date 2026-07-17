@@ -9,7 +9,7 @@
  */
 import { BaseRepository } from "@/features/shared/base.repository";
 import type { Prisma } from "@/generated/prisma/client";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 import type {
   CreateDocumentInput,
   DocumentWithRelations,

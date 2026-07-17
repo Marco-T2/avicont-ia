@@ -38,8 +38,8 @@ vi.mock("sonner", () => ({
 // ── Permissions: admin role can upload to ORGANIZATION ──────────────────────
 // Stubbing avoids dragging the @clerk server module path into jsdom.
 
-vi.mock("@/features/permissions", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/features/permissions")>();
+vi.mock("@/modules/permissions/domain/permissions", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/permissions/domain/permissions")>();
   return {
     ...actual,
     getUploadScopes: () => ["ORGANIZATION", "ACCOUNTING", "FARM"],

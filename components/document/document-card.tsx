@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { Document } from "@/types";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 
 const SCOPE_LABELS: Record<DocumentScope, string> = {
   ORGANIZATION: "Organización",

@@ -6,7 +6,7 @@
  * features/documents/documents.types.ts; relocated here we re-express the
  * Document shape inline so the domain remains framework-agnostic.
  */
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 
 // ── Domain types ──
 

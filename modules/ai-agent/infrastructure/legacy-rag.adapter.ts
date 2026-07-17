@@ -5,7 +5,7 @@ import type {
   RagResult,
   RagScope,
 } from "../domain/ports/rag.port";
-import type { DocumentScope } from "@/features/permissions";
+import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
 
 /**
