@@ -1,5 +1,5 @@
 import "server-only";
-import { requireAuth } from "@/features/shared/middleware";
+import { requireAuth } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { makeEnsureFromClerkService } from "@/modules/organizations/presentation/composition-root";
 import { ensureOrgSeeded, getMatrix } from "../infrastructure/permissions.cache";

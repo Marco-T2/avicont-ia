@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";

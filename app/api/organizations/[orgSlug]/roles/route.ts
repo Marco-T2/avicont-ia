@@ -14,7 +14,7 @@
  *   matters on UPDATE of the caller's own role), so we still pass a caller
  *   context through for consistency with the service signature.
  */
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { z } from "zod";

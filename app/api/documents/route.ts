@@ -1,4 +1,4 @@
-import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/modules/shared/presentation/middleware";
 import {
   makeDocumentsService,
   createDocumentSchema,

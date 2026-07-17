@@ -10,7 +10,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock Clerk auth
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: vi.fn(),
   handleError: vi.fn((err: unknown) =>
     Response.json({ error: String(err) }, { status: 500 }),
@@ -83,7 +83,7 @@ vi.mock("@/lib/prisma", () => {
 });
 
 import { POST } from "../route";
-import { requireAuth } from "@/features/shared/middleware";
+import { requireAuth } from "@/modules/shared/presentation/middleware";
 import { prisma } from "@/lib/prisma";
 import { SYSTEM_ROLES } from "@/modules/permissions/domain/permissions";
 

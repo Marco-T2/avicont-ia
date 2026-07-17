@@ -44,7 +44,7 @@ vi.setConfig({ testTimeout: 15000 });
 // ─── Module mocks (hoisted) ─────────────────────────────────────────────────
 
 // `handleError` passthrough (same behavior as PR5.2 test) so AppError → 403.
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: vi.fn(),
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),

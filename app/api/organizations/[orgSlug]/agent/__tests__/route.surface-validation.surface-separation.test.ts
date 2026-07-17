@@ -34,7 +34,7 @@ const {
   mockRateLimitCheck: vi.fn(),
 }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: mockRequireAuth,
   handleError: vi.fn((err: unknown) => {
     if (

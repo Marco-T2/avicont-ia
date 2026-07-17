@@ -21,7 +21,7 @@
  * "Tag con ese nombre ya existe" (ConflictError appends "ya existe" to the
  * resource string passed to its constructor).
  */
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makeTagsService } from "@/modules/tags/presentation/server";
 import { ConflictError } from "@/features/shared/errors";

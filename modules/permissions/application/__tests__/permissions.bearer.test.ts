@@ -22,7 +22,7 @@ const { mockRequireAuth, mockEnsure, mockRequireOrgAccess, mockRequireRole } =
 
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: mockRequireAuth,
 }));
 

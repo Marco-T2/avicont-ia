@@ -1,2 +1,2 @@
 export * from "./errors";
-export * from "./middleware";
+export * from "@/modules/shared/presentation/middleware";

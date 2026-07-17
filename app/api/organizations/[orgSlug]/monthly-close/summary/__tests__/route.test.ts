@@ -30,7 +30,7 @@ vi.mock("@/modules/monthly-close/presentation/server", async (importOriginal) =>
   makeMonthlyCloseService: vi.fn().mockImplementation(() => ({ getSummary: mockGetSummary })),
 }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   handleError: vi.fn((err: unknown) => {
     if (err != null && typeof err === "object" && "statusCode" in err) {
       const e = err as { message: string; code?: string; statusCode: number };

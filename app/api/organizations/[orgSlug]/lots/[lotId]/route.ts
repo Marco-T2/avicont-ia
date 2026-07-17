@@ -1,7 +1,7 @@
 // RBAC-EXCEPTION: Auth-only via requireOrgAccess; farms/lots/expenses/mortality
 // NOT in frozen Resource union. Consistent with existing
 // /expenses/[expenseId] DELETE and prior /lots/[lotId] PATCH (deactivate).
-import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
 import {

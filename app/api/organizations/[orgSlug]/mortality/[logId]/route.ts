@@ -1,6 +1,6 @@
 // RBAC-EXCEPTION: Auth-only via requireOrgAccess; farms/lots/expenses/mortality
 // NOT in frozen Resource union. Consistent with sibling mortality + lots routes.
-import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import {
   makeMortalityService,

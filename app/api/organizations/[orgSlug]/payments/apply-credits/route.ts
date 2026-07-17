@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { PaymentService } from "@/modules/payment/presentation/server";
 import { PAYMENT_CREDIT_INVALID_TARGET } from "@/modules/shared/domain/errors";

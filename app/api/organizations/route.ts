@@ -1,4 +1,4 @@
-import { requireAuth, handleError } from "@/features/shared/middleware";
+import { requireAuth, handleError } from "@/modules/shared/presentation/middleware";
 import { makeOrganizationsService } from "@/modules/organizations/presentation/server";
 
 const service = makeOrganizationsService();

@@ -1,4 +1,4 @@
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
 import { createAccountSchema } from "@/modules/accounting/presentation/validation";

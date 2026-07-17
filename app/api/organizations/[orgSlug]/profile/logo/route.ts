@@ -1,5 +1,5 @@
 import { put } from "@vercel/blob";
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { AppError } from "@/features/shared/errors";
 import { requirePermission } from "@/modules/permissions/application/server";
 import {

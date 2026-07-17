@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ─── Module mocks (hoisted before route import) ─────────────────────────────
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: vi.fn(),
   handleError: vi.fn((err: unknown) => {
     if (

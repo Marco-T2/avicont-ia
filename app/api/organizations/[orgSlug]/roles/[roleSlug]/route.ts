@@ -28,7 +28,7 @@
  *   It is per-process state used inside the same request; we clear the entry
  *   right after the service call completes.
  */
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makeRolesService } from "@/modules/organizations/presentation/server";
 import { z } from "zod";

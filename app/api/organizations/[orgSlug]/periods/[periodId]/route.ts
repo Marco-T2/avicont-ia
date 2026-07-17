@@ -1,4 +1,4 @@
-import { handleError } from "@/features/shared/middleware";
+import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { LEGACY_CLOSE_REMOVED } from "@/features/shared/errors";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";

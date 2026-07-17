@@ -106,7 +106,7 @@ describe("POC accounting-initial-balance-hex C4 — atomic consumer cutover", ()
 
   // ── Block 2: vi.mock rewrites (route.test.ts) ─────────────────────────────
   // [[cross_module_boundary_mock_target_rewrite]]: 3 vi.mock rewrites atomic (IB paths)
-  // 3 vi.mocks STAY: @/modules/permissions/application/server, @/features/shared/middleware,
+  // 3 vi.mocks STAY: @/modules/permissions/application/server, @/modules/shared/presentation/middleware,
   //   @/modules/accounting/financial-statements/presentation/server
 
   it("α74: initial-balance/__tests__/route.test.ts does NOT contain features/accounting/initial-balance", () => {

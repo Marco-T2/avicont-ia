@@ -50,7 +50,7 @@ vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   handleError: vi.fn((err: unknown) => {
     if (
       err != null &&

@@ -25,7 +25,7 @@ const { mockLegacyCreateEntry, mockLegacyCreateAndPost, mockLegacyList } =
     mockLegacyList: vi.fn(),
   }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   handleError: vi.fn((err: unknown) => {
     if (err != null && typeof err === "object" && "statusCode" in err) {
       const e = err as { message: string; code?: string; statusCode: number };

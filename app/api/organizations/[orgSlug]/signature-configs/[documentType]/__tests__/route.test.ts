@@ -15,7 +15,7 @@ vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: vi.fn(),
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
@@ -63,7 +63,7 @@ vi.mock("@/modules/document-signature-config/presentation/server", async () => {
   };
 });
 
-import { requireAuth } from "@/features/shared/middleware";
+import { requireAuth } from "@/modules/shared/presentation/middleware";
 vi.mock("@/modules/organizations/presentation/server", () => ({
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),

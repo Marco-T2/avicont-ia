@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ─── Module mocks (hoisted) ─────────────────────────────────────────────────
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: vi.fn(),
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),

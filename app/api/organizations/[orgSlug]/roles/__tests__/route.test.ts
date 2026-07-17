@@ -16,7 +16,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ─── Module mocks (hoisted before route import) ─────────────────────────────
 
-vi.mock("@/features/shared/middleware", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: vi.fn(),
   requireOrgAccess: vi.fn(),
   requireRole: vi.fn(),
@@ -75,7 +75,7 @@ vi.mock("@/modules/permissions/application/server", () => ({
 
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
-import { requireAuth } from "@/features/shared/middleware";
+import { requireAuth } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { requirePermission } from "@/modules/permissions/application/server";
 import {
