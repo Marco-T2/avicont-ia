@@ -139,33 +139,32 @@ describe("α10–α12 hex http-error-serializer.ts content sentinels", () => {
   });
 });
 
-// ── α13–α16: SHIM features/shared/middleware.ts sentinels ───────────────────
-
-describe("α13–α16 features/shared/middleware.ts is 2-line SHIM", () => {
-  it("α13: SHIM middleware line 1 exact literal — JSDoc canonical home comment", () => {
-    const lines = readFileSync(SHIM_MIDDLEWARE, "utf-8").split("\n");
-    expect(lines[0]).toBe(
-      "/** Re-exports moved to hex (§13.X canonical home). */",
-    );
+// ── α13–α16: SHIM features/shared/middleware.ts RETIRED (physically deleted) ─
+//
+// INVERTED at shared-middleware-cutover Batch 2 (RETIREMENT). Originally these
+// four cases HARD-PINNED the 2-line re-export shim's content shape (line 1
+// JSDoc canonical-home comment, line 2 `export *`, exact 2-line length, no
+// `^export` declaration). Batch 1 repointed all 127 consumers + the
+// features/shared barrel to the hex (@/modules/shared/presentation/middleware);
+// Batch 2 DELETES the dead shim. `readFileSync` on a deleted file throws ENOENT,
+// so each content sentinel re-inverts to a single absence sentinel: the file
+// must NOT exist. Mirrors the accounting/permissions delete + absence-sentinel
+// retirement convention (poc-legacy-retirement-shape Blocks A/C/D).
+describe("α13–α16 features/shared/middleware.ts RETIRED — shim physically deleted", () => {
+  it("α13: SHIM middleware physically deleted — no JSDoc canonical-home line 1 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_MIDDLEWARE)).toBe(false);
   });
 
-  it("α14: SHIM middleware line 2 exact literal — export * re-export", () => {
-    const lines = readFileSync(SHIM_MIDDLEWARE, "utf-8").split("\n");
-    expect(lines[1]).toBe(
-      'export * from "@/modules/shared/presentation/middleware";',
-    );
+  it("α14: SHIM middleware physically deleted — no `export *` re-export line 2 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_MIDDLEWARE)).toBe(false);
   });
 
-  it("α15: SHIM middleware has exactly 2 lines + trailing newline (line[2] empty)", () => {
-    const lines = readFileSync(SHIM_MIDDLEWARE, "utf-8").split("\n");
-    // 2 lines + trailing newline → split produces ["line1", "line2", ""]
-    expect(lines.length).toBe(3);
-    expect(lines[2]).toBe("");
+  it("α15: SHIM middleware physically deleted — no 2-line shim body possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_MIDDLEWARE)).toBe(false);
   });
 
-  it("α16: SHIM middleware has no ^export (async function|function|class) (absence sentinel)", () => {
-    const content = readFileSync(SHIM_MIDDLEWARE, "utf-8");
-    expect(content).not.toMatch(/^export (async function|function|class)/m);
+  it("α16: SHIM middleware physically deleted — no `^export` declaration possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_MIDDLEWARE)).toBe(false);
   });
 });
 
