@@ -23,6 +23,11 @@
  *
  * Gate: run pre-GREEN → 17/17α FAIL before proceeding to GREEN.
  *
+ * Retirement addendum (α18–α21): absence sentinels for the retired SHIM
+ * features/shared/base.repository.ts (physically deleted at cutover — the
+ * BaseRepository re-export now resolves directly to the hex canonical home).
+ * Mirrors the sub-POC #1 middleware α13–α16 absence pattern.
+ *
  * Paired sister: poc-shared-audit (sub-POC #3) — SHA 69178f3f
  * modules/shared/infrastructure/__tests__/c1-shape.poc-shared-audit.test.ts
  * [[paired_sister_default_no_surface]] — applied with Option A SHIM restoration:
@@ -44,6 +49,7 @@ const HEX_PRISMA_ERRORS = join(
   ROOT,
   "modules/shared/infrastructure/prisma-errors.ts",
 );
+const SHIM_BASE_REPO = join(ROOT, "features/shared/base.repository.ts");
 
 // ── α1: hex base.repository existence ────────────────────────────────────────
 
@@ -172,5 +178,25 @@ describe("α17 arch sentinel — hex base.repository.ts has no @/features/shared
   it("α17: hex base.repository.ts does NOT import from @/features/shared/", () => {
     const content = readFileSync(HEX_BASE_REPO, "utf-8");
     expect(content).not.toMatch(/from ['"]@\/features\/shared/);
+  });
+});
+
+// ── α18–α21: SHIM features/shared/base.repository.ts RETIRED (physically deleted) ─
+
+describe("α18–α21 features/shared/base.repository.ts RETIRED — shim physically deleted", () => {
+  it("α18: SHIM base.repository physically deleted — no JSDoc canonical-home line 1 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_BASE_REPO)).toBe(false);
+  });
+
+  it("α19: SHIM base.repository physically deleted — no `export *` re-export line 2 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_BASE_REPO)).toBe(false);
+  });
+
+  it("α20: SHIM base.repository physically deleted — no 2-line shim body possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_BASE_REPO)).toBe(false);
+  });
+
+  it("α21: SHIM base.repository physically deleted — no `^export` re-export possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_BASE_REPO)).toBe(false);
   });
 });

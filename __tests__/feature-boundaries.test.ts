@@ -11,8 +11,10 @@
  *  2. For each server feature, read its index.ts and parse the export identifiers.
  *  3. Assert that zero exported identifiers match /(Repository|Service)$/.
  *
- * This test starts RED for all unsplit barrels and turns GREEN feature-by-feature
- * as each batch (T1–T26) is applied.
+ * After base-repository-cutover, the last server file under `features/` was
+ * retired, so the set of "server features" is now EMPTY — the FMB.3 self-check
+ * asserts that empty end-state, and any regression (server code re-appearing under
+ * features/) makes it RED again with the offender names.
  */
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
@@ -143,8 +145,16 @@ function getServerFeatures(): Array<{ name: string; indexPath: string }> {
 describe("Feature Module Boundaries (REQ-FMB.3)", () => {
   const serverFeatures = getServerFeatures();
 
-  it("should detect at least one server feature to guard", () => {
-    expect(serverFeatures.length).toBeGreaterThan(0);
+  it("no features/ dir may co-locate server code with a client index.ts barrel", () => {
+    // Post base-repository-cutover invariant: NO features/ dir may still expose a
+    // client index.ts barrel while co-locating *.repository.ts / *.service.ts.
+    // Any offender must move its server code to modules/.
+    expect(
+      serverFeatures.map((f) => f.name),
+      `features/ dirs still co-locating server code with a client barrel: ` +
+        `${serverFeatures.map((f) => f.name).join(", ")}. ` +
+        `Move their server code to modules/.`,
+    ).toHaveLength(0);
   });
 
   for (const { name, indexPath } of serverFeatures) {
