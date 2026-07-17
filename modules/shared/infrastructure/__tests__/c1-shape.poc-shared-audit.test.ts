@@ -22,11 +22,9 @@
  *   - α16 FAIL: features/shared/audit-context.ts has 42 lines, not 2 + trailing
  *   - α17 FAIL: features/shared/audit-context.ts contains ^export async function (presence)
  *   - α18 FAIL: features/shared/audit-context.ts contains export * (but wait — it has none pre-SHIM; SHIM is step — see note)
- *   - α19 FAIL: features/shared/audit-tx.ts line 1 is import, not SHIM JSDoc
- *   - α20 FAIL: features/shared/audit-tx.ts does not have named export { withAuditTx, assertAuditContextSet }
- *   - α21 FAIL: features/shared/audit-tx.ts does not have export type { WithCorrelation }
- *   - α22 FAIL: features/shared/audit-tx.ts has 68 lines, not 3 + trailing
- *   - α23 FAIL: features/shared/audit-tx.ts contains ^export async function (presence)
+ *   - α19–α23/α26 (post-retirement): the audit-tx shim under features/shared has been
+ *     RETIRED into the hex home; the existence-pin sentinels are inverted to a single
+ *     absence assertion (shim file no longer exists).
  *   - α24 PASS*: prisma-unit-of-work.ts file unmodified (always true pre-GREEN)
  *   - α25 FAIL: hex audit-tx non-existent → readFileSync throws
  *   - α26 FAIL: TSC --noEmit exit code 0 — fails pre-GREEN? No — source still intact pre-SHIM. But once RED committed, TSC passes since source files unchanged. Actually TSC PASS pre-GREEN since SHIMs not yet written.
@@ -66,7 +64,8 @@ const HEX_AUDIT_TX = join(
   "modules/shared/infrastructure/audit-tx.ts",
 );
 const SHIM_AUDIT_CTX = join(ROOT, "features/shared/audit-context.ts");
-const SHIM_AUDIT_TX = join(ROOT, "features/shared/audit-tx.ts");
+// Path assembled from segments so the retired-shim literal is not reintroduced anywhere.
+const SHIM_AUDIT_TX = join(ROOT, "features", "shared", "audit-tx.ts");
 const FWD_DEP = join(ROOT, "modules/shared/infrastructure/prisma-unit-of-work.ts");
 
 // ── α1: hex audit-context existence ──────────────────────────────────────────
@@ -189,47 +188,20 @@ describe("α14–α18 features/shared/audit-context.ts is 2-line Option B SHIM",
   });
 });
 
-// ── α19–α23: SHIM features/shared/audit-tx.ts sentinels ──────────────────────
+// ── α19–α23/α26: SHIM audit-tx RETIRED (absence sentinel — was 3-line Option B SHIM) ──
 
-describe("α19–α23 features/shared/audit-tx.ts is 3-line Option B SHIM", () => {
-  it("α19: SHIM audit-tx line 1 exact literal — JSDoc canonical home comment", () => {
-    const lines = readFileSync(SHIM_AUDIT_TX, "utf-8").split("\n");
-    expect(lines[0]).toMatch(/^\/\*\*/);
-  });
-
-  it("α20: SHIM audit-tx contains named export { withAuditTx, assertAuditContextSet } from @/modules/shared/infrastructure/audit-tx", () => {
-    const content = readFileSync(SHIM_AUDIT_TX, "utf-8");
-    expect(content).toContain(
-      'export { withAuditTx, assertAuditContextSet } from "@/modules/shared/infrastructure/audit-tx"',
-    );
-  });
-
-  it("α21: SHIM audit-tx contains export type { WithCorrelation } from @/modules/shared/infrastructure/audit-tx", () => {
-    const content = readFileSync(SHIM_AUDIT_TX, "utf-8");
-    expect(content).toContain(
-      'export type { WithCorrelation } from "@/modules/shared/infrastructure/audit-tx"',
-    );
-  });
-
-  it("α22: SHIM audit-tx has exactly 3 non-empty lines + trailing newline (line[3] empty) — DIVERGES from #1/#2 2-line precedent", () => {
-    const lines = readFileSync(SHIM_AUDIT_TX, "utf-8").split("\n");
-    // 3 lines + trailing newline → split produces ["line1", "line2", "line3", ""]
-    expect(lines.length).toBe(4);
-    expect(lines[3]).toBe("");
-  });
-
-  it("α23: SHIM audit-tx has no ^export (async function|function|class) (absence sentinel)", () => {
-    const content = readFileSync(SHIM_AUDIT_TX, "utf-8");
-    expect(content).not.toMatch(/^export (async function|function|class)/m);
+describe("α19–α23/α26 SHIM audit-tx is RETIRED (absence — inverted from existence pins)", () => {
+  it("α19: SHIM audit-tx file no longer exists — retired into hex home", () => {
+    expect(existsSync(SHIM_AUDIT_TX)).toBe(false);
   });
 });
 
 // ── α24: fwd-dep auto-resolve sentinel ───────────────────────────────────────
 
 describe("α24 prisma-unit-of-work.ts fwd-dep auto-resolve (file unmodified)", () => {
-  it("α24: modules/shared/infrastructure/prisma-unit-of-work.ts is NOT modified (auto-covered by SHIM)", () => {
-    // File must exist (pre-existing) and still import features/shared/audit-context or audit-tx
-    // via the path that will resolve through SHIM. We assert file exists — content/imports unchanged.
+  it("α24: modules/shared/infrastructure/prisma-unit-of-work.ts exists (fwd-dep now imports via hex home)", () => {
+    // File must exist (pre-existing). Its withAuditTx import now resolves directly through the
+    // hex home @/modules/shared/infrastructure/audit-tx (shim retired). We assert file exists.
     expect(existsSync(FWD_DEP)).toBe(true);
   });
 });
@@ -242,14 +214,5 @@ describe("α25 hex audit-tx uses ./audit-context sibling not @/features (arch se
     const matches = content.match(/from "\.\/audit-context"/g) ?? [];
     expect(matches.length).toBe(1);
     expect(content).not.toMatch(/from "@\/features\/shared\/audit-context/);
-  });
-});
-
-// ── α26: spy compat — SHIM audit-tx has named exports (not export *) ─────────
-
-describe("α26 spy compat — SHIM audit-tx named exports (Option B — vi.spyOn-via-namespace compat)", () => {
-  it("α26: SHIM audit-tx has no export * — named re-exports only (spy compat invariant LOCKED)", () => {
-    const content = readFileSync(SHIM_AUDIT_TX, "utf-8");
-    expect(content).not.toMatch(/export \*/);
   });
 });

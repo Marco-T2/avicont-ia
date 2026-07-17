@@ -253,7 +253,7 @@
  *   - features/monthly-close/monthly-close.service.ts:135-230 (driver-anchored
  *     `close()` flow EXACT + `repo.transaction(cb, {timeout: 30_000})` legacy
  *     parity preservation Lock #5).
- *   - features/shared/audit-tx.ts:28-40 (`withAuditTx(repo, ctx, fn, options?:
+ *   - modules/shared/infrastructure/audit-tx.ts:28-40 (`withAuditTx(repo, ctx, fn, options?:
  *     {timeout?, maxWait?})` 4to arg signature canonical Lock #5 disponible
  *     consume legacy parity preservation).
  *   - modules/sale/infrastructure/prisma-sale-unit-of-work.ts (precedent EXACT
