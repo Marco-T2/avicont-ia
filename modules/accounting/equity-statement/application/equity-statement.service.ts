@@ -1,4 +1,4 @@
-import { ForbiddenError, ValidationError } from "@/features/shared/errors";
+import { ForbiddenError, ValidationError } from "@/modules/shared/domain/errors";
 import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import { addUTCDays } from "@/lib/date-utils";
 import type { EquityStatementQueryPort } from "../domain/ports/equity-statement-query.port";

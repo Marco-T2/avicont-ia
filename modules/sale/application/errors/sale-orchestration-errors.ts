@@ -9,7 +9,7 @@ import {
   SALE_INCOME_ACCOUNT_REQUIRED,
   SALE_INVALID_CONTACT_TYPE,
   ValidationError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export {
   FISCAL_PERIOD_CLOSED,
@@ -20,7 +20,7 @@ export {
   SALE_DATE_OUTSIDE_PERIOD,
   SALE_INCOME_ACCOUNT_REQUIRED,
   SALE_INVALID_CONTACT_TYPE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export class SaleContactNotClient extends ValidationError {
   constructor(contactType: string) {

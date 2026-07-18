@@ -2,7 +2,7 @@
  * RED test — ExternalSyncError class + EXTERNAL_SYNC_ERROR code constant.
  *
  * Expected failure mode at commit time:
- *   `SyntaxError: The requested module '@/features/shared/errors' does not
+ *   `SyntaxError: The requested module '@/modules/shared/domain/errors' does not
  *    provide an export named 'ExternalSyncError'` (and the same for
  *    `EXTERNAL_SYNC_ERROR`). The symbols do not yet exist in
  *    `features/shared/errors.ts`. T3 (GREEN) adds them; all assertions
@@ -21,7 +21,7 @@ import {
   EXTERNAL_SYNC_ERROR,
   type DivergentState,
   type ExternalSyncErrorDetails,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { handleError } from "@/modules/shared/presentation/http-error-serializer";
 
 describe("ExternalSyncError — S-MCS.4-1 (503 class, code constant)", () => {

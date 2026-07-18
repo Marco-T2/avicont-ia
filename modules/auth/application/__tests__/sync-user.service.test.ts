@@ -16,7 +16,7 @@
  *   - Assertions `rejects.toThrow` and `findOrCreate not called` both fail.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { AppError, NotFoundError } from "@/features/shared/errors";
+import { AppError, NotFoundError } from "@/modules/shared/domain/errors";
 
 const {
   mockResolveByClerkId,

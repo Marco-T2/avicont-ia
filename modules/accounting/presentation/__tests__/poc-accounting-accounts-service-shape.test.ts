@@ -36,7 +36,7 @@ const METHOD_NAMES = [
 const IMPORT_SENTINELS = [
   {
     label: "errors barrel (NotFoundError)",
-    regex: /^import\s+\{[^}]*NotFoundError[^}]*\}\s+from\s+"@\/features\/shared\/errors"/m,
+    regex: /^import\s+\{[^}]*NotFoundError[^}]*\}\s+from\s+"@\/modules\/shared\/domain\/errors"/m,
   },
   {
     label: "getNextCode from domain",

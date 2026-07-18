@@ -34,7 +34,7 @@ import {
   ROLE_HAS_MEMBERS,
   RESERVED_SLUG,
   SLUG_TAKEN,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // ────────────────────────────────────────────────────────────
 // Test helpers: build a service with injected mocks

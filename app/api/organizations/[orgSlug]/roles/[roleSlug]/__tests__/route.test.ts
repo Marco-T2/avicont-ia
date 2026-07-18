@@ -81,7 +81,7 @@ import {
   SYSTEM_ROLE_IMMUTABLE,
   SELF_LOCK_GUARD,
   ROLE_HAS_MEMBERS,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

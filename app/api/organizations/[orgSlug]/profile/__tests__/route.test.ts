@@ -88,7 +88,7 @@ import { requireOrgAccess, requireRole } from "@/modules/organizations/presentat
 import {
   UnauthorizedError,
   ForbiddenError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 const ORG_SLUG = "test-org";
 const ORG_ID = "org-test-id";

@@ -2,7 +2,7 @@ import {
   ForbiddenError,
   NotFoundError,
   POST_NOT_ALLOWED_FOR_ROLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { validateLockedEdit } from "../domain/document-lifecycle";
 import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
 import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";

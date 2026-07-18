@@ -2,7 +2,7 @@ import {
   ACCOUNT_NOT_POSTABLE,
   NotFoundError,
   ValidationError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import { Prisma } from "@/generated/prisma/client";
 import type { Journal } from "@/modules/accounting/domain/journal.entity";

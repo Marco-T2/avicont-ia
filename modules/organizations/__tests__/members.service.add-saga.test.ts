@@ -49,7 +49,7 @@ vi.mock("@clerk/nextjs/server", () => ({
 }));
 
 import { MembersService } from "../application/members.service";
-import { ExternalSyncError } from "@/features/shared/errors";
+import { ExternalSyncError } from "@/modules/shared/domain/errors";
 
 const ORG_ID = "org_test";
 const ORG = { id: ORG_ID, clerkOrgId: "clerk_org_test", name: "Test Org" };

@@ -72,7 +72,7 @@ export async function executeJournalEntryAiMode(
     import("../../domain/tools/surfaces/index.ts"),
     import("../../domain/prompts/journal-entry-ai.prompt.ts"),
     import("../tools/parse-operation.ts"),
-    import("@/features/shared/errors"),
+    import("@/modules/shared/domain/errors"),
     import("@/lib/logging/structured"),
   ]);
 

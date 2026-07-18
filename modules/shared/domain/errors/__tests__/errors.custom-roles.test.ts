@@ -19,7 +19,7 @@ import {
   SLUG_TAKEN,
   RESERVED_SLUG,
   ROLE_HAS_MEMBERS,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 describe("PR1.3 — Custom-roles error codes", () => {
   it("SYSTEM_ROLE_IMMUTABLE exports as the correct string literal", () => {

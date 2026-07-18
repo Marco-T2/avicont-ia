@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { resolveAccountSubtype } from "@/modules/accounting/domain/account-subtype.resolve";
 import { AccountType, AccountSubtype } from "@/generated/prisma/client";
-import { INVALID_ACCOUNT_SUBTYPE, ACCOUNT_SUBTYPE_MISMATCH } from "@/features/shared/errors";
+import { INVALID_ACCOUNT_SUBTYPE, ACCOUNT_SUBTYPE_MISMATCH } from "@/modules/shared/domain/errors";
 
 // ── Tests de resolveAccountSubtype ──
 // Función pura que encapsula toda la lógica de herencia y validación de subtipos.

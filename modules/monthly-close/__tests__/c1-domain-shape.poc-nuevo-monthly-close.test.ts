@@ -57,7 +57,7 @@
  *      paired sister Marco-lock-superseded-by-cumulative-precedent).
  *   4. Errors C1: opción (b) ≥1 typed Error class. Locked `PeriodAlreadyClosedError`
  *      + `BalanceNotZeroError` locally definidas wrap códigos
- *      `@/features/shared/errors` (PERIOD_ALREADY_CLOSED + PERIOD_UNBALANCED
+ *      `@/modules/shared/domain/errors` (PERIOD_ALREADY_CLOSED + PERIOD_UNBALANCED
  *      constants). RED-α structural correction: single bundle file
  *      `monthly-close-errors.ts` mirror cumulative 13 evidencias EXACT (NO
  *      barrel NO per-class separate).

@@ -51,7 +51,7 @@ import { requireAuth } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { getMatrix, revalidateOrgMatrix, ensureOrgSeeded } from "../../infrastructure/permissions.cache";
 import type { OrgMatrix } from "../../infrastructure/permissions.cache";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 import {
   PERMISSIONS_READ,
   PERMISSIONS_WRITE,

@@ -10,7 +10,7 @@
  *     acepta el parámetro opcional `cause`.
  */
 import { describe, it, expect } from "vitest";
-import { AppError, ConflictError } from "@/features/shared/errors";
+import { AppError, ConflictError } from "@/modules/shared/domain/errors";
 
 describe("AppError — cause preservation (Audit H WARNING d)", () => {
   it("forwardea cause al Error nativo cuando se pasa", () => {

@@ -13,7 +13,7 @@
  * reduction to PDF + DOCX + TXT (REQ-37 XLSX scope retired, REQ-38 RETIRED).
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 const {
   mockConvertToMarkdown,

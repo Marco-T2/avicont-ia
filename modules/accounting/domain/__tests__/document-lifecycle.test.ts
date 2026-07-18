@@ -21,7 +21,7 @@ import {
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   PERIOD_NOT_FOUND,
   NotFoundError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // Cast to the TARGET 4-arg signature so RED tests compile even while the
 // implementation still has the old 3-arg signature.

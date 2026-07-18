@@ -2,7 +2,7 @@ import { z } from "zod";
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makeContactBalancesService } from "@/modules/contact-balances/presentation/server";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 export const runtime = "nodejs";
 

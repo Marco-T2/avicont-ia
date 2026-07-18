@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/modules/shared/domain/errors";
 import { EnsureFromClerkService } from "../ensure-from-clerk.service";
 import type {
   ClerkAuthPort,

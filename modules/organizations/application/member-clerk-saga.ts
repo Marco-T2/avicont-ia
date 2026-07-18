@@ -1,5 +1,5 @@
 import "server-only";
-import { ExternalSyncError } from "@/features/shared/errors";
+import { ExternalSyncError } from "@/modules/shared/domain/errors";
 import { clerkErrorFingerprint } from "../domain/clerk-error-classifiers";
 import {
   logCommitted,

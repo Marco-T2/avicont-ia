@@ -1,11 +1,11 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 import {
   PURCHASE_NO_DETAILS,
   PURCHASE_NOT_DRAFT,
   PURCHASE_EXPENSE_ACCOUNT_REQUIRED,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export {
   PURCHASE_NO_DETAILS,
@@ -13,7 +13,7 @@ export {
   PURCHASE_EXPENSE_ACCOUNT_REQUIRED,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export const INVALID_PURCHASE_STATUS = "INVALID_PURCHASE_STATUS";
 export const INVALID_PURCHASE_DETAIL_LINE = "INVALID_PURCHASE_DETAIL_LINE";

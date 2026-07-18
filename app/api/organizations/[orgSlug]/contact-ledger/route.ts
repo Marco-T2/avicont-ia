@@ -6,7 +6,7 @@ import {
   exportContactLedgerPdf,
   exportContactLedgerXlsx,
 } from "@/modules/accounting/presentation/server";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 import { makeContactsService } from "@/modules/contacts/presentation/server";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";

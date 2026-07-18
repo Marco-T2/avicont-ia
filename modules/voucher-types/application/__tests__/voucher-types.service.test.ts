@@ -6,7 +6,7 @@ import {
   VoucherTypeCodeDuplicate,
   VoucherTypeNotInOrg,
 } from "../../domain/errors/voucher-type-errors";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 
 const ORG = "org-1";
 

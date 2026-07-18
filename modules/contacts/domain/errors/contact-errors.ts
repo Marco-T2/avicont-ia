@@ -2,15 +2,15 @@ import {
   ConflictError,
   NotFoundError,
   ValidationError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 export {
   CONTACT_NIT_EXISTS,
   CONTACT_NOT_FOUND,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   CONTACT_NIT_EXISTS,
   CONTACT_NOT_FOUND,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export const INVALID_NIT_FORMAT = "INVALID_NIT_FORMAT";
 export const INVALID_PAYMENT_TERMS_DAYS = "INVALID_PAYMENT_TERMS_DAYS";

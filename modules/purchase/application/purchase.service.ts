@@ -1,4 +1,4 @@
-import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/modules/shared/domain/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import type {
   PaginatedResult,

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/modules/shared/domain/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Contact } from "@/modules/contacts/domain/contact.entity";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";

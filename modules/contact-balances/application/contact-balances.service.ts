@@ -15,7 +15,7 @@ import type {
 import type { ContactsService } from "@/modules/contacts/application/contacts.service";
 import type { ContactFilters } from "@/modules/contacts/domain/contact.repository";
 import { CreditBalance } from "../domain/value-objects/credit-balance";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 export interface ContactBalanceSummary {
   contactId: string;

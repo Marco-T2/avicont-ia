@@ -24,7 +24,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
 const {

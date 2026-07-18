@@ -70,7 +70,7 @@ vi.mock("@/modules/organizations/presentation/server", () => ({
 }));
 
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 const ORG_SLUG = "test-org";
 const ORG_ID = "org-test-id";

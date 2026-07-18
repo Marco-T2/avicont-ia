@@ -53,7 +53,7 @@ vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
 }));
 
 import { requirePermission } from "@/modules/permissions/application/server";
-import { ValidationError, AUTO_ENTRY_VOID_FORBIDDEN } from "@/features/shared/errors";
+import { ValidationError, AUTO_ENTRY_VOID_FORBIDDEN } from "@/modules/shared/domain/errors";
 import { PATCH } from "../route";
 
 const ORG_SLUG = "test-org";

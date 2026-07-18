@@ -14,7 +14,7 @@ vi.mock("@/modules/voucher-types/presentation/server", () => ({
   makeVoucherTypesService: () => ({ getById: mockGetById }),
 }));
 
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 
 import { VoucherTypesReadAdapter } from "../voucher-types-read.adapter";
 

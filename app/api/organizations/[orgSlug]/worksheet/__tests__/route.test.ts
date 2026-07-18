@@ -90,7 +90,7 @@ vi.mock("@/modules/accounting/financial-statements/presentation/server", () => (
 
 // ── Imports after mocks ───────────────────────────────────────────────────────
 
-import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
+import { UnauthorizedError, ForbiddenError } from "@/modules/shared/domain/errors";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

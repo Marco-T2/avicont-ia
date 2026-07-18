@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import {
   Payable,
   type CreatePayableInput,

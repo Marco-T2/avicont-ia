@@ -1,12 +1,12 @@
-import { ConflictError, ValidationError } from "@/features/shared/errors";
+import { ConflictError, ValidationError } from "@/modules/shared/domain/errors";
 export {
   VOUCHER_TYPE_CODE_DUPLICATE,
   VOUCHER_TYPE_NOT_IN_ORG,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   VOUCHER_TYPE_CODE_DUPLICATE,
   VOUCHER_TYPE_NOT_IN_ORG,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export const INVALID_VOUCHER_TYPE_CODE_FORMAT =
   "INVALID_VOUCHER_TYPE_CODE_FORMAT";

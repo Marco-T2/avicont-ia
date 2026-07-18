@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { LEGACY_CLOSE_REMOVED } from "@/features/shared/errors";
+import { LEGACY_CLOSE_REMOVED } from "@/modules/shared/domain/errors";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
@@ -117,7 +117,7 @@ describe("PATCH /periods/[periodId] — RBAC gate (REQ-4f)", () => {
   });
 
   it("REQ-4g — contador receives 403 on PATCH (not in PERMISSIONS_WRITE[\"period\"])", async () => {
-    const { ForbiddenError } = await import("@/features/shared/errors");
+    const { ForbiddenError } = await import("@/modules/shared/domain/errors");
     mockRequirePermission.mockRejectedValue(
       new ForbiddenError("No tenés acceso a este recurso", "FORBIDDEN"),
     );

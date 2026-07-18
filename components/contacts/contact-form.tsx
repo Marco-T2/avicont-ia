@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { CONTACT_NIT_EXISTS } from "@/features/shared/errors";
+import { CONTACT_NIT_EXISTS } from "@/modules/shared/domain/errors";
 import type { Contact } from "@/modules/contacts/presentation/index";
 
 const CONTACT_TYPE_OPTIONS = [

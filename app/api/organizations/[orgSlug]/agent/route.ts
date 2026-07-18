@@ -27,7 +27,7 @@ import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/
 import {
   ValidationError,
   FISCAL_PERIOD_CLOSED,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { logStructured } from "@/lib/logging/structured";
 
 const orgService = makeOrganizationsService();

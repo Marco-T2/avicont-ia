@@ -10,7 +10,7 @@
  *  - BG cruzado se genera con asOfDate = is.current.dateTo (verificación clave)
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 const {
   mockRequirePermission,

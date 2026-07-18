@@ -15,7 +15,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Prisma } from "@/generated/prisma/client";
-import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/modules/shared/domain/errors";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 

@@ -12,7 +12,7 @@ import {
   NotFoundError,
   ForbiddenError,
   ValidationError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   canUploadToScope,
   getRagScopes,

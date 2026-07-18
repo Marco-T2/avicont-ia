@@ -10,7 +10,7 @@ import type {
   LotInquiryPort,
   LotSnapshot,
 } from "../../domain/lot-inquiry.port";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 
 class InMemoryLotInquiry implements LotInquiryPort {
   private readonly lots = new Map<string, LotSnapshot>();

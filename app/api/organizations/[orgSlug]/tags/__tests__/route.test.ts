@@ -63,7 +63,7 @@ vi.mock("@/modules/tags/presentation/server", async (importOriginal) => {
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UnauthorizedError, ForbiddenError } from "@/features/shared/errors";
+import { UnauthorizedError, ForbiddenError } from "@/modules/shared/domain/errors";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

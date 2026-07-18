@@ -9,7 +9,7 @@ import {
   JOURNAL_NOT_BALANCED,
   NotFoundError,
   VOUCHER_TYPE_NOT_IN_ORG,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { PrismaJournalEntriesReadAdapter } from "@/modules/accounting/infrastructure/prisma-journal-entries-read.adapter";
 import { PrismaJournalEntriesRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";

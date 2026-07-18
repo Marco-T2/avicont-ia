@@ -3,7 +3,7 @@ import {
   ForbiddenError,
   NotFoundError,
   POST_NOT_ALLOWED_FOR_ROLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   CannotModifyVoidedJournal,
   InvalidJournalStatusTransition,
@@ -23,7 +23,7 @@ import {
   AUTO_ENTRY_VOID_FORBIDDEN,
   ENTRY_SYSTEM_GENERATED_IMMUTABLE,
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { Journal } from "../../domain/journal.entity";
 import { LineSide } from "../../domain/value-objects/line-side";
 import { Money } from "@/modules/shared/domain/value-objects/money";

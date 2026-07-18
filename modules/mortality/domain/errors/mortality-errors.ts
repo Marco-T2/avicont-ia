@@ -1,4 +1,4 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 export const MORTALITY_COUNT_EXCEEDS_ALIVE = "MORTALITY_COUNT_EXCEEDS_ALIVE";
 export const INVALID_MORTALITY_COUNT = "INVALID_MORTALITY_COUNT";

@@ -2,7 +2,7 @@ import {
   NotFoundError,
   ValidationError,
   PAYMENT_DIRECTION_REQUIRED,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type { PaymentDirection } from "../../domain/value-objects/payment-direction";
 import type { ContactReadPort } from "../../domain/ports/contact-read.port";
 

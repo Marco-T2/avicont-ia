@@ -106,7 +106,7 @@ describe("POST /periods — RBAC gate (REQ-4f)", () => {
   });
 
   it("REQ-4g — contador receives 403 (not in PERMISSIONS_WRITE[\"period\"])", async () => {
-    const { ForbiddenError } = await import("@/features/shared/errors");
+    const { ForbiddenError } = await import("@/modules/shared/domain/errors");
     mockRequirePermission.mockRejectedValue(
       new ForbiddenError("No tenés acceso a este recurso", "FORBIDDEN"),
     );

@@ -7,7 +7,7 @@ import {
   NotMonthly,
   InvalidDateRange,
 } from "../../domain/errors/fiscal-period-errors";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 
 const ORG = "org-1";
 

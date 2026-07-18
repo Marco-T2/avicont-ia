@@ -1,5 +1,5 @@
 import "server-only";
-import { ForbiddenError, NotFoundError, ValidationError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError, ValidationError } from "@/modules/shared/domain/errors";
 import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import { logStructured } from "@/lib/logging/structured";
 import { buildBalanceSheet } from "../domain/balance-sheet.builder";

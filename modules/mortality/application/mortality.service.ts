@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import type { MortalityRepository } from "../domain/mortality.repository";
 import type { LotInquiryPort } from "../domain/lot-inquiry.port";
 import { Mortality } from "../domain/mortality.entity";

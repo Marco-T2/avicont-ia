@@ -56,7 +56,7 @@ import { requireOrgAccess, requireRole } from "@/modules/organizations/presentat
 import {
   UnauthorizedError,
   ForbiddenError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { ALL_DOCUMENT_PRINT_TYPES } from "@/modules/document-signature-config/presentation/server";
 
 const ORG_SLUG = "test-org";

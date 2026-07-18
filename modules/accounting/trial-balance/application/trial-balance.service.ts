@@ -1,4 +1,4 @@
-import { ForbiddenError, ValidationError } from "@/features/shared/errors";
+import { ForbiddenError, ValidationError } from "@/modules/shared/domain/errors";
 import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import type { TrialBalanceQueryPort } from "../domain/ports/trial-balance-query.port";
 import { buildTrialBalance } from "../domain/trial-balance.builder";

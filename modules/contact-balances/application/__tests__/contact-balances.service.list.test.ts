@@ -28,7 +28,7 @@ import type { ReceivablesQueryPort } from "../../domain/ports/receivables-query.
 import type { PayablesQueryPort } from "../../domain/ports/payables-query.port";
 import type { ContactsLedgerDashboardPort } from "../../domain/ports/contacts-ledger-dashboard.port";
 import type { ContactsService } from "@/modules/contacts/application/contacts.service";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 const ORG = "org-1";
 

@@ -22,7 +22,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ForbiddenError, ValidationError } from "@/features/shared/errors";
+import { ForbiddenError, ValidationError } from "@/modules/shared/domain/errors";
 
 // ── Hoisted mocks ────────────────────────────────────────────────────────────
 

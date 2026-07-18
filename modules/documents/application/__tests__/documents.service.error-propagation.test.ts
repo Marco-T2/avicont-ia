@@ -17,7 +17,7 @@
  * documents/rag/server + pdfjs-dist mock targets UNCHANGED.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 const {
   mockUploadToBlob,

@@ -1,5 +1,5 @@
 import "server-only";
-import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/modules/shared/domain/errors";
 import type { ClerkAuthPort } from "../domain/ports/clerk-auth.port";
 import type { OrganizationsService } from "./organizations.service";
 import type { MembersService } from "./members.service";

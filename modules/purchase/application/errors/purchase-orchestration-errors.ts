@@ -9,7 +9,7 @@ import {
   PURCHASE_DATE_OUTSIDE_PERIOD,
   PURCHASE_INVALID_CONTACT_TYPE,
   ValidationError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export {
   FISCAL_PERIOD_CLOSED,
@@ -20,7 +20,7 @@ export {
   PURCHASE_CONTACT_INACTIVE,
   PURCHASE_DATE_OUTSIDE_PERIOD,
   PURCHASE_INVALID_CONTACT_TYPE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export class PurchaseContactNotProvider extends ValidationError {
   constructor(contactType: string) {

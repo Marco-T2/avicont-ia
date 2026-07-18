@@ -12,7 +12,7 @@ import {
   ORG_SETTINGS_ACCOUNT_NOT_USABLE,
   ORG_SETTINGS_ACCOUNT_WRONG_PARENT,
 } from "../domain/errors/org-settings-errors";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 export class OrgSettingsService {
   constructor(

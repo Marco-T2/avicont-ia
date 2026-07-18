@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ValidationError, AUDIT_CURSOR_INVALID } from "@/features/shared/errors";
+import { ValidationError, AUDIT_CURSOR_INVALID } from "@/modules/shared/domain/errors";
 import {
   AUDIT_ACTIONS,
   AUDITED_ENTITY_TYPES,

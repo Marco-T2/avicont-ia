@@ -10,7 +10,7 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   }),
 }));
 
-import { NotFoundError, PERIOD_NOT_FOUND } from "@/features/shared/errors";
+import { NotFoundError, PERIOD_NOT_FOUND } from "@/modules/shared/domain/errors";
 
 import { FiscalPeriodsReadAdapter } from "../fiscal-periods-read.adapter";
 

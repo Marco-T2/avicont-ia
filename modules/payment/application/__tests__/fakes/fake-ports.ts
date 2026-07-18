@@ -4,7 +4,7 @@ import {
   ValidationError,
   PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
   PAYMENT_ALLOCATION_TARGET_VOIDED,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type {
   ReceivablesPort,
   ReceivableStatusValue,

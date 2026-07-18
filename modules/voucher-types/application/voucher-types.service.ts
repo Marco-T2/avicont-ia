@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import { DEFAULT_VOUCHER_TYPES } from "@/prisma/seeds/voucher-types";
 import type {
   VoucherTypeRepository,

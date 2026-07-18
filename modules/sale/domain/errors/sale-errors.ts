@@ -1,4 +1,4 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 export {
   SALE_NO_DETAILS,
@@ -8,7 +8,7 @@ export {
   SALE_CONTACT_CHANGE_BLOCKED,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export const INVALID_SALE_STATUS = "INVALID_SALE_STATUS";
 export const INVALID_SALE_DETAIL_LINE = "INVALID_SALE_DETAIL_LINE";
@@ -18,7 +18,7 @@ import {
   SALE_NOT_DRAFT,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export class InvalidSaleStatus extends ValidationError {
   constructor(value: string) {

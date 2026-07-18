@@ -65,7 +65,7 @@ export class PricingService {
     lotId: string,
   ): Promise<LotPricingResult> {
     const { lotInquiry, expensesService, mortalityService } = await this.ensureDeps();
-    const { NotFoundError } = await import("@/features/shared/errors");
+    const { NotFoundError } = await import("@/modules/shared/domain/errors");
 
     const lot = await lotInquiry.findById(organizationId, lotId);
     if (!lot) throw new NotFoundError("Lote");

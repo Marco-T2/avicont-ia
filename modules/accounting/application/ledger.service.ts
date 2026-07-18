@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { JournalLedgerQueryPort } from "@/modules/accounting/domain/ports/journal-ledger-query.port";

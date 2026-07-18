@@ -1,5 +1,5 @@
 import "server-only";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import { LotService } from "../application/lot.service";
 import { PrismaLotRepository } from "./prisma-lot.repository";
 import type {

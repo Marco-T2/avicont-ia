@@ -12,7 +12,7 @@ import {
   JOURNAL_DATE_OUTSIDE_PERIOD,
   ACCOUNT_NOT_POSTABLE,
   CONTACT_REQUIRED_FOR_ACCOUNT,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // InvalidMonetaryAmount + INVALID_MONETARY_AMOUNT viven en
 // modules/shared/domain/errors/monetary-errors. Importar desde allí.

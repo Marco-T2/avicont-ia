@@ -11,4 +11,4 @@ export {
   CONTACT_REQUIRED_FOR_ACCOUNT,
   JOURNAL_AI_ACCOUNT_NOT_FOUND,
   JOURNAL_AI_CONTACT_NOT_FOUND,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";

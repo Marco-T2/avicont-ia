@@ -28,7 +28,7 @@ function asAuditTxRepo(repo: PaymentRepository): AuditTxRepo {
       ),
   };
 }
-import { NotFoundError, ValidationError } from "@/features/shared/errors";
+import { NotFoundError, ValidationError } from "@/modules/shared/domain/errors";
 import type { Payment } from "../domain/payment.entity";
 import type {
   PaymentRepository,
@@ -60,7 +60,7 @@ import {
   PAYMENT_CREDIT_WRONG_CONTACT,
   FISCAL_PERIOD_CLOSED,
   INVALID_STATUS_TRANSITION,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   resolveDirection,
   type AllocationDirectionInput,

@@ -21,7 +21,7 @@ import {
   PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_NOT_FOUND,
   PERIOD_UNBALANCED,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 

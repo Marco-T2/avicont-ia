@@ -25,7 +25,7 @@
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { ClerkAPIResponseError } from "@clerk/shared/error";
-import { ExternalSyncError } from "@/features/shared/errors";
+import { ExternalSyncError } from "@/modules/shared/domain/errors";
 import { MembersService } from "../application/members.service";
 import { PrismaOrganizationsRepository as OrganizationsRepository } from "../infrastructure/prisma-organizations.repository";
 

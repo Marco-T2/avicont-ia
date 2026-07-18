@@ -140,7 +140,7 @@ vi.mock("@/modules/permissions/application/server", () => ({
 // ─── Imports (AFTER mocks) ──────────────────────────────────────────────────
 
 import { requirePermission } from "@/modules/permissions/application/server";
-import { SELF_LOCK_GUARD } from "@/features/shared/errors";
+import { SELF_LOCK_GUARD } from "@/modules/shared/domain/errors";
 
 // ─── Constants ──────────────────────────────────────────────────────────────
 

@@ -1,6 +1,6 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
 
 const service = new AccountBalancesService();

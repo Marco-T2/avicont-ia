@@ -21,7 +21,7 @@ import {
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { InMemoryPaymentRepository } from "./fakes/in-memory-payment.repository";
 import {
   FakeReceivablesPort,

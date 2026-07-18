@@ -1,4 +1,4 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 export {
   DISPATCH_NO_DETAILS,
@@ -9,7 +9,7 @@ export {
   DISPATCH_CONTACT_CHANGE_BLOCKED,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export const INVALID_DISPATCH_STATUS = "INVALID_DISPATCH_STATUS";
 export const INVALID_DISPATCH_TYPE = "INVALID_DISPATCH_TYPE";
@@ -21,7 +21,7 @@ import {
   DISPATCH_BC_FIELDS_ON_ND,
   INVALID_STATUS_TRANSITION,
   ENTRY_VOIDED_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 export class InvalidDispatchStatus extends ValidationError {
   constructor(value: string) {

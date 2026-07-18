@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ForbiddenError, ValidationError } from "@/features/shared/errors";
+import { ForbiddenError, ValidationError } from "@/modules/shared/domain/errors";
 import {
   SaleAccountNotFound,
   SaleContactChangeWithAllocations,

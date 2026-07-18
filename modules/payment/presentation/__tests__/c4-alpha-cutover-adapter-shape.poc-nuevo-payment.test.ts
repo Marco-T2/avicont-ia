@@ -14,7 +14,7 @@
  *     chain (canonical R4 exception path EXACT mirror paired C1b-α `89e6441`).
  *   - Sub-opción B2 PaymentNotFound class hex domain mirror IvaBookNotFound +
  *     ContactNotFound canonical pattern (NEW class extends NotFoundError +
- *     `import { NotFoundError } from "@/features/shared/errors"` convention
+ *     `import { NotFoundError } from "@/modules/shared/domain/errors"` convention
  *     canonical hex actual cumulative cross-modules preserved at domain layer).
  *   - Sub-issue A resolution: MOVE mapper.ts presentation/mappers/ →
  *     infrastructure/mappers/ mismo batch C4-α (paymentInclude + toPaymentWithRelations
@@ -199,7 +199,7 @@ const PAYMENT_SERVICE_CALLSITES = [
 const PAYMENT_NOT_FOUND_CLASS_RE =
   /^export\s+class\s+PaymentNotFound\s+extends\s+NotFoundError\b/m;
 const NOT_FOUND_ERROR_IMPORT_RE =
-  /^import\s+\{[^}]*\bNotFoundError\b[^}]*\}\s+from\s+["']@\/features\/shared\/errors["']/m;
+  /^import\s+\{[^}]*\bNotFoundError\b[^}]*\}\s+from\s+["']@\/modules\/shared\/domain\/errors["']/m;
 
 // Test 7 — Reader port interface shape (Path C resolution Collision #1 — Snapshot
 // LOCAL inline definition mirrored iva-books sale-reader.port.ts:17-28 precedent

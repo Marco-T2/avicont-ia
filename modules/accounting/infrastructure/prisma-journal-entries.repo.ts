@@ -3,7 +3,7 @@ import { Prisma } from "@/generated/prisma/client";
 import type { JournalEntryStatus } from "@/generated/prisma/client";
 import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import { isPrismaUniqueViolation } from "@/modules/shared/infrastructure/prisma-errors";
-import { AppError, VOUCHER_NUMBER_CONTENTION } from "@/features/shared/errors";
+import { AppError, VOUCHER_NUMBER_CONTENTION } from "@/modules/shared/domain/errors";
 import { logStructured } from "@/lib/logging/structured";
 import type {
   CreateJournalEntryInput,

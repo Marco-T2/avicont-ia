@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { Contact } from "@/modules/contacts/domain/contact.entity";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
@@ -21,7 +21,7 @@ import {
   PurchasePeriodClosed,
   PurchasePostNotAllowedForRole,
 } from "../errors/purchase-orchestration-errors";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 import {
   PurchaseNotDraft,
   PurchaseVoidedImmutable,

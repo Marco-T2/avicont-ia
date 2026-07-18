@@ -1,4 +1,4 @@
-import { ForbiddenError, NotFoundError } from "@/features/shared/errors";
+import { ForbiddenError, NotFoundError } from "@/modules/shared/domain/errors";
 import type { ContactRepository } from "@/modules/contacts/domain/contact.repository";
 import { ContactNotFound } from "@/modules/contacts/domain/errors/contact-errors";
 import type { ReceivableRepository } from "@/modules/receivables/domain/receivable.repository";

@@ -2,7 +2,7 @@ import "server-only";
 import {
   NotFoundError,
   ForbiddenError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type { OrganizationsRepositoryPort } from "../domain/ports/organizations.repository.port";
 import type { UserResolutionPort } from "../domain/ports/user-resolution.port";
 import type { VoucherTypeSeedPort } from "../domain/ports/voucher-type-seed.port";

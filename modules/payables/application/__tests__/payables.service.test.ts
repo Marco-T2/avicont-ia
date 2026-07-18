@@ -15,7 +15,7 @@ import type { ContactExistencePort } from "../../domain/ports/contact-existence.
 import {
   NotFoundError,
   PAYABLE_AMOUNT_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   InvalidPayableStatusTransition,
   PartialPaymentAmountRequired,

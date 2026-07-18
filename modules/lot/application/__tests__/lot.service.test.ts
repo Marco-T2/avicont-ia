@@ -4,7 +4,7 @@ import { Lot } from "../../domain/lot.entity";
 import { LotSummary } from "../../domain/value-objects/lot-summary";
 import { InMemoryLotRepository } from "../fakes/in-memory-lot.repository";
 import { CannotDeactivateInactiveLot } from "../../domain/errors/lot-errors";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 
 const ORG = "org-1";
 const MEMBER = "member-1";

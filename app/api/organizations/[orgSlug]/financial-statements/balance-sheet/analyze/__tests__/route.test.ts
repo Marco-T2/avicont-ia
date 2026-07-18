@@ -9,7 +9,7 @@
  *  - 200 status:ok cuando el LLM devuelve análisis
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 const {
   mockRequirePermission,

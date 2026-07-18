@@ -1,4 +1,4 @@
-import { NotFoundError, PERIOD_NOT_FOUND } from "@/features/shared/errors";
+import { NotFoundError, PERIOD_NOT_FOUND } from "@/modules/shared/domain/errors";
 import type { FiscalPeriodRepository } from "../domain/fiscal-period.repository";
 import {
   FiscalPeriod,

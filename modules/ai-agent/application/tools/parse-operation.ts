@@ -53,7 +53,7 @@ export async function executeParseAccountingOperation(
     },
   ] = await Promise.all([
     import("../../domain/validation/agent.validation.ts"),
-    import("@/features/shared/errors"),
+    import("@/modules/shared/domain/errors"),
   ]);
 
   const accountsLookup = deps.accountsLookup;

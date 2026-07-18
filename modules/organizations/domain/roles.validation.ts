@@ -14,7 +14,7 @@ import {
   ConflictError,
   RESERVED_SLUG,
   SLUG_TAKEN,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 const MAX_SLUG_LENGTH = 32;
 const MAX_COLLISION_SUFFIX = 99;

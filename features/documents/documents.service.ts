@@ -1,6 +1,6 @@
 import "server-only";
 import { uploadToBlob, deleteFromBlob } from "@/lib/blob";
-import { NotFoundError, ForbiddenError, ValidationError } from "@/features/shared/errors";
+import { NotFoundError, ForbiddenError, ValidationError } from "@/modules/shared/domain/errors";
 import { canUploadToScope, type DocumentScope } from "@/modules/permissions/domain/permissions";
 import { RagService } from "@/features/documents/rag/server";
 import { DocumentsRepository } from "./documents.repository";

@@ -16,7 +16,7 @@
  *   (e) clerkCall fails + isIdempotentSuccess -> no compensation, logCommitted, return result
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { ExternalSyncError } from "@/features/shared/errors";
+import { ExternalSyncError } from "@/modules/shared/domain/errors";
 import * as loggerModule from "../domain/member-clerk-saga.logger";
 import { runMemberClerkSaga, type MemberSagaContext } from "../application/member-clerk-saga";
 

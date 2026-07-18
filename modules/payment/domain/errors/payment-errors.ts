@@ -6,7 +6,7 @@ import {
   PAYMENT_DATE_OUTSIDE_PERIOD,
   PAYMENT_MIXED_ALLOCATION,
   PAYMENT_ALLOCATIONS_EXCEED_TOTAL,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // InvalidMonetaryAmount + INVALID_MONETARY_AMOUNT viven en
 // modules/shared/domain/errors/monetary-errors (rule-of-three: receivables,

@@ -4,7 +4,7 @@ import {
   PAYABLE_AMOUNT_IMMUTABLE,
   PAYMENT_ALLOCATION_EXCEEDS_BALANCE,
   PAYMENT_ALLOCATION_TARGET_VOIDED,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 // InvalidMonetaryAmount + INVALID_MONETARY_AMOUNT viven en

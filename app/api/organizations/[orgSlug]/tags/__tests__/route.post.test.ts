@@ -64,7 +64,7 @@ vi.mock("@/modules/tags/presentation/server", async (importOriginal) => {
 // ─── Imports (after mocks) ───────────────────────────────────────────────────
 
 import { requirePermission } from "@/modules/permissions/application/server";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 const ORG_SLUG = "acme";
 const ORG_ID = "org_acme_id";

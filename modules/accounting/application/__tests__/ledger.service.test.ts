@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import { LedgerService } from "../ledger.service";
 import { InMemoryJournalLedgerQueryPort } from "./fakes/in-memory-accounting-uow";
 import type { AccountsCrudPort } from "../../domain/ports/accounts-crud.port";

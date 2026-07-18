@@ -1,4 +1,4 @@
-import { NotFoundError, ValidationError } from "@/features/shared/errors";
+import { NotFoundError, ValidationError } from "@/modules/shared/domain/errors";
 import {
   DISPATCH_NO_DETAILS,
   DISPATCH_BC_FIELDS_ON_ND,

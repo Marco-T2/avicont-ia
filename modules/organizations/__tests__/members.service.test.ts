@@ -21,7 +21,7 @@ import {
   ForbiddenError,
   ConflictError,
   CANNOT_CHANGE_OWN_ROLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 describe("MembersService.updateRole — self-role-change (REQ-R.3 / D.4)", () => {
   const ACTOR_CLERK_USER_ID = "user_actor_clerk";
@@ -89,12 +89,12 @@ describe("MembersService.updateRole — self-role-change (REQ-R.3 / D.4)", () =>
   });
 
   it("CANNOT_CHANGE_OWN_ROLE constant is exported with correct literal value", async () => {
-    const errors = await import("@/features/shared/errors");
+    const errors = await import("@/modules/shared/domain/errors");
     expect(errors.CANNOT_CHANGE_OWN_ROLE).toBe("CANNOT_CHANGE_OWN_ROLE");
   });
 
   it("POST_NOT_ALLOWED_FOR_ROLE constant is exported with correct literal value", async () => {
-    const errors = await import("@/features/shared/errors");
+    const errors = await import("@/modules/shared/domain/errors");
     expect(errors.POST_NOT_ALLOWED_FOR_ROLE).toBe("POST_NOT_ALLOWED_FOR_ROLE");
   });
 });

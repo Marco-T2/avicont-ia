@@ -24,7 +24,7 @@ import {
   SLUG_TAKEN,
   ValidationError,
   ConflictError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 describe("slugify (D.5)", () => {
   it("lowercases and replaces spaces with hyphens", () => {

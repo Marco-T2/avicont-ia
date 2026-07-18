@@ -140,7 +140,7 @@ vi.mock("@/lib/logging/structured", () => ({
 }));
 
 import { POST } from "../route";
-import { ForbiddenError, ValidationError, FISCAL_PERIOD_CLOSED, JOURNAL_NOT_BALANCED } from "@/features/shared/errors";
+import { ForbiddenError, ValidationError, FISCAL_PERIOD_CLOSED, JOURNAL_NOT_BALANCED } from "@/modules/shared/domain/errors";
 
 // ── Constants & fixtures ───────────────────────────────────────────────────
 

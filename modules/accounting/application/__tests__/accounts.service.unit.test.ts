@@ -16,7 +16,7 @@ import {
   NotFoundError,
   ValidationError,
   ConflictError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // ── Mock factories ─────────────────────────────────────────────────────────
 

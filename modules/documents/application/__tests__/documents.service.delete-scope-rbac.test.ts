@@ -40,7 +40,7 @@ vi.mock("@/features/documents/rag/server", () => ({
 
 import { DocumentsService } from "@/modules/documents/application/documents.service";
 import { RagService } from "@/features/documents/rag/server";
-import { ForbiddenError } from "@/features/shared/errors";
+import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 const CLERK_USER_ID = "clerk_user_1";
 const ORG_ID = "org_db_1";

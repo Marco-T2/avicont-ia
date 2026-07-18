@@ -1,4 +1,4 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 // OrgSettings — validación de listas de cuentas default (caja/banco) para captura
 // asistida por IA. Owned por org-settings (migrados del shared hex registry, arch 4.1).

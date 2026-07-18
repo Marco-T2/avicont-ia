@@ -1,4 +1,4 @@
-import { NotFoundError } from "@/features/shared/errors";
+import { NotFoundError } from "@/modules/shared/domain/errors";
 import type { InitialBalanceQueryPort } from "../domain/initial-balance.ports";
 import { buildInitialBalance } from "../domain/initial-balance.builder";
 import type { InitialBalanceStatement } from "../domain/initial-balance.types";

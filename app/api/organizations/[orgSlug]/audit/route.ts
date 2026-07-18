@@ -8,7 +8,7 @@ import {
 import {
   AUDIT_DATE_RANGE_INVALID,
   ValidationError,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { endOfMonth, startOfMonth } from "@/lib/date-utils";
 
 /**

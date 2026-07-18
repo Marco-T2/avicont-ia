@@ -4,7 +4,7 @@ import {
   PERIOD_ALREADY_CLOSED,
   PERIOD_HAS_DRAFT_ENTRIES,
   PERIOD_UNBALANCED,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type { Money } from "@/modules/shared/domain/value-objects/money";
 
 /**
@@ -15,7 +15,7 @@ import type { Money } from "@/modules/shared/domain/value-objects/money";
  * 13:0 cumulative supersede absoluto, NO `index.ts` barrel NO per-class
  * separate files).
  *
- * Wrap códigos `@/features/shared/errors` constants — preservar legacy parity
+ * Wrap códigos `@/modules/shared/domain/errors` constants — preservar legacy parity
  * wire codes consumers see SAME (legacy `features/monthly-close/monthly-close.service.ts:147`
  * + `:194` patterns EXACT).
  */

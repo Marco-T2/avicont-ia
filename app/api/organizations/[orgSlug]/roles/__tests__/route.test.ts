@@ -85,7 +85,7 @@ import {
   ValidationError,
   RESERVED_SLUG,
   SLUG_TAKEN,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 

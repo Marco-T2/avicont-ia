@@ -24,7 +24,7 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makeTagsService } from "@/modules/tags/presentation/server";
-import { ConflictError } from "@/features/shared/errors";
+import { ConflictError } from "@/modules/shared/domain/errors";
 import { z } from "zod";
 
 const service = makeTagsService();

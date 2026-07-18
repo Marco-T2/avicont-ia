@@ -1,4 +1,4 @@
-import { ConflictError, ValidationError } from "@/features/shared/errors";
+import { ConflictError, ValidationError } from "@/modules/shared/domain/errors";
 
 export const FISCAL_PERIOD_MONTH_EXISTS = "FISCAL_PERIOD_MONTH_EXISTS";
 export const FISCAL_PERIOD_NOT_MONTHLY = "FISCAL_PERIOD_NOT_MONTHLY";

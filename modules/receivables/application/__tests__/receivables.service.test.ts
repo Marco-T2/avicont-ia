@@ -13,7 +13,7 @@ import type { ContactExistencePort } from "../../domain/ports/contact-existence.
 import {
   NotFoundError,
   RECEIVABLE_AMOUNT_IMMUTABLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import {
   InvalidReceivableStatusTransition,
   PartialPaymentAmountRequired,

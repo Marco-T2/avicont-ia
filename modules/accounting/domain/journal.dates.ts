@@ -1,4 +1,4 @@
-import { ValidationError } from "@/features/shared/errors";
+import { ValidationError } from "@/modules/shared/domain/errors";
 
 /**
  * Convierte un string ISO (YYYY-MM-DD o datetime con offset) en `Date` que

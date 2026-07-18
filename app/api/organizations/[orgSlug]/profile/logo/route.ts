@@ -1,6 +1,6 @@
 import { put } from "@vercel/blob";
 import { handleError } from "@/modules/shared/presentation/middleware";
-import { AppError } from "@/features/shared/errors";
+import { AppError } from "@/modules/shared/domain/errors";
 import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeOrgProfileService,

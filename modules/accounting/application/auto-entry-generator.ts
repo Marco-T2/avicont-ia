@@ -5,7 +5,7 @@ import {
   VOUCHER_TYPE_NOT_IN_ORG,
   JOURNAL_NOT_BALANCED,
   CONTACT_REQUIRED_FOR_ACCOUNT,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type { Prisma } from "@/generated/prisma/client";
 import Decimal from "decimal.js";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";

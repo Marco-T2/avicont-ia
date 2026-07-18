@@ -19,7 +19,7 @@ import {
   ACCOUNT_TYPE_MISMATCH,
   MAX_ACCOUNT_DEPTH_EXCEEDED,
   INVALID_ACCOUNT_CODE_PREFIX,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { getNextCode } from "@/modules/accounting/domain/account-code.utils";
 import { resolveAccountSubtype } from "@/modules/accounting/domain/account-subtype.resolve";
 import { ACCOUNTS } from "@/prisma/seeds/chart-of-accounts";

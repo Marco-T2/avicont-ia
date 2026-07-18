@@ -5,7 +5,7 @@ import {
   ForbiddenError,
   ValidationError,
   CANNOT_CHANGE_OWN_ROLE,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import type { OrganizationsRepositoryPort } from "../domain/ports/organizations.repository.port";
 import type { UserResolutionPort } from "../domain/ports/user-resolution.port";
 import type { ClerkAuthPort } from "../domain/ports/clerk-auth.port";

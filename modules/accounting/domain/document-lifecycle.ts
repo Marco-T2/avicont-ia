@@ -9,7 +9,7 @@ import {
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
   FISCAL_PERIOD_CLOSED,
   PERIOD_NOT_FOUND,
-} from "@/features/shared/errors";
+} from "@/modules/shared/domain/errors";
 import { canTransition } from "./value-objects/journal-entry-status";
 
 /**
