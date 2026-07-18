@@ -25,7 +25,7 @@ import { describe, expect, it } from "vitest";
 
 const ROOT = join(__dirname, "../../../../..");
 const HEX_FILE = join(ROOT, "modules/shared/domain/errors/index.ts");
-const SHIM_FILE = join(ROOT, "features/shared/errors.ts");
+const SHIM_ERRORS = join(ROOT, "features/shared/errors.ts");
 const MONETARY_FILE = join(ROOT, "modules/shared/domain/errors/monetary-errors.ts");
 
 // ── α1: Hex file existence ───────────────────────────────────────────────────
@@ -128,30 +128,30 @@ describe("α10–α11 hex file contains 2 exported types", () => {
   });
 });
 
-// ── α12–α13: SHIM literal exact match ────────────────────────────────────────
+// ── α12–α14: SHIM features/shared/errors.ts RETIRED (physically deleted) ─────
+//
+// INVERTED at errors-shim-cutover Batch 2 (RETIREMENT). Originally these three
+// cases HARD-PINNED the 2-line re-export shim's content shape (α12 line 1 JSDoc
+// canonical-home comment, α13 line 2 `export *` re-export, α14 absence of any
+// `^export class` declaration). Batch 1 repointed all 131 consumers + the
+// features/shared barrel to the hex (@/modules/shared/domain/errors); Batch 2
+// DELETES the dead shim. `existsSync` on the deleted file is now false, so each
+// content sentinel re-inverts to a single absence sentinel: the file must NOT
+// exist. Non-vacuous — recreating the shim re-fails all three. Mirrors the
+// shared-middleware-cutover α13–α20 delete + absence-sentinel retirement
+// convention (modules/shared/presentation/__tests__/c1-shape.poc-shared-middleware-auth.test.ts).
 
-describe("α12–α13 features/shared/errors.ts is 2-line SHIM", () => {
-  it("α12: SHIM line 1 exact literal — JSDoc canonical home comment", () => {
-    const lines = readFileSync(SHIM_FILE, "utf-8").split("\n");
-    expect(lines[0]).toBe(
-      "/** Re-exports moved to hex (§13.X canonical home). */",
-    );
+describe("α12–α14 features/shared/errors.ts RETIRED — shim physically deleted", () => {
+  it("α12: SHIM errors physically deleted — no JSDoc canonical-home line 1 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_ERRORS)).toBe(false);
   });
 
-  it("α13: SHIM line 2 exact literal — export * re-export", () => {
-    const lines = readFileSync(SHIM_FILE, "utf-8").split("\n");
-    expect(lines[1]).toBe(
-      'export * from "@/modules/shared/domain/errors";',
-    );
+  it("α13: SHIM errors physically deleted — no `export *` re-export line 2 possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_ERRORS)).toBe(false);
   });
-});
 
-// ── α14: SHIM absence — no ^export class in SHIM ─────────────────────────────
-
-describe("α14 SHIM has no class definitions (absence)", () => {
-  it("α14: features/shared/errors.ts has no ^export class match", () => {
-    const content = readFileSync(SHIM_FILE, "utf-8");
-    expect(content).not.toMatch(/^export class/m);
+  it("α14: SHIM errors physically deleted — no `^export class` declaration possible (absence sentinel)", () => {
+    expect(existsSync(SHIM_ERRORS)).toBe(false);
   });
 });
 
