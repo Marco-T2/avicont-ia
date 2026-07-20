@@ -1,8 +1,7 @@
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
-const REPO_ROOT = resolve(__dirname, "../../..");
 const DOC_ROOT = resolve(__dirname, "..");
 
 // readRepoFile removed at C5 — α35/α36 inverted to existence checks, no
@@ -53,26 +52,12 @@ describe("C3 presentation shape — Documents module (existence-only regex) — 
     expect(src).toMatch(/\banalyzeDocumentSchema\b/);
   });
 
-  // α35/α36 — INVERTED at poc-documents-hex C5 (batch 1 wholesale delete).
-  // The features/documents/server.ts SHIM was deleted: it had ZERO import
-  // consumers (verified by repo-wide grep), so the re-export chain it once
-  // preserved is dead weight. Per project precedent these POSITIVE presence
-  // sentinels are INVERTED to absence assertions rather than removed, so the
-  // α numbering stays stable and a resurrected shim trips the sentinel.
-
-  // α35 — features/documents/server.ts SHIM no longer exists (was: re-exports hex barrel)
-  it("α35: features/documents/server.ts SHIM absent — deleted at C5, canonical barrel is @/modules/documents/presentation/server (INVERTED)", () => {
-    expect(existsSync(resolve(REPO_ROOT, "features/documents/server.ts"))).toBe(
-      false,
-    );
-  });
-
-  // α36 — features/documents/server.ts SHIM no longer exists (was: carries server-only)
-  it("α36: features/documents/server.ts SHIM absent — the ONLY 'server-only' marker for documents is presentation/server.ts (α33) (INVERTED)", () => {
-    expect(existsSync(resolve(REPO_ROOT, "features/documents/server.ts"))).toBe(
-      false,
-    );
-  });
+  // α35/α36 REMOVED. They were INVERTED at poc-documents-hex C5 into
+  // `!existsSync(features/documents/server.ts)` absence assertions (both on the
+  // SAME path — they were byte-identical checks differing only in description).
+  // A resurrected shim now trips α1 in __tests__/feature-boundaries.test.ts,
+  // which asserts the whole `features/` directory does not exist — strictly
+  // stronger than either. Ids are NOT renumbered.
 
   // α37 — presentation/validation/documents.validation.ts exports schemas
   it("α37: presentation/validation/documents.validation.ts exports createDocumentSchema (+ list/analyze)", () => {

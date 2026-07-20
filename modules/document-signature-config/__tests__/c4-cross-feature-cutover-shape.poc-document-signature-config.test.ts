@@ -67,11 +67,10 @@ describe("POC document-signature-config hex C4 — cross-feature cutover shape (
   // "NO legacy DSC import" invariant is vacuously and permanently satisfied.
   // Honest prior-cycle collision per [[invariant_collision_elevation]],
   // re-inverted in the C4 GREEN that causes it.
-  it("α39: features/accounting/journal.service.ts DELETED (sub-POC 8/8 C4 shim retirement — legacy DSC import vacuously absent)", () => {
-    expect(
-      existsSync(resolve(REPO_ROOT, "features/accounting/journal.service.ts")),
-    ).toBe(false);
-  });
+  // α39 REMOVED: after the re-inversion described above its only assertion was
+  // `!existsSync(features/accounting/journal.service.ts)`, which is subsumed by
+  // α1 in __tests__/feature-boundaries.test.ts (`features/` does not exist at
+  // all). Id is NOT renumbered.
 
   // α40
   it("α40: modules/accounting/infrastructure/exporters/voucher-pdf.composer.ts imports types from hex + NO legacy", () => {

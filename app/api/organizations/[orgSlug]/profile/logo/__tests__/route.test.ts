@@ -40,17 +40,10 @@ vi.mock("@vercel/blob", () => ({
 }));
 
 // Bucket B fix: route.ts imports makeOrgProfileService + logoUploadConstraints
-// from @/modules/org-profile/presentation/server (hex), not @/features/org-profile/server.
-// Use vi.hoisted so mockServiceInstance is available in the new vi.mock factory.
+// from @/modules/org-profile/presentation/server (hex).
+// Use vi.hoisted so mockServiceInstance is available in the vi.mock factory.
 const mockServiceInstance = vi.hoisted(() => ({
   updateLogo: vi.fn(),
-}));
-
-// Dead mock — route no longer imports from this path.
-vi.mock("@/features/org-profile/server", () => ({
-  OrgProfileService: vi.fn().mockImplementation(function () {
-    return mockServiceInstance;
-  }),
 }));
 
 // Real mock: route.ts calls makeOrgProfileService() at module level.

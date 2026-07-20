@@ -93,11 +93,10 @@ describe("POC org-profile hex C4 — cross-feature cutover shape (paired sister 
   // "NO legacy org-profile import" invariant is vacuously and permanently
   // satisfied. Honest prior-cycle collision per
   // [[invariant_collision_elevation]], re-inverted in the C4 GREEN that causes it.
-  it("α42: features/accounting/journal.service.ts DELETED (sub-POC 8/8 C4 shim retirement — legacy org-profile import vacuously absent)", () => {
-    expect(
-      existsSync(resolve(REPO_ROOT, "features/accounting/journal.service.ts")),
-    ).toBe(false);
-  });
+  // α42 REMOVED: after the re-inversion described above its only assertion was
+  // `!existsSync(features/accounting/journal.service.ts)`, which is subsumed by
+  // α1 in __tests__/feature-boundaries.test.ts (`features/` does not exist at
+  // all). Id is NOT renumbered.
 
   // ── D: Client component consumers (3 files — import from client barrel) ──
 

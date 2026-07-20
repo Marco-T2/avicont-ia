@@ -4,14 +4,11 @@ import * as path from "path";
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
-const AUDIT_DIR = path.join(REPO_ROOT, "features/audit");
-const AUDIT_SERVER = path.join(AUDIT_DIR, "server.ts");
-const AUDIT_INDEX = path.join(AUDIT_DIR, "index.ts");
-const AUDIT_SERVICE = path.join(AUDIT_DIR, "audit.service.ts");
-const AUDIT_REPO = path.join(AUDIT_DIR, "audit.repository.ts");
-const AUDIT_TYPES = path.join(AUDIT_DIR, "audit.types.ts");
-const AUDIT_CLASSIFIER = path.join(AUDIT_DIR, "audit.classifier.ts");
-const AUDIT_VALIDATION = path.join(AUDIT_DIR, "audit.validation.ts");
+// α40–α46 (per-file `!existsSync(features/audit/*)`) were REMOVED: they are
+// subsumed by α1 in __tests__/feature-boundaries.test.ts, which asserts the
+// whole `features/` directory does not exist. A directory that cannot exist
+// cannot host these seven files. The import scanners below are NOT subsumed by
+// α1 and stay.
 
 const LEGACY_SERVER_IMPORT_RE = /from\s*["']@\/features\/audit\/server["']/;
 const LEGACY_BARREL_IMPORT_RE = /from\s*["']@\/features\/audit["']/;
@@ -47,14 +44,6 @@ function findFilesMatchingImport(re: RegExp): string[] {
 }
 
 describe("POC audit hex C5 — atomic delete features/audit/ wholesale shape", () => {
-  it("α40: features/audit/server.ts no longer exists", () => { expect(fs.existsSync(AUDIT_SERVER)).toBe(false); });
-  it("α41: features/audit/index.ts no longer exists", () => { expect(fs.existsSync(AUDIT_INDEX)).toBe(false); });
-  it("α42: features/audit/audit.service.ts no longer exists", () => { expect(fs.existsSync(AUDIT_SERVICE)).toBe(false); });
-  it("α43: features/audit/audit.repository.ts no longer exists", () => { expect(fs.existsSync(AUDIT_REPO)).toBe(false); });
-  it("α44: features/audit/audit.types.ts no longer exists", () => { expect(fs.existsSync(AUDIT_TYPES)).toBe(false); });
-  it("α45: features/audit/audit.classifier.ts no longer exists", () => { expect(fs.existsSync(AUDIT_CLASSIFIER)).toBe(false); });
-  it("α46: features/audit/audit.validation.ts no longer exists", () => { expect(fs.existsSync(AUDIT_VALIDATION)).toBe(false); });
-
   it("α47: zero production source imports from @/features/audit/server", () => {
     expect(findFilesMatchingImport(LEGACY_SERVER_IMPORT_RE)).toEqual([]);
   });

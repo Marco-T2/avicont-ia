@@ -107,7 +107,6 @@ const REPO_ROOT = path.resolve(__dirname, "..");
 
 /** The four hexagonal rules, keyed by the prefix ESLint emits in `message`. */
 const RULES = ["R1", "R2", "R4", "R5"] as const;
-type Rule = (typeof RULES)[number];
 
 /**
  * ESLint tags every hexagonal violation by prefixing the configured `message`
