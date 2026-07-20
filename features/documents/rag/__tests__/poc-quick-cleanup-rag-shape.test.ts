@@ -90,13 +90,21 @@ describe("agent.context.ts consumer import", () => {
 // ---------------------------------------------------------------------------
 
 describe("documents.service.ts consumer import", () => {
+  // NOTE: features/documents/documents.service.ts was deleted wholesale at
+  // poc-documents-hex C5 (stranded duplicate, zero import consumers). The
+  // canonical DocumentsService now lives in the hex application layer and
+  // carries the SAME cross-module rag import (REQ-004 canonical-bypass).
+  // Path updated atomic with the delete to preserve the rag carve-out
+  // invariant at the new service location — same precedent as α17/α18.
+  const RELOCATED_PATH = "modules/documents/application/documents.service.ts";
+
   it("α13: POSITIVE — documents.service.ts imports from @/features/documents/rag/server", () => {
-    const src = read("features/documents/documents.service.ts");
+    const src = read(RELOCATED_PATH);
     expect(/^import.*@\/features\/documents\/rag\/server/m.test(src)).toBe(true);
   });
 
   it("α14: NEGATIVE — documents.service.ts does NOT import from @/features/rag/server", () => {
-    const src = read("features/documents/documents.service.ts");
+    const src = read(RELOCATED_PATH);
     expect(/^import.*@\/features\/rag\/server/m.test(src)).toBe(false);
   });
 });

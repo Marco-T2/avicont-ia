@@ -1,13 +1,12 @@
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 const REPO_ROOT = resolve(__dirname, "../../..");
 const DOC_ROOT = resolve(__dirname, "..");
 
-function readRepoFile(rel: string): string {
-  return readFileSync(resolve(REPO_ROOT, rel), "utf-8");
-}
+// readRepoFile removed at C5 — α35/α36 inverted to existence checks, no
+// repo-root file is read by this sentinel any more (REPO_ROOT still used below).
 function readDocFile(rel: string): string {
   return readFileSync(resolve(DOC_ROOT, rel), "utf-8");
 }
@@ -54,18 +53,25 @@ describe("C3 presentation shape — Documents module (existence-only regex) — 
     expect(src).toMatch(/\banalyzeDocumentSchema\b/);
   });
 
-  // α35 — features/documents/server.ts SHIM re-exports from @/modules/documents/presentation/server
-  it("α35: features/documents/server.ts SHIM re-exports from @/modules/documents/presentation/server", () => {
-    const src = readRepoFile("features/documents/server.ts");
-    expect(src).toMatch(
-      /from\s+["']@\/modules\/documents\/presentation\/server["']/,
+  // α35/α36 — INVERTED at poc-documents-hex C5 (batch 1 wholesale delete).
+  // The features/documents/server.ts SHIM was deleted: it had ZERO import
+  // consumers (verified by repo-wide grep), so the re-export chain it once
+  // preserved is dead weight. Per project precedent these POSITIVE presence
+  // sentinels are INVERTED to absence assertions rather than removed, so the
+  // α numbering stays stable and a resurrected shim trips the sentinel.
+
+  // α35 — features/documents/server.ts SHIM no longer exists (was: re-exports hex barrel)
+  it("α35: features/documents/server.ts SHIM absent — deleted at C5, canonical barrel is @/modules/documents/presentation/server (INVERTED)", () => {
+    expect(existsSync(resolve(REPO_ROOT, "features/documents/server.ts"))).toBe(
+      false,
     );
   });
 
-  // α36 — features/documents/server.ts SHIM carries server-only marker
-  it("α36: features/documents/server.ts SHIM carries 'server-only' import (POSITIVE)", () => {
-    const src = readRepoFile("features/documents/server.ts");
-    expect(src).toMatch(/import\s+["']server-only["']/);
+  // α36 — features/documents/server.ts SHIM no longer exists (was: carries server-only)
+  it("α36: features/documents/server.ts SHIM absent — the ONLY 'server-only' marker for documents is presentation/server.ts (α33) (INVERTED)", () => {
+    expect(existsSync(resolve(REPO_ROOT, "features/documents/server.ts"))).toBe(
+      false,
+    );
   });
 
   // α37 — presentation/validation/documents.validation.ts exports schemas
