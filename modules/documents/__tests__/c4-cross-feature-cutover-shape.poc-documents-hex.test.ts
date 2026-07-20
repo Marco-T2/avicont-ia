@@ -1,20 +1,30 @@
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { stripSourceComments } from "@/modules/shared/__tests__/strip-source-comments";
 
 const REPO_ROOT = resolve(__dirname, "../../..");
 
+// COMMENTS STRIPPED (poc-rag-hex C3). Every lock in this file pins RUNTIME
+// CODE — none asserts a comment on purpose — so the strip is applied at the
+// read boundary. Anchoring alone left residue: `^import` still matches an
+// UNINDENTED line sitting inside a block comment.
 function readRepoFile(rel: string): string {
-  return readFileSync(resolve(REPO_ROOT, rel), "utf-8");
+  return stripSourceComments(readFileSync(resolve(REPO_ROOT, rel), "utf-8"));
 }
 
+// ANCHORED (^) — kept as defense in depth on top of the strip. Both real forms
+// are allowed: a single-line `import ... from "X"` and the closing line of a
+// multi-line named import (`} from "X"`). Neither can begin a comment line.
 const IMPORT_HEX_BARREL_RE =
-  /from\s+["']@\/modules\/documents\/presentation\/server["']/;
+  /^(?:import\b.*|\})\s*from\s+["']@\/modules\/documents\/presentation\/server["']/m;
 const LEGACY_FEATURES_SERVER_RE =
   /from\s+["']@\/features\/documents\/server["']/;
 const NEW_DOCUMENTS_SERVICE_CTOR_RE = /new\s+DocumentsService\s*\(/;
-const RAG_FEATURES_PATH_RE =
-  /from\s+["']@\/features\/documents\/rag\/server["']/;
+// Repointed at poc-rag-hex C2: rag's canonical home moved to modules/rag.
+// ANCHORED (^) — same rationale as IMPORT_HEX_BARREL_RE above.
+const RAG_MODULES_PATH_RE =
+  /^(?:import\b.*|\})\s*from\s+["']@\/modules\/rag\/presentation\/server["']/m;
 
 describe("C4 cross-feature cutover shape — Documents module (3 API routes + rag carve-out invariant) paired sister poc-org-profile-hex C4", () => {
   // α38 — app/api/documents/route.ts imports from hex barrel
@@ -56,12 +66,12 @@ describe("C4 cross-feature cutover shape — Documents module (3 API routes + ra
     expect(src).not.toMatch(NEW_DOCUMENTS_SERVICE_CTOR_RE);
   });
 
-  // α44 — rag carve-out invariant: legacy-rag.adapter.ts imports @/features/documents/rag/server
-  // Path migrated at poc-ai-agent-hex C5: features/ai-agent/agent.context.ts deleted;
-  // rag import now lives at modules/ai-agent/infrastructure/legacy-rag.adapter.ts (REQ-004 insulation point)
-  it("α44: modules/ai-agent/infrastructure/legacy-rag.adapter.ts imports @/features/documents/rag/server (rag carve-out invariant — REQ-004 insulation; poc-ai-agent-hex C5 wholesale delete migrated path)", () => {
+  // α44 — rag carve-out invariant: legacy-rag.adapter.ts is the single
+  // insulation point naming rag. Specifier repointed at poc-rag-hex C2 to
+  // @/modules/rag/presentation/server (features/documents/rag/ deleted).
+  it("α44: modules/ai-agent/infrastructure/legacy-rag.adapter.ts imports @/modules/rag/presentation/server (rag carve-out invariant — single insulation point)", () => {
     const src = readRepoFile("modules/ai-agent/infrastructure/legacy-rag.adapter.ts");
-    expect(src).toMatch(RAG_FEATURES_PATH_RE);
+    expect(src).toMatch(RAG_MODULES_PATH_RE);
   });
 
   // α45 — relocated test file exists at hex application path

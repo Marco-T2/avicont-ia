@@ -31,15 +31,8 @@ const { mockRagDeleteByDocument } = vi.hoisted(() => ({
   mockRagDeleteByDocument: vi.fn(),
 }));
 
-vi.mock("@/features/documents/rag/server", () => ({
-  RagService: class {
-    indexDocument = vi.fn();
-    deleteByDocument = mockRagDeleteByDocument;
-  },
-}));
-
 import { DocumentsService } from "@/modules/documents/application/documents.service";
-import { RagService } from "@/features/documents/rag/server";
+import type { DocumentIndexingPort } from "@/modules/documents/domain/ports/document-indexing.port";
 import { ForbiddenError } from "@/modules/shared/domain/errors";
 
 const CLERK_USER_ID = "clerk_user_1";
@@ -81,11 +74,24 @@ class StubBlobStorage {
   del = vi.fn().mockResolvedValue(undefined);
 }
 
+
+// poc-rag-hex C2 — DocumentsService now takes a DocumentIndexingPort.
+// The old module-mock of the rag presentation barrel, plus the stub class it
+// exposed, were DELETED rather than repointed: documents.service.ts no longer
+// imports that barrel at all, so the mock intercepted nothing. The same
+// hoisted spies are wired straight into a port-shaped stub below.
+// (Deliberately no literal mock-call text in this prose — the shape sentinels
+// match specifiers with line-anchored regexes and would read a comment as code.)
+const ragIndexingStub: DocumentIndexingPort = {
+  indexDocument: vi.fn(),
+  deleteByDocument: mockRagDeleteByDocument,
+};
+
 describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () => {
   it("member trying to delete ACCOUNTING doc: throws ForbiddenError, no RAG nor row delete", async () => {
     const repo = buildRepoWithDoc({ role: "member", scope: "ACCOUNTING" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await expect(service.delete(DOC_ID, CLERK_USER_ID)).rejects.toThrow(
       ForbiddenError,
@@ -97,7 +103,7 @@ describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () =>
   it("cobrador trying to delete FARM doc: throws ForbiddenError", async () => {
     const repo = buildRepoWithDoc({ role: "cobrador", scope: "FARM" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await expect(service.delete(DOC_ID, CLERK_USER_ID)).rejects.toThrow(
       ForbiddenError,
@@ -108,7 +114,7 @@ describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () =>
   it("admin deleting ACCOUNTING doc: succeeds (RAG + row delete fire)", async () => {
     const repo = buildRepoWithDoc({ role: "admin", scope: "ACCOUNTING" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.delete(DOC_ID, CLERK_USER_ID);
 
@@ -119,7 +125,7 @@ describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () =>
   it("member deleting FARM doc (allowed by RAG_SCOPES): succeeds", async () => {
     const repo = buildRepoWithDoc({ role: "member", scope: "FARM" });
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.delete(DOC_ID, CLERK_USER_ID);
 

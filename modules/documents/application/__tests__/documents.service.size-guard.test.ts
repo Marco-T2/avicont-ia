@@ -29,15 +29,8 @@ vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   GlobalWorkerOptions: {},
 }));
 
-vi.mock("@/features/documents/rag/server", () => ({
-  RagService: class {
-    indexDocument = mockIndexDocument;
-    deleteByDocument = vi.fn();
-  },
-}));
-
 import { DocumentsService } from "@/modules/documents/application/documents.service";
-import { RagService } from "@/features/documents/rag/server";
+import type { DocumentIndexingPort } from "@/modules/documents/domain/ports/document-indexing.port";
 
 const CLERK_ORG_ID = "clerk_org_1";
 const CLERK_USER_ID = "clerk_user_1";
@@ -86,6 +79,19 @@ class StubBlobStorage {
   del = vi.fn(async () => {});
 }
 
+
+// poc-rag-hex C2 — DocumentsService now takes a DocumentIndexingPort.
+// The old module-mock of the rag presentation barrel, plus the stub class it
+// exposed, were DELETED rather than repointed: documents.service.ts no longer
+// imports that barrel at all, so the mock intercepted nothing. The same
+// hoisted spies are wired straight into a port-shaped stub below.
+// (Deliberately no literal mock-call text in this prose — the shape sentinels
+// match specifiers with line-anchored regexes and would read a comment as code.)
+const ragIndexingStub: DocumentIndexingPort = {
+  indexDocument: mockIndexDocument,
+  deleteByDocument: vi.fn(),
+};
+
 describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -98,7 +104,7 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
     const blob = new StubBlobStorage();
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, blob, new RagService());
+    const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
     const file = new File([new Uint8Array(SIX_MB)], "big.docx", { type: DOCX_MIME });
     const result = await service.upload(CLERK_ORG_ID, CLERK_USER_ID, "big.docx", null, file);
@@ -118,7 +124,7 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
     const repo = buildRepo();
     const blob = new StubBlobStorage();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, blob, new RagService());
+    const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
     const file = new File([new Uint8Array(FIVE_MB)], "edge.docx", { type: DOCX_MIME });
     mockConvertToMarkdown.mockResolvedValueOnce({ value: "parsed body content", messages: [] });

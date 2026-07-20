@@ -1,36 +1,23 @@
 import "server-only";
 import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type { DocumentScope } from "@/modules/permissions/domain/permissions";
+import type { VectorStorePort } from "../../domain/ports/vector-store.port";
+import type { ChunkInput, SearchResult } from "../../domain/rag.types";
 
-interface ChunkInput {
-  documentId: string;
-  organizationId: string;
-  scope: DocumentScope;
-  content: string;
-  chunkIndex: number;
-  /**
-   * REQ-35 — hierarchical section context emitted by the chunker
-   * (markdown header chain / numbered code / all-caps). null when no
-   * detector fired in the parent context. Persisted into
-   * `document_chunks.sectionPath` (VARCHAR(512), nullable).
-   */
-  sectionPath: string | null;
-  embedding: number[];
-}
-
-interface SearchResult {
-  content: string;
-  documentId: string;
-  score: number;
-  /** REQ-30 — `documents.name` joined into the result. */
-  documentName: string;
-  /** REQ-30 — `document_chunks.chunkIndex` carried up for citations. */
-  chunkIndex: number;
-  /** REQ-30 — `document_chunks.sectionPath` carried up for citations. */
-  sectionPath: string | null;
-}
-
-export class VectorRepository extends BaseRepository {
+/**
+ * PrismaVectorRepository — pgvector-backed VectorStorePort adapter.
+ *
+ * REQ-RAG-03 — extends the shared BaseRepository like the other 17 modules
+ * (house convention, not a new cross-module coupling).
+ *
+ * `ChunkInput` / `SearchResult` were module-private interfaces here before
+ * the migration; they now live in modules/rag/domain/rag.types.ts so the
+ * port and this adapter share one canonical definition.
+ */
+export class PrismaVectorRepository
+  extends BaseRepository
+  implements VectorStorePort
+{
   /** Almacena múltiples fragmentos con sus incrustaciones..*/
   async storeChunks(chunks: ChunkInput[]): Promise<void> {
     for (const chunk of chunks) {

@@ -1,5 +1,5 @@
 /**
- * REQ-43 — VectorRepository.searchSimilar applies AND-semantics tag filter.
+ * REQ-43 — PrismaVectorRepository.searchSimilar applies AND-semantics tag filter.
  *
  * Implementation: when `tagIds` is non-empty, the SQL must
  *  (a) INNER JOIN document_tags dt ON dt."documentId" = d.id
@@ -19,7 +19,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { VectorRepository } from "../vector.repository";
+import { PrismaVectorRepository } from "../infrastructure/prisma/prisma-vector.repository";
 
 interface RawCall {
   sql: string;
@@ -37,11 +37,11 @@ function makeFakeDb(rows: unknown[]) {
   return { fake, calls };
 }
 
-describe("REQ-43 — VectorRepository.searchSimilar AND-semantics tag filter", () => {
+describe("REQ-43 — PrismaVectorRepository.searchSimilar AND-semantics tag filter", () => {
   it("SCN-43.1: omitted/empty tagIds keeps the existing single-query shape (no JOIN document_tags, no HAVING)", async () => {
     const { fake, calls } = makeFakeDb([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5);
 
@@ -54,7 +54,7 @@ describe("REQ-43 — VectorRepository.searchSimilar AND-semantics tag filter", (
   it("SCN-43.1 α2: empty array also short-circuits (no JOIN, no HAVING)", async () => {
     const { fake, calls } = makeFakeDb([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5, []);
 
@@ -67,7 +67,7 @@ describe("REQ-43 — VectorRepository.searchSimilar AND-semantics tag filter", (
   it("SCN-43.3: AND-semantics — tagIds = [a, b] emits INNER JOIN document_tags + HAVING COUNT(DISTINCT tagId) = 2", async () => {
     const { fake, calls } = makeFakeDb([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar(
       [0.1, 0.2],
@@ -86,7 +86,7 @@ describe("REQ-43 — VectorRepository.searchSimilar AND-semantics tag filter", (
   it("SCN-43.2: single-tag — HAVING COUNT(DISTINCT tagId) = 1", async () => {
     const { fake, calls } = makeFakeDb([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar(
       [0.1, 0.2],
@@ -104,7 +104,7 @@ describe("REQ-43 — VectorRepository.searchSimilar AND-semantics tag filter", (
   it("α-SQL-injection sentinel: tagIds are passed as parametrized placeholders, NOT interpolated into the SQL string", async () => {
     const { fake, calls } = makeFakeDb([]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     const malicious = "tag-a'; DROP TABLE documents; --";
     await repo.searchSimilar(

@@ -1,6 +1,7 @@
 /**
  * Outbound port for RAG (Retrieval-Augmented Generation) search.
- * LegacyRagAdapter wraps RagService from features/documents/rag/server at C2.
+ * LegacyRagAdapter wraps the rag module's public presentation barrel, whose
+ * canonical home relocated into the rag module at poc-rag-hex C2.
  * Domain layer: no server-only, no Prisma runtime, no SDK deps.
  */
 

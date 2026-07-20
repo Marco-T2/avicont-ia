@@ -33,15 +33,8 @@ vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   GlobalWorkerOptions: {},
 }));
 
-vi.mock("@/features/documents/rag/server", () => ({
-  RagService: class {
-    indexDocument = vi.fn();
-    deleteByDocument = vi.fn();
-  },
-}));
-
 import { DocumentsService } from "@/modules/documents/application/documents.service";
-import { RagService } from "@/features/documents/rag/server";
+import type { DocumentIndexingPort } from "@/modules/documents/domain/ports/document-indexing.port";
 import type { DocumentWithRelations } from "@/modules/documents/domain/documents.types";
 
 const CLERK_ORG_ID = "clerk_org_1";
@@ -96,6 +89,19 @@ class StubBlobStorage {
   del = vi.fn();
 }
 
+
+// poc-rag-hex C2 — DocumentsService now takes a DocumentIndexingPort.
+// The old module-mock of the rag presentation barrel, plus the stub class it
+// exposed, were DELETED rather than repointed: documents.service.ts no longer
+// imports that barrel at all, so the mock intercepted nothing. The same
+// hoisted spies are wired straight into a port-shaped stub below.
+// (Deliberately no literal mock-call text in this prose — the shape sentinels
+// match specifiers with line-anchored regexes and would read a comment as code.)
+const ragIndexingStub: DocumentIndexingPort = {
+  indexDocument: vi.fn(),
+  deleteByDocument: vi.fn(),
+};
+
 describe("DocumentsService.list — RAG scope filter by caller role (C1)", () => {
   it("member: passes [ORGANIZATION, FARM] to repo.findAll (ACCOUNTING excluded)", async () => {
     const repo = buildRepo("member");
@@ -104,7 +110,7 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
       buildDoc("d_farm", "FARM"),
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     const result = await service.list(CLERK_ORG_ID, CLERK_USER_ID);
 
@@ -117,7 +123,7 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
     // C2 2026-05-17 — cobrador es sub-rol contable; ve docs ACCOUNTING.
     const repo = buildRepo("cobrador");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
 
@@ -127,7 +133,7 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
   it("contador: passes [ORGANIZATION, ACCOUNTING] (FARM excluded)", async () => {
     const repo = buildRepo("contador");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
 
@@ -137,7 +143,7 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
   it("owner: passes all three scopes", async () => {
     const repo = buildRepo("owner");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
 
@@ -151,7 +157,7 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
   it("role without RAG access (unknown): returns empty list without hitting repo.findAll", async () => {
     const repo = buildRepo("custom-no-rag");
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const service = new DocumentsService(repo as any, new StubBlobStorage(), new RagService());
+    const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     const result = await service.list(CLERK_ORG_ID, CLERK_USER_ID);
 

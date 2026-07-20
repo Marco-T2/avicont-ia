@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { chunkText } from "../chunking";
+import { chunkText } from "../domain/chunking";
 
 describe("REQ-33 SCN-33.4 fallback when no detector fires", () => {
   it("returns word-split chunks with sectionPath: null on unstructured text", () => {

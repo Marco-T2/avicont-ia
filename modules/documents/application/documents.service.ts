@@ -3,8 +3,8 @@
  *
  * R5 absoluta: no server-only marker here (REQ-005 NEGATIVE) and no
  * direct `@/lib/blob` import (REQ-002). Blob storage flows through
- * BlobStoragePort. RagService is reached via cross-module canonical-bypass
- * (REQ-004) — rag/ stays at features path until poc-rag-hex closes.
+ * BlobStoragePort; document indexing flows through DocumentIndexingPort.
+ * This layer holds no concrete cross-module import.
  *
  * Paired sister: modules/org-profile/application/org-profile.service.ts.
  */
@@ -18,8 +18,7 @@ import {
   getRagScopes,
   type DocumentScope,
 } from "@/modules/permissions/domain/permissions";
-// cross-module canonical-bypass REQ-004 — rag/ stays at features path (poc-rag-hex)
-import { RagService } from "@/features/documents/rag/server";
+import type { DocumentIndexingPort } from "@/modules/documents/domain/ports/document-indexing.port";
 import type { BlobStoragePort } from "@/modules/documents/domain/ports/blob-storage.port";
 // F5/REQ-45 — optional tags attachment port. Optional ctor param keeps every
 // existing instantiation (tests, composition root pre-wire) source-compatible.
@@ -84,7 +83,9 @@ export class DocumentsService {
   constructor(
     private readonly repo: DocumentsRepositoryPort,
     private readonly blobStorage: BlobStoragePort,
-    private readonly ragService: RagService,
+    // Name deliberately kept as `ragService` (call sites + c1-application-shape
+    // α10 match the NAME); only the type moved to the port.
+    private readonly ragService: DocumentIndexingPort,
     // F5/REQ-45 — optional to preserve back-compat with existing test fakes
     // and composition-root pre-F5 instantiations; upload() guards on null.
     private readonly tagsRepository?: TagsRepositoryPort,

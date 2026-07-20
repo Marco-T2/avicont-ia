@@ -1,17 +1,26 @@
-import "server-only";
+/**
+ * RagService — application layer (hex).
+ *
+ * R5 absoluta: the server-only marker is BANNED here (REQ-005 NEGATIVE).
+ * This layer depends ONLY on the two outbound ports (EmbeddingPort +
+ * VectorStorePort) — no Gemini SDK, no Prisma. Concrete adapters are wired
+ * at modules/rag/presentation/composition-root.ts (REQ-RAG-01).
+ *
+ * Ports arrive by constructor injection; the pre-migration zero-arg ctor
+ * that self-constructed `new EmbeddingService()` / `new VectorRepository()`
+ * was a composition root hidden inside the application layer.
+ */
 import type { DocumentScope } from "@/modules/permissions/domain/permissions";
-import { EmbeddingService } from "./embedding.service";
-import { VectorRepository } from "./vector.repository";
-import { chunkText } from "./chunking";
+import type { EmbeddingPort } from "../domain/ports/embedding.port";
+import type { VectorStorePort } from "../domain/ports/vector-store.port";
+import type { SearchResult } from "../domain/rag.types";
+import { chunkText } from "../domain/chunking";
 
 export class RagService {
-  private readonly embeddingService: EmbeddingService;
-  private readonly vectorRepo: VectorRepository;
-
-  constructor() {
-    this.embeddingService = new EmbeddingService();
-    this.vectorRepo = new VectorRepository();
-  }
+  constructor(
+    private readonly embedding: EmbeddingPort,
+    private readonly vectorStore: VectorStorePort,
+  ) {}
 
   /** Chunk text, generate embeddings, and store chunks for a document. */
   async indexDocument(
@@ -21,13 +30,13 @@ export class RagService {
     text: string,
   ): Promise<void> {
     const chunks = chunkText(text);
-    const embeddings = await this.embeddingService.embedBatch(
+    const embeddings = await this.embedding.embedBatch(
       chunks.map((c) => c.content),
     );
 
     // REQ-35 — sectionPath emitted by the chunker is forwarded to
     // storeChunks → DocumentChunk.sectionPath (nullable VARCHAR(512)).
-    await this.vectorRepo.storeChunks(
+    await this.vectorStore.storeChunks(
       chunks.map((chunk, index) => ({
         documentId,
         organizationId,
@@ -44,9 +53,9 @@ export class RagService {
    * Embed a query and search for similar document chunks.
    *
    * Return shape carries `documentName` + `chunkIndex` for citations (REQ-30),
-   * populated by `VectorRepository.searchSimilar` via the documents JOIN.
+   * populated by the vector store adapter via the documents JOIN.
    *
-   * `tagIds` (REQ-43) — when non-empty the VectorRepository filters via a
+   * `tagIds` (REQ-43) — when non-empty the vector store filters via a
    * conditional JOIN over document_tags + HAVING COUNT(DISTINCT tagId) = N
    * (AND-semantics). Slug -> ID resolution happens upstream in
    * LegacyRagAdapter so this layer stays Tag-model-agnostic.
@@ -57,18 +66,9 @@ export class RagService {
     scopes: DocumentScope[],
     topK = 5,
     tagIds?: string[],
-  ): Promise<
-    {
-      content: string;
-      documentId: string;
-      score: number;
-      documentName: string;
-      chunkIndex: number;
-      sectionPath: string | null;
-    }[]
-  > {
-    const queryVector = await this.embeddingService.embed(query);
-    return this.vectorRepo.searchSimilar(
+  ): Promise<SearchResult[]> {
+    const queryVector = await this.embedding.embed(query);
+    return this.vectorStore.searchSimilar(
       queryVector,
       organizationId,
       scopes,
@@ -79,6 +79,6 @@ export class RagService {
 
   /** Delete all chunks for a document. */
   async deleteByDocument(documentId: string): Promise<void> {
-    await this.vectorRepo.deleteByDocument(documentId);
+    await this.vectorStore.deleteByDocument(documentId);
   }
 }

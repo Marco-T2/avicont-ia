@@ -1,5 +1,5 @@
 /**
- * REQ-30 — VectorRepository.searchSimilar enriches results with
+ * REQ-30 — PrismaVectorRepository.searchSimilar enriches results with
  * documentName + chunkIndex by JOINing document_chunks → documents.
  *
  * Unit-level: BaseRepository accepts a PrismaClient via constructor, so we
@@ -17,7 +17,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { VectorRepository } from "../vector.repository";
+import { PrismaVectorRepository } from "../infrastructure/prisma/prisma-vector.repository";
 
 interface RawCall {
   sql: string;
@@ -35,7 +35,7 @@ function makeFakeDb(rows: unknown[]) {
   return { fake, calls };
 }
 
-describe("REQ-30 — VectorRepository.searchSimilar emits documentName + chunkIndex via JOIN", () => {
+describe("REQ-30 — PrismaVectorRepository.searchSimilar emits documentName + chunkIndex via JOIN", () => {
   it("SCN-30.1 α1: SELECT clause includes d.name AS documentName + dc.chunkIndex", async () => {
     const { fake, calls } = makeFakeDb([
       {
@@ -47,7 +47,7 @@ describe("REQ-30 — VectorRepository.searchSimilar emits documentName + chunkIn
       },
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5);
 
@@ -78,7 +78,7 @@ describe("REQ-30 — VectorRepository.searchSimilar emits documentName + chunkIn
       },
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     const out = await repo.searchSimilar(
       [0.1, 0.2],

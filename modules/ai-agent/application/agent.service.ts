@@ -29,7 +29,7 @@ import type { PricingService } from "./pricing/pricing.service";
  * concrete adapter (GeminiLLMAdapter) is wired at the composition root
  * (presentation/server.ts at C3).
  * REQ-004: AccountsLookupPort + RagPort decouple the application layer from
- * PrismaAccountsRepo / features/documents/rag — adapters land at C2.
+ * PrismaAccountsRepo / the rag module — adapters land at C2.
  */
 export interface AgentServiceDeps {
   readonly llmProvider: LLMProviderPort;

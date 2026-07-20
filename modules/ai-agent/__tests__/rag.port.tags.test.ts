@@ -23,19 +23,14 @@
 
 import { describe, it, expect, vi } from "vitest";
 
-// Mock the embedding service to bypass GEMINI_API_KEY env guard (module-load
-// chain: legacy-rag.adapter -> rag/server -> rag.service -> embedding.service).
-vi.mock("@/features/documents/rag/embedding.service", () => ({
-  EmbeddingService: class {
-    async embed() {
-      return [0.1, 0.2];
-    }
-    async embedBatch(texts: string[]) {
-      return texts.map(() => [0.1, 0.2]);
-    }
-  },
-}));
-
+// NOTE: the embedding-service vi.mock that used to sit here was deleted at
+// poc-rag-hex C2. It only ever existed to defuse the import-time
+// GEMINI_API_KEY throw travelling the chain
+// legacy-rag.adapter -> rag/server -> rag.service -> embedding.service.
+// REQ-RAG-02 moved that throw into GeminiEmbeddingAdapter's constructor, so
+// the chain is inert on import. Every test below already injects its own stub
+// (`new LegacyRagAdapter(ragService as any, tagsRepo)`), so the mock was
+// never consulted anyway — repointing it would have been a silent no-op.
 import { LegacyRagAdapter } from "../infrastructure/legacy-rag.adapter";
 import type { RagPort } from "../domain/ports/rag.port";
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";

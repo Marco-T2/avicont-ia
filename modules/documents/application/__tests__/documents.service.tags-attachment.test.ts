@@ -36,15 +36,8 @@ vi.mock("pdfjs-dist/legacy/build/pdf.mjs", () => ({
   GlobalWorkerOptions: {},
 }));
 
-vi.mock("@/features/documents/rag/server", () => ({
-  RagService: class {
-    indexDocument = mockIndexDocument;
-    deleteByDocument = mockRagDeleteByDocument;
-  },
-}));
-
 import { DocumentsService } from "@/modules/documents/application/documents.service";
-import { RagService } from "@/features/documents/rag/server";
+import type { DocumentIndexingPort } from "@/modules/documents/domain/ports/document-indexing.port";
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
 
 const CLERK_ORG_ID = "clerk_org_1";
@@ -105,6 +98,19 @@ function buildTagsRepo(): TagsRepositoryPort & {
   };
 }
 
+
+// poc-rag-hex C2 — DocumentsService now takes a DocumentIndexingPort.
+// The old module-mock of the rag presentation barrel, plus the stub class it
+// exposed, were DELETED rather than repointed: documents.service.ts no longer
+// imports that barrel at all, so the mock intercepted nothing. The same
+// hoisted spies are wired straight into a port-shaped stub below.
+// (Deliberately no literal mock-call text in this prose — the shape sentinels
+// match specifiers with line-anchored regexes and would read a comment as code.)
+const ragIndexingStub: DocumentIndexingPort = {
+  indexDocument: mockIndexDocument,
+  deleteByDocument: mockRagDeleteByDocument,
+};
+
 describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -119,7 +125,7 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
-      new RagService(),
+      ragIndexingStub,
       tagsRepo,
     );
 
@@ -147,7 +153,7 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
-      new RagService(),
+      ragIndexingStub,
       tagsRepo,
     );
 
@@ -172,7 +178,7 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
-      new RagService(),
+      ragIndexingStub,
       tagsRepo,
     );
 
@@ -201,7 +207,7 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
-      new RagService(),
+      ragIndexingStub,
       tagsRepo,
     );
 

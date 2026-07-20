@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { chunkText } from "../chunking";
+import { chunkText } from "../domain/chunking";
 
 describe("REQ-34 chunker return shape", () => {
   it("returns objects with { content: string, sectionPath: string | null }", () => {

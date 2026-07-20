@@ -1,7 +1,7 @@
 /**
  * DocumentIndexingPort — outbound port replacing the REQ-004 cross-module
- * canonical-bypass (`import { RagService } from "@/features/documents/rag/server"`)
- * inside DocumentsService.
+ * canonical-bypass (a concrete RagService import from the now-retired
+ * features rag home) inside DocumentsService.
  *
  * WRITE-ONLY and deliberately disjoint from modules/ai-agent's read-only
  * RagPort: documents indexes and deletes, the agent searches. Exactly two

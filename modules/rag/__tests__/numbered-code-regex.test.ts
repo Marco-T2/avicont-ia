@@ -15,7 +15,7 @@ import {
   MD_HEADER_REGEX,
   NUMBERED_CODE_REGEX,
   ALL_CAPS_REGEX,
-} from "../chunking-detectors";
+} from "../domain/chunking-detectors";
 
 describe("REQ-36 NUMBERED_CODE_REGEX", () => {
   it.each([

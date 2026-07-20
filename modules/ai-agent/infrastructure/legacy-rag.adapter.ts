@@ -1,5 +1,5 @@
 import "server-only";
-import { RagService } from "@/features/documents/rag/server";
+import type { RagService } from "@/modules/rag/presentation/server";
 import type {
   RagPort,
   RagResult,
@@ -9,19 +9,21 @@ import type { DocumentScope } from "@/modules/permissions/domain/permissions";
 import type { TagsRepositoryPort } from "@/modules/tags/domain/ports/tags-repository.port";
 
 /**
- * LegacyRagAdapter — implements RagPort by wrapping RagService from
- * @/features/documents/rag/server.
+ * LegacyRagAdapter — implements RagPort by wrapping the RagService exposed by
+ * @/modules/rag/presentation/server.
  *
- * REQ-004: insulation point — this is the ONE location in modules/ai-agent
- * that imports from @/features/documents/rag. The application layer
- * consumes RagPort.
+ * Insulation point — this is the ONE location in modules/ai-agent that names
+ * RagService at all. The application layer consumes RagPort.
  *
  * Narrow surface: search() only. RagService's indexDocument/deleteByDocument
- * are write operations owned by the documents feature, not the agent.
+ * are write operations owned by modules/documents, not the agent.
  *
- * R3 documented: features/documents/rag/ is not yet hexified. When
- * poc-rag-hex executes, this is the single-line fix (D7 — paired sister
- * cross-feature legacy adapter pattern, no dispatch analog for RagPort).
+ * `ragService` is a REQUIRED constructor parameter (F4). It previously
+ * defaulted to `new RagService()`, which made this adapter a composition root
+ * in disguise — an infrastructure class that knew HOW to build its own
+ * dependency. Wiring now lives in modules/ai-agent/presentation/server.ts,
+ * the module's real composition root. The name kept the "Legacy" prefix for
+ * continuity with the RagPort contract; it is no longer a legacy path.
  *
  * REQ-43 (tags filter) — the adapter accepts an optional TagsRepositoryPort
  * so it can resolve slug strings to tag IDs before delegating to RagService.
@@ -36,10 +38,7 @@ export class LegacyRagAdapter implements RagPort {
   private readonly ragService: RagService;
   private readonly tagsRepo?: TagsRepositoryPort;
 
-  constructor(
-    ragService: RagService = new RagService(),
-    tagsRepo?: TagsRepositoryPort,
-  ) {
+  constructor(ragService: RagService, tagsRepo?: TagsRepositoryPort) {
     this.ragService = ragService;
     this.tagsRepo = tagsRepo;
   }

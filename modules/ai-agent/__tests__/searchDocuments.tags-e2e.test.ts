@@ -17,17 +17,10 @@
 
 import { describe, it, expect, vi } from "vitest";
 
-vi.mock("@/features/documents/rag/embedding.service", () => ({
-  EmbeddingService: class {
-    async embed() {
-      return [0.1, 0.2];
-    }
-    async embedBatch(texts: string[]) {
-      return texts.map(() => [0.1, 0.2]);
-    }
-  },
-}));
-
+// NOTE: the embedding-service vi.mock that used to sit here was deleted at
+// poc-rag-hex C2 — same rationale as rag.port.tags.test.ts. REQ-RAG-02 moved
+// the GEMINI_API_KEY throw into the adapter constructor, and this test already
+// injects its own rag stub, so the mock was dead code.
 import { LegacyRagAdapter } from "../infrastructure/legacy-rag.adapter";
 import { searchDocumentsTool } from "../domain/tools/agent.tool-definitions";
 import { buildRagContext } from "../application/agent.context";

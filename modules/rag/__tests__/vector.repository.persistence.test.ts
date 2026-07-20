@@ -1,5 +1,5 @@
 /**
- * REQ-35 — VectorRepository.storeChunks persists sectionPath; searchSimilar
+ * REQ-35 — PrismaVectorRepository.storeChunks persists sectionPath; searchSimilar
  * returns it through the JOIN.
  *
  * Unit-level: BaseRepository accepts a PrismaClient via constructor, so we
@@ -18,7 +18,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { VectorRepository } from "../vector.repository";
+import { PrismaVectorRepository } from "../infrastructure/prisma/prisma-vector.repository";
 
 interface RawCall {
   sql: string;
@@ -36,11 +36,11 @@ function makeFakeDb(rows: unknown[] = []) {
   return { fake, calls };
 }
 
-describe("REQ-35 — VectorRepository.storeChunks persists sectionPath", () => {
+describe("REQ-35 — PrismaVectorRepository.storeChunks persists sectionPath", () => {
   it("INSERT contains sectionPath column and passes it as a bound param", async () => {
     const { fake, calls } = makeFakeDb();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.storeChunks([
       {
@@ -66,7 +66,7 @@ describe("REQ-35 — VectorRepository.storeChunks persists sectionPath", () => {
   it("forwards NULL sectionPath unchanged (no detector match path)", async () => {
     const { fake, calls } = makeFakeDb();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.storeChunks([
       {
@@ -98,7 +98,7 @@ describe("REQ-30/35 — searchSimilar returns sectionPath via JOIN", () => {
       },
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5);
 
@@ -127,7 +127,7 @@ describe("REQ-30/35 — searchSimilar returns sectionPath via JOIN", () => {
       },
     ]);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const repo = new VectorRepository(fake as any);
+    const repo = new PrismaVectorRepository(fake as any);
 
     const out = await repo.searchSimilar(
       [0.1, 0.2],
