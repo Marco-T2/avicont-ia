@@ -19,7 +19,7 @@ import {
   exportLedgerXlsx,
   type LedgerXlsxOptions,
 } from "../infrastructure/exporters/ledger/ledger-xlsx.exporter";
-import type { LedgerEntry } from "../presentation/dto/ledger.types";
+import type { LedgerEntry } from "../domain/ledger.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -46,8 +46,11 @@ const IMPORT_SENTINELS = [
     regex: /^import\s+\{[^}]*deriveNature[^}]*\}\s+from\s+"@\/prisma\/seeds\/chart-of-accounts"/m,
   },
   {
-    label: "DTO types from hex presentation",
-    regex: /^import\s+type\s+\{[^}]*AccountListFilters[^}]*\}\s+from\s+"@\/modules\/accounting\/presentation\/dto\/accounts\.types"/m,
+    // NOTE (hex R1/R2 debt paydown): accounts.types moved from presentation/dto
+    // to domain/ (it describes domain shapes, consumed inward). Sentinel updated
+    // to the new domain/ location.
+    label: "DTO types from hex domain",
+    regex: /^import\s+type\s+\{[^}]*AccountListFilters[^}]*\}\s+from\s+"@\/modules\/accounting\/domain\/accounts\.types"/m,
   },
   {
     label: "AccountsCrudPort from domain",

@@ -10,7 +10,7 @@ import type {
   LedgerEntry,
   LedgerPaginatedDto,
   TrialBalanceRow,
-} from "@/modules/accounting/presentation/dto/ledger.types";
+} from "@/modules/accounting/domain/ledger.types";
 import {
   roundHalfUp,
   sumDecimals,

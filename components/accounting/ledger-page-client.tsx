@@ -22,7 +22,7 @@ import { formatDateBO } from "@/lib/date-utils";
 import { formatBsAccounting } from "@/lib/format-currency";
 
 // Shadow interface mirrors LedgerEntry + LedgerPaginatedDto from
-// @/modules/accounting/presentation/dto/ledger.types. Monetary fields wire
+// @/modules/accounting/domain/ledger.types. Monetary fields wire
 // as string (Decimal precision preserved server-side, parsed at display).
 interface LedgerEntry {
   entryId: string;

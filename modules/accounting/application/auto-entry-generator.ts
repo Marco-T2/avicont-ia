@@ -15,7 +15,7 @@ import {
   sumDecimals,
   eq,
 } from "@/modules/accounting/shared/domain/money.utils";
-import type { JournalEntryWithLines } from "@/modules/accounting/presentation/dto/journal.types";
+import type { JournalEntryWithLines } from "@/modules/accounting/domain/journal.types";
 
 // ── Entry template types ──
 

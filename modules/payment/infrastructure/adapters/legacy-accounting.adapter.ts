@@ -1,7 +1,7 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
-import type { JournalEntryWithLines } from "@/modules/accounting/presentation/dto/journal.types";
+import type { JournalEntryWithLines } from "@/modules/accounting/domain/journal.types";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { type VoucherTypeRepository, makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";

@@ -22,7 +22,7 @@
 import ExcelJS from "exceljs";
 import Decimal from "decimal.js";
 import { formatDateBO } from "@/lib/date-utils";
-import type { LedgerEntry } from "@/modules/accounting/presentation/dto/ledger.types";
+import type { LedgerEntry } from "@/modules/accounting/domain/ledger.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 

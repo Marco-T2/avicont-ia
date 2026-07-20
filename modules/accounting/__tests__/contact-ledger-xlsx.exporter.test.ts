@@ -27,7 +27,7 @@ import {
   exportContactLedgerXlsx,
   type ContactLedgerXlsxOptions,
 } from "../infrastructure/exporters/contact-ledger/contact-ledger-xlsx.exporter";
-import type { ContactLedgerEntry } from "../presentation/dto/ledger.types";
+import type { ContactLedgerEntry } from "../domain/ledger.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

@@ -5,12 +5,14 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 138
- * times. Turning the lint gate red today would mean either 138 fixes in one
- * commit or 138 `eslint-disable`s — so instead this sentinel PINS the exact set
- * of violations that exist. New debt fails. Fixed debt ALSO fails, loudly,
- * demanding the baseline shrink. That second half is what makes it a ratchet
- * instead of a permanent allowlist that quietly rots into a rubber stamp.
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 131
+ * times (frozen at 138 when this ratchet was written; the [DTO] cluster
+ * paydown brought it to 131). Turning the lint gate red today would mean either
+ * 131 fixes in one commit or 131 `eslint-disable`s — so instead this sentinel
+ * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
+ * fails, loudly, demanding the baseline shrink. That second half is what makes
+ * it a ratchet instead of a permanent allowlist that quietly rots into a rubber
+ * stamp.
  *
  * ── DESIGN DECISION 1: parse ESLint's OUTPUT, never re-implement the rules ──
  * This file runs ESLint through its programmatic Node API and reads the
@@ -44,10 +46,10 @@
  *
  * ── DESIGN DECISION 3: the baseline is a LIST, never a COUNT ──
  * `BASELINE` is a multiset of `<repo-relative-path>:<rule>` entries, sorted.
- * It is emphatically NOT `expect(violations).toBe(138)`. A scalar count lets
+ * It is emphatically NOT `expect(violations).toBe(131)`. A scalar count lets
  * you fix one violation and introduce a different one in the same commit while
  * the gate stays green — the debt would churn sideways forever at a constant
- * 138. Pinning identities makes every individual violation load-bearing.
+ * 131. Pinning identities makes every individual violation load-bearing.
  *
  * Entries REPEAT when one file violates one rule more than once (e.g.
  * `journals.service.ts:R2` appears 8 times — eight distinct restricted imports).
@@ -92,7 +94,7 @@
  *
  * ── SCOPE LIMIT, STATED HONESTLY ──
  * This sentinel is NOT wired into the CI lint gate and does not make `pnpm lint`
- * pass or fail. `pnpm lint` still reports all 138 as errors. This file's job is
+ * pass or fail. `pnpm lint` still reports all 131 as errors. This file's job is
  * to stop the number from growing while that gate stays off.
  */
 
@@ -120,7 +122,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 138 violations across 90 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 131 violations across 90 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -151,7 +153,6 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/account-balances/ — [DTO][PRISMA] own infra repo/types + accounting DTO barrel + Prisma client
   "modules/account-balances/application/account-balances.service.ts:R2",
   "modules/account-balances/application/account-balances.service.ts:R2",
-  "modules/account-balances/application/account-balances.service.ts:R2",
   "modules/account-balances/application/account-balances.service.ts:R5",
 
   // ── modules/accounting/ — [DTO][PRISMA][EXPORT][BARREL] the epicentre — presentation/dto/* reached from every layer,
@@ -161,13 +162,9 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
   "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
   "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
-  "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
-  "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
   "modules/accounting/application/__tests__/ledger.service.contact.test.ts:R5",
   "modules/accounting/application/__tests__/ledger.service.test.ts:R5",
-  "modules/accounting/application/accounts.service.ts:R2",
   "modules/accounting/application/accounts.service.ts:R5",
-  "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R5",
@@ -178,8 +175,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/ledger.service.ts:R2",
   "modules/accounting/application/ledger.service.ts:R2",
   "modules/accounting/application/ledger.service.ts:R5",
   "modules/accounting/domain/__tests__/account-subtype.resolve.test.ts:R5",
@@ -188,11 +183,14 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/domain/account-subtype.resolve.ts:R5",
   "modules/accounting/domain/account-subtype.utils.ts:R5",
   "modules/accounting/domain/accounting-helpers.ts:R5",
+  // moved here from presentation/dto by the [DTO] paydown; the R5 residue is
+  // [PRISMA]-cluster debt closed by defining domain-local types + mapping at
+  // the infra boundary.
+  "modules/accounting/domain/accounts.types.ts:R5",
+  "modules/accounting/domain/journal.types.ts:R5",
+  "modules/accounting/domain/ledger.types.ts:R5",
   "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
-  "modules/accounting/domain/ports/accounts-crud.port.ts:R1",
   "modules/accounting/domain/ports/accounts-crud.port.ts:R5",
-  "modules/accounting/domain/ports/journal-ledger-query.port.ts:R1",
-  "modules/accounting/domain/ports/journal-ledger-query.port.ts:R1",
   "modules/accounting/equity-statement/application/make-equity-statement-service.ts:R2",
   "modules/accounting/equity-statement/domain/equity-statement.types.ts:R5",
   "modules/accounting/equity-statement/domain/ports/equity-statement-query.port.ts:R5",

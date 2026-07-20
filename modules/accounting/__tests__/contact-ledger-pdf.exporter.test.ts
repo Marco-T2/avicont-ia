@@ -31,7 +31,7 @@ import {
   MissingOrgNameError,
   type ContactLedgerPdfOptions,
 } from "../infrastructure/exporters/contact-ledger/contact-ledger-pdf.exporter";
-import type { ContactLedgerEntry } from "../presentation/dto/ledger.types";
+import type { ContactLedgerEntry } from "../domain/ledger.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

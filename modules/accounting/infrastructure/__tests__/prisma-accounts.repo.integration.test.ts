@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { PrismaAccountsRepo } from "../prisma-accounts.repo";
 import type { AccountDef } from "@/prisma/seeds/chart-of-accounts";
-import type { ResolvedCreateAccountData } from "@/modules/accounting/presentation/dto/accounts.types";
+import type { ResolvedCreateAccountData } from "@/modules/accounting/domain/accounts.types";
 
 let testOrgId: string;
 let testUserId: string;

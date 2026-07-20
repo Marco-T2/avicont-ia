@@ -24,7 +24,7 @@
 import ExcelJS from "exceljs";
 import Decimal from "decimal.js";
 import { formatDateBO } from "@/lib/date-utils";
-import type { ContactLedgerEntry } from "@/modules/accounting/presentation/dto/ledger.types";
+import type { ContactLedgerEntry } from "@/modules/accounting/domain/ledger.types";
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
