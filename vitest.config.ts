@@ -38,7 +38,6 @@ export default defineConfig({
           environment: "jsdom",
           include: [
             "components/**/__tests__/**/*.test.tsx",
-            "features/reports/__tests__/**/*.test.tsx",
             // React page/server-component tests under app/ render via
             // @testing-library/react → need jsdom + react plugin. They live
             // as .test.tsx so the node project (which matches *.test.ts only)

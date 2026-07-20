@@ -46,7 +46,7 @@ vi.mock("@/modules/permissions/application/server", () => ({
   canAccess: mockCanAccess,
 }));
 
-vi.mock("@/features/shared", () => ({
+vi.mock("@/modules/shared/presentation/middleware", () => ({
   requireAuth: mockRequireAuth,
 }));
 

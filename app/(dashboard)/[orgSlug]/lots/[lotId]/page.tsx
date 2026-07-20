@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { requireAuth } from "@/features/shared";
+import { requireAuth } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
 import { makeLotService } from "@/modules/lot/presentation/server";
 import { makeExpenseService } from "@/modules/expense/presentation/server";

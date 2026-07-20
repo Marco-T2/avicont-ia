@@ -31,7 +31,7 @@ const {
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
-vi.mock("@/features/shared", () => ({ requireAuth: mockRequireAuth }));
+vi.mock("@/modules/shared/presentation/middleware", () => ({ requireAuth: mockRequireAuth }));
 
 vi.mock("@/modules/organizations/presentation/server", () => ({
   requireOrgAccess: mockRequireOrgAccess,

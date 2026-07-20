@@ -1,451 +1,425 @@
 /**
- * Feature Module Boundaries — Invariant Test
+ * Feature Module Boundaries — TERMINAL sentinel.
  *
- * REQ-FMB.3 / REQ-FMB.6: Every `features/<name>/index.ts` for a feature that
- * has server code MUST NOT re-export any symbol whose name ends in `Repository`
- * or `Service`.
+ * WHY THIS FILE SHRANK TO THREE ASSERTIONS
+ * Every REQ-FMB rule this file used to carry (FMB.3 "no Repository/Service in a
+ * feature barrel", FMB.4 "no cross-feature deep imports", FMB.5 "no deep imports
+ * from app/ into feature internals") constrained code living INSIDE `features/`.
+ * Those rules are now VACUOUSLY satisfied by a strictly STRONGER invariant:
  *
- * How it works:
- *  1. Scan `features/` for directories that contain at least one *.repository.ts
- *     or *.service.ts (these are "server features").
- *  2. For each server feature, read its index.ts and parse the export identifiers.
- *  3. Assert that zero exported identifiers match /(Repository|Service)$/.
+ *     `features/` does not exist, and nothing may import through it.
  *
- * After base-repository-cutover, the last server file under `features/` was
- * retired, so the set of "server features" is now EMPTY — the FMB.3 self-check
- * asserts that empty end-state, and any regression (server code re-appearing under
- * features/) makes it RED again with the offender names.
+ * A directory that cannot exist cannot host a leaky barrel, a cross-feature deep
+ * import, or a Repository re-export. So the old rules were not weakened — they
+ * were subsumed. Keeping them would mean maintaining scanners over an empty set,
+ * which is how a sentinel rots into a permanently-green no-op.
+ *
+ * WHY NOT JUST DELETE THE FILE
+ * Deleting it would leave NOTHING stopping someone from recreating `features/`
+ * and reopening the whole rule surface. The guard has to outlive the rules it
+ * replaced. Hence: a file, not the rules.
+ *
+ * HAZARD THIS FILE DELIBERATELY AVOIDS
+ * Regex sentinels over raw source in this repo have repeatedly gone green (or
+ * red) on COMMENT PROSE rather than real code — including on prose in sentinels
+ * documenting the very paths they forbid. α2 therefore reads MODULE SOURCE with
+ * comments STRIPPED via the shared `stripSourceComments()` helper, and anchors
+ * every pattern to a real statement position instead of matching a bare
+ * substring. See modules/shared/__tests__/strip-source-comments.ts.
+ *
+ * RULE — NEVER COMMENT-STRIP A CONFIG FILE, IN ANY FORMAT
+ * `stripSourceComments()` is a naive stripper: it does not parse string
+ * literals, so `/*` and `*\/` INSIDE a string are treated as comment
+ * delimiters. Config files are structurally adversarial input for it, because
+ * ANY config that talks about paths carries glob strings — `"@/*"`,
+ * `"**\/*.ts"`, `"@/features/*\/server"`. The first such string opens a PHANTOM
+ * BLOCK COMMENT that runs to the next `*\/` and silently deletes an arbitrary
+ * span of the file, including the very declaration under test. The assertion
+ * then passes over a hole and is VACUOUS while reporting GREEN.
+ *
+ * This is not hypothetical and it is not one unlucky file. Measured on the
+ * tree as it stands: `stripSourceComments(vitest.config.ts)` deletes 911 of
+ * 2055 characters and mangles all five `include` globs —
+ * `"components/**\/__tests__/**\/*.test.tsx"` collapses to
+ * `"components__tests__*.test.tsx"`. It was previously argued that stripping
+ * the `.ts` configs was "safe because they carry no path globs today". That
+ * claim was FALSE when written, and the danger was not merely latent.
+ *
+ * Inserting a features alias at each of the 58 line boundaries of
+ * vitest.config.ts left the old check RED at every one, which is what made the
+ * hazard look theoretical. It is not. The stripper's regex needs a CLOSING
+ * `*\/` to delete anything, so a glob whose `/*` never closes (`"@/*"`) is
+ * inert on its own — but pair it with any later glob that supplies the `*\/`
+ * (`"**\/*.test.ts"`, already present here) and the entire span between them
+ * is deleted. Respelling the catch-all alias key tsconfig-style — `"@"` →
+ * `"@/*"`, a two-character edit, and the spelling tsconfig.json itself already
+ * uses — reduces the whole alias block to `"@__tests__*.test.ts"`. With a LIVE
+ * `"@/features/*": path.resolve(__dirname, "features")` sitting in the file,
+ * the old assertion reported GREEN. That is a reproduced live vacuity on the
+ * real file, one plausible edit away — not a position accident.
+ *
+ * HOW THIS IS NOW CLOSED — ASSERT ON TOKENS, NOT ON TEXT
+ * The fix is not a fourth, cleverer regex. Three rounds of regex escalation on
+ * this one assertion is the signal that the assertion was being made against
+ * the WRONG TEXT. α3 no longer looks at raw source at all:
+ *   - JSON-shaped config (tsconfig.json, …) → parse STRUCTURALLY (JSON.parse)
+ *     and inspect the real `compilerOptions.paths` keys. Never regex, never
+ *     strip. This path is unchanged; it was already correct.
+ *   - JS-shaped config (.ts/.mts/.cts/.mjs/.cjs/.js) → run `stringLiterals()`,
+ *     a single-pass scanner that tracks line comments, block comments and
+ *     string/template literals, and returns the set of STRING LITERAL VALUES.
+ *     The assertion then runs over those VALUES.
+ *
+ * Two properties fall out of that, and they are the whole point:
+ *   1. A comment is no longer a place a match can HIDE, so there is nothing to
+ *      strip. The "never comment-strip a config" rule above is now true BY
+ *      CONSTRUCTION rather than by author discipline — `stripSourceComments()`
+ *      is not reachable from this assertion at all.
+ *   2. A comment is no longer a place a match can FALSELY FIRE. The old
+ *      quote-anchored regex `/["'`]@\/features(\/|["'`])/` drove RED on prose
+ *      whenever a quote happened to sit adjacent to the path, e.g.
+ *      `// we used to ban "@/features/*\/server" here`. eslint.config.mjs:9
+ *      was ONE SPACE from that failure: it survived only because its quote
+ *      opens before the word "client", not before the `@`. An editorial reflow
+ *      would have turned a file declaring no alias at all bright RED.
+ *
+ * The matcher over token values is anchored at the START of the literal
+ * (`/^@\/features(\/|$)/`), because a real alias key or module specifier IS
+ * the whole string, while an error `message:` that merely mentions the path
+ * carries it mid-sentence.
+ *
+ * KNOWN LIMITS OF `stringLiterals()` — stated honestly
+ * It is a scanner, not a parser. It over-reports rather than misses, and it is
+ * TEMPTING to call that bias inherently safe — "a false RED is loud, a miss is
+ * silent". THAT IS NOT TRUE HERE, and the reason is the anchoring above.
+ * FEATURES_ALIAS is anchored at the START of the literal. So an over-report
+ * that MERGES a real alias into a larger surrounding literal pushes the alias
+ * off position 0, and the anchor stops matching. A merging over-report does not
+ * degrade into a false RED — it degrades into a silent MISS, the exact failure
+ * mode this file exists to prevent. Reproduced, both GREEN:
+ *
+ *     if (f(a) /`/.test(z)) {}
+ *     const b = "@/features/z";
+ *     → literals = ["/.test(z)) {}\nconst b = \"@/features/z\";"]
+ *
+ *     const r = arr[0] /`/;
+ *     const b = "@/features/z";
+ *
+ * This is an INTERACTION, not a defect in either half. The scanner alone is
+ * fine; the start-anchor alone is fine and is what keeps an error `message:`
+ * that merely mentions the path from driving RED. The miss only exists because
+ * the two are combined. Anyone loosening the anchor OR the scanner must
+ * re-check the pair, not just the piece they touched.
+ *
+ * Specifically:
+ *   - Template literals are captured WHOLE, including `${…}` interpolation
+ *     text. Code inside an interpolation is treated as string content.
+ *   - Regex-vs-division is resolved by the usual previous-significant-character
+ *     heuristic, so a regex in an unusual position (directly after `)` or `]`)
+ *     is read as division and its body is scanned as code. The dangerous
+ *     character inside such a body is the BACKTICK: it opens a phantom
+ *     TEMPLATE literal, and templates legally cross newlines, so the phantom
+ *     swallows arbitrarily far — merging any later alias and producing the miss
+ *     above. A stray double quote does NOT do this: the quoted-string branch
+ *     breaks on `\n`, so a phantom `"`-string is bounded to its own line and a
+ *     following alias is still emitted as its own literal (verified RED).
+ *   - Reachability: pathological JS only. It needs a regex literal placed where
+ *     the heuristic reads division, containing an unpaired backtick, sharing a
+ *     file with a real alias. No realistic config is written that way; all 7
+ *     current root configs scan to ZERO multiline literals. Real, not urgent —
+ *     do not restate it as "safe".
+ *   - Escapes are not evaluated beyond `\x` → `x`. A literal written with an
+ *     escaped `@` — backslash-u-0-0-4-0 followed by `/features/*` — is a valid
+ *     JS string whose VALUE is `@/features/*`, but the scanner yields
+ *     `u0040/features/*` and the anchor misses. Accepted: this requires an
+ *     adversary deliberately encoding the alias; it is not something a
+ *     maintainer writes by accident.
+ *   - Root `.d.ts` files are excluded from the scan, so a
+ *     `declare module "@/features/x"` in a root `.d.ts` would not be caught.
+ *     Accepted: a `.d.ts` cannot declare a build alias, and the only root
+ *     `.d.ts` is the generated `next-env.d.ts`.
+ *
+ * α3 enforces all of this. An earlier draft of α3 comment-stripped
+ * tsconfig.json and was silently vacuous with a live
+ * `"@/features/*": ["./features/*"]` alias sitting in the file.
  */
 import { describe, it, expect } from "vitest";
 import * as fs from "fs";
 import * as path from "path";
+import { stripSourceComments } from "@/modules/shared/__tests__/strip-source-comments";
 
-const FEATURES_DIR = path.resolve(__dirname, "../features");
+const REPO_ROOT = path.resolve(__dirname, "..");
+const FEATURES_DIR = path.resolve(REPO_ROOT, "features");
 
-/** Returns true if the directory contains at least one *.repository.ts or *.service.ts */
-function hasServerCode(featureDir: string): boolean {
-  try {
-    const entries = fs.readdirSync(featureDir, { withFileTypes: true });
-    return entries.some(
-      (e) =>
-        e.isFile() &&
-        (e.name.endsWith(".repository.ts") || e.name.endsWith(".service.ts")),
-    );
-  } catch {
-    return false;
+/** Directories never walked — vendored, generated, or build output. */
+const SKIP_DIRS = new Set([
+  "node_modules",
+  ".next",
+  ".git",
+  "coverage",
+  "dist",
+  "build",
+  ".turbo",
+  ".vercel",
+]);
+
+/**
+ * Test files are excluded from the α2 scan on purpose: sentinels legitimately
+ * quote forbidden specifiers as *data* (e.g. `existsSync("features/audit/...")`
+ * assertions that the path is GONE). Those strings must stay legal.
+ */
+function isTestFile(relPath: string): boolean {
+  const segments = relPath.split(path.sep);
+  if (segments.includes("__tests__") || segments.includes("__mocks__")) return true;
+  const base = segments[segments.length - 1];
+  return (
+    /\.(test|spec)\.tsx?$/.test(base) ||
+    base === "vitest.setup.ts" ||
+    base === "vitest.config.ts"
+  );
+}
+
+function collectProductionSources(dir: string, acc: string[] = []): string[] {
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    if (entry.isDirectory()) {
+      if (SKIP_DIRS.has(entry.name)) continue;
+      collectProductionSources(path.join(dir, entry.name), acc);
+      continue;
+    }
+    if (!entry.isFile()) continue;
+    if (!/\.tsx?$/.test(entry.name)) continue;
+    const full = path.join(dir, entry.name);
+    if (isTestFile(path.relative(REPO_ROOT, full))) continue;
+    acc.push(full);
   }
+  return acc;
 }
 
 /**
- * Parse exported identifiers from an index.ts file.
- * Handles:
- *   - `export { Foo, Bar } from "..."`
- *   - `export { Foo as FooAlias } from "..."`
- *   - `export * from "./some.repository"` (wildcard — checked by target filename)
- *   - `export class Foo`
- *   - `export function foo`
- *   - `export const foo`
- * Returns the set of exported names AND wildcard violation paths.
+ * Anchored, multi-line-aware matchers for a module specifier under `@/features/`.
+ *
+ * `[^;]*?` inside the static-import pattern is what makes
+ *     import {
+ *       a,
+ *       b,
+ *     } from "@/features/x";
+ * match, while the `;` exclusion keeps the match from running past the end of
+ * the statement and gluing two unrelated lines together.
  */
-interface ParseResult {
-  identifiers: string[];
-  /** Wildcard re-exports (export * from "...") whose target path looks like a repository or service */
-  wildcardViolations: string[];
-}
+const FORBIDDEN_SPECIFIER_PATTERNS: readonly RegExp[] = [
+  // import ... from "@/features/..."  /  export ... from "@/features/..."
+  /^[ \t]*(?:import|export)\b[^;]*?\bfrom[ \t\r\n]*["'`]@\/features\//gm,
+  // side-effect: import "@/features/..."
+  /^[ \t]*import[ \t\r\n]*["'`]@\/features\//gm,
+  // dynamic: import("@/features/...") / require("@/features/...")
+  /\b(?:import|require)[ \t\r\n]*\([ \t\r\n]*["'`]@\/features\//g,
+];
 
-function parseExports(indexPath: string, featureDir: string): ParseResult {
-  const source = fs.readFileSync(indexPath, "utf8");
-  const identifiers: string[] = [];
-  const wildcardViolations: string[] = [];
+/**
+ * Single-pass scanner returning every STRING LITERAL VALUE in JS/TS source.
+ *
+ * Comments are consumed and DISCARDED rather than blanked, so no comment
+ * content can reach the caller — which is what lets α3 assert without ever
+ * stripping a config file. See this file's header for the deliberate
+ * over-report bias and the exact known limits.
+ */
+function stringLiterals(src: string): string[] {
+  const out: string[] = [];
+  let prev = ""; // last significant (non-space, non-comment) character
+  let i = 0;
 
-  // Match named export braces: export { Foo, Bar as Baz } from "..."
-  const namedExportRe = /export\s*\{([^}]+)\}/g;
-  let match: RegExpExecArray | null;
-  while ((match = namedExportRe.exec(source)) !== null) {
-    const clause = match[1];
-    for (const part of clause.split(",")) {
-      const trimmed = part.trim();
-      if (!trimmed) continue;
-      // If there's "as", the exported name is the alias
-      const asMatch = /\bas\s+(\w+)/.exec(trimmed);
-      if (asMatch) {
-        identifiers.push(asMatch[1]);
-      } else {
-        const name = trimmed.replace(/^type\s+/, "").trim();
-        if (name) identifiers.push(name);
+  while (i < src.length) {
+    const c = src[i];
+
+    // ── comments: consumed, never emitted ──
+    if (c === "/" && src[i + 1] === "/") {
+      i += 2;
+      while (i < src.length && src[i] !== "\n") i++;
+      continue;
+    }
+    if (c === "/" && src[i + 1] === "*") {
+      i += 2;
+      while (i < src.length && !(src[i] === "*" && src[i + 1] === "/")) i++;
+      i += 2;
+      continue;
+    }
+
+    // ── quoted string literals ──
+    if (c === '"' || c === "'") {
+      let buf = "";
+      i++;
+      while (i < src.length) {
+        const d = src[i];
+        if (d === "\\") {
+          buf += src[i + 1] ?? "";
+          i += 2;
+          continue;
+        }
+        if (d === c || d === "\n") {
+          i++;
+          break;
+        }
+        buf += d;
+        i++;
       }
+      out.push(buf);
+      prev = c;
+      continue;
     }
+
+    // ── template literals: captured WHOLE, `${…}` included (over-report) ──
+    if (c === "`") {
+      let buf = "";
+      i++;
+      while (i < src.length) {
+        const d = src[i];
+        if (d === "\\") {
+          buf += src[i + 1] ?? "";
+          i += 2;
+          continue;
+        }
+        if (d === "`") {
+          i++;
+          break;
+        }
+        buf += d;
+        i++;
+      }
+      out.push(buf);
+      prev = "`";
+      continue;
+    }
+
+    // ── bare `/`: regex literal or division ──
+    if (c === "/") {
+      if (/[)\]}\w$"'`]/.test(prev)) {
+        i++; // division — nothing to capture
+        prev = c;
+        continue;
+      }
+      i++;
+      let inClass = false;
+      while (i < src.length) {
+        const d = src[i];
+        if (d === "\\") {
+          i += 2;
+          continue;
+        }
+        if (d === "[") inClass = true;
+        else if (d === "]") inClass = false;
+        else if (d === "/" && !inClass) {
+          i++;
+          break;
+        } else if (d === "\n") break;
+        i++;
+      }
+      while (i < src.length && /[a-z]/.test(src[i])) i++; // flags
+      prev = "/";
+      continue;
+    }
+
+    if (!/\s/.test(c)) prev = c;
+    i++;
   }
 
-  // Match: export class Foo / export function foo / export const foo / export abstract class Foo
-  const declarationRe =
-    /^export\s+(?:default\s+)?(?:abstract\s+)?(?:class|function|const|let|var|enum|type|interface)\s+(\w+)/gm;
-  while ((match = declarationRe.exec(source)) !== null) {
-    identifiers.push(match[1]);
-  }
-
-  // Match wildcard re-exports: export * from "./something"
-  // If the resolved file is a *.repository.ts or *.service.ts, it's a violation.
-  const wildcardRe = /^export\s+\*\s+from\s+["']([^"']+)["']/gm;
-  while ((match = wildcardRe.exec(source)) !== null) {
-    const specifier = match[1];
-    // Resolve relative to the feature dir
-    let resolved = path.resolve(featureDir, specifier);
-    // Try as-is, then with .ts extension
-    if (!fs.existsSync(resolved)) {
-      resolved = resolved + ".ts";
-    }
-    if (
-      resolved.endsWith(".repository.ts") ||
-      resolved.endsWith(".service.ts")
-    ) {
-      wildcardViolations.push(specifier);
-    }
-  }
-
-  return { identifiers, wildcardViolations };
+  return out;
 }
 
-/**
- * Collect all "server features": features that have at least one
- * *.repository.ts or *.service.ts at their root (direct children only).
- * Also recurses one level into accounting sub-barrels
- * (financial-statements) which each have their own index.ts.
- * Note: iva-books sub-barrel deleted in lcv-feature-retirement (RND 102100000011).
- */
-function getServerFeatures(): Array<{ name: string; indexPath: string }> {
-  const features: Array<{ name: string; indexPath: string }> = [];
-  const entries = fs.readdirSync(FEATURES_DIR, { withFileTypes: true });
+/** A retired-layer alias/specifier IS the whole literal, never mid-sentence. */
+const FEATURES_ALIAS = /^@\/features(\/|$)/;
 
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const featureDir = path.join(FEATURES_DIR, entry.name);
-    const indexPath = path.join(featureDir, "index.ts");
-
-    if (fs.existsSync(indexPath) && hasServerCode(featureDir)) {
-      features.push({ name: entry.name, indexPath });
-    }
-
-    // Always recurse one level — a parent without its own index.ts
-    // (e.g. accounting/) can still contain sub-features that must be guarded.
-    const subEntries = fs.readdirSync(featureDir, { withFileTypes: true });
-    for (const sub of subEntries) {
-      if (!sub.isDirectory()) continue;
-      const subDir = path.join(featureDir, sub.name);
-      const subIndex = path.join(subDir, "index.ts");
-      if (!fs.existsSync(subIndex)) continue;
-      if (!hasServerCode(subDir)) continue;
-      features.push({ name: `${entry.name}/${sub.name}`, indexPath: subIndex });
-    }
-  }
-
-  return features;
-}
-
-describe("Feature Module Boundaries (REQ-FMB.3)", () => {
-  const serverFeatures = getServerFeatures();
-
-  it("no features/ dir may co-locate server code with a client index.ts barrel", () => {
-    // Post base-repository-cutover invariant: NO features/ dir may still expose a
-    // client index.ts barrel while co-locating *.repository.ts / *.service.ts.
-    // Any offender must move its server code to modules/.
-    expect(
-      serverFeatures.map((f) => f.name),
-      `features/ dirs still co-locating server code with a client barrel: ` +
-        `${serverFeatures.map((f) => f.name).join(", ")}. ` +
-        `Move their server code to modules/.`,
-    ).toHaveLength(0);
-  });
-
-  for (const { name, indexPath } of serverFeatures) {
-    const featureDir = path.join(FEATURES_DIR, name);
-
-    it(`features/${name}/index.ts must not export any Repository or Service`, () => {
-      const { identifiers, wildcardViolations } = parseExports(
-        indexPath,
-        featureDir,
-      );
-
-      const namedViolations = identifiers.filter((id) =>
-        /(Repository|Service)$/.test(id),
-      );
-
-      const allViolations = [
-        ...namedViolations,
-        ...wildcardViolations.map((p) => `export * from "${p}"`),
-      ];
-
-      expect(
-        allViolations,
-        `features/${name}/index.ts exports server symbols: ${allViolations.join(", ")}. ` +
-          `Move them to features/${name}/server.ts`,
-      ).toHaveLength(0);
+function findForbiddenImports(): string[] {
+  const offenders: string[] = [];
+  for (const file of collectProductionSources(REPO_ROOT)) {
+    const source = stripSourceComments(fs.readFileSync(file, "utf8"));
+    const hit = FORBIDDEN_SPECIFIER_PATTERNS.some((re) => {
+      re.lastIndex = 0;
+      return re.test(source);
     });
+    if (hit) offenders.push(path.relative(REPO_ROOT, file).split(path.sep).join("/"));
   }
-});
-
-/**
- * REQ-FMB.4: No cross-feature deep imports from production code.
- *
- * When code under `features/<X>/` (excluding tests) imports from another feature
- * via `@/features/<Y>/...`, the import path MUST resolve to a public barrel:
- *   - bare top-level: `@/features/<Y>` or `@/features/<Y>/<subfeature>`
- *   - server barrel:  `@/features/<Y>/server` (or sub-feature's server)
- *   - client barrel:  `@/features/<Y>/index` (or sub-feature's index)
- *   - cache barrel:   `@/features/<Y>/cache` (optional second server-only barrel
- *     exposing state-cache primitives without loading gates/services that the
- *     cache's own consumers might create circular imports through)
- *
- * Exemptions:
- *   - same-feature imports (X → X) — trivially allowed
- *   - `features/shared/*` as TARGET — shared is flat infrastructure without a
- *     `server.ts` barrel; every other feature treats its leaf files as the API
- *   - test files (`*.test.ts`, `*.test.tsx`) and anything under `__tests__/`
- *
- * Note: `features/shared/*` as SOURCE is NOT exempted — shared must not depend
- * on domain features (inverted dependency).
- */
-
-/** Collect every directory under features/ that exposes a barrel (server.ts or index.ts). */
-function collectValidBarrelPaths(): Set<string> {
-  const valid = new Set<string>();
-  const walk = (dir: string, rel: string, depth: number) => {
-    if (depth > 2) return;
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    const hasBarrel = entries.some(
-      (e) => e.isFile() && (e.name === "server.ts" || e.name === "index.ts"),
-    );
-    if (hasBarrel && rel) valid.add(rel);
-    for (const e of entries) {
-      if (!e.isDirectory()) continue;
-      if (e.name === "__tests__") continue;
-      const subRel = rel ? `${rel}/${e.name}` : e.name;
-      walk(path.join(dir, e.name), subRel, depth + 1);
-    }
-  };
-  walk(FEATURES_DIR, "", 0);
-  return valid;
+  return offenders;
 }
 
-/** Top-level feature name from a file path relative to FEATURES_DIR. */
-function topLevelFeature(relPath: string): string {
-  return relPath.split(path.sep)[0];
-}
-
-interface DeepImportViolation {
-  file: string;
-  line: number;
-  target: string;
-}
-
-/**
- * Walk every production *.ts / *.tsx file under features/ and collect imports
- * of `@/features/<target>` that violate the barrel contract (see REQ-FMB.4).
- */
-function collectCrossFeatureDeepImports(
-  validBarrelPaths: Set<string>,
-): DeepImportViolation[] {
-  const violations: DeepImportViolation[] = [];
-  const IMPORT_RE = /from\s+["']@\/features\/([^"']+)["']/g;
-
-  const walk = (dir: string) => {
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        if (e.name === "__tests__") continue;
-        walk(full);
-        continue;
-      }
-      if (!e.isFile()) continue;
-      if (!(e.name.endsWith(".ts") || e.name.endsWith(".tsx"))) continue;
-      if (e.name.endsWith(".test.ts") || e.name.endsWith(".test.tsx")) continue;
-
-      const rel = path.relative(FEATURES_DIR, full);
-      const sourceFeature = topLevelFeature(rel);
-      let source: string;
-      try {
-        source = fs.readFileSync(full, "utf8");
-      } catch {
-        continue;
-      }
-
-      const lines = source.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        IMPORT_RE.lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = IMPORT_RE.exec(line)) !== null) {
-          const target = match[1];
-          const targetTop = target.split("/")[0];
-          if (targetTop === sourceFeature) continue; // same-feature
-          if (targetTop === "shared") continue; // exempted target
-
-          // Allowed forms: bare feature path, path/server, path/index, path/cache
-          let allowed = false;
-          for (const vp of validBarrelPaths) {
-            if (
-              target === vp ||
-              target === `${vp}/server` ||
-              target === `${vp}/index` ||
-              target === `${vp}/cache`
-            ) {
-              allowed = true;
-              break;
-            }
-          }
-          if (!allowed) {
-            violations.push({
-              file: `features/${rel.split(path.sep).join("/")}`,
-              line: i + 1,
-              target,
-            });
-          }
-        }
-      }
-    }
-  };
-
-  walk(FEATURES_DIR);
-  return violations;
-}
-
-describe("Feature Module Boundaries (REQ-FMB.4) — no cross-feature deep imports", () => {
-  const validBarrelPaths = collectValidBarrelPaths();
-  const violations = collectCrossFeatureDeepImports(validBarrelPaths);
-
-  it("should detect at least one valid barrel path", () => {
-    expect(validBarrelPaths.size).toBeGreaterThan(0);
+describe("Feature Module Boundaries — features/ is retired", () => {
+  it("α1: the features/ directory does not exist at the repo root", () => {
+    expect(
+      fs.existsSync(FEATURES_DIR),
+      "`features/` is retired. Its last inhabitant (features/shared/index.ts, a " +
+        "bare re-export of @/modules/shared/presentation/middleware) was deleted. " +
+        "New code belongs under modules/<context>/ following the hex layout.",
+    ).toBe(false);
   });
 
-  it("production code must not deep-import into other features' internals", () => {
-    const message = violations
-      .map((v) => `  ${v.file}:${v.line} → @/features/${v.target}`)
-      .join("\n");
+  it("α2: no production .ts/.tsx file imports through @/features/", () => {
+    const offenders = findForbiddenImports();
     expect(
-      violations,
-      `\n${violations.length} cross-feature deep-import violations found:\n${message}\n\n` +
-        `Fix: extend the target feature's server.ts barrel and import from there.\n` +
-        `Target exemption: features/shared/* (flat infrastructure).\n` +
-        `Source exemption: none — shared must not depend on domain features.`,
+      offenders,
+      `\n${offenders.length} file(s) still import through the retired @/features/ alias:\n` +
+        offenders.map((f) => `  ${f}`).join("\n") +
+        `\n\nFix: import from the owning module directly, e.g.\n` +
+        `  @/modules/shared/presentation/middleware  (requireAuth)\n` +
+        `  @/modules/shared/presentation/http-error-serializer  (handleError)\n`,
     ).toHaveLength(0);
   });
-});
 
-/**
- * REQ-FMB.5: No deep imports from app/ routes into feature internals.
- *
- * Next.js routes under `app/` (API handlers, page.tsx, server components, client
- * components that live alongside routes) must consume features via the public
- * barrel — `@/features/<X>`, `@/features/<X>/server`, or `@/features/<X>/index`.
- *
- * Exemptions:
- *   - `features/shared/*` (flat infrastructure, as in REQ-FMB.4)
- *   - test files (*.test.ts, *.test.tsx, __tests__/)
- */
+  it("α3: no build/test config declares an @/features/* path alias", () => {
+    // tsconfig only ever declared the catch-all `@/*`; vitest.config.ts only ever
+    // declared `@`. This asserts no one ADDS a dedicated features alias to
+    // resurrect the layer behind α2's back.
+    //
+    // tsconfig.json is parsed STRUCTURALLY, never regex-over-stripped-source.
+    // stripSourceComments() is a naive stripper that does not parse string
+    // literals (it says so in its own header), and tsconfig is adversarial input
+    // for it: the `/*` inside `"@/*"` opens a phantom block comment that runs to
+    // the `*/` inside `"**/*.ts"`, deleting the entire `paths` block. An earlier
+    // draft of this assertion did exactly that and was silently VACUOUS — it
+    // stayed green with `"@/features/*": ["./features/*"]` sitting in the file.
+    const offenders: string[] = [];
 
-interface AppDeepImportViolation {
-  file: string;
-  line: number;
-  target: string;
-  key: string;
-}
-
-function collectAppDeepImports(
-  validBarrelPaths: Set<string>,
-): AppDeepImportViolation[] {
-  const violations: AppDeepImportViolation[] = [];
-  const IMPORT_RE = /from\s+["']@\/features\/([^"']+)["']/g;
-  const APP_DIR = path.resolve(__dirname, "../app");
-
-  const walk = (dir: string) => {
-    let entries: fs.Dirent[];
-    try {
-      entries = fs.readdirSync(dir, { withFileTypes: true });
-    } catch {
-      return;
-    }
-    for (const e of entries) {
-      const full = path.join(dir, e.name);
-      if (e.isDirectory()) {
-        if (e.name === "__tests__") continue;
-        walk(full);
-        continue;
-      }
-      if (!e.isFile()) continue;
-      if (!(e.name.endsWith(".ts") || e.name.endsWith(".tsx"))) continue;
-      if (e.name.endsWith(".test.ts") || e.name.endsWith(".test.tsx")) continue;
-
-      let source: string;
-      try {
-        source = fs.readFileSync(full, "utf8");
-      } catch {
-        continue;
-      }
-
-      const rel = path.relative(path.resolve(__dirname, ".."), full);
-      const lines = source.split("\n");
-      for (let i = 0; i < lines.length; i++) {
-        const line = lines[i];
-        IMPORT_RE.lastIndex = 0;
-        let match: RegExpExecArray | null;
-        while ((match = IMPORT_RE.exec(line)) !== null) {
-          const target = match[1];
-          const targetTop = target.split("/")[0];
-          if (targetTop === "shared") continue;
-
-          let allowed = false;
-          for (const vp of validBarrelPaths) {
-            if (
-              target === vp ||
-              target === `${vp}/server` ||
-              target === `${vp}/index`
-            ) {
-              allowed = true;
-              break;
-            }
-          }
-          if (!allowed) {
-            const normFile = rel.split(path.sep).join("/");
-            violations.push({
-              file: normFile,
-              line: i + 1,
-              target,
-              key: `${normFile}::${target}`,
-            });
-          }
-        }
+    const tsconfigPath = path.resolve(REPO_ROOT, "tsconfig.json");
+    if (fs.existsSync(tsconfigPath)) {
+      const raw = fs.readFileSync(tsconfigPath, "utf8");
+      const paths: Record<string, unknown> =
+        JSON.parse(raw)?.compilerOptions?.paths ?? {};
+      if (Object.keys(paths).some((alias) => /^@\/features(\/|$)/.test(alias))) {
+        offenders.push("tsconfig.json");
       }
     }
-  };
 
-  walk(APP_DIR);
-  return violations;
-}
+    // ── every JS-shaped root config — ONE code path, tokenized ──
+    // .ts and .mjs/.cjs/.js used to be handled by two different strategies
+    // (comment-strip vs quote-anchored regex on raw text); both were wrong in
+    // opposite directions. They are now the SAME path: scan to string literal
+    // values, assert on the values. Comments never reach the matcher, so
+    // nothing can hide in one and nothing can falsely fire from one.
+    //
+    // eslint.config.mjs previously declared live `"@/features/*/server"`
+    // no-restricted-imports patterns over the retired layer; nothing caught it,
+    // because α3 did not look at .mjs at all. The set is ENUMERATED, not
+    // hardcoded, so a newly added root config is covered the day it lands.
+    // `.d.ts` is excluded: it is generated and declares no aliases.
+    const rootModules = fs
+      .readdirSync(REPO_ROOT, { withFileTypes: true })
+      .filter(
+        (e) =>
+          e.isFile() &&
+          /\.(mts|cts|ts|mjs|cjs|js)$/.test(e.name) &&
+          !e.name.endsWith(".d.ts"),
+      )
+      .map((e) => e.name)
+      .sort();
 
-describe("Feature Module Boundaries (REQ-FMB.5) — no deep imports from app/", () => {
-  const validBarrelPaths = collectValidBarrelPaths();
-  const violations = collectAppDeepImports(validBarrelPaths);
+    for (const rel of rootModules) {
+      const raw = fs.readFileSync(path.resolve(REPO_ROOT, rel), "utf8");
+      if (stringLiterals(raw).some((v) => FEATURES_ALIAS.test(v))) {
+        offenders.push(rel);
+      }
+    }
 
-  it("app/ code must not deep-import into features' internals", () => {
-    const message = violations
-      .map((v) => `  ${v.file}:${v.line} → @/features/${v.target}`)
-      .join("\n");
     expect(
-      violations,
-      `\n${violations.length} app/ deep-import violations found:\n${message}\n\n` +
-        `Fix: route through the target feature's server.ts or index.ts barrel, ` +
-        `or use the bare top-level path @/features/<name>.`,
+      offenders,
+      "A config re-declared an @/features/* alias. The layer is retired — remove it.",
     ).toHaveLength(0);
   });
 });
