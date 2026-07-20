@@ -105,7 +105,6 @@ describe("DocumentsService.upload — DOCX extraction (REQ-37)", () => {
   it("extracts markdown via mammoth.convertToMarkdown and feeds it to RAG indexing", async () => {
     const repo = buildRepo();
     const blob = new StubBlobStorage();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
     const result = await service.upload(

@@ -326,9 +326,8 @@ describe("create", () => {
       isContraAccount: false,
     };
     const repo = new PrismaAccountsRepo();
-    let created: Awaited<ReturnType<typeof repo.create>>;
     await prisma.$transaction(async (tx) => {
-      created = await repo.create(testOrgId, data, tx);
+      await repo.create(testOrgId, data, tx);
     });
     const found = await prisma.account.findFirst({ where: { code: "1.1.02", organizationId: testOrgId } });
     expect(found).not.toBeNull();

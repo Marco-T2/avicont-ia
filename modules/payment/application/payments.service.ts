@@ -59,7 +59,6 @@ import {
   PAYMENT_CREDIT_EXCEEDS_AVAILABLE,
   PAYMENT_CREDIT_WRONG_CONTACT,
   FISCAL_PERIOD_CLOSED,
-  INVALID_STATUS_TRANSITION,
 } from "@/modules/shared/domain/errors";
 import {
   resolveDirection,

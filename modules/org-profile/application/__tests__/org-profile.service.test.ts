@@ -1,9 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { OrgProfileService } from "../org-profile.service";
-import {
-  OrgProfile,
-  type UpdateOrgProfileInput,
-} from "../../domain/org-profile.entity";
+import { OrgProfile } from "../../domain/org-profile.entity";
 import type { OrgProfileRepository } from "../../domain/org-profile.repository";
 import type { BlobStoragePort } from "../../domain/ports/blob-storage.port";
 

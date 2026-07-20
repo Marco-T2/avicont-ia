@@ -21,23 +21,19 @@ import { describe, it, expect } from "vitest";
 
 import {
   DISPATCH_STATUSES,
-  type DispatchStatus,
   parseDispatchStatus,
 } from "../domain/value-objects/dispatch-status";
 
 import {
   DISPATCH_TYPES,
-  type DispatchType,
   parseDispatchType,
 } from "../domain/value-objects/dispatch-type";
 
 import {
-  ReceivableSummary,
   type ReceivableSummaryProps,
 } from "../domain/value-objects/receivable-summary";
 
 import {
-  PaymentAllocationSummary,
   type PaymentAllocationSummaryProps,
 } from "../domain/value-objects/payment-allocation-summary";
 
@@ -66,7 +62,6 @@ import {
   DispatchNotDraft,
   InvalidDispatchStatusTransition,
   DispatchVoidedImmutable,
-  DispatchBcFieldsOnNd,
 } from "../domain/errors/dispatch-errors";
 
 // ── Ports ──────────────────────────────────────────────────────────────────

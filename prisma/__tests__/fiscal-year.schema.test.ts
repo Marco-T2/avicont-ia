@@ -84,7 +84,6 @@ describe("annual-close migration smoke — fiscal_years schema (REQ-1.1)", () =>
   });
 
   it("prisma.fiscalYear model is queryable (findMany({take:0}) does not throw)", async () => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await (prisma as any).fiscalYear.findMany({ take: 0 });
     expect(Array.isArray(result)).toBe(true);
   });

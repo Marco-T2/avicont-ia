@@ -145,7 +145,7 @@ export default function JournalEntryForm({
     initial?.operationalDocTypeId ?? "",
   );
   const [lastReference, setLastReference] = useState<number | null>(null);
-  const [nextNumber, setNextNumber] = useState<number | null>(null);
+  const [_nextNumber, setNextNumber] = useState<number | null>(null);
   const [loadingLastRef, setLoadingLastRef] = useState(false);
   const [lines, setLines] = useState<JournalLineData[]>(() => {
     if (initial && initial.lines.length >= 2) {

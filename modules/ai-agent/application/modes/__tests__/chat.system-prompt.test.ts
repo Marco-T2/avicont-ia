@@ -64,9 +64,7 @@ function makeDeps(captured: { systemPrompt?: string }) {
     countJournalEntries: async () => 0,
   };
   const rag: RagPort = { search: async () => [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const noopInquiry: any = { list: async () => [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pricingFake: any = { calculateLotCost: async () => ({}) };
   return {
     llmProvider,

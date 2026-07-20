@@ -106,7 +106,6 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
         createdAt: new Date(),
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adapter = new LegacyRagAdapter(ragService as any, tagsRepo);
 
     await adapter.search("query", "org-1", ["ORGANIZATION"], 5, [
@@ -124,7 +123,6 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
     const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
     const tagsRepo = makeTagsRepoFake([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adapter = new LegacyRagAdapter(ragService as any, tagsRepo);
 
     await adapter.search("query", "org-1", ["ORGANIZATION"], 5);
@@ -144,7 +142,6 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
       create: vi.fn(),
       attachToDocument: vi.fn(),
     };
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adapter = new LegacyRagAdapter(ragService as any, tagsRepo);
 
     await adapter.search("query", "org-1", ["ORGANIZATION"], 5, []);
@@ -166,7 +163,6 @@ describe("REQ-43 — RagPort.search accepts optional tags + adapter resolves slu
         createdAt: new Date(),
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adapter = new LegacyRagAdapter(ragService as any, tagsRepo);
 
     await adapter.search("query", "org-1", ["ORGANIZATION"], 5, [

@@ -65,7 +65,7 @@ function buildDashboardHref(
   return `/${orgSlug}/accounting/${base}${q ? `?${q}` : ""}`;
 }
 
-const BASE: "cxp" = "cxp";
+const BASE = "cxp" as const;
 
 export default function CxpDashboardPageClient({
   orgSlug,

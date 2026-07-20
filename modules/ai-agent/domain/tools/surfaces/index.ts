@@ -13,7 +13,7 @@ import type { Tool } from "../../ports/llm-provider.port.ts";
 import { MODAL_JOURNAL_AI_SURFACE } from "./modal-journal-ai.surface.ts";
 import { MODAL_REGISTRAR_SURFACE } from "./modal-registrar.surface.ts";
 import { SIDEBAR_QA_SURFACE } from "./sidebar-qa.surface.ts";
-import { SURFACES, type Surface, type SurfaceBundle } from "./surface.types.ts";
+import { type Surface, type SurfaceBundle } from "./surface.types.ts";
 
 export { SURFACES } from "./surface.types.ts";
 export type { Surface, SurfaceBundle } from "./surface.types.ts";

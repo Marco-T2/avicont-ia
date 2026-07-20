@@ -1,11 +1,7 @@
 import { NotFoundError, ValidationError } from "@/modules/shared/domain/errors";
 import {
-  DISPATCH_NO_DETAILS,
-  DISPATCH_BC_FIELDS_ON_ND,
   DISPATCH_INVALID_CONTACT_TYPE,
-  DISPATCH_CONTACT_CHANGE_BLOCKED,
   INVALID_STATUS_TRANSITION,
-  DISPATCH_NOT_DRAFT,
   DispatchBcFieldsOnNd,
   DispatchDateOutsidePeriod,
   DispatchNoDetails,
@@ -30,7 +26,6 @@ import type {
 } from "@/modules/shared/domain/value-objects/pagination";
 import type {
   DispatchJournalEntryFactoryPort,
-  DispatchJournalTemplate,
 } from "../domain/ports/dispatch-journal-entry-factory.port";
 import type {
   DispatchAccountBalancesPort,
@@ -501,8 +496,8 @@ export class DispatchService {
     id: string,
     input: UpdateDispatchInput,
     role?: string,
-    justification?: string,
-    userId?: string,
+    _justification?: string,
+    _userId?: string,
   ): Promise<{ dispatch: Dispatch; correlationId: string }> {
     let dispatch = await this.getById(organizationId, id);
     const status = dispatch.status;
@@ -773,9 +768,9 @@ export class DispatchService {
   async voidDispatch(
     organizationId: string,
     id: string,
-    userId: string,
-    role?: string,
-    justification?: string,
+    _userId: string,
+    _role?: string,
+    _justification?: string,
   ): Promise<{ dispatch: Dispatch; correlationId: string }> {
     let dispatch = await this.getById(organizationId, id);
 
@@ -820,7 +815,7 @@ export class DispatchService {
   async recreate(
     organizationId: string,
     id: string,
-    userId: string,
+    _userId: string,
   ): Promise<{
     voidedId: string;
     newDraftId: string;

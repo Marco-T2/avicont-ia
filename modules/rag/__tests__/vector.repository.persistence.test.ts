@@ -39,7 +39,6 @@ function makeFakeDb(rows: unknown[] = []) {
 describe("REQ-35 — PrismaVectorRepository.storeChunks persists sectionPath", () => {
   it("INSERT contains sectionPath column and passes it as a bound param", async () => {
     const { fake, calls } = makeFakeDb();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.storeChunks([
@@ -65,7 +64,6 @@ describe("REQ-35 — PrismaVectorRepository.storeChunks persists sectionPath", (
 
   it("forwards NULL sectionPath unchanged (no detector match path)", async () => {
     const { fake, calls } = makeFakeDb();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.storeChunks([
@@ -97,7 +95,6 @@ describe("REQ-30/35 — searchSimilar returns sectionPath via JOIN", () => {
         sectionPath: "ACME > Plan",
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5);
@@ -126,7 +123,6 @@ describe("REQ-30/35 — searchSimilar returns sectionPath via JOIN", () => {
         sectionPath: null,
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     const out = await repo.searchSimilar(

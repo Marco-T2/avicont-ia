@@ -46,7 +46,6 @@ describe("REQ-30 — PrismaVectorRepository.searchSimilar emits documentName + c
         chunkIndex: 3,
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5);
@@ -77,7 +76,6 @@ describe("REQ-30 — PrismaVectorRepository.searchSimilar emits documentName + c
         chunkIndex: 7,
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     const out = await repo.searchSimilar(

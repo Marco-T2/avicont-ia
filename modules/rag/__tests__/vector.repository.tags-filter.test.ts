@@ -40,7 +40,6 @@ function makeFakeDb(rows: unknown[]) {
 describe("REQ-43 — PrismaVectorRepository.searchSimilar AND-semantics tag filter", () => {
   it("SCN-43.1: omitted/empty tagIds keeps the existing single-query shape (no JOIN document_tags, no HAVING)", async () => {
     const { fake, calls } = makeFakeDb([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5);
@@ -53,7 +52,6 @@ describe("REQ-43 — PrismaVectorRepository.searchSimilar AND-semantics tag filt
 
   it("SCN-43.1 α2: empty array also short-circuits (no JOIN, no HAVING)", async () => {
     const { fake, calls } = makeFakeDb([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar([0.1, 0.2], "org-1", ["ORGANIZATION"] as never, 5, []);
@@ -66,7 +64,6 @@ describe("REQ-43 — PrismaVectorRepository.searchSimilar AND-semantics tag filt
 
   it("SCN-43.3: AND-semantics — tagIds = [a, b] emits INNER JOIN document_tags + HAVING COUNT(DISTINCT tagId) = 2", async () => {
     const { fake, calls } = makeFakeDb([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar(
@@ -85,7 +82,6 @@ describe("REQ-43 — PrismaVectorRepository.searchSimilar AND-semantics tag filt
 
   it("SCN-43.2: single-tag — HAVING COUNT(DISTINCT tagId) = 1", async () => {
     const { fake, calls } = makeFakeDb([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     await repo.searchSimilar(
@@ -103,7 +99,6 @@ describe("REQ-43 — PrismaVectorRepository.searchSimilar AND-semantics tag filt
 
   it("α-SQL-injection sentinel: tagIds are passed as parametrized placeholders, NOT interpolated into the SQL string", async () => {
     const { fake, calls } = makeFakeDb([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaVectorRepository(fake as any);
 
     const malicious = "tag-a'; DROP TABLE documents; --";

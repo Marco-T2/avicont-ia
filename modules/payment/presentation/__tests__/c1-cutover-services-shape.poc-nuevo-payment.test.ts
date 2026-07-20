@@ -323,10 +323,6 @@ const PAYMENTS_STATUS_ROUTE = path.join(
   REPO_ROOT,
   "app/api/organizations/[orgSlug]/payments/[paymentId]/status/route.ts",
 );
-const PAYMENTS_ALLOCATIONS_ROUTE = path.join(
-  REPO_ROOT,
-  "app/api/organizations/[orgSlug]/payments/[paymentId]/allocations/route.ts",
-);
 const PAYMENTS_APPLY_CREDITS_ROUTE = path.join(
   REPO_ROOT,
   "app/api/organizations/[orgSlug]/payments/apply-credits/route.ts",

@@ -109,7 +109,6 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
       buildDoc("d_org", "ORGANIZATION"),
       buildDoc("d_farm", "FARM"),
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     const result = await service.list(CLERK_ORG_ID, CLERK_USER_ID);
@@ -122,7 +121,6 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
   it("cobrador: passes [ORGANIZATION, ACCOUNTING] (FARM excluded)", async () => {
     // C2 2026-05-17 — cobrador es sub-rol contable; ve docs ACCOUNTING.
     const repo = buildRepo("cobrador");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
@@ -132,7 +130,6 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
 
   it("contador: passes [ORGANIZATION, ACCOUNTING] (FARM excluded)", async () => {
     const repo = buildRepo("contador");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
@@ -142,7 +139,6 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
 
   it("owner: passes all three scopes", async () => {
     const repo = buildRepo("owner");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.list(CLERK_ORG_ID, CLERK_USER_ID);
@@ -156,7 +152,6 @@ describe("DocumentsService.list — RAG scope filter by caller role (C1)", () =>
 
   it("role without RAG access (unknown): returns empty list without hitting repo.findAll", async () => {
     const repo = buildRepo("custom-no-rag");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     const result = await service.list(CLERK_ORG_ID, CLERK_USER_ID);

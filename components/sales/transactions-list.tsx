@@ -313,7 +313,7 @@ export default function TransactionsList({
   page,
   pageSize,
   totalPages,
-  periods,
+  periods: _periods,
   filters,
 }: TransactionsListProps) {
   const router = useRouter();

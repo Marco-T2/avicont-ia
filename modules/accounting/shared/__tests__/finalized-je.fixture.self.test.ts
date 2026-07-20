@@ -81,7 +81,6 @@ describe("seedJournalEntriesAcrossStatuses — fixture self-test", () => {
   it("seeds POSTED and LOCKED JEs with correct status fields", async () => {
     const { fake, createdEntries } = makeFakePrisma();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const result = await seedJournalEntriesAcrossStatuses(fake as any, baseCtx());
 
     expect(result.posted.status).toBe("POSTED");
@@ -96,7 +95,6 @@ describe("seedJournalEntriesAcrossStatuses — fixture self-test", () => {
   it("each JE has one balanced JournalLine pair", async () => {
     const { fake, createdLines } = makeFakePrisma();
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await seedJournalEntriesAcrossStatuses(fake as any, baseCtx());
 
     // 2 JEs × 2 lines = 4 lines

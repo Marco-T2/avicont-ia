@@ -29,7 +29,6 @@ import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { SaleWithDetails } from "@/modules/sale/presentation/dto/sale-with-details";
-import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { ConfirmTrimDialog } from "@/components/sales/confirm-trim-dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { TrimPreviewItem } from "@/components/sales/confirm-trim-dialog";

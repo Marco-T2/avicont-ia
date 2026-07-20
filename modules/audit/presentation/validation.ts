@@ -48,7 +48,7 @@ export function parseCursor(raw: string): AuditCursor {
       throw new Error("cursor shape invalid");
     }
     return parsed as AuditCursor;
-  } catch (error) {
+  } catch {
     throw new ValidationError(
       "Cursor de auditoría inválido",
       AUDIT_CURSOR_INVALID,

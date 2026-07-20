@@ -188,10 +188,6 @@ const PAGE_FILE = path.join(
   REPO_ROOT,
   "app/(dashboard)/[orgSlug]/sales/page.tsx",
 );
-const SALE_LIST_FILE = path.join(
-  REPO_ROOT,
-  "components/sales/sale-list.tsx",
-);
 const PAGINATION_UI_FILE = path.join(
   REPO_ROOT,
   "components/ui/pagination.tsx",
@@ -220,7 +216,6 @@ const ROUTE_IMPORT_PARSE_RE =
 const ROUTE_CALL_PARSE_RE = /parsePaginationParams\s*\(\s*searchParams\s*\)/;
 
 const PAGE_ITEMS_ACCESS_RE = /\.items\b/;
-const SALE_LIST_PAGINATED_RE = /\bPaginatedResult\b/;
 
 describe("POC nuevo pagination-sale C1-MACRO — cross-layer additive shape (port findPaginated NEW método paralelo legacy findAll preservado + Prisma skip/take/count adapter findPaginated impl + service listPaginated NEW método paralelo legacy list preservado + HTTP route parsePaginationParams wire consume listPaginated + UI page.tsx items access + sale-list.tsx PaginatedResult prop + shadcn pagination component install, §13 NEW C1-MACRO ADDITIVE dual-method paralelo + Prisma skip/take/count + HTTP route Response.json wrap + Service NEW método paralelo + UI shadcn + page searchParams RSC + test naming c{N}-macro + evidence-supersedes-assumption-lock 9na + invariant-collision-elevation Hub + HubService cleanup pending engram NEW + pre-phase-audit-gate 6ta + mock-source-identification-gate 15 §13 NEW emergentes 1ra evidencia matures cumulative cross-POC, 11α existence-only forward-looking pre-GREEN 11/11 FAIL: 10 regex mismatch + 1 ENOENT)", () => {
   // ── D1: Port — modules/sale/domain/ports/sale.repository.ts (Tests 1-2) ──

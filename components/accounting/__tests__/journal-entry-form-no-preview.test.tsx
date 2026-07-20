@@ -16,12 +16,11 @@
  * GREEN: delete previewDisplayNumber block (L343-355) + render JSX
  *   conditional (L375-379) + import (L25) from journal-entry-form.tsx.
  */
-import { render, screen, cleanup } from "@testing-library/react";
+import { cleanup } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import JournalEntryForm from "../journal-entry-form";
 
 afterEach(cleanup);
 
@@ -34,48 +33,6 @@ vi.mock("sonner", () => ({
 vi.mock("@/components/accounting/journal-line-row", () => ({
   default: () => null,
 }));
-
-const BASE_PERIOD = {
-  id: "period-1",
-  name: "Mayo 2025",
-  startDate: new Date("2025-05-01"),
-  endDate: new Date("2025-05-31"),
-  status: "OPEN" as const,
-  organizationId: "org-1",
-  year: 2025,
-  createdById: "user-1",
-  createdAt: new Date(),
-  updatedAt: new Date(),
-} as never;
-
-const BASE_VOUCHER_TYPE = {
-  id: "vt-1",
-  code: "CE" as const,
-  prefix: "E",
-  name: "Egreso",
-  description: null,
-  isActive: true,
-  organizationId: "org-1",
-} as never;
-
-const BASE_ACCOUNT = {
-  id: "acc-1",
-  code: "1.1.1",
-  name: "Caja",
-  type: "ACTIVO" as const,
-  nature: "DEUDORA" as const,
-  subtype: null,
-  isDetail: true,
-  requiresContact: false,
-  isActive: true,
-  organizationId: "org-1",
-  parentId: null,
-  createdAt: new Date(),
-  updatedAt: new Date(),
-  description: null,
-} as never;
-
-const PROHIBITED = /D\d{4}-\d{6}|[A-Z]{1,3}-\d{3,4}/;
 
 describe("T2.3 — JournalEntryForm preview retirement (Q6, REQ-DISPLAY-2)", () => {
   it("source: previewDisplayNumber + formatCorrelativeNumber + helper import removed", () => {

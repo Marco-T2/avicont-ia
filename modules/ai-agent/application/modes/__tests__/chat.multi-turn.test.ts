@@ -59,9 +59,7 @@ function makeDeps(llmQuery: (args: LLMQuery) => Promise<LLMResponse>) {
     chatMemory: makeChatMemory(),
     contextReader: makeContextReader(),
     rag: makeRag(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     lotInquiry: noopInquiry as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pricingService: pricingFake as any,
   };
 }
@@ -304,7 +302,6 @@ describe("SCN-27.1 — tool error mid-loop surfaces gracefully via LLM", () => {
       });
 
     const deps = makeDeps(queryFn);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     deps.lotInquiry = failingLotInquiry as any;
 
     const res = await executeChatMode(deps, {

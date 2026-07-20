@@ -41,7 +41,7 @@
 
 import { describe, it, expect } from "vitest";
 import { existsSync, readFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { join, resolve } from "node:path";
 
 const ROOT = resolve(__dirname, "../../../..");
 
@@ -140,22 +140,18 @@ describe("POC nuevo contacts C4 — wholesale delete features/contacts/* atomic 
   // tools.find-contact.test.ts
   // Deleted at poc-ai-agent-hex C5 (features/ai-agent/__tests__/ wholesale delete).
   it("Test 15: features/ai-agent/__tests__/tools.find-contact.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — Sub-B cast invariant superseded by deletion)", () => {
-    const { existsSync, join } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
+    expect(existsSync(join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
   });
   it("Test 16: features/ai-agent/__tests__/tools.find-contact.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
-    const { existsSync } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
+    expect(existsSync(join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
   });
 
   // tools.parse-operation.test.ts
   // Deleted at poc-ai-agent-hex C5 (features/ai-agent/__tests__/ wholesale delete).
   it("Test 17: features/ai-agent/__tests__/tools.parse-operation.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — Sub-B cast invariant superseded by deletion)", () => {
-    const { existsSync } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
+    expect(existsSync(join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
   });
   it("Test 18: features/ai-agent/__tests__/tools.parse-operation.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
-    const { existsSync } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
+    expect(existsSync(join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
   });
 });

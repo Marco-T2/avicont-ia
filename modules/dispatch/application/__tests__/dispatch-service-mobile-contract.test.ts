@@ -4,7 +4,7 @@
  * Change B: periodId optional — service resolves via findByDate when missing.
  * Change C: clientId idempotency — service deduplicates via findByClientId.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   DispatchService,
   type DispatchServiceDeps,

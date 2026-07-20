@@ -183,7 +183,7 @@ describe("journal-entry-form — operational doc type dropdown (Phase 7)", () =>
   });
 
   it("7.1-S4 — handleSubmit POST payload includes operationalDocTypeId (null when not selected)", async () => {
-    const fetchSpy = vi.fn(async (url: string, init?: RequestInit) => {
+    const fetchSpy = vi.fn(async (url: string, _init?: RequestInit) => {
       if (url.includes("/last-reference")) {
         return {
           ok: true,
