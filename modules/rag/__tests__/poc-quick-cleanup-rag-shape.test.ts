@@ -1,6 +1,10 @@
 /**
- * Shape sentinel: rag relocation — inverted + relocated at poc-rag-hex C2.
- * 18α (9 POSITIVE-presence + 9 NEGATIVE-absence)
+ * Shape sentinel: rag relocation — inverted + relocated at poc-rag-hex C2,
+ * de-duplicated at C3.
+ * 17α: 6 POSITIVE-presence (α01–α05, α11) + 11 NEGATIVE-absence
+ * (α06–α10, α12–α15, α17, α18). α18 additionally carries one POSITIVE
+ * assertion pinning the replacement seam. α16 was retired at C3 as a
+ * byte-equivalent duplicate of α11; ids are deliberately NOT renumbered.
  *
  * The sentinel itself lived inside the tree being moved, so it was `git mv`'d
  * rather than edited in place: its readFileSync/existsSync calls target paths
@@ -132,10 +136,10 @@ describe("documents.service.ts consumer import", () => {
 });
 
 // ---------------------------------------------------------------------------
-// α15–α16: agent.context.dispatch.test.ts vi.mock
+// α15: agent.context.dispatch.test.ts retirement
 // ---------------------------------------------------------------------------
 
-describe("agent.context.dispatch.test.ts vi.mock path", () => {
+describe("agent.context.dispatch.test.ts retirement", () => {
   // features/ai-agent/__tests__/agent.context.dispatch.test.ts was deleted at poc-ai-agent-hex C5.
   // The rag invariant is now covered by legacy-rag.adapter.ts (REQ-004 insulation point).
   // vi.mock for rag in modules/ai-agent is covered by modules/ai-agent __tests__ sentinel c2.
@@ -143,10 +147,13 @@ describe("agent.context.dispatch.test.ts vi.mock path", () => {
     expect(existsSync(join(ROOT, "features/ai-agent/__tests__/agent.context.dispatch.test.ts"))).toBe(false);
   });
 
-  it("α16: modules/ai-agent/infrastructure/legacy-rag.adapter.ts imports @/modules/rag/presentation/server (rag import insulation — replaces agent.context.ts direct import, deleted at poc-ai-agent-hex C5)", () => {
-    const src = read("modules/ai-agent/infrastructure/legacy-rag.adapter.ts");
-    expect(importFrom("@\\/modules\\/rag\\/presentation\\/server").test(src)).toBe(true);
-  });
+  // α16 REMOVED at poc-rag-hex C3 — it was a byte-equivalent duplicate of α11:
+  // same file read, same `importFrom("@/modules/rag/presentation/server")`
+  // matcher, same expected `true`. Two ids asserting one fact inflate the
+  // apparent lock count without adding discrimination — both went RED or GREEN
+  // together on every mutation. α11 is kept because it sits with its NEGATIVE
+  // counterpart α12 on the same file, which reads as a coherent pair.
+  // Ids are NOT renumbered: α17/α18 are cited by id in the C2 deviation record.
 });
 
 // Multi-line-aware vi.mock matcher — `vi.mock(` and its specifier may sit on
