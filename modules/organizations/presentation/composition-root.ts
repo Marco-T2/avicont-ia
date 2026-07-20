@@ -15,6 +15,16 @@ import { LegacySystemRoleSeedAdapter } from "../infrastructure/adapters/legacy-s
 import { LegacyPermissionCacheAdapter } from "../infrastructure/adapters/legacy-permission-cache.adapter";
 
 /**
+ * Re-exported here (not imported directly by server.ts) because this file is
+ * the ONE presentation/ module exempt from R4 (see eslint.config.mjs ignores).
+ * server.ts needs the public `RolesRepository` name for external consumers of
+ * the organizations barrel; routing it through this composition root keeps
+ * the infrastructure import confined to the one legitimate presentation/ →
+ * infrastructure/ crossing.
+ */
+export { PrismaRolesRepository as RolesRepository } from "../infrastructure/prisma-roles.repository";
+
+/**
  * Composition root for the organizations module (POC organizations-hex).
  * Single point of wiring concrete adapters to services.
  * Mirror: modules/dispatch/presentation/composition-root.ts pattern.
