@@ -4,7 +4,7 @@ import { PrismaDocumentsRepository } from "@/modules/documents/infrastructure/pr
 import { VercelBlobStorageAdapter } from "@/modules/documents/infrastructure/blob/vercel-blob-storage.adapter";
 import { RagIndexingAdapter } from "@/modules/documents/infrastructure/rag-indexing.adapter";
 import { makeRagService } from "@/modules/rag/presentation/server";
-import { PrismaTagsRepository } from "@/modules/tags/infrastructure/prisma/prisma-tags.repository";
+import { PrismaTagsRepository } from "@/modules/tags/presentation/server";
 
 /**
  * Composition root factory for DocumentsService.

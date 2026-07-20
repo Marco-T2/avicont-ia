@@ -1,6 +1,6 @@
 import "server-only";
 
-export { makeTagsService } from "./composition-root";
+export { makeTagsService, PrismaTagsRepository } from "./composition-root";
 
 export { TagsService } from "../application/tags.service";
 

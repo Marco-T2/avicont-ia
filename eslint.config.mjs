@@ -101,7 +101,8 @@ const eslintConfig = defineConfig([
   },
   // ── Hexagonal R1, R5 — domain/ layer ──
   {
-    files: ["modules/*/domain/**/*.{ts,tsx}"],
+    files: ["modules/**/domain/**/*.{ts,tsx}"],
+    ignores: ["modules/**/__tests__/{domain,application,presentation}/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -111,7 +112,8 @@ const eslintConfig = defineConfig([
   },
   // ── Hexagonal R2, R5 — application/ layer ──
   {
-    files: ["modules/*/application/**/*.{ts,tsx}"],
+    files: ["modules/**/application/**/*.{ts,tsx}"],
+    ignores: ["modules/**/__tests__/{domain,application,presentation}/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -123,8 +125,11 @@ const eslintConfig = defineConfig([
   // composition-root.ts is the single legitimate exception: it MUST wire
   // concrete infrastructure adapters into the application service.
   {
-    files: ["modules/*/presentation/**/*.{ts,tsx}"],
-    ignores: ["modules/*/presentation/composition-root.ts"],
+    files: ["modules/**/presentation/**/*.{ts,tsx}"],
+    ignores: [
+      "modules/**/presentation/composition-root.ts",
+      "modules/**/__tests__/{domain,application,presentation}/**",
+    ],
     rules: {
       "no-restricted-imports": [
         "error",
