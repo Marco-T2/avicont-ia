@@ -45,7 +45,7 @@ import {
   PurchasePostNotAllowedForRole,
 } from "./errors/purchase-orchestration-errors";
 import type { PurchaseUnitOfWork } from "./purchase-unit-of-work";
-import { purchaseTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
+import { purchaseTypeToCode } from "@/modules/accounting/shared/domain/document-type-codes";
 
 // TYPE_PREFIXES local helper retired per REQ-DISPLAY-2 (T5.2) — was only
 // used by journalDescription templates that no longer prepend the prefix.

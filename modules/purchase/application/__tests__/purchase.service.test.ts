@@ -9,7 +9,7 @@ import { Payable } from "@/modules/payables/domain/payable.entity";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { OrgSettings } from "@/modules/org-settings/domain/org-settings.entity";
 import { Purchase, type PurchaseType } from "../../domain/purchase.entity";
-import { purchaseTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
+import { purchaseTypeToCode } from "@/modules/accounting/shared/domain/document-type-codes";
 import type { PurchaseStatus } from "../../domain/value-objects/purchase-status";
 import {
   PurchaseAccountNotFound,

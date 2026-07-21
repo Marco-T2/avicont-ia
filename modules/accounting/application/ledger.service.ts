@@ -28,7 +28,7 @@ import {
 import type { PaginationOptions } from "@/modules/shared/domain/value-objects/pagination";
 import type { AccountType } from "@/modules/accounting/domain/value-objects/account-classification";
 import Decimal from "decimal.js";
-import { formatDocumentReferenceNumber } from "@/modules/accounting/shared/infrastructure/document-type-codes";
+import { formatDocumentReferenceNumber } from "@/modules/accounting/shared/domain/document-type-codes";
 
 /**
  * Application-layer libro-mayor use cases.

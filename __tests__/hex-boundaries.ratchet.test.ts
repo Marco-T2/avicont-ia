@@ -231,7 +231,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/ledger.service.ts:R2",
   // moved here from presentation/dto by the [DTO] paydown; the R5 residue is
   // [PRISMA]-cluster debt (MODEL types — not the enums D1 mirrored) closed by
   // defining domain-local types + mapping at the infra boundary. The accounting
@@ -325,8 +324,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/permissions/domain/__tests__/permissions.test.ts:R1",
 
   // ── modules/purchase/ — [BARREL] accounting shared/infrastructure/document-type-codes from application
-  "modules/purchase/application/__tests__/purchase.service.test.ts:R2",
-  "modules/purchase/application/purchase.service.ts:R2",
 
   // ── modules/shared/ — [BARREL] presentation/http-error-serializer imported by a domain error test
 
