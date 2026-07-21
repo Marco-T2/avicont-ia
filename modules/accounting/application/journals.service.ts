@@ -7,10 +7,10 @@ import { validateLockedEdit } from "../domain/document-lifecycle";
 import type { OrgProfileService } from "@/modules/org-profile/application/org-profile.service";
 import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/application/document-signature-config.service";
 import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
-import { buildVoucherPdfInput } from "../infrastructure/exporters/voucher-pdf.composer";
-import { exportVoucherPdf as renderVoucherPdf } from "../infrastructure/exporters/voucher-pdf.exporter";
-import { fetchLogoAsDataUrl } from "../infrastructure/exporters/logo-fetcher";
-import type { ExportVoucherOpts } from "../infrastructure/exporters/voucher-pdf.types";
+import type {
+  ExportVoucherOpts,
+  VoucherPdfExporterPort,
+} from "../domain/ports/voucher-pdf-exporter.port";
 import {
   JournalAutoEntryVoidForbidden,
   JournalDateOutsidePeriod,
@@ -114,7 +114,10 @@ export interface AuditUserContext {
  * (the C1 `FiscalPeriodsReadPort` only carries `{id,status}` — the PDF
  * needs `period.name` for the gestión field). These three are injected
  * via the composition-root ctor, mirroring legacy `journal.service.ts:67-87`
- * (resolved open question — NO new ports for this reporting path).
+ * (resolved open question — NO new ports for those three deps). The RENDER
+ * pipeline itself (logo-fetch → compose → pdfmake) is behind the injected
+ * `VoucherPdfExporterPort` since the [EXPORT] voucher paydown closed the 4
+ * deferred `journals.service.ts:R2` infra imports.
  */
 export class JournalsService {
   constructor(
@@ -129,6 +132,10 @@ export class JournalsService {
     private readonly orgProfile: OrgProfileService,
     private readonly sigConfig: DocumentSignatureConfigService,
     private readonly fiscalPeriods: FiscalPeriodsService,
+    // [EXPORT] cluster paydown — injected exporter port (was 4 direct infra
+    // imports, the deferred `journals.service.ts:R2` violations). Mirrors
+    // `FinancialStatementsService.exporter`.
+    private readonly voucherExporter: VoucherPdfExporterPort,
   ) {}
 
   // ── Read use cases (C1) — folded from legacy journal.service.ts ──
@@ -255,9 +262,9 @@ export class JournalsService {
    * Renders a journal entry as a voucher PDF. Parity legacy
    * `journal.service.ts:641-661` — resolves the entry via `getById`, pulls the
    * org profile + signature config + fiscal period (for the gestión name),
-   * composes the typed PDF input and delegates to the pure pdfmake renderer.
-   * The composer + renderer + logo-fetcher were git-mv'd to
-   * `infrastructure/exporters/` in C3 (history preserved).
+   * then delegates the logo-fetch + compose + pdfmake-render pipeline to the
+   * injected `VoucherPdfExporterPort` ([EXPORT] cluster paydown — was 4
+   * direct `infrastructure/exporters/` imports, the deferred R2 violations).
    */
   async exportVoucherPdf(
     organizationId: string,
@@ -270,20 +277,21 @@ export class JournalsService {
       organizationId,
       "COMPROBANTE",
     );
-    const logoDataUrl = await fetchLogoAsDataUrl(profile.logoUrl);
     const period = await this.fiscalPeriods.getById(
       organizationId,
       entry.periodId,
     );
 
-    const input = buildVoucherPdfInput(entry, profile, sigConfig, logoDataUrl, {
+    return this.voucherExporter.exportPdf({
+      entry,
+      profile,
+      sigConfig,
+      logoUrl: profile.logoUrl,
       exchangeRate: opts.exchangeRate,
       ufvRate: opts.ufvRate,
       gestion: period.name,
       locality: profile.ciudad ?? "",
     });
-
-    return renderVoucherPdf(input);
   }
 
   async createEntry(

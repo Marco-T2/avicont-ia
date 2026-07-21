@@ -50,6 +50,10 @@ import type {
 import type { OrgProfileService } from "@/modules/org-profile/application/org-profile.service";
 import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/application/document-signature-config.service";
 import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
+import type {
+  VoucherPdfExportInput,
+  VoucherPdfExporterPort,
+} from "../../../domain/ports/voucher-pdf-exporter.port";
 
 /**
  * In-memory write port for journal_entries. Records every persisted aggregate
@@ -505,6 +509,20 @@ export class FakeFiscalPeriodsService {
 }
 
 /**
+ * Stub `VoucherPdfExporterPort` — returns a small non-empty Buffer. Since the
+ * [EXPORT] voucher paydown the service no longer imports the logo-fetch /
+ * compose / pdfmake pipeline (that lives behind the port, in
+ * `infrastructure/adapters/voucher-pdf-exporter.adapter.ts`); real rendering
+ * is pinned by the exporter/composer unit tests and the adapter delegation
+ * test. Application tests assert orchestration + Buffer passthrough only.
+ */
+export class FakeVoucherPdfExporter implements VoucherPdfExporterPort {
+  async exportPdf(_input: VoucherPdfExportInput): Promise<Buffer> {
+    return Buffer.from("%PDF-1.4 fake-voucher");
+  }
+}
+
+/**
  * Bundles the three export-use-case fakes, cast to the nominal service types
  * the `JournalsService` ctor expects. Tests that exercise `exportVoucherPdf`
  * hold the fake refs to prime data; the 10 other use cases pass the bundle
@@ -514,15 +532,18 @@ export function makeExportDepsFakes() {
   const orgProfile = new FakeOrgProfileService();
   const sigConfig = new FakeDocumentSignatureConfigService();
   const fiscalPeriods = new FakeFiscalPeriodsService();
+  const voucherExporter = new FakeVoucherPdfExporter();
   return {
     orgProfile,
     sigConfig,
     fiscalPeriods,
+    voucherExporter,
     asCtorArgs: () =>
       [
         orgProfile as unknown as OrgProfileService,
         sigConfig as unknown as DocumentSignatureConfigService,
         fiscalPeriods as unknown as FiscalPeriodsService,
+        voucherExporter,
       ] as const,
   };
 }

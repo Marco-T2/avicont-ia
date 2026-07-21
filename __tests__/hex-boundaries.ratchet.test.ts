@@ -103,9 +103,8 @@
  * 120. Pinning identities makes every individual violation load-bearing.
  *
  * Entries REPEAT when one file violates one rule more than once (e.g.
- * `journals.service.ts:R2` appears 4 times — four distinct restricted imports
- * (the deferred voucher-pdf infra reads; it started at 8, then 7, and the three
- * cross-module type imports were repointed off presentation barrels).
+ * `permissions.server.ts:R2` appears 4 times — four distinct restricted
+ * imports of the infrastructure permissions cache).
  * The comparison is multiset-aware on purpose: fixing 1 of those 4 must turn
  * this file RED so the baseline is forced down to 3. A set-based (deduplicated)
  * comparison would let 3 of the 4 be re-introduced for free after one is fixed.
@@ -199,9 +198,10 @@ const RULE_TAG = /\b(R[1245]) violated:/;
  *              equity-statement, initial-balance, trial-balance, worksheet,
  *              financial-statements) were CLOSED by the [EXPORT] cluster
  *              paydown. The `voucher-pdf` exporter reached from
- *              `journals.service.ts:R2` remains OPEN — deliberately deferred,
- *              see the comment at
- *              `modules/accounting/presentation/composition-root.ts:50-52`.
+ *              `journals.service.ts:R2` (4 entries, initially deferred) was
+ *              then CLOSED too: `VoucherPdfExporterPort` (domain) + a thin
+ *              adapter delegating to the unchanged pure helpers, wired in
+ *              `modules/accounting/presentation/composition-root.ts`.
  *   [CACHE]    `permissions.cache` (infrastructure) reached from domain and
  *              application. Fix: a caching port. The 4 TYPE-ONLY `OrgMatrix`
  *              imports were closed by moving the type to domain/permissions.ts;
@@ -220,16 +220,17 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/account-balances/application/account-balances.service.ts:R5",
 
   // ── modules/accounting/ — [DTO][PRISMA][EXPORT][BARREL] the epicentre — presentation/dto/* reached from every layer,
-  //     infrastructure/exporters/* called from presentation and application, Prisma
-  //     client/enums in domain, and four sibling modules consumed via presentation/server
+  //     Prisma client/model types in domain/application, and sibling modules
+  //     consumed via presentation barrels (the infrastructure/exporters/*
+  //     reads were all CLOSED by the [EXPORT] paydowns, voucher-pdf last)
   "modules/accounting/application/accounts.service.ts:R5",
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R5",
-  "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
+  // The 4 journals.service.ts:R2 entries (voucher-pdf infra reads) were
+  // CLOSED by the [EXPORT] voucher paydown — VoucherPdfExporterPort (domain)
+  // + voucher-pdf-exporter.adapter.ts (infrastructure), wired in
+  // composition-root.ts. See the [EXPORT] cluster note below.
   // moved here from presentation/dto by the [DTO] paydown; the R5 residue is
   // [PRISMA]-cluster debt (MODEL types — not the enums D1 mirrored) closed by
   // defining domain-local types + mapping at the infra boundary. The accounting

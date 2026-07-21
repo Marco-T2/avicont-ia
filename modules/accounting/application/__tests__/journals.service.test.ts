@@ -3323,9 +3323,10 @@ describe("JournalsService read use cases (C1)", () => {
   // Folded from legacy `journal.service.ts:641-661`. Resolves the entry via
   // `getById`, pulls org-profile + signature-config + fiscal-period (for the
   // gestión name) from the three concrete services injected via the
-  // composition-root ctor, composes the typed PDF input and delegates to the
-  // pure pdfmake renderer. The composer + renderer were git-mv'd to
-  // `infrastructure/exporters/` in C3.
+  // composition-root ctor, then delegates the logo-fetch + compose + render
+  // pipeline to the injected `VoucherPdfExporterPort` ([EXPORT] voucher
+  // paydown — a stub here; the real adapter + pure helpers are pinned by
+  // their own infrastructure tests).
   describe("exportVoucherPdf", () => {
     // Minimal composer-valid JournalEntryWithLines — one balanced 2-line entry.
     function entryFixture() {
@@ -3420,8 +3421,9 @@ describe("JournalsService read use cases (C1)", () => {
     // Test-cementación port (C5 B2a) — from the retired legacy
     // `journal.service.exportVoucherPdf.test.ts` "renderiza sin logo cuando
     // profile.logoUrl es null". The `FakeOrgProfileService` snapshot ships
-    // `logoUrl: null`, so this exercises the no-logo branch of the composer
-    // explicitly: the PDF still renders.
+    // `logoUrl: null`, so the use case forwards a null logoUrl through the
+    // exporter port and still yields a Buffer (the composer's no-logo branch
+    // itself is pinned by `voucher-pdf.composer.test.ts`).
     it("renders a valid PDF when the org profile has no logo (logoUrl null)", async () => {
       const { service, journalLedgerQuery, exportDeps } = setup();
       journalLedgerQuery.entriesById.set("je-pdf", entryFixture() as never);

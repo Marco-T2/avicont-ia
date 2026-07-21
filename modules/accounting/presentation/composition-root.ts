@@ -27,6 +27,7 @@ import { PrismaPaymentsContactLedgerAdapter } from "../infrastructure/prisma-pay
 import { ControlAccountCodesReadAdapter } from "../infrastructure/control-account-codes-read.adapter";
 import { LedgerExporterAdapter } from "../infrastructure/adapters/ledger-exporter.adapter";
 import { ContactLedgerExporterAdapter } from "../infrastructure/adapters/contact-ledger-exporter.adapter";
+import { VoucherPdfExporterAdapter } from "../infrastructure/adapters/voucher-pdf-exporter.adapter";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -55,6 +56,11 @@ export function makeJournalsService(): JournalsService {
     makeOrgProfileService(),
     makeDocumentSignatureConfigService(),
     makeFiscalPeriodsService(),
+    // [EXPORT] cluster paydown — voucher-pdf exporter port wired here (the
+    // service used to import the logo-fetch/compose/render helpers straight
+    // from infrastructure/exporters/, the 4 deferred journals.service.ts:R2
+    // violations).
+    new VoucherPdfExporterAdapter(),
   );
 }
 

@@ -72,7 +72,7 @@ export type VoucherPdfInput = {
   footer?: VoucherPdfFooter;
 };
 
-export type ExportVoucherOpts = {
-  exchangeRate?: number;
-  ufvRate?: string;
-};
+// `ExportVoucherOpts` moved to the domain-owned exporter port ([EXPORT]
+// cluster paydown — journals.service.ts:R2). Re-exported here for
+// back-compat with existing infra-side consumers.
+export type { ExportVoucherOpts } from "@/modules/accounting/domain/ports/voucher-pdf-exporter.port";
