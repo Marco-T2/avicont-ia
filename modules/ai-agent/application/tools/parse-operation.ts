@@ -12,7 +12,7 @@ import type {
   AccountsLookupPort,
   Account as AccountPortShape,
 } from "../../domain/ports/accounts-lookup.port";
-import type { ContactsService } from "@/modules/contacts/application/contacts.service";
+import type { makeContactsService } from "@/modules/contacts/presentation/server";
 
 // ── Voucher type derivation ──
 
@@ -30,7 +30,7 @@ function deriveVoucherTypeCode(template: JournalEntryAiTemplate): JournalEntryAi
 
 export interface ParseAccountingOperationDeps {
   accountsLookup: AccountsLookupPort;
-  contactsService?: ContactsService;
+  contactsService?: ReturnType<typeof makeContactsService>;
 }
 
 /**

@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 51
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 63
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -51,9 +51,13 @@
  * MODEL type into a domain-owned structural interface in
  * `modules/accounting/domain/accounts.types.ts` (enum fields typed via the D1
  * mirrors) and repointed the crud port + 3 application tests, bringing it to
- * 51 — `accounts.service.ts` (live injected PrismaClient, D1/D3 design locks)
- * and `journal.types.ts` (6 model types) remain deferred.). Turning the lint
- * gate red today would mean either 51 fixes in one commit or 51
+ * 51. The [BARREL] Group A cross-module repoints were then REVERTED (they
+ * collided with the POC-cutover framework: financial-statements/expense/
+ * mortality C4/C1 sentinels pin those consumers to presentation/server;
+ * ratchet-R2 vs POC-cutover is a real conflict deferred to a human), restoring
+ * 12 R2 lines back to 63 — `accounts.service.ts` (live injected PrismaClient,
+ * D1/D3 design locks) and `journal.types.ts` (6 model types) remain deferred.).
+ * Turning the lint gate red today would mean either 63 fixes in one commit or 63
  * `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
@@ -169,7 +173,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 51 violations across 32 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 63 violations across 41 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -269,6 +273,22 @@ const BASELINE: ReadonlyArray<string> = [
   //     ExpenseCategory and ContactType mirrors have no Prisma deep-sync guard
   //     like accounting's enum-domain-mirror.sync.test.ts — pre-existing gap,
   //     hardening deliberately deferred to a separate decision.
+  // [BARREL] cross-module presentation-barrel imports — REVERTED (was BARREL
+  // Group A, commit 77f35522): the repoints to domain/application collided with
+  // the POC cutover framework (financial-statements/expense/mortality C4/C1
+  // sentinels pin these consumers to presentation/server). Ratchet-R2 vs
+  // POC-cutover is a real architectural conflict — deferred to a human decision.
+  "modules/ai-agent/application/agent.service.ts:R2",
+  "modules/ai-agent/application/agent.service.ts:R2",
+  "modules/ai-agent/application/modes/balance-sheet-analysis.ts:R2",
+  "modules/ai-agent/application/modes/chat.ts:R2",
+  "modules/ai-agent/application/modes/income-statement-analysis.ts:R2",
+  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
+  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
+  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
+  "modules/ai-agent/application/tools/find-accounts.ts:R2",
+  "modules/ai-agent/application/tools/find-contact.ts:R2",
+  "modules/ai-agent/application/tools/parse-operation.ts:R2",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
@@ -316,8 +336,10 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/shared/ — [BARREL] presentation/http-error-serializer imported by a domain error test
   "modules/shared/domain/errors/__tests__/external-sync-error.test.ts:R1",
 
-  // ── modules/tags/ — [BARREL] tags.service.ts:R2 CLOSED by Group A — `slugify`
-  //     now imported from organizations/domain/roles.validation directly.
+  // ── modules/tags/ — [BARREL] tags.service.ts:R2 — REVERTED with the rest of
+  //     BARREL Group A (POC-cutover collision); `slugify` imports from
+  //     organizations/presentation again pending a human ratchet-vs-POC decision.
+  "modules/tags/application/tags.service.ts:R2",
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
   "modules/users/application/users.service.ts:R2",

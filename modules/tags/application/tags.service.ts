@@ -1,6 +1,6 @@
 import type { Tag } from "../domain/tag.types";
 import type { TagsRepositoryPort } from "../domain/ports/tags-repository.port";
-import { slugify } from "@/modules/organizations/domain/roles.validation";
+import { slugify } from "@/modules/organizations/presentation";
 
 /**
  * TagsService — design §4.
