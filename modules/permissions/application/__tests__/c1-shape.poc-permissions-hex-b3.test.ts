@@ -237,16 +237,16 @@ describe("α18 RETIREMENT sentinel — deprecated @/features/permissions/server 
     //   passed in the full suite but FAILED in isolation. The dead async-importOriginal mock was
     //   removed, leaving the single plain factory. So 84 consumer FILES = 84 matched LINES now.
     //   Verified: zero new/unauthorized consumers added → the legitimate count is 84.
-    const oldCmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
+    const oldCmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/features/permissions/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const oldCount = Number(execSync(oldCmd, { encoding: "utf-8" }).trim());
     // KEY retirement sentinel: the deprecated SHIM path has ZERO remaining mock consumers.
     expect(oldCount).toBe(0);
 
-    const newCmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/modules/permissions/application/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
+    const newCmd = `grep -rE "vi\\.mock\\(\\s*['\\"]@/modules/permissions/application/server['\\"]" "${ROOT}" --include="*.test.ts" --include="*.tsx" --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git 2>/dev/null | grep -v "c1-shape.poc-permissions-hex-b3.test.ts" | wc -l`;
     const newCount = Number(execSync(newCmd, { encoding: "utf-8" }).trim());
     // Confirmation: the mocks were REPOINTED to hex, not deleted.
     expect(newCount).toBeGreaterThan(0);
-  });
+  }, 30000);
 });
 
 // ── α19: RETIREMENT — SHIM features/permissions/server.ts deleted; hex is canonical ─

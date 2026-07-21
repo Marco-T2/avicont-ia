@@ -89,16 +89,21 @@ afterEach(() => {
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
 
+// PaymentForm seeds its date from todayLocal() (the real clock), so a hardcoded
+// month silently breaks this fixture as wall-clock drifts past it — this file was
+// pinned to May 2026 and went red once "today" left that month. Derive the period
+// from the current month so it always covers whatever date the form defaults to.
+const TODAY = new Date();
 const BASE_PERIOD = {
   id: "period-1",
-  name: "Mayo 2026",
-  startDate: new Date("2026-05-01"),
-  endDate: new Date("2026-05-31"),
+  name: "Periodo actual",
+  startDate: new Date(TODAY.getFullYear(), TODAY.getMonth(), 1),
+  endDate: new Date(TODAY.getFullYear(), TODAY.getMonth() + 1, 0),
   status: "OPEN" as const,
   organizationId: "org-1",
-  year: 2026,
+  year: TODAY.getFullYear(),
   createdById: "user-1",
-  month: 5,
+  month: TODAY.getMonth() + 1,
   closedAt: null,
   closedBy: null,
   createdAt: new Date(),
