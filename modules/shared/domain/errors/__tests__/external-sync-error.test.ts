@@ -12,7 +12,9 @@
  * as first-class AppError subclass with statusCode 503 and code registry).
  *
  * SF-3 guard: retryAfterSeconds lives in details (JSON body), not HTTP
- * Retry-After header. handleError integration asserted below.
+ * Retry-After header. handleError integration lives in
+ * modules/shared/presentation/__tests__/external-sync-error-serialization.test.ts
+ * (kept out of domain to respect hex boundaries — R1).
  */
 import { describe, it, expect } from "vitest";
 import {
@@ -22,7 +24,6 @@ import {
   type DivergentState,
   type ExternalSyncErrorDetails,
 } from "@/modules/shared/domain/errors";
-import { handleError } from "@/modules/shared/presentation/http-error-serializer";
 
 describe("ExternalSyncError — S-MCS.4-1 (503 class, code constant)", () => {
   const divergentState: DivergentState = {
@@ -97,27 +98,6 @@ describe("ExternalSyncError — S-MCS.4-2 (retryAfterSeconds in details JSON bod
     });
     expect(err.details?.retryAfterSeconds).toBe(30);
   });
-
-  it("SF-3 — handleError returns 503 and NO Retry-After HTTP header", async () => {
-    const err = new ExternalSyncError("msg", {
-      divergentState,
-      operation: "add",
-      correlationId: "c",
-      retryAfterSeconds: 30,
-    });
-    const response = handleError(err);
-    expect(response.status).toBe(503);
-    // SF-3 guard: retryAfter travels in JSON body details, NOT HTTP header
-    expect(response.headers.get("Retry-After")).toBeNull();
-    const body = (await response.json()) as {
-      code?: string;
-      error?: string;
-      details?: { retryAfterSeconds?: number; divergentState?: DivergentState };
-    };
-    expect(body.code).toBe("EXTERNAL_SYNC_ERROR");
-    expect(body.details?.retryAfterSeconds).toBe(30);
-    expect(body.details?.divergentState).toEqual(divergentState);
-  });
 });
 
 describe("ExternalSyncError — S-MCS.4-3 (EXTERNAL_SYNC_ERROR constant)", () => {
@@ -135,32 +115,5 @@ describe("ExternalSyncError — S-MCS.4-3 (EXTERNAL_SYNC_ERROR constant)", () =>
       correlationId: "c-1",
     };
     expect(detailsShape.operation).toBe("remove");
-  });
-});
-
-describe("ExternalSyncError — handleError integration (I-5, no route mapping needed)", () => {
-  it("serializes message, code and details into 503 response body", async () => {
-    const err = new ExternalSyncError("compensation failed", {
-      divergentState: {
-        dbState: "member_deactivated",
-        clerkState: "membership_present",
-      },
-      operation: "remove",
-      correlationId: "corr-xyz",
-      clerkErrorCode: "resource_not_found",
-      clerkTraceId: "trace_abc",
-    });
-    const response = handleError(err);
-    expect(response.status).toBe(503);
-    const body = (await response.json()) as {
-      error: string;
-      code: string;
-      details: ExternalSyncErrorDetails & Record<string, unknown>;
-    };
-    expect(body.error).toBe("compensation failed");
-    expect(body.code).toBe("EXTERNAL_SYNC_ERROR");
-    expect(body.details.divergentState.dbState).toBe("member_deactivated");
-    expect(body.details.clerkErrorCode).toBe("resource_not_found");
-    expect(body.details.correlationId).toBe("corr-xyz");
   });
 });

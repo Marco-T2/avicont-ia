@@ -334,7 +334,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/purchase/application/purchase.service.ts:R2",
 
   // ── modules/shared/ — [BARREL] presentation/http-error-serializer imported by a domain error test
-  "modules/shared/domain/errors/__tests__/external-sync-error.test.ts:R1",
 
   // ── modules/tags/ — [BARREL] tags.service.ts:R2 — REVERTED with the rest of
   //     BARREL Group A (POC-cutover collision); `slugify` imports from
