@@ -1,7 +1,7 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { setAuditContext } from "./audit-context";
 
-export type WithCorrelation<T> = T & { correlationId: string };
+export type { WithCorrelation } from "@/modules/shared/domain/audit";
 
 interface AuditTxContext {
   userId: string;

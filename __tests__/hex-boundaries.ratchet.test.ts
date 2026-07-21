@@ -307,7 +307,6 @@ const BASELINE: ReadonlyArray<string> = [
   // infrastructure/adapters/prisma-shortcut-source-query.adapter.ts, wired via
   // composition-root.ts (`makeShortcutSourceQueryPort`).
   "modules/payment/application/payments.service.ts:R2",
-  "modules/payment/presentation/payment-service.adapter.ts:R4",
 
   // ── modules/permissions/ — [CACHE] permissions.cache (infrastructure) reached from domain and application,
   //     plus organizations consumed via presentation barrels
