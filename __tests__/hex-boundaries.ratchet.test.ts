@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 76
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 72
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -37,8 +37,11 @@
  * it — bringing the count to 80; the [CACHE] type-only paydown relocated the
  * `OrgMatrix` TYPE from infrastructure/permissions.cache.ts into
  * domain/permissions.ts (with a back-compat re-export kept on the cache),
- * closing the 4 type-only R2 import sites and bringing it to 76.). Turning the lint gate
- * red today would mean either 76 fixes in one commit or 76 `eslint-disable`s
+ * closing the 4 type-only R2 import sites and bringing it to 76; the
+ * organizations D4 paydown moved the `Organization`/`OrganizationMember`/
+ * `User`/`CustomRole` MODEL types into domain-owned structural interfaces in
+ * `modules/organizations/domain/types.ts`, bringing it to 72.). Turning the lint gate
+ * red today would mean either 72 fixes in one commit or 72 `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -153,7 +156,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 76 violations across 54 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 72 violations across 50 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -259,15 +262,12 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/ai-agent/presentation/server.ts:R4",
 
   // ── modules/organizations/ — [PRISMA] Prisma client across ports/types; roles repo + singleton cross-layer
-  "modules/organizations/application/organizations.service.ts:R5",
-  "modules/organizations/application/roles.service.ts:R5",
+  // Model-types migrated to domain (D4); Prisma.TransactionClient sites (organizations.repository.port + 3 seed ports) DEFERRED to a UoW-vs-opaque-token decision.
   "modules/organizations/domain/members.validation.ts:R1",
   "modules/organizations/domain/ports/account-seed.port.ts:R5",
   "modules/organizations/domain/ports/operational-doc-type-seed.port.ts:R5",
   "modules/organizations/domain/ports/organizations.repository.port.ts:R5",
-  "modules/organizations/domain/ports/roles.repository.port.ts:R5",
   "modules/organizations/domain/ports/voucher-type-seed.port.ts:R5",
-  "modules/organizations/domain/types.ts:R5",
 
   // ── modules/payment/ — [PRISMA] shared/infrastructure/audit-tx from both layers
   // fetch-shortcut-source.ts:R5 CLOSED by the D4 paydown — the helper now

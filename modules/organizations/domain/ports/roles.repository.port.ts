@@ -1,4 +1,4 @@
-import type { CustomRole } from "@/generated/prisma/client";
+import type { CustomRole } from "../types";
 
 export type CreateCustomRoleInput = {
   organizationId: string;

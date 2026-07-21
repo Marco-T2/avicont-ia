@@ -25,7 +25,7 @@ import {
   SELF_LOCK_GUARD,
   ROLE_HAS_MEMBERS,
 } from "@/modules/shared/domain/errors";
-import type { CustomRole } from "@/generated/prisma/client";
+import type { CustomRole } from "../domain/types";
 import type {
   RolesRepositoryPort,
   UpdateCustomRolePatch,

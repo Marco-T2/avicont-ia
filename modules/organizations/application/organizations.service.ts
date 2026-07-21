@@ -9,9 +9,10 @@ import type { VoucherTypeSeedPort } from "../domain/ports/voucher-type-seed.port
 import type { OperationalDocTypeSeedPort } from "../domain/ports/operational-doc-type-seed.port";
 import type { AccountSeedPort } from "../domain/ports/account-seed.port";
 import type { SystemRoleSeedPort } from "../domain/ports/system-role-seed.port";
-import type { Organization, OrganizationMember } from "@/generated/prisma/client";
 import type {
   CreateOrganizationInput,
+  Organization,
+  OrganizationMember,
   SyncOrganizationResult,
 } from "../domain/types";
 

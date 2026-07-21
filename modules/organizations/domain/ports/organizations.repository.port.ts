@@ -1,7 +1,9 @@
-import type { Organization, OrganizationMember, Prisma } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import type {
   AddMemberInput,
   CreateOrganizationInput,
+  Organization,
+  OrganizationMember,
   OrganizationWithMembers,
 } from "../types";
 
