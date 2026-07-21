@@ -105,3 +105,12 @@ export function makeAgentRateLimitService(): AgentRateLimitService {
 export function makeAccountsLookup(): AccountsLookupPort {
   return new LegacyAccountsAdapter();
 }
+
+// ── analyzeDocument: Gemini-bound utility co-located in adapter (D8 arch debt) ──
+// Bypasses LLMProviderPort by design — Gemini's analyzeDocument SDK call
+// shape differs from LLMClient.query; 1 consumer (app/api/analyze/route.ts).
+// Re-exported HERE (the one file allowed to import infrastructure) so the
+// presentation barrels (index.ts / server.ts) surface it without naming an
+// infrastructure module themselves (R4). Still honest residual debt: a proper
+// port/use-case for document analysis remains pending (see archive notes).
+export { analyzeDocument } from "../infrastructure/llm/gemini-llm.adapter";

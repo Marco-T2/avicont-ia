@@ -288,8 +288,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
-  "modules/ai-agent/presentation/index.ts:R4",
-  "modules/ai-agent/presentation/server.ts:R4",
 
   // ── modules/organizations/ — [PRISMA] Prisma client across ports/types; roles repo + singleton cross-layer
   // Model-types migrated to domain (D4); Prisma.TransactionClient sites (organizations.repository.port + 3 seed ports) DEFERRED to a UoW-vs-opaque-token decision.

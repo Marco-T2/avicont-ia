@@ -9,5 +9,5 @@
  * Note: this is the public-barrel surface. Server-only and client-only
  * consumers MUST use the dedicated barrels (`./server` and `./client`).
  */
-export { analyzeDocument } from "../infrastructure/llm/gemini-llm.adapter";
+export { analyzeDocument } from "./composition-root";
 export type * from "../domain/types/agent.types";

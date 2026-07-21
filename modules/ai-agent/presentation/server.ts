@@ -91,7 +91,7 @@ export type {
 // Bypasses LLMProviderPort by design — Gemini's analyzeDocument SDK call
 // shape differs from LLMClient.query; 1 consumer (app/api/analyze/route.ts).
 // Documented as honest residual in archive (paired sister: dispatch HubService).
-// Deliberately NOT laundered through composition-root: this is not wiring,
-// it is presentation re-exporting an infrastructure function. It stays here,
-// visible to ESLint (R4), until a proper port/use-case is introduced.
-export { analyzeDocument } from "../infrastructure/llm/gemini-llm.adapter";
+// Routed through ./composition-root (hex-debt paydown): the barrel no longer
+// names an infrastructure module (R4 cleared), but the underlying debt — no
+// proper port/use-case for document analysis — remains open in composition-root.
+export { analyzeDocument } from "./composition-root";
