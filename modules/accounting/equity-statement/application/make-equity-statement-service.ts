@@ -1,17 +1,24 @@
+import { EquityStatementService } from "./equity-statement.service";
+import type { EquityStatementQueryPort } from "../domain/ports/equity-statement-query.port";
+import type { EquityStatementExporterPort } from "../domain/ports/equity-statement-exporter.port";
+import type { IncomeStatementSourcePort } from "./income-statement-source.port";
+
 /**
- * Wrapper re-export for the composition-root factory.
+ * Application-layer injectable factory for EquityStatementService.
  *
- * Delegates to presentation/composition-root.ts which wires both infrastructure
- * adapters into the application service:
- *   PrismaEquityStatementRepo   → EquityStatementQueryPort (6 methods)
- *   PrismaIncomeStatementSourceAdapter → IncomeStatementSourcePort (2 methods)
+ * [REVERSE-WIRING] paydown: this file used to re-export the zero-arg factory
+ * from presentation/composition-root.ts — an R2 violation (application
+ * reaching UP into presentation). The wiring is now inverted: THIS is the
+ * real factory, port-typed and concretion-free; presentation/composition-root
+ * instantiates the infrastructure adapters and calls this with the deps.
  *
- * This indirection keeps the application/ layer importable from tests without
- * pulling in presentation/ directly — consumers may import factory from either:
- *   - `application/make-equity-statement-service` (this wrapper)
- *   - `presentation/server` (canonical server-only barrel, REQ-002)
- *
- * AXIS-DISTINCT vs TB: 2-adapter factory (repo + incomeSource) vs TB single-adapter.
+ * AXIS-DISTINCT vs TB: 2-port injection (repo + incomeSource) vs TB single-port.
  * Sister precedent: modules/accounting/trial-balance/application/make-trial-balance-service.ts
  */
-export { makeEquityStatementService } from "../presentation/composition-root";
+export function makeEquityStatementService(deps: {
+  repo: EquityStatementQueryPort;
+  incomeSource: IncomeStatementSourcePort;
+  exporter: EquityStatementExporterPort;
+}): EquityStatementService {
+  return new EquityStatementService(deps);
+}

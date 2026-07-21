@@ -1,6 +1,7 @@
 import { PrismaTrialBalanceRepo } from "../infrastructure/prisma-trial-balance.repo";
 import { TrialBalanceExporterAdapter } from "../infrastructure/adapters/trial-balance-exporter.adapter";
-import { TrialBalanceService } from "../application/trial-balance.service";
+import type { TrialBalanceService } from "../application/trial-balance.service";
+import { makeTrialBalanceService as buildTrialBalanceService } from "../application/make-trial-balance-service";
 
 /**
  * Zero-arg factory that wires infrastructure adapters into the application service.
@@ -20,5 +21,7 @@ export function makeTrialBalanceService(): TrialBalanceService {
   // [EXPORT] cluster paydown — exporter port wired here (was a raw exporter
   // re-export from presentation/server.ts, R4 violation).
   const exporter = new TrialBalanceExporterAdapter();
-  return new TrialBalanceService({ repo, exporter });
+  // [REVERSE-WIRING] paydown: the injectable factory lives in application/;
+  // this zero-arg entry only instantiates concretions and passes them down.
+  return buildTrialBalanceService({ repo, exporter });
 }

@@ -1,6 +1,7 @@
 import { PrismaInitialBalanceRepo } from "../infrastructure/prisma-initial-balance.repo";
 import { InitialBalanceExporterAdapter } from "../infrastructure/adapters/initial-balance-exporter.adapter";
-import { InitialBalanceService } from "../application/initial-balance.service";
+import type { InitialBalanceService } from "../application/initial-balance.service";
+import { makeInitialBalanceService as buildInitialBalanceService } from "../application/make-initial-balance-service";
 
 /**
  * Zero-arg factory that wires infrastructure adapters into the application service.
@@ -23,5 +24,7 @@ export function makeInitialBalanceService(): InitialBalanceService {
   // [EXPORT] cluster paydown — exporter port wired here (was a raw exporter
   // re-export from presentation/server.ts, R4 violation).
   const exporter = new InitialBalanceExporterAdapter();
-  return new InitialBalanceService({ queryPort: repo, exporter });
+  // [REVERSE-WIRING] paydown: the injectable factory lives in application/;
+  // this zero-arg entry only instantiates concretions and passes them down.
+  return buildInitialBalanceService({ queryPort: repo, exporter });
 }

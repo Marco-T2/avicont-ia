@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 83
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 80
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -30,8 +30,12 @@
  * The 3 `make-*-service.ts:R2` "reverse composition-root delegation"
  * violations (equity-statement/initial-balance/trial-balance) are a DIFFERENT
  * pattern (application reaching UP into presentation/composition-root) and
- * were deliberately left untouched by this paydown.). Turning the lint gate
- * red today would mean either 83 fixes in one commit or 83 `eslint-disable`s
+ * were deliberately left untouched by this paydown; the [REVERSE-WIRING]
+ * paydown then closed those 3 by inverting the wiring — application/
+ * make-*-service.ts is now the real injectable, port-typed factory and
+ * presentation/composition-root.ts instantiates the concretions and calls
+ * it — bringing the count to 80.). Turning the lint gate
+ * red today would mean either 80 fixes in one commit or 80 `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -146,7 +150,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 83 violations across 57 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 80 violations across 54 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -215,13 +219,13 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/domain/journal.types.ts:R5",
   "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
   "modules/accounting/domain/ports/accounts-crud.port.ts:R5",
-  "modules/accounting/equity-statement/application/make-equity-statement-service.ts:R2",
-  "modules/accounting/initial-balance/application/make-initial-balance-service.ts:R2",
   // validation.ts:R5 (the M1 revert — composition-root TDZ cycle) was CLOSED
   // by D1: the enum imports now come from the LEAF mirror file
   // domain/value-objects/account-classification.ts, which is exactly the
   // "small dedicated enum-only" home the revert note called for.
-  "modules/accounting/trial-balance/application/make-trial-balance-service.ts:R2",
+  // The 3 make-*-service.ts:R2 reverse-wiring entries (equity-statement,
+  // initial-balance, trial-balance) were CLOSED by the [REVERSE-WIRING]
+  // paydown — see header narrative.
 
   // ── modules/ai-agent/ — [PRISMA][BARREL] six sibling modules consumed through presentation/server barrels,
   //     one LLM adapter reached from presentation, Prisma enums in domain prompts
