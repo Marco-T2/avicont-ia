@@ -20,7 +20,7 @@ vi.mock("../../infrastructure/permissions.cache", () => ({
 
 import { buildClientMatrixSnapshot } from "../client-matrix";
 import { ensureOrgSeeded } from "../../infrastructure/permissions.cache";
-import type { OrgMatrix } from "../../infrastructure/permissions.cache";
+import type { OrgMatrix } from "../../domain/permissions";
 import type { Resource, PostableResource } from "../../domain/permissions";
 
 const mockedEnsureOrgSeeded = vi.mocked(ensureOrgSeeded);

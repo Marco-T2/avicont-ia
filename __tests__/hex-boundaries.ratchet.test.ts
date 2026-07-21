@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 80
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 76
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -34,8 +34,11 @@
  * paydown then closed those 3 by inverting the wiring — application/
  * make-*-service.ts is now the real injectable, port-typed factory and
  * presentation/composition-root.ts instantiates the concretions and calls
- * it — bringing the count to 80.). Turning the lint gate
- * red today would mean either 80 fixes in one commit or 80 `eslint-disable`s
+ * it — bringing the count to 80; the [CACHE] type-only paydown relocated the
+ * `OrgMatrix` TYPE from infrastructure/permissions.cache.ts into
+ * domain/permissions.ts (with a back-compat re-export kept on the cache),
+ * closing the 4 type-only R2 import sites and bringing it to 76.). Turning the lint gate
+ * red today would mean either 76 fixes in one commit or 76 `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -150,7 +153,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 80 violations across 54 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 76 violations across 54 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -178,7 +181,11 @@ const RULE_TAG = /\b(R[1245]) violated:/;
  *              see the comment at
  *              `modules/accounting/presentation/composition-root.ts:50-52`.
  *   [CACHE]    `permissions.cache` (infrastructure) reached from domain and
- *              application. Fix: a caching port.
+ *              application. Fix: a caching port. The 4 TYPE-ONLY `OrgMatrix`
+ *              imports were closed by moving the type to domain/permissions.ts;
+ *              the value-import injection (getMatrix/ensureOrgSeeded/test hooks)
+ *              is DEFERRED pending a decision on composition-root indirection
+ *              (prior D1 attempt hit an import-cycle TDZ crash).
  *   [BARREL]   Cross-module `presentation/server` / `presentation` barrels used
  *              as the public API of another module. Fix: publish an application
  *              -level contract per module instead of a presentation barrel.
@@ -274,8 +281,6 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/permissions/ — [CACHE] permissions.cache (infrastructure) reached from domain and application,
   //     plus organizations consumed via presentation barrels
   "modules/permissions/application/__tests__/client-matrix.test.ts:R2",
-  "modules/permissions/application/__tests__/client-matrix.test.ts:R2",
-  "modules/permissions/application/__tests__/require-permission.test.ts:R2",
   "modules/permissions/application/__tests__/require-permission.test.ts:R2",
   "modules/permissions/application/__tests__/require-permission.test.ts:R2",
   "modules/permissions/application/__tests__/require-permission.test.ts:R2",
@@ -284,8 +289,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
-  "modules/permissions/application/permissions.server.ts:R2",
-  "modules/permissions/application/server.ts:R2",
   "modules/permissions/application/server.ts:R2",
   "modules/permissions/domain/__tests__/permissions.test.ts:R1",
   "modules/permissions/domain/__tests__/permissions.test.ts:R1",

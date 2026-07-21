@@ -17,24 +17,13 @@
  */
 
 import "server-only";
-import type { Resource, PostableResource } from "../domain/permissions";
+import type { Resource, PostableResource, OrgMatrix } from "../domain/permissions";
 import { PERMISSIONS_CLOSE, PERMISSIONS_REOPEN } from "../domain/permissions";
 
-export type OrgMatrix = {
-  orgId: string;
-  roles: Map<
-    string, // slug
-    {
-      permissionsRead: Set<Resource>;
-      permissionsWrite: Set<Resource>;
-      canPost: Set<PostableResource>;
-      canClose: Set<Resource>;
-      canReopen: Set<Resource>;
-      isSystem: boolean;
-    }
-  >;
-  loadedAt: number;
-};
+// OrgMatrix now lives in the domain layer ([CACHE] paydown — type-only move).
+// Back-compat re-export so non-application consumers (e.g. the ./cache.ts
+// barrel, organizations' LegacyPermissionCacheAdapter path) keep working.
+export type { OrgMatrix } from "../domain/permissions";
 
 type CacheEntry = {
   matrix: OrgMatrix;

@@ -5,7 +5,7 @@ import { makeEnsureFromClerkService } from "@/modules/organizations/presentation
 import { ensureOrgSeeded, getMatrix } from "../infrastructure/permissions.cache";
 import { ForbiddenError } from "@/modules/shared/domain/errors";
 import type { Action, Resource, PostableResource } from "../domain/permissions";
-import type { OrgMatrix } from "../infrastructure/permissions.cache";
+import type { OrgMatrix } from "../domain/permissions";
 
 /** Internal helper: picks the correct permission Set based on the action. */
 function _permitted(

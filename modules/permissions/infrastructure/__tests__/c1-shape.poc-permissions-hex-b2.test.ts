@@ -8,7 +8,9 @@
  *   - α1  PASS: modules/permissions/infrastructure/permissions.cache.ts exists
  *   - α2  PASS: hex permissions.cache.ts exports getMatrix + server-only
  *   - α3  PASS: hex permissions.cache.ts exports ensureOrgSeeded/revalidateOrgMatrix/_setLoader/_resetCache
- *   - α4  PASS: hex permissions.cache.ts declares export type OrgMatrix
+ *   - α4  PASS: hex permissions.cache.ts re-exports type OrgMatrix from domain
+ *               (the type was relocated to domain/permissions.ts by the [CACHE]
+ *               type-only paydown; the cache keeps a back-compat re-export)
  *   - α5  PASS: modules/permissions/infrastructure/__tests__/permissions.cache.test.ts exists
  *   - α6  PASS: modules/permissions/infrastructure/cache.ts exists
  *   - α7  PASS: hex infrastructure/cache.ts forwards ./permissions.cache + server-only
@@ -63,9 +65,17 @@ describe("α2–α4 hex permissions.cache.ts content sentinels", () => {
     expect(content).toMatch(/^export function _resetCache/m);
   });
 
-  it("α4: hex permissions.cache.ts declares export type OrgMatrix", () => {
+  it("α4: hex permissions.cache.ts re-exports type OrgMatrix from domain (back-compat)", () => {
+    // OrgMatrix DEFINITION moved to domain/permissions.ts ([CACHE] type-only
+    // paydown). The cache must keep a back-compat re-export so non-application
+    // consumers (./cache.ts barrel, legacy adapters) keep resolving it here.
     const content = readFileSync(HEX_CACHE, "utf-8");
-    expect(content).toMatch(/^export type OrgMatrix\s*=/m);
+    expect(content).toMatch(/^export type \{ OrgMatrix \} from ["']\.\.\/domain\/permissions["']/m);
+    const domainContent = readFileSync(
+      join(ROOT, "modules/permissions/domain/permissions.ts"),
+      "utf-8",
+    );
+    expect(domainContent).toMatch(/^export type OrgMatrix\s*=/m);
   });
 });
 

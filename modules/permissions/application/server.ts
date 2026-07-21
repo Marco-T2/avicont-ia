@@ -29,6 +29,6 @@ export {
 } from "@/modules/permissions/application/permissions.server";
 
 export { _setLoader, _resetCache } from "@/modules/permissions/infrastructure/permissions.cache";
-export type { OrgMatrix } from "@/modules/permissions/infrastructure/permissions.cache";
+export type { OrgMatrix } from "@/modules/permissions/domain/permissions";
 
 export { buildClientMatrixSnapshot } from "@/modules/permissions/application/client-matrix";

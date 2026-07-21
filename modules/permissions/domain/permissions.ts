@@ -141,6 +141,32 @@ export const PERMISSIONS_REOPEN: Record<Resource, Role[]> = {
 export type PostableResource = "sales" | "purchases" | "journal";
 
 /**
+ * OrgMatrix — the resolved permission matrix for one organization.
+ *
+ * Domain-owned vocabulary: references only Resource / PostableResource plus
+ * JS builtins (Map/Set). Relocated here from infrastructure/permissions.cache.ts
+ * ([CACHE] paydown) — the cache is one PRODUCER of this shape, but the shape
+ * itself is the domain's language for "who can do what". Consumers should
+ * import the type from here; infrastructure/permissions.cache.ts keeps a
+ * back-compat re-export for non-application consumers.
+ */
+export type OrgMatrix = {
+  orgId: string;
+  roles: Map<
+    string, // slug
+    {
+      permissionsRead: Set<Resource>;
+      permissionsWrite: Set<Resource>;
+      canPost: Set<PostableResource>;
+      canClose: Set<Resource>;
+      canReopen: Set<Resource>;
+      isSystem: boolean;
+    }
+  >;
+  loadedAt: number;
+};
+
+/**
  * Seed source for system-role `canPost` defaults.
  * Used by buildSystemRolePayloads (prisma/seed-system-roles.ts) to seed day-one rows,
  * and by the UI (roles-permissions-matrix.tsx) to display system defaults.
