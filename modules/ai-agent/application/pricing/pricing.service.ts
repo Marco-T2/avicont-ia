@@ -1,16 +1,7 @@
-import type {
-  LotInquiryPort,
-  LocalLotInquiryAdapter as _LocalLotInquiryAdapter,
-  makeLotService as _makeLotService,
-} from "@/modules/lot/presentation/server";
-import type {
-  ExpenseService,
-  makeExpenseService as _makeExpenseService,
-} from "@/modules/expense/presentation/server";
-import type { makeMortalityService } from "@/modules/mortality/presentation/server";
+import type { LotInquiryPort } from "@/modules/lot/domain/ports/lot-inquiry.port";
+import type { ExpenseService } from "@/modules/expense/application/expense.service";
+import type { MortalityService } from "@/modules/mortality/application/mortality.service";
 import type { LotPricingResult } from "../../domain/pricing/pricing.types";
-
-type MortalityServiceImpl = ReturnType<typeof makeMortalityService>;
 
 /**
  * Pricing sub-aggregate co-located with the ai-agent module (D4).
@@ -22,12 +13,12 @@ type MortalityServiceImpl = ReturnType<typeof makeMortalityService>;
 export class PricingService {
   private lotInquiry: LotInquiryPort | undefined;
   private expensesService: ExpenseService | undefined;
-  private mortalityService: MortalityServiceImpl | undefined;
+  private mortalityService: MortalityService | undefined;
 
   constructor(
     lotInquiry?: LotInquiryPort,
     expensesService?: ExpenseService,
-    mortalityService?: MortalityServiceImpl,
+    mortalityService?: MortalityService,
   ) {
     this.lotInquiry = lotInquiry;
     this.expensesService = expensesService;
@@ -37,7 +28,7 @@ export class PricingService {
   private async ensureDeps(): Promise<{
     lotInquiry: LotInquiryPort;
     expensesService: ExpenseService;
-    mortalityService: MortalityServiceImpl;
+    mortalityService: MortalityService;
   }> {
     if (!this.lotInquiry) {
       const { LocalLotInquiryAdapter, makeLotService } = await import("@/modules/lot/presentation/server");

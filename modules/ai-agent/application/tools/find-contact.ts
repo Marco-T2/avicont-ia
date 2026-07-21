@@ -1,4 +1,4 @@
-import type { makeContactsService } from "@/modules/contacts/presentation/server";
+import type { ContactsService } from "@/modules/contacts/application/contacts.service";
 import type { ContactType } from "@/generated/prisma/client";
 import type {
   FindContactResult,
@@ -11,7 +11,7 @@ const RESULT_CAP = 10;
 const EXCLUDED_TYPES: readonly ContactType[] = ["CLIENTE"];
 
 export interface FindContactDeps {
-  contactsService?: ReturnType<typeof makeContactsService>;
+  contactsService?: ContactsService;
 }
 
 /**

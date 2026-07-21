@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 72
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 60
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -40,8 +40,12 @@
  * closing the 4 type-only R2 import sites and bringing it to 76; the
  * organizations D4 paydown moved the `Organization`/`OrganizationMember`/
  * `User`/`CustomRole` MODEL types into domain-owned structural interfaces in
- * `modules/organizations/domain/types.ts`, bringing it to 72.). Turning the lint gate
- * red today would mean either 72 fixes in one commit or 72 `eslint-disable`s
+ * `modules/organizations/domain/types.ts`, bringing it to 72; the [BARREL]
+ * Group A paydown repointed ai-agent's and tags' static cross-module type
+ * imports (plus tags' `slugify` value import) from sibling `presentation` /
+ * `presentation/server` barrels to the actual domain/application files,
+ * bringing it to 60.). Turning the lint gate
+ * red today would mean either 60 fixes in one commit or 60 `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -156,7 +160,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 72 violations across 50 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 60 violations across 41 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -237,20 +241,18 @@ const BASELINE: ReadonlyArray<string> = [
   // initial-balance, trial-balance) were CLOSED by the [REVERSE-WIRING]
   // paydown — see header narrative.
 
-  // ── modules/ai-agent/ — [PRISMA][BARREL] six sibling modules consumed through presentation/server barrels,
-  //     one LLM adapter reached from presentation, Prisma enums in domain prompts
-  "modules/ai-agent/application/agent.service.ts:R2",
-  "modules/ai-agent/application/agent.service.ts:R2",
-  "modules/ai-agent/application/modes/balance-sheet-analysis.ts:R2",
-  "modules/ai-agent/application/modes/chat.ts:R2",
-  "modules/ai-agent/application/modes/income-statement-analysis.ts:R2",
-  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
-  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
-  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
-  "modules/ai-agent/application/tools/find-accounts.ts:R2",
-  "modules/ai-agent/application/tools/find-contact.ts:R2",
+  // ── modules/ai-agent/ — [PRISMA][BARREL] one LLM adapter reached from presentation, Prisma enums in domain prompts
+  //     The [BARREL] Group A paydown CLOSED the 10 application/*:R2 entries by
+  //     repointing the static type imports (financial-statements types,
+  //     LotInquiryPort, ExpenseService, MortalityService, OrgSettingsService,
+  //     ContactsService) from sibling presentation/server barrels to the actual
+  //     domain/application files. HONESTY NOTE: ai-agent still has SHADOW DEBT —
+  //     6 dynamic `await import(".../presentation/server")` factory loads
+  //     (pricing.service ×3, find-accounts, find-contact, parse-operation) that
+  //     ESLint's no-restricted-imports does NOT catch; closing them is a
+  //     deferred composition-root injection refactor (the constructors already
+  //     accept the deps), carries TDZ risk, and needs runtime testing.
   "modules/ai-agent/application/tools/find-contact.ts:R5",
-  "modules/ai-agent/application/tools/parse-operation.ts:R2",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
@@ -301,8 +303,8 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/shared/ — [BARREL] presentation/http-error-serializer imported by a domain error test
   "modules/shared/domain/errors/__tests__/external-sync-error.test.ts:R1",
 
-  // ── modules/tags/ — [BARREL] organizations presentation barrel from application
-  "modules/tags/application/tags.service.ts:R2",
+  // ── modules/tags/ — [BARREL] tags.service.ts:R2 CLOSED by Group A — `slugify`
+  //     now imported from organizations/domain/roles.validation directly.
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
   "modules/users/application/users.service.ts:R2",
