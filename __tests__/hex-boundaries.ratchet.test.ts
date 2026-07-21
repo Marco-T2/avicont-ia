@@ -334,7 +334,6 @@ const BASELINE: ReadonlyArray<string> = [
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
   "modules/users/application/users.service.ts:R2",
-  "modules/users/application/users.service.ts:R5",
 ];
 
 // ── ESLint run: ONCE for the whole file, ~17s ──

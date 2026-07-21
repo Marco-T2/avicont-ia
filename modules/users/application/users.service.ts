@@ -1,7 +1,7 @@
 import "server-only";
 import { NotFoundError } from "@/modules/shared/domain/errors";
 import { UsersRepository, type CreateUserInput } from "@/modules/users/infrastructure/users.repository";
-import type { User } from "@/generated/prisma/client";
+import type { User } from "@/modules/users/domain/user.types";
 
 export class UsersService {
   private readonly repo: UsersRepository;
