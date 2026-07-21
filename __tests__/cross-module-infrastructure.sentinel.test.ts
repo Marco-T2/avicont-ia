@@ -121,12 +121,6 @@ const ALLOWLISTED_IMPORTS: ReadonlyArray<string> = [
   // annual-close/domain, implemented by monthly-close.
   "modules/annual-close/presentation/composition-root.ts:@/modules/monthly-close/infrastructure/prisma-draft-documents-reader.adapter",
 
-  // purchase.service reaches for accounting's document-type code constants.
-  // This one is ALSO an R2 violation (application/ -> infrastructure/) and is
-  // already counted in the ESLint baseline; it is listed here so this sentinel
-  // does not double-report a known, separately-tracked offender.
-  "modules/purchase/application/purchase.service.ts:@/modules/accounting/shared/infrastructure/document-type-codes",
-
   // purchase composition root wires accounting/contacts/org-settings adapters
   // directly. Purchase needs its own ports for account lookup, fiscal-period
   // status, journal-entry reads, contact reads and legacy account mapping.
