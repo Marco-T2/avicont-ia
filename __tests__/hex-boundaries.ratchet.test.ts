@@ -248,31 +248,51 @@ const BASELINE: ReadonlyArray<string> = [
   // initial-balance, trial-balance) were CLOSED by the [REVERSE-WIRING]
   // paydown — see header narrative.
 
-  // ── modules/ai-agent/ — [PRISMA][BARREL] one LLM adapter reached from presentation, Prisma enums in domain prompts
-  //     The [BARREL] Group A paydown CLOSED the 10 application/*:R2 entries by
-  //     repointing the static type imports (financial-statements types,
-  //     LotInquiryPort, ExpenseService, MortalityService, OrgSettingsService,
-  //     ContactsService) from sibling presentation/server barrels to the actual
-  //     domain/application files. HONESTY NOTE: ai-agent still has SHADOW DEBT —
-  //     6 dynamic `await import(".../presentation/server")` factory loads
-  //     (pricing.service ×3, find-accounts, find-contact, parse-operation) that
-  //     ESLint's no-restricted-imports does NOT catch; closing them is a
-  //     deferred composition-root injection refactor (the constructors already
-  //     accept the deps), carries TDZ risk, and needs runtime testing.
-  //     The 4 R5 enum entries (find-contact.ts, income-statement-analysis
-  //     .prompt.ts, tool-output.types.ts, agent.types.ts) were CLOSED by
-  //     repointing the Prisma enum imports to the existing domain mirrors
-  //     (AccountSubtype→accounting/domain/value-objects/account-classification,
-  //     ExpenseCategory→expense/domain/value-objects/expense-category,
-  //     ContactType→contacts/domain/value-objects/contact-type). NOTE: the
-  //     ExpenseCategory and ContactType mirrors have no Prisma deep-sync guard
-  //     like accounting's enum-domain-mirror.sync.test.ts — pre-existing gap,
-  //     hardening deliberately deferred to a separate decision.
-  // [BARREL] cross-module presentation-barrel imports — REVERTED (was BARREL
-  // Group A, commit 77f35522): the repoints to domain/application collided with
-  // the POC cutover framework (financial-statements/expense/mortality C4/C1
-  // sentinels pin these consumers to presentation/server). Ratchet-R2 vs
-  // POC-cutover is a real architectural conflict — deferred to a human decision.
+  // ── modules/ai-agent/ — [PRISMA][BARREL] LLM adapters + cross-module presentation-barrel imports
+  //     Two paydowns landed here:
+  //     • [BARREL] R5 enum entries CLOSED — Prisma enum imports repointed to the
+  //       existing domain mirrors (AccountSubtype→accounting/domain/value-objects/
+  //       account-classification, ExpenseCategory→expense/domain/value-objects/
+  //       expense-category, ContactType→contacts/domain/value-objects/contact-type).
+  //       NOTE: the ExpenseCategory and ContactType mirrors have no Prisma deep-sync
+  //       guard like accounting's enum-domain-mirror.sync.test.ts — pre-existing gap,
+  //       hardening deliberately deferred to a separate decision.
+  //     • FREE cross-module repoints CLOSED (commit 07c549df) — the 7 imports with
+  //       NO POC-cutover sentinel over them moved off presentation barrels to their
+  //       canonical domain/application source: LotInquiryPort→lot/domain/ports/
+  //       lot-inquiry.port (agent.service, chat, pricing.service), OrgSettingsService→
+  //       org-settings/application/org-settings.service (find-accounts), ContactsService→
+  //       contacts/application/contacts.service (find-contact, parse-operation).
+  //     HONESTY NOTE: ai-agent still has SHADOW DEBT — 6 dynamic `await import(
+  //     ".../presentation/server")` factory loads (pricing.service ×3, find-accounts,
+  //     find-contact, parse-operation) that ESLint's no-restricted-imports does NOT
+  //     catch; closing them is a deferred composition-root injection refactor (the
+  //     constructors already accept the deps), carries TDZ risk, needs runtime testing.
+  //
+  //  ── DESIGN-LOCKED by POC-cutover (Option B, human decision 2026-07-21) ──
+  //     The 9 entries below are NOT payable debt. Repointing them off presentation/
+  //     server to domain/application would RE-BREAK live POC-cutover sentinels that
+  //     DELIBERATELY pin these cross-module consumers to each module's public
+  //     presentation barrel — the barrel IS the intended cross-module API surface
+  //     (the underlying features/ migration is 100% complete; the C4/C1 shape tests
+  //     now act as permanent regression locks). This is the same R2-vs-POC conflict
+  //     that reverted BARREL Group A (commit 77f35522). Decision: POC-cutover wins;
+  //     these stay frozen WITH citations, per the §18 deferred-with-citation
+  //     convention (docs/architecture/03-rules-hard-rules.md §18). Each entry cites
+  //     the live sentinel assertion that locks it (file:line):
+  //       agent.service.ts:R2              → financial-statements C4 test:185-191
+  //       balance-sheet-analysis.ts:R2     → financial-statements C4 test:193-201
+  //       income-statement-analysis.ts:R2  → financial-statements C4 test:203-211
+  //       balance-sheet-analysis.prompt.ts:R1 ×2    → financial-statements C4 test:213-221
+  //       income-statement-analysis.prompt.ts:R1 ×2 → financial-statements C4 test:223-231
+  //       pricing.service.ts:R2 (expense)  → expense C4 test α53:108-117
+  //       pricing.service.ts:R2 (mortality)→ mortality C1 test:124,154-172
+  //     Sentinel files:
+  //       modules/accounting/financial-statements/__tests__/c4-cutover-shape.poc-financial-statements-hex.test.ts
+  //       modules/expense/__tests__/c4-cross-feature-cutover-shape.poc-expense-hex.test.ts
+  //       modules/mortality/presentation/__tests__/c1-cutover-shape.poc-nuevo-mortality.test.ts
+  //     To ever pay these down, the owning POC must first be cemented AND its C4/C1
+  //     shape assertions retired (the organizations-hex precedent), not before.
   "modules/ai-agent/application/agent.service.ts:R2",
   "modules/ai-agent/application/modes/balance-sheet-analysis.ts:R2",
   "modules/ai-agent/application/modes/income-statement-analysis.ts:R2",
@@ -316,9 +336,11 @@ const BASELINE: ReadonlyArray<string> = [
 
   // ── modules/shared/ — [BARREL] presentation/http-error-serializer imported by a domain error test
 
-  // ── modules/tags/ — [BARREL] tags.service.ts:R2 — REVERTED with the rest of
-  //     BARREL Group A (POC-cutover collision); `slugify` imports from
-  //     organizations/presentation again pending a human ratchet-vs-POC decision.
+  // ── modules/tags/ — [BARREL] tags.service.ts:R2 CLOSED (commit 07c549df) —
+  //     `slugify` repointed from organizations/presentation to its canonical domain
+  //     home organizations/domain/roles.validation. It was FREE: no POC sentinel
+  //     enforced the barrel import (organizations POC fully cemented, its shape
+  //     tests already deleted), so it carried none of the R2-vs-POC collision.
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
   "modules/users/application/users.service.ts:R2",
