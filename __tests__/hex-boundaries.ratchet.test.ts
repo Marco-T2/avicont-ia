@@ -103,10 +103,12 @@
  * 120. Pinning identities makes every individual violation load-bearing.
  *
  * Entries REPEAT when one file violates one rule more than once (e.g.
- * `journals.service.ts:R2` appears 8 times — eight distinct restricted imports).
- * The comparison is multiset-aware on purpose: fixing 3 of those 8 must turn
- * this file RED so the baseline is forced down to 5. A set-based (deduplicated)
- * comparison would let 7 of the 8 be re-introduced for free after one is fixed.
+ * `journals.service.ts:R2` appears 4 times — four distinct restricted imports
+ * (the deferred voucher-pdf infra reads; it started at 8, then 7, and the three
+ * cross-module type imports were repointed off presentation barrels).
+ * The comparison is multiset-aware on purpose: fixing 1 of those 4 must turn
+ * this file RED so the baseline is forced down to 3. A set-based (deduplicated)
+ * comparison would let 3 of the 4 be re-introduced for free after one is fixed.
  * The repetition is not redundancy — each line is one real violation.
  *
  * NOTE: an entry does not carry a LINE NUMBER, by choice. Line numbers churn on
