@@ -1,5 +1,39 @@
 /** Canonical hex DTO — account input/composite types (§13.X). */
-import type { Account, AccountType, AccountNature, AccountSubtype } from "@/generated/prisma/client";
+import type {
+  AccountType,
+  AccountNature,
+  AccountSubtype,
+} from "./value-objects/account-classification";
+
+// ── Entity types (D4: domain-owned model type) ──
+
+/**
+ * Espejo estructural de los scalars del modelo Prisma `Account` (sin
+ * relaciones — `parent`/`children` viven en `AccountWithChildren`).
+ * Un row de `prisma.account.find*()` con select por defecto es asignable a
+ * esta interfaz sin cast, y viceversa; los campos enum usan los mirrors de
+ * dominio (`account-classification.ts`), que son uniones literales
+ * estructuralmente idénticas a las de Prisma. `tsc` verifica esa
+ * asignabilidad en los adaptadores de infraestructura porque los puertos
+ * declaran ESTE tipo como retorno (precedente: organizations D4,
+ * `modules/organizations/domain/types.ts`).
+ */
+export interface Account {
+  id: string;
+  code: string;
+  name: string;
+  type: AccountType;
+  nature: AccountNature;
+  subtype: AccountSubtype | null;
+  parentId: string | null;
+  level: number;
+  isDetail: boolean;
+  requiresContact: boolean;
+  description: string | null;
+  isActive: boolean;
+  isContraAccount: boolean;
+  organizationId: string;
+}
 
 // ── Filter types ──
 

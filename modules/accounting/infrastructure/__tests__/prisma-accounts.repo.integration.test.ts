@@ -193,7 +193,10 @@ describe("findTree", () => {
     const tree = await repo.findTree(testOrgId);
     expect(tree).toHaveLength(1);
     expect(tree[0]?.code).toBe("1");
-    const children = (tree[0] as Record<string, unknown>)?.children as { code: string; children: unknown[] }[];
+    // `as unknown` hop: domain `AccountWithChildren` is an interface (D4) —
+    // interfaces have no implicit index signature, unlike the old Prisma type
+    // alias, so the direct Record cast no longer compiles.
+    const children = (tree[0] as unknown as Record<string, unknown>)?.children as { code: string; children: unknown[] }[];
     expect(children).toHaveLength(1);
     expect(children[0]?.code).toBe("1.1");
     const grandchildren = children[0]?.children as { code: string }[];

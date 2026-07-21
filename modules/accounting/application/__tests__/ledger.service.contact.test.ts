@@ -11,7 +11,7 @@ import type {
   PaymentsContactLedgerPort,
   ReceivablesContactLedgerPort,
 } from "../../domain/ports/contact-ledger-enrichment.ports";
-import type { Account } from "@/generated/prisma/client";
+import type { Account } from "../../domain/accounts.types";
 
 /**
  * Behavioral unit test for `LedgerService.getContactLedgerPaginated`

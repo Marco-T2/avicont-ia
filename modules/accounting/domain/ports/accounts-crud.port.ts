@@ -13,8 +13,9 @@
  * surface (payment-module precedent: the adapter casts internally).
  */
 
-import type { Account, AccountType } from "@/generated/prisma/client";
+import type { AccountType } from "@/modules/accounting/domain/value-objects/account-classification";
 import type {
+  Account,
   AccountListFilters,
   ResolvedCreateAccountData,
   UpdateAccountInput,

@@ -90,18 +90,24 @@ describe("α19 REQ-003 seedChartOfAccounts uses readonly AccountDef[]", () => {
 // ── α20–α23: REQ-004 type imports ───────────────────────────────────────────
 
 describe("α20–α23 REQ-004 required type imports declared", () => {
-  it("α20: Account imported from @/generated/prisma/client", () => {
+  // NOTE (hex R5 D4 paydown): the `Account` MODEL type is now domain-owned —
+  // a structural interface in domain/accounts.types.ts mirroring Prisma's
+  // scalars — and `AccountType` comes from the D1 domain enum mirror
+  // (domain/value-objects/account-classification.ts). The port no longer
+  // imports from @/generated/prisma/client at all. Assertions re-pinned to
+  // the new domain sources (same precedent as the α22 NOTE below).
+  it("α20: Account imported from domain/accounts.types", () => {
     const content = readFileSync(PORT_FILE, "utf-8");
     expect(content).toMatch(
-      /^import type \{[^}]*\bAccount\b[^}]*\} from ["']@\/generated\/prisma\/client["']/m,
+      /^import type \{[^}]*\bAccount\b[^}]*\} from ["'].*domain\/accounts\.types["']/m,
     );
   });
 
-  it("α21: AccountType imported from @/generated/prisma/client", () => {
+  it("α21: AccountType imported from the domain enum mirror", () => {
     const content = readFileSync(PORT_FILE, "utf-8");
-    // AccountType must appear in the prisma/client import line
+    // AccountType must appear in the account-classification mirror import line
     expect(content).toMatch(
-      /^import type \{[^}]*\bAccountType\b[^}]*\} from ["']@\/generated\/prisma\/client["']/m,
+      /^import type \{[^}]*\bAccountType\b[^}]*\} from ["'].*domain\/value-objects\/account-classification["']/m,
     );
   });
 

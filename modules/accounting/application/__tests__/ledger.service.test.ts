@@ -4,7 +4,7 @@ import { LedgerService } from "../ledger.service";
 import { InMemoryJournalLedgerQueryPort } from "./fakes/in-memory-accounting-uow";
 import type { AccountsCrudPort } from "../../domain/ports/accounts-crud.port";
 import type { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
-import type { Account } from "@/generated/prisma/client";
+import type { Account } from "../../domain/accounts.types";
 
 /**
  * Behavioral unit test for the hex `LedgerService` (POC #7 OLEADA 6 — C1;

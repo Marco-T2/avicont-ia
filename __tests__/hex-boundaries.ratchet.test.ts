@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 56
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 51
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -47,8 +47,14 @@
  * bringing it to 60; the R5 enum-repoint paydown repointed ai-agent's four
  * Prisma enum imports (AccountSubtype, ExpenseCategory, ContactType ×2) to
  * the existing domain-owned mirrors in accounting, expense and contacts,
- * bringing it to 56.). Turning the lint gate
- * red today would mean either 56 fixes in one commit or 56 `eslint-disable`s
+ * bringing it to 56; the accounting Account D4 paydown moved the `Account`
+ * MODEL type into a domain-owned structural interface in
+ * `modules/accounting/domain/accounts.types.ts` (enum fields typed via the D1
+ * mirrors) and repointed the crud port + 3 application tests, bringing it to
+ * 51 — `accounts.service.ts` (live injected PrismaClient, D1/D3 design locks)
+ * and `journal.types.ts` (6 model types) remain deferred.). Turning the lint
+ * gate red today would mean either 51 fixes in one commit or 51
+ * `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -163,7 +169,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 56 violations across 37 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 51 violations across 32 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -210,12 +216,9 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/accounting/ — [DTO][PRISMA][EXPORT][BARREL] the epicentre — presentation/dto/* reached from every layer,
   //     infrastructure/exporters/* called from presentation and application, Prisma
   //     client/enums in domain, and four sibling modules consumed via presentation/server
-  "modules/accounting/application/__tests__/accounts.service.unit.test.ts:R5",
   "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
   "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
   "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
-  "modules/accounting/application/__tests__/ledger.service.contact.test.ts:R5",
-  "modules/accounting/application/__tests__/ledger.service.test.ts:R5",
   "modules/accounting/application/accounts.service.ts:R5",
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R2",
@@ -229,13 +232,15 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/ledger.service.ts:R2",
   // moved here from presentation/dto by the [DTO] paydown; the R5 residue is
-  // [PRISMA]-cluster debt (MODEL types — Account, JournalEntry, … — not the
-  // enums D1 mirrored) closed by defining domain-local types + mapping at
-  // the infra boundary.
-  "modules/accounting/domain/accounts.types.ts:R5",
+  // [PRISMA]-cluster debt (MODEL types — not the enums D1 mirrored) closed by
+  // defining domain-local types + mapping at the infra boundary. The accounting
+  // `Account` model type was migrated to domain (D4) — accounts.types.ts now
+  // owns a structural `Account` interface (enum fields via the D1 mirrors) and
+  // the crud port + 3 application tests were repointed; `accounts.service.ts`
+  // (live injected PrismaClient, D1/D3 design locks) and `journal.types.ts`
+  // (6 model types) remain deferred.
   "modules/accounting/domain/journal.types.ts:R5",
   "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
-  "modules/accounting/domain/ports/accounts-crud.port.ts:R5",
   // validation.ts:R5 (the M1 revert — composition-root TDZ cycle) was CLOSED
   // by D1: the enum imports now come from the LEAF mirror file
   // domain/value-objects/account-classification.ts, which is exactly the

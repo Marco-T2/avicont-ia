@@ -11,7 +11,8 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccountsService } from "../accounts.service";
 import type { AccountsCrudPort } from "../../domain/ports/accounts-crud.port";
-import type { Account, AccountSubtype } from "@/generated/prisma/client";
+import type { Account } from "../../domain/accounts.types";
+import type { AccountSubtype } from "../../domain/value-objects/account-classification";
 import {
   NotFoundError,
   ValidationError,
