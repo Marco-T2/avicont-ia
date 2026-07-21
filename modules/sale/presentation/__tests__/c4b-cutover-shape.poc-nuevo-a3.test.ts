@@ -47,6 +47,15 @@
  *   - Test 6 negative: `@/features/sale` exact root barrel ABSENT (regex
  *     anchored — preserva imports legítimos deep paths future-proof)
  *
+ * SUPERSEDED (sale-pure-read pilot): Marco lock Q4 (Prisma direct deps
+ * lookups en page) fue reemplazado — los 2 reads (contact +
+ * receivable+allocations) viven detrás de read ports del sale module
+ * (`SaleContactReaderPort` / `SaleReceivableReaderPort`) expuestos via
+ * `makeSaleReads()`. Test 3 flipped: ahora asserta `makeSaleReads` import
+ * PRESENT + `@/lib/prisma` import ABSENT (page pure hexagonal). Ver
+ * `app/(dashboard)/[orgSlug]/sales/[saleId]/__tests__/page-hex-purity.test.ts`
+ * (sentinel dedicado del pilot).
+ *
  * GREEN A3-C4b single commit β (mirror precedent A3-C4a + A3-C2 atomic batch):
  *   - Modify `app/(dashboard)/[orgSlug]/sales/[saleId]/page.tsx`:
  *     · Replace `new SaleService()` con `makeSaleService()`
@@ -102,11 +111,12 @@ describe("POC nuevo A3-C4b — cutover sales/[saleId]/page.tsx detail view shape
     );
   });
 
-  it("Test 3: sales/[saleId]/page.tsx imports `prisma` from `@/lib/prisma` (Prisma direct deps lookups Q4)", () => {
+  it("Test 3: sales/[saleId]/page.tsx imports `makeSaleReads` (read ports) and does NOT import `@/lib/prisma` (sale-pure-read pilot supersedes Q4)", () => {
     const source = fs.readFileSync(SALE_DETAIL_PAGE_PATH, "utf8");
     expect(source).toMatch(
-      /import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*["']@\/lib\/prisma["']/,
+      /import\s*\{[^}]*\bmakeSaleReads\b[^}]*\}\s*from\s*["']@\/modules\/sale\/presentation\/composition-root["']/,
     );
+    expect(source).not.toMatch(/["']@\/lib\/prisma["']/);
   });
 
   // ── Tests 4-6 negative: legacy ausentes ─────────────────────────────────────

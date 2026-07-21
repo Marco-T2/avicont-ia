@@ -11,6 +11,12 @@
  * page-rbac precedent (engram #1532). Test semantics RBAC-only preserved
  * (data path empty array — mapper never invoked).
  *
+ * Mocks updated list-pages-pure-read (Group C): `@/lib/prisma` mock stale
+ * post-purity cutover replaced by contacts + fiscal-periods presentation
+ * server facade mocks (`makeContactsService().list` /
+ * `makeFiscalPeriodsService().list` — mirror sales/[saleId] page-rbac
+ * precedent). Empty entity arrays preserve RBAC-only semantics.
+ *
  * C0 GREEN poc-dispatch-retirement-into-sales: dispatchService mock added
  * (twin-call cross-module read). RBAC semantics preserved — empty list
  * default keeps mapper paths shallow.
@@ -24,8 +30,8 @@ const {
   mockListPaginated,
   mockMakeDispatchService,
   mockDispatchListPaginated,
-  mockContactFindMany,
-  mockPeriodFindMany,
+  mockContactsList,
+  mockPeriodsList,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
@@ -33,8 +39,8 @@ const {
   mockListPaginated: vi.fn(),
   mockMakeDispatchService: vi.fn(),
   mockDispatchListPaginated: vi.fn(),
-  mockContactFindMany: vi.fn(),
-  mockPeriodFindMany: vi.fn(),
+  mockContactsList: vi.fn(),
+  mockPeriodsList: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -51,11 +57,12 @@ vi.mock("@/modules/dispatch/presentation/composition-root", () => ({
   makeDispatchService: mockMakeDispatchService,
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    contact: { findMany: mockContactFindMany },
-    fiscalPeriod: { findMany: mockPeriodFindMany },
-  },
+vi.mock("@/modules/contacts/presentation/server", () => ({
+  makeContactsService: vi.fn(() => ({ list: mockContactsList })),
+}));
+
+vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
+  makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
 vi.mock("@/components/sales/transactions-list", () => ({
@@ -97,8 +104,8 @@ beforeEach(() => {
     pageSize: 25,
     totalPages: 1,
   });
-  mockContactFindMany.mockResolvedValue([]);
-  mockPeriodFindMany.mockResolvedValue([]);
+  mockContactsList.mockResolvedValue([]);
+  mockPeriodsList.mockResolvedValue([]);
 });
 
 describe("/sales — rbac gate", () => {

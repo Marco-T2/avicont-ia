@@ -13,9 +13,13 @@ import { PrismaOperationalDocTypesRepository } from "@/modules/operational-doc-t
 import { makeReceivablesRepository } from "@/modules/receivables/presentation/server";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 
+import type { SaleContactReaderPort } from "../domain/ports/sale-contact-reader.port";
+import type { SaleReceivableReaderPort } from "../domain/ports/sale-receivable-reader.port";
 import { SaleService } from "../application/sale.service";
 import { LegacySalePermissionsAdapter } from "../infrastructure/legacy-sale-permissions.adapter";
 import { PrismaOrgSettingsReaderAdapter } from "../infrastructure/prisma-org-settings-reader.adapter";
+import { PrismaSaleContactReaderAdapter } from "../infrastructure/prisma-sale-contact-reader.adapter";
+import { PrismaSaleReceivableReaderAdapter } from "../infrastructure/prisma-sale-receivable-reader.adapter";
 import { PrismaSaleRepository } from "../infrastructure/prisma-sale.repository";
 import { PrismaSaleUnitOfWork } from "../infrastructure/prisma-sale-unit-of-work";
 
@@ -54,6 +58,24 @@ const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
 // injected into the sale UoW so the per-tx PrismaJournalEntryFactoryAdapter
 // resolves VG / FL / PF / CG / SV via findByCode at JE creation.
 const operationalDocTypesRepo = new PrismaOperationalDocTypesRepository();
+
+/**
+ * Read facade for sale detail page external deps (sale-pure-read pilot) —
+ * groups the tenant-scoped read ports the page consumes instead of querying
+ * Prisma directly. Wiring lives here (único archivo bajo `presentation/`
+ * autorizado a importar de `infrastructure/` — architecture.md R4 carve-out).
+ */
+export interface SaleReads {
+  contact: SaleContactReaderPort;
+  receivable: SaleReceivableReaderPort;
+}
+
+export function makeSaleReads(): SaleReads {
+  return {
+    contact: new PrismaSaleContactReaderAdapter(),
+    receivable: new PrismaSaleReceivableReaderAdapter(),
+  };
+}
 
 export function makeSaleService(): SaleService {
   return new SaleService({

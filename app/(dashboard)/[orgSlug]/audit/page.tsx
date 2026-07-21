@@ -1,7 +1,10 @@
 import { redirect } from "next/navigation";
-import { prisma } from "@/lib/prisma";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { makeAuditService, parseCursor } from "@/modules/audit/presentation/server";
+import {
+  makeAuditReads,
+  makeAuditService,
+  parseCursor,
+} from "@/modules/audit/presentation/server";
 import type {
   AuditAction,
   AuditCursor,
@@ -82,16 +85,9 @@ export default async function AuditPage({
   // Serializar Dates para el client component (Next.js requirement).
   const initialData = JSON.parse(JSON.stringify(result)) as typeof result;
 
-  // Resolver lista de usuarios activos de la org para el filter select.
-  const members = await prisma.organizationMember.findMany({
-    where: { organizationId: orgId, deactivatedAt: null },
-    include: { user: { select: { id: true, name: true, email: true } } },
-    orderBy: { user: { name: "asc" } },
-  });
-  const users = members.map((m) => ({
-    id: m.user.id,
-    name: m.user.name ?? m.user.email,
-  }));
+  // Resolver lista de usuarios activos de la org para el filter select —
+  // tenant-scoped read port del módulo audit (audit-pure-read Group B).
+  const users = await makeAuditReads().orgMembers.listActive(orgId);
 
   return (
     <div className="space-y-6">

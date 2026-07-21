@@ -104,10 +104,15 @@ describe("A3-C6a purchase list cutover + null guard shape — post-retirement su
     );
   });
 
-  it("Test 7: page imports prisma from @/lib/prisma (Prisma direct batch lookups)", () => {
-    expect(pageSource).toMatch(
-      /import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*["']@\/lib\/prisma["']/,
-    );
+  // Test 7 FLIPPED (list-pages-pure-read Group C): original assertion locked
+  // the Prisma-direct batch-lookup pattern (`prisma` import PRESENT, mirror
+  // A3-C4a Q4). That lock is SUPERSEDED — the batch hydrations moved behind
+  // the EXISTING contacts + fiscal-periods module services (no new read
+  // ports; architect rule: reuse, no ceremony for dumb lookups). Assertion
+  // inverted: prisma import must now be ABSENT. Positive counterpart lives in
+  // app/(dashboard)/[orgSlug]/purchases/__tests__/page-hex-purity.test.ts.
+  it("Test 7 (flipped): page does NOT import prisma from @/lib/prisma (list-pages-pure-read supersedes Prisma-direct lock)", () => {
+    expect(pageSource).not.toMatch(/["']@\/lib\/prisma["']/);
   });
 
   // Tests 8-10 (page imports TYPE_PREFIXES + computeDisplayCode + null guard

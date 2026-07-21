@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { prisma } from "@/lib/prisma";
+import { makeContactsService } from "@/modules/contacts/presentation/server";
+import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { toSaleWithDetails } from "@/modules/sale/presentation/mappers/sale-to-with-details.mapper";
 import { paginationQuerySchema } from "@/modules/shared/presentation/pagination.schema";
@@ -94,21 +95,33 @@ export default async function SalesPage({ params, searchParams }: SalesPageProps
     ]),
   ];
 
+  // Hex-pure batch hydration (list-pages-pure-read Group C): reuse the
+  // EXISTING contacts + fiscal-periods module services instead of direct
+  // Prisma `id IN (...)` reads — dumb lookups deserve no new read ports
+  // (architect rule; mirror sales/[saleId] detail page). Services return
+  // org-scoped entities; page filters in-memory to the ids in the current
+  // page-window, preserving the prior projection (inactive contacts and
+  // closed periods referenced by rows remain hydrated).
+  const contactsService = makeContactsService();
+  const periodsService = makeFiscalPeriodsService();
+  const contactIdSet = new Set(contactIds);
+  const periodIdSet = new Set(periodIds);
+
   const [contacts, periods] = await Promise.all([
-    prisma.contact.findMany({
-      where: { id: { in: contactIds } },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        nit: true,
-        paymentTermsDays: true,
-      },
-    }),
-    prisma.fiscalPeriod.findMany({
-      where: { id: { in: periodIds } },
-      select: { id: true, name: true, status: true },
-    }),
+    contactsService
+      .list(orgId)
+      .then((entities) =>
+        entities
+          .filter((c) => contactIdSet.has(c.id))
+          .map((c) => c.toSnapshot()),
+      ),
+    periodsService
+      .list(orgId)
+      .then((entities) =>
+        entities
+          .filter((p) => periodIdSet.has(p.id))
+          .map((p) => p.toSnapshot()),
+      ),
   ]);
 
   const contactMap = new Map(contacts.map((c) => [c.id, c]));

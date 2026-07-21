@@ -1,6 +1,10 @@
 import "server-only";
 
-export { makeAuditService } from "./composition-root";
+export {
+  makeAuditReads,
+  makeAuditService,
+  type AuditReads,
+} from "./composition-root";
 
 export {
   auditListQuerySchema,
@@ -38,3 +42,11 @@ export { AuditService, type UserNameResolver } from "../application/audit.servic
 export type { AuditRepository, AuditRow } from "../domain/audit.repository";
 export { classify, type ParentContext } from "../domain/audit.classifier";
 export type { AuditInquiryPort } from "../domain/ports/audit-inquiry.port";
+export type {
+  AuditCloseEventReaderPort,
+  AuditCloseEventView,
+} from "../domain/ports/audit-close-event-reader.port";
+export type {
+  AuditOrgMembersReaderPort,
+  AuditOrgMemberView,
+} from "../domain/ports/audit-org-members-reader.port";

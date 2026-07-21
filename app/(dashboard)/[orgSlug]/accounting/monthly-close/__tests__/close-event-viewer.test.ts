@@ -7,17 +7,25 @@
  * (c) On authorized → page does not redirect.
  *
  * Fails until T60 creates close-event/page.tsx.
+ *
+ * FLIPPED (audit-pure-read Group B): this test historically mocked
+ * `@/lib/prisma` (`prisma.auditLog.findMany`) — the page's direct read. The
+ * read now lives behind the audit-owned `AuditCloseEventReaderPort` exposed
+ * via `makeAuditReads()`, so the test mocks the composition root instead of
+ * reaching through the Prisma adapter internals.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const { mockRedirect, mockRequirePermission, mockFindMany } = vi.hoisted(() => ({
-  mockRedirect: vi.fn(),
-  mockRequirePermission: vi.fn(),
-  mockFindMany: vi.fn(),
-}));
+const { mockRedirect, mockRequirePermission, mockListByCorrelation } = vi.hoisted(
+  () => ({
+    mockRedirect: vi.fn(),
+    mockRequirePermission: vi.fn(),
+    mockListByCorrelation: vi.fn(),
+  }),
+);
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
 
@@ -25,12 +33,10 @@ vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    auditLog: {
-      findMany: mockFindMany,
-    },
-  },
+vi.mock("@/modules/audit/presentation/server", () => ({
+  makeAuditReads: () => ({
+    closeEvents: { listByCorrelation: mockListByCorrelation },
+  }),
 }));
 
 // ── Import after mocks ────────────────────────────────────────────────────────
@@ -53,7 +59,7 @@ function makeSearchParams(correlationId?: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockFindMany.mockResolvedValue([]);
+  mockListByCorrelation.mockResolvedValue([]);
 });
 
 describe("/accounting/monthly-close/close-event — CloseEventPage RBAC", () => {

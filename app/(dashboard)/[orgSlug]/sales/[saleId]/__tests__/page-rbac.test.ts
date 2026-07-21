@@ -5,7 +5,11 @@
  *
  * Mocks updated A3-C4b cutover: legacy `@/features/sale/server` SaleService
  * replaced by hex `@/modules/sale/presentation/composition-root` makeSaleService
- * + Prisma direct deps lookups + `toSaleWithDetails` mapper invocation.
+ * + `toSaleWithDetails` mapper invocation.
+ *
+ * Sale-pure-read pilot: the two Prisma direct deps lookups (contact +
+ * receivable) moved behind `makeSaleReads()` read ports — the `@/lib/prisma`
+ * mock is gone; the composition-root mock now also stubs `makeSaleReads`.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -17,9 +21,10 @@ const {
   mockPeriodsList,
   mockAccountsList,
   mockMakeSaleService,
+  mockMakeSaleReads,
   mockToSaleWithDetails,
-  mockContactFindUnique,
-  mockReceivableFindUnique,
+  mockContactFindById,
+  mockReceivableFindWithAllocations,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
@@ -28,9 +33,10 @@ const {
   mockPeriodsList: vi.fn(),
   mockAccountsList: vi.fn(),
   mockMakeSaleService: vi.fn(),
+  mockMakeSaleReads: vi.fn(),
   mockToSaleWithDetails: vi.fn(),
-  mockContactFindUnique: vi.fn(),
-  mockReceivableFindUnique: vi.fn(),
+  mockContactFindById: vi.fn(),
+  mockReceivableFindWithAllocations: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -41,17 +47,11 @@ vi.mock("@/modules/permissions/application/server", () => ({
 
 vi.mock("@/modules/sale/presentation/composition-root", () => ({
   makeSaleService: mockMakeSaleService,
+  makeSaleReads: mockMakeSaleReads,
 }));
 
 vi.mock("@/modules/sale/presentation/mappers/sale-to-with-details.mapper", () => ({
   toSaleWithDetails: mockToSaleWithDetails,
-}));
-
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    contact: { findUnique: mockContactFindUnique },
-    accountsReceivable: { findUnique: mockReceivableFindUnique },
-  },
 }));
 
 vi.mock("@/modules/contacts/presentation/server", () => {
@@ -87,6 +87,10 @@ function makeParams() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockMakeSaleService.mockReturnValue({ getById: mockSaleGetById });
+  mockMakeSaleReads.mockReturnValue({
+    contact: { findById: mockContactFindById },
+    receivable: { findWithAllocations: mockReceivableFindWithAllocations },
+  });
   mockSaleGetById.mockResolvedValue({
     id: SALE_ID,
     periodId: PERIOD_ID,
@@ -98,14 +102,14 @@ beforeEach(() => {
     { toSnapshot: () => ({ id: PERIOD_ID, name: "Test Period", status: "OPEN" }) },
   ]);
   mockAccountsList.mockResolvedValue([]);
-  mockContactFindUnique.mockResolvedValue({
+  mockContactFindById.mockResolvedValue({
     id: CONTACT_ID,
     name: "Test Contact",
     type: "CLIENTE",
     nit: null,
     paymentTermsDays: 30,
   });
-  mockReceivableFindUnique.mockResolvedValue(null);
+  mockReceivableFindWithAllocations.mockResolvedValue(null);
   mockToSaleWithDetails.mockReturnValue({});
 });
 

@@ -1,7 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import type { Prisma } from "@/generated/prisma/client";
-
 import { Sale } from "@/modules/sale/domain/sale.entity";
 import { SaleDetail } from "@/modules/sale/domain/sale-detail.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
@@ -23,19 +21,18 @@ import {
  * Test 8 composite modificado (sin createdBy en deps + result assertion):
  *   1. computeDisplayCode happy path VG-NNN padStart 3 (mirror legacy getDisplayCode)
  *   2. computeDisplayCode null edge throws (SubQ-d fail-fast — DRAFT sales)
- *   3. toContactSummary passthrough Prisma raw → DTO contact shape
- *   4. toPeriodSummary passthrough Prisma raw → DTO period shape
- *   5. toReceivableSummary Decimal→number + nested allocations + payment.date toISOString
+ *   3. toContactSummary passthrough clean view → DTO contact shape
+ *   4. toPeriodSummary passthrough clean view → DTO period shape
+ *   5. toReceivableSummary clean numbers passthrough + nested allocations + payment.date toISOString
  *   6. toSaleDetailRow MonetaryAmount→number + quantity/unitPrice undefined→null
  *   7. toSaleWithDetails main compositor caller-passes-deps Sale entity + deps → SaleWithDetails end-to-end
  *
- * Decimal mocking: type-only `import type { Prisma }` + cast to satisfy
- * `.toNumber()` interface (R5 banPrismaInPresentation preserved — no runtime
- * Decimal value import; A3-C1.5 §13.V carve-out allowTypeImports: true).
+ * Sale-pure-read pilot: deps ya NO llegan como Prisma raw con Decimal — el
+ * caller (page) los carga via read ports (`SaleContactReaderPort` /
+ * `SaleReceivableReaderPort`) cuyos adapters convierten Decimal→number en el
+ * boundary infrastructure. El mapper consume shapes limpios (numbers) y NO
+ * importa Prisma ni siquiera type-only.
  */
-
-const fakeDecimal = (n: number): Prisma.Decimal =>
-  ({ toNumber: () => n }) as unknown as Prisma.Decimal;
 
 describe("sale-to-with-details mappers (smoke)", () => {
   // Tests 1 + 2 (computeDisplayCode happy path + null edge) RETIRED per
@@ -43,7 +40,7 @@ describe("sale-to-with-details mappers (smoke)", () => {
 
   // ── Test 3: toContactSummary passthrough ──────────────────────────────────────
 
-  it("toContactSummary passthrough Prisma raw → DTO contact shape", () => {
+  it("toContactSummary passthrough clean view → DTO contact shape", () => {
     const contact = {
       id: "c-1",
       name: "Cliente Uno",
@@ -59,27 +56,27 @@ describe("sale-to-with-details mappers (smoke)", () => {
 
   // ── Test 4: toPeriodSummary passthrough ───────────────────────────────────────
 
-  it("toPeriodSummary passthrough Prisma raw → DTO period shape", () => {
+  it("toPeriodSummary passthrough clean view → DTO period shape", () => {
     const period = { id: "p-1", name: "Enero 2026", status: "OPEN" };
     expect(toPeriodSummary(period)).toEqual(period);
   });
 
-  // ── Test 5: toReceivableSummary Decimal→number + nested allocations ───────────
+  // ── Test 5: toReceivableSummary clean numbers + nested allocations ────────────
 
-  it("toReceivableSummary Decimal→number + nested allocations + payment.date toISOString", () => {
+  it("toReceivableSummary clean numbers passthrough + nested allocations + payment.date toISOString", () => {
     const paymentDate = new Date("2026-03-15T10:00:00Z");
     const receivable = {
       id: "r-1",
-      amount: fakeDecimal(150),
-      paid: fakeDecimal(50),
-      balance: fakeDecimal(100),
+      amount: 150,
+      paid: 50,
+      balance: 100,
       status: "PARTIAL",
       dueDate: new Date("2026-04-30"),
       allocations: [
         {
           id: "a-1",
           paymentId: "pay-1",
-          amount: fakeDecimal(50),
+          amount: 50,
           payment: {
             id: "pay-1",
             date: paymentDate,

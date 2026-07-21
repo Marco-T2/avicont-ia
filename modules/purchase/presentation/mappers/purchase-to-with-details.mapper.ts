@@ -1,7 +1,5 @@
 import "server-only";
 
-import type { Prisma } from "@/generated/prisma/client";
-
 import type { Purchase } from "../../domain/purchase.entity";
 import type { PurchaseDetail } from "../../domain/purchase-detail.entity";
 import type {
@@ -22,17 +20,17 @@ import type {
  * pre A3-C6 cutover 4 callers (page list lean + page detail Prisma direct
  * payable+ivaPurchaseBook + routes 3+4 atomic interdependence).
  *
- * Pattern: caller (page/route) loads external deps via separate Prisma
- * queries (contact via Prisma direct, period via reuse periods list o Prisma
- * direct, payable via Prisma direct §13.X-purchase, ivaPurchaseBook via
- * Prisma direct mirror A3-C4b sale precedent) y pasa al main compositor
+ * Pattern: caller (page/route) loads external deps via services/read ports
+ * (contact + payable via `makePurchaseReads()` purchase read ports, period
+ * via reuse periods list) y pasa al main compositor
  * `toPurchaseWithDetails(purchase, deps)` que invoca sub-mappers cohesivos.
  *
  * Hex purity preserved: mapper consume Purchase domain entity output
  * (`makePurchaseService`), NO toca presentation concerns dentro de
  * application layer. Sub-mappers EXTERNAL deps (contact/period/payable)
- * reciben Prisma raw shape passthrough (Marco Q-final-4 lock — caller ya
- * carga via Prisma queries, mapper recibe directo).
+ * reciben clean views desde los read ports (purchase-pure-read — mirror
+ * sale-pure-read pilot: los adapters Prisma convierten Decimal→number en el
+ * boundary infrastructure, mapper recibe numbers).
  *
  * §13.W-purchase resolution (A3-C5.5 atomic paired este ciclo): unused
  * user-summary nested field dropeado del mapper deps signature + DTO. Verified
@@ -49,14 +47,14 @@ import type {
  * null` per PurchaseDetailRow `number | null` shape (Prisma optional fields
  * llegan como `T | null` en DTO; hex entity getters como `T | undefined`).
  *
- * R5 banPrismaInPresentation preserved via type-only Prisma import (A3-C1.5
- * §13.V carve-out allowTypeImports: true). NO runtime Prisma value usage en
- * mapper module — Decimal.toNumber() invocado sobre instance ya construida
- * upstream por Prisma query (caller-side).
+ * R5 banPrismaInPresentation preserved — purchase-pure-read removed even the
+ * type-only Prisma import (mirror sale-pure-read pilot): deps arrive as clean
+ * views (plain numbers) from the purchase read ports, so no `Prisma.Decimal`
+ * appears anywhere in this module.
  *
  * Asimetría purchase vs sale precedent (mirror estructura, different concept):
  *   - sale `toReceivableSummary` ↔ purchase `toPayableSummary` (cuentas por
- *     cobrar vs pagar — Prisma raw → DTO Decimal→number + nested allocations)
+ *     cobrar vs pagar — clean numbers passthrough + nested allocations)
  *   - sale fixed prefix `VG` ↔ purchase TYPE_PREFIXES `FL/PF/CG/SV` per
  *     `PurchaseType` (4 polymorphic discriminators)
  *   - sale `toSaleDetailRow` 5 fields ↔ purchase `toPurchaseDetailRow` 12+
@@ -75,15 +73,17 @@ import type {
  * - modules/sale/presentation/mappers/sale-to-with-details.mapper.ts (229 LOC simétrico precedent)
  */
 
-// ── Types: Prisma raw shapes mirror legacy `purchaseInclude` ──────────────────
+// ── Types: clean external dep views (mirror legacy `purchaseInclude` fields) ──
 //
 // External dep input shapes corresponden 1:1 a legacy `purchaseInclude` /
-// `purchaseDetailInclude` Prisma select projections (legacy
-// purchaseInclude+purchaseDetailInclude — post-A3-C8 atomic delete commit 4aa8480).
-// Caller carga estos shapes via Prisma queries (typically con `select`
-// matching estos fields).
+// `purchaseDetailInclude` select projections (post-A3-C8 atomic delete commit
+// 4aa8480) PERO ya limpios: monetary fields son `number` (purchase-pure-read
+// — caller carga via `makePurchaseReads()` read ports cuyos adapters
+// convierten Decimal→number en infrastructure). Structural typing:
+// `PurchaseContactView` / `PurchasePayableView` (domain ports) satisfacen
+// estos shapes sin acoplar el mapper a los ports.
 
-export type ContactRaw = {
+export type ContactView = {
   id: string;
   name: string;
   type: string;
@@ -91,16 +91,16 @@ export type ContactRaw = {
   paymentTermsDays?: number | null;
 };
 
-export type PeriodRaw = {
+export type PeriodView = {
   id: string;
   name: string;
   status: string;
 };
 
-export type AllocationRaw = {
+export type AllocationView = {
   id: string;
   paymentId: string;
-  amount: Prisma.Decimal;
+  amount: number;
   payment: {
     id: string;
     date: Date;
@@ -108,28 +108,28 @@ export type AllocationRaw = {
   };
 };
 
-export type PayableRaw = {
+export type PayableView = {
   id: string;
-  amount: Prisma.Decimal;
-  paid: Prisma.Decimal;
-  balance: Prisma.Decimal;
+  amount: number;
+  paid: number;
+  balance: number;
   status: string;
   dueDate: Date;
-  allocations: AllocationRaw[];
+  allocations: AllocationView[];
 };
 
 // ── Main mapper deps (caller-passes-deps signature) ───────────────────────────
 
 export interface ToPurchaseWithDetailsDeps {
-  contact: ContactRaw;
-  period: PeriodRaw;
-  payable?: PayableRaw | null;
+  contact: ContactView;
+  period: PeriodView;
+  payable?: PayableView | null;
 }
 
-// ── Sub-mappers: passthrough EXTERNAL deps (Prisma raw shape) ─────────────────
+// ── Sub-mappers: passthrough EXTERNAL deps (clean views) ──────────────────────
 
 export function toContactSummary(
-  contact: ContactRaw,
+  contact: ContactView,
 ): PurchaseWithDetails["contact"] {
   return {
     id: contact.id,
@@ -140,7 +140,7 @@ export function toContactSummary(
   };
 }
 
-export function toPeriodSummary(period: PeriodRaw): PurchaseWithDetails["period"] {
+export function toPeriodSummary(period: PeriodView): PurchaseWithDetails["period"] {
   return {
     id: period.id,
     name: period.name,
@@ -148,14 +148,14 @@ export function toPeriodSummary(period: PeriodRaw): PurchaseWithDetails["period"
   };
 }
 
-// ── Sub-mapper: payable Decimal→number + nested allocations + payment ─────────
+// ── Sub-mapper: payable clean numbers + nested allocations + payment ──────────
 
-export function toPayableSummary(payable: PayableRaw): PayableSummary {
+export function toPayableSummary(payable: PayableView): PayableSummary {
   return {
     id: payable.id,
-    amount: payable.amount.toNumber(),
-    paid: payable.paid.toNumber(),
-    balance: payable.balance.toNumber(),
+    amount: payable.amount,
+    paid: payable.paid,
+    balance: payable.balance,
     status: payable.status,
     dueDate: payable.dueDate,
     allocations: payable.allocations.map(toPaymentAllocationSummary),
@@ -163,12 +163,12 @@ export function toPayableSummary(payable: PayableRaw): PayableSummary {
 }
 
 function toPaymentAllocationSummary(
-  allocation: AllocationRaw,
+  allocation: AllocationView,
 ): PaymentAllocationSummary {
   return {
     id: allocation.id,
     paymentId: allocation.paymentId,
-    amount: allocation.amount.toNumber(),
+    amount: allocation.amount,
     payment: {
       id: allocation.payment.id,
       date: allocation.payment.date.toISOString(),
