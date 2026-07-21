@@ -317,9 +317,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/server.ts:R2",
-  "modules/permissions/domain/__tests__/permissions.test.ts:R1",
-  "modules/permissions/domain/__tests__/permissions.test.ts:R1",
-  "modules/permissions/domain/__tests__/permissions.test.ts:R1",
 
   // ── modules/purchase/ — [BARREL] accounting shared/infrastructure/document-type-codes from application
 

@@ -46,7 +46,7 @@ vi.mock("@/prisma/seed-system-roles", () => ({
   seedOrgSystemRoles: vi.fn().mockResolvedValue(undefined),
 }));
 
-import { requirePermission } from "../permissions.server";
+import { requirePermission, canAccess } from "../permissions.server";
 import { requireAuth } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess, requireRole } from "@/modules/organizations/presentation/server";
 import { getMatrix, revalidateOrgMatrix, ensureOrgSeeded } from "../../infrastructure/permissions.cache";
@@ -448,5 +448,95 @@ describe("PR2.1 — requirePermission reads from cache + fallback seed", () => {
       await requirePermission("members", "read", ORG_SLUG);
       expect(mockedGetMatrix).toHaveBeenCalledTimes(2);
     });
+  });
+});
+
+// ── PR2.2 — canAccess async facade reads from cache ──────────────────────────
+// RELOCATED from modules/permissions/domain/__tests__/permissions.test.ts
+// (hex R1 paydown): these blocks mock infrastructure/permissions.cache, which
+// a domain test must not import. This file already mocks the same cache deps
+// (see vi.mock above) and owns the application-layer surface under test.
+// Reuses this file's makeSystemMatrix helper (same shape: 5 system roles
+// derived from the static maps).
+
+describe("PR2.2 — canAccess async (4-param) reads from cache", () => {
+  const CAN_ACCESS_ORG_ID = "org-pr22-test";
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("(a) await canAccess('contador','reports','read',orgId) === true from seeded system snapshot", async () => {
+    const matrix = makeSystemMatrix(CAN_ACCESS_ORG_ID);
+    mockedGetMatrix.mockResolvedValue(matrix);
+
+    const result = await canAccess("contador", "reports", "read", CAN_ACCESS_ORG_ID);
+
+    expect(result).toBe(true);
+    expect(mockedGetMatrix).toHaveBeenCalledWith(CAN_ACCESS_ORG_ID);
+  });
+
+  it("(b) unknown role → false", async () => {
+    const matrix = makeSystemMatrix(CAN_ACCESS_ORG_ID);
+    mockedGetMatrix.mockResolvedValue(matrix);
+
+    // 'facturador-custom' doesn't exist in the matrix
+    const result = await canAccess("facturador-custom", "sales", "read", CAN_ACCESS_ORG_ID);
+
+    expect(result).toBe(false);
+  });
+
+  it("(c) custom role 'facturador' with permissionsWrite=['journal'] in mock matrix → true for write", async () => {
+    const matrix = makeSystemMatrix(CAN_ACCESS_ORG_ID);
+    // Inject a custom role
+    matrix.roles.set("facturador", {
+      permissionsRead: new Set(["sales", "reports"]),
+      permissionsWrite: new Set(["journal"]),
+      canPost: new Set(),
+      canClose: new Set(),
+      canReopen: new Set(),
+      isSystem: false,
+    });
+    mockedGetMatrix.mockResolvedValue(matrix);
+
+    const canWrite = await canAccess("facturador", "journal", "write", CAN_ACCESS_ORG_ID);
+    const cannotWrite = await canAccess("facturador", "members", "write", CAN_ACCESS_ORG_ID);
+
+    expect(canWrite).toBe(true);
+    expect(cannotWrite).toBe(false);
+  });
+
+  it("(d) cache expired (mock TTL) triggers a new getMatrix call each time", async () => {
+    const matrix = makeSystemMatrix(CAN_ACCESS_ORG_ID);
+    // Each call returns a fresh matrix (simulates cache miss on each call)
+    mockedGetMatrix.mockResolvedValue(matrix);
+
+    await canAccess("admin", "journal", "read", CAN_ACCESS_ORG_ID);
+    await canAccess("admin", "journal", "read", CAN_ACCESS_ORG_ID);
+
+    // canAccess(4-param) calls getMatrix each invocation; the CACHE deduplicates.
+    // From canAccess's perspective: 2 calls → 2 getMatrix invocations.
+    expect(mockedGetMatrix).toHaveBeenCalledTimes(2);
+  });
+
+  it("(e) canAccess always async — calls getMatrix (sync 3-param overload removed in PR8.2)", async () => {
+    // PR8.2: sync 3-param overload removed. canAccess always calls getMatrix.
+    // Client-side checks use useCanAccess() / <Gated> from RolesMatrixProvider (PR7.1).
+    const matrix = makeSystemMatrix(CAN_ACCESS_ORG_ID);
+    mockedGetMatrix.mockResolvedValue(matrix);
+
+    const result = await canAccess("contador", "reports", "read", CAN_ACCESS_ORG_ID);
+    expect(result).toBe(true);
+    // All paths now hit the cache
+    expect(mockedGetMatrix).toHaveBeenCalledWith(CAN_ACCESS_ORG_ID);
+  });
+
+  it("triangulation: cobrador cannot write journal via cache-backed path", async () => {
+    const matrix = makeSystemMatrix(CAN_ACCESS_ORG_ID);
+    mockedGetMatrix.mockResolvedValue(matrix);
+
+    const result = await canAccess("cobrador", "journal", "write", CAN_ACCESS_ORG_ID);
+
+    expect(result).toBe(false);
   });
 });

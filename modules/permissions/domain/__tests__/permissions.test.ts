@@ -1,42 +1,18 @@
 /**
  * PR1 1.1 RED — RBAC authorization matrix (REQ-P.1 / REQ-P.2)
- * PR2.2 RED (extended) — canAccess async facade reads from cache
  *
- * Table-driven coverage:
- *   canAccess: 5 roles × 12 resources × 2 actions = 120 cases (sync, 3-param)
- *   canPost:   5 roles × 3  resources            =  15 cases
+ * Table-driven coverage over the STATIC permission maps (pure domain — no
+ * mocks, no cache, no application imports).
  *
- * PR2.2 additions:
- *   (a) await canAccess("contador","reports","read",orgId) === true from seeded system snapshot
- *   (b) unknown role → false
- *   (c) custom role with permissionsWrite=['journal'] in mock matrix → true
- *   (d) cache expired (mock TTL) triggers reload
- *   (e) useCanAccess / <Gated> public prop API: 3-param sync overload still compiles
+ * The PR2.2 cache-backed canAccess blocks (mocking
+ * infrastructure/permissions.cache) were RELOCATED to
+ * modules/permissions/application/__tests__/require-permission.test.ts
+ * (hex R1 paydown) — that file already mocks the same cache deps.
  *
  * Matrix source of truth: openspec/changes/accounting-rbac/specs/rbac-permissions-matrix/spec.md
  * W-draft is encoded as write=true (status gate is enforced by canPost at service layer).
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
-
-// Post-B3 cutover: cross-layer mock targets the hex infrastructure path directly.
-// Rationale: canAccess (hex application) internally imports getMatrix from
-// "../infrastructure/permissions.cache" (intra-hex sibling, not via SHIM alias).
-// Mocking the SHIM alias @/features/permissions/permissions.cache does NOT intercept the
-// hex internal sibling import — they resolve to DIFFERENT module entries even though they
-// re-export the same symbols. Mock the hex path to ensure interception.
-// (B1 GREEN initially mocked the SHIM alias because B2/B3 hex did not exist yet; B3 GREEN
-// updates this mock target atomically with the application-layer relocation.)
-vi.mock("@/modules/permissions/infrastructure/permissions.cache", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/modules/permissions/infrastructure/permissions.cache")>();
-  return {
-    ...actual,
-    getMatrix: vi.fn(),
-    _resetCache: actual._resetCache,
-    _setLoader: actual._setLoader,
-  };
-});
-import { getMatrix } from "@/modules/permissions/infrastructure/permissions.cache";
-import type { OrgMatrix } from "@/modules/permissions/infrastructure/permissions.cache";
+import { describe, it, expect } from "vitest";
 
 import {
   PERMISSIONS_READ,
@@ -48,7 +24,6 @@ import {
   type Resource,
   type Action,
 } from "../permissions";
-import { canAccess } from "@/modules/permissions/application/permissions.server";
 
 const ALL_ROLES: Role[] = [
   "owner",
@@ -252,143 +227,5 @@ describe("Spec scenarios verbatim (via static maps)", () => {
   it("P.2-S2 — cobrador cannot touch journal (read or write)", () => {
     expect(PERMISSIONS_READ["journal"].includes("cobrador")).toBe(false);
     expect(PERMISSIONS_WRITE["journal"].includes("cobrador")).toBe(false);
-  });
-});
-
-// ── PR2.2 — canAccess async facade reads from cache ──────────────────────────
-
-const mockedGetMatrix = vi.mocked(getMatrix);
-
-const ORG_ID = "org-pr22-test";
-
-/** Build a minimal OrgMatrix from static maps for a given orgId */
-function makeSystemMatrix(orgId: string): OrgMatrix {
-  const roles = new Map<string, {
-    permissionsRead: Set<Resource>;
-    permissionsWrite: Set<Resource>;
-    canPost: Set<"sales" | "purchases" | "journal">;
-    canClose: Set<Resource>;
-    canReopen: Set<Resource>;
-    isSystem: boolean;
-  }>();
-
-  const postAllowedRoles = getPostAllowedRoles();
-  const ALL_SYS_ROLES = ["owner", "admin", "contador", "cobrador", "member"] as const;
-  for (const slug of ALL_SYS_ROLES) {
-    const permissionsRead = new Set<Resource>(
-      (Object.keys(PERMISSIONS_READ) as Resource[]).filter((r) =>
-        PERMISSIONS_READ[r].includes(slug),
-      ),
-    );
-    const permissionsWrite = new Set<Resource>(
-      (Object.keys(PERMISSIONS_WRITE) as Resource[]).filter((r) =>
-        PERMISSIONS_WRITE[r].includes(slug),
-      ),
-    );
-    const canPostSet = new Set<"sales" | "purchases" | "journal">(
-      (["sales", "purchases", "journal"] as const).filter((r) =>
-        postAllowedRoles[r].includes(slug),
-      ),
-    );
-    const canClose = new Set<Resource>(
-      (Object.keys(PERMISSIONS_CLOSE) as Resource[]).filter((r) =>
-        PERMISSIONS_CLOSE[r].includes(slug),
-      ),
-    );
-    const canReopen = new Set<Resource>(
-      (Object.keys(PERMISSIONS_REOPEN) as Resource[]).filter((r) =>
-        PERMISSIONS_REOPEN[r].includes(slug),
-      ),
-    );
-    roles.set(slug, {
-      permissionsRead,
-      permissionsWrite,
-      canPost: canPostSet,
-      canClose,
-      canReopen,
-      isSystem: true,
-    });
-  }
-
-  return { orgId, roles, loadedAt: Date.now() };
-}
-
-describe("PR2.2 — canAccess async (4-param) reads from cache", () => {
-  beforeEach(() => {
-    vi.clearAllMocks();
-  });
-
-  it("(a) await canAccess('contador','reports','read',orgId) === true from seeded system snapshot", async () => {
-    const matrix = makeSystemMatrix(ORG_ID);
-    mockedGetMatrix.mockResolvedValue(matrix);
-
-    const result = await canAccess("contador", "reports", "read", ORG_ID);
-
-    expect(result).toBe(true);
-    expect(mockedGetMatrix).toHaveBeenCalledWith(ORG_ID);
-  });
-
-  it("(b) unknown role → false", async () => {
-    const matrix = makeSystemMatrix(ORG_ID);
-    mockedGetMatrix.mockResolvedValue(matrix);
-
-    // 'facturador-custom' doesn't exist in the matrix
-    const result = await canAccess("facturador-custom", "sales", "read", ORG_ID);
-
-    expect(result).toBe(false);
-  });
-
-  it("(c) custom role 'facturador' with permissionsWrite=['journal'] in mock matrix → true for write", async () => {
-    const matrix = makeSystemMatrix(ORG_ID);
-    // Inject a custom role
-    matrix.roles.set("facturador", {
-      permissionsRead: new Set(["sales", "reports"]),
-      permissionsWrite: new Set(["journal"]),
-      canPost: new Set(),
-      canClose: new Set(),
-      canReopen: new Set(),
-      isSystem: false,
-    });
-    mockedGetMatrix.mockResolvedValue(matrix);
-
-    const canWrite = await canAccess("facturador", "journal", "write", ORG_ID);
-    const cannotWrite = await canAccess("facturador", "members", "write", ORG_ID);
-
-    expect(canWrite).toBe(true);
-    expect(cannotWrite).toBe(false);
-  });
-
-  it("(d) cache expired (mock TTL) triggers a new getMatrix call each time", async () => {
-    const matrix = makeSystemMatrix(ORG_ID);
-    // Each call returns a fresh matrix (simulates cache miss on each call)
-    mockedGetMatrix.mockResolvedValue(matrix);
-
-    await canAccess("admin", "journal", "read", ORG_ID);
-    await canAccess("admin", "journal", "read", ORG_ID);
-
-    // canAccess(4-param) calls getMatrix each invocation; the CACHE deduplicates.
-    // From canAccess's perspective: 2 calls → 2 getMatrix invocations.
-    expect(mockedGetMatrix).toHaveBeenCalledTimes(2);
-  });
-
-  it("(e) canAccess always async — calls getMatrix (sync 3-param overload removed in PR8.2)", async () => {
-    // PR8.2: sync 3-param overload removed. canAccess always calls getMatrix.
-    // Client-side checks use useCanAccess() / <Gated> from RolesMatrixProvider (PR7.1).
-    const matrix = makeSystemMatrix(ORG_ID);
-    mockedGetMatrix.mockResolvedValue(matrix);
-
-    const result = await canAccess("contador", "reports", "read", ORG_ID);
-    expect(result).toBe(true);
-    // All paths now hit the cache
-    expect(mockedGetMatrix).toHaveBeenCalledWith(ORG_ID);
-  });
-
-  it("triangulation: cobrador cannot write journal via cache-backed path", async () => {
-    const matrix = makeSystemMatrix(ORG_ID);
-    mockedGetMatrix.mockResolvedValue(matrix);
-
-    const result = await canAccess("cobrador", "journal", "write", ORG_ID);
-
-    expect(result).toBe(false);
   });
 });
