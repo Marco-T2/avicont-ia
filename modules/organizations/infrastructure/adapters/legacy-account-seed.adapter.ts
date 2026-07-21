@@ -3,7 +3,6 @@ import {
   makeAccountsService,
   type AccountsService,
 } from "@/modules/accounting/presentation/server";
-import type { Prisma } from "@/generated/prisma/client";
 import type { AccountSeedPort } from "../../domain/ports/account-seed.port";
 
 /**
@@ -18,7 +17,7 @@ export class LegacyAccountSeedAdapter implements AccountSeedPort {
 
   async seedChartOfAccounts(
     organizationId: string,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<void> {
     await this.service.seedChartOfAccounts(organizationId, tx);
   }

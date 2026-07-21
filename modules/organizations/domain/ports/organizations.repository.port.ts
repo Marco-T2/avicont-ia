@@ -1,4 +1,3 @@
-import type { Prisma } from "@/generated/prisma/client";
 import type {
   AddMemberInput,
   CreateOrganizationInput,
@@ -11,6 +10,21 @@ import type {
  * Read/write port for the Organization + OrganizationMember aggregates.
  *
  * Mirror: modules/dispatch/domain/ports/dispatch.repository.ts pattern.
+ *
+ * tx pattern: opaque token (`tx?: unknown`) — no Prisma leakage into the
+ * port surface. Mirror: accounts-crud.port.ts / voucher-types.service.ts.
+ * The infra adapter (prisma-organizations.repository.ts) casts back
+ * internally: `const client = (tx ?? this.db) as Prisma.TransactionClient;`
+ *
+ * `transaction()`'s callback param is opaque too, for the same reason. Its
+ * `options.isolationLevel` was DROPPED from this domain surface rather than
+ * mirrored, because mirroring `Prisma.TransactionIsolationLevel` as a
+ * domain-owned string union here would be scope-creep no caller currently
+ * needs (no call site passes `isolationLevel` today — see
+ * organizations.service.ts's single `repo.transaction(async (tx) => ...)`
+ * call, no options object at all). The infra implementation
+ * (BaseRepository.transaction) keeps its own Prisma-typed `isolationLevel`
+ * internally and is free to widen it again later without touching this port.
  */
 export interface OrganizationsRepositoryPort {
   // -- Organization lookups (no org-scoping) --
@@ -21,7 +35,7 @@ export interface OrganizationsRepositoryPort {
   // -- Organization mutations --
   create(
     data: CreateOrganizationInput,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<Organization>;
 
   // -- Member queries (org-scoped) --
@@ -51,7 +65,7 @@ export interface OrganizationsRepositoryPort {
   // -- Member mutations --
   addMember(
     data: AddMemberInput,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<OrganizationMember>;
 
   findMemberById(
@@ -80,22 +94,21 @@ export interface OrganizationsRepositoryPort {
     organizationId: string,
     memberId: string,
     role: string,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<OrganizationMember>;
 
   hardDelete(
     organizationId: string,
     memberId: string,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<{ count: number }>;
 
   // -- Transaction support --
   transaction<T>(
-    fn: (tx: Prisma.TransactionClient) => Promise<T>,
+    fn: (tx: unknown) => Promise<T>,
     options?: {
       maxWait?: number;
       timeout?: number;
-      isolationLevel?: Prisma.TransactionIsolationLevel;
     },
   ): Promise<T>;
 }

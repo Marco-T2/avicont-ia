@@ -215,18 +215,24 @@ const RULE_TAG = /\b(R[1245]) violated:/;
 const BASELINE: ReadonlyArray<string> = [
 
   // ── modules/account-balances/ — [DTO][PRISMA] own infra repo/types + accounting DTO barrel + Prisma client
+  // account-balances.service.ts:R5 CLOSED by the [UoW-vs-opaque-token] paydown
+  // — applyPost/applyVoid now type `tx: unknown` (opaque token), casting
+  // internally via `Parameters<AccountBalancesRepository["upsert"]>[0]`. The
+  // 2 R2 entries below are untouched (different cluster, not in scope).
   "modules/account-balances/application/account-balances.service.ts:R2",
   "modules/account-balances/application/account-balances.service.ts:R2",
-  "modules/account-balances/application/account-balances.service.ts:R5",
 
   // ── modules/accounting/ — [DTO][PRISMA][EXPORT][BARREL] the epicentre — presentation/dto/* reached from every layer,
   //     Prisma client/model types in domain/application, and sibling modules
   //     consumed via presentation barrels (the infrastructure/exporters/*
   //     reads were all CLOSED by the [EXPORT] paydowns, voucher-pdf last)
   "modules/accounting/application/accounts.service.ts:R5",
+  // auto-entry-generator.ts:R5 CLOSED by the [UoW-vs-opaque-token] paydown —
+  // generate() now types `tx: unknown`, casting internally via
+  // `Parameters<JournalRepository["createWithRetryTx"]>[0]`. The 2 R2 entries
+  // below are untouched (different cluster, not in scope).
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R2",
-  "modules/accounting/application/auto-entry-generator.ts:R5",
   // The 4 journals.service.ts:R2 entries (voucher-pdf infra reads) were
   // CLOSED by the [EXPORT] voucher paydown — VoucherPdfExporterPort (domain)
   // + voucher-pdf-exporter.adapter.ts (infrastructure), wired in
@@ -304,12 +310,21 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
 
   // ── modules/organizations/ — [PRISMA] Prisma client across ports/types; roles repo + singleton cross-layer
-  // Model-types migrated to domain (D4); Prisma.TransactionClient sites (organizations.repository.port + 3 seed ports) DEFERRED to a UoW-vs-opaque-token decision.
+  // Model-types migrated to domain (D4); the [UoW-vs-opaque-token] paydown
+  // CLOSED all 4 Prisma.TransactionClient sites (organizations.repository.port
+  // + the 3 seed ports) by retyping `tx` opaquely (`tx?: unknown`), mirroring
+  // accounts-crud.port.ts / voucher-types.service.ts. The infra adapters
+  // (prisma-organizations.repository.ts, the 3 legacy-*-seed adapters, plus
+  // base.repository.ts's transaction()) cast back internally. The
+  // `transaction()` method's `options.isolationLevel` was DROPPED from the
+  // domain port surface (no call site passed it) rather than mirrored as a
+  // Prisma-enum domain type, to avoid scope-creep — infra keeps its own
+  // Prisma-typed isolationLevel internally. The raw `tx.customRole.createMany`
+  // call in organizations.service.ts (structural Prisma leakage via `tx`) was
+  // also moved behind a new `SystemRoleSeedPort.seedSystemRoles` method +
+  // `LegacySystemRoleSeedAdapter`, closing the last raw-Prisma coupling this
+  // paydown depended on.
   "modules/organizations/domain/members.validation.ts:R1",
-  "modules/organizations/domain/ports/account-seed.port.ts:R5",
-  "modules/organizations/domain/ports/operational-doc-type-seed.port.ts:R5",
-  "modules/organizations/domain/ports/organizations.repository.port.ts:R5",
-  "modules/organizations/domain/ports/voucher-type-seed.port.ts:R5",
 
   // ── modules/payment/ — [PRISMA] shared/infrastructure/audit-tx from both layers
   // fetch-shortcut-source.ts:R5 CLOSED by the D4 paydown — the helper now

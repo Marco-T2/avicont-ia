@@ -6,7 +6,6 @@ import {
   JOURNAL_NOT_BALANCED,
   CONTACT_REQUIRED_FOR_ACCOUNT,
 } from "@/modules/shared/domain/errors";
-import type { Prisma } from "@/generated/prisma/client";
 import Decimal from "decimal.js";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
@@ -59,9 +58,14 @@ export class AutoEntryGenerator {
   }
 
   async generate(
-    tx: Prisma.TransactionClient,
+    tx: unknown,
     template: EntryTemplate,
   ): Promise<JournalEntryWithLines> {
+    // Opaque-token pattern (R5): `tx` arrives untyped so this application
+    // file never imports `@/generated/prisma/*`. `Parameters<...>[0]` pulls
+    // the exact type `JournalRepository.createWithRetryTx` expects (infra is
+    // R5-exempt) without naming `Prisma.TransactionClient` here.
+    const db = tx as Parameters<JournalRepository["createWithRetryTx"]>[0];
     // 1. Resolve voucherTypeCode → VoucherTypeCfg scoped to org
     const voucherType = await this.voucherTypesRepo.findByCode(
       template.organizationId,
@@ -143,7 +147,7 @@ export class AutoEntryGenerator {
     //    is critical because auto-entries from sales/purchases/dispatches run in
     //    bulk and race each other on the unique (org, type, period, number) index.
     return this.journalRepo.createWithRetryTx(
-      tx,
+      db,
       template.organizationId,
       {
         date: template.date,

@@ -94,11 +94,7 @@ export class OrganizationsService {
 
       await this.accountSeed.seedChartOfAccounts(org.id, tx);
 
-      const payloads = this.systemRoleSeed.buildSystemRolePayloads(org.id);
-      await tx.customRole.createMany({
-        data: payloads,
-        skipDuplicates: true,
-      });
+      await this.systemRoleSeed.seedSystemRoles(org.id, tx);
 
       return org;
     });

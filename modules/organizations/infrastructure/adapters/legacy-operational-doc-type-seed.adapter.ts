@@ -1,5 +1,5 @@
 import "server-only";
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { PrismaClient } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { seedOperationalDocTypes } from "../../../../prisma/seeds/operational-doc-types";
 import type { OperationalDocTypeSeedPort } from "../../domain/ports/operational-doc-type-seed.port";
@@ -19,7 +19,7 @@ export class LegacyOperationalDocTypeSeedAdapter
 {
   async seedDefaultsForOrg(
     organizationId: string,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<void> {
     const client = (tx ?? prisma) as unknown as Pick<
       PrismaClient,

@@ -74,7 +74,7 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
     } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["accountSeed"];
 
     const systemRoleSeed = {
-      buildSystemRolePayloads: vi.fn().mockReturnValue([]),
+      seedSystemRoles: vi.fn().mockResolvedValue(undefined),
     } as unknown as ConstructorParameters<typeof OrganizationsService>[0]["systemRoleSeed"];
 
     return {
@@ -91,6 +91,7 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
       operationalDocTypesService,
       usersService,
       accountsService,
+      systemRoleSeed,
       txClient,
     };
   }
@@ -141,13 +142,19 @@ describe("OrganizationsService.syncOrganization — transaction boundary (Audit 
     );
   });
 
-  it("F-1-S5 — customRole.createMany is issued through the tx client, not the top-level prisma client", async () => {
-    const { service, txClient } = buildService();
+  it("F-1-S5 — systemRoleSeed.seedSystemRoles receives the tx client from the transaction callback", async () => {
+    const { service, systemRoleSeed, txClient } = buildService();
     const { prisma } = await import("@/lib/prisma");
 
     await service.syncOrganization(INPUT, CLERK_USER_ID);
 
-    expect(txClient.customRole.createMany).toHaveBeenCalledTimes(1);
+    expect(systemRoleSeed.seedSystemRoles).toHaveBeenCalledWith(
+      CREATED_ORG.id,
+      txClient,
+    );
+    // Raw `customRole.createMany` is now the SystemRoleSeedPort adapter's
+    // responsibility (infra), not the service's — the service must not
+    // reach the top-level prisma client directly.
     expect(
       (prisma.customRole.createMany as unknown as ReturnType<typeof vi.fn>),
     ).not.toHaveBeenCalled();

@@ -31,9 +31,9 @@ export class PrismaOrganizationsRepository extends BaseRepository implements Org
 
   async create(
     data: CreateOrganizationInput,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<Organization> {
-    const db = tx ?? this.db;
+    const db = (tx ?? this.db) as Prisma.TransactionClient;
     return db.organization.create({
       data: {
         clerkOrgId: data.clerkOrgId,
@@ -113,10 +113,10 @@ export class PrismaOrganizationsRepository extends BaseRepository implements Org
 
   async addMember(
     data: AddMemberInput,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<OrganizationMember> {
     const scope = this.requireOrg(data.organizationId);
-    const db = tx ?? this.db;
+    const db = (tx ?? this.db) as Prisma.TransactionClient;
     return db.organizationMember.create({
       data: {
         organizationId: scope.organizationId,
@@ -181,10 +181,10 @@ export class PrismaOrganizationsRepository extends BaseRepository implements Org
     organizationId: string,
     memberId: string,
     role: string,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<OrganizationMember> {
     const scope = this.requireOrg(organizationId);
-    const db = tx ?? this.db;
+    const db = (tx ?? this.db) as Prisma.TransactionClient;
     return db.organizationMember.update({
       where: { id: memberId, ...scope },
       data: { deactivatedAt: null, role },
@@ -203,10 +203,10 @@ export class PrismaOrganizationsRepository extends BaseRepository implements Org
   async hardDelete(
     organizationId: string,
     memberId: string,
-    tx?: Prisma.TransactionClient,
+    tx?: unknown,
   ): Promise<{ count: number }> {
     const scope = this.requireOrg(organizationId);
-    const db = tx ?? this.db;
+    const db = (tx ?? this.db) as Prisma.TransactionClient;
     return db.organizationMember.deleteMany({
       where: { id: memberId, ...scope },
     });
