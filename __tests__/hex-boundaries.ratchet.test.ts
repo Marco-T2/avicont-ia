@@ -5,15 +5,16 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 120
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 119
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
- * the M2 Decimal-via-decimal.js paydown brought it to 120 — see the M2 R5
+ * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
+ * (payment shortcut-source query port) brought it to 119 — see the M2 R5
  * comments in BASELINE below for the enum-import residue those files still
  * carry. See also the BASELINE comment on
  * `accounting/presentation/validation.ts:R5` for why that entry's sibling fix
  * was reverted rather than landed). Turning the lint gate red today would
- * mean either 120 fixes in one commit or 120 `eslint-disable`s — so instead
+ * mean either 119 fixes in one commit or 119 `eslint-disable`s — so instead
  * this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -100,7 +101,7 @@
  *
  * ── SCOPE LIMIT, STATED HONESTLY ──
  * This sentinel is NOT wired into the CI lint gate and does not make `pnpm lint`
- * pass or fail. `pnpm lint` still reports all 120 as errors. This file's job is
+ * pass or fail. `pnpm lint` still reports all 119 as errors. This file's job is
  * to stop the number from growing while that gate stays off.
  */
 
@@ -128,7 +129,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 120 violations across 82 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 119 violations across 81 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -285,8 +286,12 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/organizations/domain/ports/voucher-type-seed.port.ts:R5",
   "modules/organizations/domain/types.ts:R5",
 
-  // ── modules/payment/ — [PRISMA] @/lib/prisma in application; shared/infrastructure/audit-tx from both layers
-  "modules/payment/application/helpers/fetch-shortcut-source.ts:R5",
+  // ── modules/payment/ — [PRISMA] shared/infrastructure/audit-tx from both layers
+  // fetch-shortcut-source.ts:R5 CLOSED by the D4 paydown — the helper now
+  // depends on `ShortcutSourceQueryPort` (domain/ports/) instead of importing
+  // `@/lib/prisma` directly; the Prisma query moved into
+  // infrastructure/adapters/prisma-shortcut-source-query.adapter.ts, wired via
+  // composition-root.ts (`makeShortcutSourceQueryPort`).
   "modules/payment/application/payments.service.ts:R2",
   "modules/payment/presentation/payment-service.adapter.ts:R4",
 

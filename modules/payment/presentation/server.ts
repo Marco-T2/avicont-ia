@@ -6,6 +6,7 @@ export {
   PrismaPaymentsRepository,
   makePaymentReader,
   makePaymentServiceAdapter,
+  makeShortcutSourceQueryPort,
 } from "./composition-root";
 
 export {
@@ -39,6 +40,7 @@ export { PAYMENT_STATUSES } from "../domain/value-objects/payment-status";
 export type { PaymentMethod } from "../domain/value-objects/payment-method";
 export type { PaymentDirection } from "../domain/value-objects/payment-direction";
 export type { PaymentWithRelationsReaderPort } from "../domain/ports/payment-with-relations-reader.port";
+export type { ShortcutSourceQueryPort } from "../domain/ports/shortcut-source-query.port";
 export { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 export {
   InvalidMonetaryAmount,

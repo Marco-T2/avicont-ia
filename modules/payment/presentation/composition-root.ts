@@ -12,6 +12,8 @@ import { PrismaAccountBalancesAdapter } from "../infrastructure/adapters/prisma-
 import { PrismaCreditConsumptionAdapter } from "../infrastructure/adapters/prisma-credit-consumption.adapter";
 import { PrismaPaymentWithRelationsReaderAdapter } from "../infrastructure/adapters/payment-with-relations.reader.adapter";
 import type { PaymentWithRelationsReaderPort } from "../domain/ports/payment-with-relations-reader.port";
+import { PrismaShortcutSourceQueryAdapter } from "../infrastructure/adapters/prisma-shortcut-source-query.adapter";
+import type { ShortcutSourceQueryPort } from "../domain/ports/shortcut-source-query.port";
 import { PaymentService } from "./payment-service.adapter";
 
 export { PrismaPaymentsRepository };
@@ -59,4 +61,13 @@ export function makePaymentReader(): PaymentWithRelationsReaderPort {
 
 export function makePaymentServiceAdapter(): PaymentService {
   return new PaymentService(makePaymentReader(), makePaymentsService());
+}
+
+// ── [PRISMA] cluster paydown (D4) — fetchShortcutSource DI ──
+// `fetchShortcutSource` (application/helpers/) used to import `@/lib/prisma`
+// directly (R5). It now takes an injected `ShortcutSourceQueryPort`; this
+// factory is the ONE place that wires the Prisma-backed adapter, mirroring
+// `makePaymentReader()` above.
+export function makeShortcutSourceQueryPort(): ShortcutSourceQueryPort {
+  return new PrismaShortcutSourceQueryAdapter();
 }

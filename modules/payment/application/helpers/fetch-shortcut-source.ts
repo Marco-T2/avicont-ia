@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { prisma } from "@/lib/prisma";
+import type { ShortcutSourceQueryPort } from "../../domain/ports/shortcut-source-query.port";
 
 /**
  * Read-only application-layer helper. Validates and fetches the source
@@ -11,8 +11,17 @@ import { prisma } from "@/lib/prisma";
  * positive) BEFORE the form is rendered with pre-filled values.
  *
  * Money math: DEC-1. Balance returned as `decimal.js` Decimal (not Prisma
- * runtime value). Conversion from `Prisma.Decimal` happens at the boundary
- * via `new Decimal(...)`. Only `import type` of Prisma is permitted here.
+ * runtime value). Conversion from the port's `string` projection happens at
+ * `new Decimal(...)`.
+ *
+ * DI: [PRISMA] cluster paydown (D4) — this helper used to import
+ * `@/lib/prisma` directly (R5 violation: live DB client reached from
+ * application/). It now depends on `ShortcutSourceQueryPort` (domain/ports),
+ * injected by the caller. The Prisma-backed implementation lives in
+ * `modules/payment/infrastructure/adapters/prisma-shortcut-source-query.adapter.ts`,
+ * wired via `modules/payment/presentation/composition-root.ts`
+ * (`makeShortcutSourceQueryPort`). Runtime behaviour is unchanged — same
+ * queries, same results.
  *
  * Returns a discriminated union — caller switches on `kind`:
  *  - `ok`              → render shortcut form
@@ -54,10 +63,16 @@ export interface FetchShortcutSourceParams {
   purchaseId?: string;
 }
 
+export interface FetchShortcutSourceDeps {
+  query: ShortcutSourceQueryPort;
+}
+
 export async function fetchShortcutSource(
   params: FetchShortcutSourceParams,
+  deps: FetchShortcutSourceDeps,
 ): Promise<ShortcutSourceResult> {
   const { orgId, type, saleId, purchaseId } = params;
+  const { query } = deps;
 
   const hasSale = Boolean(saleId);
   const hasPurchase = Boolean(purchaseId);
@@ -72,10 +87,7 @@ export async function fetchShortcutSource(
   }
 
   if (hasSale) {
-    const sale = await prisma.sale.findUnique({
-      where: { id: saleId as string },
-      include: { receivable: true },
-    });
+    const sale = await query.findSaleWithReceivable(saleId as string);
 
     if (!sale) {
       return { kind: "not-found" };
@@ -90,7 +102,7 @@ export async function fetchShortcutSource(
       return { kind: "fully-paid" };
     }
 
-    const balance = new Decimal(sale.receivable.balance.toString());
+    const balance = new Decimal(sale.receivable.balance);
     if (balance.lte(0)) {
       return { kind: "fully-paid" };
     }
@@ -113,10 +125,7 @@ export async function fetchShortcutSource(
   }
 
   // Purchase branch (hasPurchase, type === "PAGO").
-  const purchase = await prisma.purchase.findUnique({
-    where: { id: purchaseId as string },
-    include: { payable: true },
-  });
+  const purchase = await query.findPurchaseWithPayable(purchaseId as string);
 
   if (!purchase) {
     return { kind: "not-found" };
@@ -131,7 +140,7 @@ export async function fetchShortcutSource(
     return { kind: "fully-paid" };
   }
 
-  const purchaseBalance = new Decimal(purchase.payable.balance.toString());
+  const purchaseBalance = new Decimal(purchase.payable.balance);
   if (purchaseBalance.lte(0)) {
     return { kind: "fully-paid" };
   }

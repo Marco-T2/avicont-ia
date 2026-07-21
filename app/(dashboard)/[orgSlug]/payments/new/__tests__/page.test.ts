@@ -10,6 +10,15 @@
  * is mocked directly at the module boundary (page-level test convention) so
  * Prisma never enters the unit. PaymentForm is mocked too — Phase 3 only
  * verifies the prop is passed; Phase 4 owns PaymentForm itself.
+ *
+ * `@/modules/payment/presentation/server` is ALSO mocked (D4, [PRISMA]
+ * cluster paydown) — the page now calls `makeShortcutSourceQueryPort()` to
+ * build the port injected into `fetchShortcutSource`. Left unmocked, that
+ * import chain reaches `composition-root.ts` → the real Prisma adapter →
+ * `@/lib/prisma`, which constructs a live `PrismaPg` connection pool at
+ * module load. The mock returns an opaque marker object; `fetchShortcutSource`
+ * itself is mocked in this suite, so the port's shape is never exercised here
+ * — only that it's threaded through as the second argument.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import Decimal from "decimal.js";
@@ -25,18 +34,25 @@ const {
   mockOrgSettingsGetOrCreate,
   mockAccountsFindChildren,
   mockPaymentForm,
-} = vi.hoisted(() => ({
-  mockRedirect: vi.fn(),
-  mockNotFound: vi.fn(),
-  mockRequirePermission: vi.fn(),
-  mockFetchShortcutSource: vi.fn(),
-  mockContactsList: vi.fn(),
-  mockPeriodsList: vi.fn(),
-  mockDocTypesList: vi.fn(),
-  mockOrgSettingsGetOrCreate: vi.fn(),
-  mockAccountsFindChildren: vi.fn(),
-  mockPaymentForm: vi.fn().mockReturnValue(null),
-}));
+  mockShortcutSourceQueryPort,
+  mockMakeShortcutSourceQueryPort,
+} = vi.hoisted(() => {
+  const queryPort = {};
+  return {
+    mockRedirect: vi.fn(),
+    mockNotFound: vi.fn(),
+    mockRequirePermission: vi.fn(),
+    mockFetchShortcutSource: vi.fn(),
+    mockContactsList: vi.fn(),
+    mockPeriodsList: vi.fn(),
+    mockDocTypesList: vi.fn(),
+    mockOrgSettingsGetOrCreate: vi.fn(),
+    mockAccountsFindChildren: vi.fn(),
+    mockPaymentForm: vi.fn().mockReturnValue(null),
+    mockShortcutSourceQueryPort: queryPort,
+    mockMakeShortcutSourceQueryPort: vi.fn(() => queryPort),
+  };
+});
 
 vi.mock("next/navigation", () => ({
   redirect: mockRedirect,
@@ -49,6 +65,10 @@ vi.mock("@/modules/permissions/application/server", () => ({
 
 vi.mock("@/modules/payment/application/helpers/fetch-shortcut-source", () => ({
   fetchShortcutSource: mockFetchShortcutSource,
+}));
+
+vi.mock("@/modules/payment/presentation/server", () => ({
+  makeShortcutSourceQueryPort: mockMakeShortcutSourceQueryPort,
 }));
 
 vi.mock("@/modules/contacts/presentation/server", () => ({
@@ -149,11 +169,14 @@ describe("/payments/new — shortcut mode: searchParams branch (T-10)", () => {
     });
 
     expect(mockFetchShortcutSource).toHaveBeenCalledTimes(1);
-    expect(mockFetchShortcutSource).toHaveBeenCalledWith({
-      orgId: ORG_ID,
-      type: "COBRO",
-      saleId: SALE_ID,
-    });
+    expect(mockFetchShortcutSource).toHaveBeenCalledWith(
+      {
+        orgId: ORG_ID,
+        type: "COBRO",
+        saleId: SALE_ID,
+      },
+      { query: mockShortcutSourceQueryPort },
+    );
   });
 
   it("calls fetchShortcutSource once when searchParams carry type=PAGO & purchaseId", async () => {
@@ -180,11 +203,14 @@ describe("/payments/new — shortcut mode: searchParams branch (T-10)", () => {
       }),
     });
 
-    expect(mockFetchShortcutSource).toHaveBeenCalledWith({
-      orgId: ORG_ID,
-      type: "PAGO",
-      purchaseId: PURCHASE_ID,
-    });
+    expect(mockFetchShortcutSource).toHaveBeenCalledWith(
+      {
+        orgId: ORG_ID,
+        type: "PAGO",
+        purchaseId: PURCHASE_ID,
+      },
+      { query: mockShortcutSourceQueryPort },
+    );
   });
 
   it("does NOT call fetchShortcutSource when neither saleId nor purchaseId is present", async () => {
