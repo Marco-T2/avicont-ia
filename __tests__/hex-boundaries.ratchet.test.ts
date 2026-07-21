@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 60
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 56
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -44,8 +44,11 @@
  * Group A paydown repointed ai-agent's and tags' static cross-module type
  * imports (plus tags' `slugify` value import) from sibling `presentation` /
  * `presentation/server` barrels to the actual domain/application files,
- * bringing it to 60.). Turning the lint gate
- * red today would mean either 60 fixes in one commit or 60 `eslint-disable`s
+ * bringing it to 60; the R5 enum-repoint paydown repointed ai-agent's four
+ * Prisma enum imports (AccountSubtype, ExpenseCategory, ContactType ×2) to
+ * the existing domain-owned mirrors in accounting, expense and contacts,
+ * bringing it to 56.). Turning the lint gate
+ * red today would mean either 56 fixes in one commit or 56 `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -160,7 +163,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 60 violations across 41 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 56 violations across 37 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -252,14 +255,19 @@ const BASELINE: ReadonlyArray<string> = [
   //     ESLint's no-restricted-imports does NOT catch; closing them is a
   //     deferred composition-root injection refactor (the constructors already
   //     accept the deps), carries TDZ risk, and needs runtime testing.
-  "modules/ai-agent/application/tools/find-contact.ts:R5",
+  //     The 4 R5 enum entries (find-contact.ts, income-statement-analysis
+  //     .prompt.ts, tool-output.types.ts, agent.types.ts) were CLOSED by
+  //     repointing the Prisma enum imports to the existing domain mirrors
+  //     (AccountSubtype→accounting/domain/value-objects/account-classification,
+  //     ExpenseCategory→expense/domain/value-objects/expense-category,
+  //     ContactType→contacts/domain/value-objects/contact-type). NOTE: the
+  //     ExpenseCategory and ContactType mirrors have no Prisma deep-sync guard
+  //     like accounting's enum-domain-mirror.sync.test.ts — pre-existing gap,
+  //     hardening deliberately deferred to a separate decision.
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
-  "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R5",
-  "modules/ai-agent/domain/tools/tool-output.types.ts:R5",
-  "modules/ai-agent/domain/types/agent.types.ts:R5",
   "modules/ai-agent/presentation/index.ts:R4",
   "modules/ai-agent/presentation/server.ts:R4",
 

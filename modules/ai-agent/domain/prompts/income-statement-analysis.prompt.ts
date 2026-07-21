@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { AccountSubtype } from "@/generated/prisma/enums";
+import { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 import { formatBolivianAmount } from "@/modules/accounting/financial-statements/presentation/server";
 import type {
   BalanceSheetCurrent,

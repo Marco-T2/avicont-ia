@@ -3,7 +3,7 @@
  * Domain layer: no server-only, no Prisma, no SDK deps.
  */
 
-import type { ContactType } from "@/generated/prisma/client";
+import type { ContactType } from "@/modules/contacts/domain/value-objects/contact-type";
 
 export interface FindAccountsResultItem {
   id: string;

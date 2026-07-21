@@ -1,4 +1,4 @@
-import type { ExpenseCategory } from "@/generated/prisma/enums";
+import type { ExpenseCategory } from "@/modules/expense/domain/value-objects/expense-category";
 import type { TrivialityCode } from "../prompts/balance-sheet-analysis.prompt";
 import type { IncomeStatementTrivialityCode } from "../prompts/income-statement-analysis.prompt";
 import type { JournalEntryAiTemplate } from "../validation/agent.validation";

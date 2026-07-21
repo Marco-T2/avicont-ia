@@ -1,5 +1,5 @@
 import type { ContactsService } from "@/modules/contacts/application/contacts.service";
-import type { ContactType } from "@/generated/prisma/client";
+import type { ContactType } from "@/modules/contacts/domain/value-objects/contact-type";
 import type {
   FindContactResult,
   FindContactResultItem,
