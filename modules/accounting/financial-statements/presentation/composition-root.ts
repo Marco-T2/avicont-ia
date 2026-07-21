@@ -1,5 +1,6 @@
 import { PrismaFinancialStatementsRepo } from "../infrastructure/prisma-financial-statements.repo";
 import { LegacyAccountSubtypeLabelAdapter } from "../infrastructure/legacy-account-subtype-label.adapter";
+import { FinancialStatementsExporterAdapter } from "../infrastructure/adapters/financial-statements-exporter.adapter";
 import { FinancialStatementsService } from "../application/financial-statements.service";
 
 /**
@@ -17,5 +18,8 @@ import { FinancialStatementsService } from "../application/financial-statements.
 export function makeFinancialStatementsService(): FinancialStatementsService {
   const repo = new PrismaFinancialStatementsRepo();
   const subtypeLabel = new LegacyAccountSubtypeLabelAdapter();
-  return new FinancialStatementsService({ repo, subtypeLabel });
+  // [EXPORT] cluster paydown — exporter port wired here (was a direct infra
+  // import inside the service, R2 violation).
+  const exporter = new FinancialStatementsExporterAdapter();
+  return new FinancialStatementsService({ repo, subtypeLabel, exporter });
 }

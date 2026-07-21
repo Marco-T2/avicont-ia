@@ -4,8 +4,6 @@ import {
   makeAccountsService,
   makeLedgerService,
   dateRangeSchema,
-  exportLedgerPdf,
-  exportLedgerXlsx,
 } from "@/modules/accounting/presentation/server";
 import { ValidationError } from "@/modules/shared/domain/errors";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
@@ -100,7 +98,7 @@ export async function GET(
         // renderiza sin logo.
         const logoDataUrl = await fetchLogoAsDataUrl(orgMeta?.logoUrl);
 
-        const { buffer } = await exportLedgerPdf(
+        const buffer = await service.exportLedgerPdf(
           entries,
           {
             accountCode: account.code,
@@ -125,7 +123,7 @@ export async function GET(
       }
 
       // format === "xlsx"
-      const buffer = await exportLedgerXlsx(
+      const buffer = await service.exportLedgerXlsx(
         entries,
         {
           accountCode: account.code,

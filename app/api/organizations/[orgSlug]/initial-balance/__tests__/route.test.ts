@@ -53,13 +53,34 @@ vi.mock("@/modules/shared/presentation/middleware", () => ({
 // because route.ts post-C4 calls makeInitialBalanceService() (not new InitialBalanceService()).
 // Sister archive #2327 NEW INVARIANT: vi.mock must return BOTH class AND factory.
 // Internal source: @/modules/accounting/initial-balance/application/initial-balance.service
-vi.mock("@/modules/accounting/initial-balance/presentation/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/modules/accounting/initial-balance/presentation/server")>()),
-  InitialBalanceService: vi.fn().mockImplementation(function () {
-    return { generate: mockGenerate };
-  }),
-  makeInitialBalanceService: vi.fn().mockReturnValue({ generate: mockGenerate }),
-}));
+// [EXPORT] cluster paydown: route.ts now calls service.exportPdf/exportXlsx
+// (injected exporter port) instead of the raw exporter functions re-exported
+// from this barrel. The stub methods below call THROUGH to the still-mocked
+// infra exporter modules (mocked further down this file) so every existing
+// `expect(exportInitialBalancePdf).toHaveBeenCalled()` assertion keeps
+// working unchanged — same delegation shape the real
+// InitialBalanceExporterAdapter uses.
+vi.mock("@/modules/accounting/initial-balance/presentation/server", async (importOriginal) => {
+  const { exportInitialBalancePdf } = await import(
+    "@/modules/accounting/initial-balance/infrastructure/exporters/initial-balance-pdf.exporter"
+  );
+  const { exportInitialBalanceXlsx } = await import(
+    "@/modules/accounting/initial-balance/infrastructure/exporters/initial-balance-xlsx.exporter"
+  );
+  return {
+    ...(await importOriginal<typeof import("@/modules/accounting/initial-balance/presentation/server")>()),
+    InitialBalanceService: vi.fn().mockImplementation(function () {
+      return { generate: mockGenerate };
+    }),
+    makeInitialBalanceService: vi.fn().mockReturnValue({
+      generate: mockGenerate,
+      exportPdf: async (...args: Parameters<typeof exportInitialBalancePdf>) =>
+        (await exportInitialBalancePdf(...args)).buffer,
+      exportXlsx: (...args: Parameters<typeof exportInitialBalanceXlsx>) =>
+        exportInitialBalanceXlsx(...args),
+    }),
+  };
+});
 
 // [[cross_module_boundary_mock_target_rewrite]] C4: repointed to hex infrastructure path.
 vi.mock(

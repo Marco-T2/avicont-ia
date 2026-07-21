@@ -20,9 +20,11 @@ export { makeEquityStatementService } from "./composition-root";
 // ── Zod validation schema ──
 export { equityStatementQuerySchema } from "../domain/equity-statement.validation";
 
-// ── Exporter functions (server-side consumers: route.ts for PDF/XLSX downloads) ──
-export { exportEquityStatementPdf } from "../infrastructure/exporters/equity-statement-pdf.exporter";
-export { exportEquityStatementXlsx } from "../infrastructure/exporters/equity-statement-xlsx.exporter";
+// ── Exporters — [EXPORT] cluster paydown ──
+// PDF/XLSX generation now goes through EquityStatementService.exportPdf/exportXlsx
+// (injected EquityStatementExporterPort, wired in composition-root.ts). This barrel
+// no longer re-exports the raw exporter functions (that re-export was the R4
+// violation this paydown fixes) — route.ts calls the service methods instead.
 
 // ── TYPE re-exports (also available in index.ts for client-safe consumption) ──
 export type {

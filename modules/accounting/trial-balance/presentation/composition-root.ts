@@ -1,4 +1,5 @@
 import { PrismaTrialBalanceRepo } from "../infrastructure/prisma-trial-balance.repo";
+import { TrialBalanceExporterAdapter } from "../infrastructure/adapters/trial-balance-exporter.adapter";
 import { TrialBalanceService } from "../application/trial-balance.service";
 
 /**
@@ -16,5 +17,8 @@ import { TrialBalanceService } from "../application/trial-balance.service";
  */
 export function makeTrialBalanceService(): TrialBalanceService {
   const repo = new PrismaTrialBalanceRepo();
-  return new TrialBalanceService({ repo });
+  // [EXPORT] cluster paydown — exporter port wired here (was a raw exporter
+  // re-export from presentation/server.ts, R4 violation).
+  const exporter = new TrialBalanceExporterAdapter();
+  return new TrialBalanceService({ repo, exporter });
 }

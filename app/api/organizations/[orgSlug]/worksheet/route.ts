@@ -3,8 +3,6 @@ import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeWorksheetService,
   worksheetQuerySchema,
-  exportWorksheetPdf,
-  exportWorksheetXlsx,
 } from "@/modules/accounting/worksheet/presentation/server";
 import { PrismaWorksheetRepo } from "@/modules/accounting/worksheet/infrastructure/prisma-worksheet.repo";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
@@ -84,7 +82,7 @@ export async function GET(
     if (query.format === "pdf") {
       const orgMeta = await repo.getOrgMetadata(orgId);
       const orgDisplayName = orgMeta?.name ?? orgSlug;
-      const { buffer } = await exportWorksheetPdf(
+      const buffer = await service.exportPdf(
         report,
         orgDisplayName,
         orgMeta?.taxId ?? undefined,
@@ -101,7 +99,10 @@ export async function GET(
 
     // 6b. XLSX response
     if (query.format === "xlsx") {
-      const buffer = await exportWorksheetXlsx(report, orgSlug);
+      // NOTE: passes `orgSlug`, NOT the resolved org display name — pre-existing
+      // behaviour preserved verbatim (this branch never fetched orgMeta before
+      // this refactor; [EXPORT] cluster paydown does not change it).
+      const buffer = await service.exportXlsx(report, orgSlug);
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type":

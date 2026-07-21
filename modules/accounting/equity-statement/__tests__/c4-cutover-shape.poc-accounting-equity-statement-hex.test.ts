@@ -82,16 +82,19 @@ describe("POC accounting-equity-statement-hex C4 — atomic consumer cutover", (
     expect(content).toMatch(/equityStatementQuerySchema/m);
   });
 
-  it("α75: equity-statement/route.ts imports exportEquityStatementPdf from modules/accounting path", () => {
+  // [EXPORT] cluster paydown: α75/α76 FLIPPED — route.ts no longer imports the raw
+  // exporter functions; it calls `service.exportPdf(...)`/`service.exportXlsx(...)`
+  // (EquityStatementService, injected EquityStatementExporterPort).
+  it("α75: equity-statement/route.ts calls service.exportPdf (no direct exportEquityStatementPdf import — R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportEquityStatementPdf/m);
-    expect(content).toMatch(/modules\/accounting\/equity-statement/m);
+    expect(content).not.toMatch(/exportEquityStatementPdf/m);
+    expect(content).toMatch(/service\.exportPdf/m);
   });
 
-  it("α76: equity-statement/route.ts imports exportEquityStatementXlsx from modules/accounting path", () => {
+  it("α76: equity-statement/route.ts calls service.exportXlsx (no direct exportEquityStatementXlsx import — R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportEquityStatementXlsx/m);
-    expect(content).toMatch(/modules\/accounting\/equity-statement/m);
+    expect(content).not.toMatch(/exportEquityStatementXlsx/m);
+    expect(content).toMatch(/service\.exportXlsx/m);
   });
 
   it("α77: equity-statement/route.ts STILL imports serializeStatement from @/modules/accounting/financial-statements/presentation (FS canonical home preserved)", () => {

@@ -18,9 +18,11 @@ export { makeTrialBalanceService } from "./composition-root";
 // ── Zod validation schema ──
 export { trialBalanceQuerySchema } from "../domain/trial-balance.validation";
 
-// ── Exporter functions (server-side consumers: route.ts for PDF/XLSX downloads) ──
-export { exportTrialBalancePdf } from "../infrastructure/exporters/trial-balance-pdf.exporter";
-export { exportTrialBalanceXlsx } from "../infrastructure/exporters/trial-balance-xlsx.exporter";
+// ── Exporters — [EXPORT] cluster paydown ──
+// PDF/XLSX generation now goes through TrialBalanceService.exportPdf/exportXlsx
+// (injected TrialBalanceExporterPort, wired in composition-root.ts). This barrel
+// no longer re-exports the raw exporter functions (that re-export was the R4
+// violation this paydown fixes) — route.ts calls the service methods instead.
 
 // ── TYPE re-exports (also available in index.ts for client-safe consumption) ──
 export type {

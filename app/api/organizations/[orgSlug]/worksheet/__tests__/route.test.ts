@@ -57,13 +57,33 @@ vi.mock("@/modules/shared/presentation/middleware", () => ({
 // [[mock_hygiene_commit_scope]]: vi.mock includes BOTH class AND makeWorksheetService factory mock
 // because route.ts post-C4 calls makeWorksheetService() (not new WorksheetService()).
 // Sister archive #2298 + #2312 NEW INVARIANT #3: vi.mock must return BOTH class AND factory.
-vi.mock("@/modules/accounting/worksheet/presentation/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/modules/accounting/worksheet/presentation/server")>()),
-  WorksheetService: vi.fn().mockImplementation(function () {
-    return { generateWorksheet: mockGenerateWorksheet };
-  }),
-  makeWorksheetService: vi.fn().mockReturnValue({ generateWorksheet: mockGenerateWorksheet }),
-}));
+// [EXPORT] cluster paydown: route.ts now calls service.exportPdf/exportXlsx
+// (injected exporter port) instead of the raw exporter functions re-exported
+// from this barrel. The stub methods below call THROUGH to the still-mocked
+// infra exporter modules (mocked further down this file) so every existing
+// `expect(exportWorksheetPdf).toHaveBeenCalled()` assertion keeps working
+// unchanged — same delegation shape the real WorksheetExporterAdapter uses.
+vi.mock("@/modules/accounting/worksheet/presentation/server", async (importOriginal) => {
+  const { exportWorksheetPdf } = await import(
+    "@/modules/accounting/worksheet/infrastructure/exporters/worksheet-pdf.exporter"
+  );
+  const { exportWorksheetXlsx } = await import(
+    "@/modules/accounting/worksheet/infrastructure/exporters/worksheet-xlsx.exporter"
+  );
+  return {
+    ...(await importOriginal<typeof import("@/modules/accounting/worksheet/presentation/server")>()),
+    WorksheetService: vi.fn().mockImplementation(function () {
+      return { generateWorksheet: mockGenerateWorksheet };
+    }),
+    makeWorksheetService: vi.fn().mockReturnValue({
+      generateWorksheet: mockGenerateWorksheet,
+      exportPdf: async (...args: Parameters<typeof exportWorksheetPdf>) =>
+        (await exportWorksheetPdf(...args)).buffer,
+      exportXlsx: (...args: Parameters<typeof exportWorksheetXlsx>) =>
+        exportWorksheetXlsx(...args),
+    }),
+  };
+});
 
 // PDF exporter mock — returns a minimal Buffer starting with %PDF
 // [[cross_module_boundary_mock_target_rewrite]] C4: repointed to hex infrastructure path.

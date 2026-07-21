@@ -1,6 +1,7 @@
 import { ForbiddenError, NotFoundError, ValidationError } from "@/modules/shared/domain/errors";
 import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import type { WorksheetQueryPort } from "../domain/ports/worksheet-query.port";
+import type { WorksheetExporterPort } from "../domain/ports/worksheet-exporter.port";
 import { buildWorksheet } from "../domain/worksheet.builder";
 import type { WorksheetFilters, WorksheetReport } from "../domain/worksheet.types";
 
@@ -32,6 +33,9 @@ function assertWorksheetAccess(role: Role): void {
  */
 interface WorksheetServiceDeps {
   repo: WorksheetQueryPort;
+  /** [EXPORT] cluster paydown — injected exporter port (generalizes the
+   *  pattern financial-statements.service.ts already used). */
+  exporter: WorksheetExporterPort;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -49,9 +53,11 @@ interface WorksheetServiceDeps {
  */
 export class WorksheetService {
   private readonly repo: WorksheetQueryPort;
+  private readonly exporter: WorksheetExporterPort;
 
-  constructor({ repo }: WorksheetServiceDeps) {
+  constructor({ repo, exporter }: WorksheetServiceDeps) {
     this.repo = repo;
+    this.exporter = exporter;
   }
 
   /**
@@ -117,5 +123,31 @@ export class WorksheetService {
 
     // 6. Inject orgId (builder leaves it blank — service knows the real orgId)
     return { ...report, orgId };
+  }
+
+  /**
+   * Genera la Hoja de Trabajo como PDF y retorna el Buffer.
+   *
+   * [EXPORT] cluster paydown — generalizes the pattern
+   * `FinancialStatementsService.exportBalanceSheetPdf` already used.
+   */
+  async exportPdf(
+    report: WorksheetReport,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.exporter.exportPdf(report, orgName, orgNit, orgAddress, orgCity);
+  }
+
+  /**
+   * Genera la Hoja de Trabajo como Excel (XLSX) y retorna el Buffer.
+   *
+   * Narrower than `exportPdf` — mirrors the underlying `exportWorksheetXlsx`
+   * signature exactly (`report, orgName` only).
+   */
+  async exportXlsx(report: WorksheetReport, orgName: string): Promise<Buffer> {
+    return this.exporter.exportXlsx(report, orgName);
   }
 }

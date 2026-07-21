@@ -3,8 +3,6 @@ import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeInitialBalanceService,
   initialBalanceQuerySchema,
-  exportInitialBalancePdf,
-  exportInitialBalanceXlsx,
 } from "@/modules/accounting/initial-balance/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 
@@ -38,7 +36,7 @@ export async function GET(
     const statement = await service.generate(orgId);
 
     if (query.format === "pdf") {
-      const { buffer } = await exportInitialBalancePdf(statement);
+      const buffer = await service.exportPdf(statement);
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/pdf",
@@ -50,7 +48,7 @@ export async function GET(
     }
 
     if (query.format === "xlsx") {
-      const buffer = await exportInitialBalanceXlsx(statement);
+      const buffer = await service.exportXlsx(statement);
       return new Response(new Uint8Array(buffer), {
         headers: {
           "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

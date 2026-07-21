@@ -22,9 +22,11 @@ export { makeWorksheetService } from "./composition-root";
 // ── Zod validation schema ──
 export { worksheetQuerySchema } from "../domain/worksheet.validation";
 
-// ── Exporter functions (server-side consumers: route.ts for PDF/XLSX downloads) ──
-export { exportWorksheetPdf } from "../infrastructure/exporters/worksheet-pdf.exporter";
-export { exportWorksheetXlsx } from "../infrastructure/exporters/worksheet-xlsx.exporter";
+// ── Exporters — [EXPORT] cluster paydown ──
+// PDF/XLSX generation now goes through WorksheetService.exportPdf/exportXlsx
+// (injected WorksheetExporterPort, wired in composition-root.ts). This barrel
+// no longer re-exports the raw exporter functions (that re-export was the R4
+// violation this paydown fixes) — route.ts calls the service methods instead.
 
 // ── TYPE re-exports (also available in index.ts for client-safe consumption) ──
 export type {

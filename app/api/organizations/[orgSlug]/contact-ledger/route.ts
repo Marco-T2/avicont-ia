@@ -3,8 +3,6 @@ import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeLedgerService,
   dateRangeSchema,
-  exportContactLedgerPdf,
-  exportContactLedgerXlsx,
 } from "@/modules/accounting/presentation/server";
 import { ValidationError } from "@/modules/shared/domain/errors";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
@@ -117,7 +115,7 @@ export async function GET(
         // Fetch logo solo en path PDF (XLSX no lo embebe). Tolerante a fallas.
         const logoDataUrl = await fetchLogoAsDataUrl(orgMeta?.logoUrl);
 
-        const { buffer } = await exportContactLedgerPdf(
+        const buffer = await service.exportContactLedgerPdf(
           entries,
           {
             contactName: contact.name,
@@ -141,7 +139,7 @@ export async function GET(
       }
 
       // format === "xlsx"
-      const buffer = await exportContactLedgerXlsx(
+      const buffer = await service.exportContactLedgerXlsx(
         entries,
         {
           contactName: contact.name,

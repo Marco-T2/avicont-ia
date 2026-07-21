@@ -1,4 +1,5 @@
 import { PrismaWorksheetRepo } from "../infrastructure/prisma-worksheet.repo";
+import { WorksheetExporterAdapter } from "../infrastructure/adapters/worksheet-exporter.adapter";
 import { WorksheetService } from "../application/worksheet.service";
 
 /**
@@ -19,5 +20,8 @@ import { WorksheetService } from "../application/worksheet.service";
  */
 export function makeWorksheetService(): WorksheetService {
   const repo = new PrismaWorksheetRepo();
-  return new WorksheetService({ repo });
+  // [EXPORT] cluster paydown — exporter port wired here (was a raw exporter
+  // re-export from presentation/server.ts, R4 violation).
+  const exporter = new WorksheetExporterAdapter();
+  return new WorksheetService({ repo, exporter });
 }

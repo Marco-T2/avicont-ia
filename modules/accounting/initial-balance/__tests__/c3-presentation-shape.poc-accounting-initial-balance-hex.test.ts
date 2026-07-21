@@ -146,14 +146,17 @@ describe("POC accounting-initial-balance-hex C3 — presentation layer shape", (
       expect(content).toMatch(/initialBalanceQuerySchema/m);
     });
 
-    it("α56: server.ts re-exports exportInitialBalancePdf (PDF exporter)", () => {
+    // [EXPORT] cluster paydown: α56/α57 FLIPPED — server.ts used to re-export the
+    // raw exporter functions (the R4 violation the paydown fixes). PDF/XLSX
+    // generation now goes through InitialBalanceService.exportPdf/exportXlsx.
+    it("α56: server.ts does NOT re-export exportInitialBalancePdf (moved behind InitialBalanceService.exportPdf — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportInitialBalancePdf/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportInitialBalancePdf/m);
     });
 
-    it("α57: server.ts re-exports exportInitialBalanceXlsx (XLSX exporter)", () => {
+    it("α57: server.ts does NOT re-export exportInitialBalanceXlsx (moved behind InitialBalanceService.exportXlsx — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportInitialBalanceXlsx/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportInitialBalanceXlsx/m);
     });
 
     it("α58: server.ts does NOT import index.ts (no circular barrel dependency)", () => {

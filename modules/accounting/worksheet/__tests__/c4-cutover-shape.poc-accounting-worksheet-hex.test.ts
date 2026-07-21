@@ -82,16 +82,19 @@ describe("POC accounting-worksheet-hex C4 — atomic consumer cutover", () => {
     expect(content).toMatch(/worksheetQuerySchema/m);
   });
 
-  it("α71: worksheet/route.ts imports exportWorksheetPdf from modules/accounting/worksheet path (infrastructure or server barrel)", () => {
+  // [EXPORT] cluster paydown: α71/α72 FLIPPED — route.ts no longer imports the raw
+  // exporter functions; it calls `service.exportPdf(...)`/`service.exportXlsx(...)`
+  // (WorksheetService, injected WorksheetExporterPort).
+  it("α71: worksheet/route.ts calls service.exportPdf (no direct exportWorksheetPdf import — R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportWorksheetPdf/m);
-    expect(content).toMatch(/modules\/accounting\/worksheet/m);
+    expect(content).not.toMatch(/exportWorksheetPdf/m);
+    expect(content).toMatch(/service\.exportPdf/m);
   });
 
-  it("α72: worksheet/route.ts imports exportWorksheetXlsx from modules/accounting/worksheet path", () => {
+  it("α72: worksheet/route.ts calls service.exportXlsx (no direct exportWorksheetXlsx import — R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportWorksheetXlsx/m);
-    expect(content).toMatch(/modules\/accounting\/worksheet/m);
+    expect(content).not.toMatch(/exportWorksheetXlsx/m);
+    expect(content).toMatch(/service\.exportXlsx/m);
   });
 
   it("α73: worksheet/route.ts STILL imports serializeStatement from @/modules/accounting/financial-statements/presentation (FS canonical home preserved)", () => {

@@ -1,5 +1,6 @@
 import { NotFoundError } from "@/modules/shared/domain/errors";
 import type { InitialBalanceQueryPort } from "../domain/initial-balance.ports";
+import type { InitialBalanceExporterPort } from "../domain/ports/initial-balance-exporter.port";
 import { buildInitialBalance } from "../domain/initial-balance.builder";
 import type { InitialBalanceStatement } from "../domain/initial-balance.types";
 
@@ -14,6 +15,9 @@ import type { InitialBalanceStatement } from "../domain/initial-balance.types";
  */
 interface InitialBalanceServiceDeps {
   queryPort: InitialBalanceQueryPort;
+  /** [EXPORT] cluster paydown — injected exporter port (generalizes the
+   *  pattern financial-statements.service.ts already used). */
+  exporter: InitialBalanceExporterPort;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -34,9 +38,11 @@ interface InitialBalanceServiceDeps {
  */
 export class InitialBalanceService {
   private readonly queryPort: InitialBalanceQueryPort;
+  private readonly exporter: InitialBalanceExporterPort;
 
-  constructor({ queryPort }: InitialBalanceServiceDeps) {
+  constructor({ queryPort, exporter }: InitialBalanceServiceDeps) {
     this.queryPort = queryPort;
+    this.exporter = exporter;
   }
 
   /**
@@ -114,5 +120,22 @@ export class InitialBalanceService {
       rows,
       caCount,
     });
+  }
+
+  /**
+   * Genera el Balance Inicial como PDF y retorna el Buffer.
+   *
+   * [EXPORT] cluster paydown — generalizes the pattern
+   * `FinancialStatementsService.exportBalanceSheetPdf` already used.
+   */
+  async exportPdf(statement: InitialBalanceStatement): Promise<Buffer> {
+    return this.exporter.exportPdf(statement);
+  }
+
+  /**
+   * Genera el Balance Inicial como Excel (XLSX) y retorna el Buffer.
+   */
+  async exportXlsx(statement: InitialBalanceStatement): Promise<Buffer> {
+    return this.exporter.exportXlsx(statement);
   }
 }

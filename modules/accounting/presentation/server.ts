@@ -8,23 +8,12 @@ export { makeJournalsService } from "./composition-root";
 export { LedgerService } from "../application/ledger.service";
 export { makeLedgerService } from "./composition-root";
 
-// ── Ledger exporters (PDF + XLSX) ──
-export {
-  exportLedgerPdf,
-  MissingOrgNameError as LedgerMissingOrgNameError,
-} from "../infrastructure/exporters/ledger/ledger-pdf.exporter";
-export type { LedgerPdfOptions } from "../infrastructure/exporters/ledger/ledger-pdf.exporter";
-export { exportLedgerXlsx } from "../infrastructure/exporters/ledger/ledger-xlsx.exporter";
-export type { LedgerXlsxOptions } from "../infrastructure/exporters/ledger/ledger-xlsx.exporter";
-
-// ── Contact-ledger exporters (PDF + XLSX) — C7 (SUBDIR per α17/D6) ──
-export {
-  exportContactLedgerPdf,
-  MissingOrgNameError as ContactLedgerMissingOrgNameError,
-} from "../infrastructure/exporters/contact-ledger/contact-ledger-pdf.exporter";
-export type { ContactLedgerPdfOptions } from "../infrastructure/exporters/contact-ledger/contact-ledger-pdf.exporter";
-export { exportContactLedgerXlsx } from "../infrastructure/exporters/contact-ledger/contact-ledger-xlsx.exporter";
-export type { ContactLedgerXlsxOptions } from "../infrastructure/exporters/contact-ledger/contact-ledger-xlsx.exporter";
+// ── Ledger + contact-ledger exporters — [EXPORT] cluster paydown ──
+// PDF/XLSX generation now goes through LedgerService.exportLedgerPdf/exportLedgerXlsx/
+// exportContactLedgerPdf/exportContactLedgerXlsx (injected LedgerExporterPort /
+// ContactLedgerExporterPort, wired in composition-root.ts). This barrel no longer
+// re-exports the raw exporter functions or their option types (that re-export was
+// the R4 violation this paydown fixes) — route.ts calls the service methods instead.
 
 // ── Accounts hex service (POC #3c) ──
 export { AccountsService } from "../application/accounts.service";

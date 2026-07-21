@@ -144,14 +144,17 @@ describe("POC accounting-worksheet-hex C3 — presentation layer shape", () => {
       expect(content).toMatch(/worksheetQuerySchema/m);
     });
 
-    it("α56: server.ts re-exports exportWorksheetPdf (PDF exporter)", () => {
+    // [EXPORT] cluster paydown: α56/α57 FLIPPED — server.ts used to re-export the
+    // raw exporter functions (the R4 violation the paydown fixes). PDF/XLSX
+    // generation now goes through WorksheetService.exportPdf/exportXlsx.
+    it("α56: server.ts does NOT re-export exportWorksheetPdf (moved behind WorksheetService.exportPdf — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportWorksheetPdf/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportWorksheetPdf/m);
     });
 
-    it("α57: server.ts re-exports exportWorksheetXlsx (XLSX exporter)", () => {
+    it("α57: server.ts does NOT re-export exportWorksheetXlsx (moved behind WorksheetService.exportXlsx — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportWorksheetXlsx/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportWorksheetXlsx/m);
     });
 
     it("α58: server.ts does NOT import index.ts (no circular barrel dependency)", () => {

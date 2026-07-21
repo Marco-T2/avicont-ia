@@ -1,4 +1,5 @@
 import { PrismaInitialBalanceRepo } from "../infrastructure/prisma-initial-balance.repo";
+import { InitialBalanceExporterAdapter } from "../infrastructure/adapters/initial-balance-exporter.adapter";
 import { InitialBalanceService } from "../application/initial-balance.service";
 
 /**
@@ -19,5 +20,8 @@ import { InitialBalanceService } from "../application/initial-balance.service";
  */
 export function makeInitialBalanceService(): InitialBalanceService {
   const repo = new PrismaInitialBalanceRepo();
-  return new InitialBalanceService({ queryPort: repo });
+  // [EXPORT] cluster paydown — exporter port wired here (was a raw exporter
+  // re-export from presentation/server.ts, R4 violation).
+  const exporter = new InitialBalanceExporterAdapter();
+  return new InitialBalanceService({ queryPort: repo, exporter });
 }

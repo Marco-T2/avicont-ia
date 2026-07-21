@@ -25,6 +25,8 @@ import { PrismaReceivablesContactLedgerAdapter } from "../infrastructure/prisma-
 import { PrismaPayablesContactLedgerAdapter } from "../infrastructure/prisma-payables-contact-ledger.adapter";
 import { PrismaPaymentsContactLedgerAdapter } from "../infrastructure/prisma-payments-contact-ledger.adapter";
 import { ControlAccountCodesReadAdapter } from "../infrastructure/control-account-codes-read.adapter";
+import { LedgerExporterAdapter } from "../infrastructure/adapters/ledger-exporter.adapter";
+import { ContactLedgerExporterAdapter } from "../infrastructure/adapters/contact-ledger-exporter.adapter";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -82,6 +84,10 @@ export function makeLedgerService(): LedgerService {
       // duplicate-rows / broken running-balance bugs.
       controlAccountCodes: new ControlAccountCodesReadAdapter(),
     },
+    // [EXPORT] cluster paydown — exporter ports wired here (were raw exporter
+    // re-exports from presentation/server.ts, R4 violations).
+    new LedgerExporterAdapter(),
+    new ContactLedgerExporterAdapter(),
   );
 }
 

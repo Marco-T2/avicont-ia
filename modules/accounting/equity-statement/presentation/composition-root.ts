@@ -1,5 +1,6 @@
 import { PrismaEquityStatementRepo } from "../infrastructure/prisma-equity-statement.repo";
 import { PrismaIncomeStatementSourceAdapter } from "../infrastructure/prisma-income-statement-source.adapter";
+import { EquityStatementExporterAdapter } from "../infrastructure/adapters/equity-statement-exporter.adapter";
 import { EquityStatementService } from "../application/equity-statement.service";
 
 /**
@@ -22,5 +23,8 @@ import { EquityStatementService } from "../application/equity-statement.service"
 export function makeEquityStatementService(): EquityStatementService {
   const repo = new PrismaEquityStatementRepo();
   const incomeSource = new PrismaIncomeStatementSourceAdapter();
-  return new EquityStatementService({ repo, incomeSource });
+  // [EXPORT] cluster paydown — exporter port wired here (was a raw exporter
+  // re-export from presentation/server.ts, R4 violation).
+  const exporter = new EquityStatementExporterAdapter();
+  return new EquityStatementService({ repo, incomeSource, exporter });
 }

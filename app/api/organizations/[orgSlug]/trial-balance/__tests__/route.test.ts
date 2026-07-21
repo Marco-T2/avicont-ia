@@ -57,17 +57,36 @@ vi.mock("@/modules/shared/presentation/middleware", () => ({
   }),
 }));
 
-vi.mock("@/modules/accounting/trial-balance/presentation/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/modules/accounting/trial-balance/presentation/server")>()),
-  TrialBalanceService: vi.fn().mockImplementation(function () {
-    return { generate: mockGenerate };
-  }),
-  // [[mock_hygiene_commit_scope]] + [[cross_module_boundary_mock_target_rewrite]]:
-  // factory mock required because route.ts post-C4 calls makeTrialBalanceService() (not new TrialBalanceService()).
-  // Mock returns a service stub with mockGenerate — symmetric with class mock above.
-  // Sister archive #2282 NEW INVARIANT #3: vi.mock must return BOTH class AND factory.
-  makeTrialBalanceService: vi.fn().mockReturnValue({ generate: mockGenerate }),
-}));
+// [EXPORT] cluster paydown: route.ts now calls service.exportPdf/exportXlsx
+// (injected exporter port) instead of the raw exporter functions re-exported
+// from this barrel. The stub methods below call THROUGH to the still-mocked
+// infra exporter modules (mocked further down this file) so every existing
+// `expect(exportTrialBalancePdf).toHaveBeenCalledWith(...)` assertion keeps
+// working unchanged — same delegation shape the real TrialBalanceExporterAdapter uses.
+vi.mock("@/modules/accounting/trial-balance/presentation/server", async (importOriginal) => {
+  const { exportTrialBalancePdf } = await import(
+    "@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-pdf.exporter"
+  );
+  const { exportTrialBalanceXlsx } = await import(
+    "@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-xlsx.exporter"
+  );
+  return {
+    ...(await importOriginal<typeof import("@/modules/accounting/trial-balance/presentation/server")>()),
+    TrialBalanceService: vi.fn().mockImplementation(function () {
+      return { generate: mockGenerate };
+    }),
+    // [[mock_hygiene_commit_scope]] + [[cross_module_boundary_mock_target_rewrite]]:
+    // factory mock required because route.ts post-C4 calls makeTrialBalanceService() (not new TrialBalanceService()).
+    // Sister archive #2282 NEW INVARIANT #3: vi.mock must return BOTH class AND factory.
+    makeTrialBalanceService: vi.fn().mockReturnValue({
+      generate: mockGenerate,
+      exportPdf: async (...args: Parameters<typeof exportTrialBalancePdf>) =>
+        (await exportTrialBalancePdf(...args)).buffer,
+      exportXlsx: (...args: Parameters<typeof exportTrialBalanceXlsx>) =>
+        exportTrialBalanceXlsx(...args),
+    }),
+  };
+});
 
 vi.mock("@/modules/accounting/trial-balance/infrastructure/exporters/trial-balance-pdf.exporter", () => ({
   exportTrialBalancePdf: vi.fn().mockResolvedValue({

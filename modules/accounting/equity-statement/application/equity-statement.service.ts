@@ -3,6 +3,7 @@ import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permis
 import { addUTCDays } from "@/lib/date-utils";
 import type { EquityStatementQueryPort } from "../domain/ports/equity-statement-query.port";
 import type { EquityOrgMetadata } from "../domain/ports/equity-statement-query.port";
+import type { EquityStatementExporterPort } from "../domain/ports/equity-statement-exporter.port";
 import { buildEquityStatement } from "../domain/equity-statement.builder";
 import type { EquityStatement } from "../domain/equity-statement.types";
 import type { IncomeStatementSourcePort } from "./income-statement-source.port";
@@ -39,6 +40,9 @@ type GenerateEquityStatementInput = { dateFrom: Date; dateTo: Date };
 interface EquityStatementServiceDeps {
   repo: EquityStatementQueryPort;
   incomeSource: IncomeStatementSourcePort;
+  /** [EXPORT] cluster paydown — injected exporter port (generalizes the
+   *  pattern financial-statements.service.ts already used). */
+  exporter: EquityStatementExporterPort;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -58,10 +62,12 @@ interface EquityStatementServiceDeps {
 export class EquityStatementService {
   private readonly repo: EquityStatementQueryPort;
   private readonly incomeSource: IncomeStatementSourcePort;
+  private readonly exporter: EquityStatementExporterPort;
 
-  constructor({ repo, incomeSource }: EquityStatementServiceDeps) {
+  constructor({ repo, incomeSource, exporter }: EquityStatementServiceDeps) {
     this.repo = repo;
     this.incomeSource = incomeSource;
+    this.exporter = exporter;
   }
 
   /**
@@ -153,5 +159,36 @@ export class EquityStatementService {
    */
   async getOrgMetadata(orgId: string): Promise<EquityOrgMetadata | null> {
     return this.repo.getOrgMetadata(orgId);
+  }
+
+  /**
+   * Genera el EEPN como PDF y retorna el Buffer.
+   *
+   * [EXPORT] cluster paydown — generalizes the pattern
+   * `FinancialStatementsService.exportBalanceSheetPdf` already used: the
+   * exporter call is wrapped as a service method (injected port), instead
+   * of route.ts calling the raw exporter function via a presentation
+   * barrel re-export (the R4 violation this fixes).
+   */
+  async exportPdf(
+    statement: EquityStatement,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.exporter.exportPdf(statement, orgName, orgNit, orgAddress, orgCity);
+  }
+
+  /**
+   * Genera el EEPN como Excel (XLSX) y retorna el Buffer.
+   */
+  async exportXlsx(
+    statement: EquityStatement,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+  ): Promise<Buffer> {
+    return this.exporter.exportXlsx(statement, orgName, orgNit, orgAddress);
   }
 }

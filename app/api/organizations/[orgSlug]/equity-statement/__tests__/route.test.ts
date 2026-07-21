@@ -55,16 +55,35 @@ vi.mock("@/modules/shared/presentation/middleware", () => ({
 // [[mock_hygiene_commit_scope]] + sister archive #2282 NEW INVARIANT #3:
 //   vi.mock MUST return BOTH class AND factory.
 // AXIS-DISTINCT vs TB: factory stub includes getOrgMetadata (route.ts uses service.getOrgMetadata)
-vi.mock("@/modules/accounting/equity-statement/presentation/server", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/modules/accounting/equity-statement/presentation/server")>()),
-  EquityStatementService: vi.fn().mockImplementation(function () {
-    return { generate: mockGenerate, getOrgMetadata: mockGetOrgMetadata };
-  }),
-  makeEquityStatementService: vi.fn().mockReturnValue({
-    generate: mockGenerate,
-    getOrgMetadata: mockGetOrgMetadata,
-  }),
-}));
+// [EXPORT] cluster paydown: route.ts now calls service.exportPdf/exportXlsx
+// (injected exporter port) instead of the raw exporter functions re-exported
+// from this barrel. The stub methods below call THROUGH to the still-mocked
+// infra exporter modules (mocked further down this file) so every existing
+// `expect(exportEquityStatementPdf).toHaveBeenCalledWith(...)` assertion
+// keeps working unchanged — same delegation shape the real
+// EquityStatementExporterAdapter uses.
+vi.mock("@/modules/accounting/equity-statement/presentation/server", async (importOriginal) => {
+  const { exportEquityStatementPdf } = await import(
+    "@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-pdf.exporter"
+  );
+  const { exportEquityStatementXlsx } = await import(
+    "@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-xlsx.exporter"
+  );
+  return {
+    ...(await importOriginal<typeof import("@/modules/accounting/equity-statement/presentation/server")>()),
+    EquityStatementService: vi.fn().mockImplementation(function () {
+      return { generate: mockGenerate, getOrgMetadata: mockGetOrgMetadata };
+    }),
+    makeEquityStatementService: vi.fn().mockReturnValue({
+      generate: mockGenerate,
+      getOrgMetadata: mockGetOrgMetadata,
+      exportPdf: async (...args: Parameters<typeof exportEquityStatementPdf>) =>
+        (await exportEquityStatementPdf(...args)).buffer,
+      exportXlsx: (...args: Parameters<typeof exportEquityStatementXlsx>) =>
+        exportEquityStatementXlsx(...args),
+    }),
+  };
+});
 
 // [[cross_module_boundary_mock_target_rewrite]]: repointed from exporters/ → infrastructure/exporters/
 vi.mock("@/modules/accounting/equity-statement/infrastructure/exporters/equity-statement-pdf.exporter", () => ({

@@ -4,6 +4,16 @@ import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/account
 import type { JournalLedgerQueryPort } from "@/modules/accounting/domain/ports/journal-ledger-query.port";
 import type { ContactLedgerEnrichmentDeps } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
 import type {
+  LedgerExporterPort,
+  LedgerPdfExportOptions,
+  LedgerXlsxExportOptions,
+} from "@/modules/accounting/domain/ports/ledger-exporter.port";
+import type {
+  ContactLedgerExporterPort,
+  ContactLedgerPdfExportOptions,
+  ContactLedgerXlsxExportOptions,
+} from "@/modules/accounting/domain/ports/contact-ledger-exporter.port";
+import type {
   ContactLedgerEntry,
   ContactLedgerPaginatedDto,
   DateRangeFilter,
@@ -52,6 +62,16 @@ export class LedgerService {
      * wired. Composition root injects concrete adapters (C4).
      */
     private readonly contactLedgerDeps?: ContactLedgerEnrichmentDeps,
+    /**
+     * [EXPORT] cluster paydown — injected exporter ports. Optional at the
+     * ctor for the same back-compat reason as `contactLedgerDeps` above
+     * (existing unit tests construct `LedgerService` with only 3 args);
+     * `exportLedgerPdf`/`exportLedgerXlsx`/`exportContactLedgerPdf`/
+     * `exportContactLedgerXlsx` throw clearly when called without these
+     * wired. Composition root injects concrete adapters.
+     */
+    private readonly ledgerExporter?: LedgerExporterPort,
+    private readonly contactLedgerExporter?: ContactLedgerExporterPort,
   ) {}
 
   // ── Obtener el libro mayor de una cuenta con saldo acumulado ──
@@ -408,5 +428,90 @@ export class LedgerService {
     }
 
     return rows;
+  }
+
+  // ── Exporters — [EXPORT] cluster paydown ──
+  // Generalizes the pattern `FinancialStatementsService.exportBalanceSheetPdf`
+  // already used: route.ts calls these service methods instead of the raw
+  // exporter functions re-exported from a presentation barrel (R4 fix).
+
+  private requireLedgerExporter(): LedgerExporterPort {
+    if (!this.ledgerExporter) {
+      throw new Error(
+        "LedgerService.exportLedgerPdf/exportLedgerXlsx require ledgerExporter wired at the composition root",
+      );
+    }
+    return this.ledgerExporter;
+  }
+
+  private requireContactLedgerExporter(): ContactLedgerExporterPort {
+    if (!this.contactLedgerExporter) {
+      throw new Error(
+        "LedgerService.exportContactLedgerPdf/exportContactLedgerXlsx require contactLedgerExporter wired at the composition root",
+      );
+    }
+    return this.contactLedgerExporter;
+  }
+
+  /** Genera el Libro Mayor como PDF y retorna el Buffer. */
+  async exportLedgerPdf(
+    entries: LedgerEntry[],
+    opts: LedgerPdfExportOptions,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.requireLedgerExporter().exportPdf(entries, opts, orgName, orgNit, orgAddress, orgCity);
+  }
+
+  /** Genera el Libro Mayor como Excel (XLSX) y retorna el Buffer. */
+  async exportLedgerXlsx(
+    entries: LedgerEntry[],
+    opts: LedgerXlsxExportOptions,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.requireLedgerExporter().exportXlsx(entries, opts, orgName, orgNit, orgAddress, orgCity);
+  }
+
+  /** Genera el Libro Mayor por Contacto como PDF y retorna el Buffer. */
+  async exportContactLedgerPdf(
+    entries: ContactLedgerEntry[],
+    opts: ContactLedgerPdfExportOptions,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.requireContactLedgerExporter().exportPdf(
+      entries,
+      opts,
+      orgName,
+      orgNit,
+      orgAddress,
+      orgCity,
+    );
+  }
+
+  /** Genera el Libro Mayor por Contacto como Excel (XLSX) y retorna el Buffer. */
+  async exportContactLedgerXlsx(
+    entries: ContactLedgerEntry[],
+    opts: ContactLedgerXlsxExportOptions,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.requireContactLedgerExporter().exportXlsx(
+      entries,
+      opts,
+      orgName,
+      orgNit,
+      orgAddress,
+      orgCity,
+    );
   }
 }

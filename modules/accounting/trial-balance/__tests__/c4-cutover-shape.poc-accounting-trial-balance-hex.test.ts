@@ -77,16 +77,21 @@ describe("POC accounting-trial-balance-hex C4 — atomic consumer cutover", () =
     expect(content).toMatch(/trialBalanceQuerySchema/m);
   });
 
-  it("α71: trial-balance/route.ts imports exportTrialBalancePdf from modules/accounting/trial-balance path (infrastructure or server barrel)", () => {
+  // [EXPORT] cluster paydown: α71/α72 FLIPPED. route.ts no longer imports the raw
+  // exporter functions at all — it calls `service.exportPdf(...)`/`service.exportXlsx(...)`
+  // (TrialBalanceService, injected TrialBalanceExporterPort). See
+  // modules/accounting/trial-balance/__tests__/trial-balance-exporter.adapter.test.ts
+  // for the adapter-level contract test this cutover is backed by.
+  it("α71: trial-balance/route.ts calls service.exportPdf (no direct exportTrialBalancePdf import — R2/R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportTrialBalancePdf/m);
-    expect(content).toMatch(/modules\/accounting\/trial-balance/m);
+    expect(content).not.toMatch(/exportTrialBalancePdf/m);
+    expect(content).toMatch(/service\.exportPdf/m);
   });
 
-  it("α72: trial-balance/route.ts imports exportTrialBalanceXlsx from modules/accounting/trial-balance path", () => {
+  it("α72: trial-balance/route.ts calls service.exportXlsx (no direct exportTrialBalanceXlsx import — R2/R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportTrialBalanceXlsx/m);
-    expect(content).toMatch(/modules\/accounting\/trial-balance/m);
+    expect(content).not.toMatch(/exportTrialBalanceXlsx/m);
+    expect(content).toMatch(/service\.exportXlsx/m);
   });
 
   it("α73: trial-balance/route.ts STILL imports serializeStatement from @/modules/accounting/financial-statements/presentation (FS canonical home preserved)", () => {

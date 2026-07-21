@@ -3,8 +3,6 @@ import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeTrialBalanceService,
   trialBalanceQuerySchema,
-  exportTrialBalancePdf,
-  exportTrialBalanceXlsx,
 } from "@/modules/accounting/trial-balance/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import { PrismaTrialBalanceRepo } from "@/modules/accounting/trial-balance/infrastructure/prisma-trial-balance.repo";
@@ -67,7 +65,7 @@ export async function GET(
     if (query.format === "pdf") {
       const orgMeta = await repo.getOrgMetadata(orgId);
       const orgDisplayName = orgMeta?.name ?? orgSlug;
-      const { buffer } = await exportTrialBalancePdf(
+      const buffer = await service.exportPdf(
         report,
         orgDisplayName,
         orgMeta?.taxId ?? undefined,
@@ -88,7 +86,7 @@ export async function GET(
     if (query.format === "xlsx") {
       const orgMeta = await repo.getOrgMetadata(orgId);
       const orgDisplayName = orgMeta?.name ?? orgSlug;
-      const buffer = await exportTrialBalanceXlsx(
+      const buffer = await service.exportXlsx(
         report,
         orgDisplayName,
         orgMeta?.taxId ?? undefined,

@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 101
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 83
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -18,9 +18,21 @@
  * first attempt was reverted: routing enums through composition-root.ts
  * dragged a real import cycle in and crashed with a TDZ ReferenceError at
  * runtime; the leaf enum-mirror file is the dedicated enum-only home that
- * revert note asked for). Turning the lint gate red today would
- * mean either 101 fixes in one commit or 101 `eslint-disable`s — so instead
- * this sentinel
+ * revert note asked for; the [EXPORT] cluster paydown brought it to 83 — the
+ * 7 report families (ledger, contact-ledger, equity-statement,
+ * initial-balance, trial-balance, worksheet, financial-statements) each got a
+ * narrow `XxxExporterPort` (domain) + a thin adapter (infrastructure)
+ * delegating to the EXISTING pure PDF/XLSX exporter functions, unchanged;
+ * application services gained injected `exportPdf`/`exportXlsx` methods
+ * (generalizing the pattern `FinancialStatementsService` already used), and
+ * `presentation/server.ts` barrels stopped re-exporting the raw exporter
+ * functions — route.ts call sites now call `service.exportPdf(...)` instead.
+ * The 3 `make-*-service.ts:R2` "reverse composition-root delegation"
+ * violations (equity-statement/initial-balance/trial-balance) are a DIFFERENT
+ * pattern (application reaching UP into presentation/composition-root) and
+ * were deliberately left untouched by this paydown.). Turning the lint gate
+ * red today would mean either 83 fixes in one commit or 83 `eslint-disable`s
+ * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
  * it a ratchet instead of a permanent allowlist that quietly rots into a rubber
@@ -134,7 +146,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 101 violations across 63 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 83 violations across 57 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -153,7 +165,14 @@ const RULE_TAG = /\b(R[1245]) violated:/;
  *              outside infrastructure. Fix: define a port, map at the boundary.
  *   [EXPORT]   PDF/XLSX exporters live in `infrastructure/exporters/` and are
  *              called straight from presentation (R4) and application (R2).
- *              Fix: an exporter port owned by domain.
+ *              Fix: an exporter port owned by domain. The 18 violations across
+ *              the 7 report-family barrels/services (ledger, contact-ledger,
+ *              equity-statement, initial-balance, trial-balance, worksheet,
+ *              financial-statements) were CLOSED by the [EXPORT] cluster
+ *              paydown. The `voucher-pdf` exporter reached from
+ *              `journals.service.ts:R2` remains OPEN — deliberately deferred,
+ *              see the comment at
+ *              `modules/accounting/presentation/composition-root.ts:50-52`.
  *   [CACHE]    `permissions.cache` (infrastructure) reached from domain and
  *              application. Fix: a caching port.
  *   [BARREL]   Cross-module `presentation/server` / `presentation` barrels used
@@ -197,30 +216,12 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
   "modules/accounting/domain/ports/accounts-crud.port.ts:R5",
   "modules/accounting/equity-statement/application/make-equity-statement-service.ts:R2",
-  "modules/accounting/equity-statement/presentation/server.ts:R4",
-  "modules/accounting/equity-statement/presentation/server.ts:R4",
-  "modules/accounting/financial-statements/application/financial-statements.service.ts:R2",
-  "modules/accounting/financial-statements/application/financial-statements.service.ts:R2",
   "modules/accounting/initial-balance/application/make-initial-balance-service.ts:R2",
-  "modules/accounting/initial-balance/presentation/server.ts:R4",
-  "modules/accounting/initial-balance/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
-  "modules/accounting/presentation/server.ts:R4",
   // validation.ts:R5 (the M1 revert — composition-root TDZ cycle) was CLOSED
   // by D1: the enum imports now come from the LEAF mirror file
   // domain/value-objects/account-classification.ts, which is exactly the
   // "small dedicated enum-only" home the revert note called for.
   "modules/accounting/trial-balance/application/make-trial-balance-service.ts:R2",
-  "modules/accounting/trial-balance/presentation/server.ts:R4",
-  "modules/accounting/trial-balance/presentation/server.ts:R4",
-  "modules/accounting/worksheet/presentation/server.ts:R4",
-  "modules/accounting/worksheet/presentation/server.ts:R4",
 
   // ── modules/ai-agent/ — [PRISMA][BARREL] six sibling modules consumed through presentation/server barrels,
   //     one LLM adapter reached from presentation, Prisma enums in domain prompts

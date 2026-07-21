@@ -22,9 +22,11 @@ export { makeInitialBalanceService } from "./composition-root";
 // ── Zod validation schema ──
 export { initialBalanceQuerySchema } from "../domain/initial-balance.validation";
 
-// ── Exporter functions (server-side consumers: route.ts for PDF/XLSX downloads) ──
-export { exportInitialBalancePdf } from "../infrastructure/exporters/initial-balance-pdf.exporter";
-export { exportInitialBalanceXlsx } from "../infrastructure/exporters/initial-balance-xlsx.exporter";
+// ── Exporters — [EXPORT] cluster paydown ──
+// PDF/XLSX generation now goes through InitialBalanceService.exportPdf/exportXlsx
+// (injected InitialBalanceExporterPort, wired in composition-root.ts). This barrel
+// no longer re-exports the raw exporter functions (that re-export was the R4
+// violation this paydown fixes) — route.ts calls the service methods instead.
 
 // ── TYPE re-exports (also available in index.ts for client-safe consumption) ──
 export type {

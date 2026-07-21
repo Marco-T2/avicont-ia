@@ -136,14 +136,21 @@ describe("POC accounting-trial-balance-hex C3 — presentation layer shape", () 
       expect(content).toMatch(/trialBalanceQuerySchema/m);
     });
 
-    it("α56: server.ts re-exports exportTrialBalancePdf (PDF exporter)", () => {
+    // [EXPORT] cluster paydown: α56/α57 FLIPPED. server.ts used to re-export the
+    // raw exporter functions — that re-export WAS the R4 violation
+    // ("modules/accounting/trial-balance/presentation/server.ts:R4" in the
+    // hex-boundaries ratchet). PDF/XLSX generation now goes through
+    // TrialBalanceService.exportPdf/exportXlsx (injected TrialBalanceExporterPort),
+    // and route.ts calls the service methods instead of importing the raw
+    // exporter from this barrel.
+    it("α56: server.ts does NOT re-export exportTrialBalancePdf (moved behind TrialBalanceService.exportPdf — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportTrialBalancePdf/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportTrialBalancePdf/m);
     });
 
-    it("α57: server.ts re-exports exportTrialBalanceXlsx (XLSX exporter)", () => {
+    it("α57: server.ts does NOT re-export exportTrialBalanceXlsx (moved behind TrialBalanceService.exportXlsx — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportTrialBalanceXlsx/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportTrialBalanceXlsx/m);
     });
 
     it("α58: server.ts does NOT import index.ts (no circular barrel dependency)", () => {

@@ -7,6 +7,7 @@ import { buildIncomeStatement } from "../domain/income-statement.builder";
 import { calculateRetainedEarnings } from "../domain/retained-earnings.calculator";
 import type { FinancialStatementsQueryPort } from "../domain/ports/financial-statements-query.port";
 import type { AccountSubtypeLabelPort } from "../domain/ports/account-subtype-label.port";
+import type { FinancialStatementsExporterPort } from "../domain/ports/financial-statements-exporter.port";
 import type {
   BalanceSheet,
   BalanceSheetCurrent,
@@ -28,16 +29,11 @@ import type { DateRange } from "../domain/date-presets.utils";
 // math composition source per REQ-005 and α50 (sentinel verifies this import).
 import "../domain/money.utils";
 // Exporters lifted to infrastructure/exporters/ at C2 GREEN per design §2 (D6: pdfmake
-// + exceljs = Node-runtime infra). [[mock_hygiene_commit_scope]]: path rewrite bundled
-// with infrastructure wiring in C2 GREEN commit.
-import {
-  exportBalanceSheetPdf,
-  exportIncomeStatementPdf,
-} from "../infrastructure/exporters/pdf.exporter";
-import {
-  exportBalanceSheetExcel,
-  exportIncomeStatementExcel,
-} from "../infrastructure/exporters/excel.exporter";
+// + exceljs = Node-runtime infra). [EXPORT] cluster paydown: the service no longer
+// imports the exporter functions directly (that was the R2 violation) — it depends on
+// the injected `FinancialStatementsExporterPort` instead; the concrete adapter
+// (`infrastructure/adapters/financial-statements-exporter.adapter.ts`) still delegates
+// to these exact same pure functions, wired by composition-root.ts.
 
 // ── Tipos de entrada públicos ──
 
@@ -80,6 +76,7 @@ type GenerateIncomeStatementInput = {
 export interface FinancialStatementsServiceDeps {
   repo: FinancialStatementsQueryPort;
   subtypeLabel: AccountSubtypeLabelPort;
+  exporter: FinancialStatementsExporterPort;
 }
 
 // ── Roles autorizados a ver estados financieros (REQ-13) ──
@@ -159,10 +156,14 @@ export class FinancialStatementsService {
   // composition transparency and to make the dep graph explicit for adapters
   // at C2.
   private readonly subtypeLabel: AccountSubtypeLabelPort;
+  // [EXPORT] cluster paydown — injected exporter port (was a direct infra
+  // import, R2 violation). composition-root.ts wires the concrete adapter.
+  private readonly exporter: FinancialStatementsExporterPort;
 
   constructor(deps: FinancialStatementsServiceDeps) {
     this.repo = deps.repo;
     this.subtypeLabel = deps.subtypeLabel;
+    this.exporter = deps.exporter;
   }
 
   /**
@@ -501,7 +502,7 @@ export class FinancialStatementsService {
       this.generateBalanceSheet(orgId, userRole, input),
       this.resolveOrgHeader(orgId),
     ]);
-    return exportBalanceSheetPdf(statement, org);
+    return this.exporter.exportBalanceSheetPdf(statement, org);
   }
 
   /**
@@ -517,7 +518,7 @@ export class FinancialStatementsService {
       this.generateBalanceSheet(orgId, userRole, input),
       this.resolveOrgHeader(orgId),
     ]);
-    return exportBalanceSheetExcel(statement, org);
+    return this.exporter.exportBalanceSheetXlsx(statement, org);
   }
 
   /**
@@ -533,7 +534,7 @@ export class FinancialStatementsService {
       this.generateIncomeStatement(orgId, userRole, input),
       this.resolveOrgHeader(orgId),
     ]);
-    return exportIncomeStatementPdf(statement, org);
+    return this.exporter.exportIncomeStatementPdf(statement, org);
   }
 
   /**
@@ -549,6 +550,6 @@ export class FinancialStatementsService {
       this.generateIncomeStatement(orgId, userRole, input),
       this.resolveOrgHeader(orgId),
     ]);
-    return exportIncomeStatementExcel(statement, org);
+    return this.exporter.exportIncomeStatementXlsx(statement, org);
   }
 }

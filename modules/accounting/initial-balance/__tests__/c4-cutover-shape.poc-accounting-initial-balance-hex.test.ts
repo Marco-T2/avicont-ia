@@ -85,16 +85,19 @@ describe("POC accounting-initial-balance-hex C4 — atomic consumer cutover", ()
     expect(content).toMatch(/initialBalanceQuerySchema/m);
   });
 
-  it("α71: initial-balance/route.ts imports exportInitialBalancePdf from modules/accounting/initial-balance path", () => {
+  // [EXPORT] cluster paydown: α71/α72 FLIPPED — route.ts no longer imports the raw
+  // exporter functions; it calls `service.exportPdf(...)`/`service.exportXlsx(...)`
+  // (InitialBalanceService, injected InitialBalanceExporterPort).
+  it("α71: initial-balance/route.ts calls service.exportPdf (no direct exportInitialBalancePdf import — R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportInitialBalancePdf/m);
-    expect(content).toMatch(/modules\/accounting\/initial-balance/m);
+    expect(content).not.toMatch(/exportInitialBalancePdf/m);
+    expect(content).toMatch(/service\.exportPdf/m);
   });
 
-  it("α72: initial-balance/route.ts imports exportInitialBalanceXlsx from modules/accounting/initial-balance path", () => {
+  it("α72: initial-balance/route.ts calls service.exportXlsx (no direct exportInitialBalanceXlsx import — R4 fix)", () => {
     const content = readFile(ROUTE_PATH);
-    expect(content).toMatch(/exportInitialBalanceXlsx/m);
-    expect(content).toMatch(/modules\/accounting\/initial-balance/m);
+    expect(content).not.toMatch(/exportInitialBalanceXlsx/m);
+    expect(content).toMatch(/service\.exportXlsx/m);
   });
 
   it("α73: initial-balance/route.ts STILL imports serializeStatement from @/modules/accounting/financial-statements/presentation (FS canonical home preserved)", () => {

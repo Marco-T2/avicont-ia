@@ -75,17 +75,21 @@ vi.mock("@/modules/shared/presentation/middleware", () => ({
 }));
 
 // [[mock_hygiene_commit_scope]] + [[cross_module_boundary_mock_target_rewrite]]:
-// makeLedgerService factory mock + exporter functions stub (route.ts importa
-// `makeLedgerService` + `exportContactLedger{Pdf,Xlsx}` desde el mismo barrel).
+// makeLedgerService factory mock. [EXPORT] cluster paydown: route.ts now calls
+// service.exportContactLedgerPdf/exportContactLedgerXlsx (injected exporter port)
+// instead of raw exporter functions re-exported from this barrel — mockExportPdf/
+// mockExportXlsx move onto the service stub. mockExportPdf now resolves directly
+// to a Buffer (NOT `{ buffer, docDef }`) since the port/service boundary always
+// returns a plain Buffer (unwrapping — if any — happens inside the real adapter).
 vi.mock("@/modules/accounting/presentation/server", async (importOriginal) => ({
   ...(await importOriginal<
     typeof import("@/modules/accounting/presentation/server")
   >()),
   makeLedgerService: vi.fn().mockReturnValue({
     getContactLedgerPaginated: mockGetContactLedgerPaginated,
+    exportContactLedgerPdf: mockExportPdf,
+    exportContactLedgerXlsx: mockExportXlsx,
   }),
-  exportContactLedgerPdf: mockExportPdf,
-  exportContactLedgerXlsx: mockExportXlsx,
 }));
 
 // contactsService factory — usado solo en PDF/XLSX branches (T6/T7) para
@@ -193,10 +197,7 @@ beforeEach(() => {
   mockGetActiveById.mockResolvedValue(fakeContact);
   mockGetOrgMetadata.mockResolvedValue(fakeOrgMeta);
   mockFetchLogoAsDataUrl.mockResolvedValue(undefined);
-  mockExportPdf.mockResolvedValue({
-    buffer: Buffer.from("%PDF-1.4 fake"),
-    docDef: {},
-  });
+  mockExportPdf.mockResolvedValue(Buffer.from("%PDF-1.4 fake"));
   mockExportXlsx.mockResolvedValue(Buffer.from("PK\x03\x04 fake xlsx"));
 });
 

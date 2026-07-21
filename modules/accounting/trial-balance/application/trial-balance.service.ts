@@ -1,6 +1,7 @@
 import { ForbiddenError, ValidationError } from "@/modules/shared/domain/errors";
 import { PERMISSIONS_READ, type Role } from "@/modules/permissions/domain/permissions";
 import type { TrialBalanceQueryPort } from "../domain/ports/trial-balance-query.port";
+import type { TrialBalanceExporterPort } from "../domain/ports/trial-balance-exporter.port";
 import { buildTrialBalance } from "../domain/trial-balance.builder";
 import type { TrialBalanceFilters, TrialBalanceReport } from "../domain/trial-balance.types";
 
@@ -31,6 +32,9 @@ function assertTrialBalanceAccess(role: Role): void {
  */
 interface TrialBalanceServiceDeps {
   repo: TrialBalanceQueryPort;
+  /** [EXPORT] cluster paydown — injected exporter port (generalizes the
+   *  pattern financial-statements.service.ts already used). */
+  exporter: TrialBalanceExporterPort;
 }
 
 // ── Service ───────────────────────────────────────────────────────────────────
@@ -47,9 +51,11 @@ interface TrialBalanceServiceDeps {
  */
 export class TrialBalanceService {
   private readonly repo: TrialBalanceQueryPort;
+  private readonly exporter: TrialBalanceExporterPort;
 
-  constructor({ repo }: TrialBalanceServiceDeps) {
+  constructor({ repo, exporter }: TrialBalanceServiceDeps) {
     this.repo = repo;
+    this.exporter = exporter;
   }
 
   /**
@@ -89,5 +95,33 @@ export class TrialBalanceService {
 
     // 5. Inject orgId (builder leaves it blank — service knows the real orgId)
     return { ...report, orgId };
+  }
+
+  /**
+   * Genera el Balance de Comprobación como PDF y retorna el Buffer.
+   *
+   * [EXPORT] cluster paydown — generalizes the pattern
+   * `FinancialStatementsService.exportBalanceSheetPdf` already used.
+   */
+  async exportPdf(
+    report: TrialBalanceReport,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+    orgCity?: string,
+  ): Promise<Buffer> {
+    return this.exporter.exportPdf(report, orgName, orgNit, orgAddress, orgCity);
+  }
+
+  /**
+   * Genera el Balance de Comprobación como Excel (XLSX) y retorna el Buffer.
+   */
+  async exportXlsx(
+    report: TrialBalanceReport,
+    orgName: string,
+    orgNit?: string,
+    orgAddress?: string,
+  ): Promise<Buffer> {
+    return this.exporter.exportXlsx(report, orgName, orgNit, orgAddress);
   }
 }

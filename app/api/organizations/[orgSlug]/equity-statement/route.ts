@@ -3,8 +3,6 @@ import { requirePermission } from "@/modules/permissions/application/server";
 import {
   makeEquityStatementService,
   equityStatementQuerySchema,
-  exportEquityStatementPdf,
-  exportEquityStatementXlsx,
 } from "@/modules/accounting/equity-statement/presentation/server";
 import { serializeStatement } from "@/modules/accounting/financial-statements/presentation/server";
 import type { Role } from "@/modules/permissions/domain/permissions";
@@ -54,7 +52,7 @@ export async function GET(
 
     if (query.format === "pdf") {
       const orgMeta = await service.getOrgMetadata(orgId);
-      const { buffer } = await exportEquityStatementPdf(
+      const buffer = await service.exportPdf(
         statement,
         orgMeta?.name ?? orgSlug,
         orgMeta?.taxId ?? undefined,
@@ -72,7 +70,7 @@ export async function GET(
 
     if (query.format === "xlsx") {
       const orgMeta = await service.getOrgMetadata(orgId);
-      const buffer = await exportEquityStatementXlsx(
+      const buffer = await service.exportXlsx(
         statement,
         orgMeta?.name ?? orgSlug,
         orgMeta?.taxId ?? undefined,

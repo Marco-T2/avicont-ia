@@ -153,14 +153,17 @@ describe("POC accounting-equity-statement-hex C3 — presentation layer shape", 
       expect(content).toMatch(/equityStatementQuerySchema/m);
     });
 
-    it("α62: server.ts re-exports exportEquityStatementPdf (PDF exporter)", () => {
+    // [EXPORT] cluster paydown: α62/α63 FLIPPED — server.ts used to re-export the
+    // raw exporter functions (the R4 violation the paydown fixes). PDF/XLSX
+    // generation now goes through EquityStatementService.exportPdf/exportXlsx.
+    it("α62: server.ts does NOT re-export exportEquityStatementPdf (moved behind EquityStatementService.exportPdf — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportEquityStatementPdf/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportEquityStatementPdf/m);
     });
 
-    it("α63: server.ts re-exports exportEquityStatementXlsx (XLSX exporter)", () => {
+    it("α63: server.ts does NOT re-export exportEquityStatementXlsx (moved behind EquityStatementService.exportXlsx — R4 fix)", () => {
       const content = readPresentationFile("server.ts");
-      expect(content).toMatch(/exportEquityStatementXlsx/m);
+      expect(content).not.toMatch(/export\s*\{[^}]*exportEquityStatementXlsx/m);
     });
 
     it("α64: server.ts does NOT import index.ts (no circular barrel dependency)", () => {
