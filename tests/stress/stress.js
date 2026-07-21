@@ -16,7 +16,7 @@ export const options = {
 
 const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
 
-export default function () {
+export default function stressLoadTest() {
   const res = http.get(`${BASE_URL}/`);
   check(res, {
     'status es 200 o 503': (r) => r.status === 200 || r.status === 503,
