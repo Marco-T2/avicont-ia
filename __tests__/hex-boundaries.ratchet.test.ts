@@ -274,16 +274,10 @@ const BASELINE: ReadonlyArray<string> = [
   // sentinels pin these consumers to presentation/server). Ratchet-R2 vs
   // POC-cutover is a real architectural conflict — deferred to a human decision.
   "modules/ai-agent/application/agent.service.ts:R2",
-  "modules/ai-agent/application/agent.service.ts:R2",
   "modules/ai-agent/application/modes/balance-sheet-analysis.ts:R2",
-  "modules/ai-agent/application/modes/chat.ts:R2",
   "modules/ai-agent/application/modes/income-statement-analysis.ts:R2",
   "modules/ai-agent/application/pricing/pricing.service.ts:R2",
   "modules/ai-agent/application/pricing/pricing.service.ts:R2",
-  "modules/ai-agent/application/pricing/pricing.service.ts:R2",
-  "modules/ai-agent/application/tools/find-accounts.ts:R2",
-  "modules/ai-agent/application/tools/find-contact.ts:R2",
-  "modules/ai-agent/application/tools/parse-operation.ts:R2",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
@@ -325,7 +319,6 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/tags/ — [BARREL] tags.service.ts:R2 — REVERTED with the rest of
   //     BARREL Group A (POC-cutover collision); `slugify` imports from
   //     organizations/presentation again pending a human ratchet-vs-POC decision.
-  "modules/tags/application/tags.service.ts:R2",
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
   "modules/users/application/users.service.ts:R2",

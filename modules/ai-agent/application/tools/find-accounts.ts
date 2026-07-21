@@ -1,5 +1,5 @@
 import type { AccountsLookupPort, Account } from "../../domain/ports/accounts-lookup.port";
-import type { OrgSettingsService } from "@/modules/org-settings/presentation/server";
+import type { OrgSettingsService } from "@/modules/org-settings/application/org-settings.service";
 import type {
   FindAccountsResult,
   FindAccountsResultItem,

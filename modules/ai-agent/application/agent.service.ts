@@ -17,7 +17,7 @@ import type { ChatMemoryPort } from "../domain/ports/chat-memory.port";
 import type { AgentContextReaderPort } from "../domain/ports/agent-context-reader.port";
 import type { AccountsLookupPort } from "../domain/ports/accounts-lookup.port";
 import type { RagPort } from "../domain/ports/rag.port";
-import type { LotInquiryPort } from "@/modules/lot/presentation/server";
+import type { LotInquiryPort } from "@/modules/lot/domain/ports/lot-inquiry.port";
 
 import type { AgentRateLimitService } from "./rate-limit.service";
 import type { PricingService } from "./pricing/pricing.service";

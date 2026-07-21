@@ -11,7 +11,7 @@ import type { InvocationOutcome } from "../../domain/agent-utils";
 import type { ChatMemoryPort } from "../../domain/ports/chat-memory.port";
 import type { AgentContextReaderPort } from "../../domain/ports/agent-context-reader.port";
 import type { RagPort } from "../../domain/ports/rag.port";
-import type { LotInquiryPort } from "@/modules/lot/presentation/server";
+import type { LotInquiryPort } from "@/modules/lot/domain/ports/lot-inquiry.port";
 import type { PricingService } from "../pricing/pricing.service";
 import type { Surface } from "../../domain/tools/surfaces/surface.types";
 import type { ModuleHintValue } from "../../domain/types/module-hint.types";

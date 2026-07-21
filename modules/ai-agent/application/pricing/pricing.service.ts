@@ -1,8 +1,4 @@
-import type {
-  LotInquiryPort,
-  LocalLotInquiryAdapter as _LocalLotInquiryAdapter,
-  makeLotService as _makeLotService,
-} from "@/modules/lot/presentation/server";
+import type { LotInquiryPort } from "@/modules/lot/domain/ports/lot-inquiry.port";
 import type {
   ExpenseService,
   makeExpenseService as _makeExpenseService,
