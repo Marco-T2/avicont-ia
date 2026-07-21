@@ -1,5 +1,5 @@
 import type { Decimal } from "decimal.js";
-import type { AccountSubtype } from "@/generated/prisma/enums";
+import type { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 
 // ── Tipos para el estilo QuickBooks (PR1) ──
 

@@ -1,4 +1,4 @@
-import { AccountType, AccountSubtype } from "@/generated/prisma/enums";
+import { AccountType, AccountSubtype } from "./value-objects/account-classification";
 
 /**
  * Convierte un valor de AccountSubtype a etiqueta legible en español.

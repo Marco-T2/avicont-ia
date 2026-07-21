@@ -5,16 +5,21 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 119
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 101
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
- * (payment shortcut-source query port) brought it to 119 — see the M2 R5
- * comments in BASELINE below for the enum-import residue those files still
- * carry. See also the BASELINE comment on
- * `accounting/presentation/validation.ts:R5` for why that entry's sibling fix
- * was reverted rather than landed). Turning the lint gate red today would
- * mean either 119 fixes in one commit or 119 `eslint-disable`s — so instead
+ * (payment shortcut-source query port) brought it to 119; the D1 paydown
+ * brought it to 101 — accounting's Prisma enum imports now go through
+ * domain-owned mirrors in
+ * `modules/accounting/domain/value-objects/account-classification.ts`, kept
+ * honest by `modules/accounting/__tests__/enum-domain-mirror.sync.test.ts`.
+ * D1 also landed the fix for `accounting/presentation/validation.ts:R5` whose
+ * first attempt was reverted: routing enums through composition-root.ts
+ * dragged a real import cycle in and crashed with a TDZ ReferenceError at
+ * runtime; the leaf enum-mirror file is the dedicated enum-only home that
+ * revert note asked for). Turning the lint gate red today would
+ * mean either 101 fixes in one commit or 101 `eslint-disable`s — so instead
  * this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
@@ -129,7 +134,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 119 violations across 81 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 101 violations across 63 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -183,19 +188,12 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/ledger.service.ts:R2",
-  "modules/accounting/application/ledger.service.ts:R5",
-  "modules/accounting/domain/__tests__/account-subtype.resolve.test.ts:R5",
-  "modules/accounting/domain/__tests__/account-subtype.utils.test.ts:R5",
-  "modules/accounting/domain/account-balance.entity.ts:R5",
-  "modules/accounting/domain/account-subtype.resolve.ts:R5",
-  "modules/accounting/domain/account-subtype.utils.ts:R5",
-  "modules/accounting/domain/accounting-helpers.ts:R5",
   // moved here from presentation/dto by the [DTO] paydown; the R5 residue is
-  // [PRISMA]-cluster debt closed by defining domain-local types + mapping at
+  // [PRISMA]-cluster debt (MODEL types — Account, JournalEntry, … — not the
+  // enums D1 mirrored) closed by defining domain-local types + mapping at
   // the infra boundary.
   "modules/accounting/domain/accounts.types.ts:R5",
   "modules/accounting/domain/journal.types.ts:R5",
-  "modules/accounting/domain/ledger.types.ts:R5",
   "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
   "modules/accounting/domain/ports/accounts-crud.port.ts:R5",
   "modules/accounting/equity-statement/application/make-equity-statement-service.ts:R2",
@@ -203,17 +201,7 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/equity-statement/presentation/server.ts:R4",
   "modules/accounting/financial-statements/application/financial-statements.service.ts:R2",
   "modules/accounting/financial-statements/application/financial-statements.service.ts:R2",
-  "modules/accounting/financial-statements/domain/balance-sheet.builder.ts:R5",
-  "modules/accounting/financial-statements/domain/income-statement.builder.ts:R5",
-  "modules/accounting/financial-statements/domain/ports/account-subtype-label.port.ts:R5",
-  // 1 of the original 2 R5 entries here was Prisma.Decimal (closed by M2 —
-  // decimal.js is now the type source). The remaining entry is the
-  // AccountSubtype enum import from @/generated/prisma/enums — deferred (D1),
-  // NOT touched by M2.
-  "modules/accounting/financial-statements/domain/types/financial-statements.types.ts:R5",
   "modules/accounting/initial-balance/application/make-initial-balance-service.ts:R2",
-  "modules/accounting/initial-balance/domain/initial-balance.builder.ts:R5",
-  "modules/accounting/initial-balance/domain/initial-balance.types.ts:R5",
   "modules/accounting/initial-balance/presentation/server.ts:R4",
   "modules/accounting/initial-balance/presentation/server.ts:R4",
   "modules/accounting/presentation/server.ts:R4",
@@ -224,30 +212,13 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/presentation/server.ts:R4",
   "modules/accounting/presentation/server.ts:R4",
   "modules/accounting/presentation/server.ts:R4",
-  // NOT fixed by the M1 [PRISMA] paydown despite being the planned target:
-  // routing these enum imports through composition-root.ts (as ai-agent/tags
-  // barrels do for their re-exports) turns validation.ts into a transitive
-  // importer of the WHOLE accounting composition root — which drags in a real
-  // import cycle back through organizations' eagerly-instantiated (module-
-  // top-level) makeOrganizationsService() → LegacyAccountSeedAdapter →
-  // makeAccountsService(), producing a TDZ ReferenceError at runtime. Verified
-  // by reverting the change and confirming an unrelated accounting test
-  // (date-range-schema.test.ts) goes from crashing to passing. The barrel
-  // pattern is only safe when the re-exporting file has a cheap/leaf import
-  // graph; composition-root.ts here does not. Left as debt pending a proper
-  // fix (e.g. a small dedicated enum-only barrel, not the composition root).
-  "modules/accounting/presentation/validation.ts:R5",
+  // validation.ts:R5 (the M1 revert — composition-root TDZ cycle) was CLOSED
+  // by D1: the enum imports now come from the LEAF mirror file
+  // domain/value-objects/account-classification.ts, which is exactly the
+  // "small dedicated enum-only" home the revert note called for.
   "modules/accounting/trial-balance/application/make-trial-balance-service.ts:R2",
   "modules/accounting/trial-balance/presentation/server.ts:R4",
   "modules/accounting/trial-balance/presentation/server.ts:R4",
-  // 1 of the original 2 R5 entries here was Prisma.Decimal (closed by M2).
-  // The remaining entry is the AccountType enum import from
-  // @/generated/prisma/enums — deferred (D1), NOT touched by M2.
-  "modules/accounting/worksheet/domain/types.ts:R5",
-  "modules/accounting/worksheet/domain/worksheet.builder.ts:R5",
-  // 1 of the original 2 R5 entries here was Prisma.Decimal (closed by M2).
-  // The remaining entry is the AccountType enum import — deferred (D1).
-  "modules/accounting/worksheet/domain/worksheet.types.ts:R5",
   "modules/accounting/worksheet/presentation/server.ts:R4",
   "modules/accounting/worksheet/presentation/server.ts:R4",
 

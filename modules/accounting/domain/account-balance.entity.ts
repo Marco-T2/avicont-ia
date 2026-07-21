@@ -1,4 +1,4 @@
-import type { AccountNature } from "@/generated/prisma/client";
+import type { AccountNature } from "./value-objects/account-classification";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 import { LineSide } from "./value-objects/line-side";
 

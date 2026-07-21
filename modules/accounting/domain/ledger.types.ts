@@ -7,7 +7,7 @@
  * serialization point. Consumers parse via `Number()` / `parseFloat()` at
  * display time (UI), preserving wire precision.
  */
-import type { AccountType } from "@/generated/prisma/client";
+import type { AccountType } from "./value-objects/account-classification";
 
 // ── Ledger types ──
 
