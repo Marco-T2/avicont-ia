@@ -220,9 +220,6 @@ const BASELINE: ReadonlyArray<string> = [
   // ── modules/accounting/ — [DTO][PRISMA][EXPORT][BARREL] the epicentre — presentation/dto/* reached from every layer,
   //     infrastructure/exporters/* called from presentation and application, Prisma
   //     client/enums in domain, and four sibling modules consumed via presentation/server
-  "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
-  "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
-  "modules/accounting/application/__tests__/fakes/in-memory-accounting-uow.ts:R2",
   "modules/accounting/application/accounts.service.ts:R5",
   "modules/accounting/application/auto-entry-generator.ts:R2",
   "modules/accounting/application/auto-entry-generator.ts:R2",

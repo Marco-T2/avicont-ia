@@ -47,9 +47,9 @@ import type {
   AccountingVoucherType,
   VoucherTypesReadPort,
 } from "../../../domain/ports/voucher-types-read.port";
-import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
-import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
-import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import type { OrgProfileService } from "@/modules/org-profile/application/org-profile.service";
+import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/application/document-signature-config.service";
+import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
 
 /**
  * In-memory write port for journal_entries. Records every persisted aggregate
@@ -522,7 +522,7 @@ export function makeExportDepsFakes() {
       [
         orgProfile as unknown as OrgProfileService,
         sigConfig as unknown as DocumentSignatureConfigService,
-        fiscalPeriods as unknown as ReturnType<typeof makeFiscalPeriodsService>,
+        fiscalPeriods as unknown as FiscalPeriodsService,
       ] as const,
   };
 }
