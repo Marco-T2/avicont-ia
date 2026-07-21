@@ -244,7 +244,6 @@ const BASELINE: ReadonlyArray<string> = [
   // (live injected PrismaClient, D1/D3 design locks) and `journal.types.ts`
   // (6 model types) remain deferred.
   "modules/accounting/domain/journal.types.ts:R5",
-  "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
   // validation.ts:R5 (the M1 revert — composition-root TDZ cycle) was CLOSED
   // by D1: the enum imports now come from the LEAF mirror file
   // domain/value-objects/account-classification.ts, which is exactly the

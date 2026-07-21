@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { InMemoryJournalLedgerQueryPort } from "@/modules/accounting/application/__tests__/fakes/in-memory-accounting-uow";
+import { InMemoryJournalLedgerQueryPort } from "./fakes/in-memory-accounting-uow";
 
 /**
  * Contract test for the contact-keyed read surface of `JournalLedgerQueryPort`
