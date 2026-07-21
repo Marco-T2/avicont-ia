@@ -1,8 +1,5 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 import type { IncomeStatementCurrent } from "./types/financial-statements.types";
-
-// Alias local para Decimal
-type Decimal = Prisma.Decimal;
 
 /**
  * Calcula la Utilidad Neta del ejercicio (o Pérdida si es negativo).

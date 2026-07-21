@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 import { formatBolivianAmount } from "@/modules/accounting/financial-statements/presentation/server";
 import type {
   BalanceSheet,
@@ -155,7 +155,7 @@ export function curateBalanceSheetForLLM(
 
 function curateSection(section: {
   groups: SubtypeGroup[];
-  total: Prisma.Decimal;
+  total: Decimal;
 }): CuratedSection {
   return {
     total: formatBolivianAmount(section.total),

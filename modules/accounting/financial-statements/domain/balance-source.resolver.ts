@@ -1,7 +1,5 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 import { NotFoundError } from "@/modules/shared/domain/errors";
-
-type Decimal = Prisma.Decimal;
 
 // ── Tipos mínimos para el repositorio inyectado ──
 // El resolver recibe solo los métodos que necesita, no el repo completo.

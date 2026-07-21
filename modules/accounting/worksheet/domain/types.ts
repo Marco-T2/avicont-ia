@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 import type { AccountType } from "@/generated/prisma/enums";
 
 /**
@@ -19,8 +19,8 @@ import type { AccountType } from "@/generated/prisma/enums";
  */
 export type WorksheetMovementAggregation = {
   accountId: string;
-  totalDebit: Prisma.Decimal;
-  totalCredit: Prisma.Decimal;
+  totalDebit: Decimal;
+  totalCredit: Decimal;
   nature: "DEUDORA" | "ACREEDORA";
 };
 

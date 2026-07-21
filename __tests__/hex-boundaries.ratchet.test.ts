@@ -5,13 +5,16 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 130
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 120
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
- * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130 —
- * see the BASELINE comment on `accounting/presentation/validation.ts:R5` for
- * why that entry's sibling fix was reverted rather than landed). Turning the
- * lint gate red today would mean either
- * 130 fixes in one commit or 130 `eslint-disable`s — so instead this sentinel
+ * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
+ * the M2 Decimal-via-decimal.js paydown brought it to 120 — see the M2 R5
+ * comments in BASELINE below for the enum-import residue those files still
+ * carry. See also the BASELINE comment on
+ * `accounting/presentation/validation.ts:R5` for why that entry's sibling fix
+ * was reverted rather than landed). Turning the lint gate red today would
+ * mean either 120 fixes in one commit or 120 `eslint-disable`s — so instead
+ * this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
  * fails, loudly, demanding the baseline shrink. That second half is what makes
  * it a ratchet instead of a permanent allowlist that quietly rots into a rubber
@@ -49,10 +52,10 @@
  *
  * ── DESIGN DECISION 3: the baseline is a LIST, never a COUNT ──
  * `BASELINE` is a multiset of `<repo-relative-path>:<rule>` entries, sorted.
- * It is emphatically NOT `expect(violations).toBe(130)`. A scalar count lets
+ * It is emphatically NOT `expect(violations).toBe(120)`. A scalar count lets
  * you fix one violation and introduce a different one in the same commit while
  * the gate stays green — the debt would churn sideways forever at a constant
- * 130. Pinning identities makes every individual violation load-bearing.
+ * 120. Pinning identities makes every individual violation load-bearing.
  *
  * Entries REPEAT when one file violates one rule more than once (e.g.
  * `journals.service.ts:R2` appears 8 times — eight distinct restricted imports).
@@ -97,7 +100,7 @@
  *
  * ── SCOPE LIMIT, STATED HONESTLY ──
  * This sentinel is NOT wired into the CI lint gate and does not make `pnpm lint`
- * pass or fail. `pnpm lint` still reports all 130 as errors. This file's job is
+ * pass or fail. `pnpm lint` still reports all 120 as errors. This file's job is
  * to stop the number from growing while that gate stays off.
  */
 
@@ -125,7 +128,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 130 violations across 89 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 120 violations across 82 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -195,19 +198,17 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/domain/ports/__tests__/journal-ledger-query.port.contract.test.ts:R1",
   "modules/accounting/domain/ports/accounts-crud.port.ts:R5",
   "modules/accounting/equity-statement/application/make-equity-statement-service.ts:R2",
-  "modules/accounting/equity-statement/domain/equity-statement.types.ts:R5",
-  "modules/accounting/equity-statement/domain/ports/equity-statement-query.port.ts:R5",
   "modules/accounting/equity-statement/presentation/server.ts:R4",
   "modules/accounting/equity-statement/presentation/server.ts:R4",
   "modules/accounting/financial-statements/application/financial-statements.service.ts:R2",
   "modules/accounting/financial-statements/application/financial-statements.service.ts:R2",
   "modules/accounting/financial-statements/domain/balance-sheet.builder.ts:R5",
-  "modules/accounting/financial-statements/domain/balance-source.resolver.ts:R5",
   "modules/accounting/financial-statements/domain/income-statement.builder.ts:R5",
   "modules/accounting/financial-statements/domain/ports/account-subtype-label.port.ts:R5",
-  "modules/accounting/financial-statements/domain/ports/financial-statements-query.port.ts:R5",
-  "modules/accounting/financial-statements/domain/retained-earnings.calculator.ts:R5",
-  "modules/accounting/financial-statements/domain/types/financial-statements.types.ts:R5",
+  // 1 of the original 2 R5 entries here was Prisma.Decimal (closed by M2 —
+  // decimal.js is now the type source). The remaining entry is the
+  // AccountSubtype enum import from @/generated/prisma/enums — deferred (D1),
+  // NOT touched by M2.
   "modules/accounting/financial-statements/domain/types/financial-statements.types.ts:R5",
   "modules/accounting/initial-balance/application/make-initial-balance-service.ts:R2",
   "modules/accounting/initial-balance/domain/initial-balance.builder.ts:R5",
@@ -236,13 +237,15 @@ const BASELINE: ReadonlyArray<string> = [
   // fix (e.g. a small dedicated enum-only barrel, not the composition root).
   "modules/accounting/presentation/validation.ts:R5",
   "modules/accounting/trial-balance/application/make-trial-balance-service.ts:R2",
-  "modules/accounting/trial-balance/domain/trial-balance.types.ts:R5",
   "modules/accounting/trial-balance/presentation/server.ts:R4",
   "modules/accounting/trial-balance/presentation/server.ts:R4",
-  "modules/accounting/worksheet/domain/types.ts:R5",
+  // 1 of the original 2 R5 entries here was Prisma.Decimal (closed by M2).
+  // The remaining entry is the AccountType enum import from
+  // @/generated/prisma/enums — deferred (D1), NOT touched by M2.
   "modules/accounting/worksheet/domain/types.ts:R5",
   "modules/accounting/worksheet/domain/worksheet.builder.ts:R5",
-  "modules/accounting/worksheet/domain/worksheet.types.ts:R5",
+  // 1 of the original 2 R5 entries here was Prisma.Decimal (closed by M2).
+  // The remaining entry is the AccountType enum import — deferred (D1).
   "modules/accounting/worksheet/domain/worksheet.types.ts:R5",
   "modules/accounting/worksheet/presentation/server.ts:R4",
   "modules/accounting/worksheet/presentation/server.ts:R4",
@@ -263,7 +266,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/ai-agent/application/tools/parse-operation.ts:R2",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R1",
-  "modules/ai-agent/domain/prompts/balance-sheet-analysis.prompt.ts:R5",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R1",
   "modules/ai-agent/domain/prompts/income-statement-analysis.prompt.ts:R5",

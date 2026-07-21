@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 import type {
   TypedPatrimonyMovements,
   EquityAccountMetadata,
@@ -33,7 +33,7 @@ export interface EquityStatementQueryPort {
   getPatrimonioBalancesAt(
     orgId: string,
     cutoff: Date,
-  ): Promise<Map<string, Prisma.Decimal>>;
+  ): Promise<Map<string, Decimal>>;
 
   /**
    * Typed patrimony movements within [dateFrom, dateTo].
@@ -53,7 +53,7 @@ export interface EquityStatementQueryPort {
     orgId: string,
     dateFrom: Date,
     dateTo: Date,
-  ): Promise<Map<string, Prisma.Decimal>>;
+  ): Promise<Map<string, Decimal>>;
 
   /**
    * All patrimony accounts for the org with metadata for column mapping.

@@ -1,7 +1,7 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 
 // ── Alias local para Decimal ──
-export type Decimal = Prisma.Decimal;
+export type { Decimal };
 
 /**
  * Una fila visible en el Balance de Sumas y Saldos (REQ-2).
