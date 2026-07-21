@@ -1,5 +1,4 @@
 import type { Dispatch } from "../dispatch.entity";
-import type { DispatchDetail } from "../dispatch-detail.entity";
 import type { DispatchType } from "../value-objects/dispatch-type";
 import type { DispatchStatus } from "../value-objects/dispatch-status";
 import type { ComputedDetail } from "../compute-line-amounts";

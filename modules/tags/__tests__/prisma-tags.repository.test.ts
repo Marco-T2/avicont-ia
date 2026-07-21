@@ -48,7 +48,6 @@ describe("PrismaTagsRepository", () => {
   it("listByOrg delegates to prisma.tag.findMany scoped by organizationId, ordered by name", async () => {
     const findMany: AnySpy = vi.fn(async () => [makeRow()]);
     const db = makeFakeDb({ findMany });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
 
     const out = await repo.listByOrg("org-1");
@@ -67,7 +66,6 @@ describe("PrismaTagsRepository", () => {
       makeRow({ slug: "b", id: "tb" }),
     ]);
     const db = makeFakeDb({ findMany });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
 
     const out = await repo.findBySlugs("org-1", ["a", "b", "z"]);
@@ -81,7 +79,6 @@ describe("PrismaTagsRepository", () => {
   it("findBySlugs returns [] without hitting Prisma when slugs is empty", async () => {
     const findMany: AnySpy = vi.fn(async () => []);
     const db = makeFakeDb({ findMany });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
 
     const out = await repo.findBySlugs("org-1", []);
@@ -95,7 +92,6 @@ describe("PrismaTagsRepository", () => {
       makeRow({ id: "tx", slug: "contabilidad-avanzada", name: "Contabilidad Avanzada" }),
     );
     const db = makeFakeDb({ create });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
 
     const out = await repo.create({
@@ -117,7 +113,6 @@ describe("PrismaTagsRepository", () => {
   it("attachToDocument inserts N rows via documentTag.createMany with skipDuplicates", async () => {
     const createMany: AnySpy = vi.fn(async () => ({ count: 2 }));
     const db = makeFakeDb({ createMany });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
 
     await repo.attachToDocument("doc-1", ["t1", "t2"]);
@@ -134,7 +129,6 @@ describe("PrismaTagsRepository", () => {
   it("attachToDocument is a no-op when tagIds is empty (no Prisma call)", async () => {
     const createMany: AnySpy = vi.fn(async () => ({ count: 0 }));
     const db = makeFakeDb({ createMany });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const repo = new PrismaTagsRepository(db as any);
 
     await repo.attachToDocument("doc-1", []);

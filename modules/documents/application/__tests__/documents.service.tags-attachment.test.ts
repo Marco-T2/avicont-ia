@@ -122,7 +122,6 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
     const blob = new StubBlobStorage();
     const tagsRepo = buildTagsRepo();
     const service = new DocumentsService(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
       ragIndexingStub,
@@ -150,7 +149,6 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
     const blob = new StubBlobStorage();
     const tagsRepo = buildTagsRepo();
     const service = new DocumentsService(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
       ragIndexingStub,
@@ -175,7 +173,6 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
     const blob = new StubBlobStorage();
     const tagsRepo = buildTagsRepo();
     const service = new DocumentsService(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
       ragIndexingStub,
@@ -204,7 +201,6 @@ describe("DocumentsService.upload — tags attachment (REQ-45)", () => {
     });
 
     const service = new DocumentsService(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       repo as any,
       blob,
       ragIndexingStub,

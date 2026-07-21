@@ -1,4 +1,7 @@
-import type { ReceivableStatus, PayableStatus } from "@/generated/prisma/client";
+// Domain-owned status mirrors — receivables/payables each own their status VO
+// (canonical, with transition rules); accounting only needs the type vocabulary.
+import type { ReceivableStatus } from "@/modules/receivables/domain/value-objects/receivable-status";
+import type { PayableStatus } from "@/modules/payables/domain/value-objects/payable-status";
 
 export function computeReceivableStatus(
   paid: number,

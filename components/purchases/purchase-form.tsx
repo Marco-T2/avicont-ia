@@ -37,7 +37,6 @@ import ContactSelector from "@/components/contacts/contact-selector";
 import { evaluateExpression } from "@/lib/evaluate-expression";
 import { useOrgRole } from "@/components/common/use-org-role";
 import type { PurchaseWithDetails } from "@/modules/purchase/presentation/dto/purchase-with-details";
-import { isFiscalPeriodOpen } from "@/lib/fiscal-period.utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { todayLocal, formatDateBO } from "@/lib/date-utils";
 import { formatBs } from "@/lib/format-currency";
@@ -167,7 +166,7 @@ interface PurchaseFormProps {
 export default function PurchaseForm({
   orgSlug,
   purchaseType,
-  contacts,
+  contacts: _contacts,
   periods,
   productTypes,
   expenseAccounts = [],

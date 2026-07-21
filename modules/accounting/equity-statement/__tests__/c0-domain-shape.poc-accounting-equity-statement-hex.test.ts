@@ -48,7 +48,6 @@ function readDomainFile(relative: string): string {
 const PRISMA_RUNTIME_RE =
   /^\s*import\s+(?!type\s)\{?[^}]*\}?\s*from\s+["']@\/generated\/prisma\/client["']/m;
 const SERVER_ONLY_RE = /import\s+["']server-only["']/m;
-const INFRA_IMPORT_RE = /from\s+["']@\/modules\/[^"']+\/infrastructure/m;
 const FS_PRES_IMPORT_RE =
   /from\s+["']@\/modules\/accounting\/financial-statements\/presentation/m;
 const FS_ANY_IMPORT_RE =

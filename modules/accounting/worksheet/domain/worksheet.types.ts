@@ -1,8 +1,8 @@
-import type { Prisma } from "@/generated/prisma/client";
-import type { AccountType } from "@/generated/prisma/enums";
+import type { Decimal } from "decimal.js";
+import type { AccountType } from "@/modules/accounting/domain/value-objects/account-classification";
 
 // ── Alias local para Decimal ──
-export type Decimal = Prisma.Decimal;
+export type { Decimal };
 
 /**
  * Una fila visible en la Hoja de Trabajo (REQ-2).

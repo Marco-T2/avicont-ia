@@ -12,7 +12,7 @@
 
 import { describe, it, expect, vi } from "vitest";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
-import type { JournalEntryWithLines } from "@/modules/accounting/presentation/dto/journal.types";
+import type { JournalEntryWithLines } from "@/modules/accounting/domain/journal.types";
 
 // ── Helpers ──
 

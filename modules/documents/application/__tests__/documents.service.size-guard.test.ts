@@ -103,7 +103,6 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
     const repo = buildRepo();
     const blob = new StubBlobStorage();
     const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
     const file = new File([new Uint8Array(SIX_MB)], "big.docx", { type: DOCX_MIME });
@@ -123,7 +122,6 @@ describe("DocumentsService.upload — 5MB extraction size guard (RESOLVED-3)", (
   it("DOCX exactly at 5MB threshold still parses (boundary: only strictly > triggers guard)", async () => {
     const repo = buildRepo();
     const blob = new StubBlobStorage();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
     const file = new File([new Uint8Array(FIVE_MB)], "edge.docx", { type: DOCX_MIME });

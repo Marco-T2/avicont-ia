@@ -40,7 +40,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
 const ROOT = resolve(__dirname, "../../../..");
@@ -50,19 +50,9 @@ function read(rel: string): string {
 }
 
 describe("POC nuevo contacts C4 — wholesale delete features/contacts/* atomic single batch", () => {
-  // ── Section A: EXISTENCE delete features/contacts/* ──
-
-  it("Test 1: features/contacts/index.ts NO existe (wholesale delete target)", () => {
-    expect(existsSync(resolve(ROOT, "features/contacts/index.ts"))).toBe(false);
-  });
-
-  it("Test 2: features/contacts/contacts.types.ts NO existe (wholesale delete target)", () => {
-    expect(existsSync(resolve(ROOT, "features/contacts/contacts.types.ts"))).toBe(false);
-  });
-
-  it("Test 3: features/contacts/server.ts NO existe (wholesale delete target legacy shim ContactsService class)", () => {
-    expect(existsSync(resolve(ROOT, "features/contacts/server.ts"))).toBe(false);
-  });
+  // ── Section A REMOVED: Tests 1-3 asserted `!existsSync(features/contacts/*)`.
+  // Subsumed by α1 in __tests__/feature-boundaries.test.ts, which asserts the
+  // whole `features/` directory does not exist. Test numbering is NOT shifted.
 
   // ── Section B: Opción A línea 13 DROP ──
 
@@ -135,27 +125,9 @@ describe("POC nuevo contacts C4 — wholesale delete features/contacts/* atomic 
     expect(src).not.toMatch(/from\s*["']@\/features\/contacts["']/);
   });
 
-  // ── Section D: 2 ai-agent tests TYPE swap Sub-B inline ReturnType<typeof makeContactsService> ──
-
-  // tools.find-contact.test.ts
-  // Deleted at poc-ai-agent-hex C5 (features/ai-agent/__tests__/ wholesale delete).
-  it("Test 15: features/ai-agent/__tests__/tools.find-contact.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — Sub-B cast invariant superseded by deletion)", () => {
-    const { existsSync, join } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
-  });
-  it("Test 16: features/ai-agent/__tests__/tools.find-contact.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
-    const { existsSync } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.find-contact.test.ts"))).toBe(false);
-  });
-
-  // tools.parse-operation.test.ts
-  // Deleted at poc-ai-agent-hex C5 (features/ai-agent/__tests__/ wholesale delete).
-  it("Test 17: features/ai-agent/__tests__/tools.parse-operation.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — Sub-B cast invariant superseded by deletion)", () => {
-    const { existsSync } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
-  });
-  it("Test 18: features/ai-agent/__tests__/tools.parse-operation.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5 — legacy import invariant superseded by deletion)", () => {
-    const { existsSync } = require("fs"), p = require("path");
-    expect(existsSync(p.join(process.cwd(), "features/ai-agent/__tests__/tools.parse-operation.test.ts"))).toBe(false);
-  });
+  // ── Section D REMOVED: Tests 15-18 asserted `!existsSync` on two files under
+  // features/ai-agent/__tests__/. Subsumed by α1 in
+  // __tests__/feature-boundaries.test.ts (`features/` does not exist at all).
+  // They were also duplicated in pairs: 15≡16 and 17≡18 were byte-identical
+  // assertions differing only in their description string.
 });

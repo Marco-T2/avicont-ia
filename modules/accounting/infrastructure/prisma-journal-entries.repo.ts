@@ -12,8 +12,8 @@ import type {
   JournalFilters,
   JournalLineInput,
   ReferenceNumberEntry,
-} from "@/modules/accounting/presentation/dto/journal.types";
-import type { DateRangeFilter } from "@/modules/accounting/presentation/dto/ledger.types";
+} from "@/modules/accounting/domain/journal.types";
+import type { DateRangeFilter } from "@/modules/accounting/domain/ledger.types";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import type { JournalLine } from "@/modules/accounting/domain/journal-line.entity";
 import { FINALIZED_JE_STATUSES } from "@/modules/accounting/shared/infrastructure/journal-status.sql";
@@ -29,7 +29,7 @@ import type {
   PaginatedResult,
   PaginationOptions,
 } from "@/modules/shared/domain/value-objects/pagination";
-import type { LedgerOrgMetadata } from "@/modules/accounting/presentation/dto/ledger.types";
+import type { LedgerOrgMetadata } from "@/modules/accounting/domain/ledger.types";
 import { hydrateJournalFromRow } from "./journal-mapping";
 
 /**

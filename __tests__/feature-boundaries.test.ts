@@ -342,6 +342,45 @@ function findForbiddenImports(): string[] {
 }
 
 describe("Feature Module Boundaries — features/ is retired", () => {
+  /**
+   * WHAT α1 ABSORBED — do NOT re-add per-feature absence sentinels.
+   *
+   * A family of per-file sentinels used to assert `!existsSync("features/<x>")`
+   * one path at a time, scattered across module POC shape tests. Every one of
+   * them is implied by this single assertion: if `features/` does not exist, no
+   * path beneath it can. They were deleted as redundant, NOT because coverage
+   * was dropped. Removed here, by origin file:
+   *
+   *   modules/audit/.../c5-wholesale-delete-shape.poc-audit.test.ts
+   *     α40–α46 — features/audit/{server,index,audit.service,audit.repository,
+   *               audit.types,audit.classifier,audit.validation}.ts
+   *   modules/org-profile/.../c5-wholesale-delete-shape.poc-org-profile-hex.test.ts
+   *     α47–α52 — features/org-profile/{server,index,org-profile.types,
+   *               org-profile.validation,org-profile.service,org-profile.repository}.ts
+   *   modules/rag/.../poc-quick-cleanup-rag-shape.test.ts
+   *     α06–α10 — features/documents/rag/*
+   *     α15     — features/ai-agent/__tests__/agent.context.dispatch.test.ts
+   *   modules/contacts/.../c4-cutover-wholesale-delete-shape.poc-nuevo-contacts.test.ts
+   *     Tests 1–3   — features/contacts/*
+   *     Tests 15–18 — features/ai-agent/__tests__/tools.{find-contact,parse-operation}.test.ts
+   *   modules/documents/.../c3-presentation-shape.poc-documents-hex.test.ts
+   *     α35–α36 — features/documents/server.ts (both, same path)
+   *   modules/mortality/.../c1-cutover-shape.poc-nuevo-mortality.test.ts
+   *     Test 9  — features/mortality/ directory
+   *   modules/org-profile/.../c4-cross-feature-cutover-shape.poc-org-profile-hex.test.ts
+   *     α42     — features/accounting/journal.service.ts
+   *   modules/document-signature-config/.../c4-cross-feature-cutover-shape....test.ts
+   *     α39     — features/accounting/journal.service.ts
+   *
+   * 31 assertions, all strictly weaker than α1. What was deliberately KEPT and
+   * is NOT covered here: every sentinel that reads SOURCE CONTENT rather than
+   * the filesystem — the "zero production source imports from @/features/<x>"
+   * scanners and the per-component "does NOT import from @/features/<x>"
+   * checks. Those constrain files under app/, components/ and modules/, which
+   * α1 says nothing about. α2 covers that surface for production code, but α2
+   * excludes tests by design, so the per-file checks are not redundant with it
+   * either. Do not delete them on the strength of this note.
+   */
   it("α1: the features/ directory does not exist at the repo root", () => {
     expect(
       fs.existsSync(FEATURES_DIR),

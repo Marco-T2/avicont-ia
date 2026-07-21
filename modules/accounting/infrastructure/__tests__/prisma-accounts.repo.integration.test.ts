@@ -11,7 +11,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 import { prisma } from "@/lib/prisma";
 import { PrismaAccountsRepo } from "../prisma-accounts.repo";
 import type { AccountDef } from "@/prisma/seeds/chart-of-accounts";
-import type { ResolvedCreateAccountData } from "@/modules/accounting/presentation/dto/accounts.types";
+import type { ResolvedCreateAccountData } from "@/modules/accounting/domain/accounts.types";
 
 let testOrgId: string;
 let testUserId: string;
@@ -326,9 +326,8 @@ describe("create", () => {
       isContraAccount: false,
     };
     const repo = new PrismaAccountsRepo();
-    let created: Awaited<ReturnType<typeof repo.create>>;
     await prisma.$transaction(async (tx) => {
-      created = await repo.create(testOrgId, data, tx);
+      await repo.create(testOrgId, data, tx);
     });
     const found = await prisma.account.findFirst({ where: { code: "1.1.02", organizationId: testOrgId } });
     expect(found).not.toBeNull();

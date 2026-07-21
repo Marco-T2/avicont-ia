@@ -7,6 +7,7 @@ import { makeOperationalDocTypeService } from "@/modules/operational-doc-type/pr
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeOrgSettingsService } from "@/modules/org-settings/presentation/server";
 import { fetchShortcutSource } from "@/modules/payment/application/helpers/fetch-shortcut-source";
+import { makeShortcutSourceQueryPort } from "@/modules/payment/presentation/server";
 import type { ShortcutInitialValues } from "@/modules/payment/application/types/shortcut-initial-values";
 import PaymentForm from "@/components/payments/payment-form";
 
@@ -39,12 +40,15 @@ export default async function NewPaymentPage({
   let initialValues: ShortcutInitialValues | undefined;
   if (saleId || purchaseId) {
     if (type === "COBRO" || type === "PAGO") {
-      const shortcut = await fetchShortcutSource({
-        orgId,
-        type,
-        saleId,
-        purchaseId,
-      });
+      const shortcut = await fetchShortcutSource(
+        {
+          orgId,
+          type,
+          saleId,
+          purchaseId,
+        },
+        { query: makeShortcutSourceQueryPort() },
+      );
       if (shortcut.kind === "not-found") {
         // Source comprobante does not exist — render the framework's 404.
         notFound();

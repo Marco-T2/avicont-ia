@@ -31,7 +31,7 @@ import {
 } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
 import { formatDateBO } from "@/lib/date-utils";
-import type { ContactLedgerEntry } from "@/modules/accounting/presentation/dto/ledger.types";
+import type { ContactLedgerEntry } from "@/modules/accounting/domain/ledger.types";
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 

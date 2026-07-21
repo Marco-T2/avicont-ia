@@ -20,8 +20,8 @@ import type {
   CorrelationAuditResult,
   JournalEntryWithLines,
   JournalFilters,
-} from "../../../presentation/dto/journal.types";
-import type { DateRangeFilter } from "../../../presentation/dto/ledger.types";
+} from "../../../domain/journal.types";
+import type { DateRangeFilter } from "../../../domain/ledger.types";
 import type {
   PaginatedResult,
   PaginationOptions,

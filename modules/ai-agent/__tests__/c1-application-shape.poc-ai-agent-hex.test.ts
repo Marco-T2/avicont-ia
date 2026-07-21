@@ -57,7 +57,6 @@ function readAppFile(relative: string): string {
 import type { LLMProviderPort } from "../domain/ports/llm-provider.port";
 import type { ChatMemoryPort } from "../domain/ports/chat-memory.port";
 import type { AgentContextReaderPort } from "../domain/ports/agent-context-reader.port";
-import type { AgentRateLimitPort } from "../domain/ports/agent-rate-limit.port";
 import type { AccountsLookupPort } from "../domain/ports/accounts-lookup.port";
 import type { RagPort } from "../domain/ports/rag.port";
 
@@ -80,13 +79,6 @@ function makeInMemoryAgentContextReader(): AgentContextReaderPort {
     findActiveLotsByMember: async () => [],
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
-  };
-}
-
-function makeInMemoryRateLimitPort(): AgentRateLimitPort {
-  return {
-    check: async () => ({ allowed: true }),
-    record: async () => {},
   };
 }
 

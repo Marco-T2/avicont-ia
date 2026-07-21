@@ -102,7 +102,6 @@ describe("DocumentsService.upload — extractor failure rollback (REQ-39)", () =
     mockConvertToMarkdown.mockRejectedValue(new Error("DOCX zip is invalid"));
     const repo = buildRepo();
     const blob = new StubBlobStorage();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
     const file = new File([new Uint8Array(2048)], "corrupt.docx", {

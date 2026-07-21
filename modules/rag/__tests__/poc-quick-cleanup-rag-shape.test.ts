@@ -67,31 +67,10 @@ describe("POSITIVE-presence: new home files exist", () => {
 });
 
 // ---------------------------------------------------------------------------
-// α06–α10: NEGATIVE-absence — old home file absence
-// ---------------------------------------------------------------------------
-
-describe("NEGATIVE-absence: old home files absent", () => {
-  it("α06: features/documents/rag/chunking.ts absent", () => {
-    expect(existsSync(join(ROOT, "features/documents/rag/chunking.ts"))).toBe(false);
-  });
-
-  it("α07: features/documents/rag/embedding.service.ts absent", () => {
-    expect(existsSync(join(ROOT, "features/documents/rag/embedding.service.ts"))).toBe(false);
-  });
-
-  it("α08: features/documents/rag/rag.service.ts absent", () => {
-    expect(existsSync(join(ROOT, "features/documents/rag/rag.service.ts"))).toBe(false);
-  });
-
-  it("α09: features/documents/rag/vector.repository.ts absent", () => {
-    expect(existsSync(join(ROOT, "features/documents/rag/vector.repository.ts"))).toBe(false);
-  });
-
-  it("α10: features/documents/rag/server.ts absent", () => {
-    expect(existsSync(join(ROOT, "features/documents/rag/server.ts"))).toBe(false);
-  });
-});
-
+// α06–α10 REMOVED: NEGATIVE-absence of features/documents/rag/* is subsumed by
+// α1 in __tests__/feature-boundaries.test.ts (`features/` does not exist at
+// all). Ids are NOT renumbered. α11–α14 below assert import CONTENT of files
+// under modules/ and are NOT subsumed — they stay.
 // ---------------------------------------------------------------------------
 // α11–α12: agent.context.ts consumer import
 // ---------------------------------------------------------------------------
@@ -136,25 +115,19 @@ describe("documents.service.ts consumer import", () => {
 });
 
 // ---------------------------------------------------------------------------
-// α15: agent.context.dispatch.test.ts retirement
+// α15–α16: retired ids (no live assertions; describe block removed)
 // ---------------------------------------------------------------------------
-
-describe("agent.context.dispatch.test.ts retirement", () => {
-  // features/ai-agent/__tests__/agent.context.dispatch.test.ts was deleted at poc-ai-agent-hex C5.
-  // The rag invariant is now covered by legacy-rag.adapter.ts (REQ-004 insulation point).
-  // vi.mock for rag in modules/ai-agent is covered by modules/ai-agent __tests__ sentinel c2.
-  it("α15: features/ai-agent/__tests__/agent.context.dispatch.test.ts NO LONGER EXISTS (deleted wholesale at poc-ai-agent-hex C5)", () => {
-    expect(existsSync(join(ROOT, "features/ai-agent/__tests__/agent.context.dispatch.test.ts"))).toBe(false);
-  });
-
-  // α16 REMOVED at poc-rag-hex C3 — it was a byte-equivalent duplicate of α11:
-  // same file read, same `importFrom("@/modules/rag/presentation/server")`
-  // matcher, same expected `true`. Two ids asserting one fact inflate the
-  // apparent lock count without adding discrimination — both went RED or GREEN
-  // together on every mutation. α11 is kept because it sits with its NEGATIVE
-  // counterpart α12 on the same file, which reads as a coherent pair.
-  // Ids are NOT renumbered: α17/α18 are cited by id in the C2 deviation record.
-});
+// α15 REMOVED: `!existsSync(features/ai-agent/__tests__/agent.context.dispatch.test.ts)`
+// is subsumed by α1 in __tests__/feature-boundaries.test.ts. The rag invariant it
+// stood in for is covered by legacy-rag.adapter.ts (α11/α12 above).
+//
+// α16 REMOVED at poc-rag-hex C3 — it was a byte-equivalent duplicate of α11:
+// same file read, same `importFrom("@/modules/rag/presentation/server")`
+// matcher, same expected `true`. Two ids asserting one fact inflate the
+// apparent lock count without adding discrimination — both went RED or GREEN
+// together on every mutation. α11 is kept because it sits with its NEGATIVE
+// counterpart α12 on the same file, which reads as a coherent pair.
+// Ids are NOT renumbered: α17/α18 are cited by id in the C2 deviation record.
 
 // Multi-line-aware vi.mock matcher — `vi.mock(` and its specifier may sit on
 // separate lines, so a `^vi\.mock\("spec` negative was evadable by a newline.

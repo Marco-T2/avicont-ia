@@ -26,7 +26,6 @@ vi.hoisted(() => {
 vi.mock("@google/generative-ai", () => ({
   // Must use regular function (not arrow) — arrow functions are not constructable.
   // gemini-llm.adapter.ts calls `new GoogleGenerativeAI(apiKey)` at module load.
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   GoogleGenerativeAI: vi.fn().mockImplementation(function (this: any) {
     this.getGenerativeModel = vi.fn();
   }),

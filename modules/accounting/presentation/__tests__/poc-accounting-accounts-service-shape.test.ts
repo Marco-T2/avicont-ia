@@ -55,8 +55,11 @@ const IMPORT_SENTINELS = [
     regex: /^import\s+type\s+\{\s*AccountsCrudPort\s*\}\s+from\s+"\.\.\/domain\/ports\/accounts-crud\.port"/m,
   },
   {
-    label: "DTO types from hex presentation (CreateAccountInput)",
-    regex: /^import\s+type\s+\{[^}]*CreateAccountInput[^}]*\}\s+from\s+"@\/modules\/accounting\/presentation\/dto\/accounts\.types"/m,
+    // NOTE (hex R1/R2 debt paydown): accounts.types moved from presentation/dto
+    // to domain/ (it describes domain shapes, consumed inward). Sentinel updated
+    // to the new domain/ location.
+    label: "DTO types from hex domain (CreateAccountInput)",
+    regex: /^import\s+type\s+\{[^}]*CreateAccountInput[^}]*\}\s+from\s+"@\/modules\/accounting\/domain\/accounts\.types"/m,
   },
 ] as const;
 

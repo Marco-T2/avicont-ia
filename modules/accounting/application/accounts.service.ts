@@ -30,7 +30,7 @@ import type {
   ResolvedCreateAccountData,
   UpdateAccountInput,
   AccountWithChildren,
-} from "@/modules/accounting/presentation/dto/accounts.types";
+} from "@/modules/accounting/domain/accounts.types";
 import type { AccountsCrudPort } from "../domain/ports/accounts-crud.port";
 
 // ── Inline constants ───────────────────────────────────────────────────────

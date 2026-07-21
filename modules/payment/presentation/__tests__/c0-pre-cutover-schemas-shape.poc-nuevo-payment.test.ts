@@ -263,10 +263,6 @@ const PAYMENTS_BY_ID_ROUTE = path.join(
   REPO_ROOT,
   "app/api/organizations/[orgSlug]/payments/[paymentId]/route.ts",
 );
-const PAYMENTS_ALLOCATIONS_ROUTE = path.join(
-  REPO_ROOT,
-  "app/api/organizations/[orgSlug]/payments/[paymentId]/allocations/route.ts",
-);
 
 // ── Regex patterns ───────────────────────────────────────────────────────────
 

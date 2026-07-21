@@ -1,4 +1,4 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 import type { AccountMetadata, MovementAggregation } from "../types/financial-statements.types";
 
 // ── Tipos de retorno expuestos por el port ──
@@ -12,7 +12,7 @@ export type FiscalPeriodRow = {
 
 export type AccountBalanceRow = {
   accountId: string;
-  balance: Prisma.Decimal;
+  balance: Decimal;
 };
 
 /**

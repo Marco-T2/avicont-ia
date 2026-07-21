@@ -3,8 +3,8 @@ import type {
   CorrelationAuditResult,
   JournalEntryWithLines,
   JournalFilters,
-} from "@/modules/accounting/presentation/dto/journal.types";
-import type { DateRangeFilter } from "@/modules/accounting/presentation/dto/ledger.types";
+} from "@/modules/accounting/domain/journal.types";
+import type { DateRangeFilter } from "@/modules/accounting/domain/ledger.types";
 import type {
   PaginatedResult,
   PaginationOptions,

@@ -1,9 +1,13 @@
 import { z } from "zod";
+// Domain-owned enum mirrors (leaf import graph — the earlier attempt to route
+// these through composition-root.ts caused a TDZ crash, see the D1 notes in
+// __tests__/hex-boundaries.ratchet.test.ts). Structurally identical to the
+// Prisma enums; drift is caught by enum-domain-mirror.sync.test.ts.
 import {
   AccountType,
   AccountSubtype,
-  JournalEntryStatus,
-} from "@/generated/prisma/client";
+} from "@/modules/accounting/domain/value-objects/account-classification";
+import { JOURNAL_ENTRY_STATUSES } from "@/modules/accounting/domain/value-objects/journal-entry-status";
 
 export const createAccountSchema = z
   .object({
@@ -137,7 +141,7 @@ export const journalFiltersSchema = z.object({
   dateTo: z.coerce.date({ message: "Fecha hasta inválida" }).optional(),
   periodId: z.string().min(1, "ID de periodo inválido").optional(),
   voucherTypeId: z.string().min(1, "ID de tipo de comprobante inválido").optional(),
-  status: z.nativeEnum(JournalEntryStatus, { message: "Estado inválido" }).optional(),
+  status: z.enum(JOURNAL_ENTRY_STATUSES, { message: "Estado inválido" }).optional(),
 });
 
 /**

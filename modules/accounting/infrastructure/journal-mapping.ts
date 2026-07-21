@@ -1,4 +1,4 @@
-import type { JournalEntryWithLines } from "@/modules/accounting/presentation/dto/journal.types";
+import type { JournalEntryWithLines } from "@/modules/accounting/domain/journal.types";
 import { Money } from "@/modules/shared/domain/value-objects/money";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
 import { JournalLine } from "@/modules/accounting/domain/journal-line.entity";

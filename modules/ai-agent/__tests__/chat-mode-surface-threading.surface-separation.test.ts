@@ -85,9 +85,7 @@ describe("SCN-4.1: chat mode honors surface gate (sidebar-qa × member → 3 too
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
     };
     await executeChatMode(deps, {
@@ -111,9 +109,7 @@ describe("SCN-4.2: chat mode no_tools path triggered by surface×role with empty
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
     };
     const result = await executeChatMode(deps, {
@@ -138,9 +134,7 @@ describe("SCN-6.1: logStructured agent_invocation includes surface field", () =>
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
     };
     await executeChatMode(deps, {
@@ -171,9 +165,7 @@ describe("SCN-6.2: surface appears in telemetry on error path too", () => {
       chatMemory: makeChatMemory(),
       contextReader: makeContextReader(),
       rag: makeRag(),
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       lotInquiry: noopInquiry as any,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       pricingService: pricingFake as any,
     };
     await executeChatMode(deps, {

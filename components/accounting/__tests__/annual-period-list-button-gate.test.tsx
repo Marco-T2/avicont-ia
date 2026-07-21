@@ -140,27 +140,6 @@ function buildGroup(
   };
 }
 
-function getYearCloseButton(headerRowYear: number): HTMLElement | null {
-  // The year-close button is rendered in the year body header row
-  // (NOT the accordion trigger). Exclude accordion triggers + Cerrar
-  // per-period buttons; match year-close button by its known label prefixes.
-  const buttons = screen.queryAllByRole("button");
-  return (
-    buttons.find((b) => {
-      if (b.getAttribute("data-slot") === "accordion-trigger") return false;
-      const txt = b.textContent ?? "";
-      return (
-        txt.includes(`Cerrar la gestión ${headerRowYear}`) ||
-        txt.includes("Año cerrado") ||
-        txt.includes("Falta cerrar meses") ||
-        txt.includes("Resolvé los pendientes") ||
-        txt.includes("Asientos no cuadran") ||
-        txt.includes("Resolvé borradores")
-      );
-    }) ?? null
-  );
-}
-
 describe("AnnualPeriodList — REQ-7.2 year-close button gate", () => {
   it("CLOSED FY → button shows 'Año cerrado el {date}' and is disabled", () => {
     const periodsByYear: PeriodsByYear = [

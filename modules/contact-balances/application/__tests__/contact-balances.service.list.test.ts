@@ -154,7 +154,6 @@ describe("ContactBalancesService.listContactsWithOpenBalance", () => {
   it("T5 — invalid type → ValidationError", async () => {
     const svc = build();
     await expect(
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       svc.listContactsWithOpenBalance(ORG, "INVALID" as any),
     ).rejects.toBeInstanceOf(ValidationError);
   });

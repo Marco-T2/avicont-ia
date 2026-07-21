@@ -236,7 +236,7 @@ const DISPATCH_TYPE_LABEL: Record<string, string> = {
 export default function DispatchForm({
   orgSlug,
   dispatchType,
-  contacts,
+  contacts: _contacts,
   periods,
   productTypes,
   roundingThreshold,

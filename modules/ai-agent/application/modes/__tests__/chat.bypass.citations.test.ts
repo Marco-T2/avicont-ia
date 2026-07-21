@@ -53,9 +53,7 @@ function makeDeps(rag: RagPort, llm: LLMProviderPort) {
     findRecentExpenses: async () => [],
     countJournalEntries: async () => 0,
   };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const noopInquiry: any = { list: async () => [] };
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pricingFake: any = { calculateLotCost: async () => ({}) };
   return {
     llmProvider: llm,

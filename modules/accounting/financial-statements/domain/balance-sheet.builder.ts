@@ -1,4 +1,4 @@
-import { AccountSubtype } from "@/generated/prisma/enums";
+import { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 // R5-pragmatic: domain-to-domain cross-feature import is permitted (R1 governs
 // cross-LAYER, not cross-feature). modules/accounting/domain/account-subtype.utils
 // is the canonical home for formatSubtypeLabel (features/accounting/account-subtype.utils

@@ -18,7 +18,7 @@ import {
   MissingOrgNameError,
   type LedgerPdfOptions,
 } from "../infrastructure/exporters/ledger/ledger-pdf.exporter";
-import type { LedgerEntry } from "../presentation/dto/ledger.types";
+import type { LedgerEntry } from "../domain/ledger.types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

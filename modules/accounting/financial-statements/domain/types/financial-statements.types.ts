@@ -1,5 +1,5 @@
-import type { Prisma } from "@/generated/prisma/client";
-import type { AccountSubtype } from "@/generated/prisma/enums";
+import type { Decimal } from "decimal.js";
+import type { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 
 // ── Tipos para el estilo QuickBooks (PR1) ──
 
@@ -42,7 +42,7 @@ export type SemanticRowClass =
   | "total-row";
 
 // Alias local para Decimal — se usa en todo el pipeline sin conversión a number
-export type Decimal = Prisma.Decimal;
+export type { Decimal };
 
 // ── Grupo de cuentas agrupadas por subtipo ──
 export type SubtypeGroup = {

@@ -4,7 +4,7 @@ import type { DispatchType as PrismaDispatchType, DispatchStatus as PrismaDispat
 import { prisma } from "@/lib/prisma";
 import { toNoonUtc } from "@/lib/date-utils";
 import { Dispatch, type DispatchProps } from "../domain/dispatch.entity";
-import { DispatchDetail, type DispatchDetailProps } from "../domain/dispatch-detail.entity";
+import { DispatchDetail } from "../domain/dispatch-detail.entity";
 import { ReceivableSummary } from "../domain/value-objects/receivable-summary";
 import { PaymentAllocationSummary } from "../domain/value-objects/payment-allocation-summary";
 import type { DispatchType } from "../domain/value-objects/dispatch-type";

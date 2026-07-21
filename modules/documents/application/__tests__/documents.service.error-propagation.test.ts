@@ -137,7 +137,6 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4) — h
     it("happy path: parses PDF, creates document, indexes embeddings", async () => {
       const repo = buildRepo();
       const blob = new StubBlobStorage();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
       const result = await service.upload(
@@ -166,7 +165,6 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4) — h
       });
       const repo = buildRepo();
       const blob = new StubBlobStorage();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
       await expect(
@@ -191,7 +189,6 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4) — h
       mockIndexDocument.mockRejectedValue(new Error("Embedding provider down"));
       const repo = buildRepo();
       const blob = new StubBlobStorage();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
       await expect(
@@ -221,7 +218,6 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4) — h
         user: { name: "Tester" },
       });
       const blob = new StubBlobStorage();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
       await expect(
@@ -251,7 +247,6 @@ describe("DocumentsService.upload — error-handling boundary (Audit H #4) — h
       });
       const repo = buildRepo();
       const blob = new StubBlobStorage();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const service = new DocumentsService(repo as any, blob, ragIndexingStub);
 
       const result = await service.upload(

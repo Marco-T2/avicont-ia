@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/select";
 import { CheckCircle, AlertTriangle, Loader2 } from "lucide-react";
 import type { VoucherTypeCfg } from "@/generated/prisma/client";
-import type { CorrelationAuditResult, CorrelationGap } from "@/modules/accounting/presentation/dto/journal.types";
+import type { CorrelationAuditResult, CorrelationGap } from "@/modules/accounting/domain/journal.types";
 
 interface CorrelationAuditViewProps {
   orgSlug: string;

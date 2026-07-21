@@ -66,11 +66,8 @@ function makeDeps() {
     rateLimit,
     accountsLookup,
     rag,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     lotInquiry: noopInquiry as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pricingService: pricingFake as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 

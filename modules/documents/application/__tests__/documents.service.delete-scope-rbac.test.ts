@@ -90,7 +90,6 @@ const ragIndexingStub: DocumentIndexingPort = {
 describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () => {
   it("member trying to delete ACCOUNTING doc: throws ForbiddenError, no RAG nor row delete", async () => {
     const repo = buildRepoWithDoc({ role: "member", scope: "ACCOUNTING" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await expect(service.delete(DOC_ID, CLERK_USER_ID)).rejects.toThrow(
@@ -102,7 +101,6 @@ describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () =>
 
   it("cobrador trying to delete FARM doc: throws ForbiddenError", async () => {
     const repo = buildRepoWithDoc({ role: "cobrador", scope: "FARM" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await expect(service.delete(DOC_ID, CLERK_USER_ID)).rejects.toThrow(
@@ -113,7 +111,6 @@ describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () =>
 
   it("admin deleting ACCOUNTING doc: succeeds (RAG + row delete fire)", async () => {
     const repo = buildRepoWithDoc({ role: "admin", scope: "ACCOUNTING" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.delete(DOC_ID, CLERK_USER_ID);
@@ -124,7 +121,6 @@ describe("DocumentsService.delete — RAG scope RBAC by caller role (C1)", () =>
 
   it("member deleting FARM doc (allowed by RAG_SCOPES): succeeds", async () => {
     const repo = buildRepoWithDoc({ role: "member", scope: "FARM" });
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const service = new DocumentsService(repo as any, new StubBlobStorage(), ragIndexingStub);
 
     await service.delete(DOC_ID, CLERK_USER_ID);

@@ -1,4 +1,4 @@
-import type { AccountSubtype } from "@/generated/prisma/client";
+import type { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 import type DecimalJs from "decimal.js";
 
 /**

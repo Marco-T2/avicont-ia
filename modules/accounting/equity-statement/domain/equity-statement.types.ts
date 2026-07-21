@@ -1,6 +1,6 @@
-import type { Prisma } from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
 
-export type Decimal = Prisma.Decimal;
+export type { Decimal };
 
 /** Columnas F-605 Bolivia (fijas, siempre presentes en el orden) + fallback "Otros". */
 export type ColumnKey =

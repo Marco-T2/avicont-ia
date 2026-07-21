@@ -21,7 +21,6 @@ let nextResponse: {
 } | null = null;
 
 vi.mock("@google/generative-ai", () => ({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   GoogleGenerativeAI: vi.fn().mockImplementation(function (this: any) {
     this.getGenerativeModel = vi.fn().mockReturnValue({
       generateContent: generateContentSpy,

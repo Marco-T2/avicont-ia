@@ -34,9 +34,9 @@ export { makeAccountsService } from "./composition-root";
 // ── Dashboard composition (accounting-dashboard-pro) ──
 export { AccountingDashboardService } from "../application/dashboard.service";
 export { makeAccountingDashboardService } from "./composition-root";
-export type * from "./dto/journal.types";
-export type * from "./dto/accounts.types";
-export type * from "./dto/ledger.types";
+export type * from "../domain/journal.types";
+export type * from "../domain/accounts.types";
+export type * from "../domain/ledger.types";
 
 // ── Validation schemas (POC #8 OLEADA 6 C1 — journal/ledger + account zod schemas) ──
 // Surfaced here so app/ consumers import from a single hex barrel

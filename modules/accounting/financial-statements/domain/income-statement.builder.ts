@@ -1,4 +1,4 @@
-import { AccountSubtype } from "@/generated/prisma/enums";
+import { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 // R5-pragmatic: domain-to-domain cross-feature import (see balance-sheet.builder
 // header for full rationale). modules/accounting/domain/account-subtype.utils
 // is the canonical home; this is NOT cross-layer.

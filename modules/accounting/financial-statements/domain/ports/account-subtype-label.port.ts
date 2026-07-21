@@ -1,4 +1,4 @@
-import type { AccountSubtype } from "@/generated/prisma/enums";
+import type { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 
 /**
  * Port for resolving AccountSubtype → human-readable Spanish label.

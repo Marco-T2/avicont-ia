@@ -8,28 +8,28 @@
  *
  * SDD change: register-payment-shortcut. Phase 1.
  *
- * Mocking: `@/lib/prisma` is mocked via `vi.mock` at module scope (mirrors
- * prisma-accounts.repo.unit.test.ts pattern). Mock functions are declared in
- * `vi.hoisted` so they're available before the mock factory runs.
+ * DI (D4, [PRISMA] cluster paydown): the helper no longer imports
+ * `@/lib/prisma` — it depends on the injected `ShortcutSourceQueryPort`
+ * (domain/ports/shortcut-source-query.port.ts). This suite builds a fake
+ * port (`vi.fn()` per method) and passes it as `deps.query`, mirroring the
+ * DI style rather than mocking a module. `balance` on the fake port's
+ * responses is a `string` (matching the port contract — the adapter does the
+ * `Prisma.Decimal → string` conversion, not exercised here).
  */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import Decimal from "decimal.js";
 
-const { mockSaleFindUnique, mockPurchaseFindUnique } = vi.hoisted(() => ({
-  mockSaleFindUnique: vi.fn(),
-  mockPurchaseFindUnique: vi.fn(),
-}));
-
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    sale: { findUnique: mockSaleFindUnique },
-    purchase: { findUnique: mockPurchaseFindUnique },
-  },
-}));
-
 import { fetchShortcutSource } from "../fetch-shortcut-source";
 
 const ORG = "org-1";
+
+const mockFindSaleWithReceivable = vi.fn();
+const mockFindPurchaseWithPayable = vi.fn();
+
+const query = {
+  findSaleWithReceivable: mockFindSaleWithReceivable,
+  findPurchaseWithPayable: mockFindPurchaseWithPayable,
+};
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -37,7 +37,7 @@ beforeEach(() => {
 
 describe("fetchShortcutSource — happy path COBRO (sale)", () => {
   it("returns ok with source data when sale is POSTED with positive balance", async () => {
-    mockSaleFindUnique.mockResolvedValueOnce({
+    mockFindSaleWithReceivable.mockResolvedValueOnce({
       id: "clxabc123",
       organizationId: ORG,
       status: "POSTED",
@@ -46,15 +46,18 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
       referenceNumber: null,
       receivable: {
         id: "rcv-1",
-        balance: new Decimal("1000.00"),
+        balance: "1000.00",
       },
     });
 
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-      saleId: "clxabc123",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+        saleId: "clxabc123",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("ok");
     if (result.kind !== "ok") return;
@@ -70,7 +73,7 @@ describe("fetchShortcutSource — happy path COBRO (sale)", () => {
 
 describe("fetchShortcutSource — happy path PAGO (purchase)", () => {
   it("returns ok with source data when purchase is POSTED with positive balance", async () => {
-    mockPurchaseFindUnique.mockResolvedValueOnce({
+    mockFindPurchaseWithPayable.mockResolvedValueOnce({
       id: "clxpqr456",
       organizationId: ORG,
       status: "POSTED",
@@ -79,15 +82,18 @@ describe("fetchShortcutSource — happy path PAGO (purchase)", () => {
       referenceNumber: null,
       payable: {
         id: "pay-1",
-        balance: new Decimal("500.00"),
+        balance: "500.00",
       },
     });
 
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "PAGO",
-      purchaseId: "clxpqr456",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "PAGO",
+        purchaseId: "clxpqr456",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("ok");
     if (result.kind !== "ok") return;
@@ -98,67 +104,79 @@ describe("fetchShortcutSource — happy path PAGO (purchase)", () => {
     expect(result.source.balance).toBeInstanceOf(Decimal);
     expect(result.source.balance.toString()).toBe("500");
     expect(result.source.defaultDescription).toBe("Pago Compra #7");
-    // Did not touch the sale table.
-    expect(mockSaleFindUnique).not.toHaveBeenCalled();
+    // Did not touch the sale query.
+    expect(mockFindSaleWithReceivable).not.toHaveBeenCalled();
   });
 });
 
 describe("fetchShortcutSource — invalid-params type/kind mismatch", () => {
   it("returns invalid-params when type=PAGO is paired with saleId", async () => {
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "PAGO",
-      saleId: "sale-1",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "PAGO",
+        saleId: "sale-1",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("invalid-params");
-    expect(mockSaleFindUnique).not.toHaveBeenCalled();
-    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+    expect(mockFindSaleWithReceivable).not.toHaveBeenCalled();
+    expect(mockFindPurchaseWithPayable).not.toHaveBeenCalled();
   });
 
   it("returns invalid-params when type=COBRO is paired with purchaseId", async () => {
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-      purchaseId: "pch-1",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+        purchaseId: "pch-1",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("invalid-params");
-    expect(mockSaleFindUnique).not.toHaveBeenCalled();
-    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+    expect(mockFindSaleWithReceivable).not.toHaveBeenCalled();
+    expect(mockFindPurchaseWithPayable).not.toHaveBeenCalled();
   });
 });
 
 describe("fetchShortcutSource — invalid-params XOR (saleId vs purchaseId)", () => {
   it("returns invalid-params when both saleId and purchaseId are provided", async () => {
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-      saleId: "sale-1",
-      purchaseId: "pch-1",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+        saleId: "sale-1",
+        purchaseId: "pch-1",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("invalid-params");
-    // Helper should reject BEFORE hitting Prisma — assert no DB call.
-    expect(mockSaleFindUnique).not.toHaveBeenCalled();
-    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+    // Helper should reject BEFORE hitting the port — assert no query call.
+    expect(mockFindSaleWithReceivable).not.toHaveBeenCalled();
+    expect(mockFindPurchaseWithPayable).not.toHaveBeenCalled();
   });
 
   it("returns invalid-params when neither saleId nor purchaseId is provided", async () => {
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("invalid-params");
-    expect(mockSaleFindUnique).not.toHaveBeenCalled();
-    expect(mockPurchaseFindUnique).not.toHaveBeenCalled();
+    expect(mockFindSaleWithReceivable).not.toHaveBeenCalled();
+    expect(mockFindPurchaseWithPayable).not.toHaveBeenCalled();
   });
 });
 
 describe("fetchShortcutSource — fully-paid source", () => {
   it("returns fully-paid when receivable.balance is exactly Decimal(0)", async () => {
-    mockSaleFindUnique.mockResolvedValueOnce({
+    mockFindSaleWithReceivable.mockResolvedValueOnce({
       id: "clxabc123",
       organizationId: ORG,
       status: "POSTED",
@@ -167,15 +185,18 @@ describe("fetchShortcutSource — fully-paid source", () => {
       referenceNumber: null,
       receivable: {
         id: "rcv-1",
-        balance: new Decimal("0"),
+        balance: "0",
       },
     });
 
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-      saleId: "clxabc123",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+        saleId: "clxabc123",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("fully-paid");
   });
@@ -183,7 +204,7 @@ describe("fetchShortcutSource — fully-paid source", () => {
 
 describe("fetchShortcutSource — voided source", () => {
   it("returns voided when sale.status === VOIDED (correct org)", async () => {
-    mockSaleFindUnique.mockResolvedValueOnce({
+    mockFindSaleWithReceivable.mockResolvedValueOnce({
       id: "clxabc123",
       organizationId: ORG,
       status: "VOIDED",
@@ -192,29 +213,35 @@ describe("fetchShortcutSource — voided source", () => {
       referenceNumber: null,
       receivable: {
         id: "rcv-1",
-        balance: new Decimal("1000.00"),
+        balance: "1000.00",
       },
     });
 
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-      saleId: "clxabc123",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+        saleId: "clxabc123",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("voided");
   });
 });
 
 describe("fetchShortcutSource — not-found", () => {
-  it("returns not-found when prisma.sale.findUnique resolves to null", async () => {
-    mockSaleFindUnique.mockResolvedValueOnce(null);
+  it("returns not-found when the port resolves to null", async () => {
+    mockFindSaleWithReceivable.mockResolvedValueOnce(null);
 
-    const result = await fetchShortcutSource({
-      orgId: ORG,
-      type: "COBRO",
-      saleId: "non-existent",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: ORG,
+        type: "COBRO",
+        saleId: "non-existent",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("not-found");
   });
@@ -222,7 +249,7 @@ describe("fetchShortcutSource — not-found", () => {
 
 describe("fetchShortcutSource — cross-org rejection", () => {
   it("returns cross-org when sale.organizationId does not match orgId", async () => {
-    mockSaleFindUnique.mockResolvedValueOnce({
+    mockFindSaleWithReceivable.mockResolvedValueOnce({
       id: "clxabc123",
       organizationId: "org-B",
       status: "POSTED",
@@ -231,15 +258,18 @@ describe("fetchShortcutSource — cross-org rejection", () => {
       referenceNumber: null,
       receivable: {
         id: "rcv-1",
-        balance: new Decimal("1000.00"),
+        balance: "1000.00",
       },
     });
 
-    const result = await fetchShortcutSource({
-      orgId: "org-A",
-      type: "COBRO",
-      saleId: "clxabc123",
-    });
+    const result = await fetchShortcutSource(
+      {
+        orgId: "org-A",
+        type: "COBRO",
+        saleId: "clxabc123",
+      },
+      { query },
+    );
 
     expect(result.kind).toBe("cross-org");
   });

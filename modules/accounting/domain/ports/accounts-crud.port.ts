@@ -19,7 +19,7 @@ import type {
   ResolvedCreateAccountData,
   UpdateAccountInput,
   AccountWithChildren,
-} from "@/modules/accounting/presentation/dto/accounts.types";
+} from "@/modules/accounting/domain/accounts.types";
 import type { AccountDef } from "@/prisma/seeds/chart-of-accounts";
 
 export interface AccountsCrudPort {

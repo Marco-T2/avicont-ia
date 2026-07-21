@@ -1,4 +1,4 @@
-import { AccountType, AccountSubtype } from "@/generated/prisma/enums";
+import type { AccountType, AccountSubtype } from "./value-objects/account-classification";
 import { ValidationError, INVALID_ACCOUNT_SUBTYPE, ACCOUNT_SUBTYPE_MISMATCH } from "@/modules/shared/domain/errors";
 import { isValidSubtypeForType } from "./account-subtype.utils";
 

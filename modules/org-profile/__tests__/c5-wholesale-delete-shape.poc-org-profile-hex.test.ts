@@ -4,12 +4,10 @@ import * as path from "path";
 
 const REPO_ROOT = path.resolve(__dirname, "../../..");
 
-const OP_SERVER_PATH = path.join(REPO_ROOT, "features/org-profile/server.ts");
-const OP_INDEX_PATH = path.join(REPO_ROOT, "features/org-profile/index.ts");
-const OP_TYPES_PATH = path.join(REPO_ROOT, "features/org-profile/org-profile.types.ts");
-const OP_VALIDATION_PATH = path.join(REPO_ROOT, "features/org-profile/org-profile.validation.ts");
-const OP_SERVICE_PATH = path.join(REPO_ROOT, "features/org-profile/org-profile.service.ts");
-const OP_REPOSITORY_PATH = path.join(REPO_ROOT, "features/org-profile/org-profile.repository.ts");
+// α47–α52 (per-file `!existsSync(features/org-profile/*)`) were REMOVED: they
+// are subsumed by α1 in __tests__/feature-boundaries.test.ts, which asserts the
+// whole `features/` directory does not exist. The import scanners below are NOT
+// subsumed by α1 and stay.
 
 const LEGACY_SERVER_IMPORT_RE = /from\s*["']@\/features\/org-profile\/server["']/;
 const LEGACY_BARREL_IMPORT_RE = /from\s*["']@\/features\/org-profile["']/;
@@ -48,30 +46,6 @@ function findFilesMatchingImport(re: RegExp): string[] {
 }
 
 describe("POC org-profile hex C5 — atomic delete features/org-profile/ wholesale shape", () => {
-  it("α47: features/org-profile/server.ts no longer exists", () => {
-    expect(fs.existsSync(OP_SERVER_PATH)).toBe(false);
-  });
-
-  it("α48: features/org-profile/index.ts no longer exists", () => {
-    expect(fs.existsSync(OP_INDEX_PATH)).toBe(false);
-  });
-
-  it("α49: features/org-profile/org-profile.types.ts no longer exists", () => {
-    expect(fs.existsSync(OP_TYPES_PATH)).toBe(false);
-  });
-
-  it("α50: features/org-profile/org-profile.validation.ts no longer exists", () => {
-    expect(fs.existsSync(OP_VALIDATION_PATH)).toBe(false);
-  });
-
-  it("α51: features/org-profile/org-profile.service.ts no longer exists", () => {
-    expect(fs.existsSync(OP_SERVICE_PATH)).toBe(false);
-  });
-
-  it("α52: features/org-profile/org-profile.repository.ts no longer exists", () => {
-    expect(fs.existsSync(OP_REPOSITORY_PATH)).toBe(false);
-  });
-
   it("α53: zero production source imports from @/features/org-profile/server", () => {
     expect(findFilesMatchingImport(LEGACY_SERVER_IMPORT_RE)).toEqual([]);
   });

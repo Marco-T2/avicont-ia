@@ -235,20 +235,13 @@ const CXC_PAGE = path.join(
   REPO_ROOT,
   "app/(dashboard)/[orgSlug]/accounting/cxc/page.tsx",
 );
-const CXC_PAGE_TEST = path.join(
-  REPO_ROOT,
-  "app/(dashboard)/[orgSlug]/accounting/cxc/__tests__/page.test.ts",
-);
 
 // ── Regex patterns ───────────────────────────────────────────────────────────
 
 const MAKE_RECEIVABLES_SERVICE_RE = /\bmakeReceivablesService\s*\(/;
 const ATTACH_CONTACT_RE = /\battachContact\b/;
-const ATTACH_CONTACTS_PLURAL_RE = /\battachContacts\b/;
 const LEGACY_FEATURES_RECEIVABLES_SERVER_IMPORT_RE =
   /from\s+["']@\/features\/receivables\/server["']/;
-const VI_MOCK_HEX_BARREL_RE =
-  /vi\.mock\s*\(\s*["']@\/modules\/receivables\/presentation\/server["']/;
 
 describe("POC paired payables↔receivables C3-C4 — cutover paired UI pages + API routes shape (paired-receivables side, §13.A5-γ Opción A bridge NEW pattern emergent + §13.A4-η vi.mock factory load-bearing render path coverage MATERIAL, 8va evidencia §13.A5-α paired sister sub-cycle 4ta aplicación post-cementación cumulative)", () => {
   // ── A: Hex factory invocation POSITIVE (Tests 1-4) ──────────────────────

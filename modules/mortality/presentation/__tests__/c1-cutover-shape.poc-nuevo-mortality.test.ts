@@ -131,10 +131,6 @@ const ROUTE_TEST_AGENT_CONFIRM = path.join(
   "app/api/organizations/[orgSlug]/agent/__tests__/route.confirm-journal-entry.test.ts",
 );
 
-// ── Wholesale delete target ───────────────────────────────────────────────────
-
-const FEATURES_MORTALITY_DIR = path.join(REPO_ROOT, "features/mortality");
-
 // ── Regex patterns ────────────────────────────────────────────────────────────
 
 const HEX_SERVER_RE =
@@ -208,9 +204,8 @@ describe("POC nuevo mortality C1 — wholesale delete features/mortality/* + cro
     expect(source).not.toMatch(VI_MOCK_LEGACY_RE);
   });
 
-  // ── Wholesale delete (Test 9) ─────────────────────────────────────────────
-
-  it("Test 9: features/mortality/ directory does NOT exist (wholesale delete atomic 4 archivos)", () => {
-    expect(fs.existsSync(FEATURES_MORTALITY_DIR)).toBe(false);
-  });
+  // ── Wholesale delete (Test 9) REMOVED ─────────────────────────────────────
+  // Test 9 asserted `!existsSync(features/mortality/)`. Subsumed by α1 in
+  // __tests__/feature-boundaries.test.ts, which asserts the whole `features/`
+  // directory does not exist. Test numbering is NOT shifted.
 });

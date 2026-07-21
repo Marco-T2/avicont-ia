@@ -3,7 +3,7 @@ import {
   isValidSubtypeForType,
   inferSubtype,
 } from "@/modules/accounting/domain/account-subtype.utils";
-import { AccountType, AccountSubtype } from "@/generated/prisma/client";
+import { AccountType, AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 
 // ── Tests de isValidSubtypeForType ──
 

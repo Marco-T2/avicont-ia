@@ -2,7 +2,7 @@ import "server-only";
 
 import type { Prisma } from "@/generated/prisma/client";
 
-import type { Purchase, PurchaseType } from "../../domain/purchase.entity";
+import type { Purchase } from "../../domain/purchase.entity";
 import type { PurchaseDetail } from "../../domain/purchase-detail.entity";
 import type {
   PaymentAllocationSummary,

@@ -114,7 +114,6 @@ describe("REQ-42/43 e2e — searchDocumentsTool tags flow through to RagService"
         createdAt: new Date(),
       },
     ]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adapter = new LegacyRagAdapter(ragService as any, tagsRepo);
 
     // Step 3 — bypass-path consumer (buildRagContext) forwards tags.
@@ -143,7 +142,6 @@ describe("REQ-42/43 e2e — searchDocumentsTool tags flow through to RagService"
     const ragSearchSpy: RagSearchSpy = vi.fn(async () => []);
     const ragService = makeRagServiceStub(ragSearchSpy);
     const tagsRepo = makeTagsRepo([]);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const adapter = new LegacyRagAdapter(ragService as any, tagsRepo);
 
     await buildRagContext(adapter, "org-1", validated.query, "admin", validated.tags);

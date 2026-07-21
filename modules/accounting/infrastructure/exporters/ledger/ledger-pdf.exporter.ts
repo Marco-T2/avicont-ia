@@ -22,7 +22,7 @@ import Decimal from "decimal.js";
 import { registerFonts, pdfmakeRuntime } from "@/modules/accounting/shared/infrastructure/exporters/pdf.fonts";
 import { fmtDecimal } from "@/modules/accounting/shared/infrastructure/exporters/pdf.helpers";
 import { formatDateBO } from "@/lib/date-utils";
-import type { LedgerEntry } from "@/modules/accounting/presentation/dto/ledger.types";
+import type { LedgerEntry } from "@/modules/accounting/domain/ledger.types";
 
 // ── Error ─────────────────────────────────────────────────────────────────────
 

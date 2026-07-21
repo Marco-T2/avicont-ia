@@ -1,5 +1,5 @@
 import Decimal from "decimal.js";
-import { AccountSubtype } from "@/generated/prisma/enums";
+import { AccountSubtype } from "@/modules/accounting/domain/value-objects/account-classification";
 import { sumDecimals } from "./money.utils";
 import { formatSubtypeLabel } from "@/modules/accounting/domain/account-subtype.utils";
 import type {

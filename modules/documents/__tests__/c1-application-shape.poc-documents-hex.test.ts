@@ -6,10 +6,6 @@ import { stripSourceComments } from "@/modules/shared/__tests__/strip-source-com
 const REPO_ROOT = resolve(__dirname, "../../..");
 const DOC_ROOT = resolve(__dirname, "..");
 
-function readRepoFile(rel: string): string {
-  return readFileSync(resolve(REPO_ROOT, rel), "utf-8");
-}
-
 /**
  * RAW source — comments included. Use ONLY where a comment is the artifact
  * under test (α15's REQ-007 rationale). Everywhere else use readDocSource.

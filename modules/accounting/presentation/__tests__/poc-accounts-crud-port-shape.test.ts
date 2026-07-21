@@ -105,9 +105,13 @@ describe("α20–α23 REQ-004 required type imports declared", () => {
     );
   });
 
-  it("α22: hex DTO types imported from presentation/dto/accounts.types", () => {
+  // NOTE (hex R1/R2 debt paydown): accounts.types was moved from
+  // presentation/dto/ to domain/ — it describes domain shapes and is consumed
+  // inward (the domain port imports it), so presentation was the wrong home and
+  // pinned an R1 violation. Assertion updated to the new domain/ location.
+  it("α22: hex DTO types imported from domain/accounts.types", () => {
     const content = readFileSync(PORT_FILE, "utf-8");
-    expect(content).toMatch(/from ["'].*presentation\/dto\/accounts\.types["']/m);
+    expect(content).toMatch(/from ["'].*domain\/accounts\.types["']/m);
     expect(content).toMatch(/\bAccountListFilters\b/);
     expect(content).toMatch(/\bResolvedCreateAccountData\b/);
     expect(content).toMatch(/\bUpdateAccountInput\b/);

@@ -21,7 +21,7 @@
  * from "./types" (domain), NOT from the infra repository (WS-D1 design §2).
  */
 import Decimal from "decimal.js";
-import type { AccountType } from "@/generated/prisma/enums";
+import type { AccountType } from "@/modules/accounting/domain/value-objects/account-classification";
 import { sumDecimals, eq } from "./money.utils";
 import type { WorksheetAccountMetadata, WorksheetMovementAggregation } from "./types";
 import type {

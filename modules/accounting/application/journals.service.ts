@@ -38,7 +38,7 @@ import type {
   CorrelationGap,
   JournalEntryWithLines,
   JournalFilters,
-} from "../presentation/dto/journal.types";
+} from "../domain/journal.types";
 import type {
   PaginatedResult,
   PaginationOptions,

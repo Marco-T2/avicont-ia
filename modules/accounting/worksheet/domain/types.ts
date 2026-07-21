@@ -1,5 +1,5 @@
-import type { Prisma } from "@/generated/prisma/client";
-import type { AccountType } from "@/generated/prisma/enums";
+import type { Decimal } from "decimal.js";
+import type { AccountType } from "@/modules/accounting/domain/value-objects/account-classification";
 
 /**
  * WS-D1: WorksheetMovementAggregation + WorksheetAccountMetadata extracted from
@@ -19,8 +19,8 @@ import type { AccountType } from "@/generated/prisma/enums";
  */
 export type WorksheetMovementAggregation = {
   accountId: string;
-  totalDebit: Prisma.Decimal;
-  totalCredit: Prisma.Decimal;
+  totalDebit: Decimal;
+  totalCredit: Decimal;
   nature: "DEUDORA" | "ACREEDORA";
 };
 

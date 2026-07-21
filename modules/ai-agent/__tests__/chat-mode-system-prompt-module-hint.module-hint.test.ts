@@ -77,9 +77,7 @@ function deps() {
     chatMemory: makeChatMemory(),
     contextReader: makeContextReader(),
     rag: makeRag(),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     lotInquiry: noopInquiry as any,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     pricingService: pricingFake as any,
   };
 }
