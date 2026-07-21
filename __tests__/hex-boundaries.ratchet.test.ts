@@ -228,9 +228,6 @@ const BASELINE: ReadonlyArray<string> = [
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
   "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
-  "modules/accounting/application/journals.service.ts:R2",
   // moved here from presentation/dto by the [DTO] paydown; the R5 residue is
   // [PRISMA]-cluster debt (MODEL types — not the enums D1 mirrored) closed by
   // defining domain-local types + mapping at the infra boundary. The accounting

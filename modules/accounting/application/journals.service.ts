@@ -4,9 +4,9 @@ import {
   POST_NOT_ALLOWED_FOR_ROLE,
 } from "@/modules/shared/domain/errors";
 import { validateLockedEdit } from "../domain/document-lifecycle";
-import type { OrgProfileService } from "@/modules/org-profile/presentation/server";
-import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
-import type { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
+import type { OrgProfileService } from "@/modules/org-profile/application/org-profile.service";
+import type { DocumentSignatureConfigService } from "@/modules/document-signature-config/application/document-signature-config.service";
+import type { FiscalPeriodsService } from "@/modules/fiscal-periods/application/fiscal-periods.service";
 import { buildVoucherPdfInput } from "../infrastructure/exporters/voucher-pdf.composer";
 import { exportVoucherPdf as renderVoucherPdf } from "../infrastructure/exporters/voucher-pdf.exporter";
 import { fetchLogoAsDataUrl } from "../infrastructure/exporters/logo-fetcher";
@@ -128,7 +128,7 @@ export class JournalsService {
     private readonly journalLedgerQuery: JournalLedgerQueryPort,
     private readonly orgProfile: OrgProfileService,
     private readonly sigConfig: DocumentSignatureConfigService,
-    private readonly fiscalPeriods: ReturnType<typeof makeFiscalPeriodsService>,
+    private readonly fiscalPeriods: FiscalPeriodsService,
   ) {}
 
   // ── Read use cases (C1) — folded from legacy journal.service.ts ──
