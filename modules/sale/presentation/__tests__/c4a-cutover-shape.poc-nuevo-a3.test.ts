@@ -101,11 +101,16 @@ describe("POC nuevo A3-C4a — cutover sales/page.tsx list view shape", () => {
     );
   });
 
-  it("Test 3: sales/page.tsx imports `prisma` from `@/lib/prisma` (Prisma direct batch lookups Q4)", () => {
+  // Test 3 FLIPPED (list-pages-pure-read Group C): original assertion locked
+  // the Q4 Prisma-direct batch-lookup pattern (`prisma` import PRESENT). That
+  // lock is SUPERSEDED — the batch hydrations moved behind the EXISTING
+  // contacts + fiscal-periods module services (no new read ports; architect
+  // rule: reuse, no ceremony for dumb lookups). Assertion inverted: prisma
+  // import must now be ABSENT. Positive counterpart lives in
+  // app/(dashboard)/[orgSlug]/sales/__tests__/page-hex-purity.test.ts.
+  it("Test 3 (flipped): sales/page.tsx does NOT import `prisma` from `@/lib/prisma` (list-pages-pure-read supersedes Q4)", () => {
     const source = fs.readFileSync(SALES_PAGE_PATH, "utf8");
-    expect(source).toMatch(
-      /import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*["']@\/lib\/prisma["']/,
-    );
+    expect(source).not.toMatch(/["']@\/lib\/prisma["']/);
   });
 
   // ── Tests 4-6 negative: legacy ausentes ─────────────────────────────────────

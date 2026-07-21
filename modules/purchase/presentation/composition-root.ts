@@ -13,9 +13,13 @@ import { PrismaOperationalDocTypesRepository } from "@/modules/operational-doc-t
 import { makePayablesRepository } from "@/modules/payables/presentation/server";
 import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 
+import type { PurchaseContactReaderPort } from "../domain/ports/purchase-contact-reader.port";
+import type { PurchasePayableReaderPort } from "../domain/ports/purchase-payable-reader.port";
 import { PurchaseService } from "../application/purchase.service";
 import { LegacyPurchasePermissionsAdapter } from "../infrastructure/legacy-purchase-permissions.adapter";
 import { PrismaOrgSettingsReaderAdapter } from "../infrastructure/prisma-org-settings-reader.adapter";
+import { PrismaPurchaseContactReaderAdapter } from "../infrastructure/prisma-purchase-contact-reader.adapter";
+import { PrismaPurchasePayableReaderAdapter } from "../infrastructure/prisma-purchase-payable-reader.adapter";
 import { PrismaPurchaseRepository } from "../infrastructure/prisma-purchase.repository";
 import { PrismaPurchaseUnitOfWork } from "../infrastructure/prisma-purchase-unit-of-work";
 
@@ -52,6 +56,25 @@ const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
 // journal-physical-document Phase 6 — OperationalDocType lookup repo for the
 // purchase UoW factory wiring (resolves FL|PF|CG|SV via findByCode).
 const operationalDocTypesRepo = new PrismaOperationalDocTypesRepository();
+
+/**
+ * Read facade for purchase detail page external deps (purchase-pure-read —
+ * mirror sale-pure-read pilot) — groups the tenant-scoped read ports the page
+ * consumes instead of querying Prisma directly. Wiring lives here (único
+ * archivo bajo `presentation/` autorizado a importar de `infrastructure/` —
+ * architecture.md R4 carve-out).
+ */
+export interface PurchaseReads {
+  contact: PurchaseContactReaderPort;
+  payable: PurchasePayableReaderPort;
+}
+
+export function makePurchaseReads(): PurchaseReads {
+  return {
+    contact: new PrismaPurchaseContactReaderAdapter(),
+    payable: new PrismaPurchasePayableReaderAdapter(),
+  };
+}
 
 export function makePurchaseService(): PurchaseService {
   return new PurchaseService({

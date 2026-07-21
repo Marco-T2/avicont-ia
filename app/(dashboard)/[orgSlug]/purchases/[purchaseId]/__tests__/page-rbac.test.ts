@@ -9,6 +9,11 @@
  * A3-C4b.5 sale detail page-rbac mock factory expansion pattern (engram
  * poc-nuevo/a3/c4b-5/closed) — sub-§13 in-flight absorbed inline GREEN
  * (engram-only, NO formal §13.AC-purchase variante 5 cementación).
+ *
+ * Purchase-pure-read (mirror sale-pure-read pilot): the two Prisma direct
+ * deps lookups (contact + payable) moved behind `makePurchaseReads()` read
+ * ports — the `@/lib/prisma` mock is gone; the composition-root mock now also
+ * stubs `makePurchaseReads`.
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
@@ -21,9 +26,10 @@ const {
   mockProductTypesList,
   mockAccountsList,
   mockMakePurchaseService,
+  mockMakePurchaseReads,
   mockToPurchaseWithDetails,
-  mockContactFindUnique,
-  mockPayableFindUnique,
+  mockContactFindById,
+  mockPayableFindWithAllocations,
 } = vi.hoisted(() => ({
   mockRedirect: vi.fn(),
   mockRequirePermission: vi.fn(),
@@ -33,9 +39,10 @@ const {
   mockProductTypesList: vi.fn(),
   mockAccountsList: vi.fn(),
   mockMakePurchaseService: vi.fn(),
+  mockMakePurchaseReads: vi.fn(),
   mockToPurchaseWithDetails: vi.fn(),
-  mockContactFindUnique: vi.fn(),
-  mockPayableFindUnique: vi.fn(),
+  mockContactFindById: vi.fn(),
+  mockPayableFindWithAllocations: vi.fn(),
 }));
 
 vi.mock("next/navigation", () => ({ redirect: mockRedirect }));
@@ -46,17 +53,11 @@ vi.mock("@/modules/permissions/application/server", () => ({
 
 vi.mock("@/modules/purchase/presentation/composition-root", () => ({
   makePurchaseService: mockMakePurchaseService,
+  makePurchaseReads: mockMakePurchaseReads,
 }));
 
 vi.mock("@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper", () => ({
   toPurchaseWithDetails: mockToPurchaseWithDetails,
-}));
-
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    contact: { findUnique: mockContactFindUnique },
-    accountsPayable: { findUnique: mockPayableFindUnique },
-  },
 }));
 
 vi.mock("@/modules/contacts/presentation/server", () => {
@@ -96,6 +97,10 @@ function makeParams() {
 beforeEach(() => {
   vi.clearAllMocks();
   mockMakePurchaseService.mockReturnValue({ getById: mockPurchaseGetById });
+  mockMakePurchaseReads.mockReturnValue({
+    contact: { findById: mockContactFindById },
+    payable: { findWithAllocations: mockPayableFindWithAllocations },
+  });
   mockPurchaseGetById.mockResolvedValue({
     id: PURCHASE_ID,
     periodId: PERIOD_ID,
@@ -110,14 +115,14 @@ beforeEach(() => {
   ]);
   mockProductTypesList.mockResolvedValue([]);
   mockAccountsList.mockResolvedValue([]);
-  mockContactFindUnique.mockResolvedValue({
+  mockContactFindById.mockResolvedValue({
     id: CONTACT_ID,
     name: "Test Contact",
     type: "PROVEEDOR",
     nit: null,
     paymentTermsDays: 30,
   });
-  mockPayableFindUnique.mockResolvedValue(null);
+  mockPayableFindWithAllocations.mockResolvedValue(null);
   mockToPurchaseWithDetails.mockReturnValue({});
 });
 

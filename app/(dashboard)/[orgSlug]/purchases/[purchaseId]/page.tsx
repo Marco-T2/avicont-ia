@@ -5,8 +5,10 @@ import type { Contact } from "@/modules/contacts/presentation/index";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { makeProductTypeService } from "@/modules/product-type/presentation/server";
 import { makeAccountsService } from "@/modules/accounting/presentation/server";
-import { prisma } from "@/lib/prisma";
-import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
+import {
+  makePurchaseReads,
+  makePurchaseService,
+} from "@/modules/purchase/presentation/composition-root";
 import { toPurchaseWithDetails } from "@/modules/purchase/presentation/mappers/purchase-to-with-details.mapper";
 import PurchaseForm from "@/components/purchases/purchase-form";
 import type { PurchaseType } from "@/modules/purchase/presentation/dto/purchase-with-details";
@@ -29,6 +31,7 @@ export default async function PurchaseDetailPage({
   }
 
   const purchaseService = makePurchaseService();
+  const purchaseReads = makePurchaseReads();
   const contactsService = makeContactsService();
   const periodsService = makeFiscalPeriodsService();
   const productTypesService = makeProductTypeService();
@@ -46,39 +49,9 @@ export default async function PurchaseDetailPage({
     periodsService.list(orgId).then((entities) => entities.map((p) => p.toSnapshot())),
     productTypesService.list(orgId, { isActive: true }).then((entities) => entities.map((pt) => pt.toSnapshot())),
     accountsService.list(orgId, { type: "GASTO", isDetail: true, isActive: true }),
-    prisma.contact.findUnique({
-      where: { id: purchase.contactId },
-      select: {
-        id: true,
-        name: true,
-        type: true,
-        nit: true,
-        paymentTermsDays: true,
-      },
-    }),
+    purchaseReads.contact.findById(orgId, purchase.contactId),
     purchase.payableId
-      ? prisma.accountsPayable.findUnique({
-          where: { id: purchase.payableId },
-          select: {
-            id: true,
-            amount: true,
-            paid: true,
-            balance: true,
-            status: true,
-            dueDate: true,
-            allocations: {
-              select: {
-                id: true,
-                paymentId: true,
-                amount: true,
-                payment: {
-                  select: { id: true, date: true, description: true },
-                },
-              },
-              orderBy: { payment: { date: "asc" as const } },
-            },
-          },
-        })
+      ? purchaseReads.payable.findWithAllocations(orgId, purchase.payableId)
       : Promise.resolve(null),
   ]);
 

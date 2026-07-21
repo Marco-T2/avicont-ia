@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { prisma } from "@/lib/prisma";
+import { makeAuditReads } from "@/modules/audit/presentation/server";
 
 interface CloseEventPageProps {
   params: Promise<{ orgSlug: string }>;
@@ -52,10 +52,13 @@ export default async function CloseEventPage({
     );
   }
 
-  const rows = await prisma.auditLog.findMany({
-    where: { organizationId: orgId, correlationId },
-    orderBy: [{ entityType: "asc" }, { createdAt: "asc" }],
-  });
+  // Registros del evento de cierre via tenant-scoped read port del módulo
+  // audit (audit-pure-read Group B). Ya llegan ordenados por entityType +
+  // createdAt.
+  const rows = await makeAuditReads().closeEvents.listByCorrelation(
+    orgId,
+    correlationId,
+  );
 
   // Group by entityType
   const grouped = rows.reduce<Record<string, typeof rows>>((acc, row) => {

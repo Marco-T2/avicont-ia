@@ -1,5 +1,5 @@
 /**
- * T59 — RED: Audit-trail route handler tests.
+ * T59 — Audit-trail route handler tests.
  *
  * GET /api/organizations/[orgSlug]/monthly-close/audit-trail?correlationId=<uuid>
  *
@@ -7,17 +7,23 @@
  * (a) Returns AuditLog[] filtered by correlationId.
  * (b) Returns 400 when correlationId is missing.
  * (c) Returns 403 when requirePermission throws ForbiddenError.
+ * (d) Gates on resource=period action=read.
  *
- * Fails until T60 creates the route.
+ * FLIPPED (audit-pure-read Group B): this test historically mocked
+ * `@/lib/prisma` and asserted `prisma.auditLog.findMany` was invoked by the
+ * route — i.e. it REQUIRED the route to import prisma directly. The read now
+ * lives behind the audit-owned `AuditCloseEventReaderPort` exposed via
+ * `makeAuditReads()`, so the test mocks the composition root instead and
+ * asserts the tenant-scoped port call `(orgId, correlationId)`.
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // ── Hoisted mocks ─────────────────────────────────────────────────────────────
 
-const { mockRequirePermission, mockFindMany } = vi.hoisted(() => ({
+const { mockRequirePermission, mockListByCorrelation } = vi.hoisted(() => ({
   mockRequirePermission: vi.fn(),
-  mockFindMany: vi.fn(),
+  mockListByCorrelation: vi.fn(),
 }));
 
 // ── Module mocks ──────────────────────────────────────────────────────────────
@@ -26,12 +32,10 @@ vi.mock("@/modules/permissions/application/server", () => ({
   requirePermission: mockRequirePermission,
 }));
 
-vi.mock("@/lib/prisma", () => ({
-  prisma: {
-    auditLog: {
-      findMany: mockFindMany,
-    },
-  },
+vi.mock("@/modules/audit/presentation/server", () => ({
+  makeAuditReads: () => ({
+    closeEvents: { listByCorrelation: mockListByCorrelation },
+  }),
 }));
 
 vi.mock("@/modules/shared/presentation/middleware", () => ({
@@ -99,13 +103,13 @@ function makeRequest(correlationId?: string) {
 beforeEach(() => {
   vi.clearAllMocks();
   mockRequirePermission.mockResolvedValue({ orgId: ORG_ID });
-  mockFindMany.mockResolvedValue(auditRows);
+  mockListByCorrelation.mockResolvedValue(auditRows);
 });
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe("GET /api/.../monthly-close/audit-trail", () => {
-  it("(a) returns AuditLog[] filtered by correlationId", async () => {
+  it("(a) returns AuditLog[] filtered by correlationId via the tenant-scoped audit read port", async () => {
     const res = await GET(makeRequest(CORRELATION_ID), { params: makeParams() });
 
     expect(res.status).toBe(200);
@@ -115,11 +119,8 @@ describe("GET /api/.../monthly-close/audit-trail", () => {
     expect(body[0].correlationId).toBe(CORRELATION_ID);
     expect(body[1].correlationId).toBe(CORRELATION_ID);
 
-    expect(mockFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: expect.objectContaining({ correlationId: CORRELATION_ID }),
-      }),
-    );
+    expect(mockListByCorrelation).toHaveBeenCalledTimes(1);
+    expect(mockListByCorrelation).toHaveBeenCalledWith(ORG_ID, CORRELATION_ID);
   });
 
   it("(b) returns 400 when correlationId is missing", async () => {
@@ -128,6 +129,7 @@ describe("GET /api/.../monthly-close/audit-trail", () => {
     expect(res.status).toBe(400);
     const body = await res.json();
     expect(body.code).toBe("VALIDATION");
+    expect(mockListByCorrelation).not.toHaveBeenCalled();
   });
 
   it("(c) returns 403 when requirePermission throws ForbiddenError", async () => {

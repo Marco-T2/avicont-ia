@@ -65,6 +65,18 @@
  * (sequenceNumber=null) branch coverage requerido caller responsibility null
  * guard ternary mirror §13.AC HubService A3-C5 SubQ-β.
  *
+ * SUPERSEDED (purchase-pure-read — mirror sale-pure-read pilot c4b flip):
+ * el lock original (Prisma direct deps lookups en page) fue reemplazado —
+ * los 2 reads (contact + payable+allocations) viven detrás de read ports del
+ * purchase module (`PurchaseContactReaderPort` / `PurchasePayableReaderPort`)
+ * expuestos via `makePurchaseReads()`. Test 4 flipped: ahora asserta
+ * `makePurchaseReads` import PRESENT + `@/lib/prisma` import ABSENT (page
+ * pure hexagonal). Test 5 flipped: `prisma.accountsPayable.findUnique`
+ * ABSENT — el lookup vive en `PrismaPurchasePayableReaderAdapter`
+ * (tenant-scoped findFirst). Ver
+ * `app/(dashboard)/[orgSlug]/purchases/[purchaseId]/__tests__/page-hex-purity.test.ts`
+ * (sentinel dedicado).
+ *
  * Expected RED failure mode (verify pre-GREEN):
  * - 9 positive FAIL: page imports makePurchaseService + toPurchaseWithDetails +
  *   TYPE_PREFIXES/computeDisplayCode + prisma + Prisma direct accountsPayable
@@ -109,16 +121,17 @@ describe("A3-C6b RED purchase detail cutover + null guard shape — combined axe
   // REQ-DISPLAY-2 derivative (T4.5 SHAPE-LOCK Group C). Page-side helpers
   // wholesale-deleted in T2.5-page/T4.3.
 
-  it("Test 4: page imports prisma from @/lib/prisma (Prisma direct lookups)", () => {
+  it("Test 4: page imports `makePurchaseReads` (read ports) and does NOT import `@/lib/prisma` (purchase-pure-read supersedes Prisma direct lock)", () => {
     expect(pageSource).toMatch(
-      /import\s*\{[^}]*\bprisma\b[^}]*\}\s*from\s*["']@\/lib\/prisma["']/,
+      /import\s*\{[^}]*\bmakePurchaseReads\b[^}]*\}\s*from\s*["']@\/modules\/purchase\/presentation\/composition-root["']/,
     );
+    expect(pageSource).not.toMatch(/["']@\/lib\/prisma["']/);
   });
 
-  // ── Page Prisma direct lookups + invocation positive (3 mirror A3-C4b.5) ────
+  // ── Page read-port lookups + invocation positive (mirror A3-C4b.5 flipped) ──
 
-  it("Test 5: page contains prisma.accountsPayable.findUnique (Prisma direct payable conditional lookup)", () => {
-    expect(pageSource).toMatch(/prisma\.accountsPayable\.findUnique/);
+  it("Test 5: page does NOT contain prisma.accountsPayable.findUnique (payable lookup lives behind PurchasePayableReaderPort)", () => {
+    expect(pageSource).not.toMatch(/prisma\.accountsPayable\.findUnique/);
   });
 
   // Test 6 RETIRED (lcv-feature-retirement L3): ivaPurchaseBook.findUnique removed

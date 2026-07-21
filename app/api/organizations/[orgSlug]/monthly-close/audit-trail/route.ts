@@ -1,6 +1,6 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { prisma } from "@/lib/prisma";
+import { makeAuditReads } from "@/modules/audit/presentation/server";
 
 export async function GET(
   request: Request,
@@ -20,10 +20,13 @@ export async function GET(
       );
     }
 
-    const rows = await prisma.auditLog.findMany({
-      where: { organizationId: orgId, correlationId },
-      orderBy: [{ entityType: "asc" }, { createdAt: "asc" }],
-    });
+    // Registros del evento de cierre via tenant-scoped read port del módulo
+    // audit (audit-pure-read Group B). Ya llegan ordenados por entityType +
+    // createdAt.
+    const rows = await makeAuditReads().closeEvents.listByCorrelation(
+      orgId,
+      correlationId,
+    );
 
     return Response.json(rows);
   } catch (error) {
