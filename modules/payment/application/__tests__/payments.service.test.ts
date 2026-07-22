@@ -22,6 +22,7 @@ import {
   LOCKED_EDIT_REQUIRES_JUSTIFICATION,
 } from "@/modules/shared/domain/errors";
 import { InMemoryPaymentRepository } from "./fakes/in-memory-payment.repository";
+import { FakePaymentUnitOfWork } from "./fakes/fake-payment-unit-of-work";
 import {
   FakeReceivablesPort,
   FakePayablesPort,
@@ -79,6 +80,7 @@ interface Bench {
 
 function makeBench(): Bench {
   const repo = new InMemoryPaymentRepository();
+  const uow = new FakePaymentUnitOfWork(repo);
   const receivables = new FakeReceivablesPort();
   const payables = new FakePayablesPort();
   const orgSettings = new FakeOrgSettingsReadPort();
@@ -98,6 +100,7 @@ function makeBench(): Bench {
   contacts.types.set(CONTACT, "CLIENTE");
   const svc = new PaymentsService({
     repo,
+    uow,
     receivables,
     payables,
     orgSettings,

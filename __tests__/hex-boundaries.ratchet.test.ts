@@ -341,23 +341,15 @@ const BASELINE: ReadonlyArray<string> = [
   // `@/lib/prisma` directly; the Prisma query moved into
   // infrastructure/adapters/prisma-shortcut-source-query.adapter.ts, wired via
   // composition-root.ts (`makeShortcutSourceQueryPort`).
-  //  ── DESIGN-LOCKED: UoW-shape decision (§18, human decision 2026-07-22) ──
-  //     `payments.service.ts` imports `withAuditTx` from shared/infrastructure/
-  //     audit-tx (the Postgres session-var UoW helper, docs/architecture/
-  //     00-overview.md §4.3) and threads the raw `tx` into ~15 call sites across
-  //     5 ports (Receivables/Payables/Accounting/AccountBalances/CreditConsumption)
-  //     + 6 internal withAuditTx(...) invocations. NOT mechanical: two both-
-  //     precedented shapes exist and the choice is a real architecture call —
-  //     (a) a minimal passthrough `PaymentUnitOfWork.run(ctx, fn: (tx: unknown))`
-  //     thin adapter (~5 files, but DIVERGES from the only shape landed for this
-  //     problem), vs (b) the canonical Scope-based UoW (mirror accounting's
-  //     `domain/ports/unit-of-work.ts` + `AccountingScope` + PrismaAccountingUnitOfWork,
-  //     what journals.service.ts uses) which redesigns all 5 ports to hang off a
-  //     `scope` object. Per-module consistency vs lighter wrapper is not
-  //     discoverable from code — deferred to a human. (Note: fakeability is NOT the
-  //     blocker — InMemoryPaymentRepository already no-ops $executeRawUnsafe so
-  //     withAuditTx runs safely against fakes; the blocker is purely shape + blast radius.)
-  "modules/payment/application/payments.service.ts:R2",
+  // payments.service.ts:R2 CLOSED by the [UoW-shape] paydown — the human
+  // decision (§18-logged, 2026-07-22) picked shape (a): a minimal PASSTHROUGH
+  // `PaymentUnitOfWork.run(ctx, fn: (tx: unknown, correlationId) => ...)`
+  // domain port (domain/ports/payment-unit-of-work.ts). The service no longer
+  // imports withAuditTx; `PrismaPaymentUnitOfWork` (infrastructure/) delegates
+  // to it, `BoundPaymentUnitOfWork` covers `makePaymentsServiceForTx(tx)`
+  // (installs audit vars on the PROVIDED tx, no nested transaction), both
+  // wired via presentation/composition-root.ts. The 5 tx-threaded ports were
+  // untouched — they were already `tx: unknown` end-to-end.
 
   // ── modules/permissions/ — [CACHE] permissions.cache (infrastructure) reached from domain and application,
   //     plus organizations consumed via presentation barrels

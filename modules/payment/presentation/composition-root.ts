@@ -1,7 +1,13 @@
 import "server-only";
 import type { Prisma } from "@/generated/prisma/client";
+import { prisma } from "@/lib/prisma";
+import type { UnitOfWorkRepoLike } from "@/modules/shared/infrastructure/prisma-unit-of-work";
 import { PaymentsService } from "../application/payments.service";
 import { PrismaPaymentsRepository } from "../infrastructure/prisma-payments.repository";
+import {
+  PrismaPaymentUnitOfWork,
+  BoundPaymentUnitOfWork,
+} from "../infrastructure/prisma-payment-unit-of-work";
 import { LegacyReceivablesAdapter } from "../infrastructure/adapters/legacy-receivables.adapter";
 import { LegacyPayablesAdapter } from "../infrastructure/adapters/legacy-payables.adapter";
 import { LegacyContactReadAdapter } from "../infrastructure/adapters/legacy-contact-read.adapter";
@@ -19,9 +25,16 @@ import { PaymentService } from "./payment-service.adapter";
 export { PrismaPaymentsRepository };
 export { PaymentService } from "./payment-service.adapter";
 
+// Mirrors accounting/presentation/composition-root.ts — the prisma client
+// itself is the UnitOfWorkRepoLike for the module-level (non-bound) UoW.
+const repoLike: UnitOfWorkRepoLike = {
+  transaction: (fn, options) => prisma.$transaction(fn, options),
+};
+
 export function makePaymentsService(): PaymentsService {
   return new PaymentsService({
     repo: new PrismaPaymentsRepository(),
+    uow: new PrismaPaymentUnitOfWork(repoLike),
     receivables: new LegacyReceivablesAdapter(),
     payables: new LegacyPayablesAdapter(),
     contacts: new LegacyContactReadAdapter(),
@@ -38,6 +51,11 @@ export function makePaymentsServiceForTx(
 ): PaymentsService {
   return new PaymentsService({
     repo: new PrismaPaymentsRepository(tx),
+    // Runs INSIDE the caller's tx: BoundPaymentUnitOfWork installs the audit
+    // session vars on the PROVIDED tx and never opens a nested transaction.
+    // (The previous withAuditTx path would have called tx.$transaction — a
+    // runtime TypeError on Prisma.TransactionClient; latent, zero callers.)
+    uow: new BoundPaymentUnitOfWork(tx),
     receivables: new LegacyReceivablesAdapter(),
     payables: new LegacyPayablesAdapter(),
     contacts: new LegacyContactReadAdapter(),

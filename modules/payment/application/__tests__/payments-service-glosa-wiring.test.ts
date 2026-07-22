@@ -38,6 +38,7 @@ import {
   FakeCreditConsumptionPort,
 } from "./fakes/fake-ports";
 import { InMemoryPaymentRepository } from "./fakes/in-memory-payment.repository";
+import { FakePaymentUnitOfWork } from "./fakes/fake-payment-unit-of-work";
 import type { JournalEntrySnapshot } from "../../domain/ports/accounting.port";
 
 const ORG = "org-1";
@@ -83,6 +84,7 @@ interface Bench {
 
 function makeBench(): Bench {
   const repo = new InMemoryPaymentRepository();
+  const uow = new FakePaymentUnitOfWork(repo);
   const receivables = new FakeReceivablesPort();
   const payables = new FakePayablesPort();
   const orgSettings = new FakeOrgSettingsReadPort();
@@ -99,6 +101,7 @@ function makeBench(): Bench {
   contacts.names.set(CONTACT, "Marco");
   const svc = new PaymentsService({
     repo,
+    uow,
     receivables,
     payables,
     orgSettings,

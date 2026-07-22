@@ -1,33 +1,22 @@
 import "server-only";
-import { withAuditTx } from "@/modules/shared/infrastructure/audit-tx";
 // Reuse the shared LOCKED-edit helper (REQ-A6) — single source of truth for
 // role + period + justification length validation.
 import { validateLockedEdit } from "@/modules/accounting/domain/document-lifecycle";
 
 /**
  * Tx-bound write use cases return the resulting Payment aggregate plus the
- * correlationId allocated by withAuditTx. The shim in `features/payment/`
- * translates this into the legacy `WithCorrelation<PaymentWithRelations>`
- * row shape — at the application layer we keep the entity instance to avoid
- * losing its behaviour (status getter, allocations getters etc.) which would
- * happen if we tried to spread a class instance into a plain object.
+ * correlationId allocated by the PaymentUnitOfWork. The shim in
+ * `features/payment/` translates this into the legacy
+ * `WithCorrelation<PaymentWithRelations>` row shape — at the application layer
+ * we keep the entity instance to avoid losing its behaviour (status getter,
+ * allocations getters etc.) which would happen if we tried to spread a class
+ * instance into a plain object.
  */
 export interface PaymentResult {
   payment: Payment;
   correlationId: string;
 }
 
-type AuditTxRepo = Parameters<typeof withAuditTx>[0];
-
-function asAuditTxRepo(repo: PaymentRepository): AuditTxRepo {
-  return {
-    transaction: (fn, options) =>
-      repo.transaction(
-        (tx) => fn(tx as Parameters<typeof fn>[0]),
-        options,
-      ),
-  };
-}
 import { NotFoundError, ValidationError } from "@/modules/shared/domain/errors";
 import type { Payment } from "../domain/payment.entity";
 import type {
@@ -51,6 +40,7 @@ import type {
 import type { AccountBalancesPort } from "../domain/ports/account-balances.port";
 import type { ContactReadPort } from "../domain/ports/contact-read.port";
 import type { CreditConsumptionPort } from "../domain/ports/credit-consumption.port";
+import type { PaymentUnitOfWork } from "../domain/ports/payment-unit-of-work";
 import { Payment as PaymentEntity } from "../domain/payment.entity";
 import { PaymentAllocation } from "../domain/payment-allocation.entity";
 import { AllocationTarget } from "../domain/value-objects/allocation-target";
@@ -147,6 +137,7 @@ export interface LockedEditContext {
 
 export interface PaymentsServiceDeps {
   repo: PaymentRepository;
+  uow: PaymentUnitOfWork;
   receivables: ReceivablesPort;
   payables: PayablesPort;
   orgSettings: OrgSettingsReadPort;
@@ -164,7 +155,7 @@ export interface PaymentsServiceDeps {
  *
  * Orchestration pattern (single tx per write use case):
  *   1. Pre-validate / read collaborators OUTSIDE the tx (period, settings).
- *   2. Open audit-tx via withAuditTx(repo, ctx, fn).
+ *   2. Open the audited tx via this.uow.run(ctx, fn) (PaymentUnitOfWork port).
  *   3. Inside fn(tx, correlationId): load aggregate(s), mutate entity, persist
  *      via repo.{save,update,delete}Tx(tx, payment), then call cross-feature
  *      ports (accounting, balances, receivables, payables) tx-aware.
@@ -173,6 +164,7 @@ export interface PaymentsServiceDeps {
  */
 export class PaymentsService {
   private readonly repo: PaymentRepository;
+  private readonly uow: PaymentUnitOfWork;
   private readonly receivables: ReceivablesPort;
   private readonly payables: PayablesPort;
   private readonly orgSettings: OrgSettingsReadPort;
@@ -184,6 +176,7 @@ export class PaymentsService {
 
   constructor(deps: PaymentsServiceDeps) {
     this.repo = deps.repo;
+    this.uow = deps.uow;
     this.receivables = deps.receivables;
     this.payables = deps.payables;
     this.orgSettings = deps.orgSettings;
@@ -295,8 +288,7 @@ export class PaymentsService {
     }
     const settings = await this.orgSettings.getOrCreate(organizationId);
 
-    const { result, correlationId } = await withAuditTx(
-      asAuditTxRepo(this.repo),
+    const { result, correlationId } = await this.uow.run(
       { userId, organizationId },
       async (tx) => {
         return this.postInternal(tx, organizationId, userId, payment, settings);
@@ -342,8 +334,7 @@ export class PaymentsService {
       })),
     });
 
-    const { result, correlationId } = await withAuditTx(
-      asAuditTxRepo(this.repo),
+    const { result, correlationId } = await this.uow.run(
       { userId, organizationId },
       async (tx) => {
         const allocsForDirection: AllocationDirectionInput[] = input.allocations;
@@ -394,7 +385,7 @@ export class PaymentsService {
     // REQ-A6 — LOCKED-edit parity with legacy:
     //   1. role is mandatory
     //   2. period.status drives justification length (50 if CLOSED, 10 if OPEN)
-    //   3. justification is forwarded to withAuditTx → setAuditContext
+    //   3. justification is forwarded to uow.run → setAuditContext
     if (payment.status === "LOCKED") {
       if (!lockedCtx.role) {
         throw new ValidationError(
@@ -413,8 +404,7 @@ export class PaymentsService {
       );
     }
 
-    const { correlationId } = await withAuditTx(
-      asAuditTxRepo(this.repo),
+    const { correlationId } = await this.uow.run(
       { userId, organizationId, justification: lockedCtx.justification },
       async (tx) => {
         // 1. Transition aggregate to VOIDED
@@ -562,8 +552,7 @@ export class PaymentsService {
 
     // DRAFT only — LOCKED is routed to updatePostedPaymentTx above, so no
     // justification is forwarded here (DRAFT edits never carry one).
-    const { result, correlationId } = await withAuditTx(
-      asAuditTxRepo(this.repo),
+    const { result, correlationId } = await this.uow.run(
       { userId, organizationId },
       async (tx) => {
         await this.repo.updateTx(tx, next);
@@ -591,8 +580,7 @@ export class PaymentsService {
       }
     }
 
-    const { correlationId } = await withAuditTx(
-      asAuditTxRepo(this.repo),
+    const { correlationId } = await this.uow.run(
       { userId, organizationId },
       async (tx) => {
         for (const cs of creditSources) {
@@ -727,8 +715,7 @@ export class PaymentsService {
 
     const settings = await this.orgSettings.getOrCreate(organizationId);
 
-    const { result, correlationId } = await withAuditTx(
-      asAuditTxRepo(this.repo),
+    const { result, correlationId } = await this.uow.run(
       {
         userId,
         organizationId,
