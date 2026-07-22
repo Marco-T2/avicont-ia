@@ -676,6 +676,153 @@ describe("PrismaReceivablesRepository", () => {
     });
   });
 
+  // ── H2 atomicity — update/save dual write must be transactional ────────────
+  // update()/save() are the NON-tx entry points (canonical status route via
+  // makeReceivablesService → root client). Their dual write (AR row + JE
+  // settlement stamp) must run inside ONE $transaction: a crash between the
+  // two autocommit writes would persist the AR status while JE.paymentStatus
+  // stays stale = silent settlement drift (adversarial-verify defect H2).
+  // The base (autocommit) client and the tx client carry SEPARATE spies, so
+  // any write leaking outside the transaction is observable.
+
+  describe("H2 atomicity — update/save dual write in a single $transaction", () => {
+    /** Root-client mock: $transaction hands its callback a tx client with its
+     *  OWN delegates. Writes on `base*` delegates = autocommit leaks. */
+    const atomicDb = () => {
+      const tx = {
+        accountsReceivable: {
+          update: vi.fn().mockResolvedValue(undefined),
+          create: vi.fn().mockResolvedValue(undefined),
+        },
+        journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      };
+      const baseAr = {
+        update: vi.fn().mockResolvedValue(undefined),
+        create: vi.fn().mockResolvedValue(undefined),
+      };
+      const baseJe = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+      const $transaction = vi
+        .fn()
+        .mockImplementation(async (fn: (c: unknown) => Promise<unknown>) =>
+          fn(tx),
+        );
+      const db = {
+        accountsReceivable: baseAr,
+        journalEntry: baseJe,
+        $transaction,
+      } as unknown as PrismaClient;
+      return { db, tx, baseAr, baseJe, $transaction };
+    };
+
+    it("update: both writes execute on the SAME tx client from ONE $transaction — never on the autocommit client", async () => {
+      const { db, tx, baseAr, baseJe, $transaction } = atomicDb();
+      const repo = new PrismaReceivablesRepository(db);
+
+      await repo.update(rehydrate("PARTIAL"));
+
+      expect($transaction).toHaveBeenCalledTimes(1);
+      expect(tx.accountsReceivable.update).toHaveBeenCalledTimes(1);
+      expect(tx.accountsReceivable.update.mock.calls[0]?.[0]?.where).toEqual({
+        id: "rec-1",
+        organizationId: "org-1",
+      });
+      // Mapped status logic unchanged — only atomicity moved.
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+      expect(baseAr.update).not.toHaveBeenCalled();
+      expect(baseJe.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("update: when the JE settlement write fails, the AR write must NOT have hit the autocommit client (no partial commit)", async () => {
+      const { db, tx, baseAr, baseJe } = atomicDb();
+      const boom = new Error("je-write-failed");
+      tx.journalEntry.updateMany.mockRejectedValue(boom);
+      baseJe.updateMany.mockRejectedValue(boom); // current (non-atomic) path fails here too
+
+      const repo = new PrismaReceivablesRepository(db);
+
+      await expect(repo.update(rehydrate("PAID"))).rejects.toThrow(
+        "je-write-failed",
+      );
+
+      // Inside $transaction the throw aborts the callback → rollback. A write
+      // on the BASE client is autocommit — it survives the throw = H2 drift.
+      expect(baseAr.update).not.toHaveBeenCalled();
+      expect(tx.accountsReceivable.update).toHaveBeenCalledTimes(1);
+    });
+
+    it("save: both writes execute on the SAME tx client from ONE $transaction — never on the autocommit client", async () => {
+      const { db, tx, baseAr, baseJe, $transaction } = atomicDb();
+      const repo = new PrismaReceivablesRepository(db);
+
+      await repo.save(rehydrate("PARTIAL"));
+
+      expect($transaction).toHaveBeenCalledTimes(1);
+      expect(tx.accountsReceivable.create).toHaveBeenCalledTimes(1);
+      // D2 stamp still mapped from the entity status — not hardcoded.
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+      expect(baseAr.create).not.toHaveBeenCalled();
+      expect(baseJe.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("save: when the JE settlement write fails, the AR create must NOT have hit the autocommit client (no partial commit)", async () => {
+      const { db, tx, baseAr, baseJe } = atomicDb();
+      const boom = new Error("je-write-failed");
+      tx.journalEntry.updateMany.mockRejectedValue(boom);
+      baseJe.updateMany.mockRejectedValue(boom);
+
+      const repo = new PrismaReceivablesRepository(db);
+
+      await expect(repo.save(buildEntity())).rejects.toThrow("je-write-failed");
+
+      expect(baseAr.create).not.toHaveBeenCalled();
+      expect(tx.accountsReceivable.create).toHaveBeenCalledTimes(1);
+    });
+
+    // Guard branch (approval pins — PASS on pre-fix code too): a client
+    // WITHOUT $transaction (withTransaction-bound repo whose caller already
+    // owns the tx) runs both writes directly — already atomic under the
+    // caller's tx; wrapping is not required. (Prisma 7 TransactionClient DOES
+    // expose $transaction — nested tx = savepoint, also safe — but the guard
+    // must not crash on clients that lack it.)
+    it("update via withTransaction-bound repo: runs both writes directly on the caller's tx client", async () => {
+      const update = vi.fn().mockResolvedValue(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaReceivablesRepository(dbWith({})).withTransaction(
+        tx as unknown as Prisma.TransactionClient,
+      );
+
+      await repo.update(rehydrate("PARTIAL"));
+
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("save via withTransaction-bound repo: runs both writes directly on the caller's tx client", async () => {
+      const create = vi.fn().mockResolvedValue(undefined);
+      const tx = txWith({ create });
+      const repo = new PrismaReceivablesRepository(dbWith({})).withTransaction(
+        tx as unknown as Prisma.TransactionClient,
+      );
+
+      await repo.save(rehydrate("PAID"));
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PAID" },
+      });
+    });
+  });
+
   describe("settlement sync — creation stamp (D2)", () => {
     it("createTx stamps the linked JE with the mapped created status using the RETURNED row id", async () => {
       const create = vi.fn().mockResolvedValueOnce({ id: "new-rec" });

@@ -19,7 +19,12 @@ import { toDomain, toPersistence } from "./receivables.mapper";
 type DbClient = Pick<
   PrismaClient,
   "accountsReceivable" | "paymentAllocation" | "journalEntry"
->;
+> & {
+  /** Present on the root client; used by `atomically` to open a repo-local
+   *  tx for the non-tx entry points (H2). Optional so clients without it
+   *  (narrow tx tokens) still fit — they run writes directly. */
+  $transaction?: PrismaClient["$transaction"];
+};
 
 export class PrismaReceivablesRepository implements ReceivableRepository {
   constructor(private readonly db: DbClient = prisma) {}
@@ -79,39 +84,63 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     return row ? toDomain(row) : null;
   }
 
+  /**
+   * Runs `fn` atomically. `save`/`update` are the NON-tx entry points
+   * (canonical status route → makeReceivablesService → root client): their
+   * dual write (AR row + JE settlement stamp, D1/D2) must not straddle two
+   * autocommits — a crash between them persists the AR status while
+   * JE.paymentStatus stays stale (silent settlement drift, defect H2).
+   *
+   * Guard: a client without `$transaction` (a bare tx token) is already
+   * inside the caller's transaction — run directly. On Prisma 7 the real
+   * `TransactionClient` DOES expose `$transaction` (nested tx = savepoint on
+   * postgres), so a withTransaction-bound repo wrapping again stays atomic.
+   */
+  private async atomically(fn: (client: DbClient) => Promise<void>): Promise<void> {
+    if (typeof this.db.$transaction === "function") {
+      await this.db.$transaction(async (tx) => fn(tx as unknown as DbClient));
+      return;
+    }
+    await fn(this.db);
+  }
+
   async save(entity: Receivable): Promise<void> {
-    await this.db.accountsReceivable.create({ data: toPersistence(entity) });
-    // D2 creation stamp: mapped from the entity's status — not hardcoded.
-    await this.syncJournalEntrySettlement(
-      this.db,
-      entity.organizationId,
-      entity.id,
-      entity.status,
-    );
+    await this.atomically(async (client) => {
+      await client.accountsReceivable.create({ data: toPersistence(entity) });
+      // D2 creation stamp: mapped from the entity's status — not hardcoded.
+      await this.syncJournalEntrySettlement(
+        client,
+        entity.organizationId,
+        entity.id,
+        entity.status,
+      );
+    });
   }
 
   async update(entity: Receivable): Promise<void> {
-    await this.db.accountsReceivable.update({
-      where: { id: entity.id, organizationId: entity.organizationId },
-      data: {
-        description: entity.description,
-        dueDate: entity.dueDate,
-        status: entity.status,
-        amount: new Prisma.Decimal(entity.amount.value),
-        paid: new Prisma.Decimal(entity.paid.value),
-        balance: new Prisma.Decimal(entity.balance.value),
-        sourceType: entity.sourceType,
-        sourceId: entity.sourceId,
-        journalEntryId: entity.journalEntryId,
-        notes: entity.notes,
-      },
+    await this.atomically(async (client) => {
+      await client.accountsReceivable.update({
+        where: { id: entity.id, organizationId: entity.organizationId },
+        data: {
+          description: entity.description,
+          dueDate: entity.dueDate,
+          status: entity.status,
+          amount: new Prisma.Decimal(entity.amount.value),
+          paid: new Prisma.Decimal(entity.paid.value),
+          balance: new Prisma.Decimal(entity.balance.value),
+          sourceType: entity.sourceType,
+          sourceId: entity.sourceId,
+          journalEntryId: entity.journalEntryId,
+          notes: entity.notes,
+        },
+      });
+      await this.syncJournalEntrySettlement(
+        client,
+        entity.organizationId,
+        entity.id,
+        entity.status,
+      );
     });
-    await this.syncJournalEntrySettlement(
-      this.db,
-      entity.organizationId,
-      entity.id,
-      entity.status,
-    );
   }
 
   async aggregateOpen(
