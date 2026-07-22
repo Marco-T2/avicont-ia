@@ -22,8 +22,6 @@ import { makeAccountBalancesService } from "@/modules/account-balances/presentat
 import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
-import { PrismaReceivablesContactLedgerAdapter } from "../infrastructure/prisma-receivables-contact-ledger.adapter";
-import { PrismaPayablesContactLedgerAdapter } from "../infrastructure/prisma-payables-contact-ledger.adapter";
 import { PrismaPaymentsContactLedgerAdapter } from "../infrastructure/prisma-payments-contact-ledger.adapter";
 import { ControlAccountCodesReadAdapter } from "../infrastructure/control-account-codes-read.adapter";
 import { LedgerExporterAdapter } from "../infrastructure/adapters/ledger-exporter.adapter";
@@ -79,14 +77,13 @@ export function makeLedgerService(): LedgerService {
     new PrismaAccountsRepo(),
     makeAccountBalancesService(),
     // contact-ledger-refactor C4: enrichment deps for
-    // getContactLedgerPaginated. 3 batched ports wrapping the Prisma findMany
-    // family (Receivables/Payables/Payments), wired here so the route handler
-    // gets a fully-functional service through this single factory.
+    // getContactLedgerPaginated. unified-comprobante P9 (D6 retirement 3→1):
+    // the Receivables/Payables enrichment adapters were retired —
+    // estado/dueDate are read off the JE row; only the Payments batched port
+    // survives (paymentMethod/bankAccountName/direction not on the JE).
     // ContactsReadAdapter reused — already exists for the journals use case.
     {
       contacts: new ContactsReadAdapter(),
-      receivables: new PrismaReceivablesContactLedgerAdapter(),
-      payables: new PrismaPayablesContactLedgerAdapter(),
       payments: new PrismaPaymentsContactLedgerAdapter(),
       // BF1 — provides org-wide CxC/CxP account codes used to narrow the
       // contact-ledger query to control-account movements only, fixing

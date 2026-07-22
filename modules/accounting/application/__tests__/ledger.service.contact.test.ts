@@ -7,9 +7,7 @@ import type { AccountBalancesService } from "@/modules/account-balances/applicat
 import type { ContactsReadPort } from "../../domain/ports/contacts-read.port";
 import type {
   ContactLedgerEnrichmentDeps,
-  PayablesContactLedgerPort,
   PaymentsContactLedgerPort,
-  ReceivablesContactLedgerPort,
 } from "../../domain/ports/contact-ledger-enrichment.ports";
 import type { Account } from "../../domain/accounts.types";
 
@@ -17,11 +15,11 @@ import type { Account } from "../../domain/accounts.types";
  * Behavioral unit test for `LedgerService.getContactLedgerPaginated`
  * (contact-ledger-refactor — C3).
  *
- * RED expected failure mode per [[red_acceptance_failure_mode]]:
+ * RED expected failure mode per [[red_acceptance_failure_mode]] (historical,
+ * contact-ledger-refactor C3):
  *   `getContactLedgerPaginated` method does not exist on `LedgerService`,
  *   and the supporting types (`ContactLedgerEntry`, `ContactLedgerPaginatedDto`)
- *   + enrichment ports (`ReceivablesContactLedgerPort`,
- *   `PayablesContactLedgerPort`, `PaymentsContactLedgerPort`) are not declared.
+ *   + enrichment ports were not declared.
  *   Tests fail to compile (TS2339 / TS2305) — the assertion shape mirrors
  *   sister `ledger.service.test.ts` for `getAccountLedgerPaginated`.
  *   Lección C1 applied: RED targets the SAME runtime object that gains the
@@ -37,8 +35,16 @@ import type { Account } from "../../domain/accounts.types";
  *   - Opening balance row propagation (DEC-1 Decimal precision).
  *   - NotFoundError when contact missing (parity sister `getAccountLedger`).
  *   - Batched enrichment lookups exercise the design D3 N+1 mitigation —
- *     ReceivablesContactLedgerPort.findByJournalEntryIds invoked ONCE with
+ *     PaymentsContactLedgerPort.findByJournalEntryIds invoked ONCE with
  *     the dedup'd list of JE ids, NOT once per row.
+ *
+ * unified-comprobante-source-of-truth P9 (D6 retirement 3→1): the CxC/CxP
+ * enrichment arms are RETIRED — estado/dueDate are sourced from the JE row
+ * ONLY (`journalEntry.paymentStatus` / `journalEntry.dueDate`, stamped at
+ * creation + live-synced by the repo write funnel + backfilled P7). The
+ * payments enrichment SURVIVES (paymentMethod/bankAccountName/direction are
+ * not on the JE). P8's transitional fallback pins were rewritten here to
+ * assert the post-retirement reality (JE-sourced or null → UI "—").
  */
 
 // ── Test helpers ─────────────────────────────────────────────────────────────
@@ -84,22 +90,12 @@ function makeContactsStub(activeContactIds: Set<string>): ContactsReadPort {
   };
 }
 
-type ReceivableEnrichmentRow = Awaited<
-  ReturnType<ReceivablesContactLedgerPort["findByJournalEntryIds"]>
->[number];
-
-type PayableEnrichmentRow = Awaited<
-  ReturnType<PayablesContactLedgerPort["findByJournalEntryIds"]>
->[number];
-
 type PaymentEnrichmentRow = Awaited<
   ReturnType<PaymentsContactLedgerPort["findByJournalEntryIds"]>
 >[number];
 
 function makeEnrichmentDeps(opts: {
   contacts: ContactsReadPort;
-  receivables?: ReceivableEnrichmentRow[];
-  payables?: PayableEnrichmentRow[];
   payments?: PaymentEnrichmentRow[];
   /** Org-wide CxC/CxP control account codes the service uses to scope the
    *  contact-ledger query to control-account movements only. Defaults mirror
@@ -109,13 +105,9 @@ function makeEnrichmentDeps(opts: {
   controlAccountCodes?: { cxcAccountCode: string; cxpAccountCode: string };
 }): {
   deps: ContactLedgerEnrichmentDeps;
-  receivablesSpy: ReturnType<typeof vi.fn>;
-  payablesSpy: ReturnType<typeof vi.fn>;
   paymentsSpy: ReturnType<typeof vi.fn>;
   controlAccountsSpy: ReturnType<typeof vi.fn>;
 } {
-  const receivablesSpy = vi.fn(async () => opts.receivables ?? []);
-  const payablesSpy = vi.fn(async () => opts.payables ?? []);
   const paymentsSpy = vi.fn(async () => opts.payments ?? []);
   const codes = opts.controlAccountCodes ?? {
     cxcAccountCode: "1.1.4.1",
@@ -125,13 +117,9 @@ function makeEnrichmentDeps(opts: {
   return {
     deps: {
       contacts: opts.contacts,
-      receivables: { findByJournalEntryIds: receivablesSpy },
-      payables: { findByJournalEntryIds: payablesSpy },
       payments: { findByJournalEntryIds: paymentsSpy },
       controlAccountCodes: { getControlAccountCodes: controlAccountsSpy },
     },
-    receivablesSpy,
-    payablesSpy,
     paymentsSpy,
     controlAccountsSpy,
   };
@@ -260,10 +248,11 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(result.openingBalance).toBe("0.00");
   });
 
-  it("T2 batched enrichment: ReceivablesContactLedgerPort.findByJournalEntryIds called ONCE with dedup'd ids (N+1 mitigation per design risk #1)", async () => {
+  it("T2 batched enrichment: PaymentsContactLedgerPort.findByJournalEntryIds called ONCE with dedup'd ids (N+1 mitigation per design risk #1)", async () => {
     // SPEC: 3 rows reference 2 unique JE ids (je-1 twice + je-2 once).
     // Port MUST be called ONCE with ["je-1", "je-2"] (deduped), NOT once
-    // per row.
+    // per row. P9: payments is the ONLY surviving enrichment lookup —
+    // estado/dueDate come off the JE row, no CxC/CxP ports exist anymore.
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -274,6 +263,8 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-1",
         sourceType: "sale",
         sourceId: "sale-1",
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
       contactRow({
         debit: 0,
@@ -283,6 +274,8 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-1",
         sourceType: "sale",
         sourceId: "sale-1",
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
       contactRow({
         debit: 200,
@@ -292,25 +285,14 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-2",
         sourceType: "sale",
         sourceId: "sale-2",
+        paymentStatus: "PARTIAL",
+        jeDueDate: new Date("2099-12-31"),
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
-    const { deps, receivablesSpy, payablesSpy, paymentsSpy } =
-      makeEnrichmentDeps({
-        contacts: makeContactsStub(new Set(["contact-1"])),
-        receivables: [
-          {
-            journalEntryId: "je-1",
-            status: "PENDING",
-            dueDate: new Date("2099-12-31"),
-          },
-          {
-            journalEntryId: "je-2",
-            status: "PARTIAL",
-            dueDate: new Date("2099-12-31"),
-          },
-        ],
-      });
+    const { deps, paymentsSpy } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+    });
     const service = new LedgerService(
       query,
       makeAccountsStub(),
@@ -318,7 +300,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
       deps,
     );
 
-    await service.getContactLedgerPaginated(
+    const result = await service.getContactLedgerPaginated(
       "org-1",
       "contact-1",
       undefined,
@@ -326,14 +308,100 @@ describe("LedgerService.getContactLedgerPaginated", () => {
       { page: 1, pageSize: 25 },
     );
 
-    expect(receivablesSpy).toHaveBeenCalledTimes(1);
-    const [orgArg, idsArg] = receivablesSpy.mock.calls[0];
+    expect(paymentsSpy).toHaveBeenCalledTimes(1);
+    const [orgArg, idsArg] = paymentsSpy.mock.calls[0];
     expect(orgArg).toBe("org-1");
     // Deduped: je-1 + je-2 (order may differ; assert as set)
     expect(new Set(idsArg as string[])).toEqual(new Set(["je-1", "je-2"]));
-    // Sister ports also called once each (batched), even if empty
-    expect(payablesSpy).toHaveBeenCalledTimes(1);
+    // estado sourced straight off the JE rows (P9 — no CxC lookup involved)
+    expect(result.items.map((e) => e.status)).toEqual([
+      "PENDING",
+      "PENDING",
+      "PARTIAL",
+    ]);
+  });
+
+  it("P9-T1 retirement 3→1: retired CxC/CxP enrichment arms are NEVER called — payments is the single surviving lookup with its fields intact (D6)", async () => {
+    // unified-comprobante-source-of-truth P9. Deps shrank to
+    // contacts/payments/controlAccountCodes; this test additionally attaches
+    // legacy-shaped `receivables`/`payables` spies to the deps object (extra
+    // structural props — allowed at runtime) and pins that the service never
+    // touches them. RED EFM per tasks 9.2: pre-retirement the Promise.all
+    // arms still call both spies → toHaveBeenCalledTimes(0) fails.
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 0,
+        credit: 200,
+        date: "2099-05-16",
+        number: 5,
+        journalEntryId: "je-pay",
+        sourceType: "payment",
+        sourceId: "pay-1",
+      }),
+      contactRow({
+        debit: 500,
+        credit: 0,
+        date: "2099-05-17",
+        number: 6,
+        journalEntryId: "je-sale",
+        sourceType: "sale",
+        sourceId: "sale-1",
+        paymentStatus: "PAID",
+        jeDueDate: new Date("2099-11-30T00:00:00.000Z"),
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps, paymentsSpy } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      payments: [
+        {
+          journalEntryId: "je-pay",
+          paymentMethod: "TRANSFERENCIA",
+          bankAccountName: "BNB Cta Cte",
+          direction: "COBRO",
+        },
+      ],
+    });
+    const retiredReceivablesSpy = vi.fn(async () => []);
+    const retiredPayablesSpy = vi.fn(async () => []);
+    // Variable (not literal) → no TS excess-property check; the runtime
+    // object carries the legacy arms so a lingering Promise.all arm WOULD
+    // find and call them — the 0-call pins below prove the arms are gone.
+    const depsWithRetiredArms = {
+      ...deps,
+      receivables: { findByJournalEntryIds: retiredReceivablesSpy },
+      payables: { findByJournalEntryIds: retiredPayablesSpy },
+    };
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      depsWithRetiredArms,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    // Retired arms: never called (single-lookup enrichment, D6 3→1).
+    expect(retiredReceivablesSpy).toHaveBeenCalledTimes(0);
+    expect(retiredPayablesSpy).toHaveBeenCalledTimes(0);
+    // Surviving payments lookup: called once, fields intact on the DTO.
     expect(paymentsSpy).toHaveBeenCalledTimes(1);
+    const payRow = result.items[0] as (typeof result.items)[number] & {
+      paymentDirection: string | null;
+    };
+    expect(payRow.paymentMethod).toBe("TRANSFERENCIA");
+    expect(payRow.bankAccountName).toBe("BNB Cta Cte");
+    expect(payRow.paymentDirection).toBe("COBRO");
+    // JE-sourced estado for the linked row (no CxC lookup involved).
+    expect(result.items[1].status).toBe("PAID");
+    expect(result.items[1].dueDate).toBe("2099-11-30T00:00:00.000Z");
   });
 
   it("T3 withoutAuxiliary flagging: row with sourceType=null AND no CxC/CxP match flagged true (D4 fallback)", async () => {
@@ -355,9 +423,8 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      // Empty enrichments: no CxC/CxP/Payment found for je-orphan
-      receivables: [],
-      payables: [],
+      // Empty payments enrichment: no Payment found for je-orphan. P9: the
+      // "no auxiliar" signal is the JE row itself (paymentStatus null).
       payments: [],
     });
     const service = new LedgerService(
@@ -659,18 +726,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         sourceType: "sale",
         sourceId: "sale-1",
         operationalDocCode: "VG",
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      receivables: [
-        {
-          journalEntryId: "je-sale",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -705,18 +767,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         sourceType: "dispatch",
         sourceId: "disp-1",
         operationalDocCode: "ND",
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      receivables: [
-        {
-          journalEntryId: "je-dispatch",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -751,18 +808,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         sourceType: "purchase",
         sourceId: "purch-1",
         operationalDocCode: "FL",
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      payables: [
-        {
-          journalEntryId: "je-purchase",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -897,18 +949,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         sourceId: "sale-1",
         operationalDocCode: "VG",
         referenceNumber: 1,
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      receivables: [
-        {
-          journalEntryId: "je-sale",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -944,18 +991,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         sourceId: "purch-1",
         operationalDocCode: "FL",
         referenceNumber: 5,
+        paymentStatus: "PENDING",
+        jeDueDate: new Date("2099-12-31"),
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      payables: [
-        {
-          journalEntryId: "je-purchase",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -1062,25 +1104,21 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(entry.documentReferenceNumber).toBeNull();
   });
 
-  // ── P8 read-path flip (unified-comprobante-source-of-truth, D6) ──
+  // ── P8 read-path flip → P9 retirement (unified-comprobante, D6) ──
   //
-  // JE.paymentStatus/JE.dueDate become the estado source of truth: when the
-  // JE row carries a non-null paymentStatus the service MUST source
-  // status+dueDate from the JE, NOT from the CxC/CxP enrichment lookup.
-  // Fallback: paymentStatus null (manual JEs / not-yet-backfilled) keeps the
-  // pre-P8 enrichment derivation byte-identical. ATRASADO stays read-derived
-  // (UI/exporters derive from dueDate < now) — NOT persisted, NOT flipped.
+  // JE.paymentStatus/JE.dueDate are the estado source of truth. P9 retired
+  // the CxC/CxP enrichment arms entirely: JE-linked rows are ALWAYS stamped
+  // (creation stamp P3/P4 + live sync + P7 backfill; re-verified at
+  // retirement by the STEP-0 fallback-dependency guard = 0 rows), manual JEs
+  // carry null → UI renders "—" (spec null-em-dash). ATRASADO stays
+  // read-derived (UI/exporters derive from dueDate < now) — never persisted.
   //
-  // RED expected failure mode per [[red_acceptance_failure_mode]]:
-  //   P8-T1/P8-T2 — service ignores journalEntry.paymentStatus/dueDate and
-  //   surfaces the ENRICHMENT value → `expect(status).toBe("PAID")` receives
-  //   "PENDING" (enrichment-only value); dueDate assertion receives the
-  //   enrichment ISO instead of the JE ISO. P8-T3/T4/T5 are born-green pins
-  //   (fallback + DTO-shape) that must SURVIVE the flip.
+  // P8-T3's transitional fallback pin was REWRITTEN at P9 (per apply-progress
+  // note: it asserted removed behavior) — it now pins the post-retirement
+  // reality: paymentStatus=null → null estado even for source-linked rows.
 
-  it("P8-T1 estado sourced from JE.paymentStatus when present — enrichment value diverges and MUST lose (D6)", async () => {
-    // JE says PAID/2099-11-30; stale-divergent enrichment says PENDING/
-    // 2099-12-31. Post-flip the JE wins BOTH fields.
+  it("P8-T1 estado sourced from JE.paymentStatus — the JE row is the only estado source (D6, P9)", async () => {
+    // JE says PAID/2099-11-30 → DTO surfaces BOTH fields from the JE.
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -1098,13 +1136,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      receivables: [
-        {
-          journalEntryId: "je-flip",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31T00:00:00.000Z"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -1125,7 +1156,7 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(result.items[0].dueDate).toBe("2099-11-30T00:00:00.000Z");
   });
 
-  it("P8-T2 triangulation payable side: JE.paymentStatus=VOIDED beats CxP enrichment PENDING (sister parity)", async () => {
+  it("P8-T2 triangulation payable side: JE.paymentStatus=VOIDED sourced off the JE row (sister parity)", async () => {
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -1143,13 +1174,6 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      payables: [
-        {
-          journalEntryId: "je-flip-ap",
-          status: "PENDING",
-          dueDate: new Date("2099-12-31T00:00:00.000Z"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -1170,9 +1194,13 @@ describe("LedgerService.getContactLedgerPaginated", () => {
     expect(result.items[0].dueDate).toBe("2099-10-01T00:00:00.000Z");
   });
 
-  it("P8-T3 fallback pin: JE.paymentStatus=null → enrichment derivation unchanged (manual / not-yet-backfilled)", async () => {
-    // paymentStatus omitted → contactRow defaults null → pre-P8 path must
-    // survive the flip byte-identical (P9 retires it, not P8).
+  it("P8-T3 REWRITTEN at P9 — fallback retired: JE.paymentStatus=null renders null estado even for a source-linked row (spec null-em-dash)", async () => {
+    // Pre-P9 this test pinned the transitional enrichment fallback (null
+    // paymentStatus → CxC status PARTIAL). The fallback is GONE: a null
+    // paymentStatus now surfaces null estado/dueDate — the UI renders "—".
+    // Unreachable for real linked rows in prod (STEP-0 fallback-dependency
+    // guard = 0 backfilled-but-null linked JEs; write funnel stamps at
+    // creation), pinned here as the service contract for the null branch.
     const query = new InMemoryJournalLedgerQueryPort();
     query.linesByContactPaginated = [
       contactRow({
@@ -1183,18 +1211,12 @@ describe("LedgerService.getContactLedgerPaginated", () => {
         journalEntryId: "je-legacy",
         sourceType: "sale",
         sourceId: "sale-9",
+        // paymentStatus omitted → contactRow defaults null.
       }),
     ];
     query.openingBalanceDeltaByContactPrimed = 0;
     const { deps } = makeEnrichmentDeps({
       contacts: makeContactsStub(new Set(["contact-1"])),
-      receivables: [
-        {
-          journalEntryId: "je-legacy",
-          status: "PARTIAL",
-          dueDate: new Date("2099-12-31T00:00:00.000Z"),
-        },
-      ],
     });
     const service = new LedgerService(
       query,
@@ -1211,8 +1233,11 @@ describe("LedgerService.getContactLedgerPaginated", () => {
       { page: 1, pageSize: 25 },
     );
 
-    expect(result.items[0].status).toBe("PARTIAL");
-    expect(result.items[0].dueDate).toBe("2099-12-31T00:00:00.000Z");
+    expect(result.items[0].status).toBeNull();
+    expect(result.items[0].dueDate).toBeNull();
+    // sourceType="sale" → NOT flagged withoutAuxiliary (flag is for manual
+    // JEs only — sourceType null AND unstamped JE).
+    expect(result.items[0].withoutAuxiliary).toBe(false);
   });
 
   it("P8-T4 manual JE pin: paymentStatus=null AND no enrichment → status/dueDate null + withoutAuxiliary", async () => {

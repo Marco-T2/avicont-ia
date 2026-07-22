@@ -1,16 +1,22 @@
 /**
- * P8 read-path equivalence gate (unified-comprobante-source-of-truth, D6).
+ * P8/P9 read-path equivalence gate (unified-comprobante-source-of-truth, D6).
  *
  * Compares, for EVERY contact-ledger row of EVERY contact in the database,
  * the displayed estado the UI/PDF/XLSX would render:
  *
- *   NEW path — the REAL post-flip `LedgerService.getContactLedgerPaginated`
- *     (JE.paymentStatus source of truth, enrichment fallback when null),
- *     wired with the real Prisma query adapter.
+ *   NEW path — the REAL `LedgerService.getContactLedgerPaginated` (since P9:
+ *     JE.paymentStatus/dueDate ONLY — the CxC/CxP enrichment arms are
+ *     retired), wired with the real Prisma query adapter.
  *   OLD path — an independent re-computation of the PRE-flip enrichment
  *     logic: raw aux status `receivable?.status ?? payable?.status ?? null`
  *     (NO toSettlementStatus collapse) + aux dueDate, exactly what
- *     ledger.service.ts:308 surfaced before the flip.
+ *     ledger.service.ts:308 surfaced before the P8 flip. The aux queries are
+ *     frozen inline below (the P9-deleted adapters' queries verbatim).
+ *
+ * P9 note: with the fallback retired, a JE-linked aux row whose JE
+ * paymentStatus is NULL would DIFF here (OLD=aux status, NEW="—") — exactly
+ * the regression this gate must catch. The STEP-0 fallback-dependency guard
+ * (0 linked-but-null JEs) makes 0 diffs the expected outcome.
  *
  * Both sides are then pushed through the SAME `renderEstado` label
  * derivation the UI/exporters share (— / ATRASADO / Pagado / Parcial /
@@ -38,22 +44,28 @@ import { LedgerService } from "@/modules/accounting/application/ledger.service";
 import { PrismaJournalLedgerQueryAdapter } from "@/modules/accounting/infrastructure/prisma-journal-ledger-query.adapter";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
 import type { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
-import type {
-  ContactLedgerEnrichmentDeps,
-  PayableLedgerEnrichmentRow,
-  ReceivableLedgerEnrichmentRow,
-} from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
+import type { ContactLedgerEnrichmentDeps } from "@/modules/accounting/domain/ports/contact-ledger-enrichment.ports";
 
 const PAGE_SIZE = 200;
 
-// ── Inline ports (the real adapters import "server-only" and cannot load
-//    under tsx; these mirror their queries verbatim — see
-//    prisma-receivables-contact-ledger.adapter.ts and sisters) ──────────────
+/** Frozen OLD-path aux projection — local since P9 deleted the
+ *  `ReceivableLedgerEnrichmentRow`/`PayableLedgerEnrichmentRow` port types
+ *  with the adapters. The gate's OLD-path re-computation must stay
+ *  self-contained and immutable regardless of production retirements. */
+interface AuxLedgerEnrichmentRow {
+  journalEntryId: string;
+  status: string;
+  dueDate: Date | null;
+}
+
+// ── Inline OLD-path aux queries (mirror the P9-deleted
+//    prisma-{receivables,payables}-contact-ledger.adapter.ts verbatim —
+//    frozen here so the OLD path stays reproducible) ───────────────────────
 
 async function findReceivablesByJournalEntryIds(
   organizationId: string,
   journalEntryIds: string[],
-): Promise<ReceivableLedgerEnrichmentRow[]> {
+): Promise<AuxLedgerEnrichmentRow[]> {
   if (journalEntryIds.length === 0) return [];
   const rows = await prisma.accountsReceivable.findMany({
     where: { organizationId, journalEntryId: { in: journalEntryIds } },
@@ -67,7 +79,7 @@ async function findReceivablesByJournalEntryIds(
 async function findPayablesByJournalEntryIds(
   organizationId: string,
   journalEntryIds: string[],
-): Promise<PayableLedgerEnrichmentRow[]> {
+): Promise<AuxLedgerEnrichmentRow[]> {
   if (journalEntryIds.length === 0) return [];
   const rows = await prisma.accountsPayable.findMany({
     where: { organizationId, journalEntryId: { in: journalEntryIds } },
@@ -83,8 +95,9 @@ function makeDeps(): ContactLedgerEnrichmentDeps {
     // Existence gate bypassed on purpose — contacts are enumerated FROM the
     // DB below, and the gate must scan inactive contacts' history too.
     contacts: { getActiveById: async () => {} },
-    receivables: { findByJournalEntryIds: findReceivablesByJournalEntryIds },
-    payables: { findByJournalEntryIds: findPayablesByJournalEntryIds },
+    // P9: no receivables/payables arms — the service reads estado/dueDate
+    // off the JE row. The inline aux queries above feed ONLY the OLD-path
+    // re-computation in main().
     // Payments feed paymentMethod/bankAccountName/direction — none of which
     // participate in estado/dueDate derivation on either path. Empty keeps
     // the gate read-surface minimal without weakening the comparison.
@@ -174,7 +187,7 @@ async function main() {
   let contactsScanned = 0;
   let rowsCompared = 0;
   let jeSourced = 0;
-  let fallbackSourced = 0;
+  let jeUnstamped = 0;
   const diffs: string[] = [];
   const ambiguous: string[] = [];
 
@@ -203,9 +216,7 @@ async function main() {
           select: { id: true, paymentStatus: true },
         }),
       ]);
-      const collect = (
-        rows: Array<ReceivableLedgerEnrichmentRow | PayableLedgerEnrichmentRow>,
-      ) => {
+      const collect = (rows: AuxLedgerEnrichmentRow[]) => {
         const m = new Map<string, Array<{ status: string; dueDate: Date | null }>>();
         for (const r of rows) {
           const list = m.get(r.journalEntryId) ?? [];
@@ -221,7 +232,7 @@ async function main() {
       for (const entry of dto.items) {
         rowsCompared++;
         if (statusByJe.get(entry.entryId) != null) jeSourced++;
-        else fallbackSourced++;
+        else jeUnstamped++;
 
         const arList = arByJe.get(entry.entryId) ?? [];
         const apList = apByJe.get(entry.entryId) ?? [];
@@ -253,7 +264,7 @@ async function main() {
   console.log(`Contacts total / with rows:  ${contacts.length} / ${contactsScanned}`);
   console.log(`Ledger rows compared:        ${rowsCompared}`);
   console.log(`  estado from JE (flip):     ${jeSourced}`);
-  console.log(`  estado via fallback:       ${fallbackSourced}`);
+  console.log(`  estado null (JE unstamped):${jeUnstamped}`);
   console.log(`Persisted CANCELLED/OVERDUE: AR=${arBad} AP=${apBad} (precondition: 0/0)`);
   console.log(`Same-side multi-link (ambiguous OLD winner): ${ambiguous.length}`);
   console.log(`DIFFS:                       ${diffs.length}`);

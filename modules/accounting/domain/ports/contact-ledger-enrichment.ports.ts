@@ -4,50 +4,30 @@
  *
  * The contact-ledger view returns raw `ContactLedgerLineRow[]` from the
  * adapter (pure SQL, no joins to source documents). The application layer
- * hydrates each row's `status` / `paymentMethod` / `bankAccount` by looking
- * up the parent CxC / CxP / Payment via these batched ports.
+ * hydrates each row's `paymentMethod` / `bankAccountName` / `direction` by
+ * looking up the parent Payment via the single batched port below.
  *
- * N+1 mitigation (design risk #1): each port exposes a SINGLE batched method
+ * unified-comprobante-source-of-truth P9 (D6 retirement 3→1): the
+ * `ReceivablesContactLedgerPort` / `PayablesContactLedgerPort` enrichment
+ * ports (and their row types + Prisma adapters) were RETIRED — `status` and
+ * `dueDate` are persisted ON the JE row (`JournalEntry.paymentStatus` /
+ * `.dueDate`: stamped at creation, live-synced by the repo write funnel,
+ * backfilled for pre-existing rows) and read off it directly. Only the
+ * Payment lookup survives — its fields are not denormalized onto the JE.
+ *
+ * N+1 mitigation (design risk #1): the port exposes a SINGLE batched method
  * `findByJournalEntryIds(orgId, ids)` — the service collects the unique JE
- * ids from the page rows and issues ONE call per port (3 lookups total per
- * page, NOT 3 per row). The returned arrays are then indexed by
- * `journalEntryId` in O(N) for the enrichment merge.
+ * ids from the page rows and issues ONE call per page (NOT per row). The
+ * returned array is then indexed by `journalEntryId` in O(N) for the merge.
  *
- * Adapters wrap the existing repos:
- *   - ReceivablesContactLedgerPort → ReceivableRepository.findByJournalEntryIds
- *   - PayablesContactLedgerPort    → PayableRepository.findByJournalEntryIds
- *   - PaymentsContactLedgerPort    → PaymentRepository.findByJournalEntryIds
+ * Adapter wraps the existing repo:
+ *   - PaymentsContactLedgerPort → PaymentRepository.findByJournalEntryIds
  *
  * Concrete adapter wiring lives at the composition root (C4 — when the
  * route handler instantiates the service).
  */
 
 import type { ContactsReadPort } from "./contacts-read.port";
-
-/** Receivable enrichment projection — only the fields the service still
- *  needs to derive `status` (PENDIENTE/PARCIAL/PAGADO/CANCELADO) + ATRASADO
- *  (when status ∈ {PENDIENTE, PARCIAL} AND dueDate < now). `journalEntryId`
- *  is the join key. Status mirrors `ReceivableStatus` domain values (PENDING
- *  / PARTIAL / PAID / VOIDED) — service maps to UI-facing labels at the DTO
- *  boundary.
- *
- *  journal-physical-document Phase 5: `documentTypeCode` /
- *  `documentReferenceNumber` REMOVED — they are now read off the JE row
- *  directly (`je.operationalDocType.code`, `je.referenceNumber`) so the
- *  adapter no longer needs to do `sale.findMany` / `dispatch.findMany`. */
-export interface ReceivableLedgerEnrichmentRow {
-  journalEntryId: string;
-  status: string;
-  dueDate: Date | null;
-}
-
-/** Payable enrichment projection — sister de Receivable. Doc-type/number
- *  fields removed for the same reason (denormalized to JE row, Phase 5). */
-export interface PayableLedgerEnrichmentRow {
-  journalEntryId: string;
-  status: string;
-  dueDate: Date | null;
-}
 
 /** Payment enrichment projection — exposes `paymentMethod` + optional
  *  `bankAccountName` for the "Forma de pago" column suffix (spec REQ "Type
@@ -67,20 +47,6 @@ export interface PaymentLedgerEnrichmentRow {
   /** "COBRO" (Receipt) | "PAGO" (Payment) — used to pick "Cobranza" vs "Pago"
    *  human label when sourceType doesn't disambiguate. */
   direction: string;
-}
-
-export interface ReceivablesContactLedgerPort {
-  findByJournalEntryIds(
-    organizationId: string,
-    journalEntryIds: string[],
-  ): Promise<ReceivableLedgerEnrichmentRow[]>;
-}
-
-export interface PayablesContactLedgerPort {
-  findByJournalEntryIds(
-    organizationId: string,
-    journalEntryIds: string[],
-  ): Promise<PayableLedgerEnrichmentRow[]>;
 }
 
 export interface PaymentsContactLedgerPort {
@@ -110,11 +76,13 @@ export interface ControlAccountCodesReadPort {
 /** Bag of enrichment collaborators injected into `LedgerService` for the
  *  contact-ledger use case. Optional at the ctor (back-compat with sister
  *  tests that don't exercise contact-ledger) — `getContactLedgerPaginated`
- *  throws a clear error when called without these wired. */
+ *  throws a clear error when called without these wired.
+ *
+ *  P9 (D6 retirement 3→1): shrank from 5 to 3 collaborators — the
+ *  `receivables`/`payables` enrichment arms were retired (estado/dueDate
+ *  read off the JE row). */
 export interface ContactLedgerEnrichmentDeps {
   contacts: ContactsReadPort;
-  receivables: ReceivablesContactLedgerPort;
-  payables: PayablesContactLedgerPort;
   payments: PaymentsContactLedgerPort;
   controlAccountCodes: ControlAccountCodesReadPort;
 }

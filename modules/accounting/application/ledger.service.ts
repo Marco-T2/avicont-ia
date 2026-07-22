@@ -56,7 +56,8 @@ export class LedgerService {
     private readonly accountBalances: AccountBalancesService,
     /**
      * Contact-ledger enrichment collaborators (design D3 — service-side
-     * post-query merge with CxC/CxP/Payment lookups). Optional at the ctor
+     * post-query merge; since unified-comprobante P9 the single surviving
+     * lookup is Payment — estado/dueDate live on the JE row). Optional at the ctor
      * for back-compat with sister tests that don't exercise contact-ledger;
      * `getContactLedgerPaginated` throws clearly when called without these
      * wired. Composition root injects concrete adapters (C4).
@@ -204,22 +205,26 @@ export class LedgerService {
    *   2. Fetch raw page via `query.findLinesByContactPaginated` — pure
    *      JournalLine rows + `openingBalanceDelta` (per ContactLedgerPageResult).
    *   3. Collect unique `journalEntryId` set across page rows.
-   *   4. Issue THREE batched enrichment lookups in parallel
-   *      (`Promise.all`) — ReceivablesContactLedgerPort + PayablesContactLedgerPort +
-   *      PaymentsContactLedgerPort all called ONCE with the dedup'd id list.
-   *      Mitigates design risk #1 N+1 (NO per-row queries).
-   *   5. Build per-JE indexes (Map<jeId, row>) for O(N) merge.
+   *   4. Issue ONE batched enrichment lookup — PaymentsContactLedgerPort
+   *      called ONCE with the dedup'd id list (design risk #1 N+1 mitigation,
+   *      NO per-row queries). unified-comprobante P9 (D6 retirement 3→1):
+   *      the CxC/CxP arms were retired — estado/dueDate live ON the JE row.
+   *   5. Build the per-JE payment index (Map<jeId, row>) for O(N) merge.
    *   6. Per row, derive ContactLedgerEntry:
-   *      - status: JE.paymentStatus when non-null (P8 flip, D6 — persisted
-   *        settlement source of truth); fallback to CxC/CxP row when the JE
-   *        field is null (manual / not-yet-backfilled); null otherwise.
+   *      - status + dueDate: `journalEntry.paymentStatus` / `.dueDate` —
+   *        the persisted settlement source of truth (P8 flip + P9
+   *        retirement, D6). Stamped at creation, live-synced by the repo
+   *        write funnel (P3/P4), backfilled (P7); null for manual JEs →
+   *        UI renders "—" (spec null-em-dash).
    *      - voucherTypeHuman: from `voucherType.name`.
    *      - sourceType: forwarded from row (lowercase raw — "sale" | "purchase"
    *        | "payment" | "receipt" | null).
    *      - paymentMethod + bankAccountName: from Payment row when found.
-   *      - withoutAuxiliary: true iff `sourceType === null` AND no CxC/CxP
-   *        match for `journalEntry.id`.
-   *      - dueDate: from CxC/CxP (ISO string at the DTO boundary).
+   *      - withoutAuxiliary: true iff `sourceType === null` AND
+   *        `journalEntry.paymentStatus === null` (an unstamped JE has no
+   *        CxC/CxP auxiliar — every linked aux row stamps the JE at
+   *        creation/live-sync/backfill; re-proven at P9 retirement by the
+   *        STEP-0 fallback-dependency guard = 0 linked-but-null JEs).
    *   7. Running balance: decimal.js `running = opening.plus(debit).minus(credit)`
    *      per row; serialize monetary fields via `roundHalfUp(...).toFixed(2)`.
    *
@@ -238,8 +243,7 @@ export class LedgerService {
         "LedgerService.getContactLedgerPaginated requires contactLedgerDeps wired at the composition root",
       );
     }
-    const { contacts, receivables, payables, payments, controlAccountCodes } =
-      this.contactLedgerDeps;
+    const { contacts, payments, controlAccountCodes } = this.contactLedgerDeps;
 
     // 1. Existence check — throws NotFoundError parity sister method.
     await contacts.getActiveById(organizationId, contactId);
@@ -269,23 +273,19 @@ export class LedgerService {
       new Set(page.items.map((row) => row.journalEntry.id)),
     );
 
-    // 4. Three batched lookups in parallel — N+1 mitigated (design risk #1).
-    //    Each port is called exactly ONCE per page (not per row), even when
-    //    the id list is empty (parallel arms keep the contract uniform —
-    //    adapters return [] on empty input).
-    const [receivableRows, payableRows, paymentRows] = await Promise.all([
-      receivables.findByJournalEntryIds(organizationId, journalEntryIds),
-      payables.findByJournalEntryIds(organizationId, journalEntryIds),
-      payments.findByJournalEntryIds(organizationId, journalEntryIds),
-    ]);
+    // 4. Single batched lookup — N+1 mitigated (design risk #1). The port is
+    //    called exactly ONCE per page (not per row), even when the id list is
+    //    empty (adapter returns [] on empty input). unified-comprobante P9
+    //    (D6 retirement 3→1): the CxC/CxP enrichment arms are GONE —
+    //    estado/dueDate are read off the JE row (step 6); only the Payment
+    //    lookup survives (paymentMethod/bankAccountName/direction are not
+    //    denormalized onto the JE).
+    const paymentRows = await payments.findByJournalEntryIds(
+      organizationId,
+      journalEntryIds,
+    );
 
-    // 5. Indexes for O(N) merge.
-    const receivableByJe = new Map(
-      receivableRows.map((r) => [r.journalEntryId, r]),
-    );
-    const payableByJe = new Map(
-      payableRows.map((r) => [r.journalEntryId, r]),
-    );
+    // 5. Index for O(N) merge.
     const paymentByJe = new Map(
       paymentRows.map((r) => [r.journalEntryId, r]),
     );
@@ -301,38 +301,29 @@ export class LedgerService {
       running = running.plus(debit).minus(credit);
 
       const jeId = row.journalEntry.id;
-      const receivable = receivableByJe.get(jeId);
-      const payable = payableByJe.get(jeId);
       const payment = paymentByJe.get(jeId);
 
-      // P8 read-path flip (unified-comprobante-source-of-truth, D6):
+      // P8 read-path flip + P9 retirement (unified-comprobante, D6):
       // JE.paymentStatus is the persisted settlement source of truth —
       // stamped at creation and live-synced by the repo write funnel
-      // (Phase 3/4), backfilled for pre-existing rows (Phase 7). When
-      // non-null it wins over the enrichment lookup. Fallback `??` chain
-      // keeps the pre-P8 enrichment derivation for paymentStatus=null rows
-      // (manual JEs / not-yet-backfilled) — P9 retires the CxC/CxP arms,
-      // not P8. Enrichment precedence unchanged within the fallback: CxC
-      // over CxP (arbitrary tie-break for the pathological both-present
-      // case). ATRASADO stays read-derived downstream (dueDate < now at
-      // UI/exporters) — never persisted.
-      const status =
-        row.journalEntry.paymentStatus ??
-        receivable?.status ??
-        payable?.status ??
-        null;
-      const dueDate =
-        row.journalEntry.dueDate?.toISOString() ??
-        receivable?.dueDate?.toISOString() ??
-        payable?.dueDate?.toISOString() ??
-        null;
+      // (Phase 3/4), backfilled for pre-existing rows (Phase 7). P9 retired
+      // the transitional CxC/CxP enrichment fallback: null paymentStatus
+      // (manual JEs) renders null estado → UI "—" (spec null-em-dash).
+      // Retirement-time STEP-0 guard proved 0 linked-but-null JEs, so no
+      // reachable row depended on the fallback. ATRASADO stays read-derived
+      // downstream (dueDate < now at UI/exporters) — never persisted.
+      const status = row.journalEntry.paymentStatus ?? null;
+      const dueDate = row.journalEntry.dueDate?.toISOString() ?? null;
 
-      // withoutAuxiliary: D4 flag — sourceType null AND no CxC/CxP match.
-      // Payment-only rows (sourceType="payment" no auxiliar) do NOT flag —
-      // payments aren't an "auxiliar" in the Sin auxiliar sense (spec REQ
-      // "Fallback" only mentions CxC/CxP absence).
+      // withoutAuxiliary: D4 flag — sourceType null AND unstamped JE
+      // (paymentStatus null ⇔ no CxC/CxP auxiliar: every linked aux row
+      // stamps the JE — creation stamp + live sync + P7 backfill, re-proven
+      // by the P9 STEP-0 fallback-dependency guard). Payment-only rows
+      // (sourceType="payment" no auxiliar) do NOT flag — payments aren't an
+      // "auxiliar" in the Sin auxiliar sense (spec REQ "Fallback" only
+      // mentions CxC/CxP absence).
       const withoutAuxiliary =
-        row.sourceType === null && !receivable && !payable;
+        row.sourceType === null && row.journalEntry.paymentStatus == null;
 
       return {
         entryId: row.journalEntry.id,
