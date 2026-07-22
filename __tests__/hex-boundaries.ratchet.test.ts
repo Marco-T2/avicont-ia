@@ -341,6 +341,22 @@ const BASELINE: ReadonlyArray<string> = [
   // `@/lib/prisma` directly; the Prisma query moved into
   // infrastructure/adapters/prisma-shortcut-source-query.adapter.ts, wired via
   // composition-root.ts (`makeShortcutSourceQueryPort`).
+  //  ── DESIGN-LOCKED: UoW-shape decision (§18, human decision 2026-07-22) ──
+  //     `payments.service.ts` imports `withAuditTx` from shared/infrastructure/
+  //     audit-tx (the Postgres session-var UoW helper, docs/architecture/
+  //     00-overview.md §4.3) and threads the raw `tx` into ~15 call sites across
+  //     5 ports (Receivables/Payables/Accounting/AccountBalances/CreditConsumption)
+  //     + 6 internal withAuditTx(...) invocations. NOT mechanical: two both-
+  //     precedented shapes exist and the choice is a real architecture call —
+  //     (a) a minimal passthrough `PaymentUnitOfWork.run(ctx, fn: (tx: unknown))`
+  //     thin adapter (~5 files, but DIVERGES from the only shape landed for this
+  //     problem), vs (b) the canonical Scope-based UoW (mirror accounting's
+  //     `domain/ports/unit-of-work.ts` + `AccountingScope` + PrismaAccountingUnitOfWork,
+  //     what journals.service.ts uses) which redesigns all 5 ports to hang off a
+  //     `scope` object. Per-module consistency vs lighter wrapper is not
+  //     discoverable from code — deferred to a human. (Note: fakeability is NOT the
+  //     blocker — InMemoryPaymentRepository already no-ops $executeRawUnsafe so
+  //     withAuditTx runs safely against fakes; the blocker is purely shape + blast radius.)
   "modules/payment/application/payments.service.ts:R2",
 
   // ── modules/permissions/ — [CACHE] permissions.cache (infrastructure) reached from domain and application,
@@ -367,6 +383,21 @@ const BASELINE: ReadonlyArray<string> = [
   //     tests already deleted), so it carried none of the R2-vs-POC collision.
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
+  //  ── DESIGN-LOCKED: no contained fix exists (§18, human decision 2026-07-22) ──
+  //     `users.service.ts` imports its own `UsersRepository` (infra) and news it
+  //     as a zero-arg constructor default (`repo ?? new UsersRepository()`), so
+  //     `new UsersService()` is called at 17+ sites — the overwhelming majority in
+  //     `app/api/organizations/[orgSlug]/{mortality,sales,purchases,payments,
+  //     expenses,journal,dispatches,periods,monthly-close,annual-close}/**/route.ts`,
+  //     which live OUTSIDE `modules/**` and so are invisible to this ratchet yet
+  //     functionally load-bearing. Every clean fix has an unacceptable cost:
+  //     (a) a domain `UsersRepositoryPort` + required-injection forces all ~17
+  //     unrelated route files onto a `makeUsersService()` factory — a wide,
+  //     cross-cutting change on auth-adjacent code for zero business benefit; or
+  //     (b) a presentation-layer singleton (like organizations' roles.service
+  //     .singleton) merely RELOCATES the same R1/R2 violation rather than closing
+  //     it (exactly the debt members.validation.ts carried until commit 63d754aa).
+  //     Unlike the FREE items, no narrow 2-5 file fix exists — deferred to a human.
   "modules/users/application/users.service.ts:R2",
 ];
 
