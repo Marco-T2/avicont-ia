@@ -81,6 +81,13 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
 
   async save(entity: Receivable): Promise<void> {
     await this.db.accountsReceivable.create({ data: toPersistence(entity) });
+    // D2 creation stamp: mapped from the entity's status — not hardcoded.
+    await this.syncJournalEntrySettlement(
+      this.db,
+      entity.organizationId,
+      entity.id,
+      entity.status,
+    );
   }
 
   async update(entity: Receivable): Promise<void> {
@@ -212,7 +219,9 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     data: CreateReceivableTxData,
   ): Promise<{ id: string }> {
     const txClient = (tx ?? this.db) as Prisma.TransactionClient;
-    return txClient.accountsReceivable.create({
+    // Single source for the created row's status AND the D2 creation stamp.
+    const status: ReceivableStatus = "PENDING";
+    const created = await txClient.accountsReceivable.create({
       data: {
         organizationId: data.organizationId,
         contactId: data.contactId,
@@ -221,7 +230,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
         paid: new Prisma.Decimal(0),
         balance: new Prisma.Decimal(data.amount),
         dueDate: data.dueDate,
-        status: "PENDING",
+        status,
         ...(data.sourceType ? { sourceType: data.sourceType } : {}),
         ...(data.sourceId ? { sourceId: data.sourceId } : {}),
         ...(data.sourceTypeCode !== undefined
@@ -231,6 +240,13 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
       },
       select: { id: true },
     });
+    await this.syncJournalEntrySettlement(
+      txClient,
+      data.organizationId,
+      created.id,
+      status,
+    );
+    return created;
   }
 
   async voidTx(tx: unknown, organizationId: string, id: string): Promise<void> {

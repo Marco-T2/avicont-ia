@@ -675,4 +675,86 @@ describe("PrismaReceivablesRepository", () => {
       });
     });
   });
+
+  describe("settlement sync — creation stamp (D2)", () => {
+    it("createTx stamps the linked JE with the mapped created status using the RETURNED row id", async () => {
+      const create = vi.fn().mockResolvedValueOnce({ id: "new-rec" });
+      const tx = txWith({ create });
+      const repo = new PrismaReceivablesRepository(dbWith({}));
+
+      await repo.createTx(tx, {
+        organizationId: "org-1",
+        contactId: "c-1",
+        description: "Sale",
+        amount: 500,
+        dueDate: new Date("2026-05-15"),
+        journalEntryId: "je-1",
+      });
+
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "new-rec" } } },
+        data: { paymentStatus: "PENDING" },
+      });
+    });
+
+    it("createTx without journalEntryId: uniform sync is a 0-row no-op and the create still succeeds", async () => {
+      const create = vi.fn().mockResolvedValueOnce({ id: "new-rec" });
+      const tx = txWith({ create });
+      tx.journalEntry.updateMany.mockResolvedValue({ count: 0 });
+      const repo = new PrismaReceivablesRepository(dbWith({}));
+
+      const result = await repo.createTx(tx, {
+        organizationId: "org-1",
+        contactId: "c-1",
+        description: "x",
+        amount: 100,
+        dueDate: new Date("2026-05-15"),
+      });
+
+      expect(result).toEqual({ id: "new-rec" });
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+    });
+
+    it("save stamps the linked JE from the entity status (mapped, not hardcoded PENDING)", async () => {
+      const create = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsReceivable: { create },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      // Rehydrated PARTIAL entity: forces toSettlementStatus(entity.status)
+      // instead of a hardcoded PENDING stamp.
+      await repo.save(rehydrate("PARTIAL"));
+
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("save of a new entity stamps PENDING", async () => {
+      const create = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsReceivable: { create },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      const entity = buildEntity();
+      await repo.save(entity);
+
+      expect(updateMany).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          receivables: { some: { id: entity.id } },
+        },
+        data: { paymentStatus: "PENDING" },
+      });
+    });
+  });
 });
