@@ -13,15 +13,40 @@ import type {
 import { Receivable } from "../domain/receivable.entity";
 import type { ReceivableStatus } from "../domain/value-objects/receivable-status";
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import { toSettlementStatus } from "@/modules/shared/domain/value-objects/settlement-status";
 import { toDomain, toPersistence } from "./receivables.mapper";
 
-type DbClient = Pick<PrismaClient, "accountsReceivable" | "paymentAllocation">;
+type DbClient = Pick<
+  PrismaClient,
+  "accountsReceivable" | "paymentAllocation" | "journalEntry"
+>;
 
 export class PrismaReceivablesRepository implements ReceivableRepository {
   constructor(private readonly db: DbClient = prisma) {}
 
   withTransaction(tx: Prisma.TransactionClient): PrismaReceivablesRepository {
     return new PrismaReceivablesRepository(tx as unknown as DbClient);
+  }
+
+  /**
+   * Propagates a receivable's status onto its linked JournalEntry
+   * (unified-comprobante-source-of-truth, D1) within the SAME client/tx.
+   *
+   * Locates the JE via reverse relation because the *Tx write-sites receive
+   * only the receivable id, not journalEntryId. Unlinked receivables are a
+   * 0-row no-op — no read-before-write. STATUS ONLY: dueDate propagation is
+   * Phase 5.
+   */
+  private async syncJournalEntrySettlement(
+    client: Pick<DbClient, "journalEntry">,
+    organizationId: string,
+    id: string,
+    status: ReceivableStatus,
+  ): Promise<void> {
+    await client.journalEntry.updateMany({
+      where: { organizationId, receivables: { some: { id } } },
+      data: { paymentStatus: toSettlementStatus(status) },
+    });
   }
 
   async findAll(
@@ -74,6 +99,12 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
         notes: entity.notes,
       },
     });
+    await this.syncJournalEntrySettlement(
+      this.db,
+      entity.organizationId,
+      entity.id,
+      entity.status,
+    );
   }
 
   async aggregateOpen(

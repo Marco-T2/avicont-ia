@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { PrismaReceivablesRepository } from "../prisma-receivables.repository";
 import { Receivable } from "../../domain/receivable.entity";
+import type { ReceivableStatus } from "../../domain/value-objects/receivable-status";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const dbWith = (overrides: Record<string, unknown>): PrismaClient =>
@@ -15,6 +16,29 @@ const txWith = (overrides: Record<string, unknown>) => ({
   accountsReceivable: overrides,
   journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
 });
+
+/** Rehydrated entity in an arbitrary status for settlement-sync cases. */
+const rehydrate = (
+  status: ReceivableStatus,
+  journalEntryId: string | null = "je-1",
+) =>
+  Receivable.fromPersistence({
+    id: "rec-1",
+    organizationId: "org-1",
+    contactId: "contact-1",
+    description: "Factura",
+    amount: MonetaryAmount.of(1000),
+    paid: MonetaryAmount.zero(),
+    balance: MonetaryAmount.of(1000),
+    dueDate: new Date("2026-05-15"),
+    status,
+    sourceType: null,
+    sourceId: null,
+    journalEntryId,
+    notes: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
 const buildEntity = () =>
   Receivable.create({
@@ -463,6 +487,68 @@ describe("PrismaReceivablesRepository", () => {
       const where = findMany.mock.calls[0]?.[0]?.where;
       expect(where.payment).toEqual({ status: { in: ["POSTED", "LOCKED"] } });
       expect(where.receivableId).toBe("ar-1");
+    });
+  });
+
+  // ── settlement sync (D1/D2 — unified-comprobante-source-of-truth) ──────────
+  // Every status write-site must propagate the mapped SettlementStatus to the
+  // linked JE via reverse relation, in the SAME client/tx. STATUS ONLY in this
+  // phase: `data` is pinned with toEqual semantics so dueDate propagation
+  // (Phase 5) must consciously break these shapes.
+
+  describe("settlement sync — update (D1)", () => {
+    it("propagates the mapped settlement status to the linked JE via reverse relation in the same client", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsReceivable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      await repo.update(rehydrate("PARTIAL"));
+
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("maps CANCELLED to VOIDED on the JE (shared toSettlementStatus mapper)", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsReceivable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      await repo.update(rehydrate("CANCELLED"));
+
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "VOIDED" },
+      });
+    });
+
+    it("unlinked receivable: reverse-relation match is a 0-row no-op and the AR update still succeeds", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+      const db = {
+        accountsReceivable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      await expect(
+        repo.update(rehydrate("PENDING", null)),
+      ).resolves.toBeUndefined();
+
+      // Uniform issue per D1 (no read-before-write): the updateMany IS sent,
+      // the DB simply matches 0 rows for an unlinked receivable.
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(update).toHaveBeenCalledTimes(1);
     });
   });
 });
