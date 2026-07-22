@@ -1,27 +1,28 @@
 /**
- * Pre-flip verification gate (unified-comprobante-source-of-truth, Phase 7.2).
+ * Backfill INTEGRITY check (unified-comprobante-source-of-truth, Phase 7.2).
  *
- * PROVES, before the Phase-8 read flip, that the backfilled
- * JournalEntry.paymentStatus/dueDate equal what the CURRENT enrichment path
- * would derive for EVERY JE:
+ * SCOPE (downgraded at P8 — the original docstring overclaimed): this script
+ * verifies that stored JournalEntry.paymentStatus/dueDate equal an
+ * INDEPENDENT TS re-derivation of the SAME locked D4 rules the backfill
+ * migration implements (shared toSettlementStatus collapse + CxC-over-CxP +
+ * createdAt DESC/id DESC last-wins). It catches drift between the SQL CASE /
+ * ordering and the canonical mapper, and rows the backfill missed or
+ * overwrote.
+ *
+ * It is NOT a read-path equivalence proof: the pre-flip enrichment path
+ * surfaced the RAW aux status (no CANCELLED/OVERDUE collapse,
+ * ledger.service.ts pre-P8) and had NO deterministic 1:N winner (unordered
+ * findMany + Map overwrite). Equivalence of what the UI actually displays is
+ * proven by scripts/verify-ledger-readpath-equivalence.ts (P8 gate), which
+ * exercises the real post-flip `getContactLedgerPaginated` against an
+ * independent re-computation of the old enrichment output.
  *
  *   expected.status  = toSettlementStatus(winning aux row .status)
  *   expected.dueDate = winning aux row .dueDate
  *
- * Winning row per the locked D4 semantics the migration implements:
- *   - CxC-over-CxP: a receivable-linked JE derives from the receivable even
- *     if a payable also links it (ledger.service: `receivable?.status ??
- *     payable?.status`).
- *   - 1:N last-wins: most recently created aux row (createdAt DESC, id DESC)
- *     — the deterministic version of the read-path Map-overwrite.
- *   - status + dueDate from the SAME winning row.
+ * Mismatches > 0 ⇒ exit 1 ⇒ backfill/live-sync integrity is broken.
  *
- * Independent implementation on purpose: TS + the real shared mapper
- * (toSettlementStatus) vs the migration's SQL CASE — a divergence between the
- * two surfaces here as a MISMATCH. Mismatches > 0 ⇒ exit 1 ⇒ Phase 8 is
- * BLOCKED (flipping would render wrong estado/dueDate in the contact ledger).
- *
- * Read-only — safe to re-run anytime (e.g. right before the flip commit).
+ * Read-only — safe to re-run anytime.
  * Run: pnpm exec tsx scripts/verify-je-settlement-backfill.ts
  */
 import { prisma } from "@/lib/prisma";

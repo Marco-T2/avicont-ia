@@ -63,6 +63,14 @@ export interface LedgerLineRow {
     // need them; the contact adapter populates them.
     operationalDocType?: { code: string } | null;
     referenceNumber?: number | null;
+    // unified-comprobante-source-of-truth P8 (D6) — persisted settlement
+    // source of truth carried in the row shape so the contact-ledger sources
+    // estado/dueDate from the JE directly (`paymentStatus` non-null) and only
+    // falls back to the CxC/CxP enrichment when null (manual JEs /
+    // not-yet-backfilled). Optional at this level for the same reason as
+    // operationalDocType: the account-keyed sister query does NOT need them.
+    paymentStatus?: string | null;
+    dueDate?: Date | null;
   };
 }
 

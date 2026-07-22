@@ -787,6 +787,12 @@ export class JournalRepository extends BaseRepository {
               // row instead of the 3-way enrichment precedence (design D3).
               referenceNumber: true,
               operationalDocType: { select: { code: true } },
+              // unified-comprobante-source-of-truth P8 (D6) — persisted
+              // settlement fields; the service sources estado/dueDate from
+              // these when paymentStatus is non-null (enrichment fallback
+              // only for null = manual / not-yet-backfilled JEs).
+              paymentStatus: true,
+              dueDate: true,
               voucherType: { select: { code: true, prefix: true, name: true } },
             },
           },

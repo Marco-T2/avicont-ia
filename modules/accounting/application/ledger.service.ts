@@ -210,7 +210,9 @@ export class LedgerService {
    *      Mitigates design risk #1 N+1 (NO per-row queries).
    *   5. Build per-JE indexes (Map<jeId, row>) for O(N) merge.
    *   6. Per row, derive ContactLedgerEntry:
-   *      - status: from CxC/CxP row when found; null otherwise.
+   *      - status: JE.paymentStatus when non-null (P8 flip, D6 — persisted
+   *        settlement source of truth); fallback to CxC/CxP row when the JE
+   *        field is null (manual / not-yet-backfilled); null otherwise.
    *      - voucherTypeHuman: from `voucherType.name`.
    *      - sourceType: forwarded from row (lowercase raw — "sale" | "purchase"
    *        | "payment" | "receipt" | null).
@@ -303,10 +305,24 @@ export class LedgerService {
       const payable = payableByJe.get(jeId);
       const payment = paymentByJe.get(jeId);
 
-      // Status: CxC takes precedence over CxP (per-contact a row is one or
-      // the other; arbitrary tie-break for the pathological both-present case).
-      const status = receivable?.status ?? payable?.status ?? null;
+      // P8 read-path flip (unified-comprobante-source-of-truth, D6):
+      // JE.paymentStatus is the persisted settlement source of truth —
+      // stamped at creation and live-synced by the repo write funnel
+      // (Phase 3/4), backfilled for pre-existing rows (Phase 7). When
+      // non-null it wins over the enrichment lookup. Fallback `??` chain
+      // keeps the pre-P8 enrichment derivation for paymentStatus=null rows
+      // (manual JEs / not-yet-backfilled) — P9 retires the CxC/CxP arms,
+      // not P8. Enrichment precedence unchanged within the fallback: CxC
+      // over CxP (arbitrary tie-break for the pathological both-present
+      // case). ATRASADO stays read-derived downstream (dueDate < now at
+      // UI/exporters) — never persisted.
+      const status =
+        row.journalEntry.paymentStatus ??
+        receivable?.status ??
+        payable?.status ??
+        null;
       const dueDate =
+        row.journalEntry.dueDate?.toISOString() ??
         receivable?.dueDate?.toISOString() ??
         payable?.dueDate?.toISOString() ??
         null;

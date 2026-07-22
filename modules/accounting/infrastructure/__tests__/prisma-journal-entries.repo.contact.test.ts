@@ -303,6 +303,60 @@ describe("PrismaJournalLedgerQueryAdapter — contact-keyed reads (Postgres inte
     expect(debits).not.toContain("777");
   });
 
+  it("P8 (D6): findLinesByContactPaginated projects JE.paymentStatus + JE.dueDate onto row.journalEntry (read-path flip source fields)", async () => {
+    // unified-comprobante-source-of-truth Phase 8 — the ledger read path
+    // sources estado from JE.paymentStatus (fallback enrichment only when
+    // null). The adapter select MUST carry both persisted fields through the
+    // row projection.
+    //
+    // RED expected failure mode per [[red_acceptance_failure_mode]]: the
+    // journalEntry select lacks paymentStatus/dueDate → both read back
+    // `undefined` → `.toBe("PAID")` / date equality assertions fail.
+    const jeId = await postedEntry({
+      number: 30,
+      date: new Date("2098-01-10"),
+      debit: 400,
+      credit: 400,
+      contactPlacement: "header",
+    });
+    const due = new Date("2098-02-15T00:00:00.000Z");
+    await prisma.journalEntry.update({
+      where: { id: jeId },
+      data: { paymentStatus: "PAID", dueDate: due },
+    });
+    // Sibling WITHOUT settlement fields — projection must surface null (not
+    // undefined) so the service's `??` fallback branches on a real value.
+    await postedEntry({
+      number: 31,
+      date: new Date("2098-01-11"),
+      debit: 60,
+      credit: 60,
+      contactPlacement: "header",
+    });
+
+    const adapter = new PrismaJournalLedgerQueryAdapter();
+    const result = await adapter.findLinesByContactPaginated(
+      testOrgId,
+      testContactId,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    const flipped = result.items.filter((r) => r.journalEntry.id === jeId);
+    expect(flipped.length).toBeGreaterThan(0);
+    for (const row of flipped) {
+      expect(row.journalEntry.paymentStatus).toBe("PAID");
+      expect(row.journalEntry.dueDate?.getTime()).toBe(due.getTime());
+    }
+
+    const manual = result.items.filter((r) => r.journalEntry.id !== jeId);
+    expect(manual.length).toBeGreaterThan(0);
+    for (const row of manual) {
+      expect(row.journalEntry.paymentStatus).toBeNull();
+      expect(row.journalEntry.dueDate).toBeNull();
+    }
+  });
+
   it("findOpeningBalanceByContact: returns scalar sum(debit-credit) of contact lines BEFORE dateFrom as a Decimal-coercible primitive", async () => {
     // Historical (< 2098-01-15):
     //   entry 10 header → asset debit 300 + liability credit 300 → header

@@ -156,6 +156,12 @@ function contactRow(opts: {
   /** Physical document number lifted off JournalEntry.referenceNumber. Same
    *  rationale as operationalDocCode — denormalized in Phase 5. */
   referenceNumber?: number | null;
+  /** unified-comprobante-source-of-truth P8 (D6) — persisted settlement
+   *  status carried on the JE row itself. Undefined → null (manual JEs /
+   *  not-yet-backfilled rows) → service falls back to enrichment. */
+  paymentStatus?: string | null;
+  /** JE-persisted dueDate sister of paymentStatus (same D6 flip). */
+  jeDueDate?: Date | null;
 }) {
   return {
     debit: opts.debit,
@@ -181,6 +187,11 @@ function contactRow(opts: {
           ? { code: opts.operationalDocCode }
           : null,
       referenceNumber: opts.referenceNumber ?? null,
+      // P8 (D6) — JE-persisted settlement fields. Default null mirrors
+      // manual/not-yet-backfilled JEs so pre-P8 tests keep exercising the
+      // enrichment fallback path unchanged.
+      paymentStatus: opts.paymentStatus ?? null,
+      dueDate: opts.jeDueDate ?? null,
     },
   };
 }
@@ -1049,5 +1060,254 @@ describe("LedgerService.getContactLedgerPaginated", () => {
       documentReferenceNumber: string | null;
     };
     expect(entry.documentReferenceNumber).toBeNull();
+  });
+
+  // ── P8 read-path flip (unified-comprobante-source-of-truth, D6) ──
+  //
+  // JE.paymentStatus/JE.dueDate become the estado source of truth: when the
+  // JE row carries a non-null paymentStatus the service MUST source
+  // status+dueDate from the JE, NOT from the CxC/CxP enrichment lookup.
+  // Fallback: paymentStatus null (manual JEs / not-yet-backfilled) keeps the
+  // pre-P8 enrichment derivation byte-identical. ATRASADO stays read-derived
+  // (UI/exporters derive from dueDate < now) — NOT persisted, NOT flipped.
+  //
+  // RED expected failure mode per [[red_acceptance_failure_mode]]:
+  //   P8-T1/P8-T2 — service ignores journalEntry.paymentStatus/dueDate and
+  //   surfaces the ENRICHMENT value → `expect(status).toBe("PAID")` receives
+  //   "PENDING" (enrichment-only value); dueDate assertion receives the
+  //   enrichment ISO instead of the JE ISO. P8-T3/T4/T5 are born-green pins
+  //   (fallback + DTO-shape) that must SURVIVE the flip.
+
+  it("P8-T1 estado sourced from JE.paymentStatus when present — enrichment value diverges and MUST lose (D6)", async () => {
+    // JE says PAID/2099-11-30; stale-divergent enrichment says PENDING/
+    // 2099-12-31. Post-flip the JE wins BOTH fields.
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 500,
+        credit: 0,
+        date: "2099-05-16",
+        number: 1,
+        journalEntryId: "je-flip",
+        sourceType: "sale",
+        sourceId: "sale-1",
+        paymentStatus: "PAID",
+        jeDueDate: new Date("2099-11-30T00:00:00.000Z"),
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      receivables: [
+        {
+          journalEntryId: "je-flip",
+          status: "PENDING",
+          dueDate: new Date("2099-12-31T00:00:00.000Z"),
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items[0].status).toBe("PAID");
+    expect(result.items[0].dueDate).toBe("2099-11-30T00:00:00.000Z");
+  });
+
+  it("P8-T2 triangulation payable side: JE.paymentStatus=VOIDED beats CxP enrichment PENDING (sister parity)", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 0,
+        credit: 1500,
+        date: "2099-05-16",
+        number: 2,
+        journalEntryId: "je-flip-ap",
+        sourceType: "purchase",
+        sourceId: "purch-1",
+        paymentStatus: "VOIDED",
+        jeDueDate: new Date("2099-10-01T00:00:00.000Z"),
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      payables: [
+        {
+          journalEntryId: "je-flip-ap",
+          status: "PENDING",
+          dueDate: new Date("2099-12-31T00:00:00.000Z"),
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items[0].status).toBe("VOIDED");
+    expect(result.items[0].dueDate).toBe("2099-10-01T00:00:00.000Z");
+  });
+
+  it("P8-T3 fallback pin: JE.paymentStatus=null → enrichment derivation unchanged (manual / not-yet-backfilled)", async () => {
+    // paymentStatus omitted → contactRow defaults null → pre-P8 path must
+    // survive the flip byte-identical (P9 retires it, not P8).
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 700,
+        credit: 0,
+        date: "2099-05-16",
+        number: 3,
+        journalEntryId: "je-legacy",
+        sourceType: "sale",
+        sourceId: "sale-9",
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+      receivables: [
+        {
+          journalEntryId: "je-legacy",
+          status: "PARTIAL",
+          dueDate: new Date("2099-12-31T00:00:00.000Z"),
+        },
+      ],
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items[0].status).toBe("PARTIAL");
+    expect(result.items[0].dueDate).toBe("2099-12-31T00:00:00.000Z");
+  });
+
+  it("P8-T4 manual JE pin: paymentStatus=null AND no enrichment → status/dueDate null + withoutAuxiliary", async () => {
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 100,
+        credit: 0,
+        date: "2099-05-16",
+        number: 4,
+        journalEntryId: "je-manual-p8",
+        sourceType: null,
+        sourceId: null,
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(result.items[0].status).toBeNull();
+    expect(result.items[0].dueDate).toBeNull();
+    expect(result.items[0].withoutAuxiliary).toBe(true);
+  });
+
+  it("P8-T5 DTO shape sentinel: ContactLedgerEntry keys byte-identical pre/post flip (zero UI/exporter edits)", async () => {
+    // The flip changes WHERE status/dueDate come from, never the DTO shape.
+    // Exact key-set pin (sorted) — any added/removed/renamed field breaks
+    // the "zero UI/PDF/XLSX edits" D6 contract and must escalate.
+    const query = new InMemoryJournalLedgerQueryPort();
+    query.linesByContactPaginated = [
+      contactRow({
+        debit: 100,
+        credit: 0,
+        date: "2099-05-16",
+        number: 5,
+        journalEntryId: "je-shape",
+        sourceType: "sale",
+        sourceId: "sale-1",
+        paymentStatus: "PAID",
+        jeDueDate: new Date("2099-11-30T00:00:00.000Z"),
+      }),
+    ];
+    query.openingBalanceDeltaByContactPrimed = 0;
+    const { deps } = makeEnrichmentDeps({
+      contacts: makeContactsStub(new Set(["contact-1"])),
+    });
+    const service = new LedgerService(
+      query,
+      makeAccountsStub(),
+      makeBalancesStub(),
+      deps,
+    );
+
+    const result = await service.getContactLedgerPaginated(
+      "org-1",
+      "contact-1",
+      undefined,
+      undefined,
+      { page: 1, pageSize: 25 },
+    );
+
+    expect(Object.keys(result.items[0]).sort()).toEqual([
+      "balance",
+      "bankAccountName",
+      "credit",
+      "date",
+      "debit",
+      "description",
+      "documentReferenceNumber",
+      "documentTypeCode",
+      "dueDate",
+      "entryId",
+      "entryNumber",
+      "paymentDirection",
+      "paymentMethod",
+      "sourceType",
+      "status",
+      "voucherCode",
+      "voucherTypeHuman",
+      "withoutAuxiliary",
+    ]);
   });
 });
