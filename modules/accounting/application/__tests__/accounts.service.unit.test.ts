@@ -1,7 +1,7 @@
 /**
  * Unit tests for AccountsService (POC #3c) — application layer.
  *
- * Mocks AccountsCrudPort (all 15 methods) and PrismaClient.$transaction.
+ * Mocks AccountsCrudPort (all 15 methods) and the AccountsUnitOfWork port.
  * No DB dependency — pure orchestration coverage.
  *
  * Paired-sister precedent: journals.service.test.ts (vi.mock port pattern).
@@ -39,8 +39,13 @@ const makeMockRepo = (): AccountsCrudPort => ({
   countJournalLines: vi.fn(),
 });
 
-const makeMockPrisma = () => ({
-  $transaction: vi.fn(async (fn: (tx: unknown) => unknown) => fn("TX_TOKEN")),
+// Sentinel tx token — the uow mock hands the SAME object to `fn`, so the
+// atomic-path assertions can prove the identical tx flows into both
+// repo.update and repo.create (the atomic boundary invariant).
+const TX_TOKEN = { __tx: true };
+
+const makeMockUow = () => ({
+  run: vi.fn(async <T>(fn: (tx: unknown) => Promise<T>) => fn(TX_TOKEN)),
 });
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -67,18 +72,18 @@ const makeAccount = (overrides: Partial<Account> = {}): Account => ({
 
 describe("AccountsService", () => {
   let repo: AccountsCrudPort;
-  let prisma: ReturnType<typeof makeMockPrisma>;
+  let uow: ReturnType<typeof makeMockUow>;
   let service: AccountsService;
 
   beforeEach(() => {
     repo = makeMockRepo();
-    prisma = makeMockPrisma();
-    service = new AccountsService({ repo, prisma: prisma as never });
+    uow = makeMockUow();
+    service = new AccountsService({ repo, uow: uow as never });
     vi.clearAllMocks();
     // Re-create service after clearAllMocks so fresh mocks are in place
     repo = makeMockRepo();
-    prisma = makeMockPrisma();
-    service = new AccountsService({ repo, prisma: prisma as never });
+    uow = makeMockUow();
+    service = new AccountsService({ repo, uow: uow as never });
   });
 
   // ── list ─────────────────────────────────────────────────────────────────
@@ -162,7 +167,7 @@ describe("AccountsService", () => {
       const result = await service.create("org-1", { name: "Activos", type: "ACTIVO" });
       expect(result).toBe(created);
       expect(repo.create).toHaveBeenCalledTimes(1);
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(uow.run).not.toHaveBeenCalled();
     });
 
     it("happy: parent.isDetail=false — no tx triggered", async () => {
@@ -174,7 +179,7 @@ describe("AccountsService", () => {
       vi.mocked(repo.create).mockResolvedValueOnce(created);
       // subtype required for level-2 accounts (resolveAccountSubtype rule)
       await service.create("org-1", { name: "Child", parentId: "parent-1", subtype: "ACTIVO_CORRIENTE" });
-      expect(prisma.$transaction).not.toHaveBeenCalled();
+      expect(uow.run).not.toHaveBeenCalled();
       expect(repo.create).toHaveBeenCalledTimes(1);
     });
 
@@ -188,9 +193,14 @@ describe("AccountsService", () => {
       vi.mocked(repo.create).mockResolvedValueOnce(created);
       // subtype required for level-2 accounts (resolveAccountSubtype rule)
       await service.create("org-1", { name: "Child", parentId: "parent-1", subtype: "ACTIVO_CORRIENTE" });
-      expect(prisma.$transaction).toHaveBeenCalledTimes(1);
-      expect(repo.update).toHaveBeenCalledWith("org-1", "parent-1", { isDetail: false }, "TX_TOKEN");
-      expect(repo.create).toHaveBeenCalledWith("org-1", expect.objectContaining({ level: 2 }), "TX_TOKEN");
+      expect(uow.run).toHaveBeenCalledTimes(1);
+      // Same tx token threads into BOTH repo calls (atomic boundary).
+      expect(repo.update).toHaveBeenCalledWith("org-1", "parent-1", { isDetail: false }, TX_TOKEN);
+      expect(repo.create).toHaveBeenCalledWith("org-1", expect.objectContaining({ level: 2 }), TX_TOKEN);
+      // Ordering is the atomic invariant: parent isDetail:false BEFORE child create.
+      const updateOrder = vi.mocked(repo.update).mock.invocationCallOrder[0];
+      const createOrder = vi.mocked(repo.create).mock.invocationCallOrder[0];
+      expect(updateOrder).toBeLessThan(createOrder);
     });
 
     it("error: parentId provided but not found → NotFoundError('Cuenta padre')", async () => {

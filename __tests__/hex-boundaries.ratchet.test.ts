@@ -230,7 +230,6 @@ const BASELINE: ReadonlyArray<string> = [
   //     Prisma client/model types in domain/application, and sibling modules
   //     consumed via presentation barrels (the infrastructure/exporters/*
   //     reads were all CLOSED by the [EXPORT] paydowns, voucher-pdf last)
-  "modules/accounting/application/accounts.service.ts:R5",
   // auto-entry-generator.ts:R5 CLOSED by the [UoW-vs-opaque-token] paydown —
   // generate() now types `tx: unknown`, casting internally via
   // `Parameters<JournalRepository["createWithRetryTx"]>[0]`. The 2 R2 entries
@@ -249,8 +248,16 @@ const BASELINE: ReadonlyArray<string> = [
   // defining domain-local types + mapping at the infra boundary. The accounting
   // `Account` model type was migrated to domain (D4) — accounts.types.ts now
   // owns a structural `Account` interface (enum fields via the D1 mirrors) and
-  // the crud port + 3 application tests were repointed; `accounts.service.ts`
-  // (live injected PrismaClient, D1/D3 design locks) remains deferred.
+  // the crud port + 3 application tests were repointed. accounts.service.ts:R5
+  // was CLOSED by the [UoW-port] paydown (human decision 2026-07-22 to prefer a
+  // clean project over the §18 deferral): the 3 type imports (Account,
+  // AccountType, AccountNature) repointed to the D4/D1 mirrors, and the single
+  // `prisma.$transaction` reach (the atomic parent.isDetail flip) moved behind a
+  // new passthrough `AccountsUnitOfWork.run(fn)` domain port + concrete
+  // `PrismaAccountsUnitOfWork`, wired in composition-root.ts. The in-file D1/D3
+  // locks were DERIVED (not mutated): deps `prisma` → `uow`, atomic tx now runs
+  // behind the port. Mirrors the payment PaymentUnitOfWork precedent (simpler —
+  // no AuditContext/correlationId).
   // journal.types.ts:R5 (6 model types) was CLOSED by the journal D4 paydown —
   // journal.types.ts now owns structural `JournalEntry`/`JournalLine` mirrors
   // (Decimal via decimal.js per DEC-1, status via the domain

@@ -17,6 +17,7 @@ import { PrismaAccountingUnitOfWork } from "../infrastructure/prisma-accounting-
 import { VoucherTypesReadAdapter } from "../infrastructure/voucher-types-read.adapter";
 import { AccountsService } from "../application/accounts.service";
 import { PrismaAccountsRepo } from "../infrastructure/prisma-accounts.repo";
+import { PrismaAccountsUnitOfWork } from "../infrastructure/prisma-accounts-unit-of-work";
 import { makeAccountBalancesService } from "@/modules/account-balances/presentation/composition-root";
 import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
@@ -108,7 +109,7 @@ export function makeLedgerService(): LedgerService {
 export function makeAccountsService(): AccountsService {
   return new AccountsService({
     repo: new PrismaAccountsRepo(),
-    prisma,
+    uow: new PrismaAccountsUnitOfWork(prisma),
   });
 }
 

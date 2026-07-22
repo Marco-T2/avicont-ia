@@ -2,8 +2,9 @@
  * Hex application service for accounts CRUD aggregate (§13.X canonical-home: application/).
  *
  * Verbatim 1:1 behavior parity with legacy `features/accounting/accounts.service.ts` (225 LOC).
- * Binds against `AccountsCrudPort` (15 methods) — no Prisma leakage except the single
- * `$transaction` call for the atomic parent.isDetail flip (D3 lock: port has no .transaction()).
+ * Binds against `AccountsCrudPort` (15 methods) — zero Prisma leakage: the single atomic
+ * parent.isDetail flip now runs behind the `AccountsUnitOfWork` port (Derived from: D3 —
+ * the port abstracts the boundary the original lock kept as an inline prisma.$transaction).
  *
  * NO `import "server-only"` — app-layer pure (JournalsService precedent at application/).
  *
@@ -23,15 +24,17 @@ import {
 import { getNextCode } from "@/modules/accounting/domain/account-code.utils";
 import { resolveAccountSubtype } from "@/modules/accounting/domain/account-subtype.resolve";
 import { ACCOUNTS } from "@/prisma/seeds/chart-of-accounts";
-import type { Account, AccountType, AccountNature, PrismaClient } from "@/generated/prisma/client";
 import type {
+  Account,
   AccountListFilters,
   CreateAccountInput,
   ResolvedCreateAccountData,
   UpdateAccountInput,
   AccountWithChildren,
 } from "@/modules/accounting/domain/accounts.types";
+import type { AccountType, AccountNature } from "@/modules/accounting/domain/value-objects/account-classification";
 import type { AccountsCrudPort } from "../domain/ports/accounts-crud.port";
+import type { AccountsUnitOfWork } from "../domain/ports/accounts-unit-of-work";
 
 // ── Inline constants ───────────────────────────────────────────────────────
 
@@ -45,33 +48,35 @@ function deriveNature(type: AccountType, isContraAccount = false): AccountNature
   return defaultNature === "DEUDORA" ? "ACREEDORA" : "DEUDORA";
 }
 
-// ── Deps interface (D1 lock — prisma REQUIRED, not optional: DRIFT-1 vs spec) ─
+// ── Deps interface (Derived from: D1 — uow REQUIRED, not optional: DRIFT-1 vs spec) ─
 
 /**
  * Deps injection bag for AccountsService.
  *
- * `prisma` is REQUIRED (not optional per spec REQ-02): the composition root
+ * `uow` is REQUIRED (not optional per spec REQ-02): the composition root
  * always provides it, and making it optional creates a runtime footgun in
- * the atomic `create` path (`this.prisma.$transaction` would crash with
- * undefined if omitted).
+ * the atomic `create` path (`this.uow.run` would crash with undefined if
+ * omitted). Derived from: D1 — same runtime-footgun rationale that kept the
+ * former `prisma` dep required now applies to the `AccountsUnitOfWork` port
+ * that replaced it.
  *
  * `readonly` on both fields: immutability hygiene (DRIFT-3 vs payment precedent
  * which does NOT use readonly — locked here for hex layer consistency).
  */
 export interface AccountsServiceDeps {
   readonly repo: AccountsCrudPort;
-  readonly prisma: PrismaClient;
+  readonly uow: AccountsUnitOfWork;
 }
 
 // ── Service ────────────────────────────────────────────────────────────────
 
 export class AccountsService {
   private readonly repo: AccountsCrudPort;
-  private readonly prisma: PrismaClient;
+  private readonly uow: AccountsUnitOfWork;
 
   constructor(deps: AccountsServiceDeps) {
     this.repo = deps.repo;
-    this.prisma = deps.prisma;
+    this.uow = deps.uow;
   }
 
   // ── Listar todas las cuentas ──
@@ -200,11 +205,13 @@ export class AccountsService {
     };
 
     // 10. Crear la cuenta + cambiar isDetail del padre si es necesario (atómico)
-    // D3 lock: port has no .transaction() — service calls prisma.$transaction directly.
-    // tx arrives as Prisma.TransactionClient from $transaction; passes directly
-    // to port (typed as `tx?: unknown`; adapter narrows internally per hex purity).
+    // Derived from: D3 — the atomic tx now runs behind the `AccountsUnitOfWork`
+    // port (the port abstracts the boundary the original lock kept as an inline
+    // prisma.$transaction). tx arrives opaque (`tx: unknown`) and passes directly
+    // to the repo (typed `tx?: unknown`; adapter narrows internally per hex purity).
+    // Ordering is the atomic invariant: parent isDetail:false BEFORE child create.
     if (parent && parent.isDetail) {
-      return this.prisma.$transaction(async (tx) => {
+      return this.uow.run(async (tx) => {
         await this.repo.update(organizationId, parent!.id, { isDetail: false }, tx);
         return this.repo.create(organizationId, resolved, tx);
       });
