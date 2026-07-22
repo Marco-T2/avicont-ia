@@ -13,15 +13,66 @@ import type {
 import { Payable } from "../domain/payable.entity";
 import type { PayableStatus } from "../domain/value-objects/payable-status";
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
+import { toSettlementStatus } from "@/modules/shared/domain/value-objects/settlement-status";
 import { toDomain, toPersistence } from "./payables.mapper";
 
-type DbClient = Pick<PrismaClient, "accountsPayable" | "paymentAllocation">;
+type DbClient = Pick<
+  PrismaClient,
+  "accountsPayable" | "paymentAllocation" | "journalEntry"
+> & {
+  /** Present on the root client; used by `atomically` to open a repo-local
+   *  tx for the non-tx entry points (H2 mirror). Optional so clients without
+   *  it (narrow tx tokens) still fit — they run writes directly. */
+  $transaction?: PrismaClient["$transaction"];
+};
 
 export class PrismaPayablesRepository implements PayableRepository {
   constructor(private readonly db: DbClient = prisma) {}
 
   withTransaction(tx: Prisma.TransactionClient): PrismaPayablesRepository {
     return new PrismaPayablesRepository(tx as unknown as DbClient);
+  }
+
+  /**
+   * Propagates a payable's status onto its linked JournalEntry
+   * (unified-comprobante-source-of-truth, D1) within the SAME client/tx.
+   * Sister mirror of PrismaReceivablesRepository.
+   *
+   * Locates the JE via reverse relation because the *Tx write-sites receive
+   * only the payable id, not journalEntryId. Unlinked payables are a
+   * 0-row no-op — no read-before-write. STATUS ONLY: dueDate propagation is
+   * Phase 5.
+   */
+  private async syncJournalEntrySettlement(
+    client: Pick<DbClient, "journalEntry">,
+    organizationId: string,
+    id: string,
+    status: PayableStatus,
+  ): Promise<void> {
+    await client.journalEntry.updateMany({
+      where: { organizationId, payables: { some: { id } } },
+      data: { paymentStatus: toSettlementStatus(status) },
+    });
+  }
+
+  /**
+   * Runs `fn` atomically. `save`/`update` are the NON-tx entry points (root
+   * client): their dual write (AP row + JE settlement stamp, D1/D2) must not
+   * straddle two autocommits — a crash between them persists the AP status
+   * while JE.paymentStatus stays stale (silent settlement drift, receivables
+   * defect H2; payables mirrors the fix from the start).
+   *
+   * Guard: a client without `$transaction` (a bare tx token) is already
+   * inside the caller's transaction — run directly. On Prisma 7 the real
+   * `TransactionClient` DOES expose `$transaction` (nested tx = savepoint on
+   * postgres), so a withTransaction-bound repo wrapping again stays atomic.
+   */
+  private async atomically(fn: (client: DbClient) => Promise<void>): Promise<void> {
+    if (typeof this.db.$transaction === "function") {
+      await this.db.$transaction(async (tx) => fn(tx as unknown as DbClient));
+      return;
+    }
+    await fn(this.db);
   }
 
   async findAll(
@@ -59,20 +110,28 @@ export class PrismaPayablesRepository implements PayableRepository {
   }
 
   async update(entity: Payable): Promise<void> {
-    await this.db.accountsPayable.update({
-      where: { id: entity.id, organizationId: entity.organizationId },
-      data: {
-        description: entity.description,
-        dueDate: entity.dueDate,
-        status: entity.status,
-        amount: new Prisma.Decimal(entity.amount.value),
-        paid: new Prisma.Decimal(entity.paid.value),
-        balance: new Prisma.Decimal(entity.balance.value),
-        sourceType: entity.sourceType,
-        sourceId: entity.sourceId,
-        journalEntryId: entity.journalEntryId,
-        notes: entity.notes,
-      },
+    await this.atomically(async (client) => {
+      await client.accountsPayable.update({
+        where: { id: entity.id, organizationId: entity.organizationId },
+        data: {
+          description: entity.description,
+          dueDate: entity.dueDate,
+          status: entity.status,
+          amount: new Prisma.Decimal(entity.amount.value),
+          paid: new Prisma.Decimal(entity.paid.value),
+          balance: new Prisma.Decimal(entity.balance.value),
+          sourceType: entity.sourceType,
+          sourceId: entity.sourceId,
+          journalEntryId: entity.journalEntryId,
+          notes: entity.notes,
+        },
+      });
+      await this.syncJournalEntrySettlement(
+        client,
+        entity.organizationId,
+        entity.id,
+        entity.status,
+      );
     });
   }
 

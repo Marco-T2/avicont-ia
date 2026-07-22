@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from "vitest";
 import { Prisma, type PrismaClient } from "@/generated/prisma/client";
 import { PrismaPayablesRepository } from "../prisma-payables.repository";
 import { Payable } from "../../domain/payable.entity";
+import type { PayableStatus } from "../../domain/value-objects/payable-status";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const dbWith = (overrides: Record<string, unknown>): PrismaClient =>
@@ -15,6 +16,29 @@ const txWith = (overrides: Record<string, unknown>) => ({
   accountsPayable: overrides,
   journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
 });
+
+/** Rehydrated entity in an arbitrary status for settlement-sync cases. */
+const rehydrate = (
+  status: PayableStatus,
+  journalEntryId: string | null = "je-1",
+) =>
+  Payable.fromPersistence({
+    id: "pay-1",
+    organizationId: "org-1",
+    contactId: "contact-1",
+    description: "Factura proveedor",
+    amount: MonetaryAmount.of(1000),
+    paid: MonetaryAmount.zero(),
+    balance: MonetaryAmount.of(1000),
+    dueDate: new Date("2026-05-15"),
+    status,
+    sourceType: null,
+    sourceId: null,
+    journalEntryId,
+    notes: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
 
 const buildEntity = () =>
   Payable.create({
@@ -466,6 +490,165 @@ describe("PrismaPayablesRepository", () => {
       const where = findMany.mock.calls[0]?.[0]?.where;
       expect(where.payment).toEqual({ status: { in: ["POSTED", "LOCKED"] } });
       expect(where.payableId).toBe("ap-1");
+    });
+  });
+
+  // ── settlement sync (D1/D2 — unified-comprobante-source-of-truth) ──────────
+  // Sister mirror of receivables: every status write-site must propagate the
+  // mapped SettlementStatus to the linked JE via reverse relation
+  // (payables: { some: { id } }), in the SAME client/tx. STATUS ONLY in this
+  // phase: `data` is pinned with toEqual semantics so dueDate propagation
+  // (Phase 5) must consciously break these shapes.
+
+  describe("settlement sync — update (D1)", () => {
+    it("propagates the mapped settlement status to the linked JE via reverse relation in the same client", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsPayable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaPayablesRepository(db);
+
+      await repo.update(rehydrate("PARTIAL"));
+
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("maps CANCELLED to VOIDED on the JE (shared toSettlementStatus mapper)", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsPayable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaPayablesRepository(db);
+
+      await repo.update(rehydrate("CANCELLED"));
+
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "VOIDED" },
+      });
+    });
+
+    it("unlinked payable: reverse-relation match is a 0-row no-op and the AP update still succeeds", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 0 });
+      const db = {
+        accountsPayable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaPayablesRepository(db);
+
+      await expect(
+        repo.update(rehydrate("PENDING", null)),
+      ).resolves.toBeUndefined();
+
+      // Uniform issue per D1 (no read-before-write): the updateMany IS sent,
+      // the DB simply matches 0 rows for an unlinked payable.
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(update).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ── atomicity (H2 mirror) — update dual write must be transactional ────────
+  // update() is a NON-tx entry point (root client): its dual write (AP row +
+  // JE settlement stamp) must run inside ONE $transaction — a crash between
+  // two autocommit writes would persist the AP status while JE.paymentStatus
+  // stays stale = silent settlement drift (receivables defect H2; payables
+  // must NOT inherit it). Base (autocommit) client and tx client carry
+  // SEPARATE spies, so any write leaking outside the transaction is
+  // observable.
+
+  describe("H2-mirror atomicity — update dual write in a single $transaction", () => {
+    /** Root-client mock: $transaction hands its callback a tx client with its
+     *  OWN delegates. Writes on `base*` delegates = autocommit leaks. */
+    const atomicDb = () => {
+      const tx = {
+        accountsPayable: {
+          update: vi.fn().mockResolvedValue(undefined),
+          create: vi.fn().mockResolvedValue(undefined),
+        },
+        journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      };
+      const baseAp = {
+        update: vi.fn().mockResolvedValue(undefined),
+        create: vi.fn().mockResolvedValue(undefined),
+      };
+      const baseJe = { updateMany: vi.fn().mockResolvedValue({ count: 1 }) };
+      const $transaction = vi
+        .fn()
+        .mockImplementation(async (fn: (c: unknown) => Promise<unknown>) =>
+          fn(tx),
+        );
+      const db = {
+        accountsPayable: baseAp,
+        journalEntry: baseJe,
+        $transaction,
+      } as unknown as PrismaClient;
+      return { db, tx, baseAp, baseJe, $transaction };
+    };
+
+    it("update: both writes execute on the SAME tx client from ONE $transaction — never on the autocommit client", async () => {
+      const { db, tx, baseAp, baseJe, $transaction } = atomicDb();
+      const repo = new PrismaPayablesRepository(db);
+
+      await repo.update(rehydrate("PARTIAL"));
+
+      expect($transaction).toHaveBeenCalledTimes(1);
+      expect(tx.accountsPayable.update).toHaveBeenCalledTimes(1);
+      expect(tx.accountsPayable.update.mock.calls[0]?.[0]?.where).toEqual({
+        id: "pay-1",
+        organizationId: "org-1",
+      });
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+      expect(baseAp.update).not.toHaveBeenCalled();
+      expect(baseJe.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("update: when the JE settlement write fails, the AP write must NOT have hit the autocommit client (no partial commit)", async () => {
+      const { db, tx, baseAp, baseJe } = atomicDb();
+      const boom = new Error("je-write-failed");
+      tx.journalEntry.updateMany.mockRejectedValue(boom);
+      baseJe.updateMany.mockRejectedValue(boom); // a non-atomic path must fail here too
+
+      const repo = new PrismaPayablesRepository(db);
+
+      await expect(repo.update(rehydrate("PAID"))).rejects.toThrow(
+        "je-write-failed",
+      );
+
+      // Inside $transaction the throw aborts the callback → rollback. A write
+      // on the BASE client is autocommit — it survives the throw = H2 drift.
+      expect(baseAp.update).not.toHaveBeenCalled();
+      expect(tx.accountsPayable.update).toHaveBeenCalledTimes(1);
+    });
+
+    // Guard branch: a client WITHOUT $transaction (withTransaction-bound repo
+    // whose caller already owns the tx) runs both writes directly — already
+    // atomic under the caller's tx; wrapping is not required.
+    it("update via withTransaction-bound repo: runs both writes directly on the caller's tx client", async () => {
+      const update = vi.fn().mockResolvedValue(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaPayablesRepository(dbWith({})).withTransaction(
+        tx as unknown as Prisma.TransactionClient,
+      );
+
+      await repo.update(rehydrate("PARTIAL"));
+
+      expect(update).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
     });
   });
 });
