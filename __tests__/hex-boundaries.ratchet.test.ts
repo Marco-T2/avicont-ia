@@ -388,11 +388,18 @@ const BASELINE: ReadonlyArray<string> = [
   //     (HTTP auth middleware + Clerk composition) — NO domain/application home to
   //     repoint to, unlike the ai-agent/tags FREE barrel closures. The real question
   //     is whether `permissions.server.ts` itself is misplaced in application/ —
-  //     an architecture call, not a repoint. Both halves deferred to a human.
-  "modules/permissions/application/__tests__/client-matrix.test.ts:R2",
-  "modules/permissions/application/__tests__/require-permission.test.ts:R2",
-  "modules/permissions/application/__tests__/require-permission.test.ts:R2",
-  "modules/permissions/application/__tests__/require-permission.test.ts:R2",
+  //     an architecture call, not a repoint. (Human decision 2026-07-22: pay
+  //     the whole cluster — both phases.)
+  //     PHASE 1 CLOSED (glob-bug fix): the 4 `application/__tests__/*` entries
+  //     were never real debt — the eslint hex test carve-out glob was written
+  //     `modules/**/__tests__/{domain,application,presentation}/**` but the repo
+  //     layout is `<layer>/__tests__/`, so the ignore matched NOTHING and
+  //     co-located layer tests were wrongly linted. Fixed to
+  //     `modules/**/{domain,application,presentation}/__tests__/**` (the config
+  //     author's evident intent — tests legitimately import across layers to
+  //     mock). Verified: the baseline held ONLY these 4 test entries repo-wide,
+  //     so the fix drops exactly them and unmasks no source debt.
+  //     PHASE 2 (source relocation) closes the remaining 6 — see below.
   "modules/permissions/application/client-matrix.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",

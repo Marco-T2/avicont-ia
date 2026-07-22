@@ -102,7 +102,7 @@ const eslintConfig = defineConfig([
   // ── Hexagonal R1, R5 — domain/ layer ──
   {
     files: ["modules/**/domain/**/*.{ts,tsx}"],
-    ignores: ["modules/**/__tests__/{domain,application,presentation}/**"],
+    ignores: ["modules/**/{domain,application,presentation}/__tests__/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -113,7 +113,7 @@ const eslintConfig = defineConfig([
   // ── Hexagonal R2, R5 — application/ layer ──
   {
     files: ["modules/**/application/**/*.{ts,tsx}"],
-    ignores: ["modules/**/__tests__/{domain,application,presentation}/**"],
+    ignores: ["modules/**/{domain,application,presentation}/__tests__/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -128,7 +128,7 @@ const eslintConfig = defineConfig([
     files: ["modules/**/presentation/**/*.{ts,tsx}"],
     ignores: [
       "modules/**/presentation/composition-root.ts",
-      "modules/**/__tests__/{domain,application,presentation}/**",
+      "modules/**/{domain,application,presentation}/__tests__/**",
     ],
     rules: {
       "no-restricted-imports": [
