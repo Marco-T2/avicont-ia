@@ -361,6 +361,29 @@ const BASELINE: ReadonlyArray<string> = [
 
   // ── modules/permissions/ — [CACHE] permissions.cache (infrastructure) reached from domain and application,
   //     plus organizations consumed via presentation barrels
+  //  ── DESIGN-LOCKED: these 10 split 5+5, neither half mechanical (§18, human
+  //     decision 2026-07-22; audit read-only, all imports verified) ──
+  //     GROUP A — 5 true [CACHE] entries (client-matrix.test.ts, require-permission
+  //     .test.ts ×1 of its 3, client-matrix.ts, permissions.server.ts ×1 of its 4,
+  //     server.ts): all VALUE imports of getMatrix/ensureOrgSeeded/_setLoader/
+  //     _resetCache from infrastructure/permissions.cache. The type-only subset
+  //     (OrgMatrix) was ALREADY closed in a prior paydown — what remains is only the
+  //     hard case. A domain CachePort + DI risks RE-CREATING the org⇄permissions
+  //     import cycle that is real in this exact module (why the surgical
+  //     `infrastructure/cache.ts` barrel-split exists; same TDZ family that crashed
+  //     accounting's D1). Extra blockers: `_setLoader`/`_resetCache` are TEST-ONLY
+  //     hooks with no natural home on a production domain port, and permissions has
+  //     NO presentation/ layer at all (only domain/app/infra) — no composition-root
+  //     to extend without creating one from scratch. Medium-high risk, not free.
+  //     GROUP B — 5 cross-module barrel reaches (permissions.server.ts ×3,
+  //     require-permission.test.ts ×2): imports of requireAuth (shared/presentation/
+  //     middleware), requireOrgAccess/requireRole (organizations/presentation/
+  //     middleware), makeEnsureFromClerkService (organizations/presentation/
+  //     composition-root). VERIFIED these symbols live GENUINELY in presentation
+  //     (HTTP auth middleware + Clerk composition) — NO domain/application home to
+  //     repoint to, unlike the ai-agent/tags FREE barrel closures. The real question
+  //     is whether `permissions.server.ts` itself is misplaced in application/ —
+  //     an architecture call, not a repoint. Both halves deferred to a human.
   "modules/permissions/application/__tests__/client-matrix.test.ts:R2",
   "modules/permissions/application/__tests__/require-permission.test.ts:R2",
   "modules/permissions/application/__tests__/require-permission.test.ts:R2",
