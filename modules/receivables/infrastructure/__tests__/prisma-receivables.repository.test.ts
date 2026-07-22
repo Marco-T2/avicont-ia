@@ -17,10 +17,14 @@ const txWith = (overrides: Record<string, unknown>) => ({
   journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
 });
 
+/** Canonical fixture dueDate — the settlement sync must propagate it (P5). */
+const DUE = new Date("2026-05-15");
+
 /** Rehydrated entity in an arbitrary status for settlement-sync cases. */
 const rehydrate = (
   status: ReceivableStatus,
   journalEntryId: string | null = "je-1",
+  dueDate: Date = DUE,
 ) =>
   Receivable.fromPersistence({
     id: "rec-1",
@@ -30,7 +34,7 @@ const rehydrate = (
     amount: MonetaryAmount.of(1000),
     paid: MonetaryAmount.zero(),
     balance: MonetaryAmount.of(1000),
-    dueDate: new Date("2026-05-15"),
+    dueDate,
     status,
     sourceType: null,
     sourceId: null,
@@ -492,12 +496,13 @@ describe("PrismaReceivablesRepository", () => {
 
   // ── settlement sync (D1/D2 — unified-comprobante-source-of-truth) ──────────
   // Every status write-site must propagate the mapped SettlementStatus to the
-  // linked JE via reverse relation, in the SAME client/tx. STATUS ONLY in this
-  // phase: `data` is pinned with toEqual semantics so dueDate propagation
-  // (Phase 5) must consciously break these shapes.
+  // linked JE via reverse relation, in the SAME client/tx. dueDate rule (P5,
+  // risk 7): update/createTx/save ALSO propagate the row's dueDate (it is
+  // editable); voidTx/applyAllocationTx/revertAllocationTx write status ONLY —
+  // `data` stays pinned exact so a dueDate leak into those sites breaks here.
 
   describe("settlement sync — update (D1)", () => {
-    it("propagates the mapped settlement status to the linked JE via reverse relation in the same client", async () => {
+    it("propagates the mapped settlement status AND dueDate to the linked JE via reverse relation in the same client", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const updateMany = vi.fn().mockResolvedValue({ count: 1 });
       const db = {
@@ -511,7 +516,26 @@ describe("PrismaReceivablesRepository", () => {
       expect(updateMany).toHaveBeenCalledTimes(1);
       expect(updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "PARTIAL" },
+        data: { paymentStatus: "PARTIAL", dueDate: DUE },
+      });
+    });
+
+    it("dueDate-only edit (status unchanged) still refreshes JE.dueDate — dueDate is EDITABLE on the AR (risk 7)", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsReceivable: { update },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaReceivablesRepository(db);
+
+      // Same status as the fixture baseline (PENDING) — ONLY dueDate moved.
+      const newDue = new Date("2026-07-01");
+      await repo.update(rehydrate("PENDING", "je-1", newDue));
+
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
+        data: { paymentStatus: "PENDING", dueDate: newDue },
       });
     });
 
@@ -528,7 +552,7 @@ describe("PrismaReceivablesRepository", () => {
 
       expect(updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "VOIDED" },
+        data: { paymentStatus: "VOIDED", dueDate: DUE },
       });
     });
 
@@ -553,7 +577,7 @@ describe("PrismaReceivablesRepository", () => {
   });
 
   describe("settlement sync — voidTx (D1)", () => {
-    it("stamps the linked JE VOIDED inside the same tx", async () => {
+    it("stamps the linked JE VOIDED inside the same tx — STATUS ONLY, no dueDate key (P5 rule)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
       const tx = txWith({ update });
       const repo = new PrismaReceivablesRepository(dbWith({}));
@@ -565,6 +589,9 @@ describe("PrismaReceivablesRepository", () => {
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
         data: { paymentStatus: "VOIDED" },
       });
+      // Void does NOT touch JE.dueDate — not even as an undefined key.
+      const syncData = tx.journalEntry.updateMany.mock.calls[0]?.[0]?.data;
+      expect("dueDate" in syncData).toBe(false);
     });
 
     it("unlinked receivable: 0-row no-op and the void still succeeds", async () => {
@@ -604,6 +631,9 @@ describe("PrismaReceivablesRepository", () => {
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
         data: { paymentStatus: "PARTIAL" },
       });
+      // Allocation sites are STATUS ONLY (P5 rule) — no dueDate key at all.
+      const syncData = tx.journalEntry.updateMany.mock.calls[0]?.[0]?.data;
+      expect("dueDate" in syncData).toBe(false);
     });
 
     it("full allocation: AR row gets PAID and JE gets PAID in the same tx", async () => {
@@ -651,6 +681,9 @@ describe("PrismaReceivablesRepository", () => {
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
         data: { paymentStatus: "PARTIAL" },
       });
+      // Revert sites are STATUS ONLY (P5 rule) — no dueDate key at all.
+      const syncData = tx.journalEntry.updateMany.mock.calls[0]?.[0]?.data;
+      expect("dueDate" in syncData).toBe(false);
     });
 
     it("full revert: AR row returns to PENDING and JE gets PENDING in the same tx", async () => {
@@ -726,10 +759,11 @@ describe("PrismaReceivablesRepository", () => {
         id: "rec-1",
         organizationId: "org-1",
       });
-      // Mapped status logic unchanged — only atomicity moved.
+      // Mapped status logic unchanged — only atomicity moved. dueDate rides
+      // along at the update site (P5).
       expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "PARTIAL" },
+        data: { paymentStatus: "PARTIAL", dueDate: DUE },
       });
       expect(baseAr.update).not.toHaveBeenCalled();
       expect(baseJe.updateMany).not.toHaveBeenCalled();
@@ -761,10 +795,11 @@ describe("PrismaReceivablesRepository", () => {
 
       expect($transaction).toHaveBeenCalledTimes(1);
       expect(tx.accountsReceivable.create).toHaveBeenCalledTimes(1);
-      // D2 stamp still mapped from the entity status — not hardcoded.
+      // D2 stamp still mapped from the entity status — not hardcoded. dueDate
+      // rides along at the save site (P5).
       expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "PARTIAL" },
+        data: { paymentStatus: "PARTIAL", dueDate: DUE },
       });
       expect(baseAr.create).not.toHaveBeenCalled();
       expect(baseJe.updateMany).not.toHaveBeenCalled();
@@ -802,7 +837,7 @@ describe("PrismaReceivablesRepository", () => {
       expect(update).toHaveBeenCalledTimes(1);
       expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "PARTIAL" },
+        data: { paymentStatus: "PARTIAL", dueDate: DUE },
       });
     });
 
@@ -818,13 +853,13 @@ describe("PrismaReceivablesRepository", () => {
       expect(create).toHaveBeenCalledTimes(1);
       expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "PAID" },
+        data: { paymentStatus: "PAID", dueDate: DUE },
       });
     });
   });
 
   describe("settlement sync — creation stamp (D2)", () => {
-    it("createTx stamps the linked JE with the mapped created status using the RETURNED row id", async () => {
+    it("createTx stamps the linked JE with the mapped created status AND dueDate using the RETURNED row id", async () => {
       const create = vi.fn().mockResolvedValueOnce({ id: "new-rec" });
       const tx = txWith({ create });
       const repo = new PrismaReceivablesRepository(dbWith({}));
@@ -834,14 +869,14 @@ describe("PrismaReceivablesRepository", () => {
         contactId: "c-1",
         description: "Sale",
         amount: 500,
-        dueDate: new Date("2026-05-15"),
+        dueDate: DUE,
         journalEntryId: "je-1",
       });
 
       expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
       expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "new-rec" } } },
-        data: { paymentStatus: "PENDING" },
+        data: { paymentStatus: "PENDING", dueDate: DUE },
       });
     });
 
@@ -879,7 +914,7 @@ describe("PrismaReceivablesRepository", () => {
       expect(updateMany).toHaveBeenCalledTimes(1);
       expect(updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", receivables: { some: { id: "rec-1" } } },
-        data: { paymentStatus: "PARTIAL" },
+        data: { paymentStatus: "PARTIAL", dueDate: DUE },
       });
     });
 
@@ -900,7 +935,7 @@ describe("PrismaReceivablesRepository", () => {
           organizationId: "org-1",
           receivables: { some: { id: entity.id } },
         },
-        data: { paymentStatus: "PENDING" },
+        data: { paymentStatus: "PENDING", dueDate: DUE },
       });
     });
   });

@@ -39,18 +39,26 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
    *
    * Locates the JE via reverse relation because the *Tx write-sites receive
    * only the receivable id, not journalEntryId. Unlinked receivables are a
-   * 0-row no-op — no read-before-write. STATUS ONLY: dueDate propagation is
-   * Phase 5.
+   * 0-row no-op — no read-before-write.
+   *
+   * dueDate (P5, risk 7): passed ONLY from update/createTx/save — the sites
+   * that carry the row's (EDITABLE) dueDate. Allocation/void sites omit it
+   * (status-only): they never change the due date, so the key stays absent
+   * from the updateMany data.
    */
   private async syncJournalEntrySettlement(
     client: Pick<DbClient, "journalEntry">,
     organizationId: string,
     id: string,
     status: ReceivableStatus,
+    dueDate?: Date,
   ): Promise<void> {
     await client.journalEntry.updateMany({
       where: { organizationId, receivables: { some: { id } } },
-      data: { paymentStatus: toSettlementStatus(status) },
+      data: {
+        paymentStatus: toSettlementStatus(status),
+        ...(dueDate !== undefined && { dueDate }),
+      },
     });
   }
 
@@ -113,6 +121,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
         entity.organizationId,
         entity.id,
         entity.status,
+        entity.dueDate,
       );
     });
   }
@@ -134,11 +143,14 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
           notes: entity.notes,
         },
       });
+      // dueDate is EDITABLE on the AR — a dueDate-only edit must refresh the
+      // JE copy even when the status did not change (P5, risk 7).
       await this.syncJournalEntrySettlement(
         client,
         entity.organizationId,
         entity.id,
         entity.status,
+        entity.dueDate,
       );
     });
   }
@@ -274,6 +286,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
       data.organizationId,
       created.id,
       status,
+      data.dueDate,
     );
     return created;
   }
