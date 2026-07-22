@@ -266,6 +266,7 @@ export class PrismaPayablesRepository implements PayableRepository {
       where: { id, organizationId },
       data: { status: "VOIDED", balance: new Prisma.Decimal(0) },
     });
+    await this.syncJournalEntrySettlement(txClient, organizationId, id, "VOIDED");
   }
 
   async findByIdTx(

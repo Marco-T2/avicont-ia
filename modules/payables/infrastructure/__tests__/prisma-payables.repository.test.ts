@@ -556,6 +556,34 @@ describe("PrismaPayablesRepository", () => {
     });
   });
 
+  describe("settlement sync — voidTx (D1)", () => {
+    it("stamps the linked JE VOIDED inside the same tx", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.voidTx(tx, "org-1", "pay-1");
+
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "VOIDED" },
+      });
+    });
+
+    it("unlinked payable: 0-row no-op and the void still succeeds", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = txWith({ update });
+      tx.journalEntry.updateMany.mockResolvedValue({ count: 0 });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await expect(repo.voidTx(tx, "org-1", "pay-1")).resolves.toBeUndefined();
+
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+      expect(update).toHaveBeenCalledTimes(1);
+    });
+  });
+
   // ── atomicity (H2 mirror) — update dual write must be transactional ────────
   // update() is a NON-tx entry point (root client): its dual write (AP row +
   // JE settlement stamp) must run inside ONE $transaction — a crash between
