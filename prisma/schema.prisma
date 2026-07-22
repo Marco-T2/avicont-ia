@@ -375,6 +375,15 @@ model JournalEntry {
   // VGs can never share refNumber within an org; null does not collide
   // (Postgres NULL≠NULL in unique constraints).
   operationalDocTypeId String?
+  // Settlement state denormalized from the linked receivable/payable
+  // (unified-comprobante-source-of-truth). Field name deliberately echoes the
+  // domain concept, but the TYPE is SettlementStatus (PENDING|PARTIAL|PAID|
+  // VOIDED) — NOT the PaymentStatus enum, which is the Payment DOCUMENT
+  // lifecycle (DRAFT|POSTED|LOCKED|VOIDED). Null = no CxC/CxP link (manual/AI/
+  // payment-only JEs) → ledger renders "—". ATRASADO derived at read from
+  // dueDate < now, never persisted. No index — rendered, never filtered.
+  paymentStatus        SettlementStatus?
+  dueDate              DateTime?          @db.Timestamptz(3)
   sourceType           String?
   sourceId             String?
   aiOriginalText       String?            // texto crudo del usuario cuando sourceType="ai" — inmutable post-creación
@@ -535,6 +544,19 @@ enum PayableStatus {
   CANCELLED // kept for PostgreSQL compatibility — application code uses VOIDED
   VOIDED
   OVERDUE
+}
+
+// Unified settlement state denormalized onto JournalEntry (unified-comprobante-
+// source-of-truth, D5). Persisted subset of ReceivableStatus/PayableStatus:
+// CANCELLED maps to VOIDED at write; OVERDUE is DERIVED at read (dueDate < now),
+// never persisted. INVARIANT: this is NOT the PaymentStatus enum below —
+// PaymentStatus (DRAFT|POSTED|LOCKED|VOIDED) is the Payment DOCUMENT lifecycle
+// and must never be reused for settlement state.
+enum SettlementStatus {
+  PENDING
+  PARTIAL
+  PAID
+  VOIDED
 }
 
 enum SaleStatus {
