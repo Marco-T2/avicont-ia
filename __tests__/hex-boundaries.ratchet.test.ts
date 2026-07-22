@@ -387,11 +387,10 @@ const BASELINE: ReadonlyArray<string> = [
   //     composition-root). VERIFIED these symbols live GENUINELY in presentation
   //     (HTTP auth middleware + Clerk composition) — NO domain/application home to
   //     repoint to, unlike the ai-agent/tags FREE barrel closures. The real question
-  //     is whether `permissions.server.ts` itself is misplaced in application/ —
-  //     an architecture call, not a repoint. (Human decision 2026-07-22: pay
-  //     the whole cluster — both phases.)
-  //     PHASE 1 CLOSED (glob-bug fix): the 4 `application/__tests__/*` entries
-  //     were never real debt — the eslint hex test carve-out glob was written
+  //     is whether `permissions.server.ts` itself is misplaced in application/.
+  //     PHASE 1 CLOSED (glob-bug fix, commit ffb15873): the 4
+  //     `application/__tests__/*` entries were never real debt — the eslint hex
+  //     test carve-out glob was written
   //     `modules/**/__tests__/{domain,application,presentation}/**` but the repo
   //     layout is `<layer>/__tests__/`, so the ignore matched NOTHING and
   //     co-located layer tests were wrongly linted. Fixed to
@@ -399,7 +398,28 @@ const BASELINE: ReadonlyArray<string> = [
   //     author's evident intent — tests legitimately import across layers to
   //     mock). Verified: the baseline held ONLY these 4 test entries repo-wide,
   //     so the fix drops exactly them and unmasks no source debt.
-  //     PHASE 2 (source relocation) closes the remaining 6 — see below.
+  //  ── The 6 source entries below stay DEFERRED §18 (human decision
+  //     2026-07-22) — NOT for lack of a design. A verified-sound relocation
+  //     EXISTS: `permissions.server.ts` IS a misplaced HTTP-presentation guard;
+  //     move it + client-matrix.ts + server.ts to a new presentation/ layer,
+  //     bridge the cache reach through presentation/composition-root.ts (the
+  //     R4-exempt carve-out — NO domain CachePort, so the org⇄permissions TDZ
+  //     cycle is provably NOT triggered: the moved files add no edge into
+  //     permissions/domain, which org/domain/roles.validation already imports).
+  //     It is deferred because the COST/RISK outweighs closing 6 entries:
+  //     (1) breaks α18 in c1-shape.poc-permissions-hex-b3.test.ts — a
+  //     dual-sentinel whose vi.mock-count invariant carries a ~15-SDD enumerated
+  //     drift ledger (moving the barrel drops its `@/.../application/server`
+  //     count to 0); re-pinning it to presentation/ means rewriting that whole
+  //     sentinel + ledger. (2) CLIENT-BUNDLE-LEAK hazard: the async facades were
+  //     deliberately structured (permissions.server → composition-root → repos)
+  //     to keep pg/dns out of the client bundle (see permissions.smoke.test.ts);
+  //     relocating risks re-introducing the leak — a runtime bug lint/unit tests
+  //     may not catch. (3) re-litigates POC B3 (α1-α11), which JUST cemented
+  //     application/ as the hex home in the features→modules migration.
+  //     A documented deferral is a clean state; degrading a 15-SDD invariant to
+  //     drop 6 numbers is not. Revisit if B3 is being re-cemented for other
+  //     reasons, or bundle isolation is proven preserved.
   "modules/permissions/application/client-matrix.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
