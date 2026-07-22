@@ -56,7 +56,9 @@
  * mortality C4/C1 sentinels pin those consumers to presentation/server;
  * ratchet-R2 vs POC-cutover is a real conflict deferred to a human), restoring
  * 12 R2 lines back to 63 — `accounts.service.ts` (live injected PrismaClient,
- * D1/D3 design locks) and `journal.types.ts` (6 model types) remain deferred.).
+ * D1/D3 design locks) remains deferred; the journal D4 paydown later moved
+ * the `JournalEntry`/`JournalLine` MODEL types into domain-owned structural
+ * interfaces in `journal.types.ts`, closing its R5 line.).
  * Turning the lint gate red today would mean either 63 fixes in one commit or 63
  * `eslint-disable`s
  * — so instead this sentinel
@@ -248,9 +250,13 @@ const BASELINE: ReadonlyArray<string> = [
   // `Account` model type was migrated to domain (D4) — accounts.types.ts now
   // owns a structural `Account` interface (enum fields via the D1 mirrors) and
   // the crud port + 3 application tests were repointed; `accounts.service.ts`
-  // (live injected PrismaClient, D1/D3 design locks) and `journal.types.ts`
-  // (6 model types) remain deferred.
-  "modules/accounting/domain/journal.types.ts:R5",
+  // (live injected PrismaClient, D1/D3 design locks) remains deferred.
+  // journal.types.ts:R5 (6 model types) was CLOSED by the journal D4 paydown —
+  // journal.types.ts now owns structural `JournalEntry`/`JournalLine` mirrors
+  // (Decimal via decimal.js per DEC-1, status via the domain
+  // journal-entry-status mirror), reuses the accounting `Account` D4 mirror,
+  // the voucher-types/operational-doc-type domain Snapshots, and a minimal
+  // raw-row-assignable `JournalContactRef` for the contact relations.
   // validation.ts:R5 (the M1 revert — composition-root TDZ cycle) was CLOSED
   // by D1: the enum imports now come from the LEAF mirror file
   // domain/value-objects/account-classification.ts, which is exactly the

@@ -1,13 +1,64 @@
 /** Canonical hex DTO — journal input/filter/composite types (§13.X). */
-import type {
-  JournalEntry,
-  JournalLine,
-  Account,
-  JournalEntryStatus,
-  Contact,
-  VoucherTypeCfg,
-  OperationalDocType,
-} from "@/generated/prisma/client";
+import type { Decimal } from "decimal.js";
+import type { Account } from "./accounts.types";
+import type { JournalEntryStatus } from "./value-objects/journal-entry-status";
+import type { VoucherTypeSnapshot } from "@/modules/voucher-types/domain/voucher-type.entity";
+import type { OperationalDocTypeSnapshot } from "@/modules/operational-doc-type/domain/operational-doc-type.entity";
+
+// ── Entity types (D4: domain-owned model types) ──
+
+/**
+ * Espejo estructural de los scalars del modelo Prisma `JournalEntry` (sin
+ * relaciones — viven en `JournalEntryWithLines`). Drift risk: sin sync test;
+ * tsc en los adapters detecta divergencia (precedente: `Account` D4).
+ */
+export interface JournalEntry {
+  id: string;
+  number: number;
+  referenceNumber: number | null;
+  date: Date;
+  description: string;
+  status: JournalEntryStatus;
+  periodId: string;
+  voucherTypeId: string;
+  contactId: string | null;
+  operationalDocTypeId: string | null;
+  sourceType: string | null;
+  sourceId: string | null;
+  aiOriginalText: string | null;
+  organizationId: string;
+  createdById: string;
+  updatedById: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+/**
+ * Espejo estructural de los scalars del modelo Prisma `JournalLine` (sin
+ * relaciones — viven en `JournalLineWithAccount`). `debit`/`credit` usan
+ * `Decimal` de decimal.js (DEC-1), estructuralmente idéntico al de Prisma.
+ * Drift risk: sin sync test; tsc en los adapters detecta divergencia.
+ */
+export interface JournalLine {
+  id: string;
+  journalEntryId: string;
+  accountId: string;
+  debit: Decimal;
+  credit: Decimal;
+  description: string | null;
+  contactId: string | null;
+  order: number;
+}
+
+/**
+ * Relación `contact` mínima raw-row-assignable: los composites solo leen
+ * `.name`, y un row Prisma `Contact` completo asigna por width subtyping.
+ * NO se reusa `ContactSnapshot` (creditLimit number vs Decimal del raw row).
+ */
+export interface JournalContactRef {
+  id: string;
+  name: string;
+}
 
 // ── Input types ──
 
@@ -74,18 +125,18 @@ export interface JournalFilters {
 
 export type JournalLineWithAccount = JournalLine & {
   account: Account;
-  contact?: Contact | null;
+  contact?: JournalContactRef | null;
 };
 
 export type JournalEntryWithLines = JournalEntry & {
   lines: JournalLineWithAccount[];
-  contact?: Contact | null;
-  voucherType: VoucherTypeCfg;
+  contact?: JournalContactRef | null;
+  voucherType: VoucherTypeSnapshot;
   // journal-physical-document — eager-hydrated via journalIncludeLines so
   // contact-ledger reads `je.operationalDocType.code` direct + detail view
   // renders code + name without follow-up query. Nullable: legacy/manual JEs
   // without a doc type set keep it null.
-  operationalDocType?: OperationalDocType | null;
+  operationalDocType?: OperationalDocTypeSnapshot | null;
 };
 
 // ── Correlation audit types ──
