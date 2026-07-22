@@ -584,6 +584,102 @@ describe("PrismaPayablesRepository", () => {
     });
   });
 
+  describe("settlement sync — applyAllocationTx (D1, allocation end-state)", () => {
+    // The domain computes the resulting PayableStatus; the repo must persist
+    // THAT status on the AP row and stamp the SAME (mapped) value on the JE.
+    // Both sides asserted — end-state is never hand-waved.
+    it("partial allocation: AP row gets PARTIAL and JE gets PARTIAL in the same tx", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.applyAllocationTx(
+        tx,
+        "org-1",
+        "pay-1",
+        MonetaryAmount.of(700),
+        MonetaryAmount.of(300),
+        "PARTIAL",
+      );
+
+      expect(update.mock.calls[0]?.[0]?.data.status).toBe("PARTIAL");
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("full allocation: AP row gets PAID and JE gets PAID in the same tx", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.applyAllocationTx(
+        tx,
+        "org-1",
+        "pay-1",
+        MonetaryAmount.of(1000),
+        MonetaryAmount.zero(),
+        "PAID",
+      );
+
+      expect(update.mock.calls[0]?.[0]?.data.status).toBe("PAID");
+      expect(update.mock.calls[0]?.[0]?.data.balance.toString()).toBe("0");
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PAID" },
+      });
+    });
+  });
+
+  describe("settlement sync — revertAllocationTx (D1, allocation end-state)", () => {
+    it("revert with remaining allocations: AP row gets PARTIAL and JE gets PARTIAL in the same tx", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.revertAllocationTx(
+        tx,
+        "org-1",
+        "pay-1",
+        MonetaryAmount.of(400),
+        MonetaryAmount.of(600),
+        "PARTIAL",
+      );
+
+      expect(update.mock.calls[0]?.[0]?.data.status).toBe("PARTIAL");
+      expect(update.mock.calls[0]?.[0]?.data.paid.toString()).toBe("400");
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("full revert: AP row returns to PENDING and JE gets PENDING in the same tx", async () => {
+      const update = vi.fn().mockResolvedValueOnce(undefined);
+      const tx = txWith({ update });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.revertAllocationTx(
+        tx,
+        "org-1",
+        "pay-1",
+        MonetaryAmount.zero(),
+        MonetaryAmount.of(1000),
+        "PENDING",
+      );
+
+      expect(update.mock.calls[0]?.[0]?.data.status).toBe("PENDING");
+      expect(update.mock.calls[0]?.[0]?.data.paid.toString()).toBe("0");
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PENDING" },
+      });
+    });
+  });
+
   // ── atomicity (H2 mirror) — update dual write must be transactional ────────
   // update() is a NON-tx entry point (root client): its dual write (AP row +
   // JE settlement stamp) must run inside ONE $transaction — a crash between

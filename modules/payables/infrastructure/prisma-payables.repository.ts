@@ -298,6 +298,7 @@ export class PrismaPayablesRepository implements PayableRepository {
         status,
       },
     });
+    await this.syncJournalEntrySettlement(txClient, organizationId, id, status);
   }
 
   async revertAllocationTx(
@@ -317,5 +318,6 @@ export class PrismaPayablesRepository implements PayableRepository {
         status,
       },
     });
+    await this.syncJournalEntrySettlement(txClient, organizationId, id, status);
   }
 }
