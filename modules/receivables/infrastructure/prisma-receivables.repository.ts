@@ -271,6 +271,7 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
         status,
       },
     });
+    await this.syncJournalEntrySettlement(txClient, organizationId, id, status);
   }
 
   async revertAllocationTx(
@@ -290,5 +291,6 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
         status,
       },
     });
+    await this.syncJournalEntrySettlement(txClient, organizationId, id, status);
   }
 }
