@@ -5,7 +5,16 @@ import { Payable } from "../../domain/payable.entity";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const dbWith = (overrides: Record<string, unknown>): PrismaClient =>
-  ({ accountsPayable: overrides }) as unknown as PrismaClient;
+  ({
+    accountsPayable: overrides,
+    journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+  }) as unknown as PrismaClient;
+
+/** Tx mock with the journalEntry delegate the settlement sync (D1) targets. */
+const txWith = (overrides: Record<string, unknown>) => ({
+  accountsPayable: overrides,
+  journalEntry: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+});
 
 const buildEntity = () =>
   Payable.create({
@@ -255,7 +264,7 @@ describe("PrismaPayablesRepository", () => {
   describe("createTx", () => {
     it("creates inside the supplied tx with PENDING + paid=0 + balance=amount", async () => {
       const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
-      const tx = { accountsPayable: { create } };
+      const tx = txWith({ create });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       const result = await repo.createTx(tx, {
@@ -282,7 +291,7 @@ describe("PrismaPayablesRepository", () => {
 
     it("omits optional fields when undefined", async () => {
       const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
-      const tx = { accountsPayable: { create } };
+      const tx = txWith({ create });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       await repo.createTx(tx, {
@@ -301,7 +310,7 @@ describe("PrismaPayablesRepository", () => {
 
     it("persists sourceTypeCode when provided (D4 — mirror receivables:193)", async () => {
       const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
-      const tx = { accountsPayable: { create } };
+      const tx = txWith({ create });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       await repo.createTx(tx, {
@@ -319,7 +328,7 @@ describe("PrismaPayablesRepository", () => {
 
     it("omits sourceTypeCode key entirely when undefined (NULL by DB default)", async () => {
       const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
-      const tx = { accountsPayable: { create } };
+      const tx = txWith({ create });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       await repo.createTx(tx, {
@@ -338,7 +347,7 @@ describe("PrismaPayablesRepository", () => {
   describe("voidTx", () => {
     it("updates inside tx with status=VOIDED and balance=0", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
-      const tx = { accountsPayable: { update } };
+      const tx = txWith({ update });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       await repo.voidTx(tx, "org-1", "pay-1");
@@ -355,7 +364,7 @@ describe("PrismaPayablesRepository", () => {
   describe("findByIdTx", () => {
     it("scopes by id+organizationId via the supplied tx and returns null when missing", async () => {
       const findFirst = vi.fn().mockResolvedValueOnce(null);
-      const tx = { accountsPayable: { findFirst } };
+      const tx = txWith({ findFirst });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       const result = await repo.findByIdTx(tx, "org-1", "pay-missing");
@@ -368,7 +377,7 @@ describe("PrismaPayablesRepository", () => {
 
     it("returns a Payable when found", async () => {
       const findFirst = vi.fn().mockResolvedValueOnce(buildRow());
-      const tx = { accountsPayable: { findFirst } };
+      const tx = txWith({ findFirst });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       const result = await repo.findByIdTx(tx, "org-1", "pay-1");
@@ -380,7 +389,7 @@ describe("PrismaPayablesRepository", () => {
   describe("applyAllocationTx", () => {
     it("updates inside tx with computed paid+balance+status (no business logic in adapter)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
-      const tx = { accountsPayable: { update } };
+      const tx = txWith({ update });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       await repo.applyAllocationTx(
@@ -406,7 +415,7 @@ describe("PrismaPayablesRepository", () => {
   describe("revertAllocationTx", () => {
     it("updates inside tx with computed paid+balance+status (no business logic in adapter)", async () => {
       const update = vi.fn().mockResolvedValueOnce(undefined);
-      const tx = { accountsPayable: { update } };
+      const tx = txWith({ update });
       const repo = new PrismaPayablesRepository(dbWith({}));
 
       await repo.revertAllocationTx(
@@ -430,7 +439,7 @@ describe("PrismaPayablesRepository", () => {
   describe("withTransaction", () => {
     it("returns a new repo bound to the tx client", async () => {
       const txCreate = vi.fn().mockResolvedValueOnce(undefined);
-      const tx = { accountsPayable: { create: txCreate } } as unknown as Prisma.TransactionClient;
+      const tx = txWith({ create: txCreate }) as unknown as Prisma.TransactionClient;
       const baseDb = dbWith({ create: vi.fn() });
       const repo = new PrismaPayablesRepository(baseDb);
 
