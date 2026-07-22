@@ -106,7 +106,16 @@ export class PrismaPayablesRepository implements PayableRepository {
   }
 
   async save(entity: Payable): Promise<void> {
-    await this.db.accountsPayable.create({ data: toPersistence(entity) });
+    await this.atomically(async (client) => {
+      await client.accountsPayable.create({ data: toPersistence(entity) });
+      // D2 creation stamp: mapped from the entity's status — not hardcoded.
+      await this.syncJournalEntrySettlement(
+        client,
+        entity.organizationId,
+        entity.id,
+        entity.status,
+      );
+    });
   }
 
   async update(entity: Payable): Promise<void> {
@@ -239,7 +248,9 @@ export class PrismaPayablesRepository implements PayableRepository {
     data: CreatePayableTxData,
   ): Promise<{ id: string }> {
     const txClient = (tx ?? this.db) as Prisma.TransactionClient;
-    return txClient.accountsPayable.create({
+    // Single source for the created row's status AND the D2 creation stamp.
+    const status: PayableStatus = "PENDING";
+    const created = await txClient.accountsPayable.create({
       data: {
         organizationId: data.organizationId,
         contactId: data.contactId,
@@ -248,7 +259,7 @@ export class PrismaPayablesRepository implements PayableRepository {
         paid: new Prisma.Decimal(0),
         balance: new Prisma.Decimal(data.amount),
         dueDate: data.dueDate,
-        status: "PENDING",
+        status,
         ...(data.sourceType ? { sourceType: data.sourceType } : {}),
         ...(data.sourceId ? { sourceId: data.sourceId } : {}),
         ...(data.sourceTypeCode !== undefined
@@ -258,6 +269,13 @@ export class PrismaPayablesRepository implements PayableRepository {
       },
       select: { id: true },
     });
+    await this.syncJournalEntrySettlement(
+      txClient,
+      data.organizationId,
+      created.id,
+      status,
+    );
+    return created;
   }
 
   async voidTx(tx: unknown, organizationId: string, id: string): Promise<void> {

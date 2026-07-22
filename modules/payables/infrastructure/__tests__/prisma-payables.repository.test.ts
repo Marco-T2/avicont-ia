@@ -680,16 +680,16 @@ describe("PrismaPayablesRepository", () => {
     });
   });
 
-  // ── atomicity (H2 mirror) — update dual write must be transactional ────────
-  // update() is a NON-tx entry point (root client): its dual write (AP row +
-  // JE settlement stamp) must run inside ONE $transaction — a crash between
-  // two autocommit writes would persist the AP status while JE.paymentStatus
-  // stays stale = silent settlement drift (receivables defect H2; payables
-  // must NOT inherit it). Base (autocommit) client and tx client carry
-  // SEPARATE spies, so any write leaking outside the transaction is
-  // observable.
+  // ── atomicity (H2 mirror) — update/save dual write must be transactional ───
+  // update()/save() are the NON-tx entry points (root client): their dual
+  // write (AP row + JE settlement stamp) must run inside ONE $transaction — a
+  // crash between two autocommit writes would persist the AP status while
+  // JE.paymentStatus stays stale = silent settlement drift (receivables
+  // defect H2; payables must NOT inherit it). Base (autocommit) client and tx
+  // client carry SEPARATE spies, so any write leaking outside the transaction
+  // is observable.
 
-  describe("H2-mirror atomicity — update dual write in a single $transaction", () => {
+  describe("H2-mirror atomicity — update/save dual write in a single $transaction", () => {
     /** Root-client mock: $transaction hands its callback a tx client with its
      *  OWN delegates. Writes on `base*` delegates = autocommit leaks. */
     const atomicDb = () => {
@@ -772,6 +772,135 @@ describe("PrismaPayablesRepository", () => {
       expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
         where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
         data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("save: both writes execute on the SAME tx client from ONE $transaction — never on the autocommit client", async () => {
+      const { db, tx, baseAp, baseJe, $transaction } = atomicDb();
+      const repo = new PrismaPayablesRepository(db);
+
+      await repo.save(rehydrate("PARTIAL"));
+
+      expect($transaction).toHaveBeenCalledTimes(1);
+      expect(tx.accountsPayable.create).toHaveBeenCalledTimes(1);
+      // D2 stamp still mapped from the entity status — not hardcoded.
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+      expect(baseAp.create).not.toHaveBeenCalled();
+      expect(baseJe.updateMany).not.toHaveBeenCalled();
+    });
+
+    it("save: when the JE settlement write fails, the AP create must NOT have hit the autocommit client (no partial commit)", async () => {
+      const { db, tx, baseAp, baseJe } = atomicDb();
+      const boom = new Error("je-write-failed");
+      tx.journalEntry.updateMany.mockRejectedValue(boom);
+      baseJe.updateMany.mockRejectedValue(boom);
+
+      const repo = new PrismaPayablesRepository(db);
+
+      await expect(repo.save(buildEntity())).rejects.toThrow("je-write-failed");
+
+      expect(baseAp.create).not.toHaveBeenCalled();
+      expect(tx.accountsPayable.create).toHaveBeenCalledTimes(1);
+    });
+
+    it("save via withTransaction-bound repo: runs both writes directly on the caller's tx client", async () => {
+      const create = vi.fn().mockResolvedValue(undefined);
+      const tx = txWith({ create });
+      const repo = new PrismaPayablesRepository(dbWith({})).withTransaction(
+        tx as unknown as Prisma.TransactionClient,
+      );
+
+      await repo.save(rehydrate("PAID"));
+
+      expect(create).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PAID" },
+      });
+    });
+  });
+
+  describe("settlement sync — creation stamp (D2)", () => {
+    it("createTx stamps the linked JE with the mapped created status using the RETURNED row id", async () => {
+      const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
+      const tx = txWith({ create });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      await repo.createTx(tx, {
+        organizationId: "org-1",
+        contactId: "c-1",
+        description: "Purchase",
+        amount: 500,
+        dueDate: new Date("2026-05-15"),
+        journalEntryId: "je-1",
+      });
+
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "new-pay" } } },
+        data: { paymentStatus: "PENDING" },
+      });
+    });
+
+    it("createTx without journalEntryId: uniform sync is a 0-row no-op and the create still succeeds", async () => {
+      const create = vi.fn().mockResolvedValueOnce({ id: "new-pay" });
+      const tx = txWith({ create });
+      tx.journalEntry.updateMany.mockResolvedValue({ count: 0 });
+      const repo = new PrismaPayablesRepository(dbWith({}));
+
+      const result = await repo.createTx(tx, {
+        organizationId: "org-1",
+        contactId: "c-1",
+        description: "x",
+        amount: 100,
+        dueDate: new Date("2026-05-15"),
+      });
+
+      expect(result).toEqual({ id: "new-pay" });
+      expect(tx.journalEntry.updateMany).toHaveBeenCalledTimes(1);
+    });
+
+    it("save stamps the linked JE from the entity status (mapped, not hardcoded PENDING)", async () => {
+      const create = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsPayable: { create },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaPayablesRepository(db);
+
+      // Rehydrated PARTIAL entity: forces toSettlementStatus(entity.status)
+      // instead of a hardcoded PENDING stamp.
+      await repo.save(rehydrate("PARTIAL"));
+
+      expect(updateMany).toHaveBeenCalledTimes(1);
+      expect(updateMany).toHaveBeenCalledWith({
+        where: { organizationId: "org-1", payables: { some: { id: "pay-1" } } },
+        data: { paymentStatus: "PARTIAL" },
+      });
+    });
+
+    it("save of a new entity stamps PENDING", async () => {
+      const create = vi.fn().mockResolvedValueOnce(undefined);
+      const updateMany = vi.fn().mockResolvedValue({ count: 1 });
+      const db = {
+        accountsPayable: { create },
+        journalEntry: { updateMany },
+      } as unknown as PrismaClient;
+      const repo = new PrismaPayablesRepository(db);
+
+      const entity = buildEntity();
+      await repo.save(entity);
+
+      expect(updateMany).toHaveBeenCalledWith({
+        where: {
+          organizationId: "org-1",
+          payables: { some: { id: entity.id } },
+        },
+        data: { paymentStatus: "PENDING" },
       });
     });
   });
