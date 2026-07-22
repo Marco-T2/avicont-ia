@@ -5,7 +5,7 @@
  * WHAT THIS IS
  * `eslint.config.mjs` declares four hexagonal boundary rules over `modules/**`
  * (R1 domain-inward, R2 application→domain-only, R4 presentation→application,
- * R5 no-Prisma-outside-infrastructure). The repo currently violates them 63
+ * R5 no-Prisma-outside-infrastructure). The repo currently violates them 15
  * times (frozen at 138 when this ratchet was written; the [DTO] cluster
  * paydown brought it to 131; the M1 barrel-hide paydown brought it to 130;
  * the M2 Decimal-via-decimal.js paydown brought it to 120; the D4 paydown
@@ -58,8 +58,11 @@
  * 12 R2 lines back to 63 — `accounts.service.ts` (live injected PrismaClient,
  * D1/D3 design locks) remains deferred; the journal D4 paydown later moved
  * the `JournalEntry`/`JournalLine` MODEL types into domain-owned structural
- * interfaces in `journal.types.ts`, closing its R5 line.).
- * Turning the lint gate red today would mean either 63 fixes in one commit or 63
+ * interfaces in `journal.types.ts`, closing its R5 line; the subsequent
+ * UoW/opaque-token, domain-port (users, account-balances, organizations),
+ * accounts-UoW and permissions glob-bug paydowns — each documented per-module
+ * in the BASELINE comments below — drove it from 63 down to the current 15.).
+ * Turning the lint gate red today would mean either 15 fixes in one commit or 15
  * `eslint-disable`s
  * — so instead this sentinel
  * PINS the exact set of violations that exist. New debt fails. Fixed debt ALSO
@@ -99,10 +102,10 @@
  *
  * ── DESIGN DECISION 3: the baseline is a LIST, never a COUNT ──
  * `BASELINE` is a multiset of `<repo-relative-path>:<rule>` entries, sorted.
- * It is emphatically NOT `expect(violations).toBe(120)`. A scalar count lets
+ * It is emphatically NOT `expect(violations).toBe(15)`. A scalar count lets
  * you fix one violation and introduce a different one in the same commit while
  * the gate stays green — the debt would churn sideways forever at a constant
- * 120. Pinning identities makes every individual violation load-bearing.
+ * 15. Pinning identities makes every individual violation load-bearing.
  *
  * Entries REPEAT when one file violates one rule more than once (e.g.
  * `permissions.server.ts:R2` appears 4 times — four distinct restricted
@@ -148,7 +151,7 @@
  *
  * ── SCOPE LIMIT, STATED HONESTLY ──
  * This sentinel is NOT wired into the CI lint gate and does not make `pnpm lint`
- * pass or fail. `pnpm lint` still reports all 119 as errors. This file's job is
+ * pass or fail. `pnpm lint` still reports all 15 as errors. This file's job is
  * to stop the number from growing while that gate stays off.
  */
 
@@ -176,7 +179,7 @@ const RULES = ["R1", "R2", "R4", "R5"] as const;
 const RULE_TAG = /\b(R[1245]) violated:/;
 
 /**
- * FROZEN HEXAGONAL DEBT — 63 violations across 41 distinct file+rule pairs.
+ * FROZEN HEXAGONAL DEBT — 15 violations across 9 distinct file+rule pairs.
  *
  * Format: `<repo-relative path>:<rule>`, sorted, ONE LINE PER VIOLATION.
  * Repeated lines are NOT duplicates — a file that trips the same rule on eight
@@ -407,19 +410,26 @@ const BASELINE: ReadonlyArray<string> = [
   //     cycle is provably NOT triggered: the moved files add no edge into
   //     permissions/domain, which org/domain/roles.validation already imports).
   //     It is deferred because the COST/RISK outweighs closing 6 entries:
-  //     (1) breaks α18 in c1-shape.poc-permissions-hex-b3.test.ts — a
-  //     dual-sentinel whose vi.mock-count invariant carries a ~15-SDD enumerated
-  //     drift ledger (moving the barrel drops its `@/.../application/server`
-  //     count to 0); re-pinning it to presentation/ means rewriting that whole
-  //     sentinel + ledger. (2) CLIENT-BUNDLE-LEAK hazard: the async facades were
-  //     deliberately structured (permissions.server → composition-root → repos)
-  //     to keep pg/dns out of the client bundle (see permissions.smoke.test.ts);
-  //     relocating risks re-introducing the leak — a runtime bug lint/unit tests
-  //     may not catch. (3) re-litigates POC B3 (α1-α11), which JUST cemented
-  //     application/ as the hex home in the features→modules migration.
-  //     A documented deferral is a clean state; degrading a 15-SDD invariant to
-  //     drop 6 numbers is not. Revisit if B3 is being re-cemented for other
-  //     reasons, or bundle isolation is proven preserved.
+  //     (1) CLIENT-BUNDLE-LEAK runtime hazard (the dominant blocker): the async
+  //     facades were deliberately structured (permissions.server →
+  //     composition-root → repos) to keep pg/dns out of the client bundle.
+  //     permissions.smoke.test.ts asserts export-surface SHAPE only — NOT
+  //     physical bundle isolation — so relocating risks re-introducing a leak
+  //     that lint/unit tests cannot catch. (2) re-litigates POC B3 (α1-α11),
+  //     which JUST cemented application/ as the hex home in the
+  //     features→modules migration. (3) α-immutability: the B3 sentinels
+  //     (α4/α5/α7/α16/α17/α18) pin file paths that a move would trip. On α18
+  //     specifically (c1-shape.poc-permissions-hex-b3.test.ts:182-248): it is
+  //     a RETIREMENT dual-sentinel — the retired SHIM path's vi.mock count is
+  //     pinned to 0 and the hex barrel's vi.mock count to >0; its historical
+  //     84-count/15-SDD drift ledger survives only as provenance COMMENTS, not
+  //     as a live pinned count. Re-pinning α18 for a barrel move is therefore
+  //     a small path-string edit — still a deliberate α-sentinel change
+  //     needing human sign-off, but NOT a rewrite of a pinned ledger.
+  //     A documented deferral is a clean state; the runtime-hazard + B3
+  //     re-litigation cost of dropping 6 numbers is not. Revisit if B3 is
+  //     being re-cemented for other reasons, or bundle isolation is proven
+  //     preserved.
   "modules/permissions/application/client-matrix.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
   "modules/permissions/application/permissions.server.ts:R2",
