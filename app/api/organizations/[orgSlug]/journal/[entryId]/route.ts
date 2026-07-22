@@ -1,6 +1,6 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import {
   makeJournalsService,
   updateJournalEntrySchema,
@@ -10,7 +10,7 @@ import {
 // PDF exporter usa pdfmake (Buffer/streams nativos) — requiere runtime Node.js.
 export const runtime = "nodejs";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const journalsService = makeJournalsService();
 const service = journalsService;
 

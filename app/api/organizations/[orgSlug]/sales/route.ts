@@ -5,12 +5,12 @@ import {
   saleFiltersSchema,
 } from "@/modules/sale/presentation/schemas/sale.schemas";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const saleService = makeSaleService();
-const usersService = new UsersService();
+const usersService = makeUsersService();
 
 const M = (v: number | undefined): MonetaryAmount =>
   v === undefined ? MonetaryAmount.zero() : MonetaryAmount.of(v);

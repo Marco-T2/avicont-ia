@@ -1,6 +1,6 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import {
   makeJournalsService,
   createJournalEntrySchema,
@@ -8,7 +8,7 @@ import {
 } from "@/modules/accounting/presentation/server";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const journalsService = makeJournalsService();
 const service = journalsService;
 

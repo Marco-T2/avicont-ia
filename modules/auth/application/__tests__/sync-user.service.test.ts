@@ -30,29 +30,23 @@ const {
   mockCurrentUser: vi.fn(),
 }));
 
-vi.mock("@/modules/users/application/users.service", () => ({
-  UsersService: class {
-    resolveByClerkId = mockResolveByClerkId;
-    findOrCreate = mockFindOrCreate;
-    update = mockUpdate;
-  },
-}));
-
-// Canonical path mock — service now imports UsersService direct post-REQ-004 bypass.
-// @/modules/users/application/users.service declaration above preserved for α12 shape sentinel.
-vi.mock("@/modules/users/application/users.service", () => ({
-  UsersService: class {
-    resolveByClerkId = mockResolveByClerkId;
-    findOrCreate = mockFindOrCreate;
-    update = mockUpdate;
-  },
-}));
-
 vi.mock("@clerk/nextjs/server", () => ({
   currentUser: mockCurrentUser,
 }));
 
 import { syncUserToDatabase } from "../sync-user.service";
+import type { UsersService } from "@/modules/users/application/users.service";
+
+// R2 paydown: sync-user no longer news UsersService internally — the service is
+// injected by the caller (app/ wires `makeUsersService()`). The former
+// vi.mock("@/modules/users/application/users.service") declarations are gone
+// because the mocked class would never be constructed; the same method fakes
+// now arrive as an injected stub.
+const usersService = {
+  resolveByClerkId: mockResolveByClerkId,
+  findOrCreate: mockFindOrCreate,
+  update: mockUpdate,
+} as unknown as UsersService;
 
 const CLERK_USER = {
   id: "clerk_user_abc",
@@ -76,7 +70,7 @@ describe("syncUserToDatabase — error-handling boundary (Audit H #3)", () => {
   it("returns null when there is no authenticated Clerk user", async () => {
     mockCurrentUser.mockResolvedValue(null);
 
-    const result = await syncUserToDatabase();
+    const result = await syncUserToDatabase(usersService);
 
     expect(result).toBeNull();
     expect(mockResolveByClerkId).not.toHaveBeenCalled();
@@ -89,7 +83,7 @@ describe("syncUserToDatabase — error-handling boundary (Audit H #3)", () => {
     mockResolveByClerkId.mockResolvedValue(DB_USER);
     mockUpdate.mockResolvedValue({ ...DB_USER, name: "Ada Lovelace" });
 
-    const result = await syncUserToDatabase();
+    const result = await syncUserToDatabase(usersService);
 
     expect(result).toEqual({ ...DB_USER, name: "Ada Lovelace" });
     expect(mockUpdate).toHaveBeenCalledWith(DB_USER.id, {
@@ -104,7 +98,7 @@ describe("syncUserToDatabase — error-handling boundary (Audit H #3)", () => {
     mockResolveByClerkId.mockRejectedValue(new NotFoundError("Usuario"));
     mockFindOrCreate.mockResolvedValue(DB_USER);
 
-    const result = await syncUserToDatabase();
+    const result = await syncUserToDatabase(usersService);
 
     expect(result).toEqual(DB_USER);
     expect(mockFindOrCreate).toHaveBeenCalledWith({
@@ -125,8 +119,8 @@ describe("syncUserToDatabase — error-handling boundary (Audit H #3)", () => {
     // Prove the pre-fix path: if findOrCreate is reachable, it would resolve.
     mockFindOrCreate.mockResolvedValue({ id: "duplicate_user" });
 
-    await expect(syncUserToDatabase()).rejects.toBeInstanceOf(AppError);
-    await expect(syncUserToDatabase()).rejects.toMatchObject({
+    await expect(syncUserToDatabase(usersService)).rejects.toBeInstanceOf(AppError);
+    await expect(syncUserToDatabase(usersService)).rejects.toMatchObject({
       code: "SYNC_USER_FAILED",
       statusCode: 500,
     });
@@ -140,7 +134,7 @@ describe("syncUserToDatabase — error-handling boundary (Audit H #3)", () => {
     const forbidden = new AppError("policy violation", 403, "FORBIDDEN");
     mockResolveByClerkId.mockRejectedValue(forbidden);
 
-    await expect(syncUserToDatabase()).rejects.toBe(forbidden);
+    await expect(syncUserToDatabase(usersService)).rejects.toBe(forbidden);
     expect(mockFindOrCreate).not.toHaveBeenCalled();
   });
 });

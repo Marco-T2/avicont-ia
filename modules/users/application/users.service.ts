@@ -1,13 +1,16 @@
 import "server-only";
 import { NotFoundError } from "@/modules/shared/domain/errors";
-import { UsersRepository, type CreateUserInput } from "@/modules/users/infrastructure/users.repository";
+import type {
+  UsersRepositoryPort,
+  CreateUserInput,
+} from "@/modules/users/domain/ports/users-repository.port";
 import type { User } from "@/modules/users/domain/user.types";
 
 export class UsersService {
-  private readonly repo: UsersRepository;
+  private readonly repo: UsersRepositoryPort;
 
-  constructor(repo?: UsersRepository) {
-    this.repo = repo ?? new UsersRepository();
+  constructor(repo: UsersRepositoryPort) {
+    this.repo = repo;
   }
 
   /** Resolve a Clerk user to a DB user. Throws NotFoundError if not found. */

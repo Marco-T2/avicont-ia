@@ -2,13 +2,13 @@ import Decimal from "decimal.js";
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { updateSaleSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const saleService = makeSaleService();
-const usersService = new UsersService();
+const usersService = makeUsersService();
 
 const M = (v: number | undefined): MonetaryAmount =>
   v === undefined ? MonetaryAmount.zero() : MonetaryAmount.of(v);

@@ -6,10 +6,10 @@ import {
   paymentFiltersSchema,
 } from "@/modules/payment/presentation/validation";
 import { parsePaginationParams } from "@/modules/shared/presentation/parse-pagination-params";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 
 const paymentService = new PaymentService();
-const usersService = new UsersService();
+const usersService = makeUsersService();
 
 export async function GET(
   request: Request,

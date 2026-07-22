@@ -1,10 +1,10 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import { createFiscalPeriodSchema } from "@/modules/fiscal-periods/presentation/index";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const service = makeFiscalPeriodsService();
 
 export async function GET(

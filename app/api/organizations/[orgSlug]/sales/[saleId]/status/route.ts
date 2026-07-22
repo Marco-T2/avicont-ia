@@ -1,10 +1,10 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { saleStatusSchema } from "@/modules/sale/presentation/schemas/sale.schemas";
 import { makeSaleService } from "@/modules/sale/presentation/composition-root";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const saleService = makeSaleService();
 
 export async function PATCH(

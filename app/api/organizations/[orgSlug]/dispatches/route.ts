@@ -5,10 +5,10 @@ import {
   createDispatchSchema,
   dispatchFiltersSchema,
 } from "@/modules/dispatch/presentation";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 
 const dispatchService = makeDispatchService();
-const usersService = new UsersService();
+const usersService = makeUsersService();
 
 export async function GET(
   request: Request,

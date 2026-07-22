@@ -1,10 +1,10 @@
 import { z } from "zod";
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const purchaseService = makePurchaseService();
 
 const purchaseActionSchema = z.object({

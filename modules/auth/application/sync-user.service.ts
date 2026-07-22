@@ -1,12 +1,14 @@
 import "server-only";
 import { currentUser } from "@clerk/nextjs/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import type { UsersService } from "@/modules/users/application/users.service";
 import { AppError } from "@/modules/shared/domain/errors";
 import { NotFoundError } from "@/modules/shared/domain/errors";
 
-const usersService = new UsersService();
-
-export async function syncUserToDatabase() {
+// Injected by the caller (app/ layer wires `makeUsersService()` from the users
+// composition-root). Importing that composition-root HERE would be a NEW R2
+// violation (application/ must not import presentation/), so the service is
+// received as a parameter instead.
+export async function syncUserToDatabase(usersService: UsersService) {
   try {
     const clerkUser = await currentUser();
     if (!clerkUser) {

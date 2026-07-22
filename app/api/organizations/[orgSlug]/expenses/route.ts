@@ -1,12 +1,12 @@
 import { requireAuth, handleError } from "@/modules/shared/presentation/middleware";
 import { requireOrgAccess } from "@/modules/organizations/presentation/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import {
   makeExpenseService,
   createExpenseSchema,
 } from "@/modules/expense/presentation/server";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const service = makeExpenseService();
 
 export async function GET(

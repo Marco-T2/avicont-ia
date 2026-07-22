@@ -1,9 +1,9 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { makeDispatchService } from "@/modules/dispatch/presentation/server";
 
-const usersService = new UsersService();
+const usersService = makeUsersService();
 const dispatchService = makeDispatchService();
 
 export async function POST(

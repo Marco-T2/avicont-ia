@@ -1,5 +1,6 @@
 import "server-only";
-import { UsersService } from "@/modules/users/application/users.service";
+import type { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import type { UserResolutionPort, ResolvedUser } from "../../domain/ports/user-resolution.port";
 
 /**
@@ -9,7 +10,7 @@ export class LegacyUserResolutionAdapter implements UserResolutionPort {
   private readonly service: UsersService;
 
   constructor() {
-    this.service = new UsersService();
+    this.service = makeUsersService();
   }
 
   async findByEmail(email: string): Promise<ResolvedUser | null> {

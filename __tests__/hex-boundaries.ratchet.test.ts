@@ -404,22 +404,22 @@ const BASELINE: ReadonlyArray<string> = [
   //     tests already deleted), so it carried none of the R2-vs-POC collision.
 
   // ── modules/users/ — [PRISMA] own infra repository + Prisma client from application
-  //  ── DESIGN-LOCKED: no contained fix exists (§18, human decision 2026-07-22) ──
-  //     `users.service.ts` imports its own `UsersRepository` (infra) and news it
-  //     as a zero-arg constructor default (`repo ?? new UsersRepository()`), so
-  //     `new UsersService()` is called at 17+ sites — the overwhelming majority in
-  //     `app/api/organizations/[orgSlug]/{mortality,sales,purchases,payments,
-  //     expenses,journal,dispatches,periods,monthly-close,annual-close}/**/route.ts`,
-  //     which live OUTSIDE `modules/**` and so are invisible to this ratchet yet
-  //     functionally load-bearing. Every clean fix has an unacceptable cost:
-  //     (a) a domain `UsersRepositoryPort` + required-injection forces all ~17
-  //     unrelated route files onto a `makeUsersService()` factory — a wide,
-  //     cross-cutting change on auth-adjacent code for zero business benefit; or
-  //     (b) a presentation-layer singleton (like organizations' roles.service
-  //     .singleton) merely RELOCATES the same R1/R2 violation rather than closing
-  //     it (exactly the debt members.validation.ts carried until commit 63d754aa).
-  //     Unlike the FREE items, no narrow 2-5 file fix exists — deferred to a human.
-  "modules/users/application/users.service.ts:R2",
+  // users.service.ts:R2 CLOSED by the domain-port paydown (option (a), the
+  // human decision 2026-07-22 to prefer a clean project over the deferral). A
+  // domain `UsersRepositoryPort` (domain/ports/users-repository.port.ts, owning
+  // `CreateUserInput`, typed against the domain `User` mirror) now sits between
+  // the service and the concrete Prisma repo; `UsersRepository` (infra)
+  // implements it, and a new `presentation/composition-root.ts` factory
+  // `makeUsersService()` wires the concrete repo (the R4-exempt layer). The
+  // constructor became REQUIRED-injection (no `?? new UsersRepository()`
+  // default), so the 21 `new UsersService()` call sites — 19 `app/api/**`
+  // route files plus modules/auth/application/sync-user.service.ts and
+  // modules/organizations/infrastructure/adapters/legacy-user-resolution
+  // .adapter.ts — moved to `makeUsersService()`. sync-user.service.ts was the
+  // one wrinkle: importing the presentation composition-root from an application
+  // file would RE-OPEN R2, so `syncUserToDatabase(usersService)` takes the
+  // service by injection and its sole caller (app/(dashboard)/layout.tsx, in
+  // app/ where no hex rule applies) passes `makeUsersService()` in.
 ];
 
 // ── ESLint run: ONCE for the whole file, ~17s ──

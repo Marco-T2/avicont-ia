@@ -3,12 +3,12 @@ import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { makePurchaseService } from "@/modules/purchase/presentation/composition-root";
 import { updatePurchaseSchema } from "@/modules/purchase/presentation/schemas/purchase.schemas";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 import { roundHalfUp } from "@/modules/accounting/shared/domain/money.utils";
 import { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 
 const purchaseService = makePurchaseService();
-const usersService = new UsersService();
+const usersService = makeUsersService();
 
 const M = (v: number | undefined): MonetaryAmount =>
   v === undefined ? MonetaryAmount.zero() : MonetaryAmount.of(v);

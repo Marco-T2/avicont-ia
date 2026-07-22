@@ -1,14 +1,12 @@
 import "server-only";
 import { BaseRepository } from "@/modules/shared/infrastructure/base.repository";
 import type { User } from "@/generated/prisma/client";
+import type {
+  UsersRepositoryPort,
+  CreateUserInput,
+} from "@/modules/users/domain/ports/users-repository.port";
 
-export interface CreateUserInput {
-  clerkUserId: string;
-  email: string;
-  name?: string | null;
-}
-
-export class UsersRepository extends BaseRepository {
+export class UsersRepository extends BaseRepository implements UsersRepositoryPort {
   async findByClerkUserId(clerkUserId: string): Promise<User | null> {
     return this.db.user.findUnique({ where: { clerkUserId } });
   }

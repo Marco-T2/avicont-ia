@@ -4,7 +4,7 @@ import {
   makeAnnualCloseService,
   annualCloseRequestSchema,
 } from "@/modules/annual-close/presentation/server";
-import { UsersService } from "@/modules/users/application/users.service";
+import { makeUsersService } from "@/modules/users/presentation/composition-root";
 
 /**
  * POST /api/organizations/[orgSlug]/annual-close (Phase 5.4 GREEN).
@@ -31,7 +31,7 @@ import { UsersService } from "@/modules/users/application/users.service";
  */
 
 const service = makeAnnualCloseService();
-const usersService = new UsersService();
+const usersService = makeUsersService();
 
 export async function POST(
   request: Request,
