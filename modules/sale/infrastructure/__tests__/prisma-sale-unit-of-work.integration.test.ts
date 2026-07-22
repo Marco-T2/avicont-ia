@@ -9,6 +9,7 @@ import {
 
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
+import { AutoEntryJournalWriterAdapter } from "@/modules/accounting/infrastructure/adapters/auto-entry-journal-writer.adapter";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { prisma } from "@/lib/prisma";
 import { Journal } from "@/modules/accounting/domain/journal.entity";
@@ -39,6 +40,7 @@ const accountLookupPort = new LegacyAccountLookupAdapter();
 const autoEntryGen = new AutoEntryGenerator(
   new PrismaAccountsRepo(),
   makeVoucherTypeRepository(),
+  new AutoEntryJournalWriterAdapter(),
 );
 // journal-physical-document Phase 6 — Sale UoW now requires the
 // OperationalDocType lookup repo for VG/FL/PF/CG/SV FK resolution.

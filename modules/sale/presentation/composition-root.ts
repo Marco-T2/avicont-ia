@@ -2,6 +2,7 @@ import "server-only";
 
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
+import { makeAutoEntryJournalWriterPort } from "@/modules/accounting/presentation/server";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { prisma } from "@/lib/prisma";
 import { FiscalPeriodsReadAdapter } from "@/modules/accounting/infrastructure/fiscal-periods-read.adapter";
@@ -51,7 +52,11 @@ const repoLike: UnitOfWorkRepoLike = {
 // LegacyAccountLookupAdapter (pre-tx id→code resolution) — D-4 lockeada Ciclo 4.
 const accountsRepo = new PrismaAccountsRepo();
 const voucherTypesRepo = makeVoucherTypeRepository();
-const autoEntryGen = new AutoEntryGenerator(accountsRepo, voucherTypesRepo);
+const autoEntryGen = new AutoEntryGenerator(
+  accountsRepo,
+  voucherTypesRepo,
+  makeAutoEntryJournalWriterPort(),
+);
 const journalEntriesReadAdapter = new PrismaJournalEntriesReadAdapter();
 const accountLookupAdapter = new LegacyAccountLookupAdapter(accountsRepo);
 // journal-physical-document Phase 6 — OperationalDocType lookup repo,

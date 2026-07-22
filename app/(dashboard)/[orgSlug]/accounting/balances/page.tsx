@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { requirePermission } from "@/modules/permissions/application/server";
-import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
+import { makeAccountBalancesService } from "@/modules/account-balances/presentation/composition-root";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
 import BalanceTable from "@/components/accounting/balance-table";
 
@@ -25,7 +25,7 @@ export default async function BalancesPage({
   }
 
   const periodsService = makeFiscalPeriodsService();
-  const balancesService = new AccountBalancesService();
+  const balancesService = makeAccountBalancesService();
 
   const periods = (await periodsService.list(orgId)).map((p) => p.toSnapshot());
 

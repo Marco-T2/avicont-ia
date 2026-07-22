@@ -27,12 +27,9 @@ vi.mock("@/modules/fiscal-periods/presentation/server", () => ({
   makeFiscalPeriodsService: vi.fn(() => ({ list: mockPeriodsList })),
 }));
 
-vi.mock("@/modules/account-balances/application/account-balances.service", () => {
-  class AccountBalancesService {
-    getBalances = mockGetBalances;
-  }
-  return { AccountBalancesService };
-});
+vi.mock("@/modules/account-balances/presentation/composition-root", () => ({
+  makeAccountBalancesService: vi.fn(() => ({ getBalances: mockGetBalances })),
+}));
 
 vi.mock("@/components/accounting/balance-table", () => ({
   default: vi.fn().mockReturnValue(null),

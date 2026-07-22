@@ -27,6 +27,15 @@ export type * from "../domain/journal.types";
 export type * from "../domain/accounts.types";
 export type * from "../domain/ledger.types";
 
+// ── Auto-entry journal writer port (R2 paydown) ──
+// Cross-module composition roots (sale, purchase) that build their own
+// `AutoEntryGenerator` obtain the accounting-owned journal writer through
+// this factory instead of importing `accounting/infrastructure/*` directly
+// — see `makeAutoEntryJournalWriterPort` in ./composition-root for the
+// cross-module-infrastructure-sentinel rationale.
+export type { AutoEntryJournalWriterPort } from "../domain/ports/auto-entry-journal-writer.port";
+export { makeAutoEntryJournalWriterPort } from "./composition-root";
+
 // ── Validation schemas (POC #8 OLEADA 6 C1 — journal/ledger + account zod schemas) ──
 // Surfaced here so app/ consumers import from a single hex barrel
 // (`@/modules/accounting/presentation/server`) rather than reaching into

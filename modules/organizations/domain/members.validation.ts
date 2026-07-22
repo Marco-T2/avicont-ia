@@ -2,10 +2,11 @@
  * members.validation.ts -- Zod schemas for the /members API payloads.
  *
  * PR6.1 / D.9:
- *   `buildAddMemberSchema(orgId)` and `buildUpdateMemberRoleSchema(orgId)`
- *   are the ONLY production validation path. The returned schemas contain an
- *   ASYNC refine that checks the role slug against the org's current
- *   `CustomRole` table via `rolesService.exists(orgId, slug)`.
+ *   `buildAddMemberSchema(orgId, rolesExists)` and
+ *   `buildUpdateMemberRoleSchema(orgId, rolesExists)` are the ONLY
+ *   production validation path. The returned schemas contain an ASYNC
+ *   refine that checks the role slug against the org's current `CustomRole`
+ *   table via the caller-supplied `rolesExists.exists(orgId, slug)`.
  *
  *   Factory pattern is mandatory because `orgId` is not known at module load
  *   time -- every caller builds a fresh schema for its request.
@@ -24,12 +25,25 @@
  *   `AddMemberDto`, `UpdateRoleDto`, and the `assignableRoles` private const.
  *   They were dead code -- no production path called them after PR6.2.
  *
- * Hex note: `rolesService` is imported from the composition root singleton,
- * which wires through the hex composition root. The validation layer only
- * ever calls `exists`.
+ * Hex note (R1 paydown):
+ *   This domain file used to import the `rolesService` singleton straight
+ *   from `../presentation/roles.service.singleton` -- a domain → presentation
+ *   reach. It now takes a narrow `RoleSlugExistencePort` parameter instead
+ *   (defined right here, so this file stays dependency-free). Callers pass
+ *   any object shaped `{ exists(orgId, slug): Promise<boolean> }` -- in
+ *   production that's still the `rolesService` singleton, just wired in from
+ *   the presentation layer instead of imported here.
  */
 import { z } from "zod";
-import { rolesService } from "../presentation/roles.service.singleton";
+
+/**
+ * Narrowest possible port for the one capability this schema factory needs:
+ * "does this role slug exist in this org?". Declared locally so the domain
+ * layer stays free of any presentation/infrastructure import.
+ */
+export interface RoleSlugExistencePort {
+  exists(organizationId: string, slug: string): Promise<boolean>;
+}
 
 // ---------------------------------------------------------------
 // PR6.1 -- factory-based async schemas (production path)
@@ -50,12 +64,12 @@ function isAssignableSystemRoleOrCustom(slug: string): boolean {
   return !NON_ASSIGNABLE_SYSTEM_ROLES.has(slug);
 }
 
-function buildRoleSlugSchema(orgId: string) {
+function buildRoleSlugSchema(orgId: string, rolesExists: RoleSlugExistencePort) {
   return z
     .string()
     .min(1, "Rol requerido")
     // `abort: true` -- if this sync guard fails, Zod MUST NOT run the async
-    // refine below. Otherwise `rolesService.exists("<orgId>", "owner")` would
+    // refine below. Otherwise `rolesExists.exists("<orgId>", "owner")` would
     // hit the DB unnecessarily (and worse: if exists=true for `owner`, the
     // second refine would have passed and we would have lost the cheap
     // early rejection for the non-assignable system slug).
@@ -64,27 +78,34 @@ function buildRoleSlugSchema(orgId: string) {
       abort: true,
     })
     .refine(
-      async (slug) => rolesService.exists(orgId, slug),
+      async (slug) => rolesExists.exists(orgId, slug),
       { message: "Rol inexistente en esta organizacion" },
     );
 }
 
 /**
  * Factory for the POST /members payload schema. Async refines require
- * `.parseAsync` / `.safeParseAsync` at every call site.
+ * `.parseAsync` / `.safeParseAsync` at every call site. `rolesExists` is
+ * the narrow port used by the async refine (R1 paydown -- see file header).
  */
-export function buildAddMemberSchema(orgId: string) {
+export function buildAddMemberSchema(
+  orgId: string,
+  rolesExists: RoleSlugExistencePort,
+) {
   return z.object({
     email: z.string().email("Email invalido"),
-    role: buildRoleSlugSchema(orgId),
+    role: buildRoleSlugSchema(orgId, rolesExists),
   });
 }
 
 /**
  * Factory for the PATCH /members/[memberId] payload schema.
  */
-export function buildUpdateMemberRoleSchema(orgId: string) {
+export function buildUpdateMemberRoleSchema(
+  orgId: string,
+  rolesExists: RoleSlugExistencePort,
+) {
   return z.object({
-    role: buildRoleSlugSchema(orgId),
+    role: buildRoleSlugSchema(orgId, rolesExists),
   });
 }

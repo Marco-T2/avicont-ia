@@ -17,7 +17,7 @@ import { PrismaAccountingUnitOfWork } from "../infrastructure/prisma-accounting-
 import { VoucherTypesReadAdapter } from "../infrastructure/voucher-types-read.adapter";
 import { AccountsService } from "../application/accounts.service";
 import { PrismaAccountsRepo } from "../infrastructure/prisma-accounts.repo";
-import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
+import { makeAccountBalancesService } from "@/modules/account-balances/presentation/composition-root";
 import { makeOrgProfileService } from "@/modules/org-profile/presentation/server";
 import { makeDocumentSignatureConfigService } from "@/modules/document-signature-config/presentation/server";
 import { makeFiscalPeriodsService } from "@/modules/fiscal-periods/presentation/server";
@@ -28,6 +28,8 @@ import { ControlAccountCodesReadAdapter } from "../infrastructure/control-accoun
 import { LedgerExporterAdapter } from "../infrastructure/adapters/ledger-exporter.adapter";
 import { ContactLedgerExporterAdapter } from "../infrastructure/adapters/contact-ledger-exporter.adapter";
 import { VoucherPdfExporterAdapter } from "../infrastructure/adapters/voucher-pdf-exporter.adapter";
+import { AutoEntryJournalWriterAdapter } from "../infrastructure/adapters/auto-entry-journal-writer.adapter";
+import type { AutoEntryJournalWriterPort } from "../domain/ports/auto-entry-journal-writer.port";
 
 /**
  * Composition root for the accounting module — the single place where
@@ -74,7 +76,7 @@ export function makeLedgerService(): LedgerService {
   return new LedgerService(
     new PrismaJournalLedgerQueryAdapter(),
     new PrismaAccountsRepo(),
-    new AccountBalancesService(),
+    makeAccountBalancesService(),
     // contact-ledger-refactor C4: enrichment deps for
     // getContactLedgerPaginated. 3 batched ports wrapping the Prisma findMany
     // family (Receivables/Payables/Payments), wired here so the route handler
@@ -124,4 +126,20 @@ export function makeAccountingDashboardService(): AccountingDashboardService {
     makeFiscalPeriodsService(),
     makeFinancialStatementsService(),
   );
+}
+
+/**
+ * Factory for `AutoEntryJournalWriterPort` (R2 paydown) — lets OTHER modules'
+ * composition roots (sale, purchase) obtain the accounting-owned journal
+ * writer adapter through accounting's `presentation/server` barrel instead
+ * of reaching into `accounting/infrastructure/*` directly. Cross-module
+ * infrastructure reaches are barred by
+ * `__tests__/cross-module-infrastructure.sentinel.test.ts`; going through
+ * this presentation-layer factory is the sanctioned crossing, mirroring how
+ * sale/purchase already consume `makeVoucherTypeRepository()` from
+ * voucher-types' `presentation/server` instead of constructing its
+ * repository directly.
+ */
+export function makeAutoEntryJournalWriterPort(): AutoEntryJournalWriterPort {
+  return new AutoEntryJournalWriterAdapter();
 }

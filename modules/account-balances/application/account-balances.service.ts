@@ -1,14 +1,10 @@
 import "server-only";
-import { AccountBalancesRepository } from "@/modules/account-balances/infrastructure/account-balances.repository";
-import type { AccountBalanceWithRelations } from "@/modules/account-balances/infrastructure/account-balances.types";
+import type { AccountBalancesRepositoryPort } from "@/modules/account-balances/domain/ports/account-balances-repository.port";
+import type { AccountBalanceWithRelations } from "@/modules/account-balances/domain/account-balances.types";
 import type { JournalEntryWithLines } from "@/modules/accounting/domain/journal.types";
 
 export class AccountBalancesService {
-  private readonly repo: AccountBalancesRepository;
-
-  constructor(repo?: AccountBalancesRepository) {
-    this.repo = repo ?? new AccountBalancesRepository();
-  }
+  constructor(private readonly repo: AccountBalancesRepositoryPort) {}
 
   // ── Get balances for a period, optionally filtered by account ──
 
@@ -26,14 +22,12 @@ export class AccountBalancesService {
     tx: unknown,
     entry: JournalEntryWithLines,
   ): Promise<void> {
-    // Opaque-token pattern (R5): `tx` arrives untyped so this application
-    // file never imports `@/generated/prisma/*`. `Parameters<...>[0]` pulls
-    // the exact type `AccountBalancesRepository.upsert` expects (infra is
-    // R5-exempt) without naming `Prisma.TransactionClient` here.
-    const db = tx as Parameters<AccountBalancesRepository["upsert"]>[0];
+    // Opaque-token pattern (R5, closed): `tx` stays `unknown` end-to-end --
+    // the port's `upsert` also declares it `unknown`, so no cast is needed
+    // here. The concrete adapter narrows it to `Prisma.TransactionClient`.
     for (const line of entry.lines) {
       await this.repo.upsert(
-        db,
+        tx,
         line.accountId,
         entry.periodId,
         entry.organizationId,
@@ -51,10 +45,9 @@ export class AccountBalancesService {
     entry: JournalEntryWithLines,
   ): Promise<void> {
     // See applyPost above for the opaque-token / R5 rationale.
-    const db = tx as Parameters<AccountBalancesRepository["upsert"]>[0];
     for (const line of entry.lines) {
       await this.repo.upsert(
-        db,
+        tx,
         line.accountId,
         entry.periodId,
         entry.organizationId,

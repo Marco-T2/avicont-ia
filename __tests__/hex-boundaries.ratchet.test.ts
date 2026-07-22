@@ -218,9 +218,11 @@ const BASELINE: ReadonlyArray<string> = [
   // account-balances.service.ts:R5 CLOSED by the [UoW-vs-opaque-token] paydown
   // — applyPost/applyVoid now type `tx: unknown` (opaque token), casting
   // internally via `Parameters<AccountBalancesRepository["upsert"]>[0]`. The
-  // 2 R2 entries below are untouched (different cluster, not in scope).
-  "modules/account-balances/application/account-balances.service.ts:R2",
-  "modules/account-balances/application/account-balances.service.ts:R2",
+  // 2 R2 entries (application → infra reach for the repo + its Prisma-derived
+  // type) were CLOSED by the domain-port paydown — AccountBalancesRepositoryPort
+  // + AccountBalanceWithRelations now live under domain/, the service depends
+  // on the port only, and `presentation/composition-root.ts` wires the
+  // concrete AccountBalancesRepository (infra is R2/R5-exempt).
 
   // ── modules/accounting/ — [DTO][PRISMA][EXPORT][BARREL] the epicentre — presentation/dto/* reached from every layer,
   //     Prisma client/model types in domain/application, and sibling modules
@@ -230,9 +232,12 @@ const BASELINE: ReadonlyArray<string> = [
   // auto-entry-generator.ts:R5 CLOSED by the [UoW-vs-opaque-token] paydown —
   // generate() now types `tx: unknown`, casting internally via
   // `Parameters<JournalRepository["createWithRetryTx"]>[0]`. The 2 R2 entries
-  // below are untouched (different cluster, not in scope).
-  "modules/accounting/application/auto-entry-generator.ts:R2",
-  "modules/accounting/application/auto-entry-generator.ts:R2",
+  // (voucher-types presentation re-export + concrete JournalRepository) were
+  // CLOSED: the VoucherTypeRepository import now points straight at
+  // `voucher-types/domain/voucher-type.repository`, and the JournalRepository
+  // reach is behind a new narrow `AutoEntryJournalWriterPort` (domain) +
+  // `AutoEntryJournalWriterAdapter` (infrastructure), mirroring the
+  // `VoucherPdfExporterPort` precedent.
   // The 4 journals.service.ts:R2 entries (voucher-pdf infra reads) were
   // CLOSED by the [EXPORT] voucher paydown — VoucherPdfExporterPort (domain)
   // + voucher-pdf-exporter.adapter.ts (infrastructure), wired in
@@ -323,8 +328,12 @@ const BASELINE: ReadonlyArray<string> = [
   // call in organizations.service.ts (structural Prisma leakage via `tx`) was
   // also moved behind a new `SystemRoleSeedPort.seedSystemRoles` method +
   // `LegacySystemRoleSeedAdapter`, closing the last raw-Prisma coupling this
-  // paydown depended on.
-  "modules/organizations/domain/members.validation.ts:R1",
+  // paydown depended on. members.validation.ts:R1 (domain → presentation
+  // `rolesService` singleton reach) was CLOSED by the domain-port paydown —
+  // `buildAddMemberSchema`/`buildUpdateMemberRoleSchema` now take a narrow
+  // `RoleSlugExistencePort` parameter (declared locally in the domain file)
+  // instead of importing the singleton; the 2 route callers pass the
+  // existing `rolesService` singleton in from presentation/.
 
   // ── modules/payment/ — [PRISMA] shared/infrastructure/audit-tx from both layers
   // fetch-shortcut-source.ts:R5 CLOSED by the D4 paydown — the helper now

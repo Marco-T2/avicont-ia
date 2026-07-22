@@ -3,6 +3,7 @@ import type { Prisma } from "@/generated/prisma/client";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
 import type { JournalEntryWithLines } from "@/modules/accounting/domain/journal.types";
 import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import { AutoEntryJournalWriterAdapter } from "@/modules/accounting/infrastructure/adapters/auto-entry-journal-writer.adapter";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { type VoucherTypeRepository, makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import type {
@@ -47,6 +48,7 @@ export class LegacyAccountingAdapter implements AccountingPort {
       new AutoEntryGenerator(
         this.accountsRepo,
         deps?.voucherTypesRepo ?? makeVoucherTypeRepository(),
+        new AutoEntryJournalWriterAdapter(this.journalRepo),
       );
   }
 

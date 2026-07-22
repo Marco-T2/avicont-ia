@@ -1,9 +1,9 @@
 import { handleError } from "@/modules/shared/presentation/middleware";
 import { requirePermission } from "@/modules/permissions/application/server";
 import { ValidationError } from "@/modules/shared/domain/errors";
-import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
+import { makeAccountBalancesService } from "@/modules/account-balances/presentation/composition-root";
 
-const service = new AccountBalancesService();
+const service = makeAccountBalancesService();
 
 export async function GET(
   request: Request,

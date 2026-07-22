@@ -4,6 +4,7 @@ import { Prisma } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
+import { AutoEntryJournalWriterAdapter } from "@/modules/accounting/infrastructure/adapters/auto-entry-journal-writer.adapter";
 import {
   ACCOUNT_NOT_POSTABLE,
   JOURNAL_NOT_BALANCED,
@@ -233,6 +234,7 @@ describe("PrismaJournalEntryFactoryAdapter — Postgres integration", () => {
     const autoEntryGen = new AutoEntryGenerator(
       new PrismaAccountsRepo(),
       makeVoucherTypeRepository(),
+      new AutoEntryJournalWriterAdapter(),
     );
     // journal-physical-document Phase 6 — docTypesRepo ctor dep so the
     // adapter resolves VG/FL/PF/CG/SV via findByCode at JE creation.

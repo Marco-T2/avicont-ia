@@ -8,12 +8,13 @@
  *   D.9 — async Zod refine with factory pattern threading orgId
  *
  * Strategy:
- *   Mock `rolesService.exists(orgId, slug)` — the async refine delegates to it.
- *   No real DB. The factory is a pure function; the async refine is the only
- *   dynamic piece, so we stub it with vi.spyOn.
+ *   Pass a fake `rolesExists: RoleSlugExistencePort` (R1 paydown — the
+ *   factory no longer imports the `rolesService` singleton itself, it takes
+ *   the port as a parameter). No real DB. The factory is a pure function;
+ *   the async refine is the only dynamic piece, so we stub `exists` directly.
  *
  * Contract (D.9):
- *   - buildAddMemberSchema(orgId) returns a Zod schema object
+ *   - buildAddMemberSchema(orgId, rolesExists) returns a Zod schema object
  *   - Valid payload + exists(true)  → parseAsync resolves
  *   - Unknown slug + exists(false)  → parseAsync rejects with ZodError
  *   - Owner slug                    → rejected BEFORE any DB hit (cheap path)
@@ -26,14 +27,12 @@ import { ZodError } from "zod";
 import {
   buildAddMemberSchema,
   buildUpdateMemberRoleSchema,
+  type RoleSlugExistencePort,
 } from "../domain/members.validation";
-import { rolesService } from "../presentation/roles.service.singleton";
 
-vi.mock("../presentation/roles.service.singleton", () => ({
-  rolesService: {
-    exists: vi.fn<(orgId: string, slug: string) => Promise<boolean>>(),
-  },
-}));
+const rolesService: RoleSlugExistencePort = {
+  exists: vi.fn<(orgId: string, slug: string) => Promise<boolean>>(),
+};
 
 const ORG_ID = "alpha-org";
 
@@ -43,7 +42,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
   });
 
   it("(a) returns a Zod schema object for the given orgId", () => {
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
     expect(schema).toBeDefined();
     // The returned object is a Zod schema; assert both sync and async parse exist.
     expect(typeof schema.parseAsync).toBe("function");
@@ -52,7 +51,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
 
   it("(b) resolves parseAsync with role='contador' when exists=true", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     const result = await schema.parseAsync({
       email: "user@example.com",
@@ -66,7 +65,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
 
   it("(c) rejects parseAsync with role='bogus' when exists=false (ZodError)", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(false);
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     await expect(
       schema.parseAsync({ email: "u@e.com", role: "bogus" }),
@@ -87,7 +86,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
   it("(d) rejects role='owner' WITHOUT calling rolesService.exists (owner is non-assignable)", async () => {
     // Even if exists would return true, owner must be blocked by the SYNC refine first.
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     await expect(
       schema.parseAsync({ email: "u@e.com", role: "owner" }),
@@ -99,7 +98,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
 
   it("(e) allows role='member' (system role, assignable) when exists=true", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     const parsed = await schema.parseAsync({
       email: "m@e.com",
@@ -110,7 +109,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
 
   it("(f) allows custom role='facturador' when exists=true", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     const parsed = await schema.parseAsync({
       email: "f@e.com",
@@ -121,7 +120,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
   });
 
   it("(g) rejects missing role with a ZodError (required field)", async () => {
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     const result = await schema.safeParseAsync({ email: "x@e.com" });
     expect(result.success).toBe(false);
@@ -135,7 +134,7 @@ describe("buildAddMemberSchema(orgId) — factory + async refine (PR6.1 / D.9)",
 
   it("(h) sync .parse() throws because schema has async refinements (contract enforcement)", () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildAddMemberSchema(ORG_ID);
+    const schema = buildAddMemberSchema(ORG_ID, rolesService);
 
     // Zod v4 rule: when a schema has an async refinement, calling .parse()
     // (the sync API) MUST throw — otherwise the async validation would be
@@ -155,7 +154,7 @@ describe("buildUpdateMemberRoleSchema(orgId) — factory + async refine (PR6.1 /
 
   it("resolves parseAsync with role='contador' when exists=true", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildUpdateMemberRoleSchema(ORG_ID);
+    const schema = buildUpdateMemberRoleSchema(ORG_ID, rolesService);
 
     const parsed = await schema.parseAsync({ role: "contador" });
     expect(parsed.role).toBe("contador");
@@ -164,7 +163,7 @@ describe("buildUpdateMemberRoleSchema(orgId) — factory + async refine (PR6.1 /
 
   it("rejects owner without touching rolesService.exists", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildUpdateMemberRoleSchema(ORG_ID);
+    const schema = buildUpdateMemberRoleSchema(ORG_ID, rolesService);
 
     await expect(schema.parseAsync({ role: "owner" })).rejects.toBeInstanceOf(
       ZodError,
@@ -174,7 +173,7 @@ describe("buildUpdateMemberRoleSchema(orgId) — factory + async refine (PR6.1 /
 
   it("rejects unknown slug when exists=false", async () => {
     vi.mocked(rolesService.exists).mockResolvedValue(false);
-    const schema = buildUpdateMemberRoleSchema(ORG_ID);
+    const schema = buildUpdateMemberRoleSchema(ORG_ID, rolesService);
 
     const result = await schema.safeParseAsync({ role: "cajero" });
     expect(result.success).toBe(false);
@@ -182,7 +181,7 @@ describe("buildUpdateMemberRoleSchema(orgId) — factory + async refine (PR6.1 /
 
   it("sync .parse() throws because of async refinement", () => {
     vi.mocked(rolesService.exists).mockResolvedValue(true);
-    const schema = buildUpdateMemberRoleSchema(ORG_ID);
+    const schema = buildUpdateMemberRoleSchema(ORG_ID, rolesService);
 
     expect(() => schema.parse({ role: "contador" })).toThrow();
   });

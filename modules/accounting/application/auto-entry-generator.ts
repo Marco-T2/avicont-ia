@@ -8,8 +8,8 @@ import {
 } from "@/modules/shared/domain/errors";
 import Decimal from "decimal.js";
 import type { AccountsCrudPort } from "@/modules/accounting/domain/ports/accounts-crud.port";
-import type { VoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
-import { JournalRepository } from "@/modules/accounting/infrastructure/prisma-journal-entries.repo";
+import type { VoucherTypeRepository } from "@/modules/voucher-types/domain/voucher-type.repository";
+import type { AutoEntryJournalWriterPort } from "@/modules/accounting/domain/ports/auto-entry-journal-writer.port";
 import {
   sumDecimals,
   eq,
@@ -47,25 +47,20 @@ interface EntryTemplate {
 // ── Auto-entry generator ──
 
 export class AutoEntryGenerator {
-  private readonly journalRepo: JournalRepository;
-
   constructor(
     private readonly accountsRepo: AccountsCrudPort,
     private readonly voucherTypesRepo: VoucherTypeRepository,
-    journalRepo?: JournalRepository,
-  ) {
-    this.journalRepo = journalRepo ?? new JournalRepository();
-  }
+    private readonly journalRepo: AutoEntryJournalWriterPort,
+  ) {}
 
   async generate(
     tx: unknown,
     template: EntryTemplate,
   ): Promise<JournalEntryWithLines> {
-    // Opaque-token pattern (R5): `tx` arrives untyped so this application
-    // file never imports `@/generated/prisma/*`. `Parameters<...>[0]` pulls
-    // the exact type `JournalRepository.createWithRetryTx` expects (infra is
-    // R5-exempt) without naming `Prisma.TransactionClient` here.
-    const db = tx as Parameters<JournalRepository["createWithRetryTx"]>[0];
+    // Opaque-token pattern (R5, closed): `tx` stays `unknown` end-to-end —
+    // the port's `createWithRetryTx` also declares it `unknown`, so no cast
+    // is needed here. The concrete adapter narrows it to
+    // `Prisma.TransactionClient`.
     // 1. Resolve voucherTypeCode → VoucherTypeCfg scoped to org
     const voucherType = await this.voucherTypesRepo.findByCode(
       template.organizationId,
@@ -147,7 +142,7 @@ export class AutoEntryGenerator {
     //    is critical because auto-entries from sales/purchases/dispatches run in
     //    bulk and race each other on the unique (org, type, period, number) index.
     return this.journalRepo.createWithRetryTx(
-      db,
+      tx,
       template.organizationId,
       {
         date: template.date,

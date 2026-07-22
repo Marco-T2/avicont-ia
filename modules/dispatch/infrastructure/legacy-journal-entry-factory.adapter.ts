@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { AutoEntryGenerator } from "@/modules/accounting/application/auto-entry-generator";
+import { AutoEntryJournalWriterAdapter } from "@/modules/accounting/infrastructure/adapters/auto-entry-journal-writer.adapter";
 import { PrismaAccountsRepo } from "@/modules/accounting/infrastructure/prisma-accounts.repo";
 import { makeVoucherTypeRepository } from "@/modules/voucher-types/presentation/server";
 import { dispatchTypeToCode } from "@/modules/accounting/shared/infrastructure/document-type-codes";
@@ -40,6 +41,7 @@ export class LegacyJournalEntryFactoryAdapter
     this.generator = new AutoEntryGenerator(
       this.accountsRepo,
       voucherTypesRepo,
+      new AutoEntryJournalWriterAdapter(),
     );
   }
 

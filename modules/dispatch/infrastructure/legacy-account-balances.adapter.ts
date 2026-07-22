@@ -1,6 +1,7 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
-import { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
+import type { AccountBalancesService } from "@/modules/account-balances/application/account-balances.service";
+import { makeAccountBalancesService } from "@/modules/account-balances/presentation/composition-root";
 import type { DispatchAccountBalancesPort } from "../domain/ports/dispatch-account-balances.port";
 
 /**
@@ -14,7 +15,7 @@ export class LegacyAccountBalancesAdapter
   private readonly service: AccountBalancesService;
 
   constructor() {
-    this.service = new AccountBalancesService();
+    this.service = makeAccountBalancesService();
   }
 
   async applyPost(journalEntryId: string): Promise<void> {
