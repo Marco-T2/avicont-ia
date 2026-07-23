@@ -32,6 +32,12 @@ import { PrismaReceivablesRepository } from "../prisma-receivables.repository";
  * Cleanup follows precedent EXACT `prisma-sale-unit-of-work.integration.test.ts`
  * (C3-B): FK-safe child→parent + audit_logs paso 3 (journal_entries and
  * fiscal_periods carry AFTER triggers; accounts_receivable does not).
+ *
+ * save()-path sister quartet (settlement-invariant-hardening, (c)): the same
+ * four shapes over `save()`'s dual write — AR create + D2 creation stamp with
+ * P5 dueDate — starting from an UNSTAMPED JE (paymentStatus/dueDate NULL, no
+ * linked aux). Under the same mutation the save() rollback tests observe a
+ * persisted AR row where absence is asserted.
  */
 
 const FORCED = "forced-second-write-failure: journalEntry.updateMany";
@@ -221,6 +227,38 @@ describe("PrismaReceivablesRepository — atomically() Postgres integration", ()
     });
   }
 
+  /** Unstamped JE: paymentStatus/dueDate NULL, NO linked aux (save()-path fixture). */
+  async function createUnstampedFixture(): Promise<{ jeId: string }> {
+    jeNumber += 1;
+    const je = await prisma.journalEntry.create({
+      data: {
+        organizationId: testOrgId,
+        number: jeNumber,
+        date: new Date("2099-02-15T12:00:00Z"),
+        description: "prr-atom unstamped fixture journal",
+        periodId: testPeriodId,
+        voucherTypeId: testVoucherTypeId,
+        createdById: testUserId,
+        // paymentStatus/dueDate intentionally ABSENT → NULL/NULL (pre-stamp).
+      },
+    });
+    return { jeId: je.id };
+  }
+
+  const SAVE_DUE = new Date("2099-03-20T12:00:00Z");
+
+  /** Fresh PENDING entity linked to the unstamped JE — drives save()'s dual write. */
+  function pendingEntity(jeId: string): Receivable {
+    return Receivable.create({
+      organizationId: testOrgId,
+      contactId: testContactId,
+      description: "prr-atom save() fixture receivable",
+      amount: 100,
+      dueDate: SAVE_DUE,
+      journalEntryId: jeId,
+    });
+  }
+
   it("root client commit: update() dual write lands atomically — AR.status y JE.paymentStatus consistentes", async () => {
     const { jeId, arId } = await createLinkedFixture();
     const repo = new PrismaReceivablesRepository();
@@ -307,5 +345,102 @@ describe("PrismaReceivablesRepository — atomically() Postgres integration", ()
     expect(jeRow!.paymentStatus).toBe("PENDING");
     // Outer tx NO fue matado por el fallo interno.
     expect(arRow!.notes).toBe("outer-survived");
+  });
+
+  // ── save()-path sister quartet (settlement-invariant-hardening, (c)) ──────
+
+  it("root client commit: save() dual write lands atomically — AR creada + JE stamped {PENDING, entity.dueDate}", async () => {
+    const { jeId } = await createUnstampedFixture();
+    const entity = pendingEntity(jeId);
+
+    await new PrismaReceivablesRepository().save(entity);
+
+    const arRow = await prisma.accountsReceivable.findUnique({
+      where: { id: entity.id },
+    });
+    const jeRow = await prisma.journalEntry.findUnique({ where: { id: jeId } });
+    expect(arRow!.status).toBe("PENDING");
+    expect(arRow!.journalEntryId).toBe(jeId);
+    // D2 creation stamp + P5 dueDate — ambos desde la entity, no hardcodeados.
+    expect(jeRow!.paymentStatus).toBe("PENDING");
+    expect(jeRow!.dueDate).toEqual(SAVE_DUE);
+  });
+
+  it("root client rollback: second write fails → AR create revertido y JE queda NULL/NULL", async () => {
+    const { jeId } = await createUnstampedFixture();
+    const entity = pendingEntity(jeId);
+    const failingRepo = new PrismaReceivablesRepository(
+      withFailingSecondWrite(prisma) as unknown as RepoDb,
+    );
+
+    await expect(failingRepo.save(entity)).rejects.toThrow(FORCED);
+
+    // Sin el $transaction wrap, el create habría autocommiteado y la AR
+    // existiría huérfana de stamp (drift silencioso H2, dirección save()).
+    const arRow = await prisma.accountsReceivable.findUnique({
+      where: { id: entity.id },
+    });
+    const jeRow = await prisma.journalEntry.findUnique({ where: { id: jeId } });
+    expect(arRow).toBeNull();
+    expect(jeRow!.paymentStatus).toBeNull();
+    expect(jeRow!.dueDate).toBeNull();
+  });
+
+  it("nested savepoint commit: tx-bound repo save() inside outer $transaction lands atomically", async () => {
+    const { jeId } = await createUnstampedFixture();
+    const entity = pendingEntity(jeId);
+
+    await prisma.$transaction(async (tx) => {
+      const txRepo = new PrismaReceivablesRepository().withTransaction(
+        tx as Prisma.TransactionClient,
+      );
+      await txRepo.save(entity);
+    });
+
+    const arRow = await prisma.accountsReceivable.findUnique({
+      where: { id: entity.id },
+    });
+    const jeRow = await prisma.journalEntry.findUnique({ where: { id: jeId } });
+    expect(arRow!.status).toBe("PENDING");
+    expect(jeRow!.paymentStatus).toBe("PENDING");
+    expect(jeRow!.dueDate).toEqual(SAVE_DUE);
+  });
+
+  it("nested savepoint rollback: forced failure rolls back save() WITHOUT killing the outer tx", async () => {
+    const { jeId } = await createUnstampedFixture();
+    const entity = pendingEntity(jeId);
+    let caught: unknown;
+
+    await prisma.$transaction(async (tx) => {
+      const failingTx = withFailingSecondWrite(
+        tx as object,
+      ) as Prisma.TransactionClient;
+      const txRepo = new PrismaReceivablesRepository().withTransaction(failingTx);
+      try {
+        await txRepo.save(entity);
+      } catch (e) {
+        caught = e;
+      }
+      // El outer tx debe seguir vivo tras el rollback del savepoint interno —
+      // la AR no existe, así que el write de prueba va sobre la JE fixture.
+      await (tx as Prisma.TransactionClient).journalEntry.update({
+        where: { id: jeId },
+        data: { description: "outer-survived" },
+      });
+    });
+
+    expect(caught).toBeInstanceOf(Error);
+    expect((caught as Error).message).toContain(FORCED);
+
+    const arRow = await prisma.accountsReceivable.findUnique({
+      where: { id: entity.id },
+    });
+    const jeRow = await prisma.journalEntry.findUnique({ where: { id: jeId } });
+    // Savepoint rollback: AR create revertido, JE sin stamp.
+    expect(arRow).toBeNull();
+    expect(jeRow!.paymentStatus).toBeNull();
+    expect(jeRow!.dueDate).toBeNull();
+    // Outer tx NO fue matado por el fallo interno.
+    expect(jeRow!.description).toBe("outer-survived");
   });
 });
