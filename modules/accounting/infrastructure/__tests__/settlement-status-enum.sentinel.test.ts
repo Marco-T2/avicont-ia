@@ -3,7 +3,8 @@
  *
  * COMPENSATING CONTROL for the schema task: pins that
  *  - `SettlementStatus` exists with EXACTLY {PENDING, PARTIAL, PAID, VOIDED}
- *    (no OVERDUE — read-derived; no CANCELLED — legacy, mapped to VOIDED);
+ *    (no OVERDUE — unreachable: write surface rejects it (DEC-A), overdue is
+ *    display-derived ATRASADO; no CANCELLED — legacy, mapped to VOIDED);
  *  - `JournalEntry.paymentStatus` is typed `SettlementStatus?` and NOT the
  *    existing `PaymentStatus` enum (INVARIANT COLLISION, locked: PaymentStatus
  *    = Payment DOCUMENT lifecycle DRAFT|POSTED|LOCKED|VOIDED, schema:580 —

@@ -33,7 +33,12 @@ const MAPPING: Record<SourceDocumentStatus, SettlementStatus> = {
   PAID: "PAID",
   VOIDED: "VOIDED",
   CANCELLED: "VOIDED", // legacy pg-compat member — application writes VOIDED
-  OVERDUE: "PENDING", // read-derived (dueDate < now), never persisted — defensive totality
+  // Unreachable since DEC-A: the write surface (zod status enums + ALLOWED
+  // tables) rejects OVERDUE, so no new row can persist it — branch kept for
+  // defensive totality over the pg enum union. Overdue semantics DO exist
+  // downstream: display derives ATRASADO (dueDate < now over PENDING/PARTIAL)
+  // in the contact-ledger UI and PDF/XLSX exporters — derived at read only.
+  OVERDUE: "PENDING",
 };
 
 /**

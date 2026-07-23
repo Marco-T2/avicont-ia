@@ -380,8 +380,9 @@ model JournalEntry {
   // domain concept, but the TYPE is SettlementStatus (PENDING|PARTIAL|PAID|
   // VOIDED) — NOT the PaymentStatus enum, which is the Payment DOCUMENT
   // lifecycle (DRAFT|POSTED|LOCKED|VOIDED). Null = no CxC/CxP link (manual/AI/
-  // payment-only JEs) → ledger renders "—". ATRASADO derived at read from
-  // dueDate < now, never persisted. No index — rendered, never filtered.
+  // payment-only JEs) → ledger renders "—". OVERDUE is not persistable (write
+  // surface rejects it, DEC-A); display derives ATRASADO at read from
+  // dueDate < now over PENDING/PARTIAL. No index — rendered, never filtered.
   paymentStatus        SettlementStatus?
   dueDate              DateTime?          @db.Timestamptz(3)
   sourceType           String?
@@ -548,8 +549,9 @@ enum PayableStatus {
 
 // Unified settlement state denormalized onto JournalEntry (unified-comprobante-
 // source-of-truth, D5). Persisted subset of ReceivableStatus/PayableStatus:
-// CANCELLED maps to VOIDED at write; OVERDUE is DERIVED at read (dueDate < now),
-// never persisted. INVARIANT: this is NOT the PaymentStatus enum below —
+// CANCELLED maps to VOIDED at write; OVERDUE is rejected at the write surface
+// (DEC-A) — overdue renders as display-derived ATRASADO (dueDate < now).
+// INVARIANT: this is NOT the PaymentStatus enum below —
 // PaymentStatus (DRAFT|POSTED|LOCKED|VOIDED) is the Payment DOCUMENT lifecycle
 // and must never be reused for settlement state.
 enum SettlementStatus {

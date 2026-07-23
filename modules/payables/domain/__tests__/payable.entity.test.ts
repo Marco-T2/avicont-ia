@@ -189,12 +189,12 @@ describe("Payable entity", () => {
       expect(paid.balance.value).toBe(0);
     });
 
-    it("PENDING → OVERDUE only changes status", () => {
+    it("OVERDUE is unreachable — transitioning to it throws (DEC-A)", () => {
       const p = Payable.create(baseInput);
-      const overdue = p.transitionTo("OVERDUE");
-      expect(overdue.status).toBe("OVERDUE");
-      expect(overdue.paid.value).toBe(p.paid.value);
-      expect(overdue.balance.value).toBe(p.balance.value);
+      expect(() => p.transitionTo("OVERDUE")).toThrow(InvalidPayableStatusTransition);
+      expect(() => p.transitionTo("PARTIAL", 400).transitionTo("OVERDUE")).toThrow(
+        InvalidPayableStatusTransition,
+      );
     });
 
     it("PAID is terminal — any transition throws", () => {

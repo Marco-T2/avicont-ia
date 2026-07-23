@@ -12,9 +12,11 @@ export const RECEIVABLE_STATUSES = [
 export type ReceivableStatus = typeof RECEIVABLE_STATUSES[number];
 
 const ALLOWED: Record<ReceivableStatus, readonly ReceivableStatus[]> = {
-  PENDING: ["PARTIAL", "PAID", "VOIDED", "OVERDUE"],
-  PARTIAL: ["PAID", "VOIDED", "OVERDUE"],
-  OVERDUE: ["PARTIAL", "PAID", "VOIDED"],
+  PENDING: ["PARTIAL", "PAID", "VOIDED"],
+  PARTIAL: ["PAID", "VOIDED"],
+  // Unreachable since DEC-A (write surface rejects OVERDUE); no exits, mirrors
+  // CANCELLED. Key stays while OVERDUE remains in the pg enum union.
+  OVERDUE: [],
   PAID: [],
   VOIDED: [],
   CANCELLED: [],

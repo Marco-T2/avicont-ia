@@ -6,7 +6,9 @@
  *
  * Locked mapping: PENDING/PARTIAL/PAID/VOIDED passthrough; CANCELLED→VOIDED
  * (legacy pg-compat member, app already writes VOIDED); OVERDUE→PENDING
- * (defensive totality — OVERDUE is read-derived, never persisted).
+ * (defensive totality — OVERDUE is unreachable since DEC-A: the write surface
+ * rejects it; overdue renders downstream as display-derived ATRASADO,
+ * dueDate < now over PENDING/PARTIAL).
  *
  * Declared failure mode (pre-GREEN): module
  * `modules/shared/domain/value-objects/settlement-status.ts` does not exist →
@@ -44,7 +46,7 @@ describe("toSettlementStatus — exhaustive locked mapping (D3)", () => {
     ["PAID", "PAID"],
     ["VOIDED", "VOIDED"],
     ["CANCELLED", "VOIDED"], // legacy member — app writes VOIDED
-    ["OVERDUE", "PENDING"], // read-derived, never persisted — defensive totality
+    ["OVERDUE", "PENDING"], // unreachable — write surface rejects it (DEC-A); defensive totality
   ] as const)("maps %s → %s", (input, expected) => {
     expect(toSettlementStatus(input)).toBe(expected);
   });

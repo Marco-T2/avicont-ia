@@ -30,7 +30,7 @@ export const updatePayableSchema = z.object({
 });
 
 export const payableStatusSchema = z.object({
-  status: z.enum(["PENDING", "PARTIAL", "PAID", "VOIDED", "OVERDUE"]),
+  status: z.enum(["PENDING", "PARTIAL", "PAID", "VOIDED"]),
   paidAmount: z
     .number({ message: "El monto pagado debe ser un número" })
     .positive("El monto pagado debe ser mayor a cero")
