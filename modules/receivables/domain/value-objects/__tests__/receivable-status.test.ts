@@ -37,10 +37,13 @@ describe("ReceivableStatus VO", () => {
       ["PARTIAL", "OVERDUE", false],
       ["PARTIAL", "PENDING", false],
       ["PARTIAL", "CANCELLED", false],
-      // OVERDUE → no exits (unreachable state, mirrors CANCELLED — DEC-A)
-      ["OVERDUE", "PARTIAL", false],
-      ["OVERDUE", "PAID", false],
-      ["OVERDUE", "VOIDED", false],
+      // OVERDUE → entry closed, exit OPEN (DEC-A + Batch 3-FIX F-2): no row can
+      // newly ENTER OVERDUE, but a legacy row already in it must be able to
+      // drain (pay or void) — `OVERDUE: []` walled rows in and made sale/purchase
+      // void roll back on `.void()`.
+      ["OVERDUE", "PARTIAL", true],
+      ["OVERDUE", "PAID", true],
+      ["OVERDUE", "VOIDED", true],
       ["OVERDUE", "PENDING", false],
       // PAID → terminal
       ["PAID", "PENDING", false],

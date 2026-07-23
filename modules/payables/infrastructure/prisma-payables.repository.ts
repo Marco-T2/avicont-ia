@@ -14,7 +14,11 @@ import { Payable } from "../domain/payable.entity";
 import type { PayableStatus } from "../domain/value-objects/payable-status";
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { toSettlementStatus } from "@/modules/shared/domain/value-objects/settlement-status";
-import { toDomain, toPersistence } from "./payables.mapper";
+import {
+  assertPersistableStatus,
+  toDomain,
+  toPersistence,
+} from "./payables.mapper";
 
 type DbClient = Pick<
   PrismaClient,
@@ -128,6 +132,9 @@ export class PrismaPayablesRepository implements PayableRepository {
   }
 
   async update(entity: Payable): Promise<void> {
+    // DEC-A guard (Batch 3-FIX F-1): update() writes `status` inline — it does
+    // NOT go through toPersistence — so it needs its own boundary assertion.
+    assertPersistableStatus(entity.status);
     await this.atomically(async (client) => {
       await client.accountsPayable.update({
         where: { id: entity.id, organizationId: entity.organizationId },
@@ -320,6 +327,9 @@ export class PrismaPayablesRepository implements PayableRepository {
     balance: MonetaryAmount,
     status: PayableStatus,
   ): Promise<void> {
+    // DEC-A guard (Batch 3-FIX F-1): status arrives from the caller, not a
+    // literal — assert it before it reaches the row.
+    assertPersistableStatus(status);
     const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsPayable.update({
       where: { id, organizationId },
@@ -340,6 +350,9 @@ export class PrismaPayablesRepository implements PayableRepository {
     balance: MonetaryAmount,
     status: PayableStatus,
   ): Promise<void> {
+    // DEC-A guard (Batch 3-FIX F-1): status arrives from the caller, not a
+    // literal — assert it before it reaches the row.
+    assertPersistableStatus(status);
     const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsPayable.update({
       where: { id, organizationId },

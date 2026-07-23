@@ -14,9 +14,13 @@ export type ReceivableStatus = typeof RECEIVABLE_STATUSES[number];
 const ALLOWED: Record<ReceivableStatus, readonly ReceivableStatus[]> = {
   PENDING: ["PARTIAL", "PAID", "VOIDED"],
   PARTIAL: ["PAID", "VOIDED"],
-  // Unreachable since DEC-A (write surface rejects OVERDUE); no exits, mirrors
-  // CANCELLED. Key stays while OVERDUE remains in the pg enum union.
-  OVERDUE: [],
+  // Entry closed, exit OPEN (DEC-A, Batch 3-FIX): OVERDUE is not reachable as
+  // a transition TARGET — no row can newly enter it — but the exits are
+  // deliberately retained so a pre-existing legacy row can drain to
+  // PARTIAL/PAID/VOIDED; `[]` would wall it in (unvoidable, unpayable) and
+  // roll back any sale void that touches it. Key stays while OVERDUE remains
+  // in the pg enum union.
+  OVERDUE: ["PARTIAL", "PAID", "VOIDED"],
   PAID: [],
   VOIDED: [],
   CANCELLED: [],

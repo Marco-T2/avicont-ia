@@ -14,7 +14,11 @@ import { Receivable } from "../domain/receivable.entity";
 import type { ReceivableStatus } from "../domain/value-objects/receivable-status";
 import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monetary-amount";
 import { toSettlementStatus } from "@/modules/shared/domain/value-objects/settlement-status";
-import { toDomain, toPersistence } from "./receivables.mapper";
+import {
+  assertPersistableStatus,
+  toDomain,
+  toPersistence,
+} from "./receivables.mapper";
 
 type DbClient = Pick<
   PrismaClient,
@@ -127,6 +131,9 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
   }
 
   async update(entity: Receivable): Promise<void> {
+    // DEC-A guard (Batch 3-FIX F-1): update() writes `status` inline — it does
+    // NOT go through toPersistence — so it needs its own boundary assertion.
+    assertPersistableStatus(entity.status);
     await this.atomically(async (client) => {
       await client.accountsReceivable.update({
         where: { id: entity.id, organizationId: entity.organizationId },
@@ -320,6 +327,9 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     balance: MonetaryAmount,
     status: ReceivableStatus,
   ): Promise<void> {
+    // DEC-A guard (Batch 3-FIX F-1): status arrives from the caller, not a
+    // literal — assert it before it reaches the row.
+    assertPersistableStatus(status);
     const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsReceivable.update({
       where: { id, organizationId },
@@ -340,6 +350,9 @@ export class PrismaReceivablesRepository implements ReceivableRepository {
     balance: MonetaryAmount,
     status: ReceivableStatus,
   ): Promise<void> {
+    // DEC-A guard (Batch 3-FIX F-1): status arrives from the caller, not a
+    // literal — assert it before it reaches the row.
+    assertPersistableStatus(status);
     const txClient = (tx ?? this.db) as Prisma.TransactionClient;
     await txClient.accountsReceivable.update({
       where: { id, organizationId },
