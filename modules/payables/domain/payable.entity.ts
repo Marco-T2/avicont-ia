@@ -173,6 +173,8 @@ export class Payable {
       throw new AllocationExceedsBalance(amount, this.props.balance);
     }
     const newBalance = this.props.amount.minus(newPaid);
+    // Unconditional reassignment — normalizes legacy OVERDUE before the
+    // guarded write (DEC-A; see recomputeForPurchaseEdit).
     const newStatus: PayableStatus = newPaid.equals(this.props.amount) ? "PAID" : "PARTIAL";
     return new Payable({
       ...this.props,
@@ -191,6 +193,8 @@ export class Payable {
    * `totalAmount > 0`. La eliminación de los allocation rows subyacentes
    * se orquesta fuera (purchase-hex use case + `applyTrimPlanTx`).
    * Espejo simétrico de sale-hex `Receivable.revertAllocations`.
+   * Status reassignment is load-bearing for DEC-A — normalizes legacy
+   * OVERDUE before the guarded write (see recomputeForPurchaseEdit).
    */
   revertAllocations(totalAmount: MonetaryAmount): Payable {
     if (this.props.status === "VOIDED") {
@@ -245,6 +249,15 @@ export class Payable {
    * state; el LIFO trim de allocations cuyo paid > newTotal se orquesta
    * fuera del aggregate (purchase-hex use case + `applyTrimPlanTx`).
    * Espejo simétrico de sale-hex `Receivable.recomputeForSaleEdit`.
+   *
+   * The UNCONDITIONAL status reassignment below is load-bearing for DEC-A:
+   * it normalizes a legacy OVERDUE row to PAID/PARTIAL/PENDING BEFORE the
+   * guarded repository write, which is why purchase-edit transactions never
+   * trip `assertPersistableStatus`. Same property in applyAllocation /
+   * revertAllocation / revertAllocations. If this ever becomes
+   * status-PRESERVING, every purchase edit touching a legacy OVERDUE row
+   * throws at the persistence boundary and the whole edit transaction rolls
+   * back.
    */
   recomputeForPurchaseEdit(newTotal: MonetaryAmount): Payable {
     const cappedPaid =
@@ -282,6 +295,8 @@ export class Payable {
     }
     const newPaid = this.props.paid.minus(amount);
     const newBalance = this.props.amount.minus(newPaid);
+    // Unconditional reassignment — normalizes legacy OVERDUE before the
+    // guarded write (DEC-A; see recomputeForPurchaseEdit).
     const newStatus: PayableStatus = newPaid.equals(MonetaryAmount.zero()) ? "PENDING" : "PARTIAL";
     return new Payable({
       ...this.props,

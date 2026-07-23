@@ -173,6 +173,8 @@ export class Receivable {
       throw new AllocationExceedsBalance(amount, this.props.balance);
     }
     const newBalance = this.props.amount.minus(newPaid);
+    // Unconditional reassignment — normalizes legacy OVERDUE before the
+    // guarded write (DEC-A; see recomputeForSaleEdit).
     const newStatus: ReceivableStatus = newPaid.equals(this.props.amount) ? "PAID" : "PARTIAL";
     return new Receivable({
       ...this.props,
@@ -195,6 +197,8 @@ export class Receivable {
     }
     const newPaid = this.props.paid.minus(amount);
     const newBalance = this.props.amount.minus(newPaid);
+    // Unconditional reassignment — normalizes legacy OVERDUE before the
+    // guarded write (DEC-A; see recomputeForSaleEdit).
     const newStatus: ReceivableStatus = newPaid.equals(MonetaryAmount.zero()) ? "PENDING" : "PARTIAL";
     return new Receivable({
       ...this.props,
@@ -212,6 +216,8 @@ export class Receivable {
    * `sale.service.ts:1170-1188` derivation. Pre: receivable not VOIDED;
    * `totalAmount > 0`. The deletion of the underlying allocation rows is
    * orchestrated outside (sale-hex use case + `applyTrimPlanTx`).
+   * Status reassignment is load-bearing for DEC-A — normalizes legacy
+   * OVERDUE before the guarded write (see recomputeForSaleEdit).
    */
   revertAllocations(totalAmount: MonetaryAmount): Receivable {
     if (this.props.status === "VOIDED") {
@@ -264,6 +270,14 @@ export class Receivable {
    * `sale.service.ts:869-919` derivation. The aggregate emits the new state;
    * the LIFO trim of allocations whose paid > newTotal is orchestrated outside
    * the aggregate (sale-hex use case + `applyTrimPlanTx`).
+   *
+   * The UNCONDITIONAL status reassignment below is load-bearing for DEC-A:
+   * it normalizes a legacy OVERDUE row to PAID/PARTIAL/PENDING BEFORE the
+   * guarded repository write, which is why sale-edit transactions never trip
+   * `assertPersistableStatus`. Same property in applyAllocation /
+   * revertAllocation / revertAllocations. If this ever becomes
+   * status-PRESERVING, every sale edit touching a legacy OVERDUE row throws
+   * at the persistence boundary and the whole edit transaction rolls back.
    */
   recomputeForSaleEdit(newTotal: MonetaryAmount): Receivable {
     const cappedPaid =

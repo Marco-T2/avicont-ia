@@ -5,6 +5,7 @@ import {
   parsePayableStatus,
   type PayableStatus,
 } from "../domain/value-objects/payable-status";
+import { OverduePayableNotPersistable } from "../domain/errors/payable-errors";
 
 export function toDomain(row: AccountsPayable): Payable {
   return Payable.fromPersistence({
@@ -32,8 +33,10 @@ export function toDomain(row: AccountsPayable): Payable {
  * enums + ALLOWED tables), but a legacy OVERDUE row rehydrated via toDomain
  * and written back — e.g. a description-only edit — would re-persist OVERDUE
  * verbatim while the settlement sync stamps JE.paymentStatus = PENDING: the
- * exact silent divergence DEC-A exists to eliminate. Fail LOUD; never
- * normalize silently. Draining happens via transitionTo (PARTIAL/PAID/
+ * exact silent divergence DEC-A exists to eliminate. Fail LOUD —
+ * OverduePayableNotPersistable, a ValidationError that `handleError`
+ * serializes as HTTP 422 (M-1: a bare Error fell through to a generic 500) —
+ * never normalize silently. Draining happens via transitionTo (PARTIAL/PAID/
  * VOIDED), which produces a persistable status. Until Batch 5's sanitizing
  * migration, editing a still-OVERDUE legacy row throws here by design.
  *
@@ -43,10 +46,7 @@ export function toDomain(row: AccountsPayable): Payable {
  */
 export function assertPersistableStatus(status: PayableStatus): void {
   if (status === "OVERDUE") {
-    throw new Error(
-      "AccountsPayable.status 'OVERDUE' is not persistable — the OVERDUE write surface is closed per DEC-A " +
-        "(decision/overdue-write-surface-closure). Drain the row via transitionTo (PARTIAL/PAID/VOIDED) instead.",
-    );
+    throw new OverduePayableNotPersistable();
   }
 }
 

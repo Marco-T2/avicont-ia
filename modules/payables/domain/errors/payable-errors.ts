@@ -11,6 +11,7 @@ import type { MonetaryAmount } from "@/modules/shared/domain/value-objects/monet
 // modules/shared/domain/errors/monetary-errors (rule-of-three: receivables,
 // payables, payment). Importar desde allí.
 export const INVALID_PAYABLE_STATUS = "INVALID_PAYABLE_STATUS";
+export const OVERDUE_NOT_PERSISTABLE = "OVERDUE_NOT_PERSISTABLE";
 export const ALLOCATION_MUST_BE_POSITIVE = "ALLOCATION_MUST_BE_POSITIVE";
 export const REVERT_MUST_BE_POSITIVE = "REVERT_MUST_BE_POSITIVE";
 export const REVERT_EXCEEDS_PAID = "REVERT_EXCEEDS_PAID";
@@ -19,6 +20,23 @@ export const CANNOT_REVERT_ON_VOIDED_PAYABLE = "CANNOT_REVERT_ON_VOIDED_PAYABLE"
 export class InvalidPayableStatus extends ValidationError {
   constructor(value: string) {
     super(`Estado de cuenta por pagar inválido: ${value}`, INVALID_PAYABLE_STATUS);
+  }
+}
+
+/**
+ * Persistence-boundary rejection (DEC-A, Batch 3-POLISH M-1): thrown by
+ * `assertPersistableStatus` (payables.mapper) when a legacy OVERDUE row
+ * would be re-persisted. Extends ValidationError so `handleError` serializes
+ * it as HTTP 422 with the remediation message — a bare Error fell through to
+ * the generic 500 and the message never reached the client.
+ */
+export class OverduePayableNotPersistable extends ValidationError {
+  constructor() {
+    super(
+      "AccountsPayable.status 'OVERDUE' is not persistable — the OVERDUE write surface is closed per DEC-A " +
+        "(decision/overdue-write-surface-closure). Drain the row via transitionTo (PARTIAL/PAID/VOIDED) instead.",
+      OVERDUE_NOT_PERSISTABLE,
+    );
   }
 }
 
