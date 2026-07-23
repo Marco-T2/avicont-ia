@@ -33,15 +33,18 @@ const MAPPING: Record<SourceDocumentStatus, SettlementStatus> = {
   PAID: "PAID",
   VOIDED: "VOIDED",
   CANCELLED: "VOIDED", // legacy pg-compat member — application writes VOIDED
-  // REACHABLE from legacy data (Batch 3-POLISH L-2 — NOT unreachable): DEC-A
-  // closed the write surface (zod status enums + ALLOWED tables +
-  // persistence-boundary guard), so no NEW row can persist OVERDUE — but
-  // scripts/lib/settlement-backfill-precedence.ts feeds statuses read RAW
-  // from existing AR/AP rows into toSettlementStatus, so any surviving legacy
-  // OVERDUE row hits this branch on every backfill/verify run. That is
-  // exactly why this mapper stays TOTAL over the pg enum union. Overdue
-  // semantics DO exist downstream: display derives ATRASADO (dueDate < now
-  // over PENDING/PARTIAL) in the contact-ledger UI and PDF/XLSX exporters —
+  // REACHABLE while a legacy OVERDUE row exists (Batch 3-POLISH L-2 — NOT
+  // unreachable): DEC-A closed the write surface (zod status enums + ALLOWED
+  // tables + persistence-boundary guard), so no NEW row can persist OVERDUE,
+  // and the sanitizing migration's aux CHECKs
+  // (accounts_*_status_no_overdue_check) forbid the value outright wherever
+  // they are applied — but scripts/lib/settlement-backfill-precedence.ts
+  // feeds statuses read RAW from existing AR/AP rows into toSettlementStatus,
+  // so in any environment still carrying a pre-CHECK legacy OVERDUE row this
+  // branch is hit on every backfill/verify run. That is exactly why this
+  // mapper stays TOTAL over the pg enum union. Overdue semantics DO exist
+  // downstream: display derives ATRASADO (dueDate < now over
+  // PENDING/PARTIAL) in the contact-ledger UI and PDF/XLSX exporters —
   // derived at read only.
   OVERDUE: "PENDING",
 };

@@ -37,8 +37,10 @@ export function toDomain(row: AccountsPayable): Payable {
  * OverduePayableNotPersistable, a ValidationError that `handleError`
  * serializes as HTTP 422 (M-1: a bare Error fell through to a generic 500) —
  * never normalize silently. Draining happens via transitionTo (PARTIAL/PAID/
- * VOIDED), which produces a persistable status. Until Batch 5's sanitizing
- * migration, editing a still-OVERDUE legacy row throws here by design.
+ * VOIDED), which produces a persistable status. While a legacy OVERDUE row
+ * exists — possible only where the sanitizing migration's aux CHECK
+ * (accounts_payable_status_no_overdue_check) is not yet applied — editing
+ * it throws here by design.
  *
  * Invoked at every repository write site that persists a caller-supplied
  * status: toPersistence (save), update, applyAllocationTx,

@@ -6,9 +6,14 @@
  *
  * Locked mapping: PENDING/PARTIAL/PAID/VOIDED passthrough; CANCELLED→VOIDED
  * (legacy pg-compat member, app already writes VOIDED); OVERDUE→PENDING
- * (defensive totality — OVERDUE is unreachable since DEC-A: the write surface
- * rejects it; overdue renders downstream as display-derived ATRASADO,
- * dueDate < now over PENDING/PARTIAL).
+ * (REACHABLE while a legacy OVERDUE row exists — NOT unreachable: DEC-A
+ * closed the write surface so no NEW row persists OVERDUE, but
+ * scripts/lib/settlement-backfill-precedence.ts feeds statuses read RAW from
+ * existing AR/AP rows into toSettlementStatus, so any environment still
+ * carrying a pre-CHECK legacy OVERDUE row hits this branch on every
+ * backfill/verify run — exactly why the mapper stays TOTAL; overdue renders
+ * downstream as display-derived ATRASADO, dueDate < now over
+ * PENDING/PARTIAL).
  *
  * Declared failure mode (pre-GREEN): module
  * `modules/shared/domain/value-objects/settlement-status.ts` does not exist →
@@ -46,7 +51,7 @@ describe("toSettlementStatus — exhaustive locked mapping (D3)", () => {
     ["PAID", "PAID"],
     ["VOIDED", "VOIDED"],
     ["CANCELLED", "VOIDED"], // legacy member — app writes VOIDED
-    ["OVERDUE", "PENDING"], // unreachable — write surface rejects it (DEC-A); defensive totality
+    ["OVERDUE", "PENDING"], // REACHABLE from pre-CHECK legacy rows via the raw backfill/verify feed — NOT unreachable; mapper stays TOTAL (DEC-A closed writes only)
   ] as const)("maps %s → %s", (input, expected) => {
     expect(toSettlementStatus(input)).toBe(expected);
   });

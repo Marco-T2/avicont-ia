@@ -25,9 +25,11 @@
  *    the mapper is TOTAL by locked design; this branch is never removed
  *    (sister sentinel: settlement-status-enum.sentinel.test.ts).
  *
- * While legacy OVERDUE rows exist (until Batch 5's sanitizing migration), a
- * description-only edit of such a row THROWS at the persistence boundary
- * instead of silently re-persisting OVERDUE — fail loud, not silent.
+ * While a legacy OVERDUE row exists — possible only in an environment where
+ * the sanitizing migration's aux CHECKs (accounts_*_status_no_overdue_check)
+ * are not yet applied — a description-only edit of such a row THROWS at the
+ * persistence boundary instead of silently re-persisting OVERDUE — fail
+ * loud, not silent.
  *
  * Overdue semantics still EXIST downstream: display derives ATRASADO
  * (dueDate < now over PENDING/PARTIAL) in the contact-ledger UI and the
