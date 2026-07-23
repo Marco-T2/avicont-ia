@@ -26,24 +26,11 @@
  * Run: pnpm exec tsx scripts/verify-je-settlement-backfill.ts
  */
 import { prisma } from "@/lib/prisma";
-import { toSettlementStatus } from "@/modules/shared/domain/value-objects/settlement-status";
-
-type AuxRow = {
-  journalEntryId: string | null;
-  status: string;
-  dueDate: Date;
-  createdAt: Date;
-  id: string;
-};
-
-/** Deterministic last-wins: createdAt DESC, id DESC — mirror of the migration's DISTINCT ON order. */
-function pickWinner(rows: AuxRow[]): AuxRow | undefined {
-  return [...rows].sort(
-    (a, b) =>
-      b.createdAt.getTime() - a.createdAt.getTime() ||
-      (b.id > a.id ? 1 : b.id < a.id ? -1 : 0),
-  )[0];
-}
+import {
+  type AuxRow,
+  deriveExpectedSettlement,
+  pickCrossSideWinner,
+} from "./lib/settlement-backfill-precedence";
 
 async function main() {
   const select = {
@@ -86,10 +73,13 @@ async function main() {
   const mismatches: string[] = [];
 
   for (const je of journalEntries) {
-    // CxC-over-CxP: receivable wins when both sides link the JE.
-    const winner = pickWinner(arByJe.get(je.id) ?? []) ?? pickWinner(apByJe.get(je.id) ?? []);
+    const arLinked = arByJe.get(je.id) ?? [];
+    const apLinked = apByJe.get(je.id) ?? [];
+    // Precedence (CxC-over-CxP + last-wins + collapse) lives in the pure
+    // module — this script only fetches rows and reports.
+    const expected = deriveExpectedSettlement(arLinked, apLinked);
 
-    if (!winner) {
+    if (!expected) {
       // Unlinked (manual/AI/payment-only): both fields must have stayed NULL.
       if (je.paymentStatus !== null || je.dueDate !== null) {
         mismatches.push(
@@ -101,22 +91,19 @@ async function main() {
       continue;
     }
 
-    const expectedStatus = toSettlementStatus(
-      winner.status as Parameters<typeof toSettlementStatus>[0],
-    );
-    const expectedDue = winner.dueDate;
-
-    const statusOk = je.paymentStatus === expectedStatus;
+    const statusOk = je.paymentStatus === expected.status;
     const dueOk =
-      je.dueDate !== null && je.dueDate.getTime() === expectedDue.getTime();
+      je.dueDate !== null && je.dueDate.getTime() === expected.dueDate.getTime();
 
     if (statusOk && dueOk) {
       backfilled++;
     } else {
+      // Non-null whenever expected is non-null — reported for diagnostics only.
+      const winner = pickCrossSideWinner(arLinked, apLinked);
       mismatches.push(
-        `je=${je.id} expected=(${expectedStatus}, ${expectedDue.toISOString()}) ` +
+        `je=${je.id} expected=(${expected.status}, ${expected.dueDate.toISOString()}) ` +
           `actual=(${je.paymentStatus}, ${je.dueDate?.toISOString() ?? null}) ` +
-          `[aux=${winner.id} status=${winner.status}]`,
+          `[aux=${winner?.id} status=${winner?.status}]`,
       );
     }
   }
