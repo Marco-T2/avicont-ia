@@ -126,6 +126,12 @@ describe("PrismaJournalLedgerQueryAdapter — contact-keyed reads (Postgres inte
   });
 
   afterEach(async () => {
+    // Before journalEntry: the P8 test links an AR row (stamp guard needs a
+    // real aux); deleting the JE first would SetNull the link and leak the AR
+    // into afterAll, where its required Contact FK blocks contact.deleteMany.
+    await prisma.accountsReceivable.deleteMany({
+      where: { organizationId: testOrgId },
+    });
     await prisma.journalLine.deleteMany({
       where: { journalEntry: { organizationId: testOrgId } },
     });
@@ -135,6 +141,9 @@ describe("PrismaJournalLedgerQueryAdapter — contact-keyed reads (Postgres inte
   });
 
   afterAll(async () => {
+    await prisma.accountsReceivable.deleteMany({
+      where: { organizationId: testOrgId },
+    });
     await prisma.journalLine.deleteMany({
       where: { journalEntry: { organizationId: testOrgId } },
     });
@@ -320,6 +329,25 @@ describe("PrismaJournalLedgerQueryAdapter — contact-keyed reads (Postgres inte
       contactPlacement: "header",
     });
     const due = new Date("2098-02-15T00:00:00.000Z");
+    // Stamp guard (je_settlement_stamp_guard, settlement-invariant-hardening):
+    // an UPDATE stamping paymentStatus requires a linked aux row — production
+    // only stamps via the settlement sync AFTER the aux write, same tx. Create
+    // the linked AR first so the stamped state below is one production can
+    // actually reach; values mirror sync semantics (PAID aux → PAID stamp,
+    // JE.dueDate = aux dueDate).
+    await prisma.accountsReceivable.create({
+      data: {
+        organizationId: testOrgId,
+        contactId: testContactId,
+        description: "P8 linked receivable (stamp guard: aux must exist)",
+        amount: 400,
+        paid: 400,
+        balance: 0,
+        dueDate: due,
+        status: "PAID",
+        journalEntryId: jeId,
+      },
+    });
     await prisma.journalEntry.update({
       where: { id: jeId },
       data: { paymentStatus: "PAID", dueDate: due },

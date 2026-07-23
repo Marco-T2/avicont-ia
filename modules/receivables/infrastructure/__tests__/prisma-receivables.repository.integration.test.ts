@@ -188,6 +188,10 @@ describe("PrismaReceivablesRepository — atomically() Postgres integration", ()
         voucherTypeId: testVoucherTypeId,
         createdById: testUserId,
         paymentStatus: "PENDING",
+        // Mirrors the linked AR row's dueDate below: the co-population CHECK
+        // (journal_entries_settlement_copopulation_check) forbids a stamped
+        // JE without dueDate — production stamps both via the settlement sync.
+        dueDate: new Date("2099-03-15T12:00:00Z"),
       },
     });
     const ar = await prisma.accountsReceivable.create({
