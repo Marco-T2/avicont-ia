@@ -39,7 +39,7 @@ export const receivableStatusSchema = z.object({
 
 export const receivableFiltersSchema = z.object({
   contactId: z.string().optional(),
-  status: z.enum(["PENDING", "PARTIAL", "PAID", "VOIDED", "OVERDUE"]).optional(),
+  status: z.enum(["PENDING", "PARTIAL", "PAID", "VOIDED"]).optional(),
   dueDateFrom: z.coerce.date().optional(),
   dueDateTo: z.coerce.date().optional(),
 });

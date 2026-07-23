@@ -60,11 +60,13 @@ import {
   createReceivableSchema,
   updateReceivableSchema,
   receivableStatusSchema,
+  receivableFiltersSchema,
 } from "@/modules/receivables/presentation/validation";
 import {
   createPayableSchema,
   updatePayableSchema,
   payableStatusSchema,
+  payableFiltersSchema,
 } from "@/modules/payables/presentation/validation";
 import {
   canTransition as canTransitionReceivable,
@@ -681,5 +683,47 @@ describe("α-sentinel — OVERDUE write-site enumeration is enforced, not assume
     // they must never gain a `status =` assignment ($executeRaw bypasses
     // every TS-level guard).
     expect(offenders).toEqual([]);
+  });
+});
+
+/**
+ * FILTER closure (Batch 4) — SEPARATE, independently revertible decision.
+ *
+ * Unlike everything above (Marco's DEC-A, write surface), this block cements
+ * an ORCHESTRATOR-derived decision (premise-verification, item [2]): the
+ * filter enums (`receivableFiltersSchema` / `payableFiltersSchema`) also drop
+ * "OVERDUE". Rationale: those enums do not enumerate the DB enum — CANCELLED
+ * is already absent from them — so what they actually reflect is WRITABLE
+ * states; with OVERDUE unwritable, `GET ?status=OVERDUE` could only ever
+ * return an empty list while implying the state exists. Zero callers send it.
+ * Effect: `GET ?status=OVERDUE` now 400s (ZodError → handleError → 400)
+ * instead of 200-with-empty-list.
+ *
+ * Reverting the Batch 4 commit alone removes this whole block AND the filter
+ * imports AND restores the enums — without touching DEC-A's write closure.
+ *
+ * Declared RED failure mode (pre-Batch 4): the two rejection tests fail with
+ * "expected true to be false" — the filter enums still parse "OVERDUE".
+ */
+describe("α-sentinel — OVERDUE filter closure (orchestrator-derived, Batch 4)", () => {
+  it("receivableFiltersSchema rejects status OVERDUE", () => {
+    expect(receivableFiltersSchema.safeParse({ status: "OVERDUE" }).success).toBe(false);
+  });
+
+  it("payableFiltersSchema rejects status OVERDUE", () => {
+    expect(payableFiltersSchema.safeParse({ status: "OVERDUE" }).success).toBe(false);
+  });
+
+  it.each(["PENDING", "PARTIAL", "PAID", "VOIDED"] as const)(
+    "positive control (born-green): filter schemas still accept %s",
+    (status) => {
+      expect(receivableFiltersSchema.safeParse({ status }).success).toBe(true);
+      expect(payableFiltersSchema.safeParse({ status }).success).toBe(true);
+    },
+  );
+
+  it("positive control (born-green): status stays optional — filters parse without it", () => {
+    expect(receivableFiltersSchema.safeParse({ contactId: "c-1" }).success).toBe(true);
+    expect(payableFiltersSchema.safeParse({}).success).toBe(true);
   });
 });
